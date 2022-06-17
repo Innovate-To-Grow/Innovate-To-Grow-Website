@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% from "renderhelper.html" import render_field %}
+ 
+{% block content %}
+  <h2>Fill out your information below</h2>
+  <form action="{{ url_for('registration.info', token=token) }}" method=post>
+    {{ form.hidden_tag }}
+
+    {{ render_field(form.city) }}
+    {{ render_field(form.state) }}
+    {{ render_field(form.zipcode) }}
+    <label class="checkbox-inline">{{ render_field(form.country) }}</label>
+    {{ render_field(form.country_other) }}
+    {{ render_field(form.organization) }}
+    {{ render_field(form.school) }}
+    {{ render_field(form.division) }}
+    {{ render_field(form.position) }}
+    <label class="checkbox-inline">{{ render_field(form.discipline) }}</label>
+    {{ render_field(form.discipline_other) }}
+    {{ render_field(form.specialty) }}
+    <label class="checkbox-inline">{{ render_field(form.education) }}</label>
+    {{ render_field(form.education_other) }}
+    {{ render_field(form.education_year) }}
+    {{ render_field(form.alma_mater) }}
+    {{ render_field(form.alma_mater_italy) }}
+    {{ render_field(form.linkedin) }}
+    {{ render_field(form.researchgate) }}
+    {{ render_field(form.webpage) }}
+    {{ render_field(form.comments) }}
+    <label class="checkbox-inline">{{ render_field(form.affiliation) }}</label>
+    <br>
+    {{ form.submit }}
+    <br>
+  </form>
+{% endblock %}

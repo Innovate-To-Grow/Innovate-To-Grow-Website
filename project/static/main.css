@@ -1,0 +1,206 @@
+form label {
+  font-size: 1.2em;
+  font-weight: bold;
+  display: block;
+  padding: 5px 0;
+}
+ 
+form input#first_name,
+form input#last_name,
+form input#primary_email,
+form input#confirm_primary,
+form input#secondary_email,
+form input#confirm_secondary {
+  width: 400px;
+  background-color: #fafafa;
+  -webkit-border-radius: 2px;
+     -moz-border-radius: 2px;
+          border-radius: 2px;
+  border: 1px solid #cccccc;
+  padding: 3px;
+  font-size: 1.1em;
+}
+ 
+form input#submit {
+  display: block;
+  -webkit-border-radius: 3px; 
+     -moz-border-radius: 3px;
+          border-radius: 3px;
+  border:1px solid #d8d8d8;
+  padding: 10px; 
+  font-weight:bold; 
+  text-align: center; 
+  color: #000000; 
+  background-color: #f4f4f4;
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #f4f4f4), color-stop(100%, #e5e5e5));
+  background-image: -webkit-linear-gradient(top, #f4f4f4, #e5e5e5);
+  background-image: -moz-linear-gradient(top, #f4f4f4, #e5e5e5);
+  background-image: -ms-linear-gradient(top, #f4f4f4, #e5e5e5);
+  background-image: -o-linear-gradient(top, #f4f4f4, #e5e5e5);
+  background-image: linear-gradient(top, #f4f4f4, #e5e5e5);filter:progid:DXImageTransform.Microsoft.gradient(GradientType=0,startColorstr=#f4f4f4, endColorstr=#e5e5e5);
+}
+
+p {
+  white-space: pre;
+}
+
+form input#submit:hover{
+  cursor: pointer;
+  border:1px solid #c1c1c1; 
+  background-color: #dbdbdb;
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#dbdbdb), color-stop(100%, #cccccc));
+  background-image: -webkit-linear-gradient(top, #dbdbdb, #cccccc);
+  background-image: -moz-linear-gradient(top, #dbdbdb, #cccccc);
+  background-image: -ms-linear-gradient(top, #dbdbdb, #cccccc);
+  background-image: -o-linear-gradient(top, #dbdbdb, #cccccc);
+  background-image: linear-gradient(top, #dbdbdb, #cccccc);filter:progid:DXImageTransform.Microsoft.gradient(GradientType=0,startColorstr=#dbdbdb, endColorstr=#cccccc);
+}
+ul {
+  list-style-type: circle;
+  list-style: circle;
+}
+ol {
+  list-style-type: none;
+  list-style: none;
+}
+li {
+  list-style-type: none;
+  list-style: none;
+}
+.btn-link {
+  border: none;
+  outline: none;
+  background: none;
+  cursor: pointer;
+  color: #0000EE;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+body {
+  margin: 0;
+  background-color: #292929;
+  overflow: scroll;
+}
+
+nav {
+  position: absolute;
+  top: 30% auto;
+  right: 0;
+  left: 0;
+  width: 319px;
+  display: table;
+  margin: 0 auto;
+  transform: translateY(-50%);
+}
+
+nav a {
+  position: relative;
+  width: 33.333%;
+  display: table-cell;
+  text-align: center;
+  color: #8fe7ff;
+  text-decoration: none;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-weight: bold;
+  padding: 10px 20px;
+  transition: 0.2s ease color;
+}
+
+nav a:before,
+nav a:after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  transition: 0.2s ease transform;
+}
+
+nav a:before {
+  top: 0;
+  left: 10px;
+  width: 6px;
+  height: 6px;
+}
+
+nav a:after {
+  top: 5px;
+  left: 18px;
+  width: 4px;
+  height: 4px;
+}
+
+nav a:nth-child(1):before {
+  background-color: yellow;
+}
+
+nav a:nth-child(1):after {
+  background-color: red;
+}
+
+nav a:nth-child(2):before {
+  background-color: #00e2ff;
+}
+
+nav a:nth-child(2):after {
+  background-color: #89ff00;
+}
+
+nav a:nth-child(3):before {
+  background-color: purple;
+}
+
+nav a:nth-child(3):after {
+  background-color: palevioletred;
+}
+
+#indicator {
+  position: absolute;
+  left: 5%;
+  bottom: 0;
+  width: 30px;
+  height: 3px;
+  background-color: #fff;
+  border-radius: 5px;
+  transition: 0.2s ease left;
+}
+
+nav a:hover {
+  color: #fff;
+}
+
+nav a:hover:before,
+nav a:hover:after {
+  transform: scale(1);
+}
+
+nav a:nth-child(1):hover ~ #indicator {
+  background: linear-gradient(130deg, yellow, red);
+}
+
+nav a:nth-child(2):hover ~ #indicator {
+  left: 34%;
+  background: linear-gradient(130deg, #00e2ff, #89ff00);
+}
+
+nav a:nth-child(3):hover ~ #indicator {
+  left: 70%;
+  background: linear-gradient(130deg, purple, palevioletred);
+}
+
+.input-w label, .input-w input {
+  float: none;
+  display: inline-block;
+  vertical-align: middle;    
+}
+
+input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+}

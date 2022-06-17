@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ISSNAF</title>    
+    <strong><link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}"></strong>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  </head>
+  <center>
+  <body style="background-color: #292929;">
+      <p><br><img src="{{url_for('static', filename='ISSNAF_logo.png') }}" alt="ISSNAF Logo"></p>
+        <p>
+        <nav>
+          <a href="{{ url_for('home.mainpage') }}">Main</a>
+          <a href="{{ url_for('registration.register') }}">Register</a>
+          <a href="{{ url_for('update.enter_email') }}">Update</a>
+          <div id="indicator"></div>
+        </nav>
+        </p>
+        <p>
+        <div class="container" style="background-color: lightgrey;">
+            {% block content %}
+            {% endblock %}
+        </div>
+        </p>
+  </body>
+  </center>
+</html>
