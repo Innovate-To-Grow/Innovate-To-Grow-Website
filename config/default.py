@@ -19,6 +19,6 @@ class Config():
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True
     MAIL_USERNAME = "UCMteam319@gmail.com"
-    MAIL_PASSWORD = "Popcorn25!"
+    MAIL_PASSWORD = "jfnlyaknrvxkjrih"
 
     MAIL_DEFAULT_SENDER = "UCMteam319@gmail.com"

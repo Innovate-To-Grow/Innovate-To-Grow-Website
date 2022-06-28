@@ -3,7 +3,7 @@ from datetime import timedelta
 from project.update.forms import EmailForm, UpdateForm
 from flask import Blueprint, render_template, url_for, request
 from flask_login import login_required, login_user, current_user
-from project.models import member_roster, member_data
+from project.models import member_roster
 from project import db
 from project.util.email import send_email
 from project.util.token import confirm_token, generate_token
