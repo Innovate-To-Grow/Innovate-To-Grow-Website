@@ -226,12 +226,11 @@ def confirm_primary(token):
         cell_row_find = cell_find.row
         wks.update_cell(cell_row_find, 6, "Y")
 
-        # if not user.info_completed:
-        #     i_token = generate_token(user.primary_email)
-        #     return redirect(url_for("registration.info", token=i_token, _external=True))
-        # else:
-
-        return render_template("thanks_confirming.html")
+        if user[7] == 'N':
+            i_token = generate_token(user[4])
+            return redirect(url_for("registration.info", token=i_token, _external=True))
+        else:
+            return render_template("thanks_confirming.html")
         
 
 @registration_blueprint.route('/confirm_s/<token>')
@@ -254,12 +253,11 @@ def confirm_secondary(token):
         cell_row_find = cell_find.row
         wks.update_cell(cell_row_find, 7, "Y")
 
-        # if not user.info_completed:
-        #     i_token = generate_token(user.primary_email)
-        #     return redirect(url_for("registration.info", token=i_token, _external=True))
-        # else:
-        
-        return render_template("thanks_confirming.html")
+        if user[7] == 'N':
+            i_token = generate_token(user[4])
+            return redirect(url_for("registration.info", token=i_token, _external=True))
+        else:
+            return render_template("thanks_confirming.html")
 
 
 @registration_blueprint.route('/resend_p')
@@ -282,50 +280,39 @@ def resend_secondary():
     return render_template("homepage.html")
 
 
-# @registration_blueprint.route('/info/<token>', methods=['GET', 'POST'])
-# def info(token):
-#     form = InformationForm(request.form)
+@registration_blueprint.route('/info/<token>', methods=['GET', 'POST'])
+def info(token):
+    form = InformationForm(request.form)
 
-#     email = confirm_token(token, expiration=1000000)
-#     user = member_roster.query.filter_by(primary_email=email).first()
-#     if user == None:
-#         user = member_roster.query.filter_by(secondary_email=email).first()
+    email = confirm_token(token, expiration=1000000)
+    user = wks.find(email, in_column=4)
+    if user is not None:
+            user = wks.row_values(user.row)
+    if user == None:
+        user = wks.find(email, in_column=5)
+        if user is not None:
+            user = wks.row_values(user.row)
 
-#     if request.method == 'POST' and form.validate():
-#         if user.info_completed:
-#             return render_template("homepage.html")
+    if request.method == 'POST' and form.validate():
+        if user[7] != "N":
+            return render_template("homepage.html")
 
-#         data = member_data(user_key=user.user_key,
-#                             city=form.city.data,
-#                             state=form.state.data,
-#                             zip_code=form.zipcode.data,
-#                             country=form.country.data,
-#                             country_other = form.country_other.data,
-#                             organization=form.organization.data,
-#                             school=form.school.data,
-#                             department=form.division.data,
-#                             position=form.position.data,
-#                             discipline=form.discipline.data,
-#                             discipline_other=form.discipline_other.data,
-#                             specialty=form.specialty.data,
-#                             highest_degree=form.education.data,
-#                             highest_degree_other=form.education_other.data,
-#                             graduation_date=form.education_year.data,
-#                             alma_mater=form.alma_mater.data,
-#                             alma_mater_italy=form.alma_mater_italy.data,
-#                             linked_in=form.linkedin.data,
-#                             research_gate=form.researchgate.data,
-#                             webpage=form.webpage.data,
-#                             comments=form.comments.data,
-#                             member_type=form.affiliation.data)
+        current_user.organization = form.organization.data
+        current_user.phonenumber = form.phonenumber.data
+        current_user.titlerole = form.titlerole.data
 
-#         user.info_completed = True
-        
-#         db.session.add(data)
-#         db.session.commit()
+        cell_find = wks.find(email)
+        cell_row_find = cell_find.row
 
-#         return render_template("thanks_registering.html")
+        wks.update_cell(cell_row_find, 9, current_user.organization)
+        wks.update_cell(cell_row_find, 10, current_user.phonenumber)
+        wks.update_cell(cell_row_find, 11, current_user.titlerole)
 
-#     else:
-#         return render_template("information.html", form=form, token=token)
+        current_user.info_completed = "Y"
+        wks.update_cell(cell_row_find, 8, current_user.info_completed)
+    
+        return render_template("thanks_registering.html")
+
+    else:
+        return render_template("information.html", form=form, token=token)
     

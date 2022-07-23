@@ -1,5 +1,5 @@
 class member_roster:
-    def __init__(self, id, first_name, last_name, primary_email, secondary_email, primary_email_status, secondary_email_status, info_completed):
+    def __init__(self, id, first_name, last_name, primary_email, secondary_email, primary_email_status, secondary_email_status, info_completed, organization=None, phonenumber=None, titlerole=None):
         self.id = id
         self.first_name = first_name
         self.last_name = last_name
@@ -8,6 +8,9 @@ class member_roster:
         self.primary_email_status = primary_email_status
         self.secondary_email_status = secondary_email_status
         self.info_completed = info_completed
+        self.organization = organization
+        self.phonenumber = phonenumber
+        self.titlerole = titlerole
 
     def is_authenticated(self):
         return True
