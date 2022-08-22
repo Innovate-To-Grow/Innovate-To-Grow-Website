@@ -1,5 +1,5 @@
 from tkinter.tix import Select
-from wtforms import Form, StringField, SelectField, RadioField, IntegerField, SubmitField, validators, SelectMultipleField, validators, SelectMultipleField, widgets
+from wtforms import Form, StringField, SelectField, RadioField, IntegerField, SubmitField, validators, SelectMultipleField, validators, SelectMultipleField, widgets, BooleanField
 
 class MultiCheckboxField(SelectMultipleField):
     widget = widgets.ListWidget(prefix_label=False)
@@ -18,17 +18,20 @@ class UpdateForm(Form):
     confirm_primary = StringField('Confirm Primary Email',
                                 [validators.InputRequired(' '),
                                 validators.EqualTo('primary_email', message = 'Must match primary email')])
+    primary_subscribe = BooleanField('Enable Notifications for Primary Email', default="checked")                          
     secondary_email = StringField('Secondary Email Address', 
                                 [validators.InputRequired(' '),
                                 validators.Email()])
     confirm_secondary = StringField('Confirm Secondary Email',
                                 [validators.InputRequired(' '),
                                 validators.EqualTo('secondary_email', message = 'Must match secondary email')])
+    secondary_subscribe = BooleanField('Enable Notifications for Secondary Email', default="checked")
     organization = StringField('Organization *', 
                                 [validators.InputRequired(' ')])
     phonenumber = StringField('Phone Number *', 
                                 [validators.InputRequired(' ')])
     titlerole = StringField('Title/Role *', 
                                 [validators.Optional(strip_whitespace=True)])
+    
 
     submit = SubmitField('Submit')

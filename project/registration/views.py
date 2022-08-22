@@ -55,7 +55,9 @@ def register():
                                         secondary_email=user_prim1[4],
                                         primary_email_status=user_prim1[5],
                                         secondary_email_status=user_prim1[6],
-                                        info_completed=user_prim1[7])
+                                        info_completed=user_prim1[7],
+                                        primary_subscribe = user_prim1[11],
+                                        secondary_subscribe = user_prim1[12])
 
                     login_user(user, remember=True, duration=timedelta(weeks=1))
 
@@ -84,7 +86,9 @@ def register():
                                         secondary_email=user_prim2[4],
                                         primary_email_status=user_prim2[5],
                                         secondary_email_status=user_prim2[6],
-                                        info_completed=user_prim2[7])
+                                        info_completed=user_prim2[7],
+                                        primary_subscribe = user_prim2[11],
+                                        secondary_subscribe = user_prim2[12])
 
                     login_user(user, remember=True, duration=timedelta(weeks=1))
 
@@ -116,7 +120,9 @@ def register():
                                         secondary_email=user_sec1[4],
                                         primary_email_status=user_sec1[5],
                                         secondary_email_status=user_sec1[6],
-                                        info_completed=user_sec1[7])
+                                        info_completed=user_sec1[7],
+                                        primary_subscribe = user_sec1[11],
+                                        secondary_subscribe = user_sec1[12])
 
                     login_user(user_sec1, remember=True, duration=timedelta(weeks=1))
 
@@ -146,7 +152,9 @@ def register():
                                         secondary_email=user_sec2[4],
                                         primary_email_status=user_sec2[5],
                                         secondary_email_status=user_sec2[6],
-                                        info_completed=user_sec2[7])
+                                        info_completed=user_sec2[7],
+                                        primary_subscribe = user_sec2[11],
+                                        secondary_subscribe = user_sec2[12])
                     
                     login_user(user_sec2, remember=True, duration=timedelta(weeks=1))
 
@@ -177,11 +185,13 @@ def register():
                                 secondary_email = form.secondary_email.data,
                                 primary_email_status = "N",
                                 secondary_email_status = "N",
-                                info_completed = "N")
+                                info_completed = "N",
+                                primary_subscribe = "FALSE",
+                                secondary_subscribe = "FALSE")
 
             user_row = [user.id, user.first_name, user.last_name, user.primary_email,
                         user.secondary_email, user.primary_email_status, user.secondary_email_status,
-                        user.info_completed]
+                        user.info_completed, "","","", user.primary_subscribe, user.secondary_subscribe]
 
             wks.append_row(user_row)
 
@@ -225,6 +235,7 @@ def confirm_primary(token):
         cell_find = wks.find(email)
         cell_row_find = cell_find.row
         wks.update_cell(cell_row_find, 6, "Y")
+        wks.update_cell(cell_row_find, 12, "TRUE")
 
         if user[7] == 'N':
             i_token = generate_token(user[4])
@@ -252,6 +263,7 @@ def confirm_secondary(token):
         cell_find = wks.find(email)
         cell_row_find = cell_find.row
         wks.update_cell(cell_row_find, 7, "Y")
+        wks.update_cell(cell_row_find, 13, "TRUE")
 
         if user[7] == 'N':
             i_token = generate_token(user[4])

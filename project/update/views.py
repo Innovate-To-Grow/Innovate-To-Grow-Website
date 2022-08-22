@@ -151,7 +151,9 @@ def update_info(token):
                         secondary_email = user[4],
                         organization = user[8],
                         phonenumber = user[9],
-                        titlerole = user[10])
+                        titlerole = user[10],
+                        primary_subscribe = user[11],
+                        secondary_subscribe = user[12])
                         
     # form.populate_obj(current_user)
 
@@ -161,7 +163,21 @@ def update_info(token):
         
         need_verif = False
         skip = False
+        error = False
         subject = "ISSNAF - Confirm Your Email Address"
+        user_prim1 = wks.find(request.form['primary_email'], in_column=4)
+        user_prim2 = wks.find(request.form['primary_email'], in_column=5)
+        user_sec1 = wks.find(request.form['secondary_email'], in_column=4)
+        user_sec2 = wks.find(request.form['secondary_email'], in_column=5)
+    
+        if (user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None):
+            error = True
+
+        if (user[3] == request.form['primary_email'] or user[3] == request.form['secondary_email']) and (user[4] == request.form['primary_email'] or user[4] == request.form['secondary_email']):
+            error = False
+
+        if error:
+            return render_template("error.html")
 
         if user[3] == form.secondary_email.data and user[4] == form.primary_email.data:
             skip = True
@@ -195,6 +211,8 @@ def update_info(token):
         wks.update_cell(cell_row_find, 9, form.organization.data)
         wks.update_cell(cell_row_find, 10, form.phonenumber.data)
         wks.update_cell(cell_row_find, 11, form.titlerole.data)
+        wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
+        wks.update_cell(cell_row_find, 13, form.secondary_subscribe.data)
 
         if need_verif:
             return render_template("need_verif.html")

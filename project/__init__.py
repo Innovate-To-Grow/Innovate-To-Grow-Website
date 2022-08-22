@@ -67,7 +67,9 @@ def load_user(user_id):
                              secondary_email = user[4],
                              primary_email_status = user[5],
                              secondary_email_status = user[6],
-                             info_completed = user[7])
+                             info_completed = user[7],
+                             primary_subscribe = user[11],
+                             secondary_subscribe = user[12])
                             
     return user
 
