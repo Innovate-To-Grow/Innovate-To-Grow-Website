@@ -34,7 +34,8 @@ class ContactView(BaseView):
 
         return self.render('admin/contact.html', form=form)
 
-class BounceView(BaseView):
-    @expose("/", methods=["GET", "POST"])
-    def bounce(self):
-        return self.render("admin/bounce.html")
+
+# class BounceView(BaseView):
+#     @expose("/", methods=["GET", "POST"])
+#     def bounce(self):
+#         return self.render("admin/bounce.html")

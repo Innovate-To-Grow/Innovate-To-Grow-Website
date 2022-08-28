@@ -1,4 +1,5 @@
 from datetime import timedelta
+from werkzeug.datastructures import MultiDict
 
 from project.update.forms import EmailForm, UpdateForm
 from flask import Blueprint, render_template, url_for, request
@@ -144,16 +145,25 @@ def update_info(token):
     # user = member_roster.query.filter_by(secondary_email=email).first()
 
     # data = member_data.query.filter_by(user_key=user[0]).first()
+    
     form = UpdateForm(request.form, 
-                        first_name = user[1],
-                        last_name = user[2],
-                        primary_email = user[3],
-                        secondary_email = user[4],
-                        organization = user[8],
-                        phonenumber = user[9],
-                        titlerole = user[10],
-                        primary_subscribe = user[11],
-                        secondary_subscribe = user[12])
+                         first_name = user[1],
+                         last_name = user[2],
+                         primary_email = user[3],
+                         secondary_email = user[4],
+                         organization = user[8],
+                         phonenumber = user[9],
+                         titlerole = user[10])
+
+    if user[11] == 'FALSE':                    
+        form.primary_subscribe.data = 0
+    else:
+        form.primary_subscribe.data = 1
+    
+    if user[12] == 'FALSE':                    
+        form.secondary_subscribe.data = 0
+    else:
+        form.secondary_subscribe.data = 1
                         
     # form.populate_obj(current_user)
 
@@ -173,7 +183,7 @@ def update_info(token):
         if (user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None):
             error = True
 
-        if (user[3] == request.form['primary_email'] or user[3] == request.form['secondary_email']) and (user[4] == request.form['primary_email'] or user[4] == request.form['secondary_email']):
+        if user[3] == request.form['primary_email'] or user[3] == request.form['secondary_email'] or user[4] == request.form['primary_email'] or user[4] == request.form['secondary_email']:
             error = False
 
         if error:
@@ -202,7 +212,11 @@ def update_info(token):
             wks.update_cell(cell_row_find, 7, "N")
             send_email(form.secondary_email.data, subject, html)
 
-        
+        if user[5] == "Y":
+            wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
+        else:
+            
+
 
         wks.update_cell(cell_row_find, 2, form.first_name.data)
         wks.update_cell(cell_row_find, 3, form.last_name.data)
@@ -211,6 +225,8 @@ def update_info(token):
         wks.update_cell(cell_row_find, 9, form.organization.data)
         wks.update_cell(cell_row_find, 10, form.phonenumber.data)
         wks.update_cell(cell_row_find, 11, form.titlerole.data)
+
+        
         wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
         wks.update_cell(cell_row_find, 13, form.secondary_subscribe.data)
 

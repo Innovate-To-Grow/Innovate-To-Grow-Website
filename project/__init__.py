@@ -40,13 +40,13 @@ app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 
 #Flask Admin
-# from project.models import member_roster, member_data
-# admin_app = Admin(app, name='Admin Page', template_mode='bootstrap3')
+from project.models import member_roster
+admin_app = Admin(app, name='Admin Page', template_mode='bootstrap3')
 # admin_app.add_view(ModelView(member_roster, db.session))
 # admin_app.add_view(ModelView(member_data, db.session))
-# from project.admin.views import BounceView, ContactView
+from project.admin.views import ContactView
 # admin_app.add_view(BounceView(name = 'Email Bounce', endpoint = 'bounce'))
-# admin_app.add_view(ContactView(name = 'Contact', endpoint = 'contact'))
+admin_app.add_view(ContactView(name = 'Contact', endpoint = 'contact'))
 
 login_manager.login_view = "member_roster.login"
 login_manager.login_message_category = "danger"

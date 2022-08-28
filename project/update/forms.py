@@ -18,14 +18,14 @@ class UpdateForm(Form):
     confirm_primary = StringField('Confirm Primary Email',
                                 [validators.InputRequired(' '),
                                 validators.EqualTo('primary_email', message = 'Must match primary email')])
-    primary_subscribe = BooleanField('Enable Notifications for Primary Email', default="checked")                          
+    primary_subscribe = BooleanField('Enable Email Notifications with Primary')                      
     secondary_email = StringField('Secondary Email Address', 
                                 [validators.InputRequired(' '),
                                 validators.Email()])
     confirm_secondary = StringField('Confirm Secondary Email',
                                 [validators.InputRequired(' '),
                                 validators.EqualTo('secondary_email', message = 'Must match secondary email')])
-    secondary_subscribe = BooleanField('Enable Notifications for Secondary Email', default="checked")
+    secondary_subscribe = BooleanField('Enable Email Notifications with Secondary')
     organization = StringField('Organization *', 
                                 [validators.InputRequired(' ')])
     phonenumber = StringField('Phone Number *', 
