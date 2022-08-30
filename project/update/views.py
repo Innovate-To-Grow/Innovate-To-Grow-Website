@@ -5,7 +5,6 @@ from project.update.forms import EmailForm, UpdateForm
 from flask import Blueprint, render_template, url_for, request
 from flask_login import login_required, login_user, current_user
 from project.models import member_roster
-from project import db
 from project.util.email import send_email
 from project.util.token import confirm_token, generate_token
 import gspread
@@ -40,20 +39,21 @@ def enter_email():
         verif1 = user[5]
         verif2 = user[6]
 
-        # user_object = member_roster(id=user[0],
-        #                     first_name=user[1],
-        #                     last_name=user[2],
-        #                     primary_email=user[3],
-        #                     secondary_email=user[4],
-        #                     primary_email_status=user[5],
-        #                     secondary_email_status=user[6],
-        #                     info_completed=user[7],
-        #                     organization=user[8],
-        #                     phonenumber=user[9],
-        #                     titlerole=user[10]
-        #                     )
+        user_object = member_roster(id=user[0],
+                                    first_name=user[1],
+                                    last_name=user[2],
+                                    primary_email=user[3],
+                                    secondary_email=user[4],
+                                    primary_email_status=user[5],
+                                    secondary_email_status=user[6],
+                                    info_completed=user[7],
+                                    organization=user[8],
+                                    phonenumber=user[9],
+                                    titlerole=user[10],
+                                    primary_subscribe=user[11],
+                                    secondary_subscribe=user[12])
 
-        # login_user(user_object, remember=True, duration=timedelta(weeks=1))
+        login_user(user_object, remember=True, duration=timedelta(weeks=1))
 
         if verif1 == 'N' and verif2 == 'Y':
             # send an update link to the secondary and a verification link to primary
@@ -133,41 +133,35 @@ def enter_email():
 @update_blueprint.route('/enter_update/<token>', methods=['GET', 'POST'])
 def update_info(token):
     email = confirm_token(token, expiration=1000000)
-    
     user = wks.find(email, in_column=4)
+
     if user is not None:
             user = wks.row_values(user.row)
-    # user = member_roster.query.filter_by(primary_email=email).first()
     if user == None:
         user = wks.find(email, in_column=5)
         if user is not None:
             user = wks.row_values(user.row)
-    # user = member_roster.query.filter_by(secondary_email=email).first()
-
-    # data = member_data.query.filter_by(user_key=user[0]).first()
     
-    form = UpdateForm(request.form, 
-                         first_name = user[1],
-                         last_name = user[2],
-                         primary_email = user[3],
-                         secondary_email = user[4],
-                         organization = user[8],
-                         phonenumber = user[9],
-                         titlerole = user[10])
+    primary_temp = False
+    if user[11] == "TRUE":
+        primary_temp = True
 
-    if user[11] == 'FALSE':                    
-        form.primary_subscribe.data = 0
-    else:
-        form.primary_subscribe.data = 1
-    
-    if user[12] == 'FALSE':                    
-        form.secondary_subscribe.data = 0
-    else:
-        form.secondary_subscribe.data = 1
-                        
-    # form.populate_obj(current_user)
+    secondary_temp = False
+    if user[12] == "TRUE":
+        secondary_temp = True
 
-    if request.method == 'POST' and form.validate():
+    form = UpdateForm(first_name = user[1],
+                      last_name = user[2],
+                      primary_email = user[3],
+                      secondary_email = user[4],
+                      organization = user[8],
+                      phonenumber = user[9],
+                      titlerole = user[10],
+                      primary_subscribe = primary_temp,
+                      secondary_subscribe = secondary_temp)
+   
+
+    if request.method == 'POST' and form.validate_on_submit():
         cell_find = wks.find(email)
         cell_row_find = cell_find.row
         
@@ -212,11 +206,6 @@ def update_info(token):
             wks.update_cell(cell_row_find, 7, "N")
             send_email(form.secondary_email.data, subject, html)
 
-        if user[5] == "Y":
-            wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
-        else:
-            
-
 
         wks.update_cell(cell_row_find, 2, form.first_name.data)
         wks.update_cell(cell_row_find, 3, form.last_name.data)
@@ -225,10 +214,33 @@ def update_info(token):
         wks.update_cell(cell_row_find, 9, form.organization.data)
         wks.update_cell(cell_row_find, 10, form.phonenumber.data)
         wks.update_cell(cell_row_find, 11, form.titlerole.data)
-
         
-        wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
-        wks.update_cell(cell_row_find, 13, form.secondary_subscribe.data)
+        
+        if user[5] == "Y":
+            wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
+            
+        else:
+            need_verif = True
+
+            p_token = generate_token(form.primary_email.data)
+            confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
+            html = render_template("verify.html", confirm_url=confirm_url)
+
+            send_email(form.primary_email.data, subject, html)
+
+
+        if user[6] == "Y":
+            wks.update_cell(cell_row_find, 13, form.secondary_subscribe.data)
+            
+        else:
+            need_verif = True
+
+            s_token = generate_token(form.secondary_email.data)
+            confirm_url = url_for("registration.confirm_secondary", token=s_token, _external=True)
+            html = render_template("verify.html", confirm_url=confirm_url)
+
+            send_email(form.secondary_email.data, subject, html)
+
 
         if need_verif:
             return render_template("need_verif.html")

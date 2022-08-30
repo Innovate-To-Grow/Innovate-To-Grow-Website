@@ -4,7 +4,7 @@
 {% block content %}
   <h2>Fill out your information below</h2>
   <form action="{{ url_for('update.update_info', token=token) }}" method=post>
-    {{ form.hidden_tag }}
+    {{ form.csrf_token }}
 
     {{ render_field(form.first_name) }}
     {{ render_field(form.last_name) }}
