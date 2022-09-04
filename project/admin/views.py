@@ -1,26 +1,26 @@
 from flask import request, flash, render_template
 from flask_admin import BaseView, expose
-from project.util.email import send_async_email
+from project.util.email import send_email, send_email_list
 from project.models import member_roster
 from project.admin.forms import EmailForm
+# Google Sheet
+import gspread
+wks = gspread.service_account().open("I2G-Master-People").worksheet("double-email-test")
 
 class ContactView(BaseView):
     @expose('/',  methods=["GET", "POST"])
     def contact(self):
         form = EmailForm(request.form)
-        if(request.method == 'POST' and form.validate()):
-
-            verified_users = member_roster.query.filter((member_roster.primary_email_status == True) | (member_roster.secondary_email_status == True)).all()
-
+        if request.method == 'POST' and form.validate(): 
             email_list = []
 
-            for user in verified_users:
-                if(user.primary_email_status == True):
-                    email_list.append(str(user.primary_email))
-                
-                if(user.secondary_email_status == True):
-                    email_list.append(str(user.secondary_email))
-
+            for i in range(2, wks.row_count + 1):
+                user = wks.row_values(i)
+                if user[11] == "TRUE":
+                    email_list.append(str(user[3]))
+                if user[12] == "TRUE":
+                    email_list.append(str(user[4]))
+            
             subject = request.form.get("subject")
 
             body = request.form.get("body")
@@ -28,9 +28,9 @@ class ContactView(BaseView):
 
             html = render_template("admin/basic_email.html", body=body)
 
-            send_async_email(email_list, subject, html)
+            send_email_list(email_list, subject, html)
 
-            flash("Emails sent successfully to verified users!")
+            flash("Emails sent successfully to subscribed users")
 
         return self.render('admin/contact.html', form=form)
 

@@ -186,10 +186,34 @@ def update_info(token):
         # swapping primary and secondary emails
         if user[3] == form.secondary_email.data and user[4] == form.primary_email.data:
             skip = True
-
             wks.update_cell(cell_row_find, 6, user[6])
-            wks.update_cell(cell_row_find, 7, user[5])            
+            wks.update_cell(cell_row_find, 7, user[5])
+            
+        # primary or secondary email are swapped
+        elif user[3] == form.secondary_email.data:
+            skip = True
+            wks.update_cell(cell_row_find, 7, user[5])
+            wks.update_cell(cell_row_find, 6, "N")
 
+            need_verif = True
+            p_token = generate_token(form.primary_email.data)
+            confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
+            html = render_template("verify.html", confirm_url=confirm_url)
+            send_email(form.primary_email.data, subject, html)
+            
+            
+        elif user[4] == form.primary_email.data:
+            skip = True
+            wks.update_cell(cell_row_find, 6, user[6])
+            wks.update_cell(cell_row_find, 7, "N")
+
+            need_verif = True
+            s_token = generate_token(form.secondary_email.data)
+            confirm_url = url_for("registration.confirm_secondary", token=s_token, _external=True)
+            html = render_template("verify.html", confirm_url=confirm_url)
+            send_email(form.secondary_email.data, subject, html)
+            
+            
         # changing primary to different email
         if user[3] != form.primary_email.data and not skip:
             need_verif = True
@@ -199,7 +223,6 @@ def update_info(token):
             html = render_template("verify.html", confirm_url=confirm_url)
 
             wks.update_cell(cell_row_find, 6, "N")
-            user[5] = "N"
             send_email(form.primary_email.data, subject, html)
 
         # changing secondary to different email
@@ -211,7 +234,6 @@ def update_info(token):
             html = render_template("verify.html", confirm_url=confirm_url)
 
             wks.update_cell(cell_row_find, 7, "N")
-            user[6] = "N"
             send_email(form.secondary_email.data, subject, html)
 
 
@@ -223,39 +245,30 @@ def update_info(token):
         wks.update_cell(cell_row_find, 10, form.phonenumber.data)
         wks.update_cell(cell_row_find, 11, form.titlerole.data)
         
-        user[1] = form.first_name.data
-        user[2] = form.last_name.data
-        user[3] = form.primary_email.data
-        user[4] = form.secondary_email.data
-        user[8] = form.organization.data
-        user[9] = form.phonenumber.data
-        user[10] = form.titlerole.data
-
-
-        if user[5] == "Y":
-            wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
-            
-        else:
+        
+        user = wks.row_values(cell_row_find)
+        
+        if user[5] == "N":
+            wks.update_cell(cell_row_find, 12, "FALSE")
             need_verif = True
-
             p_token = generate_token(form.primary_email.data)
             confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
             html = render_template("verify.html", confirm_url=confirm_url)
-
             send_email(form.primary_email.data, subject, html)
-
-
-        if user[6] == "Y":
-            wks.update_cell(cell_row_find, 13, form.secondary_subscribe.data)
-            
-        else:
+             
+        if user[6] == "N":
+            wks.update_cell(cell_row_find, 13, "FALSE")
             need_verif = True
-
             s_token = generate_token(form.secondary_email.data)
             confirm_url = url_for("registration.confirm_secondary", token=s_token, _external=True)
             html = render_template("verify.html", confirm_url=confirm_url)
-
             send_email(form.secondary_email.data, subject, html)
+        
+        if user[5] == "Y":
+            wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
+
+        if user[6] == "Y":
+            wks.update_cell(cell_row_find, 13, form.secondary_subscribe.data)
 
 
         if need_verif:
