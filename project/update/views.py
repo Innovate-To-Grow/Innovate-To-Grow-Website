@@ -17,9 +17,9 @@ update_blueprint = Blueprint("update", __name__, template_folder='templates',sta
 # check the database to see if the input email has a user with a registered prim. or secon. email
 @update_blueprint.route('/update', methods=['GET', 'POST'])
 def enter_email():
-    form = EmailForm(request.form)
+    form = EmailForm()
 
-    if request.method == 'POST' and form.validate():
+    if request.method == 'POST' and form.validate_on_submit():
         user = wks.find(request.form['email'], in_column=4)
         if user is not None:
             user = wks.row_values(user.row)
@@ -136,7 +136,7 @@ def update_info(token):
     user = wks.find(email, in_column=4)
 
     if user is not None:
-            user = wks.row_values(user.row)
+        user = wks.row_values(user.row)
     if user == None:
         user = wks.find(email, in_column=5)
         if user is not None:
@@ -183,9 +183,14 @@ def update_info(token):
         if error:
             return render_template("error.html")
 
+        # swapping primary and secondary emails
         if user[3] == form.secondary_email.data and user[4] == form.primary_email.data:
             skip = True
 
+            wks.update_cell(cell_row_find, 6, user[6])
+            wks.update_cell(cell_row_find, 7, user[5])            
+
+        # changing primary to different email
         if user[3] != form.primary_email.data and not skip:
             need_verif = True
 
@@ -194,8 +199,10 @@ def update_info(token):
             html = render_template("verify.html", confirm_url=confirm_url)
 
             wks.update_cell(cell_row_find, 6, "N")
+            user[5] = "N"
             send_email(form.primary_email.data, subject, html)
 
+        # changing secondary to different email
         if user[4] != form.secondary_email.data and not skip:
             need_verif = True
 
@@ -204,6 +211,7 @@ def update_info(token):
             html = render_template("verify.html", confirm_url=confirm_url)
 
             wks.update_cell(cell_row_find, 7, "N")
+            user[6] = "N"
             send_email(form.secondary_email.data, subject, html)
 
 
@@ -215,7 +223,15 @@ def update_info(token):
         wks.update_cell(cell_row_find, 10, form.phonenumber.data)
         wks.update_cell(cell_row_find, 11, form.titlerole.data)
         
-        
+        user[1] = form.first_name.data
+        user[2] = form.last_name.data
+        user[3] = form.primary_email.data
+        user[4] = form.secondary_email.data
+        user[8] = form.organization.data
+        user[9] = form.phonenumber.data
+        user[10] = form.titlerole.data
+
+
         if user[5] == "Y":
             wks.update_cell(cell_row_find, 12, form.primary_subscribe.data)
             
