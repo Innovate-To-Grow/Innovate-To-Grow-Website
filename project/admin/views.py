@@ -12,14 +12,23 @@ class ContactView(BaseView):
     def contact(self):
         form = EmailForm(request.form)
         if request.method == 'POST' and form.validate(): 
+            selection = request.form.get("selection")
             email_list = []
-
-            for i in range(2, wks.row_count + 1):
-                user = wks.row_values(i)
-                if user[11] == "TRUE":
-                    email_list.append(str(user[3]))
-                if user[12] == "TRUE":
-                    email_list.append(str(user[4]))
+            
+            if selection == "Subscribed":
+                for i in range(2, wks.row_count + 1):
+                    user = wks.row_values(i)
+                    if user[11] == "TRUE":
+                        email_list.append(str(user[3]))
+                    if user[12] == "TRUE":
+                        email_list.append(str(user[4]))
+            elif selection == "Verified":
+                for i in range(2, wks.row_count + 1):
+                    user = wks.row_values(i)
+                    if user[5] == "Y":
+                        email_list.append(str(user[3]))
+                    if user[6] == "Y":
+                        email_list.append(str(user[4]))
             
             subject = request.form.get("subject")
 
@@ -29,8 +38,9 @@ class ContactView(BaseView):
             html = render_template("admin/basic_email.html", body=body)
 
             send_email_list(email_list, subject, html)
-
-            flash("Emails sent successfully to subscribed users")
+                
+            flash("Emails sent successfully to " + str(selection) + " users.")
+            
 
         return self.render('admin/contact.html', form=form)
 

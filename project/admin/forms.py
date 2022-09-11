@@ -1,4 +1,4 @@
-from wtforms import Form, StringField, SubmitField, validators, widgets, TextAreaField
+from wtforms import Form, StringField, SubmitField, validators, widgets, TextAreaField, RadioField
 
 class EmailForm(Form):
     subject = StringField('Subject')
@@ -6,3 +6,5 @@ class EmailForm(Form):
     body = TextAreaField('Body')
 
     submit = SubmitField('Send')
+    
+    selection = RadioField('Send to:', choices=[('Subscribed','Subscribed Users'),('Verified','Verified Users')], default='Subscribed')
