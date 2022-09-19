@@ -8,7 +8,7 @@ from project.models import member_roster
 from project.util.email import send_email
 from project.util.token import confirm_token, generate_token
 import gspread
-sa = gspread.service_account()
+sa = gspread.service_account("service_account.json")
 sh = sa.open("I2G-Master-People")
 wks = sh.worksheet("double-email-test")
 
