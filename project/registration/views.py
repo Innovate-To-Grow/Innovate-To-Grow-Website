@@ -9,7 +9,7 @@ from project.util.token import generate_token, confirm_token
 from project.registration.forms import RegistrationForm, InformationForm
 # Google Sheet
 import gspread
-sa = gspread.service_account(filename="service_account.json")
+sa = gspread.service_account()
 sh = sa.open("I2G-Master-People")
 wks = sh.worksheet("double-email-test")
 
