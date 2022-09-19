@@ -4,7 +4,7 @@ from project.models import member_roster
 from flask_login import login_required, login_user, current_user
 from datetime import timedelta
 
-sa = gspread.service_account("service_account.json")
+sa = gspread.service_account(filename="service_account.json")
 sh = sa.open("I2G-Master-People")
 
 wks = sh.worksheet("double-email-test")

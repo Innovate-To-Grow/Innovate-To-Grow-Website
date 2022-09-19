@@ -5,7 +5,7 @@ from project.models import member_roster
 from project.admin.forms import EmailForm
 # Google Sheet
 import gspread
-wks = gspread.service_account("service_account.json").open("I2G-Master-People").worksheet("double-email-test")
+wks = gspread.service_account(filename="service_account.json").open("I2G-Master-People").worksheet("double-email-test")
 
 class ContactView(BaseView):
     @expose('/',  methods=["GET", "POST"])
