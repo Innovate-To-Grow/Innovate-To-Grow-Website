@@ -5,9 +5,9 @@
   <h2>Fill out your information below</h2>
   <form action="{{ url_for('registration.info', token=token) }}" method=post>
     {{ form.hidden_tag }}
+    {{ render_field(form.titlerole) }}
     {{ render_field(form.organization) }}
     {{ render_field(form.phonenumber) }}
-    {{ render_field(form.titlerole) }}
     <br>
     {{ form.submit }}
     <br>

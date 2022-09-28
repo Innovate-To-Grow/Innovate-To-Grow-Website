@@ -1,10 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import Form, StringField, SelectField, RadioField, IntegerField, SubmitField, validators, SelectMultipleField, SelectMultipleField, widgets, BooleanField
-
-class MultiCheckboxField(SelectMultipleField):
-    widget = widgets.ListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
-
+from wtforms import StringField, SubmitField, validators, BooleanField
 class EmailForm(FlaskForm):
     email = StringField('Email Address', [validators.InputRequired(' '), validators.Email()])
     submit = SubmitField('Send')
@@ -34,13 +29,13 @@ class UpdateForm(FlaskForm):
 
     secondary_subscribe = BooleanField('Enable Email Notifications with Secondary')
 
+    titlerole = StringField('Title/Role *', 
+                                [validators.Optional(strip_whitespace=True)])
+
     organization = StringField('Organization *', 
                                 [validators.InputRequired(' ')])
 
     phonenumber = StringField('Phone Number *', 
                                 [validators.InputRequired(' ')])
                                 
-    titlerole = StringField('Title/Role *', 
-                                [validators.Optional(strip_whitespace=True)])
-    
     submit = SubmitField('Submit')
