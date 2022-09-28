@@ -139,11 +139,12 @@ def update_info(token):
         cell_find = wks.find(email)
         cell_row_find = cell_find.row
         
-        need_verif = False
-        swap = False
         error = False
+        swap = False
+        need_verif = False
         sent_to_prim = False
         sent_to_sec = False
+        
         subject = "i2G - Confirm Your Email Address"
         user_prim1 = wks.find(request.form['primary_email'], in_column=6)
         user_prim2 = wks.find(request.form['primary_email'], in_column=7)
@@ -173,12 +174,11 @@ def update_info(token):
 
             need_verif = True
 
-            if not sent_to_prim:
-                p_token = generate_token(form.primary_email.data)
-                confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
-                html = render_template("verify.html", confirm_url=confirm_url)
-                send_email(form.primary_email.data, subject, html)
-                sent_to_prim = True
+            p_token = generate_token(form.primary_email.data)
+            confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
+            html = render_template("verify.html", confirm_url=confirm_url)
+            send_email(form.primary_email.data, subject, html)
+            sent_to_prim = True
             
         elif user[6] == form.primary_email.data:
             swap = True
@@ -187,13 +187,11 @@ def update_info(token):
 
             need_verif = True
 
-            if not sent_to_sec:
-                s_token = generate_token(form.secondary_email.data)
-                confirm_url = url_for("registration.confirm_secondary", token=s_token, _external=True)
-                html = render_template("verify.html", confirm_url=confirm_url)
-                send_email(form.secondary_email.data, subject, html)
-              
-                sent_to_sec = True
+            s_token = generate_token(form.secondary_email.data)
+            confirm_url = url_for("registration.confirm_secondary", token=s_token, _external=True)
+            html = render_template("verify.html", confirm_url=confirm_url)
+            send_email(form.secondary_email.data, subject, html)
+            sent_to_sec = True
             
         # changing primary to different email
         if user[5] != form.primary_email.data and not swap:
@@ -239,7 +237,6 @@ def update_info(token):
                 confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
                 html = render_template("verify.html", confirm_url=confirm_url)
                 send_email(form.primary_email.data, subject, html)
-                sent_to_prim = True
              
         if user[8] == "FALSE":
             wks.update_cell(cell_row_find, 12, "FALSE")
@@ -249,7 +246,6 @@ def update_info(token):
                 confirm_url = url_for("registration.confirm_secondary", token=s_token, _external=True)
                 html = render_template("verify.html", confirm_url=confirm_url)
                 send_email(form.secondary_email.data, subject, html)
-                sent_to_sec = True
         
         if user[7] == "TRUE":
             wks.update_cell(cell_row_find, 11, form.primary_subscribe.data)

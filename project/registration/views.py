@@ -48,12 +48,12 @@ def register():
                     elif user_prim1[7] == "TRUE" and user_prim1[9] == "FALSE":
                         complete_url = url_for("registration.info", token=token, _external=True)
                         complete_html = render_template("need_info.html", info_url=complete_url)
-                        send_email(user_prim1[3], complete_subject, complete_html)
+                        send_email(user_prim1[5], complete_subject, complete_html)
 
                     elif user_prim1[7] == "TRUE" and user_prim1[9] == "TRUE":
                         update_url = url_for("update.update_info", token=token, _external=True)
                         update_html = render_template("update_email.html", update_url=update_url)
-                        send_email(user_prim1[3], update_subject, update_html)
+                        send_email(user_prim1[5], update_subject, update_html)
                 
                 if user_prim2 != None:
                     token = generate_token(user_prim2[6])
@@ -244,7 +244,7 @@ def info(token):
             user = wks.row_values(user.row)
 
     if request.method == 'POST' and form.validate():
-        if user[9] != "FALSE":
+        if user[9] == "TRUE":
             return render_template("homepage.html")
 
         cell_find = wks.find(email)
