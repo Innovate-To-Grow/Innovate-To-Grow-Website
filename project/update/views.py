@@ -47,7 +47,7 @@ def enter_email():
 
             return render_template("instructions_sent.html")
 
-        if verif1 == 'TRUE'and verif2 == 'FALSE':
+        if verif1 == 'TRUE' and verif2 == 'FALSE':
             # send an update link to primary and verification to secondary
             p_token = generate_token(user[5])
             update_url = url_for("update.update_info", token=p_token, _external=True)
@@ -59,8 +59,8 @@ def enter_email():
             s_html = render_template("verify.html", confirm_url=confirm_url)
             s_subject = "i2G - Confirm Your Email Address"
 
-            send_email(user[3], p_subject, p_html)
-            send_email(user[4], s_subject, s_html)
+            send_email(user[5], p_subject, p_html)
+            send_email(user[6], s_subject, s_html)
 
             return render_template("instructions_sent.html")
 
@@ -81,12 +81,12 @@ def enter_email():
             return render_template("instructions_sent.html")
 
         if user[9] == "FALSE":
-            token = generate_token(user[5])
+            token = generate_token(form.email.data)
             subject = "i2G - Complete Your Registration"
             info_url = url_for("registration.info", token=token, _external=True)
             html = render_template("need_info.html", info_url=info_url)
 
-            send_email(user[5], subject, html)
+            send_email(form.email.data, subject, html)
 
             return render_template("instructions_sent.html")
 
@@ -221,7 +221,7 @@ def update_info(token):
         
         user = wks.row_values(cell_row_find)
         
-        if user[7] == "N":
+        if user[7] == "FALSE":
             wks.update_cell(cell_row_find, 11, "FALSE")
             need_verif = True
             p_token = generate_token(form.primary_email.data)
@@ -229,7 +229,7 @@ def update_info(token):
             html = render_template("verify.html", confirm_url=confirm_url)
             send_email(form.primary_email.data, subject, html)
              
-        if user[8] == "N":
+        if user[8] == "FALSE":
             wks.update_cell(cell_row_find, 12, "FALSE")
             need_verif = True
             s_token = generate_token(form.secondary_email.data)
@@ -237,10 +237,10 @@ def update_info(token):
             html = render_template("verify.html", confirm_url=confirm_url)
             send_email(form.secondary_email.data, subject, html)
         
-        if user[7] == "Y":
+        if user[7] == "TRUE":
             wks.update_cell(cell_row_find, 11, form.primary_subscribe.data)
 
-        if user[8] == "Y":
+        if user[8] == "TRUE":
             wks.update_cell(cell_row_find, 12, form.secondary_subscribe.data)
 
         wks.update_cell(cell_row_find, 5, str(date.today()))

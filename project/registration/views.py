@@ -121,7 +121,7 @@ def register():
                 form.first_name.data, # First Name
                 form.last_name.data, # Last Name
                 str(date.today()), # When Started
-                "",             # Date Updated
+                "",                # Date Updated
                 form.primary_email.data, # Primary Email
                 form.secondary_email.data, # Secondary Email
                 "FALSE", # Primary Status
@@ -154,9 +154,6 @@ def register():
 
 @registration_blueprint.route('/confirm<token>p')
 def confirm_primary(token):
-    # if current_user.primary_email_status != "FALSE" and current_user.info_completed != "FALSE":
-    #     return render_template("already_confirmed.html")
-
     user = None
     email = confirm_token(token)
     
@@ -175,7 +172,7 @@ def confirm_primary(token):
         wks.update_cell(cell_row_find, 8, "TRUE")
         wks.update_cell(cell_row_find, 11, "TRUE")
 
-        if user[9] == 'FALSE':
+        if user[9] == "FALSE":
             i_token = generate_token(user[5])
             return redirect(url_for("registration.info", token=i_token, _external=True))
 
@@ -203,7 +200,7 @@ def confirm_secondary(token):
         wks.update_cell(cell_row_find, 9, "TRUE")
         wks.update_cell(cell_row_find, 12, "TRUE")
 
-        if user[9] == 'FALSE':
+        if user[9] == "FALSE":
             i_token = generate_token(user[6])
             return redirect(url_for("registration.info", token=i_token, _external=True))
 
