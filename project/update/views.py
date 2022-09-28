@@ -143,10 +143,10 @@ def update_info(token):
         skip = False
         error = False
         subject = "i2G - Confirm Your Email Address"
-        user_prim1 = wks.find(request.form['primary_email'], in_column=4)
-        user_prim2 = wks.find(request.form['primary_email'], in_column=5)
-        user_sec1 = wks.find(request.form['secondary_email'], in_column=4)
-        user_sec2 = wks.find(request.form['secondary_email'], in_column=5)
+        user_prim1 = wks.find(request.form['primary_email'], in_column=6)
+        user_prim2 = wks.find(request.form['primary_email'], in_column=7)
+        user_sec1 = wks.find(request.form['secondary_email'], in_column=6)
+        user_sec2 = wks.find(request.form['secondary_email'], in_column=7)
     
         if (user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None):
             error = True
