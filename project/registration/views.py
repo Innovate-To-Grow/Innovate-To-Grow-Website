@@ -1,6 +1,7 @@
 from datetime import date
 from flask import Blueprint, render_template, url_for, request, redirect
 from project import wks
+from project.models import dynamic_form
 from project.util.email import send_email
 from project.util.token import confirm_token_no_expiry, generate_token, confirm_token
 from project.registration.forms import RegistrationForm, InformationForm
@@ -261,4 +262,24 @@ def info(token):
     else:
         return render_template("information.html", form=form, token=token)
     
-    
+
+
+
+from project.util.field import get_field
+from wtforms import Form, SubmitField
+
+@registration_blueprint.route('/test', methods=['GET', 'POST'])
+def test_view():
+    class TestForm(Form): pass
+
+    for row in dynamic_form.query.all():
+        setattr(TestForm, row.label, get_field(row))
+
+    setattr(TestForm, "Submit", SubmitField("Submit"))
+
+    form = TestForm()
+
+    return render_template("customform.html", form=form)
+
+
+

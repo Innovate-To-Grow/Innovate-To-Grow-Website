@@ -43,11 +43,11 @@ class RegistrationForm(Form):
 
 
 class InformationForm(Form):
-    titlerole = StringField('Title/Role *', 
-                                [validators.Optional(strip_whitespace=True)])
-    organization = StringField('Organization *', 
+    titlerole = StringField('Title/Role', 
                                 [validators.InputRequired(' ')])
-    phonenumber = StringField('Phone Number *', 
+    organization = StringField('Organization', 
+                                [validators.InputRequired(' ')])
+    phonenumber = StringField('Phone Number', 
                                 [validators.InputRequired(' ')])
 
     submit = SubmitField('Submit')

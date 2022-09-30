@@ -32,6 +32,11 @@ app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 
 #Flask Admin
+from project.models import dynamic_form
 admin_app = Admin(app, name='Admin Page', template_mode='bootstrap3')
+admin_app.add_view(ModelView(dynamic_form, db.session))
 from project.admin.views import ContactView
 admin_app.add_view(ContactView(name = 'Contact', endpoint = 'contact'))
+
+if not path.exists(APP_ROOT + '/db'): os.makedirs(APP_ROOT + '/db')
+if not path.exists(APP_ROOT + '/db/memberData.sqlite3'): db.create_all(app=app)
