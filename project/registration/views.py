@@ -1,7 +1,7 @@
 from datetime import date
 from flask import Blueprint, render_template, url_for, request, redirect
 from project import wks
-from project.models import dynamic_form
+from project.models import edit_form, current_form
 from project.util.email import send_email
 from project.util.token import confirm_token_no_expiry, generate_token, confirm_token
 from project.registration.forms import RegistrationForm, InformationForm
@@ -272,7 +272,7 @@ from wtforms import Form, SubmitField
 def test_view():
     class TestForm(Form): pass
 
-    for row in dynamic_form.query.all():
+    for row in current_form.query.all():
         setattr(TestForm, row.label, get_field(row))
 
     setattr(TestForm, "Submit", SubmitField("Submit"))

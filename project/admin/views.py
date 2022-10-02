@@ -1,8 +1,10 @@
 from flask import request, flash, render_template
 from flask_admin import BaseView, expose
-from project import wks
+from project import wks, db
 from project.util.email import send_email_list
 from project.admin.forms import EmailForm
+from project.models import edit_form, current_form
+from sqlalchemy import delete
 
 class ContactView(BaseView):
     @expose('/',  methods=["GET", "POST"])
@@ -40,3 +42,24 @@ class ContactView(BaseView):
             
 
         return self.render('admin/contact.html', form=form)
+
+class SubmitView(BaseView):
+    @expose('/',  methods=["GET", "POST"])
+    def submit(self):
+        
+        db.session.query(current_form).delete()
+        db.session.commit()
+        
+
+        for row in edit_form.query.all():
+            data = current_form(field_type=row.field_type,label=row.label,options=row.options)
+            db.session.add(data)
+        db.session.commit()
+
+        count = 16
+        for row in edit_form.query.all():
+            wks.update_cell(1, count, row.label)
+            count += 1
+
+
+        return self.render('admin/confirmed.html')

@@ -8,11 +8,11 @@ def get_field(field):
     if field.field_type == "text": 
         return StringField(field.label, 
                            [validators.InputRequired(' ')])
-    if field.field_type == "select":
+    if field.field_type == "dropdown":
         return SelectField(field.label, 
                            [validators.InputRequired(' ')],
                            choices=split_options(field.options))
-    if field.field_type == "check":
+    if field.field_type == "checkbox":
         return MultiCheckboxField(field.label,
                                   [validators.InputRequired(' ')],
                                   choices=split_options(field.options))
