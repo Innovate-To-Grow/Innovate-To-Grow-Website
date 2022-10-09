@@ -42,8 +42,10 @@ def enter_email():
             s_html = render_template("update_email.html", update_url=update_url)
             s_subject = "i2G - Link to Update Your Information"
 
-            send_email(user[5], p_subject, p_html)
-            send_email(user[6], s_subject, s_html)
+            if user[5] is not '':
+                send_email(user[5], p_subject, p_html)
+            if user[6] is not '':
+                send_email(user[6], s_subject, s_html)
 
             return render_template("instructions_sent.html")
 
@@ -59,8 +61,10 @@ def enter_email():
             s_html = render_template("verify.html", confirm_url=confirm_url)
             s_subject = "i2G - Confirm Your Email Address"
 
-            send_email(user[5], p_subject, p_html)
-            send_email(user[6], s_subject, s_html)
+            if user[5] is not '':
+                send_email(user[5], p_subject, p_html)
+            if user[6] is not '':
+                send_email(user[6], s_subject, s_html)
 
             return render_template("instructions_sent.html")
 
@@ -75,8 +79,11 @@ def enter_email():
             s_html = render_template("verify.html", confirm_url=s_confirm_url)
 
             subject = "i2G - Confirm Your Email Address"
-            send_email(user[5], subject, p_html)
-            send_email(user[6], subject, s_html)
+            
+            if user[5] is not '':
+                send_email(user[5], p_subject, p_html)
+            if user[6] is not '':
+                send_email(user[6], s_subject, s_html)
 
             return render_template("instructions_sent.html")
 
