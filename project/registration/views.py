@@ -47,7 +47,7 @@ def register():
                         process = Thread(target=delete_email, args=(30, row_prim1, 6, user_prim1[5]))
                         process.start()
                         
-                    if user_prim1[7] == "TRUE" and user_prim1[9] == "FALSE":
+                    elif user_prim1[7] == "TRUE" and user_prim1[9] == "FALSE":
                         complete_url = url_for("registration.info", token=token, _external=True)
                         complete_html = render_template("need_info.html", first=user_prim1[1], last=user_prim1[2], info_url=complete_url)
                         send_email(user_prim1[5], complete_subject, complete_html)
@@ -64,7 +64,7 @@ def register():
                         process = Thread(target=delete_email, args=(30, row_prim2, 7, user_prim2[6]))
                         process.start()
                     
-                    if user_prim2[8] == "TRUE" and user_prim2[9] == "FALSE":
+                    elif user_prim2[8] == "TRUE" and user_prim2[9] == "FALSE":
                         complete_url = url_for("registration.info", token=token, _external=True)
                         complete_html = render_template("need_info.html", first=user_prim2[1], last=user_prim2[2], info_url=complete_url)
                         send_email(user_prim2[6], complete_subject, complete_html)
@@ -84,7 +84,7 @@ def register():
                         process = Thread(target=delete_email, args=(30, row_sec1, 6, user_sec1[5]))
                         process.start()
                       
-                    if user_sec1[7] == 'TRUE' and user_sec1[9] == 'FALSE':
+                    elif user_sec1[7] == 'TRUE' and user_sec1[9] == 'FALSE':
                         complete_url = url_for("registration.info", token=token, _external=True)
                         complete_html = render_template("need_info.html", first=user_sec1[1], last=user_sec1[2], info_url=complete_url)
                         send_email(user_sec1[5], complete_subject, complete_html)
@@ -101,7 +101,7 @@ def register():
                         process = Thread(target=delete_email, args=(30, row_sec2, 7, user_sec2[6]))
                         process.start()
      
-                    if user_sec2[8] == "TRUE" and user_sec2[9] == "FALSE":
+                    elif user_sec2[8] == "TRUE" and user_sec2[9] == "FALSE":
                         complete_url = url_for("registration.info", token=token, _external=True)
                         complete_html = render_template("need_info.html", first=user_sec2[1], last=user_sec2[2], info_url=complete_url)
                         send_email(user_sec2[6], complete_subject, complete_html)
