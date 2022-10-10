@@ -24,7 +24,7 @@ def enter_email():
 
         # if the email entered is neither a primary nor secondary in the db, throw error message
         if user == None:
-            return render_template("instructions_sent.html")
+            return render_template("dont_exist.html")
 
         # the verification status of the user's primary and secondary emails.
         verif1 = user[7]
@@ -49,7 +49,7 @@ def enter_email():
 
             return render_template("instructions_sent.html")
 
-        if verif1 == 'TRUE' and verif2 == 'FALSE':
+        elif verif1 == 'TRUE' and verif2 == 'FALSE':
             # send an update link to primary and verification to secondary
             p_token = generate_token(user[5])
             update_url = url_for("update.update_info", token=p_token, _external=True)
@@ -69,7 +69,7 @@ def enter_email():
 
             return render_template("instructions_sent.html")
 
-        if verif1 == 'FALSE' and verif2 == 'FALSE':
+        elif verif1 == 'FALSE' and verif2 == 'FALSE':
             # user is in db, but not verified. send them links to verify both.
             p_token = generate_token(user[5])
             p_confirm_url = url_for("registration.confirm_primary", token=p_token, _external=True)
@@ -89,7 +89,7 @@ def enter_email():
 
             return render_template("instructions_sent.html")
 
-        if user[9] == "FALSE":
+        elif user[9] == "FALSE":
             token = generate_token(form.email.data)
             subject = "i2G - Complete Your Registration"
             info_url = url_for("registration.info", token=token, _external=True)

@@ -1,6 +1,5 @@
 from project import db
 
-
 class edit_form(db.Model):
     id = db.Column("id", db.Integer, primary_key=True)
     field_type = db.Column("field_type", db.String())
@@ -20,4 +19,4 @@ class current_form(db.Model):
         self.field_type = field_type
         self.label = label
         self.options = options
-    
+
