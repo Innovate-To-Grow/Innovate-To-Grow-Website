@@ -1,4 +1,4 @@
-from multiprocessing import Process
+from threading import Thread
 from datetime import date
 from flask import Blueprint, render_template, url_for, request, redirect
 from project import wks
@@ -44,7 +44,7 @@ def register():
                     token = generate_token(user_prim1[5])
 
                     if user_prim1[7] == "FALSE":
-                        process = Process(target=delete_email, args=(30, row_prim1, 6, user_prim1[5]))
+                        process = Thread(target=delete_email, args=(30, row_prim1, 6, user_prim1[5]))
                         process.start()
                         
                     if user_prim1[7] == "TRUE" and user_prim1[9] == "FALSE":
@@ -61,7 +61,7 @@ def register():
                     token = generate_token(user_prim2[6])
 
                     if user_prim2[8] == "FALSE": 
-                        process = Process(target=delete_email, args=(30, row_prim2, 7, user_prim2[6]))
+                        process = Thread(target=delete_email, args=(30, row_prim2, 7, user_prim2[6]))
                         process.start()
                     
                     if user_prim2[8] == "TRUE" and user_prim2[9] == "FALSE":
@@ -81,7 +81,7 @@ def register():
                     token = generate_token(user_sec1[5])
 
                     if user_sec1[7] == 'FALSE':
-                        process = Process(target=delete_email, args=(30, row_sec1, 6, user_sec1[5]))
+                        process = Thread(target=delete_email, args=(30, row_sec1, 6, user_sec1[5]))
                         process.start()
                       
                     if user_sec1[7] == 'TRUE' and user_sec1[9] == 'FALSE':
@@ -98,7 +98,7 @@ def register():
                     token = generate_token(user_sec2[6])
                     
                     if user_sec2[8] == "FALSE":
-                        process = Process(target=delete_email, args=(30, row_sec2, 7, user_sec2[6]))
+                        process = Thread(target=delete_email, args=(30, row_sec2, 7, user_sec2[6]))
                         process.start()
      
                     if user_sec2[8] == "TRUE" and user_sec2[9] == "FALSE":
