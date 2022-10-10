@@ -22,7 +22,7 @@ def delete_email(value, row, col, email):
             wks.update_cell(row,col,"")
 
             subject = "i2G - Unverified Email Removed"
-            html = render_template("deleting_email.html", email=email)
+            html = render_template("deleting_email.html", first=user[1], last=user[2], email=email)
 
             if col == 6 and user[8] == "TRUE" and user[6] is not "":
                 send_email(user[6], subject, html)
