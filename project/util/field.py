@@ -18,4 +18,4 @@ def get_field(field):
                                   choices=split_options(field.options))
 
 def split_options(options):
-    return options.split(", ")
+    return options.split(" ; ")

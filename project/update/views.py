@@ -39,7 +39,7 @@ def enter_email():
 
             s_token = generate_token(user[6])
             update_url = url_for("update.update_info", token=s_token, _external=True)
-            s_html = render_template("update_email.html", update_url=update_url)
+            s_html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
             s_subject = "i2G - Link to Update Your Information"
 
             if user[5] is not '':
@@ -53,7 +53,7 @@ def enter_email():
             # send an update link to primary and verification to secondary
             p_token = generate_token(user[5])
             update_url = url_for("update.update_info", token=p_token, _external=True)
-            p_html = render_template("update_email.html", update_url=update_url)
+            p_html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
             p_subject = "i2G - Link to Update Your Information"
 
             token = generate_token(user[6])
@@ -63,6 +63,7 @@ def enter_email():
 
             if user[5] is not '':
                 send_email(user[5], p_subject, p_html)
+                
             if user[6] is not '':
                 send_email(user[6], s_subject, s_html)
 
@@ -82,6 +83,7 @@ def enter_email():
             
             if user[5] is not '':
                 send_email(user[5], p_subject, p_html)
+
             if user[6] is not '':
                 send_email(user[6], s_subject, s_html)
 
@@ -91,7 +93,7 @@ def enter_email():
             token = generate_token(form.email.data)
             subject = "i2G - Complete Your Registration"
             info_url = url_for("registration.info", token=token, _external=True)
-            html = render_template("need_info.html", info_url=info_url)
+            html = render_template("need_info.html", first=user[1], last=user[2], info_url=info_url)
 
             send_email(form.email.data, subject, html)
 
@@ -101,7 +103,7 @@ def enter_email():
             token = generate_token(form.email.data)
             subject = "i2G - Link to Update Your Information"
             update_url = url_for("update.update_info", token=token, _external=True)
-            html = render_template("update_email.html", update_url=update_url)
+            html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
 
             send_email(form.email.data, subject, html)
 

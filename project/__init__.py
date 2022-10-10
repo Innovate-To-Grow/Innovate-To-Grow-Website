@@ -3,6 +3,7 @@ from os import path
 from flask import Flask
 from flask_mail import Mail
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from config.default import Config, APP_ROOT
@@ -16,8 +17,6 @@ form_size = len(form_row)
 data = []
 for x in range(12, form_size):
     data.append(form_row[x])
-
-
 
 #Flask
 app = Flask(__name__)
@@ -39,14 +38,19 @@ app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 
+# Flask Login Manager
+# login_manager = LoginManager(app)
+# login_manager.session_protection = 'strong'
+# login_manager.login_view = 'admin.login'
+
 #Flask Admin
 from project.models import edit_form, current_form
 admin_app = Admin(app, name='Admin Page', template_mode='bootstrap3')
-admin_app.add_view(ModelView(edit_form, db.session, name="Edit Form"))
+admin_app.add_view(ModelView(edit_form, db.session, name = "Edit Form"))
 # admin_app.add_view(ModelView(current_form, db.session))
 from project.admin.views import ContactView, SubmitView
 admin_app.add_view(ContactView(name = 'Contact', endpoint = 'contact'))
-admin_app.add_view(SubmitView(name = 'OVERWRITE FORM/DB', endpoint = 'submit'))
+admin_app.add_view(SubmitView(name = 'OVERWRITE FORM', endpoint = 'submit'))
 
 if not path.exists(APP_ROOT + '/db'): os.makedirs(APP_ROOT + '/db')
 if not path.exists(APP_ROOT + '/db/memberData.sqlite3'): 

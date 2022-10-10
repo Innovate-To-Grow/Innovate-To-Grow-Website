@@ -8,5 +8,3 @@ class EmailForm(Form):
     selection = RadioField('Send to:', choices=[('Subscribed','Subscribed Users'),('Verified','Verified Users')], default='Subscribed')
 
     submit = SubmitField('Send')
-    
-    
