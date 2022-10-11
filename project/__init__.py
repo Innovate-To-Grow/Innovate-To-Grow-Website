@@ -38,19 +38,24 @@ app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 
-# Flask Login Manager
-# login_manager = LoginManager(app)
-# login_manager.session_protection = 'strong'
-# login_manager.login_view = 'admin.login'
-
 #Flask Admin
-from project.models import edit_form, current_form
-admin_app = Admin(app, name='Admin Page', template_mode='bootstrap3')
-admin_app.add_view(ModelView(edit_form, db.session, name = "Edit Form"))
-# admin_app.add_view(ModelView(current_form, db.session))
-from project.admin.views import ContactView, SubmitView
+from project.models import edit_form, current_form, user
+from project.admin.views import IndexView, UserModelView, EditFormModelView, CurrentFormModelView, ContactView, SubmitView
+admin_app = Admin(app, name='Admin Page', index_view=IndexView(), template_mode='bootstrap3')
+admin_app.add_view(UserModelView(user, db.session, name = "Login Info"))
+admin_app.add_view(EditFormModelView(edit_form, db.session, name = "Edit Form"))
+admin_app.add_view(CurrentFormModelView(current_form, db.session, name = "Current Form"))
 admin_app.add_view(ContactView(name = 'Contact', endpoint = 'contact'))
 admin_app.add_view(SubmitView(name = 'OVERWRITE FORM', endpoint = 'submit'))
+
+# Flask Login Manager
+login_manager = LoginManager(app)
+login_manager.session_protection = 'strong'
+login_manager.login_view = 'admin.login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return user.query.get(user_id)
 
 if not path.exists(APP_ROOT + '/db'): os.makedirs(APP_ROOT + '/db')
 if not path.exists(APP_ROOT + '/db/memberData.sqlite3'): 

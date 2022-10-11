@@ -1,11 +1,67 @@
-from flask import request, flash, render_template
-from flask_admin import  BaseView, expose
+from flask import request, flash, render_template, redirect, url_for
+from flask_login import current_user, login_user, login_required, logout_user
+from flask_admin import  BaseView, AdminIndexView, expose, helpers
+from flask_admin.contrib.sqla import ModelView
 from project import wks, db
 from project.util.email import send_email
-from project.admin.forms import EmailForm
-from project.models import edit_form, current_form
+from project.admin.forms import EmailForm, LoginForm
+from project.models import edit_form, current_form, user
 from sqlalchemy import delete
+
+class IndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        if not current_user.is_authenticated:
+            return redirect(url_for('.login'))
+        return super(IndexView, self).index()
+
+    @expose('/login', methods=['GET', 'POST'])
+    def login(self):
+        form = LoginForm(request.form)
+        if helpers.validate_form_on_submit(form):
+            u = user.query.filter(user.username == form.username.data).first()
+            if u is not None and u.verify_password(form.password.data):
+                login_user(u)
+            else:
+                flash('Invalid username or password')
+        if current_user.is_authenticated:
+            return redirect(url_for('.index'))
+        return self.render("admin/login.html", form=form)
+
+    @expose('/logout')
+    @login_required
+    def logout(self):
+        logout_user()
+        return redirect(url_for('.login'))
+
+class UserModelView(ModelView):
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+        return True
+
+class EditFormModelView(ModelView):
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+        return True
+
+class CurrentFormModelView(ModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+        return True
+
 class ContactView(BaseView):
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+        return True
+
     @expose('/',  methods=["GET", "POST"])
     def contact(self):
         form = EmailForm(request.form)
@@ -44,9 +100,13 @@ class ContactView(BaseView):
         return self.render('admin/contact.html', form=form)
 
 class SubmitView(BaseView):
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+        return True
+
     @expose('/',  methods=["GET", "POST"])
     def submit(self):
-        
         db.session.query(current_form).delete()
         db.session.commit()
         

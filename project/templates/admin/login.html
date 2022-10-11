@@ -1,0 +1,21 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+
+<form action="{{ url_for('.login', self=self) }}" method=post>
+    {{ form.hidden_tag }}
+
+    {{ form.username.label }}
+    <div>
+      {{ form.username(class="form-group", autocomplete="off", size=50) }}
+    </div>
+
+    {{ form.password.label }}
+    <div>
+      {{ form.password(class="form-group", autocomplete="off", size=50) }}
+    </div>
+
+    <p></p>
+    {{ form.submit(class="form-group", class="btn btn-info") }}
+  </form>
+  
+{% endblock body%}
