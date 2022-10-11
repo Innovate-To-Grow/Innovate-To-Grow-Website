@@ -36,15 +36,18 @@ class IndexView(AdminIndexView):
 
 class UserModelView(ModelView):
     def is_accessible(self):
-        if not current_user.is_active or not current_user.is_authenticated:
-            return False
-        return True
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin.login', next=request.url))
+
 
 class EditFormModelView(ModelView):
     def is_accessible(self):
-        if not current_user.is_active or not current_user.is_authenticated:
-            return False
-        return True
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin.login', next=request.url))
 
 class CurrentFormModelView(ModelView):
     can_create = False
@@ -52,15 +55,17 @@ class CurrentFormModelView(ModelView):
     can_delete = False
 
     def is_accessible(self):
-        if not current_user.is_active or not current_user.is_authenticated:
-            return False
-        return True
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin.login', next=request.url))
 
 class ContactView(BaseView):
     def is_accessible(self):
-        if not current_user.is_active or not current_user.is_authenticated:
-            return False
-        return True
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin.login', next=request.url))
 
     @expose('/',  methods=["GET", "POST"])
     def contact(self):
@@ -86,24 +91,29 @@ class ContactView(BaseView):
                     if user[8] == "TRUE":
                         email_list.append((full_name, user[6]))
             
-            subject = request.form.get("subject")
+            if len(email_list) == 0:
+                flash("No valid emails in database")
 
-            body = request.form.get("body")
-            body = body.replace('\n', '<br>')
+            else:
+                subject = request.form.get("subject")
 
-            for user in email_list:
-                html = render_template("admin/basic_email.html", name=user[0], body=body)
-                send_email(user[1], subject, html)
-                
-            flash("Emails sent successfully to " + str(selection) + " users.")
+                body = request.form.get("body")
+                body = body.replace('\n', '<br>')
+
+                for user in email_list:
+                    html = render_template("admin/basic_email.html", name=user[0], body=body)
+                    send_email(user[1], subject, html)
+                    
+                flash("Emails sent successfully to " + str(selection) + " users.")
             
         return self.render('admin/contact.html', form=form)
 
 class SubmitView(BaseView):
     def is_accessible(self):
-        if not current_user.is_active or not current_user.is_authenticated:
-            return False
-        return True
+        return current_user.is_authenticated
+    
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin.login', next=request.url))
 
     @expose('/',  methods=["GET", "POST"])
     def submit(self):
@@ -111,7 +121,7 @@ class SubmitView(BaseView):
         db.session.commit()
         
         for row in edit_form.query.all():
-            data = current_form(field_type=row.field_type,label=row.label,options=row.options)
+            data = current_form(field_type=row.field_type, label=row.label, options=row.options)
             db.session.add(data)
         db.session.commit()
 
