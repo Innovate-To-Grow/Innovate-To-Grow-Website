@@ -17,18 +17,24 @@ class MultiCheckboxAtLeastOne():
             raise StopValidation(self.message)
 
 def get_field(field): 
-    if field.field_type == "text": 
-        return StringField(field.label, 
-                           [InputRequired(' ')])
+    if field.field_type == "text":
+        if field.required:
+            return StringField(field.label, [InputRequired(' ')])
+        else:
+            return StringField(field.label)
+
     if field.field_type == "dropdown":
-        return SelectField(field.label, 
-                           [InputRequired(' ')],
-                           choices=dropdown_get_choices(field.options))
+        if field.required:
+            return SelectField(field.label, [InputRequired(' ')], choices=dropdown_get_choices(field.options))
+        else:
+            return SelectField(field.label, choices=dropdown_get_choices(field.options))
+
     if field.field_type == "checkbox":
-        return MultiCheckboxField(field.label,
-                                  validators=[MultiCheckboxAtLeastOne()],
-                                  choices=checkbox_get_choices(field.options),
-                                  coerce=int)
+        if field.required:
+            return MultiCheckboxField(field.label, [MultiCheckboxAtLeastOne()],
+                                      choices=checkbox_get_choices(field.options), coerce=int)
+        else:
+            return MultiCheckboxField(field.label, choices=checkbox_get_choices(field.options), coerce=int)
 
 
 def dropdown_get_choices(options):

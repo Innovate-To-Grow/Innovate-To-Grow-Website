@@ -148,10 +148,11 @@ def update_info(token):
         col_find = wks.find(row.label, in_row=1).col
         if row.field_type == "checkbox":
             keys = []
-            choices = checkbox_get_choices(row.options)
-            for val in user[col_find - 1].split(" ; "):
-                key = [key for key, v in choices if v == val][0]
-                keys.append(key)
+            if user[col_find - 1] != '':
+                choices = checkbox_get_choices(row.options)
+                for val in user[col_find - 1].split(" ; "):
+                    key = [key for key, v in choices if v == val][0]
+                    keys.append(key)
             person.update([(row.label, keys)])
         else:
             person.update([(row.label, user[col_find - 1])])
@@ -241,7 +242,6 @@ def update_info(token):
                 send_email(form.secondary_email.data, subject, html)
                 sent_to_sec = True
 
-
         wks.update_cell(row_find, 2, form.first_name.data)
         wks.update_cell(row_find, 3, form.last_name.data)
         wks.update_cell(row_find, 6, form.primary_email.data)
@@ -258,7 +258,7 @@ def update_info(token):
             else:
                 wks.update_cell(row_find, col_find, request.form[row.label])
         
-        
+
         user = wks.row_values(row_find)
         
         if user[7] == "FALSE":
@@ -284,7 +284,6 @@ def update_info(token):
 
         if user[8] == "TRUE":
             wks.update_cell(row_find, 12, form.secondary_subscribe.data)
-
 
         wks.update_cell(row_find, 5, str(date.today()))
 

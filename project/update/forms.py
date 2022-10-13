@@ -3,6 +3,7 @@ from wtforms import StringField, SubmitField, BooleanField
 from wtforms.validators import EqualTo, Email, InputRequired
 class EmailForm(FlaskForm):
     email = StringField('Email Address', [InputRequired(' '), Email()])
+    
     submit = SubmitField('Send')
 
 class UpdateForm(FlaskForm):

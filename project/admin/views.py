@@ -34,6 +34,7 @@ class IndexView(AdminIndexView):
         logout_user()
         return redirect(url_for('.login'))
 
+
 class UserModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated
@@ -49,6 +50,7 @@ class EditFormModelView(ModelView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin.login', next=request.url))
 
+
 class CurrentFormModelView(ModelView):
     can_create = False
     can_edit = False
@@ -59,6 +61,7 @@ class CurrentFormModelView(ModelView):
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin.login', next=request.url))
+
 
 class ContactView(BaseView):
     def is_accessible(self):
@@ -107,6 +110,7 @@ class ContactView(BaseView):
                 flash("Emails sent successfully to " + str(selection) + " users.")
             
         return self.render('admin/contact.html', form=form)
+
 
 class SubmitView(BaseView):
     def is_accessible(self):
