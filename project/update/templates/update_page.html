@@ -1,26 +1,15 @@
 {% extends "layout.html" %}
-{% from "renderhelper.html" import render_field %}
- 
-{% block content %}
-  <h2>Fill out your information below</h2>
-  <form action="{{ url_for('update.update_info', token=token) }}" method=post>
-    {{ form.csrf_token }}
+{% import "forms.html" as forms %}
 
-    {{ render_field(form.first_name) }}
-    {{ render_field(form.last_name) }}
-    {{ render_field(form.primary_email) }}
-    {{ render_field(form.confirm_primary) }}
-    {{ render_field(form.primary_subscribe) }}
-    {{ render_field(form.secondary_email) }}
-    {{ render_field(form.confirm_secondary) }}
-    {{ render_field(form.secondary_subscribe) }}
-    {{ render_field(form.titlerole) }}
-    {{ render_field(form.organization) }}
-    {{ render_field(form.phonenumber) }}
-    
-    
+{% block content %}
+<h2>Fill out your information below</h2>
+  <form action="{{ url_for('update.update_info', token=token) }}" method=post>
+    {{ form.hidden_tag() }}
+
+    {{ forms.render(form) }}
+
     <br>
     {{ form.submit }}
     <br>
-  </form>
+
 {% endblock %}

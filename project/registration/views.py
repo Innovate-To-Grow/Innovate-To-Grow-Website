@@ -4,14 +4,16 @@ from flask import Blueprint, render_template, url_for, request, redirect
 from project import wks
 from project.models import current_form
 from project.util.email import send_email, delete_email
+from project.util.field import get_field, checkbox_get_choices
 from project.util.token import confirm_token_no_expiry, generate_token, confirm_token
+
 from project.registration.forms import RegistrationForm, InformationForm
 
 registration_blueprint = Blueprint("registration", __name__, template_folder='templates', static_folder='static')
 
 @registration_blueprint.route("/register", methods=["GET", "POST"])
 def register():
-    form = RegistrationForm(request.form)
+    form = RegistrationForm()
 
     if request.method == 'POST' and form.validate():
         user_prim1 = wks.find(request.form['primary_email'], in_column=6)
@@ -167,9 +169,9 @@ def confirm_primary(token):
 
     else:
         cell_find = wks.find(email)
-        cell_row_find = cell_find.row
-        wks.update_cell(cell_row_find, 8, "TRUE")
-        wks.update_cell(cell_row_find, 11, "TRUE")
+        row_find = cell_find.row
+        wks.update_cell(row_find, 8, "TRUE")
+        wks.update_cell(row_find, 11, "TRUE")
 
         if user[9] == "FALSE":
             i_token = generate_token(user[5])
@@ -195,9 +197,9 @@ def confirm_secondary(token):
         
     else:
         cell_find = wks.find(email)
-        cell_row_find = cell_find.row
-        wks.update_cell(cell_row_find, 9, "TRUE")
-        wks.update_cell(cell_row_find, 12, "TRUE")
+        row_find = cell_find.row
+        wks.update_cell(row_find, 9, "TRUE")
+        wks.update_cell(row_find, 12, "TRUE")
 
         if user[9] == "FALSE":
             i_token = generate_token(user[6])
@@ -233,50 +235,42 @@ def resend_secondary(token):
 
 @registration_blueprint.route('/info/<token>', methods=['GET', 'POST'])
 def info(token):
-    form = InformationForm(request.form)
+    for row in current_form.query.all():
+        setattr(InformationForm, row.label, get_field(row))
+
+    form = InformationForm()
 
     email = confirm_token_no_expiry(token)
     user = wks.find(email, in_column=6)
     if user is not None:
-            user = wks.row_values(user.row)
+        user = wks.row_values(user.row)
     if user == None:
         user = wks.find(email, in_column=7)
         if user is not None:
             user = wks.row_values(user.row)
 
-    if request.method == 'POST' and form.validate():
+    if request.method == 'POST' and form.validate_on_submit():
         if user[9] == "TRUE":
             return render_template("homepage.html")
 
         cell_find = wks.find(email)
-        cell_row_find = cell_find.row
+        row_find = cell_find.row
 
-        wks.update_cell(cell_row_find, 13, form.titlerole.data)
-        wks.update_cell(cell_row_find, 14, form.organization.data)
-        wks.update_cell(cell_row_find, 15, form.phonenumber.data)
+        for row in current_form.query.all():
+            col_find = wks.find(row.label, in_row=1).col
+            if row.field_type == "checkbox":
+                vals = []
+                choices = checkbox_get_choices(row.options)
+                for key in request.form.getlist(row.label):
+                    vals.append(choices[int(key)][1])
+                wks.update_cell(row_find, col_find, " ; ".join(vals))
+            else:
+                wks.update_cell(row_find, col_find, request.form[row.label])
 
-        wks.update_cell(cell_row_find, 10, "TRUE")
+        wks.update_cell(row_find, 10, "TRUE")
     
         return render_template("thanks_registering.html")
 
     else:
         return render_template("information.html", form=form, token=token)
     
-
-
-
-from project.util.field import get_field
-from wtforms import Form, SubmitField
-
-@registration_blueprint.route('/test', methods=['GET', 'POST'])
-def test_view():
-    class TestForm(Form): pass
-
-    for row in current_form.query.all():
-        setattr(TestForm, row.label, get_field(row))
-
-    setattr(TestForm, "Submit", SubmitField("Submit"))
-
-    form = TestForm()
-
-    return render_template("customform.html", form=form)

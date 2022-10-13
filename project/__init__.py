@@ -62,7 +62,7 @@ if not path.exists(APP_ROOT + '/db/memberData.sqlite3'):
     db.create_all(app=app)
 
     for x in data:
-        form_edit = edit_form(field_type='text',label=x,options='')
+        form_edit = edit_form(field_type='text', label=x, options='', required=False)
         db.session.add(form_edit)
     db.session.commit()
     

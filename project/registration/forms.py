@@ -1,4 +1,6 @@
-from wtforms import Form, StringField, SubmitField, validators, ValidationError
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, ValidationError
+from wtforms.validators import Email, EqualTo, InputRequired
 
 class NotEqualTo(object):
     def __init__(self, fieldname, message=None):
@@ -21,33 +23,25 @@ class NotEqualTo(object):
 
             raise ValidationError(message % d)
             
-class RegistrationForm(Form):
-    first_name = StringField('First Name', [validators.InputRequired(' ')])
-    last_name = StringField('Last Name', [validators.InputRequired(' ')])
+class RegistrationForm(FlaskForm):
+    first_name = StringField('First Name', [InputRequired(' ')])
+    last_name = StringField('Last Name', [InputRequired(' ')])
     primary_email = StringField('Primary Email Address', 
-                                [validators.InputRequired(' '),
-                                validators.Email()])
+                                [InputRequired(' '),
+                                Email()])
     confirm_primary = StringField('Confirm Primary Email',
-                                [validators.InputRequired(' '),
-                                validators.EqualTo('primary_email', message = 'Must match primary email')])
+                                [InputRequired(' '),
+                                EqualTo('primary_email', message = 'Must match primary email')])
     secondary_email = StringField('Secondary Email Address', 
-                                [validators.InputRequired(' '),
-                                validators.Email(),
+                                [InputRequired(' '),
+                                Email(),
                                 NotEqualTo('primary_email', message = 'Can not be the same email.')])
     confirm_secondary = StringField('Confirm Secondary Email',
-                                [validators.InputRequired(' '),
-                                validators.EqualTo('secondary_email', message = 'Must match secondary email')])
+                                [InputRequired(' '),
+                                EqualTo('secondary_email', message = 'Must match secondary email')])
     
     submit = SubmitField('Submit')
     
 
-
-class InformationForm(Form):
-    titlerole = StringField('Title/Role', 
-                                [validators.InputRequired(' ')])
-    organization = StringField('Organization', 
-                                [validators.InputRequired(' ')])
-    phonenumber = StringField('Phone Number', 
-                                [validators.InputRequired(' ')])
-
+class InformationForm(FlaskForm):
     submit = SubmitField('Submit')

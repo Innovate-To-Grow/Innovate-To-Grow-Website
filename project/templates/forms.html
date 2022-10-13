@@ -4,6 +4,8 @@
 {% if field.type in ['CSRFTokenField', 'HiddenField'] %}
   {{ field() }}
 {% else %}
+{% if field.name == "submit" %} 
+{% else %}
   <div class="form-group {% if field.errors %}error{% endif %}">
     {{ field.label }}
     <div class="input">
@@ -24,6 +26,8 @@
     </div>
   </div>
 {% endif %}
+{% endif %}
 {% endfor %}
+
 </fieldset>
 {% endmacro %}

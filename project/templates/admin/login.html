@@ -2,7 +2,7 @@
 {% block body %}
 
 <form action="{{ url_for('.login', self=self) }}" method=post>
-    {{ form.hidden_tag }}
+   {{ form.hidden_tag() }}
 
     {{ form.username.label }}
     <div>

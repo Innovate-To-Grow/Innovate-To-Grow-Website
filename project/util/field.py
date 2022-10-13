@@ -1,21 +1,44 @@
-from wtforms import StringField, SelectField, SelectMultipleField, validators,widgets
+from wtforms import StringField, SelectField, SelectMultipleField
+from wtforms.validators import InputRequired, StopValidation
+from wtforms.widgets import ListWidget, CheckboxInput
 
 class MultiCheckboxField(SelectMultipleField):
-    widget = widgets.ListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
+    widget = ListWidget(html_tag='ol', prefix_label=False)
+    option_widget = CheckboxInput()
+
+class MultiCheckboxAtLeastOne():
+    def __init__(self, message=None):
+        if not message:
+            message = 'At least one option must be selected.'
+        self.message = message
+
+    def __call__(self, form, field):
+        if len(field.data) == 0:
+            raise StopValidation(self.message)
 
 def get_field(field): 
     if field.field_type == "text": 
         return StringField(field.label, 
-                           [validators.InputRequired(' ')])
+                           [InputRequired(' ')])
     if field.field_type == "dropdown":
         return SelectField(field.label, 
-                           [validators.InputRequired(' ')],
-                           choices=split_options(field.options))
+                           [InputRequired(' ')],
+                           choices=dropdown_get_choices(field.options))
     if field.field_type == "checkbox":
         return MultiCheckboxField(field.label,
-                                  [validators.InputRequired(' ')],
-                                  choices=split_options(field.options))
+                                  validators=[MultiCheckboxAtLeastOne()],
+                                  choices=checkbox_get_choices(field.options),
+                                  coerce=int)
 
-def split_options(options):
+
+def dropdown_get_choices(options):
     return options.split(" ; ")
+
+
+def checkbox_get_choices(options):
+    choices = []
+    temp = options.split(" ; ")
+    for n in range(len(temp)):
+        choices.append((n, temp[n]))
+
+    return choices 

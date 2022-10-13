@@ -1,6 +1,6 @@
 from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
-from flask_admin import  BaseView, AdminIndexView, expose, helpers
+from flask_admin import BaseView, AdminIndexView, expose, helpers
 from flask_admin.contrib.sqla import ModelView
 from project import wks, db
 from project.util.email import send_email
@@ -121,13 +121,13 @@ class SubmitView(BaseView):
         db.session.commit()
         
         for row in edit_form.query.all():
-            data = current_form(field_type=row.field_type, label=row.label, options=row.options)
+            data = current_form(field_type=row.field_type, label=row.label, options=row.options, required=row.required)
             db.session.add(data)
         db.session.commit()
 
-        count = 16
         for row in edit_form.query.all():
-            wks.update_cell(1, count, row.label)
-            count += 1
-
+            label = wks.find(row.label, in_row=1)
+            if label is None:
+                wks.update_cell(1, len(wks.row_values(1)) + 1, row.label)
+            
         return self.render('admin/confirmed.html')

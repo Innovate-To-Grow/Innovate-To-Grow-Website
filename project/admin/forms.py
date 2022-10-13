@@ -1,6 +1,8 @@
-from wtforms import Form, StringField, PasswordField, SubmitField, validators, TextAreaField, RadioField
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField, TextAreaField, RadioField
+from wtforms.validators import InputRequired
 
-class EmailForm(Form):
+class EmailForm(FlaskForm):
     subject = StringField('Subject')
 
     body = TextAreaField('Body')
@@ -9,9 +11,9 @@ class EmailForm(Form):
 
     submit = SubmitField('Send')
 
-class LoginForm(Form):
-    username = StringField("Username")
+class LoginForm(FlaskForm):
+    username = StringField("Username", [InputRequired(' ')])
 
-    password = PasswordField("Password")
+    password = PasswordField("Password", [InputRequired(' ')])
 
     submit = SubmitField("Log In")
