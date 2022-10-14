@@ -44,6 +44,7 @@ def dropdown_get_choices(options):
 def checkbox_get_choices(options):
     choices = []
     temp = options.split(" ; ")
+    
     for n in range(len(temp)):
         choices.append((n, temp[n]))
 

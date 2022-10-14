@@ -1,4 +1,3 @@
-from gspread.cell import Cell
 from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose, helpers
@@ -10,13 +9,13 @@ from project.models import user
 
 
 class IndexView(AdminIndexView):
-    @expose('/')
+    @expose("/")
     def index(self):
         if not current_user.is_authenticated:
-            return redirect(url_for('.login'))
+            return redirect(url_for(".login"))
         return super(IndexView, self).index()
 
-    @expose('/login', methods=['GET', 'POST'])
+    @expose("/login", methods=["GET", "POST"])
     def login(self):
         form = LoginForm(request.form)
         if helpers.validate_form_on_submit(form):
@@ -24,16 +23,16 @@ class IndexView(AdminIndexView):
             if u is not None and u.verify_password(form.password.data):
                 login_user(u)
             else:
-                flash('Invalid username or password')
+                flash("Invalid username or password")
         if current_user.is_authenticated:
-            return redirect(url_for('.index'))
+            return redirect(url_for(".index"))
         return self.render("admin/login.html", form=form)
 
-    @expose('/logout')
+    @expose("/logout")
     @login_required
     def logout(self):
         logout_user()
-        return redirect(url_for('.login'))
+        return redirect(url_for(".login"))
 
 
 class UserModelView(ModelView):
@@ -41,7 +40,7 @@ class UserModelView(ModelView):
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
-        return redirect(url_for('admin.login', next=request.url))
+        return redirect(url_for("admin.login", next=request.url))
 
     
 class EditFormModelView(ModelView):
@@ -49,15 +48,13 @@ class EditFormModelView(ModelView):
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
-        return redirect(url_for('admin.login', next=request.url))
+        return redirect(url_for("admin.login", next=request.url))
 
     def on_model_change(self, form, model, is_created):
-        cells = []
         for row in model.query.all():
             label = wks.find(row.label, in_row=1)
             if label is None:
-                cells.append(Cell(1, len(wks.row_values(1)) + 1, row.label))
-        wks.update_cells(cells)
+                wks.update_cell(1, len(wks.row_values(1)) + 1, row.label)
 
 
 class ContactView(BaseView):
@@ -65,12 +62,12 @@ class ContactView(BaseView):
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
-        return redirect(url_for('admin.login', next=request.url))
+        return redirect(url_for("admin.login", next=request.url))
 
-    @expose('/',  methods=["GET", "POST"])
+    @expose("/",  methods=["GET", "POST"])
     def contact(self):
         form = EmailForm(request.form)
-        if request.method == 'POST' and form.validate(): 
+        if request.method == "POST" and form.validate(): 
             selection = request.form.get("selection")
             email_list = []
 
@@ -96,7 +93,7 @@ class ContactView(BaseView):
                 subject = request.form.get("subject")
 
                 body = request.form.get("body")
-                body = body.replace('\n', '<br>')
+                body = body.replace("\n", "<br>")
 
                 for user in email_list:
                     html = render_template("admin/basic_email.html", first=user[0], last=user[1], body=body)
@@ -104,4 +101,4 @@ class ContactView(BaseView):
                     
                 flash("Emails sent successfully to " + str(selection) + " users.")
             
-        return self.render('admin/contact.html', form=form)
+        return self.render("admin/contact.html", form=form)

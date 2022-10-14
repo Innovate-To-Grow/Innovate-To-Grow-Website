@@ -9,91 +9,81 @@ from project.util.field import get_field, checkbox_get_choices
 from project.util.token import confirm_token_no_expiry, generate_token, confirm_token
 from project.registration.forms import RegistrationForm, InformationForm
 
-registration_blueprint = Blueprint("registration", __name__, template_folder='templates', static_folder='static')
+registration_blueprint = Blueprint("registration", __name__, template_folder="templates", static_folder="static")
 
 @registration_blueprint.route("/register", methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
 
-    if request.method == 'POST' and form.validate():
-        user_prim1 = wks.find(request.form['primary_email'], in_column=6)
-        if user_prim1 is not None:
+    if request.method == "POST" and form.validate():
+        user_prim1 = wks.find(request.form["primary_email"], in_column=6)
+        if user_prim1 != None:
             row_prim1 = user_prim1.row
             user_prim1 = wks.row_values(row_prim1)
             
-        user_prim2 = wks.find(request.form['primary_email'], in_column=7)
-        if user_prim2 is not None:
+        user_prim2 = wks.find(request.form["primary_email"], in_column=7)
+        if user_prim2 != None:
             row_prim2 = user_prim2.row
             user_prim2 = wks.row_values(row_prim2)
             
-        user_sec1 = wks.find(request.form['secondary_email'], in_column=6)
-        if user_sec1 is not None:
+        user_sec1 = wks.find(request.form["secondary_email"], in_column=6)
+        if user_sec1 != None:
             row_sec1 = user_sec1.row
             user_sec1 = wks.row_values(row_sec1)
             
-        user_sec2 = wks.find(request.form['secondary_email'], in_column=7)
-        if user_sec2 is not None:
+        user_sec2 = wks.find(request.form["secondary_email"], in_column=7)
+        if user_sec2 != None:
             row_sec2 = user_sec2.row
             user_sec2 = wks.row_values(row_sec2)
         
         if user_prim1 != None or user_prim2 != None or user_sec1 != None or user_sec2 != None:
             update_subject = "i2G - Link to Update Your Information"
             
-            if user_prim1 != None or user_prim2 != None:
-
-                if user_prim1 != None:
-                    token = generate_token(user_prim1[5])
-
-                    if user_prim1[7] == "FALSE":
-                        process = Thread(target=delete_email, args=(30, row_prim1, 6, user_prim1[5]))
-                        process.start()
-                        
-                    elif user_prim1[7] == "TRUE" and user_prim1[9] == "TRUE":
-                        update_url = url_for("update.update_info", token=token, _external=True)
-                        update_html = render_template("update_email.html", first=user_prim1[1], last=user_prim1[2], update_url=update_url)
-                        send_email(user_prim1[5], update_subject, update_html)
-                
-                if user_prim2 != None:
-                    token = generate_token(user_prim2[6])
-
-                    if user_prim2[8] == "FALSE": 
-                        process = Thread(target=delete_email, args=(30, row_prim2, 7, user_prim2[6]))
-                        process.start()
-
-                    elif user_prim2[8] == "TRUE" and user_prim2[9] == "TRUE":
-                        update_url = url_for("update.update_info", token=token, _external=True)
-                        update_html = render_template("update_email.html", first=user_prim2[1], last=user_prim2[2], update_url=update_url)
-                        send_email(user_prim2[6], update_subject, update_html)
+            if user_prim1 != None and user_prim1[7] == "FALSE":
+                process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
+                process.start()  
+    
+            elif user_prim1 != None and user_prim1[7] == "TRUE" and user_prim1[9] == "TRUE":
+                token = generate_token(user_prim1[5])
+                update_url = url_for("update.update_info", token=token, _external=True)
+                update_html = render_template("update_email.html", first=user_prim1[1], last=user_prim1[2], update_url=update_url)
+                send_email(user_prim1[5], update_subject, update_html)
 
                 
-            if user_sec1 != None or user_sec2 != None:
-                
-                if user_sec1 != None:
-                    token = generate_token(user_sec1[5])
-
-                    if user_sec1[7] == 'FALSE':
-                        process = Thread(target=delete_email, args=(30, row_sec1, 6, user_sec1[5]))
-                        process.start()
-
-                    elif user_sec1[7] == 'TRUE' and user_sec1[9] == 'TRUE':
-                        update_url = url_for("update.update_info", token=token, _external=True)
-                        update_html = render_template("update_email.html", first=user_sec1[1], last=user_sec1[2], update_url=update_url)
-                        send_email(user_sec1[5], update_subject, update_html)
+            if user_prim2 != None and user_prim2[8] == "FALSE":
+                process = Thread(target=delete_email, args=(row_prim2, 7, user_prim2[6]))
+                process.start()
+       
+            elif user_prim2 != None and user_prim2[8] == "TRUE" and user_prim2[9] == "TRUE":
+                token = generate_token(user_prim2[6])
+                update_url = url_for("update.update_info", token=token, _external=True)
+                update_html = render_template("update_email.html", first=user_prim2[1], last=user_prim2[2], update_url=update_url)
+                send_email(user_prim2[6], update_subject, update_html)
 
 
-                if user_sec2 != None:
-                    token = generate_token(user_sec2[6])
+            if user_sec1 != None and user_sec1[7] == "FALSE":
+                process = Thread(target=delete_email, args=(row_sec1, 6, user_sec1[5]))
+                process.start()
                     
-                    if user_sec2[8] == "FALSE":
-                        process = Thread(target=delete_email, args=(30, row_sec2, 7, user_sec2[6]))
-                        process.start()
+            elif user_sec1 != None and user_sec1[7] == "TRUE" and user_sec1[9] == "TRUE":
+                token = generate_token(user_sec1[5])
+                update_url = url_for("update.update_info", token=token, _external=True)
+                update_html = render_template("update_email.html", first=user_sec1[1], last=user_sec1[2], update_url=update_url)
+                send_email(user_sec1[5], update_subject, update_html)
+                    
+    
+            if user_sec2 != None and user_sec2[8] == "FALSE":
+                process = Thread(target=delete_email, args=(row_sec2, 7, user_sec2[6]))
+                process.start()
 
-                    elif user_sec2[8] == "TRUE" and user_sec2[9] == "TRUE":
-                        update_url = url_for("update.update_info", token=token, _external=True)
-                        update_html = render_template("update_email.html", first=user_sec2[1], last=user_sec2[2], update_url=update_url)
-                        send_email(user_sec2[6], update_subject, update_html)
-                
-            return render_template("error.html")
+            elif user_sec2 != None and user_sec2[8] == "TRUE" and user_sec2[9] == "TRUE":
+                token = generate_token(user_sec2[6])
+                update_url = url_for("update.update_info", token=token, _external=True)
+                update_html = render_template("update_email.html", first=user_sec2[1], last=user_sec2[2], update_url=update_url)
+                send_email(user_sec2[6], update_subject, update_html)
+            
+
+            return render_template("error1.html")
 
 
         else:
@@ -116,11 +106,11 @@ def register():
 
             p_token = generate_token(user[5])
             p_confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-            p_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=p_confirm_url)
+            p_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=p_confirm_url)
 
             s_token = generate_token(user[6])
             s_confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-            s_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
+            s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
 
             verif_subject = "i2G - Confirm Your Email Address"
             
@@ -130,29 +120,38 @@ def register():
             return render_template("instructions_sent.html")
 
     else:
-        return render_template("register.html", form=form)
+        return render_template("register_form.html", form=form)
 
 
-@registration_blueprint.route('/con<token>')
+@registration_blueprint.route("/con<token>")
 def confirm(token):
     user = None
     email = confirm_token(token)
     
     if email:
-        user = wks.find(email)
-        if user is not None:
+        user = wks.find(email, in_column=6)
+        if user != None:
+            user_col = user.col
             user = wks.row_values(user.row)
-        else:
-            return render_template("error2.html")
+        if user == None:
+            user = wks.find(email, in_column=7)
+            if user != None:
+                user_col = user.col
+                user = wks.row_values(user.row)
+            else: 
+                return render_template("error2.html")
 
     if user == None:
         return render_template("resend.html", token=token, _external=True)
 
-    elif user[wks.find(email).col + 1] == "TRUE" and user[9] == "TRUE":
+    elif user[user_col + 1] == "TRUE" and user[9] == "TRUE":
         return render_template("already_confirmed.html")
 
     else:
-        cell_find = wks.find(email)
+        cell_find = wks.find(email, in_column=6)
+        if cell_find == None:
+            cell_find = wks.find(email, in_column=7)
+
         row_find = cell_find.row
         col_find = cell_find.col
 
@@ -162,37 +161,39 @@ def confirm(token):
 
         wks.update_cells(cells)
 
-
         if user[9] == "FALSE":
             return redirect(url_for("registration.info", token=token, _external=True))
-
         else:
             return render_template("thanks_confirming.html")
         
 
-@registration_blueprint.route('/res<token>')
+@registration_blueprint.route("/res<token>")
 def resend(token):
     email = confirm_token_no_expiry(token)
 
     if email:
-        user = wks.find(email)
-        if user is not None:
+        user = wks.find(email, in_column=6)
+        if user != None:
             user = wks.row_values(user.row)
-        else:
-            return render_template("error2.html")
+        if user == None:
+            user = wks.find(email, in_column=7)
+            if user != None:
+                user = wks.row_values(user.row)
+            else: 
+                return render_template("error2.html")
     else:
         return render_template("error2.html")
 
     new_token = generate_token(email)
-    url = url_for('registration.confirm', token=new_token, _external=True)
-    html = render_template('verify.html', first=user[1], last=user[2], confirm_url=url)
+    url = url_for("registration.confirm", token=new_token, _external=True)
+    html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=url)
     subject = "i2G - Confirm Your Email Address"
     send_email(email, subject, html)
 
     return render_template("instructions_sent.html")
 
 
-@registration_blueprint.route('/info/<token>', methods=['GET', 'POST'])
+@registration_blueprint.route("/info/<token>", methods=["GET", "POST"])
 def info(token):
     for row in edit_form.query.all():
         setattr(InformationForm, row.label, get_field(row))
@@ -202,19 +203,27 @@ def info(token):
     email = confirm_token_no_expiry(token)
     
     if email:
-        user = wks.find(email)
-        if user is not None:
+        user = wks.find(email, in_column=6)
+        if user != None:
             user = wks.row_values(user.row)
-        else:
-            return render_template("error2.html")
+        if user == None:
+            user = wks.find(email, in_column=7)
+            if user != None:
+                user = wks.row_values(user.row)
+            else: 
+                return render_template("error2.html")
     else:
         return render_template("error2.html")
 
-    if request.method == 'POST' and form.validate_on_submit():
+
+    if request.method == "POST" and form.validate_on_submit():
         if user[9] == "TRUE":
             return render_template("homepage.html")
 
-        cell_find = wks.find(email)
+        cell_find = wks.find(email, in_column=6)
+        if cell_find == None:
+            cell_find = wks.find(email, in_column=7)
+
         row_find = cell_find.row
 
         cells = []
@@ -237,5 +246,4 @@ def info(token):
         return render_template("thanks_registering.html")
 
     else:
-        return render_template("information.html", form=form, token=token)
-    
+        return render_template("info_form.html", form=form, token=token)

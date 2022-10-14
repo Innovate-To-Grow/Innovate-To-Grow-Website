@@ -2,6 +2,7 @@ from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request
+from pyparsing import col
 from project import wks
 from project.models import edit_form
 from project.util.email import send_email, delete_email
@@ -9,25 +10,25 @@ from project.util.field import get_field, checkbox_get_choices
 from project.util.token import confirm_token_no_expiry, generate_token
 from project.update.forms import EmailForm, UpdateForm
 
-update_blueprint = Blueprint("update", __name__, template_folder='templates', static_folder='static')
+update_blueprint = Blueprint("update", __name__, template_folder="templates", static_folder="static")
 
 # check the database to see if the input email has a user with a registered prim. or secon. email
-@update_blueprint.route('/update', methods=['GET', 'POST'])
+@update_blueprint.route("/update", methods=["GET", "POST"])
 def enter_email():
     form = EmailForm()
 
-    if request.method == 'POST' and form.validate():
-        user = wks.find(request.form['email'])
-        if user is not None:
+    if request.method == "POST" and form.validate():
+        user = wks.find(request.form["email"], in_column=6)
+        if user != None:
             user = wks.row_values(user.row)
-        else:
-            return render_template("error3.html")
+        if user == None:
+            user = wks.find(request.form["email"], in_column=7)
+            if user != None:
+                user = wks.row_values(user.row)
+            else: 
+                return render_template("error3.html")
 
-        # the verification status of the user's primary and secondary emails.
-        verif1 = user[7]
-        verif2 = user[8]
-
-        if verif1 == 'FALSE' and verif2 == 'TRUE':
+        if user[7] == "FALSE" and user[8] == "TRUE":
             # send an update link to the secondary and a verification link to primary
             p_token = generate_token(user[5])
             confirm_url = url_for("registration.confirm", token=p_token, _external=True)
@@ -39,13 +40,13 @@ def enter_email():
             s_html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
             s_subject = "i2G - Link to Update Your Information"
 
-            if user[5] != '':
+            if user[5] != "":
                 send_email(user[5], p_subject, p_html)
 
-            if user[6] != '':
+            if user[6] != "":
                 send_email(user[6], s_subject, s_html)
 
-        elif verif1 == 'TRUE' and verif2 == 'FALSE':
+        elif user[7] == "TRUE" and user[8] == "FALSE":
             # send an update link to primary and verification to secondary
             p_token = generate_token(user[5])
             update_url = url_for("update.update_info", token=p_token, _external=True)
@@ -57,13 +58,13 @@ def enter_email():
             s_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
             s_subject = "i2G - Confirm Your Email Address"
 
-            if user[5] != '':
+            if user[5] != "":
                 send_email(user[5], p_subject, p_html)
                 
-            if user[6] != '':
+            if user[6] != "":
                 send_email(user[6], s_subject, s_html)
 
-        elif verif1 == 'FALSE' and verif2 == 'FALSE':
+        elif user[7] == "FALSE" and user[8] == "FALSE":
             # user is in db, but not verified. send them links to verify both.
             p_token = generate_token(user[5])
             p_confirm_url = url_for("registration.confirm", token=p_token, _external=True)
@@ -75,10 +76,10 @@ def enter_email():
 
             subject = "i2G - Confirm Your Email Address"
             
-            if user[5] != '':
+            if user[5] != "":
                 send_email(user[5], subject, p_html)
 
-            if user[6] != '':
+            if user[6] != "":
                 send_email(user[6], subject, s_html)
 
         else:
@@ -92,19 +93,23 @@ def enter_email():
         return render_template("instructions_sent.html")
 
     else:
-        return render_template("enter_email.html", form=form)
+        return render_template("enter_form.html", form=form)
     
 
-@update_blueprint.route('/enter_update/<token>', methods=['GET', 'POST'])
+@update_blueprint.route("/enter_update/<token>", methods=["GET", "POST"])
 def update_info(token):
     email = confirm_token_no_expiry(token)
 
     if email:
-        user = wks.find(email)
-        if user is not None:
+        user = wks.find(email, in_column=6)
+        if user != None:
             user = wks.row_values(user.row)
-        else:
-            return render_template("error2.html")
+        if user == None:
+            user = wks.find(email, in_column=7)
+            if user != None:
+                user = wks.row_values(user.row)
+            else: 
+                return render_template("error2.html")
     else:
         return render_template("error2.html")
     
@@ -125,22 +130,28 @@ def update_info(token):
 
     for row in edit_form.query.all():
         col_find = wks.find(row.label, in_row=1).col
-        if row.field_type == "checkbox":
-            keys = []
-            if user[col_find - 1] != '':
-                choices = checkbox_get_choices(row.options)
-                for val in user[col_find - 1].split(" ; "):
-                    key = [key for key, v in choices if v == val][0]
-                    keys.append(key)
-            person.update([(row.label, keys)])
+        if col_find > len(user):
+            person.update([(row.label, "")])
         else:
-            person.update([(row.label, user[col_find - 1])])
+            if row.field_type == "checkbox":
+                keys = []
+                if user[col_find - 1] != "":
+                    choices = checkbox_get_choices(row.options)
+                    for val in user[col_find - 1].split(" ; "):
+                        key = [key for key, v in choices if v == val][0]
+                        keys.append(key)
+                person.update([(row.label, keys)])
+            else:
+                person.update([(row.label, user[col_find - 1])])
 
     form = UpdateForm(data = person)
 
     
-    if request.method == 'POST' and form.validate_on_submit():
-        cell_find = wks.find(email)
+    if request.method == "POST" and form.validate_on_submit():
+        cell_find = wks.find(email, in_column=6)
+        if cell_find == None:
+            cell_find = wks.find(email, in_column=7)
+        
         row_find = cell_find.row
 
         cells = []
@@ -152,33 +163,48 @@ def update_info(token):
         sent_to_sec = False
         
         subject = "i2G - Confirm Your Email Address"
-        user_prim1 = wks.find(request.form['primary_email'], in_column=6)
-        user_prim2 = wks.find(request.form['primary_email'], in_column=7)
-        user_sec1 = wks.find(request.form['secondary_email'], in_column=6)
-        user_sec2 = wks.find(request.form['secondary_email'], in_column=7)
+
+        user_prim1 = wks.find(request.form["primary_email"], in_column=6)
+        if user_prim1 is not None:
+            row_prim1 = user_prim1.row
+            user_prim1 = wks.row_values(row_prim1)
+
+        user_prim2 = wks.find(request.form["primary_email"], in_column=7)
+        if user_prim2 is not None:
+            row_prim2 = user_prim2.row
+            user_prim2 = wks.row_values(row_prim2)
+
+        user_sec1 = wks.find(request.form["secondary_email"], in_column=6)
+        if user_sec1 is not None:
+            row_sec1 = user_sec1.row
+            user_sec1 = wks.row_values(row_sec1)
+
+        user_sec2 = wks.find(request.form["secondary_email"], in_column=7)
+        if user_sec2 is not None:
+            row_sec2 = user_sec2.row
+            user_sec2 = wks.row_values(row_sec2)
     
         if user_prim1 != None or user_prim2 != None or user_sec1 != None or user_sec2 != None:
             error = True
 
-        # THIS IS WRONG LOGIC, FIX THIS
-        if user[5] == request.form['primary_email'] or user[5] == request.form['secondary_email'] or user[6] == request.form['primary_email'] or user[6] == request.form['secondary_email']:
+        if (user[5] == request.form["primary_email"] and user[6] == request.form["secondary_email"]) or (user[5] == request.form["secondary_email"] and user[6] == request.form["primary_email"]):
             error = False
 
         if error:
-            if user_prim1 != None and wks.row_values(user_prim1.row)[7] == "FALSE":
-                process = Thread(target=delete_email, args=(30, user_prim1.row, 6, user_prim1[5]))
+            if user_prim1 != None and user_prim1[7] == "FALSE":
+                process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
                 process.start()
 
-            if user_prim2 != None and wks.row_values(user_prim2.row)[8] == "FALSE": 
-                process = Thread(target=delete_email, args=(30, user_prim2.row, 7, user_prim2[6]))
+            if user_prim2 != None and user_prim2.row[8] == "FALSE": 
+                process = Thread(target=delete_email, args=(row_prim2, 7, user_prim2[6]))
                 process.start()
 
-            if user_sec1 != None and wks.row_values(user_sec1.row)[7] == "FALSE":
-                process = Thread(target=delete_email, args=(30, user_sec1.row, 6, user_sec1[5]))
+            if user_sec1 != None and user_sec1[7] == "FALSE":
+                process = Thread(target=delete_email, args=(row_sec1, 6, user_sec1[5]))
                 process.start()
 
-            if user_sec2 != None and wks.row_values(user_sec2.row)[8] == "FALSE":
-                process = Thread(target=delete_email, args=(30, user_sec2.row, 7, user_sec1[6]))
+            if user_sec2 != None and user_sec2[8] == "FALSE":
+                process = Thread(target=delete_email, args=(row_sec2, 7, user_sec2[6]))
                 process.start()
             
             return render_template("error4.html")
@@ -297,4 +323,4 @@ def update_info(token):
             return render_template("thanks_update.html")
 
     else:
-        return render_template("update_page.html", form=form, token=token)
+        return render_template("update_form.html", form=form, token=token)
