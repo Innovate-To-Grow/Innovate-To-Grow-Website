@@ -1,7 +1,0 @@
-{% extends "layout.html" %}
-
-{% block content %}
-
-<p>The confirmation link is invalid or has expired. <a href="{{ url_for('registration.resend_secondary', token=token) }}"> Click here to resend</a>.</p>
-
-{% endblock %}

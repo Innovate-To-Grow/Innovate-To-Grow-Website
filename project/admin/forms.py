@@ -7,7 +7,7 @@ class EmailForm(FlaskForm):
 
     body = TextAreaField('Body')
 
-    selection = RadioField('Send to:', choices=[('Subscribed','Subscribed Users'),('Verified','Verified Users')], default='Subscribed')
+    selection = RadioField('Send to:', choices=[('Subscribed', 'Subscribed Users'),('Verified', 'Verified Users')], default='Subscribed')
 
     submit = SubmitField('Send')
 
