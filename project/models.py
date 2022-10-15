@@ -1,4 +1,3 @@
-from cgi import test
 from project import db
 
 class edit_form(db.Model):
