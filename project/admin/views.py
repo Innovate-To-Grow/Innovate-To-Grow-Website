@@ -3,9 +3,10 @@ from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose, helpers
 from flask_admin.contrib.sqla import ModelView
 from project import wks
+from project.models import user
 from project.util.email import send_email
 from project.admin.forms import EmailForm, LoginForm
-from project.models import user
+
 
 
 class IndexView(AdminIndexView):

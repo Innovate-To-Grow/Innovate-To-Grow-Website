@@ -2,7 +2,6 @@ from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request
-from pyparsing import col
 from project import wks
 from project.models import edit_form
 from project.util.email import send_email, delete_email
@@ -32,7 +31,7 @@ def enter_email():
             # send an update link to the secondary and a verification link to primary
             p_token = generate_token(user[5])
             confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-            p_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+            p_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
             p_subject = "i2G - Confirm Your Email Address"
 
             s_token = generate_token(user[6])
@@ -55,7 +54,7 @@ def enter_email():
 
             token = generate_token(user[6])
             confirm_url = url_for("registration.confirm", token=token, _external=True)
-            s_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+            s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
             s_subject = "i2G - Confirm Your Email Address"
 
             if user[5] != "":
@@ -68,11 +67,11 @@ def enter_email():
             # user is in db, but not verified. send them links to verify both.
             p_token = generate_token(user[5])
             p_confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-            p_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=p_confirm_url)
+            p_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=p_confirm_url)
 
             s_token = generate_token(user[6])
             s_confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-            s_html = render_template("verify.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
+            s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
 
             subject = "i2G - Confirm Your Email Address"
             
@@ -225,7 +224,7 @@ def update_info(token):
 
             p_token = generate_token(form.primary_email.data)
             confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-            html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+            html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
             send_email(form.primary_email.data, subject, html)
             sent_to_prim = True
             
@@ -238,7 +237,7 @@ def update_info(token):
 
             s_token = generate_token(form.secondary_email.data)
             confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-            html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+            html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
             send_email(form.secondary_email.data, subject, html)
             sent_to_sec = True
             
@@ -249,7 +248,7 @@ def update_info(token):
             if not sent_to_prim:
                 p_token = generate_token(form.primary_email.data)
                 confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-                html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+                html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
                 cells.append(Cell(row_find, 8, "FALSE"))
                 send_email(form.primary_email.data, subject, html)
                 sent_to_prim = True
@@ -261,7 +260,7 @@ def update_info(token):
             if not sent_to_sec:
                 s_token = generate_token(form.secondary_email.data)
                 confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-                html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+                html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
                 cells.append(Cell(row_find, 9, "FALSE"))
                 send_email(form.secondary_email.data, subject, html)
                 sent_to_sec = True
@@ -294,7 +293,7 @@ def update_info(token):
                 need_verif = True
                 p_token = generate_token(form.primary_email.data)
                 confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-                html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+                html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
                 send_email(form.primary_email.data, subject, html)
              
         if user[8] == "FALSE":
@@ -303,7 +302,7 @@ def update_info(token):
                 need_verif = True
                 s_token = generate_token(form.secondary_email.data)
                 confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-                html = render_template("verify.html", first=user[1], last=user[2], confirm_url=confirm_url)
+                html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
                 send_email(form.secondary_email.data, subject, html)
         
         if user[7] == "TRUE":

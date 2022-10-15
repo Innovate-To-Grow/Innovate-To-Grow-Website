@@ -190,7 +190,7 @@ def resend(token):
     subject = "i2G - Confirm Your Email Address"
     send_email(email, subject, html)
 
-    return render_template("instructions_sent.html")
+    return render_template("resend.html", token=token, _external=True)
 
 
 @registration_blueprint.route("/info/<token>", methods=["GET", "POST"])
