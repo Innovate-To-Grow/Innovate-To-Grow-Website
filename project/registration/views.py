@@ -43,7 +43,7 @@ def register():
                 process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
                 process.start()  
     
-            elif user_prim1 != None and user_prim1[7] == "TRUE" and user_prim1[9] == "TRUE":
+            elif user_prim1 != None and user_prim1[7] == "TRUE":
                 token = generate_token(user_prim1[5])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_prim1[1], last=user_prim1[2], update_url=update_url)
@@ -54,7 +54,7 @@ def register():
                 process = Thread(target=delete_email, args=(row_prim2, 7, user_prim2[6]))
                 process.start()
        
-            elif user_prim2 != None and user_prim2[8] == "TRUE" and user_prim2[9] == "TRUE":
+            elif user_prim2 != None and user_prim2[8] == "TRUE":
                 token = generate_token(user_prim2[6])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_prim2[1], last=user_prim2[2], update_url=update_url)
@@ -65,7 +65,7 @@ def register():
                 process = Thread(target=delete_email, args=(row_sec1, 6, user_sec1[5]))
                 process.start()
                     
-            elif user_sec1 != None and user_sec1[7] == "TRUE" and user_sec1[9] == "TRUE":
+            elif user_sec1 != None and user_sec1[7] == "TRUE":
                 token = generate_token(user_sec1[5])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_sec1[1], last=user_sec1[2], update_url=update_url)
@@ -76,7 +76,7 @@ def register():
                 process = Thread(target=delete_email, args=(row_sec2, 7, user_sec2[6]))
                 process.start()
 
-            elif user_sec2 != None and user_sec2[8] == "TRUE" and user_sec2[9] == "TRUE":
+            elif user_sec2 != None and user_sec2[8] == "TRUE":
                 token = generate_token(user_sec2[6])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_sec2[1], last=user_sec2[2], update_url=update_url)

@@ -52,8 +52,8 @@ def enter_email():
             p_html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
             p_subject = "i2G - Link to Update Your Information"
 
-            token = generate_token(user[6])
-            confirm_url = url_for("registration.confirm", token=token, _external=True)
+            s_token = generate_token(user[6])
+            confirm_url = url_for("registration.confirm", token=s_token, _external=True)
             s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
             s_subject = "i2G - Confirm Your Email Address"
 

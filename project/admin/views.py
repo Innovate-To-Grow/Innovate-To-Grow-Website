@@ -7,8 +7,6 @@ from project.models import user
 from project.util.email import send_email
 from project.admin.forms import EmailForm, LoginForm
 
-
-
 class IndexView(AdminIndexView):
     @expose("/")
     def index(self):
