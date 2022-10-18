@@ -130,12 +130,12 @@ def confirm(token):
     
     if email:
         user = wks.find(email, in_column=6)
-        if user != None:
+        if user is not None:
             user_col = user.col
             user = wks.row_values(user.row)
-        if user == None:
+        if user is None:
             user = wks.find(email, in_column=7)
-            if user != None:
+            if user is not None:
                 user_col = user.col
                 user = wks.row_values(user.row)
             else: 
