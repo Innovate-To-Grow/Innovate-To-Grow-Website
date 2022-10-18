@@ -17,66 +17,66 @@ def register():
 
     if request.method == "POST" and form.validate():
         user_prim1 = wks.find(request.form["primary_email"], in_column=6)
-        if user_prim1 != None:
+        if user_prim1 is not None:
             row_prim1 = user_prim1.row
             user_prim1 = wks.row_values(row_prim1)
             
         user_prim2 = wks.find(request.form["primary_email"], in_column=7)
-        if user_prim2 != None:
+        if user_prim2 is not None:
             row_prim2 = user_prim2.row
             user_prim2 = wks.row_values(row_prim2)
             
         user_sec1 = wks.find(request.form["secondary_email"], in_column=6)
-        if user_sec1 != None:
+        if user_sec1 is not None:
             row_sec1 = user_sec1.row
             user_sec1 = wks.row_values(row_sec1)
             
         user_sec2 = wks.find(request.form["secondary_email"], in_column=7)
-        if user_sec2 != None:
+        if user_sec2 is not None:
             row_sec2 = user_sec2.row
             user_sec2 = wks.row_values(row_sec2)
         
-        if user_prim1 != None or user_prim2 != None or user_sec1 != None or user_sec2 != None:
+        if user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None:
             update_subject = "i2G - Link to Update Your Information"
             
-            if user_prim1 != None and user_prim1[7] == "FALSE":
+            if user_prim1 is not None and user_prim1[7] == "FALSE":
                 process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
                 process.start()  
     
-            elif user_prim1 != None and user_prim1[7] == "TRUE":
+            elif user_prim1 is not None and user_prim1[7] == "TRUE":
                 token = generate_token(user_prim1[5])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_prim1[1], last=user_prim1[2], update_url=update_url)
                 send_email(user_prim1[5], update_subject, update_html)
 
                 
-            if user_prim2 != None and user_prim2[8] == "FALSE":
+            if user_prim2 is not None and user_prim2[8] == "FALSE":
                 process = Thread(target=delete_email, args=(row_prim2, 7, user_prim2[6]))
                 process.start()
        
-            elif user_prim2 != None and user_prim2[8] == "TRUE":
+            elif user_prim2 is not None and user_prim2[8] == "TRUE":
                 token = generate_token(user_prim2[6])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_prim2[1], last=user_prim2[2], update_url=update_url)
                 send_email(user_prim2[6], update_subject, update_html)
 
 
-            if user_sec1 != None and user_sec1[7] == "FALSE":
+            if user_sec1 is not None and user_sec1[7] == "FALSE":
                 process = Thread(target=delete_email, args=(row_sec1, 6, user_sec1[5]))
                 process.start()
                     
-            elif user_sec1 != None and user_sec1[7] == "TRUE":
+            elif user_sec1 is not None and user_sec1[7] == "TRUE":
                 token = generate_token(user_sec1[5])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_sec1[1], last=user_sec1[2], update_url=update_url)
                 send_email(user_sec1[5], update_subject, update_html)
                     
     
-            if user_sec2 != None and user_sec2[8] == "FALSE":
+            if user_sec2 is not None and user_sec2[8] == "FALSE":
                 process = Thread(target=delete_email, args=(row_sec2, 7, user_sec2[6]))
                 process.start()
 
-            elif user_sec2 != None and user_sec2[8] == "TRUE":
+            elif user_sec2 is not None and user_sec2[8] == "TRUE":
                 token = generate_token(user_sec2[6])
                 update_url = url_for("update.update_info", token=token, _external=True)
                 update_html = render_template("update_email.html", first=user_sec2[1], last=user_sec2[2], update_url=update_url)
@@ -141,7 +141,7 @@ def confirm(token):
             else: 
                 return render_template("error2.html")
 
-    if user == None:
+    if user is None:
         return render_template("resend.html", token=token, _external=True)
 
     elif user[user_col + 1] == "TRUE" and user[9] == "TRUE":
@@ -149,7 +149,7 @@ def confirm(token):
 
     else:
         cell_find = wks.find(email, in_column=6)
-        if cell_find == None:
+        if cell_find is None:
             cell_find = wks.find(email, in_column=7)
 
         row_find = cell_find.row
@@ -173,11 +173,11 @@ def resend(token):
 
     if email:
         user = wks.find(email, in_column=6)
-        if user != None:
+        if user is not None:
             user = wks.row_values(user.row)
-        if user == None:
+        if user is None:
             user = wks.find(email, in_column=7)
-            if user != None:
+            if user is not None:
                 user = wks.row_values(user.row)
             else: 
                 return render_template("error2.html")
@@ -204,11 +204,11 @@ def info(token):
     
     if email:
         user = wks.find(email, in_column=6)
-        if user != None:
+        if user is not None:
             user = wks.row_values(user.row)
-        if user == None:
+        if user is None:
             user = wks.find(email, in_column=7)
-            if user != None:
+            if user is not None:
                 user = wks.row_values(user.row)
             else: 
                 return render_template("error2.html")
@@ -221,7 +221,7 @@ def info(token):
             return render_template("homepage.html")
 
         cell_find = wks.find(email, in_column=6)
-        if cell_find == None:
+        if cell_find is None:
             cell_find = wks.find(email, in_column=7)
 
         row_find = cell_find.row

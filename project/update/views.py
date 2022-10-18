@@ -18,11 +18,11 @@ def enter_email():
 
     if request.method == "POST" and form.validate():
         user = wks.find(request.form["email"], in_column=6)
-        if user != None:
+        if user is not None:
             user = wks.row_values(user.row)
-        if user == None:
+        if user is None:
             user = wks.find(request.form["email"], in_column=7)
-            if user != None:
+            if user is not None:
                 user = wks.row_values(user.row)
             else: 
                 return render_template("error3.html")
@@ -101,11 +101,11 @@ def update_info(token):
 
     if email:
         user = wks.find(email, in_column=6)
-        if user != None:
+        if user is not None:
             user = wks.row_values(user.row)
-        if user == None:
+        if user is None:
             user = wks.find(email, in_column=7)
-            if user != None:
+            if user is not None:
                 user = wks.row_values(user.row)
             else: 
                 return render_template("error2.html")
@@ -148,7 +148,7 @@ def update_info(token):
     
     if request.method == "POST" and form.validate_on_submit():
         cell_find = wks.find(email, in_column=6)
-        if cell_find == None:
+        if cell_find is None:
             cell_find = wks.find(email, in_column=7)
         
         row_find = cell_find.row
@@ -183,26 +183,26 @@ def update_info(token):
             row_sec2 = user_sec2.row
             user_sec2 = wks.row_values(row_sec2)
     
-        if user_prim1 != None or user_prim2 != None or user_sec1 != None or user_sec2 != None:
+        if user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None:
             error = True
 
         if (user[5] == request.form["primary_email"] and user[6] == request.form["secondary_email"]) or (user[5] == request.form["secondary_email"] and user[6] == request.form["primary_email"]):
             error = False
 
         if error:
-            if user_prim1 != None and user_prim1[7] == "FALSE":
+            if user_prim1 is not None and user_prim1[7] == "FALSE":
                 process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
                 process.start()
 
-            if user_prim2 != None and user_prim2.row[8] == "FALSE": 
+            if user_prim2 is not None and user_prim2.row[8] == "FALSE": 
                 process = Thread(target=delete_email, args=(row_prim2, 7, user_prim2[6]))
                 process.start()
 
-            if user_sec1 != None and user_sec1[7] == "FALSE":
+            if user_sec1 is not None and user_sec1[7] == "FALSE":
                 process = Thread(target=delete_email, args=(row_sec1, 6, user_sec1[5]))
                 process.start()
 
-            if user_sec2 != None and user_sec2[8] == "FALSE":
+            if user_sec2 is not None and user_sec2[8] == "FALSE":
                 process = Thread(target=delete_email, args=(row_sec2, 7, user_sec2[6]))
                 process.start()
             

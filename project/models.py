@@ -37,6 +37,6 @@ class user(db.Model):
 
     def verify_password(self, password):
         u = user.query.filter(user.password == password).first()
-        if u != None:
+        if u is not None:
             return True
         return False
