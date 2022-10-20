@@ -37,7 +37,7 @@ class RegistrationForm(FlaskForm):
                                 
     secondary_email = StringField('Secondary Email Address', 
                                 [InputRequired(' '), Email(),
-                                NotEqualTo('primary_email', message = 'Can not be the same email.')])
+                                NotEqualTo('primary_email', message = 'Can not be the same email')])
                                 
     confirm_secondary = StringField('Confirm Secondary Email',
                                 [InputRequired(' '),
