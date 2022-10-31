@@ -18,13 +18,15 @@ class MultiCheckboxAtLeastOne():
 
 
 def get_field(field): 
-    if field.field_type == "dropdown":
+    if field.field_type == "Dropdown":
         if field.required:
-            return SelectField(field.label, [InputRequired(" ")], choices=dropdown_get_choices(field.options))
-        else:
             return SelectField(field.label, choices=dropdown_get_choices(field.options))
+        else:
+            choices = dropdown_get_choices(field.options)
+            choices.insert(0, "")
+            return SelectField(field.label, choices=choices)
 
-    elif field.field_type == "checkbox":
+    elif field.field_type == "Checkbox":
         if field.required:
             return MultiCheckboxField(field.label, [MultiCheckboxAtLeastOne()],
                                       choices=checkbox_get_choices(field.options), coerce=int)

@@ -2,6 +2,8 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose, helpers
 from flask_admin.contrib.sqla import ModelView
+from wtforms import StringField, SelectField, FieldList, BooleanField
+from wtforms.validators import InputRequired
 from project import wks
 from project.models import user
 from project.util.email import send_email
@@ -48,6 +50,14 @@ class EditFormModelView(ModelView):
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
+
+    def scaffold_form(self):
+        form = super(EditFormModelView, self).scaffold_form()
+        form.label = StringField("Label", [InputRequired(' ')])
+        form.field_type = SelectField("Field Type", choices=["Text", "Dropdown", "Checkbox"])
+        form.options = StringField()
+        form.required = BooleanField("Required?")
+        return form
 
     def on_model_change(self, form, model, is_created):
         for row in model.query.all():

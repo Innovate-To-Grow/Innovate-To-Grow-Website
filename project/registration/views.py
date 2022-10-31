@@ -142,7 +142,7 @@ def confirm(token):
                 return render_template("error2.html")
 
     if user is None:
-        return render_template("resend.html", token=token, _external=True)
+        return redirect(url_for("registration.resend_page", token=token, _external=True))
 
     elif user[user_col + 1] == "TRUE" and user[9] == "TRUE":
         return render_template("already_confirmed.html")
@@ -167,6 +167,11 @@ def confirm(token):
             return render_template("thanks_confirming.html")
         
 
+@registration_blueprint.route("/res<token>p")
+def resend_page(token):
+    return render_template("resend.html", token=token, _external=True)
+
+
 @registration_blueprint.route("/res<token>")
 def resend(token):
     email = confirm_token_no_expiry(token)
@@ -190,7 +195,7 @@ def resend(token):
     subject = "i2G - Confirm Your Email Address"
     send_email(email, subject, html)
 
-    return render_template("resend.html", token=token, _external=True)
+    return redirect(url_for("registration.resend_page", token=token, _external=True))
 
 
 @registration_blueprint.route("/info/<token>", methods=["GET", "POST"])
