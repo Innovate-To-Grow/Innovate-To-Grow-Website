@@ -54,9 +54,10 @@ class EditFormModelView(ModelView):
     def scaffold_form(self):
         form = super(EditFormModelView, self).scaffold_form()
         form.label = StringField("Label", [InputRequired(' ')])
+        form.required = BooleanField("Required?")
         form.field_type = SelectField("Field Type", choices=["Text", "Dropdown", "Checkbox"])
         form.options = StringField()
-        form.required = BooleanField("Required?")
+        
         return form
 
     def on_model_change(self, form, model, is_created):
