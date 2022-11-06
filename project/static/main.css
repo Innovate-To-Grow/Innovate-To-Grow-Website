@@ -4,13 +4,13 @@ form label {
   display: block;
   padding: 5px 0;
 }
- 
+
 form input#first_name,
 form input#last_name,
 form input#primary_email,
 form input#confirm_primary,
 form input#secondary_email,
-form input#confirm_secondary {
+form input#confirm_secondary {   
   width: 400px;
   background-color: #fafafa;
   -webkit-border-radius: 2px;
@@ -20,6 +20,7 @@ form input#confirm_secondary {
   padding: 3px;
   font-size: 1.1em;
 }
+
  
 form input#submit {
   display: block;
