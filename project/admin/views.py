@@ -2,7 +2,7 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose, helpers
 from flask_admin.contrib.sqla import ModelView
-from wtforms import StringField, SelectField, FieldList, BooleanField
+from wtforms import StringField, SelectField, BooleanField, FieldList
 from wtforms.validators import InputRequired
 from project import wks
 from project.models import user
@@ -27,7 +27,7 @@ class IndexView(AdminIndexView):
                 flash("Invalid username or password")
         if current_user.is_authenticated:
             return redirect(url_for(".index"))
-        return self.render("admin/login.html", form=form)
+        return self.render("admin/login_form.html", form=form)
 
     @expose("/logout")
     @login_required
