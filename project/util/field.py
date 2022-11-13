@@ -41,12 +41,12 @@ def get_field(field):
 
 
 def dropdown_get_choices(options):
-    return options.split(" ; ")
+    return options.split("\n")
 
 
 def checkbox_get_choices(options):
     choices = []
-    temp = options.split(" ; ")
+    temp = options.split("\n")
     
     for n in range(len(temp)):
         choices.append((n, temp[n]))

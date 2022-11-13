@@ -37,7 +37,7 @@ def register():
             user_sec2 = wks.row_values(row_sec2)
         
         if user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None:
-            update_subject = "i2G - Link to Update Your Information"
+            update_subject = "I2G - Link to Update Your Information"
             
             if user_prim1 is not None and user_prim1[7] == "FALSE":
                 process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
@@ -112,7 +112,7 @@ def register():
             s_confirm_url = url_for("registration.confirm", token=s_token, _external=True)
             s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
 
-            verif_subject = "i2G - Confirm Your Email Address"
+            verif_subject = "I2G - Confirm Your Email Address"
             
             send_email(user[5], verif_subject, p_html)
             send_email(user[6], verif_subject, s_html)
@@ -192,7 +192,7 @@ def resend(token):
     new_token = generate_token(email)
     url = url_for("registration.confirm", token=new_token, _external=True)
     html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=url)
-    subject = "i2G - Confirm Your Email Address"
+    subject = "I2G - Confirm Your Email Address"
     send_email(email, subject, html)
 
     return redirect(url_for("registration.resend_page", token=token, _external=True))
@@ -235,12 +235,12 @@ def info(token):
 
         for row in edit_form.query.all():
             col_find = wks.find(row.label, in_row=1).col
-            if row.field_type == "checkbox":
+            if row.field_type == "Checkbox":
                 vals = []
                 choices = checkbox_get_choices(row.options)
                 for key in request.form.getlist(row.label):
                     vals.append(choices[int(key)][1])
-                cells.append(Cell(row_find, col_find, " ; ".join(vals)))
+                cells.append(Cell(row_find, col_find, "\n".join(vals)))
             else:
                 cells.append(Cell(row_find, col_find, request.form[row.label]))
 

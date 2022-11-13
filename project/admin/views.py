@@ -45,6 +45,9 @@ class UserModelView(ModelView):
 
     
 class EditFormModelView(ModelView):
+    edit_template = 'admin/edit.html'
+    create_template = 'admin/create.html'
+
     def is_accessible(self):
         return current_user.is_authenticated
 
@@ -56,15 +59,26 @@ class EditFormModelView(ModelView):
         form.label = StringField("Label", [InputRequired(' ')])
         form.required = BooleanField("Required?")
         form.field_type = SelectField("Field Type", choices=["Text", "Dropdown", "Checkbox"])
-        form.options = StringField()
+        form.options = FieldList(StringField())
         
         return form
 
     def on_model_change(self, form, model, is_created):
+        options = ""
+        for option in form.options.data:
+            options += option + "\n" if option != form.options.data[-1] else option
+        model.options = options
+
         for row in model.query.all():
             label = wks.find(row.label, in_row=1)
             if label is None:
                 wks.update_cell(1, len(wks.row_values(1)) + 1, row.label)
+        
+    def on_form_prefill(self, form, id):
+        model = self.get_one(id)
+        options = model.options.split("\n")
+        data = {"label": model.label, "required": model.required, "field_type": model.field_type, "options": options}
+        form.process(data=data)
 
 
 class ContactView(BaseView):

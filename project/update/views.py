@@ -32,12 +32,12 @@ def enter_email():
             p_token = generate_token(user[5])
             confirm_url = url_for("registration.confirm", token=p_token, _external=True)
             p_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
-            p_subject = "i2G - Confirm Your Email Address"
+            p_subject = "I2G - Confirm Your Email Address"
 
             s_token = generate_token(user[6])
             update_url = url_for("update.update_info", token=s_token, _external=True)
             s_html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
-            s_subject = "i2G - Link to Update Your Information"
+            s_subject = "I2G - Link to Update Your Information"
 
             if user[5] != "":
                 send_email(user[5], p_subject, p_html)
@@ -50,12 +50,12 @@ def enter_email():
             p_token = generate_token(user[5])
             update_url = url_for("update.update_info", token=p_token, _external=True)
             p_html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
-            p_subject = "i2G - Link to Update Your Information"
+            p_subject = "I2G - Link to Update Your Information"
 
             s_token = generate_token(user[6])
             confirm_url = url_for("registration.confirm", token=s_token, _external=True)
             s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=confirm_url)
-            s_subject = "i2G - Confirm Your Email Address"
+            s_subject = "I2G - Confirm Your Email Address"
 
             if user[5] != "":
                 send_email(user[5], p_subject, p_html)
@@ -73,7 +73,7 @@ def enter_email():
             s_confirm_url = url_for("registration.confirm", token=s_token, _external=True)
             s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
 
-            subject = "i2G - Confirm Your Email Address"
+            subject = "I2G - Confirm Your Email Address"
             
             if user[5] != "":
                 send_email(user[5], subject, p_html)
@@ -83,7 +83,7 @@ def enter_email():
 
         else:
             token = generate_token(form.email.data)
-            subject = "i2G - Link to Update Your Information"
+            subject = "I2G - Link to Update Your Information"
             update_url = url_for("update.update_info", token=token, _external=True)
             html = render_template("update_email.html", first=user[1], last=user[2], update_url=update_url)
 
@@ -132,11 +132,11 @@ def update_info(token):
         if col_find > len(user):
             person.update([(row.label, "")])
         else:
-            if row.field_type == "checkbox":
+            if row.field_type == "Checkbox":
                 keys = []
                 if user[col_find - 1] != "":
                     choices = checkbox_get_choices(row.options)
-                    for val in user[col_find - 1].split(" ; "):
+                    for val in user[col_find - 1].split("\n"):
                         key = [key for key, v in choices if v == val][0]
                         keys.append(key)
                 person.update([(row.label, keys)])
@@ -161,7 +161,7 @@ def update_info(token):
         sent_to_prim = False
         sent_to_sec = False
         
-        subject = "i2G - Confirm Your Email Address"
+        subject = "I2G - Confirm Your Email Address"
 
         user_prim1 = wks.find(request.form["primary_email"], in_column=6)
         if user_prim1 is not None:
@@ -272,12 +272,12 @@ def update_info(token):
 
         for row in edit_form.query.all():
             col_find = wks.find(row.label, in_row=1).col
-            if row.field_type == "checkbox":
+            if row.field_type == "Checkbox":
                 vals = []
                 choices = checkbox_get_choices(row.options)
                 for key in request.form.getlist(row.label):
                     vals.append(choices[int(key)][1])
-                cells.append(Cell(row_find, col_find, " ; ".join(vals)))
+                cells.append(Cell(row_find, col_find, "\n".join(vals)))
             else:
                 cells.append(Cell(row_find, col_find, request.form[row.label]))
         
