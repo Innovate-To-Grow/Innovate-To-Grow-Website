@@ -45,8 +45,8 @@ class UserModelView(ModelView):
 
     
 class EditFormModelView(ModelView):
-    edit_template = 'admin/edit.html'
-    create_template = 'admin/create.html'
+    edit_template = "admin/edit.html"
+    create_template = "admin/create.html"
 
     def is_accessible(self):
         return current_user.is_authenticated
@@ -56,11 +56,10 @@ class EditFormModelView(ModelView):
 
     def scaffold_form(self):
         form = super(EditFormModelView, self).scaffold_form()
-        form.label = StringField("Label", [InputRequired(' ')])
+        form.label = StringField("Label", [InputRequired(" ")])
         form.required = BooleanField("Required?")
         form.field_type = SelectField("Field Type", choices=["Text", "Dropdown", "Checkbox"])
         form.options = FieldList(StringField())
-        
         return form
 
     def on_model_change(self, form, model, is_created):

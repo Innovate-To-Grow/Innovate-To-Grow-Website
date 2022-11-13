@@ -18,7 +18,7 @@ class Config():
     MAIL_PORT = 465
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True
-    MAIL_USERNAME = "UCMteam319@gmail.com"
-    MAIL_PASSWORD = "jfnlyaknrvxkjrih"
+    MAIL_USERNAME = "i2g@g.ucmerced.edu"
+    MAIL_PASSWORD = "iekmvhditchuxnik"
 
-    MAIL_DEFAULT_SENDER = "UCMteam319@gmail.com"
+    MAIL_DEFAULT_SENDER = "i2g@g.ucmerced.edu"
