@@ -14,7 +14,7 @@
                     var id = parseInt($(".options-input div:last").attr("id")) + 1;
                 }
 
-                var newInput = $('<div><input type="text" name=options-' + id + '> <input type="button" value="Remove" class="remove">' + '<br></br></div>')
+                var newInput = $('<div class="wrapper"><input type="text" class="col-xs-9" name=options-' + id + '> <input type="button" value="Remove" class="remove">' + '<br></br></div>')
                 newInput.attr("id", id);
 
                 $(".options-input").append(newInput);
@@ -35,6 +35,28 @@
         });
     </script>
 </head>
+
+<style>
+    .options-label {
+        margin-top: 10px;
+        margin-left: 70px;
+        font-weight: bold;
+    }
+
+    .wrapper {
+        margin-left: 165px;
+        margin-top: -20px;
+        margin-bottom: 5px;
+    }
+
+    .add {
+        margin-top: 10px;
+    }
+
+    .remove {
+        margin-left: 5px;
+    }
+</style>
 
 {% extends 'admin/model/edit.html' %}
 
@@ -58,11 +80,11 @@
 <div class="row">
     <div class="form-control-options" style="display: none">
         <div class="col-xs-10">
-            Options
+            <div class="options-label"> Options </div>
             <div class="options-input">
                 {% for option in form.options %}
-                <div id="{{ loop.index }}">
-                    {{ option }}
+                <div id="{{ loop.index }}" class="wrapper">
+                    {{ option(class="col-xs-9") }}
                     <input type="button" value="Remove" class="remove">
                     <br></br>
                 </div>
@@ -70,7 +92,7 @@
             </div>
         </div>
         <div class="col-xs-2">
-            <button type="button" id="addNewField">Add Option</button>
+            <button type="button" id="addNewField" class="add">Add Option</button>
         </div>
     </div>
 </div>
