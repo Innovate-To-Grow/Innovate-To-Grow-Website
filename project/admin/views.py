@@ -8,7 +8,7 @@ from project import db, wks
 from project.models import edit_form, user
 from project.util.email import send_email
 from project.util.field import get_field
-from project.util.token import generate_token, confirm_token_no_expiry
+from project.util.token import generate_token, confirm_token_24_hours
 from project.admin.forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin 
 from project.registration.forms import InformationForm
 from project.update.forms import UpdateForm
@@ -47,10 +47,13 @@ class IndexView(AdminIndexView):
     @expose("/register_admin/<token>", methods=["GET", "POST"])
     def register_admin(self, token):
         form = RegisterAdmin()
+        email = confirm_token_24_hours(token)
+        if not email:
+            flash("Invalid token or link has expired")
+            return redirect(url_for(".login"))
 
         if request.method == "POST":
             if form.validate_on_submit():
-                email = confirm_token_no_expiry(token)
                 u = user.query.filter(user.email == email).first()
 
                 if u is not None:
@@ -88,7 +91,7 @@ class UserModelView(ModelView):
     @expose ("/new_admin", methods=["GET", "POST"])
     def new_admin(self):
         if not current_user.has_role("superadmin"):
-            flash("You do not have permission to create a new admins")
+            flash("You do not have permission to create new admins")
             return redirect(url_for("user.index_view"))
 
         form = NewAdmin()
