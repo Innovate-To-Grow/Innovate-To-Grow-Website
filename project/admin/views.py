@@ -5,9 +5,12 @@ from flask_admin.contrib.sqla import ModelView
 from wtforms import StringField, SelectField, BooleanField, FieldList
 from wtforms.validators import InputRequired
 from project import wks
-from project.models import user
+from project.models import edit_form, user
 from project.util.email import send_email
+from project.util.field import get_field
 from project.admin.forms import EmailForm, LoginForm
+from project.registration.forms import InformationForm
+from project.update.forms import UpdateForm
 
 class IndexView(AdminIndexView):
     @expose("/")
@@ -47,12 +50,29 @@ class UserModelView(ModelView):
 class EditFormModelView(ModelView):
     edit_template = "admin/edit.html"
     create_template = "admin/create.html"
+    list_template = "admin/list.html"
 
     def is_accessible(self):
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
+
+    @expose("/", methods=["GET", "POST"])
+    def preview(self):
+        if request.method == "POST":
+            if request.form.get("Preview Info Form"):
+                for row in edit_form.query.all():
+                    setattr(InformationForm, row.label, get_field(row))
+                form = InformationForm()
+
+            if request.form.get("Preview Update Form"):
+                for row in edit_form.query.all():
+                    setattr(UpdateForm, row.label, get_field(row))
+                form = UpdateForm()
+
+            return render_template("admin/preview_form.html", form=form)
+
 
     def scaffold_form(self):
         form = super(EditFormModelView, self).scaffold_form()
