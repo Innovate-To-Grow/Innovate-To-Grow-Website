@@ -21,6 +21,8 @@ class LoginForm(FlaskForm):
 
 class NewAdmin(FlaskForm):
     email = StringField("Email Address", [InputRequired(" "), Email()])
+
+    role = RadioField("Role", choices=[("admin", "admin"),("superadmin", "superadmin")], default="admin")
     
     submit = SubmitField("Send")
 

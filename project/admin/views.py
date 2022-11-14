@@ -44,13 +44,14 @@ class IndexView(AdminIndexView):
         logout_user()
         return redirect(url_for(".login"))
 
-    @expose("/register_admin/<token>", methods=["GET", "POST"])
-    def register_admin(self, token):
+    @expose("/register_admin/<token><role>", methods=["GET", "POST"])
+    def register_admin(self, role, token):
         form = RegisterAdmin()
+        role_str = "superadmin" if role == "1" else "admin"
         email = confirm_token_24_hours(token)
         if not email:
             flash("Invalid token or link has expired")
-            return redirect(url_for(".login"))
+            return redirect(url_for("admin.index"))
 
         if request.method == "POST":
             if form.validate_on_submit():
@@ -58,17 +59,18 @@ class IndexView(AdminIndexView):
 
                 if u is not None:
                     flash("Administrator already registered")
+                    return redirect(url_for("admin.index"))
                 else:
-                    u = user(email, generate_password_hash(request.form["password"]), "admin")
+                    u = user(email, generate_password_hash(request.form["password"]), role_str)
                     db.session.add(u)
                     db.session.commit()
                     login_user(u)
                     flash("Administrator account created")
-                    return super(IndexView, self).index()
+                    return redirect(url_for("admin.index"))
             else:
                 flash("Passwords do not match")
 
-        return self.render("admin/register_admin_form.html", form=form, token=token)
+        return self.render("admin/register_admin_form.html", form=form, role=role, token=token)
 
 
 class UserModelView(ModelView):
@@ -101,11 +103,14 @@ class UserModelView(ModelView):
             if u is not None:
                 flash("Administrator already registered")
             else:
+                role = "1" if request.form["role"] == "superadmin" else "0"
                 token = generate_token(request.form["email"])
                 subject = "I2G - New Admin Registration"
+
                 admin_url = url_for("admin.index", _external=True)
-                register_url = url_for("admin.register_admin", token=token, _external=True)
+                register_url = url_for("admin.register_admin", role=role, token=token, _external=True)
                 html = render_template("admin/new_admin_email.html", admin_url=admin_url, register_url=register_url)
+                
                 send_email(request.form["email"], subject, html)
                 flash("Instructions to register as a new admin have been sent to {}".format(request.form["email"]))
 

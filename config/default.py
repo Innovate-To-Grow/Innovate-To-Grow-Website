@@ -1,7 +1,7 @@
 import os
 import re
 
-#Get directory
+# Get directory
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_ROOT = re.sub('config', '', APP_ROOT) + "/project"
 
