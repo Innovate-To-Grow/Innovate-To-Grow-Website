@@ -1,16 +1,18 @@
 from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
-from flask_admin import BaseView, AdminIndexView, expose, helpers
+from flask_admin import BaseView, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from wtforms import StringField, SelectField, BooleanField, FieldList
 from wtforms.validators import InputRequired
-from project import wks
+from project import db, wks
 from project.models import edit_form, user
 from project.util.email import send_email
 from project.util.field import get_field
-from project.admin.forms import EmailForm, LoginForm
+from project.util.token import generate_token, confirm_token_no_expiry
+from project.admin.forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin 
 from project.registration.forms import InformationForm
 from project.update.forms import UpdateForm
+from werkzeug.security import generate_password_hash
 
 class IndexView(AdminIndexView):
     @expose("/")
@@ -21,13 +23,17 @@ class IndexView(AdminIndexView):
 
     @expose("/login", methods=["GET", "POST"])
     def login(self):
-        form = LoginForm(request.form)
-        if helpers.validate_form_on_submit(form):
-            u = user.query.filter(user.username == form.username.data).first()
-            if u is not None and u.verify_password(form.password.data):
-                login_user(u)
+        form = LoginForm()
+        if request.method == "POST":
+            if form.validate_on_submit():
+                u = user.query.filter(user.email == form.email.data).first()
+                if u is not None and u.verify_password(u.password, form.password.data):
+                    login_user(u)
+                else:
+                    flash("Invalid email or password")
             else:
-                flash("Invalid username or password")
+                flash("Invalid email")
+                
         if current_user.is_authenticated:
             return redirect(url_for(".index"))
         return self.render("admin/login_form.html", form=form)
@@ -38,19 +44,75 @@ class IndexView(AdminIndexView):
         logout_user()
         return redirect(url_for(".login"))
 
+    @expose("/register_admin/<token>", methods=["GET", "POST"])
+    def register_admin(self, token):
+        form = RegisterAdmin()
+
+        if request.method == "POST":
+            if form.validate_on_submit():
+                email = confirm_token_no_expiry(token)
+                u = user.query.filter(user.email == email).first()
+
+                if u is not None:
+                    flash("Administrator already registered")
+                else:
+                    u = user(email, generate_password_hash(request.form["password"]), "admin")
+                    db.session.add(u)
+                    db.session.commit()
+                    login_user(u)
+                    flash("Administrator account created")
+                    return super(IndexView, self).index()
+            else:
+                flash("Passwords do not match")
+
+        return self.render("admin/register_admin_form.html", form=form, token=token)
+
 
 class UserModelView(ModelView):
+    column_exclude_list = ["password"]
+    list_template = "admin/user_list.html"
+    can_create = False
+    can_edit = False
+
     def is_accessible(self):
+        if current_user.is_authenticated and current_user.has_role("admin"):
+            self.can_delete = False
+        if current_user.is_authenticated and current_user.has_role("superadmin"):
+            self.can_delete = True
+
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
 
-    
+    @expose ("/new_admin", methods=["GET", "POST"])
+    def new_admin(self):
+        if not current_user.has_role("superadmin"):
+            flash("You do not have permission to create a new admins")
+            return redirect(url_for("user.index_view"))
+
+        form = NewAdmin()
+
+        if form.validate_on_submit():
+            u = user.query.filter(user.email == form.email.data).first()
+            if u is not None:
+                flash("Administrator already registered")
+            else:
+                token = generate_token(request.form["email"])
+                subject = "I2G - New Admin Registration"
+                admin_url = url_for("admin.index", _external=True)
+                register_url = url_for("admin.register_admin", token=token, _external=True)
+                html = render_template("admin/new_admin_email.html", admin_url=admin_url, register_url=register_url)
+                send_email(request.form["email"], subject, html)
+                flash("Instructions to register as a new admin have been sent to {}".format(request.form["email"]))
+
+        return self.render("admin/new_admin_form.html", form=form)
+
+
 class EditFormModelView(ModelView):
     edit_template = "admin/edit.html"
     create_template = "admin/create.html"
-    list_template = "admin/list.html"
+    list_template = "admin/edit_form_list.html"
 
     def is_accessible(self):
         return current_user.is_authenticated

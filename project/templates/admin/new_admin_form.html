@@ -1,17 +1,14 @@
 {% extends 'admin/master.html' %}
 {% block body %}
 
-<form action="{{ url_for('.login') }}" method=post>
+<h3>Enter the email of new administator</h3>
+
+<form action="{{ url_for('user.new_admin') }}" method=post>
    {{ form.hidden_tag() }}
 
     {{ form.email.label }}
     <div>
       {{ form.email(class="form-group", autocomplete="off", size=50) }}
-    </div>
-
-    {{ form.password.label }}
-    <div>
-      {{ form.password(class="form-group", autocomplete="off", size=50) }}
     </div>
 
     <p></p>

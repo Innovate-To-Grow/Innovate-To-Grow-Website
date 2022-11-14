@@ -1,19 +1,34 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField, RadioField
-from wtforms.validators import InputRequired
+from wtforms.validators import InputRequired, Email, EqualTo
 
 class EmailForm(FlaskForm):
-    subject = StringField('Subject')
+    subject = StringField("Subject")
 
-    body = TextAreaField('Body')
+    body = TextAreaField("Body")
 
-    selection = RadioField('Send to:', choices=[('Subscribed', 'Subscribed Users'),('Verified', 'Verified Users')], default='Subscribed')
+    selection = RadioField("Send to:", choices=[("Subscribed", "Subscribed Users"),("Verified", "Verified Users")], default="Subscribed")
 
-    submit = SubmitField('Send')
+    submit = SubmitField("Send")
 
 class LoginForm(FlaskForm):
-    username = StringField("Username", [InputRequired(' ')])
+    email = StringField("Email", [InputRequired(" "), Email()])
 
-    password = PasswordField("Password", [InputRequired(' ')])
+    password = PasswordField("Password", [InputRequired(" ")])
 
     submit = SubmitField("Log In")
+
+
+class NewAdmin(FlaskForm):
+    email = StringField("Email Address", [InputRequired(" "), Email()])
+    
+    submit = SubmitField("Send")
+
+
+class RegisterAdmin(FlaskForm):
+    password = PasswordField("Password", [InputRequired(" ")])
+
+    confirm_password = PasswordField("Confirm Password", [InputRequired(" "), 
+                                                        EqualTo("password", message="Passwords must match")])
+
+    submit = SubmitField("Submit")

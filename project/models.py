@@ -1,4 +1,5 @@
 from project import db
+from werkzeug.security import check_password_hash
 
 class edit_form(db.Model):
     id = db.Column("id", db.Integer, primary_key=True)
@@ -16,12 +17,14 @@ class edit_form(db.Model):
 
 class user(db.Model):
     id = db.Column("id", db.Integer, primary_key=True)
-    username = db.Column("username", db.String())
+    email = db.Column("email", db.String(), unique=True)
     password = db.Column("password", db.String())
+    role = db.Column("role", db.String())
 
-    def __init__(self, username, password):
-        self.username = username
+    def __init__(self, email, password, role):
+        self.email = email
         self.password = password
+        self.role = role
 
     def is_authenticated(self):
         return True
@@ -35,8 +38,9 @@ class user(db.Model):
     def get_id(self):
         return self.id
 
-    def verify_password(self, password):
-        u = user.query.filter(user.password == password).first()
-        if u is not None:
-            return True
-        return False
+    def verify_password(self, db_password, input_password):
+        return check_password_hash(db_password, input_password)
+
+    def has_role(self, role):
+        return self.role == role
+        

@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_admin import Admin
 from config.default import Config, APP_ROOT
+from werkzeug.security import generate_password_hash
 
 # Google Sheet
 import gspread
@@ -41,7 +42,7 @@ app.register_blueprint(update_blueprint)
 from project.models import edit_form, user
 from project.admin.views import IndexView, UserModelView, EditFormModelView, ContactView
 admin_app = Admin(app, name='Admin Page', index_view=IndexView(), template_mode='bootstrap3')
-# admin_app.add_view(UserModelView(user, db.session, name = "Login Info"))
+admin_app.add_view(UserModelView(user, db.session, name = "Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name = "Edit Form"))
 admin_app.add_view(ContactView(name = 'Contact', endpoint = 'contact'))
 
@@ -62,7 +63,7 @@ if not path.exists(APP_ROOT + '/db/memberData.sqlite3'):
         form_edit = edit_form(field_type='text', label=x, options='', required=False)
         db.session.add(form_edit)
 
-    u = user("stefano", "stefanooo")
+    u = user("i2g@g.ucmerced.edu", generate_password_hash("!nn0Vat&"), "superadmin")
     db.session.add(u)
 
     db.session.commit()
