@@ -9,9 +9,9 @@ from project.models import edit_form, user
 from project.util.email import send_email
 from project.util.field import get_field
 from project.util.token import generate_token, confirm_token_24_hours
-from project.admin.forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin 
-from project.registration.forms import InformationForm
-from project.update.forms import UpdateForm
+from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin 
+from project.forms.registration_forms import InformationForm
+from project.forms.update_forms import UpdateForm
 from werkzeug.security import generate_password_hash
 
 class IndexView(AdminIndexView):
@@ -158,6 +158,7 @@ class EditFormModelView(ModelView):
             options += option + "\n" if option != form.options.data[-1] else option
         model.options = options
 
+    def after_model_change(self, form, model, is_created):
         for row in model.query.all():
             label = wks.find(row.label, in_row=1)
             if label is None:

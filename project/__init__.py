@@ -12,12 +12,6 @@ from werkzeug.security import generate_password_hash
 import gspread
 wks = gspread.service_account().open("I2G-Master-People").worksheet("double-email-test")
 
-form_row = wks.row_values(1)
-form_size = len(form_row)
-data = []
-for x in range(12, form_size):
-    data.append(form_row[x])
-
 #Flask
 app = Flask(__name__)
 
@@ -27,20 +21,20 @@ app.config.from_object(Config())
 mail = Mail(app)
 
 #SQLAlchemy
-db = SQLAlchemy(app)
+db = SQLAlchemy(app, session_options={"autoflush": False})
 db.init_app(app)
 
 #Flask Blueprints
-from project.home.views import home_blueprint
-from project.registration.views import registration_blueprint
-from project.update.views import update_blueprint
+from project.views.home import home_blueprint
+from project.views.registration import registration_blueprint
+from project.views.update import update_blueprint
 app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 
 #Flask Admin
 from project.models import edit_form, user
-from project.admin.views import IndexView, UserModelView, EditFormModelView, ContactView
+from project.views.admin import IndexView, UserModelView, EditFormModelView, ContactView
 admin_app = Admin(app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3")
 admin_app.add_view(UserModelView(user, db.session, name = "Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name = "Edit Form"))
@@ -59,12 +53,7 @@ if not path.exists(APP_ROOT + "/db"): os.makedirs(APP_ROOT + "/db")
 if not path.exists(APP_ROOT + "/db/memberData.sqlite3"): 
     db.create_all(app=app)
 
-    for x in data:
-        form_edit = edit_form(field_type="Text", label=x, options="", required=False)
-        db.session.add(form_edit)
-
     u = user("admin@admin.com", generate_password_hash("admin"), "superadmin")
     db.session.add(u)
 
     db.session.commit()
-    

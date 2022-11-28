@@ -7,9 +7,9 @@ from project.models import edit_form
 from project.util.email import send_email, delete_email
 from project.util.field import get_field, checkbox_get_choices
 from project.util.token import generate_token, confirm_token, confirm_token_no_expiry
-from project.registration.forms import RegistrationForm, InformationForm
+from project.forms.registration_forms import RegistrationForm, InformationForm
 
-registration_blueprint = Blueprint("registration", __name__, template_folder="templates", static_folder="static")
+registration_blueprint = Blueprint("registration", __name__, template_folder="../templates/registration")
 
 @registration_blueprint.route("/register", methods=["GET", "POST"])
 def register():

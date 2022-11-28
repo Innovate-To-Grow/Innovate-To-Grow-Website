@@ -7,9 +7,9 @@ from project.models import edit_form
 from project.util.email import send_email, delete_email
 from project.util.field import get_field, checkbox_get_choices
 from project.util.token import confirm_token_no_expiry, generate_token
-from project.update.forms import EmailForm, UpdateForm
+from project.forms.update_forms import EmailForm, UpdateForm
 
-update_blueprint = Blueprint("update", __name__, template_folder="templates", static_folder="static")
+update_blueprint = Blueprint("update", __name__, template_folder="../templates/update")
 
 # check the database to see if the input email has a user with a registered prim. or secon. email
 @update_blueprint.route("/update", methods=["GET", "POST"])
