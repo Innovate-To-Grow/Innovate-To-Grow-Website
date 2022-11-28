@@ -50,7 +50,7 @@ def load_user(user_id):
     return user.query.get(user_id)
 
 if not path.exists(APP_ROOT + "/db"): os.makedirs(APP_ROOT + "/db")
-if not path.exists(APP_ROOT + "/db/memberData.sqlite3"): 
+if not path.exists(APP_ROOT + "/db/data.sqlite3"): 
     db.create_all(app=app)
 
     u = user("admin@admin.com", generate_password_hash("admin"), "superadmin")

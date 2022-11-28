@@ -6,12 +6,11 @@ APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_ROOT = re.sub('config', '', APP_ROOT) + "/project"
 
 class Config(): 
-    SECRET_KEY = "i_like_men"
-    SECURITY_PASSWORD_SALT = "random_idk"
+    SECRET_KEY = "98226"
+    SECURITY_PASSWORD_SALT = "38159"
     DEBUG = False
 
-    SECRET_KEY = "TOKEN_STRING"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///" + APP_ROOT + "/db/memberData.sqlite3"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///" + APP_ROOT + "/db/data.sqlite3"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     MAIL_SERVER = "smtp.gmail.com"
