@@ -7,6 +7,7 @@ from project.models import edit_form
 from project.utils.email import send_email, delete_email
 from project.utils.field import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token, confirm_token_no_expiry
+from project.utils.wks_helper import arr_column, wks_column
 from project.forms.registration_forms import RegistrationForm, InformationForm
 
 registration_blueprint = Blueprint("registration", __name__, template_folder="../templates/registration")

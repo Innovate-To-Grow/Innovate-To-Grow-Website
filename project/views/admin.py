@@ -10,6 +10,7 @@ from project.models import edit_form, user
 from project.utils.email import send_email
 from project.utils.field import get_field
 from project.utils.token import generate_token, confirm_token_24_hours
+from project.utils.wks_helper import arr_column, wks_column
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin 
 from project.forms.registration_forms import InformationForm
 from project.forms.update_forms import UpdateForm
@@ -165,7 +166,8 @@ class EditFormModelView(ModelView):
             label = wks.find(row.label, in_row=1)
             if label is None:
                 cells.append(Cell(1, len(wks.row_values(1)) + 1, row.label))
-        wks.update_cells(cells)
+        if len(cells) > 0:
+            wks.update_cells(cells)
         
     def on_form_prefill(self, form, id):
         model = self.get_one(id)
