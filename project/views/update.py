@@ -4,9 +4,9 @@ from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request
 from project import wks
 from project.models import edit_form
-from project.util.email import send_email, delete_email
-from project.util.field import get_field, checkbox_get_choices
-from project.util.token import confirm_token_no_expiry, generate_token
+from project.utils.email import send_email, delete_email
+from project.utils.field import get_field, checkbox_get_choices
+from project.utils.token import confirm_token_no_expiry, generate_token
 from project.forms.update_forms import EmailForm, UpdateForm
 
 update_blueprint = Blueprint("update", __name__, template_folder="../templates/update")
