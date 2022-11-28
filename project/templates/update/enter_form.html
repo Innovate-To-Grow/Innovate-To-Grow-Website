@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% from "renderhelper.html" import render_field %}
+{% import "forms.html" as forms %}
  
 {% block content %}
   <h2>Fill out your information below</h2>
@@ -7,7 +7,8 @@
   <form action="{{ url_for('update.enter_email') }}" method=post>
     {{ form.hidden_tag() }}
 
-      {{ render_field(form.email) }}
+    {{ forms.render(form) }}
+    
     <br>
     {{ form.submit }}
     <br>
