@@ -119,8 +119,8 @@ class UserModelView(ModelView):
 
 
 class EditFormModelView(ModelView):
-    edit_template = "admin/edit.html"
-    create_template = "admin/create.html"
+    edit_template = "admin/edit_form_edit.html"
+    create_template = "admin/edit_form_create.html"
     list_template = "admin/edit_form_list.html"
 
     def is_accessible(self):
