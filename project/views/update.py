@@ -13,7 +13,7 @@ from project.forms.update_forms import EmailForm, UpdateForm
 update_blueprint = Blueprint("update", __name__, template_folder="../templates/update")
 
 # check the database to see if the input email has a user with a registered prim. or secon. email
-@update_blueprint.route("/update", methods=["GET", "POST"])
+@update_blueprint.route("/membership/update", methods=["GET", "POST"])
 def enter_email():
     form = EmailForm()
 

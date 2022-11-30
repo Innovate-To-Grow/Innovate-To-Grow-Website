@@ -10,4 +10,8 @@ def page_not_found(e):
 
 @home_blueprint.route("/", methods=["GET", "POST"])
 def mainpage(): 
-    return render_template("homepage.html")
+    return render_template("test.html")
+
+@home_blueprint.route("/test", methods=["GET", "POST"])
+def mainpage2(): 
+    return render_template("test2.html")

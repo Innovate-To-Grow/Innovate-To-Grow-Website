@@ -12,7 +12,7 @@ from project.forms.registration_forms import RegistrationForm, InformationForm
 
 registration_blueprint = Blueprint("registration", __name__, template_folder="../templates/registration")
 
-@registration_blueprint.route("/register", methods=["GET", "POST"])
+@registration_blueprint.route("/membership/register", methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
 

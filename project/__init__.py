@@ -28,9 +28,11 @@ db.init_app(app)
 from project.views.home import home_blueprint
 from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
+from project.views.membership import membership_blueprint
 app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
+app.register_blueprint(membership_blueprint)
 
 #Flask Admin
 from project.models import edit_form, user
