@@ -3,13 +3,13 @@
 
 {% block content %}
 <h2>Fill out your information below</h2>
-  <form>
-    {{ form.hidden_tag() }}
+<form>
+  {{ form.hidden_tag() }}
 
-    {{ forms.render(form) }}
+  {{ forms.render(form) }}
 
-    <br>
-    {{ form.submit }}
-    <br></br>
+  <br>
+  {{ form.submit }}
+  <br></br>
 </form>
 {% endblock %}

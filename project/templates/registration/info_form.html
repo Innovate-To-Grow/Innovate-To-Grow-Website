@@ -3,13 +3,13 @@
 
 {% block content %}
 <h2>Fill out your information below</h2>
-  <form action="{{ url_for('registration.info', token=token) }}" method=post>
-    {{ form.hidden_tag() }}
+<form action="{{ url_for('registration.info', token=token) }}" method=post>
+  {{ form.hidden_tag() }}
 
-    {{ forms.render(form) }}
+  {{ forms.render(form) }}
 
-    <br>
-    {{ form.submit }}
-    <br>
-  </form>
+  <br>
+  {{ form.submit }}
+  <br>
+</form>
 {% endblock %}

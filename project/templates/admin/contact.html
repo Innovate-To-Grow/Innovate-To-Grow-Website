@@ -1,6 +1,6 @@
 {% extends 'admin/master.html' %}
 {% block body %}
-<link rel="stylesheet" href="../../static/admin/selections.css"/>
+<link rel="stylesheet" href="../../static/admin/selections.css" />
 <form action="{{ url_for('contact.contact') }}" method=post>
     {{ form.hidden_tag() }}
 
@@ -14,12 +14,14 @@
         {{ form.body(class="form-group", rows='25', cols='100') }}
     </div>
     <div class="selections">
-        <strong><p>Send to:</p></strong>
+        <strong>
+            <p>Send to:</p>
+        </strong>
         {{ form.selection(class="form-group") }}
     </div>
-    
+
     <p></p>
     {{ form.submit(class="form-group", class="btn btn-info") }}
-  </form>
-  
+</form>
+
 {% endblock body%}

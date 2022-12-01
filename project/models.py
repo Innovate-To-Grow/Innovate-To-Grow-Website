@@ -1,13 +1,14 @@
 from project import db
 from werkzeug.security import check_password_hash
 
+
 class edit_form(db.Model):
     id = db.Column("id", db.Integer, primary_key=True)
     label = db.Column("label", db.String())
     required = db.Column("required", db.Boolean)
     field_type = db.Column("field_type", db.String())
     options = db.Column("options", db.String())
-    
+
     def __init__(self, label, required, options, field_type):
         self.label = label
         self.required = required
@@ -34,7 +35,7 @@ class user(db.Model):
 
     def is_anonymous(self):
         return False
-    
+
     def get_id(self):
         return self.id
 
@@ -43,4 +44,3 @@ class user(db.Model):
 
     def has_role(self, role):
         return self.role == role
-        

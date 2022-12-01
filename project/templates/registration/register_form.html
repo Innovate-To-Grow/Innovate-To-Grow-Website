@@ -1,15 +1,15 @@
 {% extends "layout.html" %}
 {% import "render_helper.html" as forms %}
- 
+
 {% block content %}
-  <h2>Fill out your information below</h2>
-  <form action="{{ url_for('registration.register') }}" method=post>
-      {{ form.hidden_tag() }}
-  
-      {{ forms.render(form) }}
-      
-    <br>
-    {{ form.submit }}
-    <br>
-  </form>
+<h2>Fill out your information below</h2>
+<form action="{{ url_for('registration.register') }}" method=post>
+  {{ form.hidden_tag() }}
+
+  {{ forms.render(form) }}
+
+  <br>
+  {{ form.submit }}
+  <br>
+</form>
 {% endblock %}

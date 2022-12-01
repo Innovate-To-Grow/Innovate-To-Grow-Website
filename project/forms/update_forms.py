@@ -2,7 +2,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, ValidationError
 from wtforms.validators import EqualTo, Email, InputRequired
 
+
 class NotEqualTo(object):
+
     def __init__(self, fieldname, message=None):
         self.fieldname = fieldname
         self.message = message
@@ -23,10 +25,12 @@ class NotEqualTo(object):
 
             raise ValidationError(message % d)
 
+
 class EmailForm(FlaskForm):
     email = StringField('Email Address', [InputRequired(' '), Email()])
-    
+
     submit = SubmitField('Send')
+
 
 class UpdateForm(FlaskForm):
     first_name = StringField('First Name', [InputRequired(' ')])
@@ -35,17 +39,21 @@ class UpdateForm(FlaskForm):
 
     primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
 
-    confirm_primary = StringField('Confirm Primary Email', [InputRequired(' '),
-                                EqualTo('primary_email', message = 'Must match primary email')])
+    confirm_primary = StringField(
+        'Confirm Primary Email',
+        [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
 
-    primary_subscribe = BooleanField('Enable Email Notifications with Primary')  
+    primary_subscribe = BooleanField('Enable Email Notifications with Primary')
 
-    secondary_email = StringField('Secondary Email Address', [InputRequired(' '), Email(),
-                                NotEqualTo('primary_email', message = 'Can not be the same email')])
+    secondary_email = StringField(
+        'Secondary Email Address',
+        [InputRequired(' '),
+         Email(), NotEqualTo('primary_email', message='Can not be the same email')])
 
-    confirm_secondary = StringField('Confirm Secondary Email', [InputRequired(' '),
-                                    EqualTo('secondary_email', message = 'Must match secondary email')])
+    confirm_secondary = StringField(
+        'Confirm Secondary Email',
+        [InputRequired(' '), EqualTo('secondary_email', message='Must match secondary email')])
 
     secondary_subscribe = BooleanField('Enable Email Notifications with Secondary')
-    
+
     submit = SubmitField('Submit')

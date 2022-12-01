@@ -12,25 +12,6 @@ def send_email(recipient, subject, template):
     mail.send(message)
 
 
-def delete_email(row, col, email):
-    with app.app_context():
-        time.sleep(30)
-        user = wks.find(email, in_column=col)
-        user = wks.row_values(user.row)
-        if user[col+1] == "TRUE":
-            return
-        else:
-            wks.update_cell(row, col, "")
-
-            subject = "I2G - Unverified Email Removed"
-            html = render_template("deleting_email.html", first=user[1], last=user[2], email=email)
-
-            if col == 6 and user[8] == "TRUE" and user[6] != "":
-                send_email(user[6], subject, html)
-            if col == 7 and user[7] == "TRUE" and user[5] != "":
-                send_email(user[5], subject, html)
-
-
 def detect_bounce(interval):
     while True:
         time.sleep(interval)

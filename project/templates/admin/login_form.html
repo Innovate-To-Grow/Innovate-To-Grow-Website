@@ -4,20 +4,20 @@
 <h3>Admin Login</h3>
 
 <form action="{{ url_for('.login') }}" method=post>
-   {{ form.hidden_tag() }}
+  {{ form.hidden_tag() }}
 
-    {{ form.email.label }}
-    <div>
-      {{ form.email(class="form-group", autocomplete="off", size=50) }}
-    </div>
+  {{ form.email.label }}
+  <div>
+    {{ form.email(class="form-group", autocomplete="off", size=50) }}
+  </div>
 
-    {{ form.password.label }}
-    <div>
-      {{ form.password(class="form-group", autocomplete="off", size=50) }}
-    </div>
+  {{ form.password.label }}
+  <div>
+    {{ form.password(class="form-group", autocomplete="off", size=50) }}
+  </div>
 
-    <p></p>
-    {{ form.submit(class="form-group", class="btn btn-info") }}
-  </form>
-  
+  <p></p>
+  {{ form.submit(class="form-group", class="btn btn-info") }}
+</form>
+
 {% endblock body%}

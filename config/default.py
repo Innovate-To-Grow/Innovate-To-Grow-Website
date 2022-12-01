@@ -5,7 +5,8 @@ import re
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_ROOT = re.sub('config', '', APP_ROOT) + "/project"
 
-class Config(): 
+
+class Config():
     SECRET_KEY = "98226"
     SECURITY_PASSWORD_SALT = "38159"
     DEBUG = False

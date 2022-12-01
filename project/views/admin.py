@@ -10,13 +10,15 @@ from project.models import edit_form, user
 from project.utils.email import send_email
 from project.utils.field import get_field
 from project.utils.token import generate_token, confirm_token_24_hours
-from project.utils.wks_helper import arr_column, wks_column
-from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin 
+from project.utils.index_helper import wks_indices, arr_indices
+from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
 from project.forms.registration_forms import InformationForm
 from project.forms.update_forms import UpdateForm
 from werkzeug.security import generate_password_hash
 
+
 class IndexView(AdminIndexView):
+
     @expose("/")
     def index(self):
         if not current_user.is_authenticated:
@@ -35,7 +37,7 @@ class IndexView(AdminIndexView):
                     flash("Invalid email or password")
             else:
                 flash("Invalid email")
-                
+
         if current_user.is_authenticated:
             return redirect(url_for(".index"))
         return self.render("admin/login_form.html", form=form)
@@ -92,7 +94,7 @@ class UserModelView(ModelView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
 
-    @expose ("/new_admin", methods=["GET", "POST"])
+    @expose("/new_admin", methods=["GET", "POST"])
     def new_admin(self):
         if not current_user.has_role("superadmin"):
             flash("You do not have permission to create new admins")
@@ -112,7 +114,7 @@ class UserModelView(ModelView):
                 admin_url = url_for("admin.index", _external=True)
                 register_url = url_for("admin.register_admin", role=role, token=token, _external=True)
                 html = render_template("admin/new_admin_email.html", admin_url=admin_url, register_url=register_url)
-                
+
                 send_email(request.form["email"], subject, html)
                 flash("Instructions to register as a new admin have been sent to {}".format(request.form["email"]))
 
@@ -145,7 +147,6 @@ class EditFormModelView(ModelView):
 
             return render_template("admin/preview_form.html", form=form)
 
-
     def scaffold_form(self):
         form = super(EditFormModelView, self).scaffold_form()
         form.label = StringField("Label", [InputRequired(" ")])
@@ -168,7 +169,7 @@ class EditFormModelView(ModelView):
                 cells.append(Cell(1, len(wks.row_values(1)) + 1, row.label))
         if len(cells) > 0:
             wks.update_cells(cells)
-        
+
     def on_form_prefill(self, form, id):
         model = self.get_one(id)
         options = model.options.split("\n")
@@ -177,34 +178,42 @@ class EditFormModelView(ModelView):
 
 
 class ContactView(BaseView):
+
     def is_accessible(self):
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
 
-    @expose("/",  methods=["GET", "POST"])
+    @expose("/", methods=["GET", "POST"])
     def contact(self):
         form = EmailForm(request.form)
-        if request.method == "POST" and form.validate(): 
+
+        arr_idx = arr_indices()
+
+        if request.method == "POST" and form.validate():
             selection = request.form.get("selection")
             email_list = []
 
             if selection == "Subscribed":
                 for i in range(2, wks.row_count + 1):
                     user = wks.row_values(i)
-                    if user[10] == "TRUE":
-                        email_list.append((user[1], user[2], user[5]))
-                    if user[11] == "TRUE":
-                        email_list.append((user[1], user[2], user[6]))
+                    if user[arr_idx["Primary Subscribed"]] == "TRUE":
+                        email_list.append(
+                            (user[arr_idx["First Name"]], user[arr_idx["Last Name"]], user[arr_idx["Primary Email"]]))
+                    if user[arr_idx["Secondary Subscribed"]] == "TRUE":
+                        email_list.append((user[arr_idx["First Name"]], user[arr_idx["First Name"]],
+                                           user[arr_idx["Secondary Email"]]))
             elif selection == "Verified":
                 for i in range(2, wks.row_count + 1):
                     user = wks.row_values(i)
-                    if user[7] == "TRUE":
-                        email_list.append((user[1], user[2], user[5]))
-                    if user[8] == "TRUE":
-                        email_list.append((user[1], user[2], user[6]))
-            
+                    if user[arr_idx["Primary Verified"]] == "TRUE":
+                        email_list.append(
+                            (user[arr_idx["First Name"]], user[arr_idx["Last Name"]], user[arr_idx["Primary Email"]]))
+                    if user[arr_idx["Secondary Verified"]] == "TRUE":
+                        email_list.append(
+                            (user[arr_idx["First Name"]], user[arr_idx["Last Name"]], user[arr_idx["Secondary Email"]]))
+
             if len(email_list) == 0:
                 flash("No valid emails in database")
 
@@ -215,9 +224,12 @@ class ContactView(BaseView):
                 body = body.replace("\n", "<br>")
 
                 for user in email_list:
-                    html = render_template("admin/basic_email.html", first=user[0], last=user[1], body=body)
+                    html = render_template("admin/basic_email.html",
+                                           first=user[arr_idx["First Name"]],
+                                           last=user[arr_idx["Last Name"]],
+                                           body=body)
                     send_email(user[2], subject, html)
-                    
+
                 flash("Emails sent successfully to " + str(selection) + " users.")
-            
+
         return self.render("admin/contact.html", form=form)

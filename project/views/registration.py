@@ -4,119 +4,203 @@ from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request, redirect
 from project import wks
 from project.models import edit_form
-from project.utils.email import send_email, delete_email
+from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token, confirm_token_no_expiry
-from project.utils.wks_helper import arr_column, wks_column
+from project.utils.index_helper import wks_indices, arr_indices
+from project.utils.threads import expiry_timer
 from project.forms.registration_forms import RegistrationForm, InformationForm
 
 registration_blueprint = Blueprint("registration", __name__, template_folder="../templates/registration")
 
-@registration_blueprint.route("/membership/register", methods=["GET", "POST"])
+
+@registration_blueprint.route("/register", methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
 
+    cells = []
+
+    remove_subject = "I2G - Unverified Email Removed"
+    update_subject = "I2G - Link to Update Your Information"
+
+    can_register = True
+
+    wks_idx = wks_indices()
+    arr_idx = arr_indices()
+
     if request.method == "POST" and form.validate():
-        user_prim1 = wks.find(request.form["primary_email"], in_column=6)
+        prim_email = request.form["primary_email"].lower()
+        sec_email = request.form["secondary_email"].lower()
+
+        user_prim1 = wks.find(prim_email, in_column=wks_idx["Primary Email"])
         if user_prim1 is not None:
             row_prim1 = user_prim1.row
             user_prim1 = wks.row_values(row_prim1)
-            
-        user_prim2 = wks.find(request.form["primary_email"], in_column=7)
+
+        user_prim2 = wks.find(prim_email, in_column=wks_idx["Secondary Email"])
         if user_prim2 is not None:
             row_prim2 = user_prim2.row
             user_prim2 = wks.row_values(row_prim2)
-            
-        user_sec1 = wks.find(request.form["secondary_email"], in_column=6)
+
+        user_sec1 = wks.find(sec_email, in_column=wks_idx["Primary Email"])
         if user_sec1 is not None:
             row_sec1 = user_sec1.row
             user_sec1 = wks.row_values(row_sec1)
-            
-        user_sec2 = wks.find(request.form["secondary_email"], in_column=7)
+
+        user_sec2 = wks.find(sec_email, in_column=wks_idx["Secondary Email"])
         if user_sec2 is not None:
             row_sec2 = user_sec2.row
             user_sec2 = wks.row_values(row_sec2)
-        
-        if user_prim1 is not None or user_prim2 is not None or user_sec1 is not None or user_sec2 is not None:
-            update_subject = "I2G - Link to Update Your Information"
-            
-            if user_prim1 is not None and user_prim1[7] == "FALSE":
-                process = Thread(target=delete_email, args=(row_prim1, 6, user_prim1[5]))
-                process.start()  
-    
-            elif user_prim1 is not None and user_prim1[7] == "TRUE":
-                token = generate_token(user_prim1[5])
+
+        if (user_prim1 is not None and user_prim1[arr_idx["Primary Expired"]] == "TRUE"):
+            cells.append(Cell(row_prim1, wks_idx["Primary Email"], ""))
+            if user_prim1[arr_idx["Secondary Email"]] != "" and user_prim1[arr_idx["Secondary Verified"]] == "TRUE":
+                html = render_template("deleting_email.html",
+                                       first=user_prim1[arr_idx["First Name"]],
+                                       last=user_prim1[arr_idx["Last Name"]],
+                                       email=user_prim1[arr_idx["Primary Email"]])
+                send_email(user_prim1[arr_idx["Secondary Email"]], remove_subject, html)
+
+        elif (user_prim1 is not None and user_prim1[arr_idx["Primary Expired"]] == "FALSE"):
+            can_register = False
+            if user_prim1[arr_idx["Primary Verified"]] == "TRUE":
+                token = generate_token(user_prim1[arr_idx["Primary Email"]])
                 update_url = url_for("update.update_info", token=token, _external=True)
-                update_html = render_template("update_email.html", first=user_prim1[1], last=user_prim1[2], update_url=update_url)
-                send_email(user_prim1[5], update_subject, update_html)
+                update_html = render_template(
+                    "update_email.html",
+                    first=user_prim1[arr_idx["First Name"]],
+                    last=user_prim1[arr_idx["Last Name"]],
+                    update_url=update_url,
+                )
+                send_email(user_prim1[arr_idx["Primary Email"]], update_subject, update_html)
 
-                
-            if user_prim2 is not None and user_prim2[8] == "FALSE":
-                process = Thread(target=delete_email, args=(row_prim2, 7, user_prim2[6]))
-                process.start()
-       
-            elif user_prim2 is not None and user_prim2[8] == "TRUE":
-                token = generate_token(user_prim2[6])
+        if (user_prim2 is not None and user_prim2[arr_idx["Secondary Expired"]] == "TRUE"):
+            cells.append(Cell(row_prim2, wks_idx["Secondary Email"], ""))
+            if user_prim2[arr_idx["Primary Email"]] != "" and user_prim2[arr_idx["Primary Verified"]] == "TRUE":
+                html = render_template("deleting_email.html",
+                                       first=user_prim2[arr_idx["First Name"]],
+                                       last=user_prim2[arr_idx["Last Name"]],
+                                       email=user_prim2[arr_idx["Secondary Email"]])
+                send_email(user_prim2[arr_idx["Primary Email"]], remove_subject, html)
+
+        elif (user_prim2 is not None and user_prim2[arr_idx["Secondary Expired"]] == "FALSE"):
+            can_register = False
+            if user_prim2[arr_idx["Secondary Verified"]] == "TRUE":
+                token = generate_token(user_prim2[arr_idx["Secondary Email"]])
                 update_url = url_for("update.update_info", token=token, _external=True)
-                update_html = render_template("update_email.html", first=user_prim2[1], last=user_prim2[2], update_url=update_url)
-                send_email(user_prim2[6], update_subject, update_html)
+                update_html = render_template(
+                    "update_email.html",
+                    first=user_prim2[arr_idx["First Name"]],
+                    last=user_prim2[arr_idx["Last Name"]],
+                    update_url=update_url,
+                )
+                send_email(user_prim2[arr_idx["Secondary Email"]], update_subject, update_html)
 
+        if (user_sec1 is not None and user_sec1[arr_idx["Primary Expired"]] == "TRUE"):
+            cells.append(Cell(row_sec1, wks_idx["Primary Email"], ""))
+            if user_sec1[arr_idx["Secondary Email"]] != "" and user_sec1[arr_idx["Secondary Verified"]] == "TRUE":
+                html = render_template("deleting_email.html",
+                                       first=user_sec1[arr_idx["First Name"]],
+                                       last=user_sec1[arr_idx["Last Name"]],
+                                       email=user_sec1[arr_idx["Primary Email"]])
+                send_email(user_sec1[arr_idx["Secondary Email"]], remove_subject, html)
 
-            if user_sec1 is not None and user_sec1[7] == "FALSE":
-                process = Thread(target=delete_email, args=(row_sec1, 6, user_sec1[5]))
-                process.start()
-                    
-            elif user_sec1 is not None and user_sec1[7] == "TRUE":
-                token = generate_token(user_sec1[5])
+        elif (user_sec1 is not None and user_sec1[arr_idx["Primary Expired"]] == "FALSE"):
+            can_register = False
+            if user_sec1[arr_idx["Primary Verified"]] == "TRUE":
+                token = generate_token(user_sec1[arr_idx["Primary Email"]])
                 update_url = url_for("update.update_info", token=token, _external=True)
-                update_html = render_template("update_email.html", first=user_sec1[1], last=user_sec1[2], update_url=update_url)
-                send_email(user_sec1[5], update_subject, update_html)
-                    
-    
-            if user_sec2 is not None and user_sec2[8] == "FALSE":
-                process = Thread(target=delete_email, args=(row_sec2, 7, user_sec2[6]))
-                process.start()
+                update_html = render_template(
+                    "update_email.html",
+                    first=user_sec1[arr_idx["First Name"]],
+                    last=user_sec1[arr_idx["Last Name"]],
+                    update_url=update_url,
+                )
+            send_email(user_sec1[arr_idx["Primary Email"]], update_subject, update_html)
 
-            elif user_sec2 is not None and user_sec2[8] == "TRUE":
-                token = generate_token(user_sec2[6])
+        if (user_sec2 is not None and user_sec2[arr_idx["Secondary Expired"]] == "TRUE"):
+            cells.append(Cell(row_sec2, wks_idx["Secondary Email"], ""))
+            if user_sec2[arr_idx["Primary Email"]] != "" and user_sec2[arr_idx["Primary Verified"]] == "TRUE":
+                html = render_template("deleting_email.html",
+                                       first=user_sec2[arr_idx["First Name"]],
+                                       last=user_sec2[arr_idx["Last Name"]],
+                                       email=user_sec2[arr_idx["Secondary Email"]])
+                send_email(user_sec2[arr_idx["Primary Email"]], remove_subject, html)
+
+        elif (user_sec2 is not None and user_sec2[arr_idx["Secondary Expired"]] == "FALSE"):
+            can_register = False
+            if user_sec2[arr_idx["Secondary Verified"]] == "TRUE":
+                token = generate_token(user_sec2[arr_idx["Secondary Email"]])
                 update_url = url_for("update.update_info", token=token, _external=True)
-                update_html = render_template("update_email.html", first=user_sec2[1], last=user_sec2[2], update_url=update_url)
-                send_email(user_sec2[6], update_subject, update_html)
-            
+                update_html = render_template(
+                    "update_email.html",
+                    first=user_sec2[arr_idx["First Name"]],
+                    last=user_sec2[arr_idx["Last Name"]],
+                    update_url=update_url,
+                )
+                send_email(user_sec2[arr_idx["Secondary Email"]], update_subject, update_html)
 
+        if len(cells) > 0:
+            wks.update_cells(cells)
+
+        if not can_register:
             return render_template("error1.html")
-
-
         else:
-            user = [
-                len(wks.col_values(1)), # Order
-                form.first_name.data, # First Name
-                form.last_name.data, # Last Name
-                str(datetime.now().replace(second=0, microsecond=0)), # When Started
-                str(datetime.now().replace(second=0, microsecond=0)), # Last Updated
-                form.primary_email.data, # Primary Email
-                form.secondary_email.data, # Secondary Email
-                "FALSE", # Primary Status
-                "FALSE", # Secondary Status
-                "FALSE", # Info Completed
-                "FALSE", # Primary Subscribed
-                "FALSE"  # Secondary Subscribed
-            ]
+            user = ["" for i in range(len(wks_idx))]
+            user[arr_idx["Order"]] = len(wks.col_values(wks_idx["Order"]))
+            user[arr_idx["First Name"]] = form.first_name.data
+            user[arr_idx["Last Name"]] = form.last_name.data
+            user[arr_idx["When Started"]] = str(datetime.now().replace(second=0, microsecond=0))
+            user[arr_idx["Last Updated"]] = str(datetime.now().replace(second=0, microsecond=0))
+            user[arr_idx["Primary Email"]] = prim_email
+            user[arr_idx["Secondary Email"]] = sec_email
+            user[arr_idx["Primary Verified"]] = "FALSE"
+            user[arr_idx["Secondary Verified"]] = "FALSE"
+            user[arr_idx["Info Completed"]] = "FALSE"
+            user[arr_idx["Primary Subscribed"]] = "FALSE"
+            user[arr_idx["Secondary Subscribed"]] = "FALSE"
+            user[arr_idx["Primary Expired"]] = "FALSE"
+            user[arr_idx["Secondary Expired"]] = "FALSE"
 
             wks.append_row(user)
 
-            p_token = generate_token(user[5])
+            p_token = generate_token(prim_email)
             p_confirm_url = url_for("registration.confirm", token=p_token, _external=True)
-            p_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=p_confirm_url)
+            p_html = render_template(
+                "verify_email.html",
+                first=user[arr_idx["First Name"]],
+                last=user[arr_idx["Last Name"]],
+                confirm_url=p_confirm_url,
+            )
 
-            s_token = generate_token(user[6])
+            s_token = generate_token(sec_email)
             s_confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-            s_html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=s_confirm_url)
+            s_html = render_template(
+                "verify_email.html",
+                first=user[arr_idx["First Name"]],
+                last=user[arr_idx["Last Name"]],
+                confirm_url=s_confirm_url,
+            )
 
             verif_subject = "I2G - Confirm Your Email Address"
-            
-            send_email(user[5], verif_subject, p_html)
-            send_email(user[6], verif_subject, s_html)
+
+            send_email(user[arr_idx["Primary Email"]], verif_subject, p_html)
+            send_email(user[arr_idx["Secondary Email"]], verif_subject, s_html)
+
+            t1 = Thread(target=expiry_timer,
+                        args=(
+                            user[arr_idx["Primary Email"]],
+                            "Primary Email",
+                            "Primary Verified",
+                        ))
+            t2 = Thread(target=expiry_timer,
+                        args=(
+                            user[arr_idx["Secondary Email"]],
+                            "Secondary Email",
+                            "Secondary Verified",
+                        ))
+            t1.start()
+            t2.start()
 
             return render_template("instructions_sent.html")
 
@@ -128,45 +212,56 @@ def register():
 def confirm(token):
     user = None
     email = confirm_token(token)
-    
+
+    wks_idx = wks_indices()
+    arr_idx = arr_indices()
+
     if email:
-        user = wks.find(email, in_column=6)
+        user = wks.find(email, in_column=wks_idx["Primary Email"])
         if user is not None:
-            user_col = user.col
+            verif_col = arr_idx["Primary Verified"]
             user = wks.row_values(user.row)
         if user is None:
-            user = wks.find(email, in_column=7)
+            user = wks.find(email, in_column=wks_idx["Secondary Email"])
             if user is not None:
-                user_col = user.col
+                verif_col = arr_idx["Secondary Verified"]
                 user = wks.row_values(user.row)
-            else: 
+            else:
                 return render_template("error2.html")
 
     if user is None:
         return redirect(url_for("registration.resend_page", token=token, _external=True))
 
-    elif user[user_col + 1] == "TRUE" and user[9] == "TRUE":
+    elif user[verif_col] == "TRUE" and user[arr_idx["Info Completed"]] == "TRUE":
         return render_template("already_confirmed.html")
 
     else:
-        cell_find = wks.find(email, in_column=6)
+        cell_find = wks.find(email, in_column=wks_idx["Primary Email"])
         if cell_find is None:
-            cell_find = wks.find(email, in_column=7)
+            cell_find = wks.find(email, in_column=wks_idx["Secondary Email"])
+            verified = wks_idx["Secondary Verified"]
+            subscribed = wks_idx["Secondary Subscribed"]
+            expired = wks_idx["Secondary Expired"]
+        else:
+            verified = wks_idx["Primary Verified"]
+            subscribed = wks_idx["Primary Subscribed"]
+            expired = wks_idx["Primary Expired"]
 
         row_find = cell_find.row
-        col_find = cell_find.col
 
         cells = []
-        cells.append(Cell(row_find, col_find + 2, "TRUE"))
-        cells.append(Cell(row_find, col_find + 5, "TRUE"))
+        cells.append(Cell(row_find, verified, "TRUE"))
+        cells.append(Cell(row_find, subscribed, "TRUE"))
+        cells.append(Cell(row_find, expired, "FALSE"))
 
-        wks.update_cells(cells)
+        if len(cells) > 0:
+            wks.update_cells(cells)
 
-        if user[9] == "FALSE":
+        if user[arr_idx["Info Completed"]] == "FALSE":
             return redirect(url_for("registration.info", token=token, _external=True))
         else:
             return render_template("thanks_confirming.html")
-        
+
 
 @registration_blueprint.route("/res<token>p")
 def resend_page(token):
@@ -177,22 +272,30 @@ def resend_page(token):
 def resend(token):
     email = confirm_token_no_expiry(token)
 
+    wks_idx = wks_indices()
+    arr_idx = arr_indices()
+
     if email:
-        user = wks.find(email, in_column=6)
+        user = wks.find(email, in_column=wks_idx["Primary Email"])
         if user is not None:
             user = wks.row_values(user.row)
         if user is None:
-            user = wks.find(email, in_column=7)
+            user = wks.find(email, in_column=wks_idx["Secondary Email"])
             if user is not None:
                 user = wks.row_values(user.row)
-            else: 
+            else:
                 return render_template("error2.html")
     else:
         return render_template("error2.html")
 
     new_token = generate_token(email)
     url = url_for("registration.confirm", token=new_token, _external=True)
-    html = render_template("verify_email.html", first=user[1], last=user[2], confirm_url=url)
+    html = render_template(
+        "verify_email.html",
+        first=user[arr_idx["First Name"]],
+        last=user[arr_idx["Last Name"]],
+        confirm_url=url,
+    )
     subject = "I2G - Confirm Your Email Address"
     send_email(email, subject, html)
 
@@ -207,48 +310,46 @@ def info(token):
     form = InformationForm()
 
     email = confirm_token_no_expiry(token)
-    
+
+    wks_idx = wks_indices()
+
     if email:
-        user = wks.find(email, in_column=6)
+        user = wks.find(email, in_column=wks_idx["Primary Email"])
         if user is not None:
             user = wks.row_values(user.row)
         if user is None:
-            user = wks.find(email, in_column=7)
+            user = wks.find(email, in_column=wks_idx["Secondary Email"])
             if user is not None:
                 user = wks.row_values(user.row)
-            else: 
+            else:
                 return render_template("error2.html")
     else:
         return render_template("error2.html")
 
-
     if request.method == "POST" and form.validate_on_submit():
-        if user[9] == "TRUE":
-            return render_template("homepage.html")
-
-        cell_find = wks.find(email, in_column=6)
+        cell_find = wks.find(email, in_column=wks_idx["Primary Email"])
         if cell_find is None:
-            cell_find = wks.find(email, in_column=7)
+            cell_find = wks.find(email, in_column=wks_idx["Secondary Email"])
 
         row_find = cell_find.row
 
         cells = []
 
         for row in edit_form.query.all():
-            col_find = wks.find(row.label, in_row=1).col
             if row.field_type == "Checkbox":
                 vals = []
                 choices = checkbox_get_choices(row.options)
                 for key in request.form.getlist(row.label):
                     vals.append(choices[int(key)][1])
-                cells.append(Cell(row_find, col_find, "\n".join(vals)))
+                cells.append(Cell(row_find, wks_idx[row.label], "\n".join(vals)))
             else:
-                cells.append(Cell(row_find, col_find, request.form[row.label]))
+                cells.append(Cell(row_find, wks_idx[row.label], request.form[row.label]))
 
-        cells.append(Cell(row_find, 10, "TRUE"))
+        cells.append(Cell(row_find, wks_idx["Info Completed"], "TRUE"))
 
-        wks.update_cells(cells)
-    
+        if len(cells) > 0:
+            wks.update_cells(cells)
+
         return render_template("thanks_registering.html")
 
     else:

@@ -2,6 +2,7 @@
 
 {% block content %}
 
-<p>The confirmation link is invalid or has expired. <a href="{{ url_for('registration.resend', token=token) }}"> Click here to resend</a>.</p>
+<p>The confirmation link is invalid or has expired. <a href="{{ url_for('registration.resend', token=token) }}"> Click
+        here to resend</a>.</p>
 
 {% endblock %}
