@@ -2,7 +2,11 @@
 {% import "render_helper.html" as forms %}
 
 {% block content %}
-<h2>Fill out your information below</h2>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<div class="w3-container w3-theme-UCBlue">
+  <h2 style="color:#DAA900">Update your information below</h2> 
+</div>
 <form action="{{ url_for('update.update_info', token=token) }}" method=post>
   {{ form.hidden_tag() }}
 
