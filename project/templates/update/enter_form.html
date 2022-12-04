@@ -2,12 +2,24 @@
 {% import "render_helper.html" as forms %}
 
 {% block content %}
-<h2>Fill out your information below</h2>
-<h2>Please enter the email address of the account you wish to update</h2>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
+<style>
+  .w3-theme-UCBlue {
+  color:#fff !important;background-color:#002856 !important}
+  .w3-theme-UCGold {
+  color:#fff !important;background-color:#DAA900 !important}
+</style> 
+
+<div class="w3-container w3-theme-UCBlue">
+  <h2 style="color:#DAA900;">Fill out your information below</h2>
+  <h2 style="color:#DAA900;">Please enter the email address of the account you wish to update</h2>
+</div>
 <form action="{{ url_for('update.enter_email') }}" method=post>
   {{ form.hidden_tag() }}
-
-  {{ forms.render(form) }}
+  
+    {{ forms.render(form) }}
 
   <br>
   {{ form.submit }}
