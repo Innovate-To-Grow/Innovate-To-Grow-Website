@@ -1,15 +1,15 @@
 import imap_tools, re, time
 from datetime import date, timedelta
-from flask import render_template
 from flask_mail import Message
 from project import app, mail, wks
 
 def send_email(recipient, subject, template):
-    message = Message(subject, 
-                    recipients = [recipient], 
-                    html = template, 
-                    sender = app.config["MAIL_DEFAULT_SENDER"])
-    mail.send(message)
+    with app.app_context():
+        message = Message(subject, 
+                        recipients = [recipient], 
+                        html = template, 
+                        sender = app.config["MAIL_DEFAULT_SENDER"])
+        mail.send(message)
 
 
 def detect_bounce(interval):
