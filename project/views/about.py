@@ -14,4 +14,4 @@ def page_not_found(e):
 
 @about_blueprint.route("/", methods=["GET", "POST"])
 def about_us():
-    return render_template("about.html")
+    return render_template("about_us.html")
