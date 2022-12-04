@@ -7,7 +7,7 @@ from project import app, wks
 from project.models import edit_form
 from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
-from project.utils.token import confirm_token_no_expiry, generate_token
+from project.utils.token import generate_token, confirm_token_no_expiry
 from project.utils.index_helper import wks_indices, arr_indices
 from project.forms.update_forms import EmailForm, UpdateForm
 

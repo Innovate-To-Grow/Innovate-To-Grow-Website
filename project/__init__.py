@@ -1,7 +1,6 @@
 import os
 from os import path
 from flask import Flask
-from flask_mail import Mail
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_admin import Admin
@@ -17,9 +16,6 @@ wks = gspread.service_account().open("I2G-Master-People").worksheet("double-emai
 app = Flask(__name__)
 
 app.config.from_object(Config())
-
-#Flask Mail
-mail = Mail(app)
 
 #SQLAlchemy
 db = SQLAlchemy(app, session_options={"autoflush": False})

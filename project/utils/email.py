@@ -1,15 +1,11 @@
-import imap_tools, re, time
+import imap_tools, re, time, yagmail
 from datetime import date, timedelta
-from flask_mail import Message
-from project import app, mail, wks
+from project import app, wks
 
 def send_email(recipient, subject, template):
     with app.app_context():
-        message = Message(subject, 
-                        recipients = [recipient], 
-                        html = template, 
-                        sender = (app.config["MAIL_ALIAS"], app.config["MAIL_USERNAME"]))
-        mail.send(message)
+        yag = yagmail.SMTP({app.config["MAIL_USERNAME"] : app.config["MAIL_ALIAS"]}, app.config["MAIL_PASSWORD"])
+        yag.send(recipient, subject, template.replace("\n", ""))
 
 
 def detect_bounce(interval):

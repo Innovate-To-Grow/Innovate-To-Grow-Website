@@ -1,14 +1,22 @@
 <p style="font-family: Kievit Regular;">Dear {{ first }} {{ last }},</p>
+
 <p style="font-family: Kievit Regular;">
     Please click on "Confirm Email" to verify ownership for the registration of this email for your I2G membership.</p>
-<p>  <a href="{{ confirm_url }}">Confirm Email</a></p>
+<p> <a href="{{ confirm_url }}">Confirm Email</a></p>
+
 <p style="font-family: Kievit Regular;">
-    Please notice that this is a "double email" membership and registration system, and you shall receive a verification message to the other email as well. 
-    Attention: this link is only valid for 5 minutes</p>
+    Please notice that this is a "double email" membership and registration system, and you shall receive a verification
+    message to the other email as well.</p>
+
+<p style="font-family: Kievit Regular;">
+    Attention: this link is only valid for 5 minutes.</p>
+
 <p style="font-family: Kievit Regular;">
     If the link has expired, you may request a new confirmation link.
-    If you did not initiate this action, please ignore this email. 
-    You may also find information of the system at:</p>  
-    <p><a href="{{ url_for('about.about_us', _external=True) }}">I2G Registration</a> </p>
+    If you did not initiate this action, please ignore this email.
+    You may also find information of the system at:</p>
+
+<p><a href="{{ url_for('about.about_us', _external=True) }}">I2G Registration</a> </p>
+
 <p style="font-family:Kievit Bold Italic;">
     Thank you, the I2G Team @ University of California, Merced</p>
