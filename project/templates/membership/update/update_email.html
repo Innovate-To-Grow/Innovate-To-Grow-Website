@@ -1,6 +1,6 @@
 <p>Dear {{ first }} {{ last }}:</p>
 
-<p style="text-indent: 50px;">This email address was prompted to update I2G registration information.</p>
+<p>This email address was prompted to update I2G registration information.</p>
 <p> Please click on "Update Membership Information" </p>
 <p>You may also copy this link and paste in the browser.</p>
 <p><a href="{{ update_url }}">Update Membership Information</a></p>
@@ -8,7 +8,7 @@
 <p>If the link has expired, you may request a new confirmation link.</p>
 <p>If you did not initiate this action, please ignore this email.</p>
 
-<p>You may also find information of the system at:  <a href="https://i2g.ucmerced.edu/register">I2G Registration</a></p>
+<p>You may also find information of the system at:  <a href="{{ url_for('about.about_us', _external=True) }}">I2G Registration</a></p>
 
-<p><b>Thank you, the I2G Team @ University of California, Merced </b> </p>
+<p> Thank you, the I2G Team @ University of California, Merced </p>
     

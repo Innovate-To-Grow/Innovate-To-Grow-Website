@@ -1,5 +1,5 @@
-{% extends "layout.html" %}
-{% from "renderHelperRegister.html" import render_field  %}
+{% extends "membership/layout.html" %}
+{% from "membership/renderHelperRegister.html" import render_field  %}
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -23,8 +23,8 @@
       
     <div class="w3-row">
 
-      <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.first_name,placeholder="Bob") }}
+      <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
+      {{ render_field(form.first_name, placeholder="Bob") }}
       </div>
 
       <div class="w3-col" style="width:50px">
@@ -32,7 +32,7 @@
       </div>
 
       <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.last_name,placeholder="Johns") }}
+      {{ render_field(form.last_name, placeholder="Johns") }}
       </div>
 
     </div>
@@ -43,7 +43,7 @@
     <div class="w3-row">
 
       <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.primary_email,placeholder="primary@gmail.com") }}
+      {{ render_field(form.primary_email, placeholder="primary@gmail.com") }}
       </div>
 
       <div class="w3-col" style="width:50px">
@@ -51,7 +51,7 @@
       </div>
 
       <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.confirm_primary,placeholder="primary@gmail.com") }}
+      {{ render_field(form.confirm_primary, placeholder="primary@gmail.com") }}
       </div>
 
     </div>
@@ -60,16 +60,16 @@
 <div class="w3-container w3-white">
   <div class="w3-row">
 
-    <div class="w3-col w3-theme-UCBlue w3-round-xlarge"style="width:400px; height: 100px;">
-      {{ render_field(form.secondary_email,placeholder="secondary@gmail.com") }}
+    <div class="w3-col w3-theme-UCGold w3-round-xlarge"style="width:400px; height: 100px;">
+      {{ render_field(form.secondary_email, placeholder="secondary@gmail.com") }}
     </div>
 
     <div class="w3-col" style="width:50px">
       <p> </p>
     </div>
     
-    <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.confirm_secondary,placeholder="secondary@gmail.com") }}
+    <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
+      {{ render_field(form.confirm_secondary, placeholder="secondary@gmail.com") }}
     </div>
     
   </div>

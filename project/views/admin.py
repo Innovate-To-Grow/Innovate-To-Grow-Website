@@ -9,8 +9,8 @@ from gspread.cell import Cell
 from project.models import edit_form, user
 from project.utils.email import send_email
 from project.utils.field import get_field
-from project.utils.token import generate_token, confirm_token_24_hours
-from project.utils.index_helper import wks_indices, arr_indices
+from project.utils.token import generate_token, confirm_token_no_expiry
+from project.utils.index_helper import arr_indices
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
 from project.forms.registration_forms import InformationForm
 from project.forms.update_forms import UpdateForm
@@ -52,7 +52,7 @@ class IndexView(AdminIndexView):
     def register_admin(self, role, token):
         form = RegisterAdmin()
         role_str = "superadmin" if role == "1" else "admin"
-        email = confirm_token_24_hours(token)
+        email = confirm_token_no_expiry(token)
         if not email:
             flash("Invalid token or link has expired")
             return redirect(url_for("admin.index"))

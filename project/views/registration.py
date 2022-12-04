@@ -3,7 +3,7 @@ from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context
-from project import wks
+from project import app, wks
 from project.models import edit_form
 from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
@@ -11,7 +11,10 @@ from project.utils.token import generate_token, confirm_token, confirm_token_no_
 from project.utils.index_helper import wks_indices, arr_indices
 from project.forms.registration_forms import RegistrationForm, InformationForm
 
-registration_blueprint = Blueprint("registration", __name__, template_folder="../templates/registration")
+registration_blueprint = Blueprint("registration",
+                                   __name__,
+                                   template_folder="../templates/membership/registration",
+                                   url_prefix=app.config["URL_PREFIX"])
 
 
 @registration_blueprint.route("/register", methods=["GET", "POST"])
@@ -19,10 +22,6 @@ def register():
     form = RegistrationForm()
 
     cells = []
-
-    remove_subject = "I2G - Unverified Email Removed"
-    update_subject = "I2G - Link to Update Your Information"
-    verif_subject = "I2G - Confirm Your Email Address"
 
     global can_register
     can_register = True
@@ -48,7 +47,7 @@ def register():
                                            last=user_prim1[arr_idx["Last Name"]],
                                            email=user_prim1[arr_idx["Primary Email"]])
                     thread = Thread(target=send_email,
-                                    args=(user_prim1[arr_idx["Secondary Email"]], remove_subject, html))
+                                    args=(user_prim1[arr_idx["Secondary Email"]], app.config["REMOVE_SUBJECT"], html))
                     thread.start()
 
             elif (user_prim1 is not None and user_prim1[arr_idx["Primary Expired"]] == "FALSE"):
@@ -64,7 +63,8 @@ def register():
                         update_url=update_url,
                     )
                     thread = Thread(target=send_email,
-                                    args=(user_prim1[arr_idx["Primary Email"]], update_subject, update_html))
+                                    args=(user_prim1[arr_idx["Primary Email"]], app.config["UPDATE_SUBJECT"],
+                                          update_html))
                     thread.start()
 
         async def search_prim_in_sec_col():
@@ -81,7 +81,7 @@ def register():
                                            last=user_prim2[arr_idx["Last Name"]],
                                            email=user_prim2[arr_idx["Secondary Email"]])
                     thread = Thread(target=send_email,
-                                    args=(user_prim2[arr_idx["Primary Email"]], remove_subject, html))
+                                    args=(user_prim2[arr_idx["Primary Email"]], app.config["REMOVE_SUBJECT"], html))
                     thread.start()
 
             elif (user_prim2 is not None and user_prim2[arr_idx["Secondary Expired"]] == "FALSE"):
@@ -97,7 +97,8 @@ def register():
                         update_url=update_url,
                     )
                     thread = Thread(target=send_email,
-                                    args=(user_prim2[arr_idx["Secondary Email"]], update_subject, update_html))
+                                    args=(user_prim2[arr_idx["Secondary Email"]], app.config["UPDATE_SUBJECT"],
+                                          update_html))
                     thread.start()
 
         async def search_sec_in_prim_col():
@@ -114,7 +115,7 @@ def register():
                                            last=user_sec1[arr_idx["Last Name"]],
                                            email=user_sec1[arr_idx["Primary Email"]])
                     thread = Thread(target=send_email,
-                                    args=(user_sec1[arr_idx["Secondary Email"]], remove_subject, html))
+                                    args=(user_sec1[arr_idx["Secondary Email"]], app.config["REMOVE_SUBJECT"], html))
                     thread.start()
 
             elif (user_sec1 is not None and user_sec1[arr_idx["Primary Expired"]] == "FALSE"):
@@ -130,7 +131,8 @@ def register():
                         update_url=update_url,
                     )
                     thread = Thread(target=send_email,
-                                    args=(user_sec1[arr_idx["Primary Email"]], update_subject, update_html))
+                                    args=(user_sec1[arr_idx["Primary Email"]], app.config["UPDATE_SUBJECT"],
+                                          update_html))
                     thread.start()
 
         async def search_sec_in_sec_col():
@@ -146,7 +148,8 @@ def register():
                                            first=user_sec2[arr_idx["First Name"]],
                                            last=user_sec2[arr_idx["Last Name"]],
                                            email=user_sec2[arr_idx["Secondary Email"]])
-                    thread = Thread(target=send_email, args=(user_sec2[arr_idx["Primary Email"]], remove_subject, html))
+                    thread = Thread(target=send_email,
+                                    args=(user_sec2[arr_idx["Primary Email"]], app.config["REMOVE_SUBJECT"], html))
                     thread.start()
 
             elif (user_sec2 is not None and user_sec2[arr_idx["Secondary Expired"]] == "FALSE"):
@@ -162,7 +165,8 @@ def register():
                         update_url=update_url,
                     )
                     thread = Thread(target=send_email,
-                                    args=(user_sec2[arr_idx["Secondary Email"]], update_subject, update_html))
+                                    args=(user_sec2[arr_idx["Secondary Email"]], app.config["UPDATE_SUBJECT"],
+                                          update_html))
                     thread.start()
 
         async def update_sheet():
@@ -188,14 +192,16 @@ def register():
                 user[arr_idx["When Started"]] = str(datetime.now().replace(second=0, microsecond=0))
                 user[arr_idx["Last Updated"]] = str(datetime.now().replace(second=0, microsecond=0))
                 user[arr_idx["Primary Email"]] = prim_email
-                user[arr_idx["Secondary Email"]] = sec_email
                 user[arr_idx["Primary Verified"]] = "FALSE"
-                user[arr_idx["Secondary Verified"]] = "FALSE"
-                user[arr_idx["Info Completed"]] = "FALSE"
                 user[arr_idx["Primary Subscribed"]] = "FALSE"
-                user[arr_idx["Secondary Subscribed"]] = "FALSE"
                 user[arr_idx["Primary Expired"]] = "FALSE"
+                user[arr_idx["Primary Bounced"]] = ""
+                user[arr_idx["Secondary Email"]] = sec_email
+                user[arr_idx["Secondary Verified"]] = "FALSE"
+                user[arr_idx["Secondary Subscribed"]] = "FALSE"
                 user[arr_idx["Secondary Expired"]] = "FALSE"
+                user[arr_idx["Secondary Bounced"]] = ""
+                user[arr_idx["Info Completed"]] = "FALSE"
 
                 wks.append_row(user)
 
@@ -217,11 +223,11 @@ def register():
                     confirm_url=s_confirm_url,
                 )
 
-                send_email(prim_email, verif_subject, p_html)
-                send_email(sec_email, verif_subject, s_html)
+                send_email(prim_email, app.config["VERIF_SUBJECT"], p_html)
+                send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
 
                 def expiry_timer():
-                    time.sleep(30)
+                    time.sleep(app.config["VERIF_EXPIRATION"])
                     row = wks.find(prim_email, in_column=wks_idx["Primary Email"]).row
                     user = wks.row_values(row)
                     if user[arr_idx["Primary Verified"]] == "FALSE":
@@ -348,9 +354,8 @@ def resend(token):
         last=user[arr_idx["Last Name"]],
         confirm_url=url,
     )
-    subject = "I2G - Confirm Your Email Address"
 
-    thread = Thread(target=send_email, args=[email, subject, html])
+    thread = Thread(target=send_email, args=[email, app.config["VERIF_SUBJECT"], html])
     thread.start()
 
     return redirect(url_for("registration.resend_page", token=token, _external=True))

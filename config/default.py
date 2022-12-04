@@ -19,7 +19,15 @@ class Config():
     MAIL_PORT = 465
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True
+    MAIL_ALIAS = "Innovate to Grow - UC Merced"
     MAIL_USERNAME = "i2g@g.ucmerced.edu"
     MAIL_PASSWORD = "iekmvhditchuxnik"
 
-    MAIL_DEFAULT_SENDER = "i2g@g.ucmerced.edu"
+    URL_PREFIX = "/membership"
+
+    VERIF_SUBJECT = "I2G Membership - Confirm Your Email Address"
+    UPDATE_SUBJECT = "I2G membership - Link to Update Your Information"
+    REMOVE_SUBJECT = "I2G Membership - Unverified Email Removed"
+
+    TOKEN_EXPIRATION = 300
+    VERIF_EXPIRATION = 90

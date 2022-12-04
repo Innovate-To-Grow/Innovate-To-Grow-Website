@@ -1,5 +1,5 @@
-{% extends "layout.html" %}
-{% import "render_helper.html" as forms %}
+{% extends "membership/layout.html" %}
+{% import "membership/render_helper.html" as forms %}
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,13 +13,12 @@
 </style> 
 
 <div class="w3-container w3-theme-UCBlue">
-  <h2 style="color:#DAA900;">Fill out your information below</h2>
-  <h2 style="color:#DAA900;">Please enter the email address of the account you wish to update</h2>
+    <h2 style="color:#DAA900;">Fill out your information below</h2>
 </div>
-<form action="{{ url_for('update.enter_email') }}" method=post>
+<form action="{{ url_for('registration.info', token=token) }}" method=post>
   {{ form.hidden_tag() }}
-  
-    {{ forms.render(form) }}
+
+  {{ forms.render(form) }}
 
   <br>
   {{ form.submit }}

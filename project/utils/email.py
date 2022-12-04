@@ -8,7 +8,7 @@ def send_email(recipient, subject, template):
         message = Message(subject, 
                         recipients = [recipient], 
                         html = template, 
-                        sender = app.config["MAIL_DEFAULT_SENDER"])
+                        sender = (app.config["MAIL_ALIAS"], app.config["MAIL_USERNAME"]))
         mail.send(message)
 
 

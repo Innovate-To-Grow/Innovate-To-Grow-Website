@@ -3,7 +3,7 @@ from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request, copy_current_request_context
-from project import wks
+from project import app, wks
 from project.models import edit_form
 from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
@@ -11,7 +11,10 @@ from project.utils.token import confirm_token_no_expiry, generate_token
 from project.utils.index_helper import wks_indices, arr_indices
 from project.forms.update_forms import EmailForm, UpdateForm
 
-update_blueprint = Blueprint("update", __name__, template_folder="../templates/update")
+update_blueprint = Blueprint("update",
+                             __name__,
+                             template_folder="../templates/membership/update",
+                             url_prefix=app.config["URL_PREFIX"])
 
 
 # check the database to see if the input email has a user with a registered prim. or secon. email
@@ -54,8 +57,7 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         confirm_url=confirm_url,
                     )
-                    subject = "I2G - Confirm Your Email Address"
-                    send_email(user[arr_idx["Primary Email"]], subject, html)
+                    send_email(user[arr_idx["Primary Email"]], app.config["VERIF_SUBJECT"], html)
 
                 if user[arr_idx["Secondary Email"]] != "":
                     token = generate_token(user[arr_idx["Secondary Email"]])
@@ -66,8 +68,7 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         update_url=update_url,
                     )
-                    subject = "I2G - Link to Update Your Information"
-                    send_email(user["Secondary Email"], subject, html)
+                    send_email(user["Secondary Email"], app.config["UPDATE_SUBJECT"], html)
 
             elif (user[arr_idx["Primary Verified"]] == "TRUE" and user[arr_idx["Secondary Verified"]] == "FALSE"):
                 # send an update link to primary and verification to secondary
@@ -80,8 +81,7 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         update_url=update_url,
                     )
-                    subject = "I2G - Link to Update Your Information"
-                    send_email(user[arr_idx["Primary Email"]], subject, html)
+                    send_email(user[arr_idx["Primary Email"]], app.config["UPDATE_SUBJECT"], html)
 
                 if user[arr_idx["Secondary Email"]] != "":
                     token = generate_token(user[arr_idx["Secondary Email"]])
@@ -92,13 +92,10 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         confirm_url=confirm_url,
                     )
-                    subject = "I2G - Confirm Your Email Address"
-                    send_email(user[arr_idx["Secondary Email"]], subject, html)
+                    send_email(user[arr_idx["Secondary Email"]], app.config["VERIF_SUBJECT"], html)
 
             elif (user[arr_idx["Primary Verified"]] == "FALSE" and user[arr_idx["Secondary Verified"]] == "FALSE"):
                 # user is in db, but not verified. send them links to verify both.
-                subject = "I2G - Confirm Your Email Address"
-
                 if user[arr_idx["Primary Email"]] != "":
                     token = generate_token(user[arr_idx["Primary Email"]])
                     confirm_url = url_for("registration.confirm", token=token, _external=True)
@@ -108,7 +105,7 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         confirm_url=confirm_url,
                     )
-                    send_email(user[arr_idx["Primary Email"]], subject, html)
+                    send_email(user[arr_idx["Primary Email"]], app.config["VERIF_SUBJECT"], html)
 
                 if user[arr_idx["Secondary Email"]] != "":
                     token = generate_token(user[arr_idx["Secondary Email"]])
@@ -119,13 +116,12 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         confirm_url=confirm_url,
                     )
-                    send_email(user[arr_idx["Secondary Email"]], subject, html)
+                    send_email(user[arr_idx["Secondary Email"]], app.config["VERIF_SUBJECT"], html)
 
             else:
                 # send an update link to both emails
                 if user[arr_idx["Primary Email"]] != "":
                     token = generate_token(user[arr_idx["Primary Email"]])
-                    subject = "I2G - Link to Update Your Information"
                     update_url = url_for("update.update_info", token=token, _external=True)
                     html = render_template(
                         "update_email.html",
@@ -133,7 +129,7 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         update_url=update_url,
                     )
-                    send_email(user[arr_idx["Primary Email"]], subject, html)
+                    send_email(user[arr_idx["Primary Email"]], app.config["UPDATE_SUBJECT"], html)
 
                 if user[arr_idx["Secondary Email"]] != "":
                     token = generate_token(user[arr_idx["Secondary Email"]])
@@ -144,7 +140,7 @@ def enter_email():
                         last=user[arr_idx["Last Name"]],
                         update_url=update_url,
                     )
-                    send_email(user[arr_idx["Secondary Email"]], subject, html)
+                    send_email(user[arr_idx["Secondary Email"]], app.config["UPDATE_SUBJECT"], html)
 
         thread = Thread(target=send_instructions)
         thread.start()
@@ -231,9 +227,6 @@ def update_info(token):
         global can_update
         can_update = True
 
-        remove_subject = "I2G - Unverified Email Removed"
-        verif_subject = "I2G - Confirm Your Email Address"
-
         prim_email = request.form["primary_email"].lower()
         sec_email = request.form["secondary_email"].lower()
 
@@ -255,8 +248,9 @@ def update_info(token):
                                                first=user_prim1[arr_idx["First Name"]],
                                                last=user_prim1[arr_idx["Last Name"]],
                                                email=user_prim1[arr_idx["Primary Email"]])
-                        thread = Thread(target=send_email,
-                                        args=[user_prim1[arr_idx["Secondary Email"]], remove_subject, html])
+                        thread = Thread(
+                            target=send_email,
+                            args=[user_prim1[arr_idx["Secondary Email"]], app.config["REMOVE_SUBJECT"], html])
                         thread.start()
 
         async def search_prim_in_sec_col():
@@ -277,7 +271,7 @@ def update_info(token):
                                                last=user_prim2[arr_idx["Last Name"]],
                                                email=user_prim2[arr_idx["Secondary Email"]])
                         thread = Thread(target=send_email,
-                                        args=[user_prim2[arr_idx["Primary Email"]], remove_subject, html])
+                                        args=[user_prim2[arr_idx["Primary Email"]], app.config["REMOVE_SUBJECT"], html])
                         thread.start()
 
         async def search_sec_in_prim_col():
@@ -298,8 +292,9 @@ def update_info(token):
                                                first=user_sec1[arr_idx["First Name"]],
                                                last=user_sec1[arr_idx["Last Name"]],
                                                email=user_sec1[arr_idx["Primary Email"]])
-                        thread = Thread(target=send_email,
-                                        args=[user_sec1[arr_idx["Secondary Email"]], remove_subject, html])
+                        thread = Thread(
+                            target=send_email,
+                            args=[user_sec1[arr_idx["Secondary Email"]], app.config["REMOVE_SUBJECT"], html])
                         thread.start()
 
         async def search_sec_in_sec_col():
@@ -320,7 +315,7 @@ def update_info(token):
                                                last=user_sec2[arr_idx["Last Name"]],
                                                email=user_sec2[arr_idx["Secondary Email"]])
                         thread = Thread(target=send_email,
-                                        args=[user_sec2[arr_idx["Primary Email"]], remove_subject, html])
+                                        args=[user_sec2[arr_idx["Primary Email"]], app.config["REMOVE_SUBJECT"], html])
                         thread.start()
 
         async def update_sheet():
@@ -347,14 +342,14 @@ def update_info(token):
                 sent_to_sec = False
 
                 def prim_expiry_timer():
-                    time.sleep(30)
+                    time.sleep(app.config["VERIF_EXPIRATION"])
                     row = wks.find(prim_email, in_column=wks_idx["Primary Email"]).row
                     user = wks.row_values(row)
                     if user[arr_idx["Primary Verified"]] == "FALSE":
                         wks.update_cell(row, wks_idx["Primary Expired"], "TRUE")
 
                 def sec_expiry_timer():
-                    time.sleep(30)
+                    time.sleep(app.config["VERIF_EXPIRATION"])
                     row = wks.find(sec_email, in_column=wks_idx["Secondary Email"]).row
                     user = wks.row_values(row)
                     if user[arr_idx["Secondary Verified"]] == "FALSE":
@@ -375,17 +370,6 @@ def update_info(token):
 
                     cells.append(Cell(
                         row_find,
-                        wks_idx["Primary Bounced"],
-                        user[arr_idx["Secondary Bounced"]],
-                    ))
-                    cells.append(Cell(
-                        row_find,
-                        wks_idx["Secondary Bounced"],
-                        user[arr_idx["Primary Bounced"]],
-                    ))
-
-                    cells.append(Cell(
-                        row_find,
                         wks_idx["Primary Expired"],
                         user[arr_idx["Secondary Expired"]],
                     ))
@@ -393,6 +377,17 @@ def update_info(token):
                         row_find,
                         wks_idx["Secondary Expired"],
                         user[arr_idx["Primary Expired"]],
+                    ))
+
+                    cells.append(Cell(
+                        row_find,
+                        wks_idx["Primary Bounced"],
+                        user[arr_idx["Secondary Bounced"]],
+                    ))
+                    cells.append(Cell(
+                        row_find,
+                        wks_idx["Secondary Bounced"],
+                        user[arr_idx["Primary Bounced"]],
                     ))
 
                 # primary OR secondary email are swapped...
@@ -405,17 +400,17 @@ def update_info(token):
                     ))
                     cells.append(Cell(
                         row_find,
-                        wks_idx["Secondary Bounced"],
-                        user[arr_idx["Primary Bounced"]],
-                    ))
-                    cells.append(Cell(
-                        row_find,
                         wks_idx["Secondary Expired"],
                         user[arr_idx["Primary Expired"]],
                     ))
+                    cells.append(Cell(
+                        row_find,
+                        wks_idx["Secondary Bounced"],
+                        user[arr_idx["Primary Bounced"]],
+                    ))
                     cells.append(Cell(row_find, wks_idx["Primary Verified"], "FALSE"))
-                    cells.append(Cell(row_find, wks_idx["Primary Bounced"], ""))
                     cells.append(Cell(row_find, wks_idx["Primary Expired"], "FALSE"))
+                    cells.append(Cell(row_find, wks_idx["Primary Bounced"], ""))
 
                     p_token = generate_token(prim_email)
                     confirm_url = url_for("registration.confirm", token=p_token, _external=True)
@@ -425,7 +420,7 @@ def update_info(token):
                         last=user[arr_idx["Last Name"]],
                         confirm_url=confirm_url,
                     )
-                    send_email(prim_email, verif_subject, html)
+                    send_email(prim_email, app.config["VERIF_SUBJECT"], html)
                     sent_to_prim = True
 
                     thread = Thread(target=prim_expiry_timer)
@@ -438,9 +433,19 @@ def update_info(token):
                         wks_idx["Primary Verified"],
                         user[arr_idx["Secondary Verified"]],
                     ))
+                    cells.append(Cell(
+                        row_find,
+                        wks_idx["Primary Expired"],
+                        user[arr_idx["Secondary Expired"]],
+                    ))
+                    cells.append(Cell(
+                        row_find,
+                        wks_idx["Primary Bounced"],
+                        user[arr_idx["Secondary Bounced"]],
+                    ))
                     cells.append(Cell(row_find, wks_idx["Secondary Verified"], "FALSE"))
-                    cells.append(Cell(row_find, wks_idx["Secondary Bounced"], ""))
                     cells.append(Cell(row_find, wks_idx["Secondary Expired"], "FALSE"))
+                    cells.append(Cell(row_find, wks_idx["Secondary Bounced"], ""))
 
                     s_token = generate_token(sec_email)
                     confirm_url = url_for("registration.confirm", token=s_token, _external=True)
@@ -450,7 +455,7 @@ def update_info(token):
                         last=user[arr_idx["Last Name"]],
                         confirm_url=confirm_url,
                     )
-                    send_email(sec_email, verif_subject, html)
+                    send_email(sec_email, app.config["VERIF_SUBJECT"], html)
                     sent_to_sec = True
 
                     thread = Thread(target=sec_expiry_timer)
@@ -469,10 +474,10 @@ def update_info(token):
                             confirm_url=confirm_url,
                         )
                         cells.append(Cell(row_find, wks_idx["Primary Verified"], "FALSE"))
-                        cells.append(Cell(row_find, wks_idx["Primary Bounced"], ""))
                         cells.append(Cell(row_find, wks_idx["Primary Expired"], "FALSE"))
+                        cells.append(Cell(row_find, wks_idx["Primary Bounced"], ""))
 
-                        send_email(prim_email, verif_subject, html)
+                        send_email(prim_email, app.config["VERIF_SUBJECT"], html)
                         sent_to_prim = True
 
                         thread = Thread(target=prim_expiry_timer)
@@ -491,10 +496,10 @@ def update_info(token):
                             confirm_url=confirm_url,
                         )
                         cells.append(Cell(row_find, wks_idx["Secondary Verified"], "FALSE"))
-                        cells.append(Cell(row_find, wks_idx["Secondary Bounced"], ""))
                         cells.append(Cell(row_find, wks_idx["Secondary Expired"], "FALSE"))
+                        cells.append(Cell(row_find, wks_idx["Secondary Bounced"], ""))
 
-                        send_email(sec_email, verif_subject, html)
+                        send_email(sec_email, app.config["VERIF_SUBJECT"], html)
                         sent_to_sec = True
 
                         thread = Thread(target=sec_expiry_timer)
@@ -534,7 +539,7 @@ def update_info(token):
                             last=user[arr_idx["Last Name"]],
                             confirm_url=confirm_url,
                         )
-                        send_email(prim_email, verif_subject, html)
+                        send_email(prim_email, app.config["VERIF_SUBJECT"], html)
 
                 if user[arr_idx["Secondary Verified"]] == "FALSE":
                     cells.append(Cell(row_find, wks_idx["Secondary Subscribed"], "FALSE"))
@@ -548,7 +553,7 @@ def update_info(token):
                             last=user[arr_idx["Last Name"]],
                             confirm_url=confirm_url,
                         )
-                        send_email(sec_email, verif_subject, html)
+                        send_email(sec_email, app.config["VERIF_SUBJECT"], html)
 
                 if user[arr_idx["Primary Verified"]] == "TRUE":
                     cells.append(Cell(

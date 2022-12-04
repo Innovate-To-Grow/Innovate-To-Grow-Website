@@ -1,18 +1,17 @@
-{% extends "layout.html" %}
+{% extends "membership/layout.html" %}
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <style>
+<style>
     .w3-theme-UCBlue {
     color:#fff !important;background-color:#002856 !important}
     .w3-theme-UCGold {
     color:#fff !important;background-color:#DAA900 !important}
-    </style> 
-  
+</style> 
+
 <div class="w3-container w3-theme-UCBlue">
-<p style="font-size:120%; color:#DAA900;">Instructions have been sent to the primary and secondary emails. </p>
-<p style="font-size:120%; color:#DAA900;">Please check them to complete the registration. (Please check your spam folders too.)</p>
-<p style = "color:#DAA900">Thank you for signing up for Innovate to Grow membership</p>
+<p style="font-size:120%; color:#DAA900;">The confirmation link is invalid or has expired. 
+        <a style="font-size:120%; color:#0091b3; text-decoration: underline;" href="{{ url_for('registration.resend', token=token) }}">Click here to resend</a>.</p>
 </div>
 {% endblock %}

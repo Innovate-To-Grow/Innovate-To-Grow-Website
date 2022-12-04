@@ -1,5 +1,5 @@
 /* Image rounding */
-img{
+img {
   border-radius: 30px;
 }
 
@@ -9,7 +9,7 @@ form label {
   padding-bottom: 10px;
   padding-top: 10px;
   color: #ffffff;
-  font-family:'kievit', sans-serif;
+  font-family: 'kievit', sans-serif;
 }
 
 form input#first_name,
@@ -24,7 +24,7 @@ form input#confirm_secondary {
   background-color: rgb(255, 255, 255);
   border-bottom: 2px solid #5b5b5b;
   font-family: 'kievit', sans-serif;
-  color:#000000;
+  color: #000000;
   font-weight: bold;
   font-style: italic;
   font-size: 1.1em;
@@ -41,37 +41,39 @@ form input#confirm_secondary {
 /* Submit button */
 form input#submit {
   display: block;
-  -webkit-border-radius: 3px; 
-     -moz-border-radius: 3px;
-          border-radius: 3px;
-  border:2px solid #ffbf3c;
-  padding: 10px; 
-  font-weight:bold; 
-  text-align: center; 
-  color: #002856; 
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  border: 2px solid #ffbf3c;
+  padding: 10px;
+  font-weight: bold;
+  text-align: center;
+  color: #002856;
   background-color: #ffffff;
   background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #ffffff), color-stop(100%, #e7e7e7));
   background-image: -webkit-linear-gradient(top, #ffffff, #e7e7e7);
   background-image: -moz-linear-gradient(top, #ffffff, #e7e7e7);
   background-image: -ms-linear-gradient(top, #ffffff, #e7e7e7);
   background-image: -o-linear-gradient(top, #ffffff, #e7e7e7);
-  background-image: linear-gradient(top, #ffffff, #e7e7e7);filter:progid:DXImageTransform.Microsoft.gradient(GradientType=0,startColorstr=#ffffff, endColorstr=#e7e7e7);
+  background-image: linear-gradient(top, #ffffff, #e7e7e7);
+  filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr=#ffffff, endColorstr=#e7e7e7);
 }
 
 p {
   white-space: pre;
 }
 
-form input#submit:hover{
+form input#submit:hover {
   cursor: pointer;
-  border:2px solid #ffbf3c; 
+  border: 2px solid #ffbf3c;
   background-color: #5b5b5b;
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#5b5b5b), color-stop(100%, #e5e5e5));
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #5b5b5b), color-stop(100%, #e5e5e5));
   background-image: -webkit-linear-gradient(top, #5b5b5b, #e5e5e5);
   background-image: -moz-linear-gradient(top, #5b5b5b, #e5e5e5);
   background-image: -ms-linear-gradient(top, #5b5b5b, #e5e5e5);
   background-image: -o-linear-gradient(top, #5b5b5b, #e5e5e5);
-  background-image: linear-gradient(top, #5b5b5b, #e5e5e5);filter:progid:DXImageTransform.Microsoft.gradient(GradientType=0,startColorstr=#5b5b5b, endColorstr=#e5e5e5);
+  background-image: linear-gradient(top, #5b5b5b, #e5e5e5);
+  filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr=#5b5b5b, endColorstr=#e5e5e5);
 }
 
 ul {
@@ -219,25 +221,16 @@ nav a:nth-child(3):hover~#indicator {
   vertical-align: middle;
 }
 
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none !important;
-  margin: 0 !important;
-}
-
-input[type="number"] {
-  -moz-appearance: textfield !important;
-}
 
 input[type="text" i] {
   padding: 1px 2px;
   color: #000000;
-  font-family:'kievit', sans-serif;
+  font-family: 'kievit', sans-serif;
 }
 
 
 
-option{
+option {
   color: #000000;
-  font-family:'kievit', sans-serif;
+  font-family: 'kievit', sans-serif;
 }
