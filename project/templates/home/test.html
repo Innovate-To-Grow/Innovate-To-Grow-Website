@@ -1,15 +1,70 @@
 <!DOCTYPE html>
 <html>
 
+<!-- Kenneth Nav bar using Bootstrap 
+Reference: https://getbootstrap.com/docs/5.0/components/navbar/ 
+-->
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+<nav class="navbar sticky-top navbar-expand-lg navbar-light" style="background-color: #ffffff;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#" style="color:#002856">Navbar</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="#" style="color:#002856">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" style="color:#002856">Features</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" style="color:#002856">Pricing</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" 
+                    data-bs-toggle="dropdown" aria-expanded="false" style="color:#002856">
+                        Dropdown link
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class="dropdown-item" href="#" style="color:#002856">Action</a></li>
+                        <li><a class="dropdown-item" href="#" style="color:#002856">Another action</a></li>
+                        <li><a class="dropdown-item" href="#" style="color:#002856">Something else here</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+    crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+    crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+
+
+<!-- End of Nav Bar -->
+
 <head>
     <title>Innovate To Grow At UC Merced</title>
     <!-- <link rel="icon" href="images/favicon.png" /> -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles.css') }}">
-    
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles.css') }}">
+
 </head>
 <p><img alt="" src="{{url_for('static', filename='i2g-header-img.jpg') }}" style="width: 100%;" /></p>
+
 <div class="i2gHome" style="text-align: left;">
     <br>
     <center><a style="color: #0091B3;" class="btn--invert-gold hb__play" href="{{ url_for('about.about_us') }}"
@@ -125,4 +180,5 @@
             target="_blank">contact us here</a>&nbsp;or email to:&nbsp;&nbsp;<a
             href="mailto:innovatetogrow@ucmerced.edu">innovatetogrow@ucmerced.edu</a></p>
 </div>
+
 </html>
