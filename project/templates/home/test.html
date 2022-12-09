@@ -1,184 +1,400 @@
 <!DOCTYPE html>
-<html>
-
-<!-- Kenneth Nav bar using Bootstrap 
-Reference: https://getbootstrap.com/docs/5.0/components/navbar/ 
--->
-
-
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-
-<nav class="navbar sticky-top navbar-expand-lg navbar-light" style="background-color: #ffffff;">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#" style="color:#002856">Navbar</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
-            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNavDropdown">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="#" style="color:#002856">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" style="color:#002856">Features</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" style="color:#002856">Pricing</a>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" 
-                    data-bs-toggle="dropdown" aria-expanded="false" style="color:#002856">
-                        Dropdown link
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                        <li><a class="dropdown-item" href="#" style="color:#002856">Action</a></li>
-                        <li><a class="dropdown-item" href="#" style="color:#002856">Another action</a></li>
-                        <li><a class="dropdown-item" href="#" style="color:#002856">Something else here</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
-<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
-    crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
-    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-    crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
-    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-    crossorigin="anonymous"></script>
-
-
-<!-- End of Nav Bar -->
 
 <head>
-    <title>Innovate To Grow At UC Merced</title>
-    <!-- <link rel="icon" href="images/favicon.png" /> -->
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles.css') }}">
-
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+        href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <script src="{{ url_for('static',filename='js/recaptcha-api.js') }}" async="async" defer></script>
+    <link rel="shortcut icon" href="favicons/UCMerced-favicon.ico" type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>Innovate To Grow | School of Engineering</title>
+    <link type="text/css" rel="stylesheet"
+        href="{{ url_for('static',filename='css/css-css_xE-rWrJf-fncB6ztZfd2huxqgxu4WO-qwma6Xer30m4.css') }}"
+        media="all">
+    <link type="text/css" rel="stylesheet"
+        href="{{ url_for('static',filename='css/css-css_YXH4gT2-px48IhryM34bm9BPKIdC7FXgfCpSr9PWyTE.css') }}"
+        media="all">
+    <link type="text/css" rel="stylesheet"
+        href="{{ url_for('static',filename='css/css-css_ikO0Dxm7cLx8sij8aCz93A0aaPm7Vn5LlfEi4H4knHY.css') }}"
+        media="screen">
+    <link type="text/css" rel="stylesheet"
+        href="{{ url_for('static',filename='css/css-css_ubzgGJ35RgxN1IJggmIbJzwcE6NtKXa-uNCjJJK6XVo.css') }}"
+        media="all">
+    <link type="text/css" rel="stylesheet"
+        href="{{ url_for('static',filename='css/css-css_NYiFQQOJ7xKN-UNsYwHSy9B0FCXYVU-ZlvGwkwzENhA.css') }}"
+        media="all">
+    <script type="text/javascript"
+        src="{{ url_for('static',filename='js/js-js_XexEZhbTmj1BHeajKr2rPfyR8Y68f4rm0Nv3Vj5_dSI.js') }}"></script>
+    <script type="text/javascript"
+        src="{{ url_for('static',filename='js/js-js_jcCq6mIiUQO8UVHPQGodwBB20SVk57zQ9OUDx6L6OC0.js') }}"></script>
+    <script type="text/javascript"
+        src="{{ url_for('static',filename='js/js-js_lYXBf5jBOEeuCcZ1EEfWM3cnZXJ6-B6AuswWtJ1JGSw.js') }}"></script>
+    <script type="text/javascript"
+        src="{{ url_for('static',filename='js/js-js_jWvMRvZ8oKDPkw7PO6dSKi88lBTsNPnOLr3hiyfvSnE.js') }}"></script>
+    <script type="text/javascript"
+        src="{{ url_for('static',filename='js/js-js_Btvj6RNWy6mW_Y-FXH9a4UVDI19MXIlXYDvxbme4QeE.js') }}"></script>
 </head>
-<p><img alt="" src="{{url_for('static', filename='i2g-header-img.jpg') }}" style="width: 100%;" /></p>
 
-<div class="i2gHome" style="text-align: left;">
-    <br>
-    <center><a style="color: #0091B3;" class="btn--invert-gold hb__play" href="{{ url_for('about.about_us') }}"
-            target="_blank">I2G
-            Membership</a></center><br>
-    <h4>The Innovate to Grow program</h4>
-
-    <p>Innovate to Grow (I2G) is a unique &ldquo;experiential learning&rdquo; program that engages external partner
-        organizations with teams of students who design systems to solve real-world problems.&nbsp;The Innovate to Grow
-        program encompasses the following experiential learning classes:&nbsp; <a
-            href="https://innovatetogrow.ucmerced.edu/engineering-capstone">Engineering Capstone</a>, <a
-            href="https://innovatetogrow.ucmerced.edu/about_EngSL">Engineering Service Learning</a>, and <a
-            href="https://innovatetogrow.ucmerced.edu/software-capstone">Software Engineering Capstone</a>.</p>
-</div>
-<div class="i2gHome">
-    <div class="span12" style="text-align: left; padding-bottom: 20px;">
-        <div 12px="" class="span6" padding-top:="" style="padding-right: 20px;">
-            <h4>The Innovate to Grow showcase</h4>
-
-            <p dir="ltr">The&nbsp;Fall 2022 expo will be held at the Gym.&nbsp;Presentations will also be streamed on
-                Zoom. Parking at&nbsp;Lot TBD&nbsp;(follow signs).</p>
-
-            <p><strong>Friday, December&nbsp;16, 2022&nbsp;-&nbsp;Mark your calendar!</strong></p>
-
-            <p dir="ltr"><b>Registration</b>: 9:30AM&nbsp; (check for updates)<br />
-                <b>Expo</b>:&nbsp; Gym&nbsp; 10:00&nbsp;<br />
-                <b>Presentations</b>: Campus and&nbsp;Zoom:&nbsp; 12:30<br />
-                <b>Awards + Reception</b>: Conference Center 3:45
-            </p>
-
-            <div class="pull-left sb-row">
-                <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                        href="https://i2g-fall-2022.eventbrite.com" target="_blank">Register Now !</a></div>
-                <!--
-                  <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="">Event details</a></div>
-  
-                  <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/current-projects">Projects &amp; Teams</a></div>
-  
-  -->
-            </div>
-        </div>
-
-        <div class="span6">
-            <div class="iframe-container"><iframe class="responsive-iframe"
-                    src="https://www.youtube.com/embed/gWBs9QYW1nA"></iframe></div>
-        </div>
-    </div>
-</div>
-<div class="i2gHome">
-    <div class="span12" style="text-align: left; margin: 0; padding-top: 50px;">
-        <div class="span6">
-            <h4>Message from the Dean</h4>
-
-            <div class="iframe-container"><iframe class="responsive-iframe"
-                    src="https://www.youtube.com/embed/gQjfIZ3_nCM"></iframe>
-
-                <p style="text-align: center;">Welcome and participation instructions, Mark Matsumoto, Dean, School of
-                    Engineering, University of California, Merced.</p>
-            </div>
-        </div>
-
-        <div class="span6" style="padding-left: 20px;">
-            <h4>Fall 2022&nbsp;Information:</h4>
-
-            <div class="pull-left sb-row">
-                <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="event">Event</a></div>
-
-                <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="schedule">Schedule</a>
+<body class="html front not-logged-in no-sidebars page-node">
+    <!-- NAVBAR -->
+    <div id="siteName">
+        <div class="container">
+            <div class="row-fluid">
+                <div class="name-slogan span12">
+                    <div id="site-name" class="site-name"><a href="innovatetogrow.ucmerced.html" title="Home"
+                            rel="home">Innovate
+                            To Grow</a></div>
+                    <div id="site-slogan" class="site-slogan">School of Engineering</div>
                 </div>
-
-                <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="projects-teams">Projects
-                        &amp; Teams</a></div>
-
-                <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="attendees">For
-                        Attendees</a></div>
-
-                <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="judges">For Judges</a>
-                </div>
-
-                <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="students">For
-                        Students</a></div>
-
-                <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="acknowledgement">Our
-                        Partners &amp; Sponsors</a></div>
-
-                <div class="sb-col hb__buttons-blue">&nbsp;</div>
-
-                <div class="sb-col hb__buttons-blue">&nbsp;</div>
             </div>
         </div>
     </div>
-</div>
-
-<div>&nbsp;</div>
-<div class="sb-row" style="text-align: center; padding-top: 50px;">
-    <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/about">About Us</a></div>
-
-    <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="/projects">Projects</a></div>
-
-    <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/project-submission">Project
-            Submission</a></div>
-
-    <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="/contact" target="_blank">Contact
-            Us</a></div>
-
-    <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/news">News</a></div>
-</div>
-
-<p>&nbsp;</p>
-
-<div class="i2gHome">
-    <p>For any questions or comments, please&nbsp;<a href="https://innovatetogrow.ucmerced.edu/contact-us"
-            target="_blank">contact us here</a>&nbsp;or email to:&nbsp;&nbsp;<a
-            href="mailto:innovatetogrow@ucmerced.edu">innovatetogrow@ucmerced.edu</a></p>
-</div>
+    <div id="main-menu" class="clearfix site-main-menu">
+        <div class="container">
+            <div class="navbar row-fluid">
+                <div class="navbar-inner1 span12">
+                    <button aria-label="Navigation menu" class="btn-navbar collapsed" data-toggle="collapse"
+                        data-target=".nav-collapse"> <span class="hide">Navigation menu</span> <span
+                            class="icon-bar top-bar"></span> <span class="icon-bar middle-bar"></span> <span
+                            class="icon-bar bottom-bar"></span> </button>
+                    <div class="nav-collapse collapse">
+                        <nav id="main-nav" role="navigation">
+                            <div class="region region-navigation clearfix">
+                                <div id="block-superfish-1" class="clearfix block block-superfish">
+                                    <h2>Main menu</h2>
+                                    <div class="content">
+                                        <ul id="superfish-1"
+                                            class="sf-menu main-menu sf-horizontal sf-style-none sf-total-items-10 sf-parent-items-5 sf-single-items-5">
+                                            <li id="menu-548-1" class="first odd sf-item-1 sf-depth-1 sf-no-children"><a
+                                                    href="innovatetogrow.ucmerced.html" title=""
+                                                    class="sf-depth-1  active">Home</a></li>
+                                            <li id="menu-538-1"
+                                                class="middle even sf-item-2 sf-depth-1 sf-total-children-3 sf-parent-children-0 sf-single-children-3 menuparent">
+                                                <a href="about.html" class="sf-depth-1  menuparent">About Us</a>
+                                                <ul>
+                                                    <li id="menu-4471-1"
+                                                        class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
+                                                            href="engineering-capstone.html" title=""
+                                                            class="sf-depth-2 ">Engineering Capstone</a>
+                                                    </li>
+                                                    <li id="menu-544-1"
+                                                        class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
+                                                            href="about_EngSL.html" title="" class="sf-depth-2 ">Eng.
+                                                            Service Learning</a></li>
+                                                    <li id="menu-4481-1"
+                                                        class="last odd sf-item-3 sf-depth-2 sf-no-children"><a
+                                                            href="software-capstone.html" title=""
+                                                            class="sf-depth-2 ">Software Eng. Capstone</a></li>
+                                                </ul>
+                                            </li>
+                                            <li id="menu-5291-1"
+                                                class="middle odd sf-item-3 sf-depth-1 sf-total-children-7 sf-parent-children-0 sf-single-children-7 menuparent">
+                                                <a href="event.html" title="" class="sf-depth-1  menuparent">Fall
+                                                    2022</a>
+                                                <ul>
+                                                    <li id="menu-5301-1"
+                                                        class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
+                                                            href="event.html" title="" class="sf-depth-2 ">Event
+                                                            info</a></li>
+                                                    <li id="menu-5371-1"
+                                                        class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
+                                                            href="schedule.html" title=""
+                                                            class="sf-depth-2 ">Schedule</a></li>
+                                                    <li id="menu-5321-1"
+                                                        class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
+                                                            href="projects-teams.html" title=""
+                                                            class="sf-depth-2 ">Projects &amp; Teams</a></li>
+                                                    <li id="menu-5331-1"
+                                                        class="middle even sf-item-4 sf-depth-2 sf-no-children"><a
+                                                            href="judges.html" title="" class="sf-depth-2 ">for
+                                                            Judges</a></li>
+                                                    <li id="menu-5341-1"
+                                                        class="middle odd sf-item-5 sf-depth-2 sf-no-children"><a
+                                                            href="attendees.html" title="" class="sf-depth-2 ">for
+                                                            Attendees</a></li>
+                                                    <li id="menu-5351-1"
+                                                        class="middle even sf-item-6 sf-depth-2 sf-no-children"><a
+                                                            href="students.html" title="" class="sf-depth-2 ">for
+                                                            Students</a></li>
+                                                    <li id="menu-5361-1"
+                                                        class="last odd sf-item-7 sf-depth-2 sf-no-children"><a
+                                                            href="acknowledgement.html" title=""
+                                                            class="sf-depth-2 ">Partners &amp; Sponsors</a></li>
+                                                </ul>
+                                            </li>
+                                            <li id="menu-4401-1"
+                                                class="middle even sf-item-4 sf-depth-1 sf-no-children"><a
+                                                    href="past-events.html" class="sf-depth-1 ">Past Events</a></li>
+                                            <li id="menu-4551-1"
+                                                class="middle odd sf-item-5 sf-depth-1 sf-total-children-4 sf-parent-children-0 sf-single-children-4 menuparent">
+                                                <a href="projects.html" title=""
+                                                    class="sf-depth-1  menuparent">Projects</a>
+                                                <ul>
+                                                    <li id="menu-4691-1"
+                                                        class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
+                                                            href="past-projects.html" title="" class="sf-depth-2 ">Past
+                                                            Projects</a></li>
+                                                    <li id="menu-4561-1"
+                                                        class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
+                                                            href="current-projects.html" title=""
+                                                            class="sf-depth-2 ">Current Projects</a></li>
+                                                    <li id="menu-4571-1"
+                                                        class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
+                                                            href="project-submission.html" title=""
+                                                            class="sf-depth-2 ">Project Submission</a></li>
+                                                    <li id="menu-4581-1"
+                                                        class="last even sf-item-4 sf-depth-2 sf-no-children"><a
+                                                            href="sample-proposals.html" title=""
+                                                            class="sf-depth-2 ">Sample Project Proposals</a>
+                                                    </li>
+                                                </ul>
+                                            </li>
+                                            <li id="menu-397-1" class="middle even sf-item-6 sf-depth-1 sf-no-children">
+                                                <a href="news.html" title="" class="sf-depth-1 ">News</a></li>
+                                            <li id="menu-833-1"
+                                                class="middle odd sf-item-7 sf-depth-1 sf-total-children-4 sf-parent-children-0 sf-single-children-4 menuparent">
+                                                <a href="partnership.html" class="sf-depth-1  menuparent">Partner with
+                                                    Us</a>
+                                                <ul>
+                                                    <li id="menu-4721-1"
+                                                        class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
+                                                            href="project-submission.html" title=""
+                                                            class="sf-depth-2 ">Propose a project</a></li>
+                                                    <li id="menu-4711-1"
+                                                        class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
+                                                            href="judges.html" title="" class="sf-depth-2 ">Sign up to
+                                                            Judge</a></li>
+                                                    <li id="menu-647-1"
+                                                        class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
+                                                            href="sponsorship.html" title="" class="sf-depth-2 ">Sponsor
+                                                            or donate</a></li>
+                                                    <li id="menu-2511-1"
+                                                        class="last even sf-item-4 sf-depth-2 sf-no-children"><a
+                                                            href="FAQs.html" class="sf-depth-2 ">FAQs</a></li>
+                                                </ul>
+                                            </li>
+                                            <li id="menu-3971-1"
+                                                class="middle even sf-item-8 sf-depth-1 sf-no-children"><a
+                                                    href="project-submission.html" class="sf-depth-1 ">PROJECT
+                                                    SUBMISSION</a></li>
+                                            <li id="menu-4661-1"
+                                                class="middle odd sf-item-9 sf-depth-1 sf-total-children-5 sf-parent-children-0 sf-single-children-5 menuparent">
+                                                <a href="students.html" title=""
+                                                    class="sf-depth-1  menuparent">Students</a>
+                                                <ul>
+                                                    <li id="menu-4671-1"
+                                                        class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
+                                                            href="I2G-student-agreement.html" title=""
+                                                            class="sf-depth-2 ">Student Agreement</a></li>
+                                                    <li id="menu-5381-1"
+                                                        class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
+                                                            href="ferpa.html" title="" class="sf-depth-2 ">FERPA (Media)
+                                                            Agreement</a></li>
+                                                    <li id="menu-4801-1"
+                                                        class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
+                                                            href="i2g-students-preparation.html" title=""
+                                                            class="sf-depth-2 ">Event preparation </a>
+                                                    </li>
+                                                    <li id="menu-4791-1"
+                                                        class="middle even sf-item-4 sf-depth-2 sf-no-children"><a
+                                                            href="video-preparation.html" title=""
+                                                            class="sf-depth-2 ">Video preparation</a></li>
+                                                    <li id="menu-2651-1"
+                                                        class="last odd sf-item-5 sf-depth-2 sf-no-children"><a
+                                                            href="capstone_purchasing_reimbursement_forms.html"
+                                                            class="sf-depth-2 ">Purchasing |
+                                                            Travel</a></li>
+                                                </ul>
+                                            </li>
+                                            <li id="menu-521-1" class="last even sf-item-10 sf-depth-1 sf-no-children">
+                                                <a href="contact-us.html" title="" class="sf-depth-1 ">Contact Us</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </nav>
+                        <div id="now-date-weather"><span id="today">Friday 9 December 2022</span> <span
+                                id="weather"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END NAVBAR -->
+    <div id="fullwidth-top" class="row-fluid fullwidth">
+        <div class="container">
+            <div class="region region-fullwidth-top clearfix">
+                <div id="block-block-161" class="clearfix block block-block">
+                    <div class="content">
+                        <p><img alt="" src="{{url_for('static', filename='images/i2g-header-img.jpg') }}"
+                                style="width: 100%;" /></p>
+                    </div>
+                </div>
+            </div>
+            <!-- /.region -->
+        </div>
+    </div>
+    <div id="main" class="clearfix main" role="main">
+        <div class="container">
+            <div id="main-top" class="row-fluid main-top">
+                <div class="region region-main-top clearfix">
+                    <div id="block-block-141" class="clearfix block block-block">
+                        <div class="content">
+                            <div class="i2gHome" style="text-align: left;">
+                                <br><center><a style="color: #0091B3;" class="btn--invert-gold hb__play" href="{{ url_for('about.about_us') }}"
+                                    target="_blank">I2G
+                                    Membership</a></center><br>
+                                <h4>The Innovate to Grow program</h4>
+                                <p>Innovate to Grow (I2G) is a unique “experiential learning” program that engages
+                                    external partner
+                                    organizations with teams of students who design systems to solve real-world
+                                    problems. The Innovate to
+                                    Grow program encompasses the following experiential learning classes: <a
+                                        href="engineering-capstone.html">Engineering Capstone</a>, <a
+                                        href="about_EngSL.html">Engineering
+                                        Service Learning</a>, and <a href="software-capstone.html">Software Engineering
+                                        Capstone</a>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="main-upper" class="row-fluid main-upper">
+                <div class="region region-main-upper clearfix">
+                    <div id="block-block-621" class="clearfix block block-block">
+                        <div class="content">
+                            <div class="i2gHome">
+                                <div class="span12" style="text-align: left; padding-bottom: 20px;">
+                                    <div class="span6" padding-top:="" style="padding-right: 20px;">
+                                        <h4>The Innovate to Grow showcase</h4>
+                                        <p dir="ltr">The Fall 2022 expo will be held at the Gym. Presentations at COB
+                                            Bldg, also streamed on
+                                            Zoom. Parking at Bellevue Lot (follow signs).</p>
+                                        <p><strong>Friday, December 16, 2022 - Mark your calendar!</strong></p>
+                                        <p dir="ltr"><b>Registration</b>: 9:30AM (check for updates)<br><b>Expo</b>:
+                                            Gym
+                                            10:00 <br><b>Presentations</b>: COB Bldg. and Zoom: 12:30<br><b>Awards +
+                                                Reception</b>:
+                                            Conference Center 3:45</p>
+                                        <div class="pull-left sb-row">
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
+                                                    href="https://i2g-fall-2022.eventbrite.com" target="_blank">Register
+                                                    Now !</a></div>
+                                        </div>
+                                    </div>
+                                    <div class="span6">
+                                        <div class="iframe-container">
+                                            <iframe class="responsive-iframe"
+                                                src="https://www.youtube.com/embed/gWBs9QYW1nA"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="block-block-631" class="clearfix block block-block">
+                        <div class="content">
+                            <div class="i2gHome">
+                                <div class="span12" style="text-align: left; margin: 0; padding-top: 50px;">
+                                    <div class="span6">
+                                        <h4>Message from the Dean</h4>
+                                        <div class="iframe-container">
+                                            <iframe class="responsive-iframe"
+                                                src="https://www.youtube.com/embed/gQjfIZ3_nCM"></iframe>
+                                            <p style="text-align: center;">Welcome and participation instructions, Mark
+                                                Matsumoto, Dean,
+                                                School of Engineering, University of California, Merced.</p>
+                                        </div>
+                                    </div>
+                                    <div class="span6" style="padding-left: 20px;">
+                                        <h4>Fall 2022 Information:</h4>
+                                        <div class="pull-left sb-row">
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="event.html">Event</a></div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
+                                                    href="schedule.html">Schedule</a></div>
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="projects-teams.html">Projects &amp; Teams</a></div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
+                                                    href="attendees.html">For Attendees</a></div>
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="judges.html">For
+                                                    Judges</a></div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
+                                                    href="students.html">For
+                                                    Students</a></div>
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="acknowledgement.html">Our Partners &amp; Sponsors</a></div>
+                                            <div class="sb-col hb__buttons-blue"> </div>
+                                            <div class="sb-col hb__buttons-blue"> </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div> </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="main-content" class="row main-content">
+                <div id="content" class="mc-content span12">
+                    <div id="content-wrapper" class="content-wrapper">
+                        <div id="content-head" class="row-fluid content-head">
+                            <div id="help" class="clearfix">
+                                <div class="region region-help clearfix">
+                                    <div id="block-block-41" class="clearfix block block-block">
+                                        <div class="content">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="content-body" class="row-fluid content-body">
+                            <a href="rss.html" class="feed-icon" title="Subscribe to Innovate To Grow RSS"><img
+                                    typeof="foaf:Image" src="{{ url_for('static',filename='images/misc-feed.png') }}"
+                                    width="16" height="16" alt="Subscribe to Innovate To Grow RSS"></a>
+                        </div>
+                        <div id="content-bottom" class="row-fluid content-bottom">
+                            <div class="region region-content-bottom clearfix">
+                                <div id="block-block-61" class="clearfix block block-block">
+                                    <div class="content">
+                                        <div class="sb-row" style="text-align: center; padding-top: 50px;">
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="about.html">About
+                                                    Us</a></div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
+                                                    href="projects.html">Projects</a></div>
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="project-submission.html">Project Submission</a></div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
+                                                    href="contact-us.html" target="_blank">Contact Us</a></div>
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
+                                                    href="news.html">News</a></div>
+                                        </div>
+                                        <p> </p>
+                                        <div class="i2gHome">
+                                            <p>For any questions or comments, please <a href="contact-us.html"
+                                                    target="_blank">contact us
+                                                    here</a> or email to: <a
+                                                    href="mailto:innovatetogrow@ucmerced.edu">innovatetogrow@ucmerced.edu</a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>(function (d) { var s = d.createElement("script"); s.setAttribute("data-account", "6Uvgvyrrph"); s.setAttribute("src", "https://cdn.userway.org/widget.js"); (d.body || d.head).appendChild(s); })(document)</script>
+    <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website
+            accessibility</a></noscript>
+    <script src="{{ url_for('static',filename='js/js-siteimprove.js') }}" async></script>
+</body>
 
 </html>
