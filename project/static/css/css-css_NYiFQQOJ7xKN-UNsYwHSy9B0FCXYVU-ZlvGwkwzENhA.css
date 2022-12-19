@@ -8237,7 +8237,7 @@ input[type="submit"].btn.btn-mini {
     width: 30px;
     height: 3px;
     margin: 5px 0;
-    background-color: #ffffff;
+    background-color: #0f2d52;
 }
 
 .navbar .btn-navbar .icon-bar .top-bar {
@@ -9185,6 +9185,45 @@ a.thumbnail:focus {
     margin-left: 0;
     list-style: none;
 }
+
+.iframe-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  }
+  
+  
+  .responsive-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  
+  .i2gHome h3 {
+        color: #0f2d52 !important;
+     margin: 0px 0px 12px 0px;
+    
+  }
+  .i2gHome h2 {
+   color: #0f2d52 !important;
+     margin: 0px 0px 40px 0px;
+     padding-bottom: 10px;
+     border-bottom: 2px solid #ffbf3c;
+  }
+  .i2gHome li a {
+      color: #007E9E;
+      text-decoration: underline;
+  }
+  .i2gHome h4 {
+      margin-top: 0px !important;
+      padding-top: 0px !important;
+  }
 
 .label,
 .badge {
@@ -11120,6 +11159,12 @@ a.badge:focus {
 }
 
 @media (min-width:980px) {
+    .site-name {
+        position: none; 
+    }
+    .btn-navbar {
+        display: none !important;
+    }
     .nav-collapse.collapse {
         overflow: visible !important;
     }
@@ -12330,7 +12375,7 @@ span.nolink>.sf-sub-indicator {
 
     .site-main-menu .nav-collapse {
         position: fixed;
-        top: 85px;
+        top: 82px;
         left: 0;
         bottom: 0;
         overflow-y: scroll !important;
@@ -14600,6 +14645,9 @@ textarea {
 }
 
 @media (max-width:420px) {
+    .site-main-menu .nav-collapse {
+        top: 73px;
+    }
     .site-name {
         font-size: 2rem !important;
         text-align: left;
@@ -14822,6 +14870,7 @@ textarea {
 #siteName {
     text-align: left;
     height: auto;
+    top: 0%;
     padding: 30px 0px 5px 0;
     width: 100%;
     align-items: center;
@@ -14873,6 +14922,7 @@ textarea {
 
 @media (max-width:979px) {
     #siteName {
+        position: sticky;
         padding: 0px;
     }
 
@@ -14992,13 +15042,11 @@ textarea {
 .navbar .btn-navbar {
     display: block;
     position: fixed;
-    top: 0em;
-    right: 5em;
+    top: 0.5em;
+    right: 0.5em;
     z-index: 10010;
-    background-color: white;
     width: 60px;
     height: 60px;
-    border-bottom: solid 1px #0f2d52;
 }
 
 .navbar .btn-navbar .toggle {
@@ -15288,7 +15336,7 @@ div#edit-submit--2 {
 }
 
 .sb-col {
-    flex: 1 0 18%;
+    flex: 0;
     margin: 5px 10px 5px 5px;
     color: white;
     display: flex;

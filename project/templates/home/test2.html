@@ -1,7 +1,26 @@
-<div class="i2gHome">
-    <div class="span12" style="text-align: left; padding-bottom: 20px;">
-        <div 12px="" class="span6" padding-top:="" style="padding-right: 20px;">
-            <h4>The Innovate to Grow showcase</h4>
-        </div>
+{% from "includes/nav.html" import nav  %}
+{% from "includes/styles.html" import styles  %}
+{% from "includes/scripts.html" import scripts  %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+        href="https://innovatetogrow.ucmerced.edu/rss.xml">    
+    <link rel="shortcut icon" href="favicons/UCMerced-favicon.ico" type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>Innovate To Grow | School of Engineering</title>
+    {{ styles() }}
+</head>
+<body class="html front not-logged-in no-sidebars page-node">
+    <!-- NAVBAR -->
+    {{ nav() }}
+    <!-- END NAVBAR -->
+    <div id="fullwidth-top" class="row-fluid fullwidth">
+
     </div>
-</div>
+    {{ scripts() }}
+</body>
+</html>
