@@ -1,0 +1,100 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+        href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="favicons/UCMerced-favicon.ico" type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>Software Engineering Capstone | Innovate To Grow</title>
+    {{ styles() }}
+</head>
+
+<body class="html front not-logged-in no-sidebars page-node">
+    <!-- NAVBAR -->
+    {{ nav() }}
+    <!-- END NAVBAR -->
+    <div id="main" class="clearfix main" role="main">
+        <div class="container">
+            <div id="main-content" class="row main-content">
+                <div id="content" class="mc-content span12">
+                    <div id="content-wrapper" class="content-wrapper">
+                        <div id="content-head" class="row-fluid content-head">
+                            <h1 class="title" id="page-title"> Software Engineering Capstone </h1>
+                            <!-- Required meta tags -->
+                            <meta charset="utf-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+                            <title></title>
+                            <p>Software Engineering Capstone (formerly known as Mobile App Challenge) encourages UC
+                                Merced students to develop innovative software applications for today&rsquo;s industry
+                                and societal needs, and currently involves students in the Software Engineering CSE 120
+                                class.<img
+                                    src="{{url_for('static', filename='images/software_capstone_about.png') }}"
+                                    style="width: 415px; height: 276px; float: right;" /></p>
+
+                            <p dir="ltr">Partner organizations and companies provide problems and software projects, and
+                                play a vital role by helping the students gain real-world experience and skills that
+                                will carry them into their future careers, while the partners also get solutions to
+                                their own software and data management needs.</p>
+
+                            <p dir="ltr">The Software Capstone provides UC Merced&#39;s Computer Science seniors
+                                opportunities to learn and contribute in teams that include practicing professionals
+                                from partner and sponsoring organizations.&nbsp;</p>
+
+                            <p dir="ltr">The Software teams focus on design and development projects chosen based on
+                                their potential for significant near-term effects on communities, organizations and/or
+                                industries in the region. The commitment of the teams and partners, combined with the
+                                richness and intensity of the Innovate to Grow competition, greatly enhances the
+                                software engineering experience.</p>
+
+                            <p dir="ltr">Industry partners contribute sponsorships to the program&#39;s operation, and
+                                each project sponsor&rsquo;s involvement ranges from providing funds to the Innovate to
+                                Grow program, to engaging students in industry experiences.</p>
+
+                            <p dir="ltr">We seek opportunities for students with partner organizations and industries to
+                                collaborate, discover solutions to common problems, create and streamline networking,
+                                and increase both radical and incremental innovation.</p>
+
+                            <p dir="ltr">As industries and organizations become increasingly knowledge-based, and as
+                                products, processes and business systems become more complex, UC Merced computer science
+                                and engineering students are becoming an essential part of the industry and are
+                                contributing to regional economic, social and cultural growth.</p>
+
+                            <p dir="ltr">You may search all <a
+                                    href="https://innovatetogrow.ucmerced.edu/past-projects">past projects</a> of
+                                Innovate to Grow since 2012, and <a
+                                    href="https://innovatetogrow.ucmerced.edu/current-projects">current student teams
+                                    and projects</a>.</p>
+
+                            <p>You may <a href="https://innovatetogrow.ucmerced.edu/project-submission">propose a
+                                    project</a> that can be evaluated for fit in Engineering Capstone, Software
+                                Capstone, or an internship, or potentially collaborative research with Faculty at UC
+                                Merced.</p>
+
+                            <p>&nbsp;</p>
+
+                            <p>&nbsp;</p>
+                            <!-- Optional JavaScript --><!-- jQuery first, then Popper.js, then Bootstrap JS -->
+                            <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+                                integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+                                crossorigin="anonymous"></script>
+                            <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+                                integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+                                crossorigin="anonymous"></script>
+                            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+                                integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+                                crossorigin="anonymous"></script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{ scripts() }}
+</body>
+
+</html>
