@@ -8,22 +8,16 @@ let checker = 0; // Checking if we are at a fresh merge button press
 let confirmation_tracker = 0; // To Check and make sure that js alert does not be called more than once when you hit merge button
 var datas = [];
 var share_datas = [];
-var test;
 var uuid;
+var unique_url = false;
 // global variable END
 
 // Prep START
 $(document).ready(function () {
     // get the team_names and team_numbers from the html
-    team_names = document.getElementById("uuid_div").dataset.team_names;
-    team_numbers = document.getElementById("uuid_div").dataset.team_numbers;
-    
-    team_names = JSON.parse(team_names);
-    team_numbers = JSON.parse(team_numbers);
+    team_names = JSON.parse(document.getElementById("uuid_div").dataset.team_names);
+    team_numbers = JSON.parse(document.getElementById("uuid_div").dataset.team_numbers);
 
-    console.log(team_names);
-    console.log(team_numbers);
-    
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1KATiK1Fnlb7Vsd186mCbaGjhID-OUGN-1QHWY8hIc5U/values/Past-Projects-WEB-LIVE?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         for (var i = 1; i < length; i++) {
@@ -81,12 +75,14 @@ $(document).ready(function () {
     $("#rowdelete").addClass('gray');
     $(".mergeTable").hide(); // hide mergeTable div
 
-    
     if (team_names.length > 0 || team_numbers.length > 0) {
+        unique_url = true;
         $(".buttonStick").hide();
+        $(".tableManage").hide();
         setTimeout(function () {
             $('.addtable').click(); // add a search table at the start of loading the page
             $('.merge').click(); // add a merge table at the start of loading the page
+            $('.sharing').hide(); // hide the sharing button
             $('.loader').hide();// hide the loading bar
         }, 2500);
     } else {
@@ -94,7 +90,7 @@ $(document).ready(function () {
             $('.addtable').click(); // add a search table at the start of loading the page
             $('.loader').hide(); // hide the loading bar
         }, 2500);
-    } 
+    }
 });
 // Prep END
 
@@ -131,11 +127,21 @@ function mergeformat(d) {
 // Merge Table specific functions START
 $(document).ready(function () {
 
+    
     // Set merged_table as a DataTable. For each specific field refer to https://datatables.net/
     merged_table = $('.display').DataTable({
         "dom": 'lBfrtip',
         "buttons": [
-            'csv', 'excel', 'pdf'
+            'csv', 'excel', 'pdf',
+            {
+                "text": 'Share URL',
+                "className": 'sharing',
+                "action": function () {   
+                    $('#share').click();
+                    $('#share').remove();
+                    $('.sharing').text('Loading...');
+                }
+            }
         ],
         "pageLength": 5,
         "lengthMenu": [[5, 10, 25, 100], [5, 10, 25, 100]],
@@ -447,38 +453,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     // Merge results function START
     $('#merge').click(function () {
-        if (confirmation_tracker == 0) { // if its a fresh start, makes sure to ask for confirmation only once per press
-            if (confirm("Are you sure you want to merge all of your search tables? \n(this can not be undone!)")) {
-                alert_confirmation = true;
-                $(".mergeTable").show();
-                var merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
-                $('#example').DataTable().clear().draw(); // delete old table
-                for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
-                    var row = merged_table.row($(this).closest('tr'));
-                    merged_table.row.add([
-                        merged_array[i]["Year-Semester"],
-                        merged_array[i]["Class"],
-                        merged_array[i]["Team#"],
-                        merged_array[i]["Team Name"],
-                        merged_array[i]["Project Title"],
-                        merged_array[i]["Organization"],
-                        merged_array[i]["Industry"],
-                        merged_array[i]["null"],
-                        merged_array[i]["Abstract"],
-                        merged_array[i]["Student Names"],
-                    ]).draw();
-                }
-                merged_table.$('tr').toggleClass('keep');
-                for (let i = search_counter; i > 0; i--) { // delete search tables after merge
-                    $('#example' + i).DataTable().destroy();
-                    $('#example' + i).remove();
-                }
-            }
-            else {
-                alert_confirmation = false;
-            }
-        }
-        else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
+        if (unique_url == true) {
             $(".mergeTable").show();
             var merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
             for (let i = 0; i < merged_array.length; i++) {
@@ -501,8 +476,64 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 $('#example' + i).DataTable().destroy();
                 $('#example' + i).remove();
             }
+        } else {
+            if (confirmation_tracker == 0) { // if its a fresh start, makes sure to ask for confirmation only once per press
+                if (confirm("Are you sure you want to merge all of your search tables? \n(this can not be undone!)")) {
+                    alert_confirmation = true;
+                    $(".mergeTable").show();
+                    var merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
+                    $('#example').DataTable().clear().draw(); // delete old table
+                    for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
+                        var row = merged_table.row($(this).closest('tr'));
+                        merged_table.row.add([
+                            merged_array[i]["Year-Semester"],
+                            merged_array[i]["Class"],
+                            merged_array[i]["Team#"],
+                            merged_array[i]["Team Name"],
+                            merged_array[i]["Project Title"],
+                            merged_array[i]["Organization"],
+                            merged_array[i]["Industry"],
+                            merged_array[i]["null"],
+                            merged_array[i]["Abstract"],
+                            merged_array[i]["Student Names"],
+                        ]).draw();
+                    }
+                    merged_table.$('tr').toggleClass('keep');
+                    for (let i = search_counter; i > 0; i--) { // delete search tables after merge
+                        $('#example' + i).DataTable().destroy();
+                        $('#example' + i).remove();
+                    }
+                }
+                else {
+                    alert_confirmation = false;
+                }
+            }
+            else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
+                $(".mergeTable").show();
+                var merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
+                for (let i = 0; i < merged_array.length; i++) {
+                    var row = merged_table.row($(this).closest('tr'));
+                    merged_table.row.add([
+                        merged_array[i]["Year-Semester"],
+                        merged_array[i]["Class"],
+                        merged_array[i]["Team#"],
+                        merged_array[i]["Team Name"],
+                        merged_array[i]["Project Title"],
+                        merged_array[i]["Organization"],
+                        merged_array[i]["Industry"],
+                        merged_array[i]["null"],
+                        merged_array[i]["Abstract"],
+                        merged_array[i]["Student Names"],
+                    ]).draw();
+                }
+                merged_table.$('tr').toggleClass('keep');
+                for (let i = search_counter; i > 0; i--) {
+                    $('#example' + i).DataTable().destroy();
+                    $('#example' + i).remove();
+                }
+            }
+            confirmation_tracker++;
         }
-        confirmation_tracker++;
     });
     // Merge results function END
 
@@ -570,6 +601,7 @@ $(document).ready(function () {
     });
 
     $('#share').click(function () {
+        $(this).hide();
         var share_array = merged_table.rows({ filter: 'applied' }).data().toArray();
         var length = share_array.length;
         for (var i = 0; i < length; i++) {

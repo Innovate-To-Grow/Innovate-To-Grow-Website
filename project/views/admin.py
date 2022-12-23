@@ -157,8 +157,9 @@ class EditFormModelView(ModelView):
 
     def on_model_change(self, form, model, is_created):
         options = ""
-        for option in form.options.data:
-            options += option + "\n" if option != form.options.data[-1] else option
+        for option in form.options.data[:-1]:
+            options += option + "\n"
+        options += form.options.data[-1]
         model.options = options
         db.session.commit()
 

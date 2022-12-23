@@ -1,4 +1,5 @@
 {% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer  %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -86,7 +87,7 @@
                                         type="checkbox" value="false" />Delete Table
                                         <!-- <button class="share" id="share" style="margin-left: 10px;" type="button"
                                         value="false">Share</button> -->
-                                        <form onsubmit="return false" action="" method="post">
+                                        <form style="display:none;" onsubmit="return false" action="" method="post">
                                             <input class="share" id="share" style="margin-left: 10px;" type="submit" name="share" value="share" />
                                         </form>
                                     <div class="help-tip2">
@@ -100,6 +101,7 @@
             </div>
         </div>
         <div id="uuid_div" data-uuid='{{ uuid_string }}' data-team_names='{{ team_names|tojson }}' data-team_numbers='{{ team_numbers|tojson }}'></div>
+        {{ footer() }}
         {{ scripts() }}
         <!-- All buttons and help-tip END --><!-- All includes of JS Libraries START -->
         <script src="https://code.jquery.com/jquery-3.3.1.js"></script>

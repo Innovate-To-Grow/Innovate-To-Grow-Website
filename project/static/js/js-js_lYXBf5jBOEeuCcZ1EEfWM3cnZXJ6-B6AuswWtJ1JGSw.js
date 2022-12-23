@@ -7,7 +7,6 @@
   let day = d.getDate();
   let year = d.getFullYear();
   let date = weekday + ' ' + day + ' ' + month + ' ' + year;
-  console.log("HERES DATE: " + date);
   $('#today').append(date);
 
   Drupal.behaviors.fancyFileDeleteViewRefresh = {

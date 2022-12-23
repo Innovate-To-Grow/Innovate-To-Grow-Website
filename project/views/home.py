@@ -31,21 +31,23 @@ def about_EngSL():
 def software_capstone():
     return render_template("software-capstone.html")
 
-import sys
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
     wks = gspread.service_account().open("Shareable Merge Tables").worksheet("Sheet1")
     if request.method == "POST":
-        # get json data
         data = request.get_json()
         uuid_string = str(uuid.uuid4())
         
         team_name = ""
         team_number = ""
-        for d in data:
-            team_name += d["Team Name"] + " ; " if d != data[-1] else d["Team Name"]
-            team_number += d["Team#"] + " ; " if d != data[-1] else d["Team#"]
+
+        for d in data[:-1]:
+            team_name += d["Team Name"] + " ; "
+            team_number += d["Team#"] + " ; "
+
+        team_name += data[-1]["Team Name"]
+        team_number += data[-1]["Team#"]
         
         wks.append_row(values=[uuid_string, team_name, team_number])
        
@@ -60,5 +62,5 @@ def past_projects(uuid_string=None):
             query = wks.row_values(cell.row)
             team_names = query[1].split(" ; ")
             team_numbers = query[2].split(" ; ")
-        
+    
     return render_template("past-projects.html", uuid_string=uuid_string, team_names=team_names, team_numbers=team_numbers)
