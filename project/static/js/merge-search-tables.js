@@ -34,7 +34,7 @@ $(document).ready(function () {
                 subArray[0] = subArray[0].replace('-CEE', '');
             }
             if (team_names.length > 0 || team_numbers.length > 0) {
-                if (team_names.includes(subArray[3]) || team_numbers.includes(subArray[2])) {
+                if (team_names.includes(subArray[3]) && team_numbers.includes(subArray[2])) {
                     subdata = {
                         "Year-Semester": subArray[0],
                         "Class": subArray[1],
