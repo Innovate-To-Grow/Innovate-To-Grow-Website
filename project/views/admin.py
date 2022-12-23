@@ -160,6 +160,7 @@ class EditFormModelView(ModelView):
         for option in form.options.data:
             options += option + "\n" if option != form.options.data[-1] else option
         model.options = options
+        db.session.commit()
 
     def after_model_change(self, form, model, is_created):
         cells = []

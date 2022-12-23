@@ -29,24 +29,24 @@
                                     <ul id="superfish-1"
                                         class="sf-menu main-menu sf-horizontal sf-style-none sf-total-items-10 sf-parent-items-5 sf-single-items-5">
                                         <li id="menu-548-1" class="first odd sf-item-1 sf-depth-1 sf-no-children"><a
-                                                href="/" title=""
+                                                href="{{ url_for('home.mainpage') }}" title=""
                                                 class="sf-depth-1  active">Home</a></li>
                                         <li id="menu-538-1"
                                             class="middle even sf-item-2 sf-depth-1 sf-total-children-3 sf-parent-children-0 sf-single-children-3 menuparent">
-                                            <a href="about" class="sf-depth-1  menuparent">About Us</a>
+                                            <a href="{{ url_for('home.about') }}" class="sf-depth-1  menuparent">About Us</a>
                                             <ul>
                                                 <li id="menu-4471-1"
                                                     class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
-                                                        href="engineering-capstone" title=""
+                                                        href="{{ url_for('home.engineering_capstone') }}" title=""
                                                         class="sf-depth-2 ">Engineering Capstone</a>
                                                 </li>
                                                 <li id="menu-544-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
-                                                        href="about_EngSL" title="" class="sf-depth-2 ">Eng.
+                                                        href="{{ url_for('home.about_EngSL') }}" title="" class="sf-depth-2 ">Eng.
                                                         Service Learning</a></li>
                                                 <li id="menu-4481-1"
                                                     class="last odd sf-item-3 sf-depth-2 sf-no-children"><a
-                                                        href="software-capstone" title=""
+                                                        href="{{ url_for('home.software_capstone') }}" title=""
                                                         class="sf-depth-2 ">Software Eng. Capstone</a></li>
                                             </ul>
                                         </li>
@@ -95,7 +95,7 @@
                                             <ul>
                                                 <li id="menu-4691-1"
                                                     class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
-                                                        href="past-projects" title="" class="sf-depth-2 ">Past
+                                                        href="{{ url_for('home.past_projects') }}" title="" class="sf-depth-2 ">Past
                                                         Projects</a></li>
                                                 <li id="menu-4561-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a

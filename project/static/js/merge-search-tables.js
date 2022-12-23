@@ -14,6 +14,16 @@ var uuid;
 
 // Prep START
 $(document).ready(function () {
+    // get the team_names and team_numbers from the html
+    team_names = document.getElementById("uuid_div").dataset.team_names;
+    team_numbers = document.getElementById("uuid_div").dataset.team_numbers;
+    
+    team_names = JSON.parse(team_names);
+    team_numbers = JSON.parse(team_numbers);
+
+    console.log(team_names);
+    console.log(team_numbers);
+    
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1KATiK1Fnlb7Vsd186mCbaGjhID-OUGN-1QHWY8hIc5U/values/Past-Projects-WEB-LIVE?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         for (var i = 1; i < length; i++) {
@@ -29,32 +39,62 @@ $(document).ready(function () {
             } else if (subArray[1] == "CEE") {
                 subArray[0] = subArray[0].replace('-CEE', '');
             }
+            if (team_names.length > 0 || team_numbers.length > 0) {
+                if (team_names.includes(subArray[3]) || team_numbers.includes(subArray[2])) {
+                    subdata = {
+                        "Year-Semester": subArray[0],
+                        "Class": subArray[1],
+                        "Team#": subArray[2],
+                        "Team Name": subArray[3],
+                        "Project Title": subArray[4],
+                        "Organization": subArray[5],
+                        "Industry": subArray[6],
+                        "Abstract": subArray[7],
+                        "Student Names": subArray[8],
+                    };
+                    JSON.stringify(subdata);
+                    datas.push(subdata);
+                }
 
-            subdata = {
-                "Year-Semester": subArray[0],
-                "Class": subArray[1],
-                "Team#": subArray[2],
-                "Team Name": subArray[3],
-                "Project Title": subArray[4],
-                "Organization": subArray[5],
-                "Industry": subArray[6],
-                "Abstract": subArray[7],
-                "Student Names": subArray[8],
-            };
-            JSON.stringify(subdata);
-            datas.push(subdata);
+            } else {
+                subdata = {
+                    "Year-Semester": subArray[0],
+                    "Class": subArray[1],
+                    "Team#": subArray[2],
+                    "Team Name": subArray[3],
+                    "Project Title": subArray[4],
+                    "Organization": subArray[5],
+                    "Industry": subArray[6],
+                    "Abstract": subArray[7],
+                    "Student Names": subArray[8],
+                };
+                JSON.stringify(subdata);
+                datas.push(subdata);
+
+            }
         }
     });
+
     document.getElementById("rowdelete").disabled = true; // set delete and keep button to not work
     document.getElementById("rowkeep").disabled = true;
     $("#rowkeep").addClass('gray'); // gray out delete and keep button
     $("#rowdelete").addClass('gray');
     $(".mergeTable").hide(); // hide mergeTable div
 
-    setTimeout(function () {
-        $('.addtable').click(); // add a search table at the start of loading the page
-        $('.loader').hide();// hide the loading bar
-    }, 2500);
+    
+    if (team_names.length > 0 || team_numbers.length > 0) {
+        $(".buttonStick").hide();
+        setTimeout(function () {
+            $('.addtable').click(); // add a search table at the start of loading the page
+            $('.merge').click(); // add a merge table at the start of loading the page
+            $('.loader').hide();// hide the loading bar
+        }, 2500);
+    } else {
+        setTimeout(function () {
+            $('.addtable').click(); // add a search table at the start of loading the page
+            $('.loader').hide(); // hide the loading bar
+        }, 2500);
+    } 
 });
 // Prep END
 
@@ -556,15 +596,12 @@ $(document).ready(function () {
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             success: function (data) {
-                // console.log(data);
+                uuid = data["uuid_string"];
+                window.open("/past-projects/" + uuid, "_blank");
             },
             failure: function (errMsg) {
                 alert(errMsg);
             }
         })
-
-        uuid = document.getElementById("uuid_div").dataset.uuid;
-        console.log(uuid);        // open new window with the uuid
-        window.open("/past-projects/" + uuid, "_blank");
     });
 });

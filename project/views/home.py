@@ -1,8 +1,6 @@
-import uuid, gspread, time
-from gspread.cell import Cell
+import gspread, uuid
 from project import app
-from project.utils.token import generate_token
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, jsonify
 
 
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
@@ -37,30 +35,30 @@ import sys
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
-    test = "cum"
-    uuid_string = str(uuid.uuid4())
     wks = gspread.service_account().open("Shareable Merge Tables").worksheet("Sheet1")
     if request.method == "POST":
         # get json data
         data = request.get_json()
+        uuid_string = str(uuid.uuid4())
         
         team_name = ""
         team_number = ""
         for d in data:
-            # add to team name if not last d in data
-
             team_name += d["Team Name"] + " ; " if d != data[-1] else d["Team Name"]
             team_number += d["Team#"] + " ; " if d != data[-1] else d["Team#"]
         
         wks.append_row(values=[uuid_string, team_name, team_number])
+       
+        return jsonify({"uuid_string": uuid_string})
 
-        return render_template("past-projects.html", uuid_string=uuid_string)
-    
-    time.sleep(2)
-    print("uuid_string: " + str(request.args.get("uuid_string")), file=sys.stderr)
+    team_names = []
+    team_numbers = []
 
-    if request.args.get("uuid_string") is not None:
-        cell = wks.find(request.args.get("uuid_string"))
-        test = wks.row_values(cell.row)[0]
-
-    return render_template("past-projects.html", uuid_string=test)
+    if uuid_string is not None:
+        cell = wks.find(uuid_string, in_column=1)
+        if cell is not None:
+            query = wks.row_values(cell.row)
+            team_names = query[1].split(" ; ")
+            team_numbers = query[2].split(" ; ")
+        
+    return render_template("past-projects.html", uuid_string=uuid_string, team_names=team_names, team_numbers=team_numbers)
