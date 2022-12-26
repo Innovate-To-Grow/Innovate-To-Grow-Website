@@ -35,6 +35,31 @@ def software_capstone():
 def event():
     return render_template("event.html")
 
+@home_blueprint.route("/schedule", methods=["GET", "POST"])
+def schedule():
+    return render_template("schedule.html")
+
+@home_blueprint.route("/projects-teams", methods=["GET", "POST"])
+def projects_teams():
+    return render_template("projects-teams.html")
+
+@home_blueprint.route("/judges", methods=["GET", "POST"])
+def judges():
+    return render_template("judges.html")
+
+@home_blueprint.route("/attendees", methods=["GET", "POST"])
+def attendees():
+    return render_template("attendees.html")
+
+@home_blueprint.route("/student", methods=["GET", "POST"])
+def students():
+    return render_template("students.html")
+
+@home_blueprint.route("/acknowledgement", methods=["GET", "POST"])
+def acknowledgement():
+    return render_template("acknowledgement.html")
+
+
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):

@@ -48,7 +48,7 @@ function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
     console.log("second");
     var table = $('#example').DataTable({
-        dom: 'Bfrltip',
+        // dom: 'Bfrltip',
         pageLength: 10,
         search: {
             search: document.location.search.replace(/^.*?\=/, '')
