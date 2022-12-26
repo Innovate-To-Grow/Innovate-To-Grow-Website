@@ -31,6 +31,10 @@ def about_EngSL():
 def software_capstone():
     return render_template("software-capstone.html")
 
+@home_blueprint.route("/event", methods=["GET", "POST"])
+def event():
+    return render_template("event.html")
+
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
