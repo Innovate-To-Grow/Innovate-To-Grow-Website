@@ -59,6 +59,9 @@ def students():
 def acknowledgement():
     return render_template("acknowledgement.html")
 
+@home_blueprint.route("/past-event", methods=["GET", "POST"])
+def past_event():
+    return render_template("past-event.html")
 
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
