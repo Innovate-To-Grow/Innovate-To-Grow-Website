@@ -15,8 +15,8 @@ var unique_url = false;
 // Prep START
 $(document).ready(function () {
     // get the team_names and team_numbers from the html
-    team_names = JSON.parse(document.getElementById("uuid_div").dataset.team_names);
-    team_numbers = JSON.parse(document.getElementById("uuid_div").dataset.team_numbers);
+    team_names = JSON.parse(document.getElementById("data").dataset.team_names);
+    team_numbers = JSON.parse(document.getElementById("data").dataset.team_numbers);
 
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1KATiK1Fnlb7Vsd186mCbaGjhID-OUGN-1QHWY8hIc5U/values/Past-Projects-WEB-LIVE?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;

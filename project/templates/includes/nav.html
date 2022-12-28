@@ -4,7 +4,7 @@
     <div class="container">
         <div class="row-fluid">
             <div class="name-slogan span12">
-                <div id="site-name" class="site-name"><a href="innovatetogrow.ucmerced.html" title="Home"
+                <div id="site-name" class="site-name"><a href="{{ url_for('home.mainpage') }}" title="Home"
                         rel="home">Innovate
                         To Grow</a></div>
                 <div id="site-slogan" class="site-slogan">School of Engineering</div>
@@ -90,7 +90,7 @@
                                                 href="{{ url_for('home.past_event') }}" class="sf-depth-1 ">Past Events</a></li>
                                         <li id="menu-4551-1"
                                             class="middle odd sf-item-5 sf-depth-1 sf-total-children-4 sf-parent-children-0 sf-single-children-4 menuparent">
-                                            <a href="projects.html" title=""
+                                            <a href="{{ url_for('home.projects') }}" title=""
                                                 class="sf-depth-1  menuparent">Projects</a>
                                             <ul>
                                                 <li id="menu-4691-1"
@@ -99,33 +99,31 @@
                                                         Projects</a></li>
                                                 <li id="menu-4561-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
-                                                        href="current-projects.html" title=""
+                                                        href="{{ url_for('home.current_projects') }}" title=""
                                                         class="sf-depth-2 ">Current Projects</a></li>
                                                 <li id="menu-4571-1"
                                                     class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
-                                                        href="project-submission.html" title=""
+                                                        href="{{ url_for('home.project_submission') }}" title=""
                                                         class="sf-depth-2 ">Project Submission</a></li>
                                                 <li id="menu-4581-1"
                                                     class="last even sf-item-4 sf-depth-2 sf-no-children"><a
-                                                        href="sample-proposals.html" title=""
+                                                        href="{{ url_for('home.sample_proposals') }}" title=""
                                                         class="sf-depth-2 ">Sample Project Proposals</a>
                                                 </li>
                                             </ul>
                                         </li>
-                                        <li id="menu-397-1" class="middle even sf-item-6 sf-depth-1 sf-no-children">
-                                            <a href="news.html" title="" class="sf-depth-1 ">News</a></li>
                                         <li id="menu-833-1"
                                             class="middle odd sf-item-7 sf-depth-1 sf-total-children-4 sf-parent-children-0 sf-single-children-4 menuparent">
-                                            <a href="partnership.html" class="sf-depth-1  menuparent">Partner with
+                                            <a href="{{ url_for('home.partnership') }}" class="sf-depth-1  menuparent">Partner with
                                                 Us</a>
                                             <ul>
                                                 <li id="menu-4721-1"
                                                     class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
-                                                        href="project-submission.html" title=""
+                                                        href="{{ url_for('home.project_submission') }}" title=""
                                                         class="sf-depth-2 ">Propose a project</a></li>
                                                 <li id="menu-4711-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
-                                                        href="judges.html" title="" class="sf-depth-2 ">Sign up to
+                                                        href="{{ url_for('home.judges') }}" title="" class="sf-depth-2 ">Sign up to
                                                         Judge</a></li>
                                                 <li id="menu-647-1"
                                                     class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
@@ -138,8 +136,8 @@
                                         </li>
                                         <li id="menu-3971-1"
                                             class="middle even sf-item-8 sf-depth-1 sf-no-children"><a
-                                                href="project-submission.html" class="sf-depth-1 ">PROJECT
-                                                SUBMISSION</a></li>
+                                                href="{{ url_for('home.project_submission') }}" class="sf-depth-1 ">Project
+                                                Submission</a></li>
                                         <li id="menu-4661-1"
                                             class="middle odd sf-item-9 sf-depth-1 sf-total-children-5 sf-parent-children-0 sf-single-children-5 menuparent">
                                             <a href="students.html" title=""

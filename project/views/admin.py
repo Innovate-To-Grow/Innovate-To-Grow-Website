@@ -159,7 +159,7 @@ class EditFormModelView(ModelView):
         options = ""
         for option in form.options.data[:-1]:
             options += option + "\n"
-        options += form.options.data[-1]
+        options += form.options.data[-1] if len(form.options.data) > 0 else ""
         model.options = options
         db.session.commit()
 
