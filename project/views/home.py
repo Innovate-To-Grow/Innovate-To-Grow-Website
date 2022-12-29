@@ -84,6 +84,39 @@ def sample_proposals():
 def partnership():
     return render_template("partnership.html")
 
+@home_blueprint.route("/sponsorship", methods=["GET", "POST"])
+def sponsorship():
+    return render_template("sponsorship.html")
+
+@home_blueprint.route("/FAQs", methods=["GET", "POST"])
+def faq():
+    return render_template("faq.html")
+
+@home_blueprint.route("/I2G-student-agreement", methods=["GET", "POST"])
+def I2G_student_agreement():
+    return render_template("I2G-student-agreement.html")
+
+@home_blueprint.route("/ferpa", methods=["GET", "POST"])
+def ferpa():
+    return render_template("ferpa.html")
+
+@home_blueprint.route("/i2g-students-preparation", methods=["GET", "POST"])
+def i2g_students_preparation():
+    return render_template("i2g-students-preparation.html")
+
+@home_blueprint.route("/video-preparation", methods=["GET", "POST"])
+def video_preparation():
+    return render_template("video-preparation.html")
+
+@home_blueprint.route("/capstone-purchasing-reimbursement-forms", methods=["GET", "POST"])
+def capstone_purchasing_reimbursement_forms():
+    return render_template("capstone-purchasing-reimbursement-forms.html")
+
+@home_blueprint.route("/contact-us", methods=["GET", "POST"])
+def contact_us():
+    return render_template("contact-us.html")
+
+
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
