@@ -83,12 +83,14 @@ $(document).ready(function () {
             $('.addtable').click(); // add a search table at the start of loading the page
             $('.merge').click(); // add a merge table at the start of loading the page
             $('.sharing').hide(); // hide the sharing button
+            $('.CopyURL').show(); // show the copy url button
             $('.loader').hide();// hide the loading bar
         }, 2500);
     } else {
         setTimeout(function () {
             $('.addtable').click(); // add a search table at the start of loading the page
             $('.loader').hide(); // hide the loading bar
+            $('.CopyURL').hide(); // hide the copy url button
         }, 2500);
     }
 });
@@ -140,6 +142,13 @@ $(document).ready(function () {
                     $('#share').click();
                     $('#share').remove();
                     $('.sharing').text('Loading...');
+                }
+            },
+            {
+                "text": 'Copy URL',
+                "className": 'CopyURL',
+                "action": function () {   
+                    navigator.clipboard.writeText(window.location.href);
                 }
             }
         ],
