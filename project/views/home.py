@@ -1,6 +1,6 @@
 import gspread, uuid
 from threading import Thread
-from flask import Blueprint, render_template, request, jsonify, copy_current_request_context
+from flask import Blueprint, render_template, request, jsonify
 from project import app
 
 
@@ -115,6 +115,10 @@ def capstone_purchasing_reimbursement_forms():
 @home_blueprint.route("/contact-us", methods=["GET", "POST"])
 def contact_us():
     return render_template("contact-us.html")
+
+@home_blueprint.route("/judging", methods=["GET", "POST"])
+def judging():
+    return render_template("judging.html")
 
 
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])

@@ -30,7 +30,7 @@
 
                             <p><em><strong>If you have any questions which are not answered by the below, please direct
                                         them <a
-                                            href="https://innovatetogrow.ucmerced.edu/contact-us">here</a>.</strong></em>
+                                            href="{{ url_for('home.contact_us') }}">here</a>.</strong></em>
                             </p>
 
                             <h3><strong><em>What is a Capstone Project?</em></strong></h3>
@@ -66,11 +66,11 @@
                             <p>You may:</p>
 
                             <ul>
-                                <li><a href="https://innovatetogrow.ucmerced.edu/project-submission">Propose a
+                                <li><a href="{{ url_for('home.project_submission') }}">Propose a
                                         project</a>: &nbsp;form to submit your project proposal.</li>
-                                <li>View <a href="https://innovatetogrow.ucmerced.edu/sample-proposals">Samples of
+                                <li>View <a href="{{ url_for('home.sample_proposals') }}">Samples of
                                         project proposals</a>, as submitted by others.</li>
-                                <li><a href="https://innovatetogrow.ucmerced.edu/past-projects">Search Past
+                                <li><a href="{{ url_for('home.past_projects') }}">Search Past
                                         Projects</a>: searchable database of Innovate to Grow projects.</li>
                             </ul>
 
@@ -131,7 +131,7 @@
                                 &nbsp;UC Merced School of Engineering IDC program, which enables the School to support
                                 this program, including all associated initiatives and events. Please contact us at
                                 innovatetogrow@ucmerced.edu&nbsp;or visit our <a
-                                    href="https://innovatetogrow.ucmerced.edu/partnership">Partnership Opportunities</a>
+                                    href="{{ url_for('home.partnership') }}">Partnership Opportunities</a>
                                 page for&nbsp;further information.</p>
 
                             <p>The School provides each Team with a basic budget for material and travel. However, if
@@ -226,7 +226,7 @@
                                 the Software Engineering Capstone.</p>
 
                             <p>For any questions or comments, please <a
-                                    href="http://innovatetogrow.ucmerced.edu/contact-us">contact us here</a>&nbsp; or
+                                    href="{{ url_for('home.contact_us') }}">contact us here</a>&nbsp; or
                                 send us an email to: innovatetogrow@ucmerced.edu</p>
 
                         </div>

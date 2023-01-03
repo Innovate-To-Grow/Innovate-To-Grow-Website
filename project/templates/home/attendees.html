@@ -29,7 +29,7 @@
                             <h1 class="title" id="page-title"> Attendees - How to explore and engage </h1> 
                             <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:18px;"><b>WHEN:&nbsp; &nbsp;</b>See the schedule of the next event - semester.<b>&nbsp; &nbsp; &nbsp;&nbsp;<a href="/schedule">SCHEDULE</a>&nbsp; &nbsp; &nbsp;</b></span></p>
+<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:18px;"><b>WHEN:&nbsp; &nbsp;</b>See the schedule of the next event - semester.<b>&nbsp; &nbsp; &nbsp;&nbsp;<a href="{{ url_for('home.schedule') }}">SCHEDULE</a>&nbsp; &nbsp; &nbsp;</b></span></p>
 
 <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
@@ -97,10 +97,10 @@
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">If you do not have a confirmed Zoom account, you may <a href="https://zoom.us/freesignup/">sign up here for Zoom</a></span></span></p>
 	</li>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Depending on registrations and availability in the room, it may take a moment to gain access, so plan to be a&nbsp; <a href="http://innovatetogrow.ucmerced.edu/">innovatetogrow.ucmerced.edu</a>&nbsp; and join 10&nbsp;minutes before start.</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Depending on registrations and availability in the room, it may take a moment to gain access, so plan to be a&nbsp; <a href="{{ url_for('home.mainpage') }}">i2g.ucmerced.edu</a>&nbsp; and join 10&nbsp;minutes before start.</span></span></p>
 	</li>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Final <strong>links to Zoom rooms&nbsp;</strong>will be available before I2G starts at&nbsp;<a href="http://innovatetogrow.ucmerced.edu/">innovatetogrow.ucmerced.edu</a>&nbsp;</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Final <strong>links to Zoom rooms&nbsp;</strong>will be available before I2G starts at&nbsp;<a href="{{ url_for('home.mainpage') }}">i2g.ucmerced.edu</a>&nbsp;</span></span></p>
 	</li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You will be able to access an introductory video if you join any room early</span></span></p>
@@ -113,7 +113,7 @@
 
 <ul>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="/event">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
 	</li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Select &quot;Yes&quot; in &quot;Interested in Judging? or select a Judge Ticket*</span></span></p>
@@ -122,7 +122,7 @@
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You will be contacted for the selection of a Track&nbsp;to join at the live event</span></span></p>
 	</li>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Live event (Friday - 10 minutes before Presentations start):&nbsp; go to&nbsp; <a href="http://innovatetogrow.ucmerced.edu/">innovatetogrow.ucmerced.edu</a>&nbsp;&nbsp;</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Live event (Friday - 10 minutes before Presentations start):&nbsp; go to&nbsp; <a href="{{ url_for('home.mainpage') }}">i2g.ucmerced.edu</a>&nbsp;&nbsp;</span></span></p>
 	</li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Sign in your Zoom account (users will be allowed in the Zoom Room only if authenticated)</span></span></p>
@@ -131,7 +131,7 @@
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">If your Zoom Name appears different than your registration name, please indicate your First and Last Name that when you join a Room, to enable identification in Rooms</span></span></p>
 	</li>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Please see <a href="/judges">instructions for Judges</a></span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Please see <a href="{{ url_for('home.judges') }}">instructions for Judges</a></span></span></p>
 	</li>
 </ul>
 
@@ -139,19 +139,19 @@
 
 <ul>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="/event">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
 	</li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Select &quot;No&quot; in &quot;Interested in Judging? * or select a Visitor ticket</span></span></p>
 	</li>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Live event: join between any time during the event by going to <a href="https://innovatetogrow.ucmerced.edu/">https://innovatetogrow.ucmerced.edu/</a><a href="/schedule">schedule</a></span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Live event: join between any time during the event by going to <a href="{{ url_for('home.schedule') }}">http://i2g.ucmerced.edu/schedule</a></span></span></p>
 	</li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Visit the &ldquo;Zoom Room&rdquo; of interest based on the teams or projects listed (requires Zoom authenticated account), or</span></span></p>
 	</li>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You may find the schedule of tracks at&nbsp; <a href="http://innovatetogrow.ucmerced.edu/">innovatetogrow.ucmerced.edu</a>&nbsp;</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You may find the schedule of tracks at&nbsp; <a href="{{ url_for('home.mainpage') }}">i2g.ucmerced.edu</a>&nbsp;</span></span></p>
 	</li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You may find a page to search and navigate details of teams and projects</span></span></p>
@@ -164,9 +164,9 @@
 
 <ul>
 	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><meta charset="utf-8" /><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="/event">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
+		<p dir="ltr" role="presentation"><span style="font-size:14px;"><meta charset="utf-8" /><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
 	</li>
-	<li dir="ltr"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Stay tuned for updates: <a href="http://innovatetogrow.ucmerced.edu/">innovatetogrow.ucmerced.edu</a>&nbsp;&nbsp;&nbsp;&nbsp;</span></span></li>
+	<li dir="ltr"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Stay tuned for updates: <a href="{{ url_for('home.mainpage') }}">i2g.ucmerced.edu</a>&nbsp;&nbsp;&nbsp;&nbsp;</span></span></li>
 	<li dir="ltr">
 		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Prepare with an authenticated Zoom account - with First and Last Name</span></span></p>
 	</li>

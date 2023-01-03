@@ -149,6 +149,10 @@ $(document).ready(function () {
                 "className": 'CopyURL',
                 "action": function () {   
                     navigator.clipboard.writeText(window.location.href);
+                    $('.CopyURL').text('Copied!');
+                    setTimeout(function () {
+                        $('.CopyURL').text('Copy URL');
+                    }, 2000);
                 }
             }
         ],

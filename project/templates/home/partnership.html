@@ -40,12 +40,12 @@
                                             href="{{ url_for('home.project_submission') }}">Propose
                                             /&nbsp;mentor&nbsp;a project</a></span></li>
                                 <li><span style="font-size:16px;"><a
-                                            href="https://innovatetogrow.ucmerced.edu/judges">Sign up
+                                            href="{{ url_for('home.judges') }}">Sign up
                                             to&nbsp;Judge</a></span></li>
-                                <li><span style="font-size:16px;"><a href="/sponsorship">Sponsor the program or
+                                <li><span style="font-size:16px;"><a href="{{ url_for('home.sponsorship') }}">Sponsor the program or
                                             event</a>&nbsp;</span></li>
-                                <li><span style="font-size:16px;"><a href="/faqs">FAQs</a></span><span
-                                        style="font-size:16px;"><a href="/sponsorship"> </a></span></li>
+                                <li><span style="font-size:16px;"><a href="{{ url_for('home.faq') }}">FAQs</a></span><span
+                                        style="font-size:16px;"><a href="{{ url_for('home.sponsorship') }}"> </a></span></li>
                             </ul>
 
                             <p><span style="font-size:16px;">For further information or if you have any questions,

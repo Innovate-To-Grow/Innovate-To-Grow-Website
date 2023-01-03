@@ -49,9 +49,9 @@
                                     organizations with teams of students who design systems to solve real-world
                                     problems. The Innovate to
                                     Grow program encompasses the following experiential learning classes: <a
-                                        href="engineering-capstone.html">Engineering Capstone</a>, <a
-                                        href="about_EngSL.html">Engineering
-                                        Service Learning</a>, and <a href="software-capstone.html">Software Engineering
+                                        href="{{ url_for('home.engineering_capstone') }}">Engineering Capstone</a>, <a
+                                        href="{{ url_for('home.about_EngSL') }}">Engineering
+                                        Service Learning</a>, and <a href="{{ url_for('home.software_capstone') }}">Software Engineering
                                         Capstone</a>.</p>
                             </div>
                         </div>
@@ -109,21 +109,21 @@
                                         <h4>Fall 2022 Information:</h4>
                                         <div class="pull-left sb-row">
                                             <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="event.html">Event</a></div>
+                                                    href="{{ url_for('home.event') }}">Event</a></div>
                                             <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="schedule.html">Schedule</a></div>
+                                                    href="{{ url_for('home.schedule') }}">Schedule</a></div>
                                             <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="projects-teams.html">Projects &amp; Teams</a></div>
+                                                    href="{{ url_for('home.project_teams') }}">Projects &amp; Teams</a></div>
                                             <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="attendees.html">For Attendees</a></div>
+                                                    href="{{ url_for('home.attendees') }}">For Attendees</a></div>
                                             <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="judges.html">For
+                                                    href="{{ url_for('home.judges') }}">For
                                                     Judges</a></div>
                                             <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="students.html">For
+                                                    href="{{ url_for('home.students') }}">For
                                                     Students</a></div>
                                             <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="acknowledgement.html">Our Partners &amp; Sponsors</a></div>
+                                                    href="{{ url_for('home.acknowledgement') }}">Our Partners &amp; Sponsors</a></div>
                                             <div class="sb-col hb__buttons-blue"> </div>
                                             <div class="sb-col hb__buttons-blue"> </div>
                                         </div>
@@ -148,31 +148,23 @@
                                 </div>
                             </div>
                         </div>
-                        <div id="content-body" class="row-fluid content-body">
-                            <a href="rss.html" class="feed-icon" title="Subscribe to Innovate To Grow RSS"><img
-                                    typeof="foaf:Image" src="{{ url_for('static',filename='images/misc-feed.png') }}"
-                                    width="16" height="16" alt="Subscribe to Innovate To Grow RSS"></a>
-                        </div>
                         <div id="content-bottom" class="row-fluid content-bottom">
                             <div class="region region-content-bottom clearfix">
                                 <div id="block-block-61" class="clearfix block block-block">
                                     <div class="content">
                                         <div class="sb-row" style="text-align: center; padding-top: 50px;">
                                             <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="about.html">About
-                                                    Us</a></div>
+                                                    href="{{ url_for('home.about') }}">About Us</a></div>
                                             <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="projects.html">Projects</a></div>
+                                                    href="{{ url_for('home.projects') }}">Projects</a></div>
                                             <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="project-submission.html">Project Submission</a></div>
+                                                    href="{{ url_for('home.project_submission') }}">Project Submission</a></div>
                                             <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="contact-us.html" target="_blank">Contact Us</a></div>
-                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="news.html">News</a></div>
+                                                    href="{{ url_for('home.contact_us') }}" target="_blank">Contact Us</a></div>
                                         </div>
                                         <p> </p>
                                         <div class="i2gHome">
-                                            <p>For any questions or comments, please <a href="contact-us.html"
+                                            <p>For any questions or comments, please <a href="{{ url_for('home.contact_us') }}"
                                                     target="_blank">contact us
                                                     here</a> or email to: <a
                                                     href="mailto:innovatetogrow@ucmerced.edu">innovatetogrow@ucmerced.edu</a>
