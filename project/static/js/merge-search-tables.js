@@ -484,6 +484,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     merged_array[i]["Student Names"],
                 ]).draw();
             }
+            console.log("cum0");
             merged_table.$('tr').toggleClass('keep');
             for (let i = search_counter; i > 0; i--) {
                 $('#example' + i).DataTable().destroy();
@@ -498,6 +499,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     $('#example').DataTable().clear().draw(); // delete old table
                     for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
                         var row = merged_table.row($(this).closest('tr'));
+
                         merged_table.row.add([
                             merged_array[i]["Year-Semester"],
                             merged_array[i]["Class"],
@@ -526,6 +528,12 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 var merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
                 for (let i = 0; i < merged_array.length; i++) {
                     var row = merged_table.row($(this).closest('tr'));
+
+                    // if row already exists in merged_table, don't add it
+                    if (merged_table.row().data().includes(merged_array[i]["Team#"] && merged_array[i]["Team Name"])) {
+                        continue;
+                    }
+
                     merged_table.row.add([
                         merged_array[i]["Year-Semester"],
                         merged_array[i]["Class"],
