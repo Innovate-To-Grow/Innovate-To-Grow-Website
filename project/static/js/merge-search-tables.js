@@ -499,7 +499,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     $('#example').DataTable().clear().draw(); // delete old table
                     for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
                         var row = merged_table.row($(this).closest('tr'));
-
                         merged_table.row.add([
                             merged_array[i]["Year-Semester"],
                             merged_array[i]["Class"],
@@ -528,9 +527,21 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 var merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
                 for (let i = 0; i < merged_array.length; i++) {
                     var row = merged_table.row($(this).closest('tr'));
+                    var data = merged_table.rows().data().toArray();
+                    var found = data.find(function (element) {
+                        return element[0] == merged_array[i]["Year-Semester"] && 
+                            element[1] == merged_array[i]["Class"] && 
+                            element[2] == merged_array[i]["Team#"] && 
+                            element[3] == merged_array[i]["Team Name"] && 
+                            element[4] == merged_array[i]["Project Title"] && 
+                            element[5] == merged_array[i]["Organization"] && 
+                            element[6] == merged_array[i]["Industry"] && 
+                            element[7] == merged_array[i]["null"] && 
+                            element[8] == merged_array[i]["Abstract"] && 
+                            element[9] == merged_array[i]["Student Names"];
+                    });
 
-                    // if row already exists in merged_table, don't add it
-                    if (merged_table.row().data().includes(merged_array[i]["Team#"] && merged_array[i]["Team Name"])) {
+                    if (found) {
                         continue;
                     }
 
