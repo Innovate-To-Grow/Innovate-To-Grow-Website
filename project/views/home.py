@@ -52,7 +52,7 @@ def judges():
 def attendees():
     return render_template("attendees.html")
 
-@home_blueprint.route("/student", methods=["GET", "POST"])
+@home_blueprint.route("/students", methods=["GET", "POST"])
 def students():
     return render_template("students.html")
 
@@ -60,9 +60,9 @@ def students():
 def acknowledgement():
     return render_template("acknowledgement.html")
 
-@home_blueprint.route("/past-event", methods=["GET", "POST"])
-def past_event():
-    return render_template("past-event.html")
+@home_blueprint.route("/past-events", methods=["GET", "POST"])
+def past_events():
+    return render_template("past-events.html")
 
 @home_blueprint.route("/projects", methods=["GET", "POST"])
 def projects():
@@ -120,6 +120,33 @@ def contact_us():
 def judging():
     return render_template("judging.html")
 
+@home_blueprint.route("/template", methods=["GET", "POST"])
+def template():
+    return render_template("template.html")
+
+@home_blueprint.route("/2022-spring-event", methods=["GET", "POST"])
+def spring_event_2022():
+    return render_template("2022-spring-event.html")
+
+@home_blueprint.route("/2021-spring-event", methods=["GET", "POST"])
+def spring_event_2021():
+    return render_template("2021-spring-event.html")
+
+@home_blueprint.route("/2021-fall-event", methods=["GET", "POST"])
+def fall_event_2021():
+    return render_template("2021-fall-event.html")
+
+@home_blueprint.route("/2020-fall-post-event", methods=["GET", "POST"])
+def fall_event_post_2020():
+    return render_template("2020-fall-post-event.html")
+
+@home_blueprint.route("/2014-sponsors", methods=["GET", "POST"])
+def sponsors_2014():
+    return render_template("2014-sponsors.html")
+
+@home_blueprint.route("/2015-sponsors", methods=["GET", "POST"])
+def sponsors_2015():
+    return render_template("2015-sponsors.html")
 
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])

@@ -39,7 +39,7 @@
 
 <h2 dir="ltr">EVENT PREPARATION</h2>
 
-<p>Innovate to Grow (I2G) is currently executed in multiple Zoom rooms (tracks). &nbsp; You may find extensive information navigating the <a href="{{ url_for('home.mainpage') }}">I2G web site</a> (<a href="{{ url_for('home.mainpage') }}">i2g.ucmerced.edu</a>). Here students and teams may find important info to prepare for the event.</p>
+<p>Innovate to Grow (I2G) is currently executed in multiple Zoom rooms (tracks). &nbsp; You may find extensive information navigating the <a href="{{ url_for('home.mainpage') }}">I2G web site</a> (<a href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>). Here students and teams may find important info to prepare for the event.</p>
 
 <p><strong>Zoom info</strong>:&nbsp; The zoom rooms (links) will be activated on the <a href="{{ url_for('home.mainpage') }}">I2G home page</a> a few minutes before the event starts.&nbsp; You do not need the zoom links in advance.</p>
 
@@ -355,7 +355,7 @@
 		<p dir="ltr" role="presentation"><b id="docs-internal-guid-f803e0af-7fff-1119-df6a-9f5563ec043d"><a href="{{ url_for('home.schedule') }}">Schedule</a></b></p>
 	</li>
 	<li aria-level="1" dir="ltr">
-		<p dir="ltr" role="presentation"><b id="docs-internal-guid-f803e0af-7fff-1119-df6a-9f5563ec043d"><a href="{{ url_for('home.project_teams') }}">Projects and Teams</a> </b></p>
+		<p dir="ltr" role="presentation"><b id="docs-internal-guid-f803e0af-7fff-1119-df6a-9f5563ec043d"><a href="{{ url_for('home.projects_teams') }}">Projects and Teams</a> </b></p>
 	</li>
 </ul>
 
@@ -365,7 +365,7 @@
 
 <p>3- Mouseover your team number and check if the popup shows your correct &ldquo;Team Name - Project Title&rdquo;.</p>
 
-<p>4- Click on your team number, which shall open a datatable with team-project details.&nbsp; You may also find the details searching for your team in <a href="{{ url_for('home.project_teams's) }}">Current Projects</a>.</p>
+<p>4- Click on your team number, which shall open a datatable with team-project details.&nbsp; You may also find the details searching for your team in <a href="{{ url_for('home.projects_teams') }}">Current Projects</a>.</p>
 
 <p>5- Open your team details by clicking the icon/arrow, and check if they are correct:</p>
 
