@@ -18,7 +18,7 @@ app = Flask(__name__)
 app.config.from_object(Config())
 
 #SQLAlchemy
-db = SQLAlchemy(app, session_options={"autoflush": False})
+db = SQLAlchemy(app)
 db.init_app(app)
 
 #Flask Blueprints
