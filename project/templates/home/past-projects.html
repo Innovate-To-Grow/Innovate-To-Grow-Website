@@ -35,7 +35,7 @@
                             <meta charset="utf-8">
                             <!-- Merge Table Template Setup (hidden at first) START -->
                             <div class="mergeTable">
-                                <h1 class="titles">Merged Table</h1>
+                                <h1 class="titles">Saved Merged Results</h1>
 
                                 <table class="display" data-darkreader-inline-border-bottom=""
                                     data-darkreader-inline-border-left="" data-darkreader-inline-border-right=""
@@ -47,12 +47,13 @@
                                             <th>Class</th>
                                             <th>Team#</th>
                                             <th>Team Name</th>
-                                            <th style="padding-left: 75px; padding-right: 75px; ">Project Title</th>
+                                            <th>Project Title</th>
                                             <th>Organization</th>
                                             <th>Industry</th>
                                             <th>Details</th>
                                             <th style="display:none;">&nbsp;</th>
                                             <th style="display:none;">&nbsp;</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                 </table>
@@ -74,9 +75,9 @@
                                             Tables&quot;. Repeat until desired merged search.</p>
                                     </div>
                                     <button class="addtable" style="margin-left: 35px;" type="button">+
-                                        SearchTable</button>
+                                        Search Table</button>
                                     <button class="merge" id="merge" style="margin-left: 10px;" type="button"
-                                        value="false">Merge Tables</button>
+                                        value="false">Save/Merge Results</button>
                                     <button class="deleterow" id="rowdelete" style="margin-left: 10px;" type="button"
                                         value="false">Delete Selected Rows</button>
                                     <button class="keeprow" id="rowkeep" style="margin-left: 10px;" type="button"
@@ -114,6 +115,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
         <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
         <script src="https://cdn.datatables.net/select/1.4.0/js/dataTables.select.min.js"></script>
+        <script src="https://editor.datatables.net/extensions/Editor/js/dataTables.editor.min.js"></script>
         <!-- All includes of JS Libraries END -->
         <script src="{{ url_for('static',filename='js/merge-search-tables.js') }}"></script>
         

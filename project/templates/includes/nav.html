@@ -1,5 +1,33 @@
 {% macro nav() %}
 <!-- NAVBAR -->
+<div id="header" class="clearfix header" role="banner">
+    <div class="container">
+        <div class="row-fluid">
+            <div class="header-section row-fluid span12">
+                <!-- /#logo -->
+                <div id="stickyHeader">
+                    <div class="site-logo">
+                        <a href="https://www.ucmerced.edu" title="Home" rel="home" style="border: none;"> <img
+                                src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png"
+                                alt="UC Merced logo" role="presentation"> </a>
+                    </div>
+
+                    <div class="quick-links" id="quickLinksNavigation">
+
+                        <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank"
+                            rel="noopener">Apply</a>
+                        <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
+
+                    </div>
+
+                </div>
+            </div>
+            <!-- /#header-content -->
+        </div>
+        <!-- /#site-login -->
+        <!-- /#site-login -->
+    </div>
+</div>
 <div id="siteName">
     <div class="container">
         <div class="row-fluid">
@@ -33,7 +61,8 @@
                                                 class="sf-depth-1  active">Home</a></li>
                                         <li id="menu-538-1"
                                             class="middle even sf-item-2 sf-depth-1 sf-total-children-3 sf-parent-children-0 sf-single-children-3 menuparent">
-                                            <a href="{{ url_for('home.about') }}" class="sf-depth-1  menuparent">About Us</a>
+                                            <a href="{{ url_for('home.about') }}" class="sf-depth-1  menuparent">About
+                                                Us</a>
                                             <ul>
                                                 <li id="menu-4471-1"
                                                     class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
@@ -42,7 +71,8 @@
                                                 </li>
                                                 <li id="menu-544-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.about_EngSL') }}" title="" class="sf-depth-2 ">Eng.
+                                                        href="{{ url_for('home.about_EngSL') }}" title=""
+                                                        class="sf-depth-2 ">Eng.
                                                         Service Learning</a></li>
                                                 <li id="menu-4481-1"
                                                     class="last odd sf-item-3 sf-depth-2 sf-no-children"><a
@@ -52,12 +82,14 @@
                                         </li>
                                         <li id="menu-5291-1"
                                             class="middle odd sf-item-3 sf-depth-1 sf-total-children-7 sf-parent-children-0 sf-single-children-7 menuparent">
-                                            <a href="{{ url_for('home.event') }}" title="" class="sf-depth-1  menuparent">Fall
+                                            <a href="{{ url_for('home.event') }}" title=""
+                                                class="sf-depth-1  menuparent">Fall
                                                 2022</a>
                                             <ul>
                                                 <li id="menu-5301-1"
                                                     class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.event') }}" title="" class="sf-depth-2 ">Event
+                                                        href="{{ url_for('home.event') }}" title=""
+                                                        class="sf-depth-2 ">Event
                                                         info</a></li>
                                                 <li id="menu-5371-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
@@ -69,15 +101,18 @@
                                                         class="sf-depth-2 ">Projects &amp; Teams</a></li>
                                                 <li id="menu-5331-1"
                                                     class="middle even sf-item-4 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.judges') }}" title="" class="sf-depth-2 ">for
+                                                        href="{{ url_for('home.judges') }}" title=""
+                                                        class="sf-depth-2 ">for
                                                         Judges</a></li>
                                                 <li id="menu-5341-1"
                                                     class="middle odd sf-item-5 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.attendees') }}" title="" class="sf-depth-2 ">for
+                                                        href="{{ url_for('home.attendees') }}" title=""
+                                                        class="sf-depth-2 ">for
                                                         Attendees</a></li>
                                                 <li id="menu-5351-1"
                                                     class="middle even sf-item-6 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.students') }}" title="" class="sf-depth-2 ">for
+                                                        href="{{ url_for('home.students') }}" title=""
+                                                        class="sf-depth-2 ">for
                                                         Students</a></li>
                                                 <li id="menu-5361-1"
                                                     class="last odd sf-item-7 sf-depth-2 sf-no-children"><a
@@ -85,9 +120,9 @@
                                                         class="sf-depth-2 ">Partners &amp; Sponsors</a></li>
                                             </ul>
                                         </li>
-                                        <li id="menu-4401-1"
-                                            class="middle even sf-item-4 sf-depth-1 sf-no-children"><a
-                                                href="{{ url_for('home.past_events') }}" class="sf-depth-1 ">Past Events</a></li>
+                                        <li id="menu-4401-1" class="middle even sf-item-4 sf-depth-1 sf-no-children"><a
+                                                href="{{ url_for('home.past_events') }}" class="sf-depth-1 ">Past
+                                                Events</a></li>
                                         <li id="menu-4551-1"
                                             class="middle odd sf-item-5 sf-depth-1 sf-total-children-4 sf-parent-children-0 sf-single-children-4 menuparent">
                                             <a href="{{ url_for('home.projects') }}" title=""
@@ -95,7 +130,8 @@
                                             <ul>
                                                 <li id="menu-4691-1"
                                                     class="first odd sf-item-1 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.past_projects') }}" title="" class="sf-depth-2 ">Past
+                                                        href="{{ url_for('home.past_projects') }}" title=""
+                                                        class="sf-depth-2 ">Past
                                                         Projects</a></li>
                                                 <li id="menu-4561-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
@@ -114,7 +150,8 @@
                                         </li>
                                         <li id="menu-833-1"
                                             class="middle odd sf-item-7 sf-depth-1 sf-total-children-4 sf-parent-children-0 sf-single-children-4 menuparent">
-                                            <a href="{{ url_for('home.partnership') }}" class="sf-depth-1  menuparent">Partner with
+                                            <a href="{{ url_for('home.partnership') }}"
+                                                class="sf-depth-1  menuparent">Partner with
                                                 Us</a>
                                             <ul>
                                                 <li id="menu-4721-1"
@@ -123,20 +160,23 @@
                                                         class="sf-depth-2 ">Propose a project</a></li>
                                                 <li id="menu-4711-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.judges') }}" title="" class="sf-depth-2 ">Sign up to
+                                                        href="{{ url_for('home.judges') }}" title=""
+                                                        class="sf-depth-2 ">Sign up to
                                                         Judge</a></li>
                                                 <li id="menu-647-1"
                                                     class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.sponsorship') }}" title="" class="sf-depth-2 ">Sponsor
+                                                        href="{{ url_for('home.sponsorship') }}" title=""
+                                                        class="sf-depth-2 ">Sponsor
                                                         or donate</a></li>
                                                 <li id="menu-2511-1"
                                                     class="last even sf-item-4 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.faq') }}" class="sf-depth-2 ">FAQs</a></li>
+                                                        href="{{ url_for('home.faq') }}" class="sf-depth-2 ">FAQs</a>
+                                                </li>
                                             </ul>
                                         </li>
-                                        <li id="menu-3971-1"
-                                            class="middle even sf-item-8 sf-depth-1 sf-no-children"><a
-                                                href="{{ url_for('home.project_submission') }}" class="sf-depth-1 ">Project
+                                        <li id="menu-3971-1" class="middle even sf-item-8 sf-depth-1 sf-no-children"><a
+                                                href="{{ url_for('home.project_submission') }}"
+                                                class="sf-depth-1 ">Project
                                                 Submission</a></li>
                                         <li id="menu-4661-1"
                                             class="middle odd sf-item-9 sf-depth-1 sf-total-children-5 sf-parent-children-0 sf-single-children-5 menuparent">
@@ -149,7 +189,8 @@
                                                         class="sf-depth-2 ">Student Agreement</a></li>
                                                 <li id="menu-5381-1"
                                                     class="middle even sf-item-2 sf-depth-2 sf-no-children"><a
-                                                        href="{{ url_for('home.ferpa') }}" title="" class="sf-depth-2 ">FERPA (Media)
+                                                        href="{{ url_for('home.ferpa') }}" title=""
+                                                        class="sf-depth-2 ">FERPA (Media)
                                                         Agreement</a></li>
                                                 <li id="menu-4801-1"
                                                     class="middle odd sf-item-3 sf-depth-2 sf-no-children"><a
@@ -168,15 +209,15 @@
                                             </ul>
                                         </li>
                                         <li id="menu-521-1" class="last even sf-item-10 sf-depth-1 sf-no-children">
-                                            <a href="{{ url_for('home.contact_us') }}" title="" class="sf-depth-1 ">Contact Us</a>
+                                            <a href="{{ url_for('home.contact_us') }}" title=""
+                                                class="sf-depth-1 ">Contact Us</a>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
                         </div>
                     </nav>
-                    <div id="now-date-weather"><span id="today"></span> <span
-                            id="weather"></span></div>
+                    <div id="now-date-weather"><span id="today"></span> <span id="weather"></span></div>
                 </div>
             </div>
         </div>

@@ -85,12 +85,14 @@ $(document).ready(function () {
             $('.sharing').hide(); // hide the sharing button
             $('.CopyURL').show(); // show the copy url button
             $('.loader').hide();// hide the loading bar
+            $(".mergeTable").show(); // hide mergeTable div
         }, 2500);
     } else {
         setTimeout(function () {
             $('.addtable').click(); // add a search table at the start of loading the page
             $('.loader').hide(); // hide the loading bar
             $('.CopyURL').hide(); // hide the copy url button
+            $(".mergeTable").show(); // hide mergeTable div
         }, 2500);
     }
 });
@@ -133,10 +135,13 @@ $(document).ready(function () {
     // Set merged_table as a DataTable. For each specific field refer to https://datatables.net/
     merged_table = $('.display').DataTable({
         "dom": 'lBfrtip',
+        "language": {
+            "emptyTable": "No entries have been saved yet."
+        },
         "buttons": [
             'csv', 'excel', 'pdf',
             {
-                "text": 'Share URL',
+                "text": 'Get Shareable URL',
                 "className": 'sharing',
                 "action": function () {   
                     $('#share').click();
@@ -174,6 +179,12 @@ $(document).ready(function () {
             },
             {
                 "bVisible": false
+            },
+            {
+                "data": null,
+                "className": "dt-center editor-delete",
+                "defaultContent": '<i class="fa fa-trash"/>',
+                "orderable": false
             }
         ],
         order: [
@@ -184,6 +195,14 @@ $(document).ready(function () {
             footer: true
         }
     });
+
+    // $('#example').on('click', 'td.editor-delete', function () {
+    //     // e.preventDefault();
+    //     merged_table.row( $(this).parents('tr') ).remove().draw(false);
+    //     merged_array = merged_table.rows().data().toArray();
+    //     console.log(merged_array);
+    //     console.log(search_table.rows().data().toArray())
+    // } );
 
 
     // Detail button function, opens rows and closes them
@@ -263,7 +282,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     // Set search_table as a DataTable. For each specific field refer to https://datatables.net/
     var search_table = $('#example' + search_counter).DataTable({
-        "dom": 'Blfrtip',
+        "dom": 'lBfrtip',
         select: {
             info: false,
             style: 'multi'
@@ -271,7 +290,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         },
         "buttons": [
             {
-                "text": 'Select Entire Table',
+                "text": 'Select All Entries',
                 "action": function () {
                     select_count2 -= search_table.rows('.selected').count();
                     search_table.rows().select();
@@ -468,7 +487,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
     $('#merge').click(function () {
         if (unique_url == true) {
             $(".mergeTable").show();
-            var merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
+            merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
             for (let i = 0; i < merged_array.length; i++) {
                 var row = merged_table.row($(this).closest('tr'));
                 merged_table.row.add([
@@ -484,7 +503,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     merged_array[i]["Student Names"],
                 ]).draw();
             }
-            console.log("cum0");
             merged_table.$('tr').toggleClass('keep');
             for (let i = search_counter; i > 0; i--) {
                 $('#example' + i).DataTable().destroy();
@@ -495,7 +513,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 if (confirm("Are you sure you want to merge all of your search tables? \n(this can not be undone!)")) {
                     alert_confirmation = true;
                     $(".mergeTable").show();
-                    var merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
+                    merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
                     $('#example').DataTable().clear().draw(); // delete old table
                     for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
                         var row = merged_table.row($(this).closest('tr'));
@@ -524,7 +542,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             }
             else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
                 $(".mergeTable").show();
-                var merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
+                merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
                 for (let i = 0; i < merged_array.length; i++) {
                     var row = merged_table.row($(this).closest('tr'));
                     var data = merged_table.rows().data().toArray();
@@ -566,6 +584,37 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             }
             confirmation_tracker++;
         }
+
+        $('#example').on('click', 'td.editor-delete', function () {
+            
+            // delete row in merged_table and search_table and update merged_array when trash can is clicked
+            merged_table.row($(this).parents('tr')).remove().draw();
+            merged_array = merged_table.rows().data().toArray();
+
+            // set all content in merged_array to be inside search_table
+            $('#example').DataTable().clear().draw();
+            // search_table.row($(this).parents('tr')).clear().draw();
+            for (let i = 0; i < merged_array.length; i++) {
+                var row = merged_table.row($(this).closest('tr'));
+                search_table.row.add([
+                    merged_array[i]["Year-Semester"],
+                    merged_array[i]["Class"],
+                    merged_array[i]["Team#"],
+                    merged_array[i]["Team Name"],
+                    merged_array[i]["Project Title"],
+                    merged_array[i]["Organization"],
+                    merged_array[i]["Industry"],
+                    merged_array[i]["null"],
+                    merged_array[i]["Abstract"],
+                    merged_array[i]["Student Names"],
+                ]).draw();
+            }
+
+            // merged_table.row($(this).parents('tr')).remove().draw();
+            // search_table.row($(this)).remove().draw(false);
+            // merged_array = merged_table.rows().data().toArray();
+            console.log(search_table.rows().data().toArray())
+        });
     });
     // Merge results function END
 
@@ -632,9 +681,10 @@ $(document).ready(function () {
         })
     });
 
+
     $('#share').click(function () {
         $(this).hide();
-        var share_array = merged_table.rows({ filter: 'applied' }).data().toArray();
+        var share_array = merged_table.rows().data().toArray();
         var length = share_array.length;
         for (var i = 0; i < length; i++) {
             const subArray = share_array[i];

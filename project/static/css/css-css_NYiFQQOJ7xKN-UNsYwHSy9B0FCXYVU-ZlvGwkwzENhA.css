@@ -8237,7 +8237,7 @@ input[type="submit"].btn.btn-mini {
     width: 30px;
     height: 3px;
     margin: 5px 0;
-    background-color: #0f2d52;
+    background-color: #dbaa00;
 }
 
 .navbar .btn-navbar .icon-bar .top-bar {
@@ -11488,7 +11488,7 @@ a.badge:focus {
     background-color: #0f2d52;
     margin: 0;
     width: 100%;
-    position: sticky !important;
+    position: absolute !important;
     position: -webkit-sticky !important;
     top: 0%;
     z-index: 700;
@@ -14871,7 +14871,7 @@ textarea {
     text-align: left;
     height: auto;
     top: 0%;
-    padding: 30px 0px 5px 0;
+    padding: 100px 0px 5px 0;
     width: 100%;
     align-items: center;
 }
