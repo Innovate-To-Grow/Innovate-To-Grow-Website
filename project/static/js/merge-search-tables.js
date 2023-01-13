@@ -197,15 +197,6 @@ $(document).ready(function () {
         }
     });
 
-    // $('#example').on('click', 'td.editor-delete', function () {
-    //     // e.preventDefault();
-    //     merged_table.row( $(this).parents('tr') ).remove().draw(false);
-    //     merged_array = merged_table.rows().data().toArray();
-    //     console.log(merged_array);
-    //     console.log(search_table.rows().data().toArray())
-    // } );
-
-
     // Detail button function, opens rows and closes them
     $('#example').on('click', 'td.details-control-merge', function () {
         var tr = $(this).closest('tr');
@@ -535,7 +526,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                                 element["Industry"] == del_element["Industry"] &&
                                 element["Abstract"] == del_element["Abstract"] &&
                                 element["Student Names"] == del_element["Student Names"]) {
-                                console.log("deleted row found")
                                 isDeleted = true;
                             }
                         });
@@ -591,7 +581,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                             element["Industry"] == del_element["Industry"] &&
                             element["Abstract"] == del_element["Abstract"] &&
                             element["Student Names"] == del_element["Student Names"]) {
-                            console.log("deleted row found")
                             isDeleted = true;
                         }
                     });
@@ -655,7 +644,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 "Abstract": data[8],
                 "Student Names": data[9]
             });
-            console.log(deleted);
+
             merged_table.row($(this).parents('tr')).remove().draw();
         });
     });
