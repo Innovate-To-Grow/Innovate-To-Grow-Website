@@ -2,6 +2,7 @@
 var alert_confirmation; // confirmation answer after a merge button is pressed
 var merged_table; // the actual merged DataTable
 var merged_array; // turning every kept row into a merged array
+var deleted = [];
 var search_counter = 0; // how many search tables there are
 let select_count2 = 0; // keeps track of how many rows are selected
 let checker = 0; // Checking if we are at a fresh merge button press
@@ -131,7 +132,7 @@ function mergeformat(d) {
 // Merge Table specific functions START
 $(document).ready(function () {
 
-    
+
     // Set merged_table as a DataTable. For each specific field refer to https://datatables.net/
     merged_table = $('.display').DataTable({
         "dom": 'lBfrtip',
@@ -143,7 +144,7 @@ $(document).ready(function () {
             {
                 "text": 'Get Shareable URL',
                 "className": 'sharing',
-                "action": function () {   
+                "action": function () {
                     $('#share').click();
                     $('#share').remove();
                     $('.sharing').text('Loading...');
@@ -152,7 +153,7 @@ $(document).ready(function () {
             {
                 "text": 'Copy URL',
                 "className": 'CopyURL',
-                "action": function () {   
+                "action": function () {
                     navigator.clipboard.writeText(window.location.href);
                     $('.CopyURL').text('Copied!');
                     setTimeout(function () {
@@ -485,6 +486,8 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     // Merge results function START
     $('#merge').click(function () {
+        var deleted_counter = 0;
+
         if (unique_url == true) {
             $(".mergeTable").show();
             merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
@@ -513,7 +516,32 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 if (confirm("Are you sure you want to merge all of your search tables? \n(this can not be undone!)")) {
                     alert_confirmation = true;
                     $(".mergeTable").show();
+
+                    if (deleted.length == 0) {
+                        deleted[0] = new Set();
+                    }
+
                     merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
+
+                    merged_array = merged_array.filter(function (element) {
+                        var isDeleted = false;
+                        deleted[0].forEach(function (del_element) {
+                            if (element["Year-Semester"] == del_element["Year-Semester"] &&
+                                element["Class"] == del_element["Class"] &&
+                                element["Team#"] == del_element["Team#"] &&
+                                element["Team Name"] == del_element["Team Name"] &&
+                                element["Project Title"] == del_element["Project Title"] &&
+                                element["Organization"] == del_element["Organization"] &&
+                                element["Industry"] == del_element["Industry"] &&
+                                element["Abstract"] == del_element["Abstract"] &&
+                                element["Student Names"] == del_element["Student Names"]) {
+                                console.log("deleted row found")
+                                isDeleted = true;
+                            }
+                        });
+                        return !isDeleted;
+                    });
+
                     $('#example').DataTable().clear().draw(); // delete old table
                     for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
                         var row = merged_table.row($(this).closest('tr'));
@@ -528,6 +556,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                             merged_array[i]["null"],
                             merged_array[i]["Abstract"],
                             merged_array[i]["Student Names"],
+                            deleted_counter,
                         ]).draw();
                     }
                     merged_table.$('tr').toggleClass('keep');
@@ -542,20 +571,46 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             }
             else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
                 $(".mergeTable").show();
+
+                deleted_counter += 1;
+                if (deleted.length == deleted_counter) {
+                    deleted[deleted_counter] = new Set();
+                }
+
                 merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
+
+                merged_array = merged_array.filter(function (element) {
+                    var isDeleted = false;
+                    deleted[deleted_counter].forEach(function (del_element) {
+                        if (element["Year-Semester"] == del_element["Year-Semester"] &&
+                            element["Class"] == del_element["Class"] &&
+                            element["Team#"] == del_element["Team#"] &&
+                            element["Team Name"] == del_element["Team Name"] &&
+                            element["Project Title"] == del_element["Project Title"] &&
+                            element["Organization"] == del_element["Organization"] &&
+                            element["Industry"] == del_element["Industry"] &&
+                            element["Abstract"] == del_element["Abstract"] &&
+                            element["Student Names"] == del_element["Student Names"]) {
+                            console.log("deleted row found")
+                            isDeleted = true;
+                        }
+                    });
+                    return !isDeleted;
+                });
+
                 for (let i = 0; i < merged_array.length; i++) {
                     var row = merged_table.row($(this).closest('tr'));
                     var data = merged_table.rows().data().toArray();
                     var found = data.find(function (element) {
-                        return element[0] == merged_array[i]["Year-Semester"] && 
-                            element[1] == merged_array[i]["Class"] && 
-                            element[2] == merged_array[i]["Team#"] && 
-                            element[3] == merged_array[i]["Team Name"] && 
-                            element[4] == merged_array[i]["Project Title"] && 
-                            element[5] == merged_array[i]["Organization"] && 
-                            element[6] == merged_array[i]["Industry"] && 
-                            element[7] == merged_array[i]["null"] && 
-                            element[8] == merged_array[i]["Abstract"] && 
+                        return element[0] == merged_array[i]["Year-Semester"] &&
+                            element[1] == merged_array[i]["Class"] &&
+                            element[2] == merged_array[i]["Team#"] &&
+                            element[3] == merged_array[i]["Team Name"] &&
+                            element[4] == merged_array[i]["Project Title"] &&
+                            element[5] == merged_array[i]["Organization"] &&
+                            element[6] == merged_array[i]["Industry"] &&
+                            element[7] == merged_array[i]["null"] &&
+                            element[8] == merged_array[i]["Abstract"] &&
                             element[9] == merged_array[i]["Student Names"];
                     });
 
@@ -574,6 +629,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                         merged_array[i]["null"],
                         merged_array[i]["Abstract"],
                         merged_array[i]["Student Names"],
+                        deleted_counter,
                     ]).draw();
                 }
                 merged_table.$('tr').toggleClass('keep');
@@ -586,34 +642,21 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         }
 
         $('#example').on('click', 'td.editor-delete', function () {
-            
             // delete row in merged_table and search_table and update merged_array when trash can is clicked
+            var data = merged_table.row($(this).parents('tr')).data();
+            deleted[data[10]].add({
+                "Year-Semester": data[0],
+                "Class": data[1],
+                "Team#": data[2],
+                "Team Name": data[3],
+                "Project Title": data[4],
+                "Organization": data[5],
+                "Industry": data[6],
+                "Abstract": data[8],
+                "Student Names": data[9]
+            });
+            console.log(deleted);
             merged_table.row($(this).parents('tr')).remove().draw();
-            merged_array = merged_table.rows().data().toArray();
-
-            // set all content in merged_array to be inside search_table
-            $('#example').DataTable().clear().draw();
-            // search_table.row($(this).parents('tr')).clear().draw();
-            for (let i = 0; i < merged_array.length; i++) {
-                var row = merged_table.row($(this).closest('tr'));
-                search_table.row.add([
-                    merged_array[i]["Year-Semester"],
-                    merged_array[i]["Class"],
-                    merged_array[i]["Team#"],
-                    merged_array[i]["Team Name"],
-                    merged_array[i]["Project Title"],
-                    merged_array[i]["Organization"],
-                    merged_array[i]["Industry"],
-                    merged_array[i]["null"],
-                    merged_array[i]["Abstract"],
-                    merged_array[i]["Student Names"],
-                ]).draw();
-            }
-
-            // merged_table.row($(this).parents('tr')).remove().draw();
-            // search_table.row($(this)).remove().draw(false);
-            // merged_array = merged_table.rows().data().toArray();
-            console.log(search_table.rows().data().toArray())
         });
     });
     // Merge results function END
