@@ -515,7 +515,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
 
                     merged_array = merged_array.filter(function (element) {
-                        var isDeleted = false;
+                        var is_deleted = false;
                         deleted[0].forEach(function (del_element) {
                             if (element["Year-Semester"] == del_element["Year-Semester"] &&
                                 element["Class"] == del_element["Class"] &&
@@ -526,10 +526,10 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                                 element["Industry"] == del_element["Industry"] &&
                                 element["Abstract"] == del_element["Abstract"] &&
                                 element["Student Names"] == del_element["Student Names"]) {
-                                isDeleted = true;
+                                is_deleted = true;
                             }
                         });
-                        return !isDeleted;
+                        return !is_deleted;
                     });
 
                     $('#example').DataTable().clear().draw(); // delete old table
@@ -570,7 +570,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
 
                 merged_array = merged_array.filter(function (element) {
-                    var isDeleted = false;
+                    var is_deleted = false;
                     deleted[deleted_counter].forEach(function (del_element) {
                         if (element["Year-Semester"] == del_element["Year-Semester"] &&
                             element["Class"] == del_element["Class"] &&
@@ -581,10 +581,10 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                             element["Industry"] == del_element["Industry"] &&
                             element["Abstract"] == del_element["Abstract"] &&
                             element["Student Names"] == del_element["Student Names"]) {
-                            isDeleted = true;
+                            is_deleted = true;
                         }
                     });
-                    return !isDeleted;
+                    return !is_deleted;
                 });
 
                 for (let i = 0; i < merged_array.length; i++) {
@@ -633,17 +633,19 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         $('#example').on('click', 'td.editor-delete', function () {
             // delete row in merged_table and search_table and update merged_array when trash can is clicked
             var data = merged_table.row($(this).parents('tr')).data();
-            deleted[data[10]].add({
-                "Year-Semester": data[0],
-                "Class": data[1],
-                "Team#": data[2],
-                "Team Name": data[3],
-                "Project Title": data[4],
-                "Organization": data[5],
-                "Industry": data[6],
-                "Abstract": data[8],
-                "Student Names": data[9]
-            });
+            if (deleted.length > 0) {
+                deleted[data[10]].add({
+                    "Year-Semester": data[0],
+                    "Class": data[1],
+                    "Team#": data[2],
+                    "Team Name": data[3],
+                    "Project Title": data[4],
+                    "Organization": data[5],
+                    "Industry": data[6],
+                    "Abstract": data[8],
+                    "Student Names": data[9]
+                });
+            }
 
             merged_table.row($(this).parents('tr')).remove().draw();
         });
