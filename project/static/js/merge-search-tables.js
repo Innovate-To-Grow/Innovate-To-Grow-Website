@@ -659,23 +659,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
     });
     // Merge results function END
 
-    // Disable merge button if there are no search tables
-    $(document).ready(function () {
-        function disable_merge() {
-            if (!$('[id^="example"]').filter(function () {
-                return /example\d_wrapper$/.test(this.id);
-            }).length) {
-                $('.merge').prop('disabled', true);
-                $('.merge').css('background-color', '#D3D3D3');
-            }
-            else {
-                $('.merge').prop('disabled', false);
-                $('.merge').css('background-color', '#162D4F');
-            }
-        }
-        setInterval(disable_merge, 100);
-    });
-
     // Detail button function, opens rows and closes them
     $('#example' + search_counter).on('click', 'td.details-control', function () {
         var tr = $(this).closest('tr');
@@ -704,6 +687,23 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
     checker++;
 });
 // All functions under the search table scope (.addtable) END
+
+// Disable merge button if there are no search tables
+$(document).ready(function () {
+    function disable_merge() {
+        if (!$('[id^="example"]').filter(function () {
+            return /example\d_wrapper$/.test(this.id);
+        }).length) {
+            $('.merge').prop('disabled', true);
+            $('.merge').css('background-color', '#D3D3D3');
+        }
+        else {
+            $('.merge').prop('disabled', false);
+            $('.merge').css('background-color', '#162D4F');
+        }
+    }
+    setInterval(disable_merge, 100);
+});
 
 // to reset the confirmation tracker back to 0; in order to ask for merge confirmation again (must be out .addTable scope)
 $(document).on('click', '.merge', function () {
