@@ -2,7 +2,9 @@
 var alert_confirmation; // confirmation answer after a merge button is pressed
 var merged_table; // the actual merged DataTable
 var merged_array; // turning every kept row into a merged array
+var expected_merges = 0; // how many merges are expected
 var deleted = [];
+var deleted_counter = 0;
 var search_counter = 0; // how many search tables there are
 let select_count2 = 0; // keeps track of how many rows are selected
 let checker = 0; // Checking if we are at a fresh merge button press
@@ -477,7 +479,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     // Merge results function START
     $('#merge').click(function () {
-        var deleted_counter = 0;
 
         if (unique_url == true) {
             $(".mergeTable").show();
@@ -511,6 +512,8 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     if (deleted.length == 0) {
                         deleted[0] = new Set();
                     }
+
+                    expected_merges = deleted.length;
 
                     merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
 
@@ -562,7 +565,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
                 $(".mergeTable").show();
 
-                deleted_counter += 1;
+                deleted_counter++;
                 if (deleted.length == deleted_counter) {
                     deleted[deleted_counter] = new Set();
                 }
@@ -628,6 +631,10 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 }
             }
             confirmation_tracker++;
+
+            if (deleted_counter == expected_merges) {
+                deleted_counter = 0;
+            }
         }
 
         $('#example').on('click', 'td.editor-delete', function () {
@@ -651,6 +658,23 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         });
     });
     // Merge results function END
+
+    // Disable merge button if there are no search tables
+    $(document).ready(function () {
+        function disable_merge() {
+            if (!$('[id^="example"]').filter(function () {
+                return /example\d_wrapper$/.test(this.id);
+            }).length) {
+                $('.merge').prop('disabled', true);
+                $('.merge').css('background-color', '#D3D3D3');
+            }
+            else {
+                $('.merge').prop('disabled', false);
+                $('.merge').css('background-color', '#162D4F');
+            }
+        }
+        setInterval(disable_merge, 100);
+    });
 
     // Detail button function, opens rows and closes them
     $('#example' + search_counter).on('click', 'td.details-control', function () {
