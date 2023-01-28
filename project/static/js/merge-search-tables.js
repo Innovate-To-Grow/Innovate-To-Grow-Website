@@ -695,7 +695,7 @@ $(document).ready(function () {
             return /example\d_wrapper$/.test(this.id);
         }).length) {
             $('.merge').prop('disabled', true);
-            $('.merge').css('background-color', '#D3D3D3');
+            $('.merge').css('background-color', '#5B5B5B');
         }
         else {
             $('.merge').prop('disabled', false);
