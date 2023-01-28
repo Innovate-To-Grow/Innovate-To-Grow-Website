@@ -1,0 +1,246 @@
+
+/* Header Container*/
+h1 {
+  color: #8fb3ad;
+  font-size: 19px;
+  margin-left: 10px;
+  height: 20px;
+}
+
+/* Container to control logo */
+.logo-img {
+  display: inline-block;
+  font-size: 50px;
+/*
+  height: 100px;  commented out since these are set in the html file
+  width: 100px;
+*/
+  margin-top: 10px;
+}
+
+/* Title properties*/
+.title {
+  font-size: 65px;
+  display: inline-block;
+  height: 20px;
+  color: rgb(89, 58, 17);
+  margin-left: 20px;
+
+}
+
+/* Add a white background color to the top navigation */
+.topnav {
+  background-color: white;
+  overflow: hidden;
+  margin-top: 0px;
+}
+
+/* Style the links inside the navigation bar */
+.topnav a {
+  float: right;
+  color: #4a6762;
+  text-align: center;
+  padding: 10px 12px;
+  margin-top: 10px;
+  margin-right: 20px;
+  margin-bottom: 10px;
+  /* Change this if info does not appear properly on left */
+  text-decoration: none;
+  font-size: 24px;
+}
+
+/* Change the color of links on hover */
+.topnav a:hover {
+  color: #cda862;
+}
+
+/* Add a color to the active/current link */
+.topnav a.active {
+  color: #4a6762;
+}
+
+.topnav a.active:hover {
+  color: #cda862;
+}
+
+/* Style the tab */
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #4a6762;
+}
+
+/* Style the buttons that are used to open the tab content */
+.tab button {
+  color: white;
+  background-color: #4a6762;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+  font-size: 16px;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  color: #cda862;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  color: white;
+  background-color: #6d8682;
+}
+
+.tab button.active:hover {
+  color: #cda862;
+}
+
+/* Style the tab content */
+.tabcontent {
+  display: none;
+  padding: 6px 12px;
+  
+}
+
+/* Container made so map and DataTables able to be put side by side*/
+.float-container {
+  padding: 1px;
+  height: 80%;
+}
+
+/*Right for map */
+.float-child1 {
+  margin:0;
+  width: 70%;
+  float: right;
+  height: 951px;
+}
+
+/* Left for DataTables */
+.float-child2 {
+  border-top: none;
+  width: 30%;
+  float: left;
+  height: 900px;
+}
+
+#map {
+  height: 951px;
+}
+
+#datas {
+  height: 500px;
+}
+#searches {
+  height: 400px;
+}
+/*Change padding of DataTable buttons for page numbers*/
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  padding: 0.5em 0.2em !important
+}
+
+.table-caption {
+  position: relative;
+  left: 35%;
+  color: #4a6762;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+.material-icons {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 36px;
+}
+
+.material-icons.small {
+  font-size: 20px;
+}
+
+.button {
+  border: none;
+  background-color: #4a6762;
+  color: white;
+  padding: 8px 8px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 6px 2px;
+  cursor: pointer;
+}
+
+.button.small {
+  padding: 2px 6px;
+  margin: 0px;
+}
+
+.button:hover {
+  color: #cda862;
+}
+
+.button-text {
+  vertical-align: middle;
+}
+
+.fbutton {
+  display: inline-block;
+  padding: 1px 0px;
+}
+
+label[for="name"] {
+  display: inline-block;
+  color: #4a6762;
+  font-size: 16px;
+  font-weight: bold;
+  padding-top: 10px;
+}
+
+input[type="text"] {
+  width: 25%;
+  padding: 10px 10px;
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Styling for info section */
+.info {
+  padding: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.info img {
+  padding: 10px;
+}
+
+.info p {
+  display: block;
+  padding: 10px;
+}
+
+/* Changed new line width */
+.info br {
+  content: "";
+  display: block;
+  margin-bottom: 1px;
+}
+
+.ContactHead {      /* Header for contact page */
+  font-size: 65px;
+  color: rgb(89, 58, 17);
+  margin-left: 40%;
+}

@@ -26,11 +26,13 @@ from project.views.home import home_blueprint
 from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
 from project.views.about import about_blueprint
+from project.views.geo import geo_blueprint
 
 app.register_blueprint(home_blueprint)
 app.register_blueprint(about_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
+app.register_blueprint(geo_blueprint)
 
 #Flask Admin
 from project.models import edit_form, user
