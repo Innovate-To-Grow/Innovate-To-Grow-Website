@@ -44,3 +44,23 @@ class user(db.Model):
 
     def has_role(self, role):
         return self.role == role
+
+
+class event(db.Model):
+    id = db.Column("id", db.Integer, primary_key=True)
+    name = db.Column("name", db.String())
+    description = db.Column("description", db.String())
+    date = db.Column("date", db.String())
+    time = db.Column("time", db.String())
+    location = db.Column("location", db.String())
+    tickets = db.Column("tickets", db.String())
+    questions = db.Column("questions", db.String())
+
+    def __init__(self, name, description, date, time, location, tickets, questions):
+        self.name = name
+        self.description = description
+        self.date = date
+        self.time = time
+        self.location = location
+        self.tickets = tickets
+        self.questions = questions

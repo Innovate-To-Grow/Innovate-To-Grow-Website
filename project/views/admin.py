@@ -2,9 +2,9 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from wtforms import StringField, SelectField, BooleanField, FieldList
+from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField
 from wtforms.validators import InputRequired
-from project import db, wks
+from project import db, wks, sh
 from gspread.cell import Cell
 from project.models import edit_form, user
 from project.utils.email import send_email
@@ -176,6 +176,72 @@ class EditFormModelView(ModelView):
         model = self.get_one(id)
         options = model.options.split("\n")
         data = {"label": model.label, "required": model.required, "field_type": model.field_type, "options": options}
+        form.process(data=data)
+
+
+class EventModelView(ModelView):
+    edit_template = "admin/event_edit.html"
+    create_template = "admin/event_create.html"
+
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for("admin.login", next=request.url))
+
+    def scaffold_form(self):
+        form = super(EventModelView, self).scaffold_form()
+        form.name = StringField("Event Name", [InputRequired(" ")])
+        form.date = StringField("Event Date", [InputRequired(" ")])
+        form.time = StringField("Event Time", [InputRequired(" ")])
+        form.location = StringField("Location", [InputRequired(" ")])
+        form.description = TextAreaField("Description", [InputRequired(" ")])
+        form.tickets = FieldList(StringField())
+        form.questions = FieldList(StringField())
+        return form
+
+    def on_model_change(self, form, model, is_created):
+        tickets = ""
+        for ticket in form.tickets.data[:-1]:
+            tickets += ticket + "\n"
+        tickets += form.tickets.data[-1] if len(form.tickets.data) > 0 else ""
+        model.tickets = tickets
+
+        questions = ""
+        for question in form.questions.data[:-1]:
+            questions += question + "\n"
+        questions += form.questions.data[-1] if len(form.questions.data) > 0 else ""
+        model.questions = questions
+
+        db.session.commit()
+
+    def after_model_change(self, form, model, is_created):
+        worksheets = []
+        for worksheet in sh.worksheets():
+            worksheets.append(worksheet.title)
+
+        if model.name not in worksheets:
+            sh.add_worksheet(model.name, 1, 30)
+            columns = ["First Name", "Last Name", "Email", "Ticket Type"]
+            sh.worksheet(model.name).append_row(columns)
+            
+        for question in model.questions.split("\n"):
+            if question not in sh.worksheet(model.name).row_values(1):
+                sh.worksheet(model.name).update_cell(1, len(sh.worksheet(model.name).row_values(1)) + 1, question)
+
+    def on_form_prefill(self, form, id):
+        model = self.get_one(id)
+        tickets = model.tickets.split("\n")
+        questions = model.questions.split("\n")
+        data = {
+            "name": model.name,
+            "date": model.date,
+            "time": model.time,
+            "location": model.location,
+            "description": model.description,
+            "tickets": tickets,
+            "questions": questions
+        }
         form.process(data=data)
 
 

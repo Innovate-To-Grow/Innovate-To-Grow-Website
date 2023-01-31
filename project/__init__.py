@@ -10,7 +10,9 @@ from werkzeug.security import generate_password_hash
 # Google Sheet
 import gspread
 
-wks = gspread.service_account().open("I2G-Master-People").worksheet("double-email-test")
+gc = gspread.service_account()
+sh = gc.open("I2G Membership")
+wks = sh.worksheet("Members")
 
 #Flask
 app = Flask(__name__)
@@ -26,21 +28,24 @@ from project.views.home import home_blueprint
 from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
 from project.views.about import about_blueprint
+from project.views.events import events_blueprint
 from project.views.geo import geo_blueprint
 
 app.register_blueprint(home_blueprint)
 app.register_blueprint(about_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
+app.register_blueprint(events_blueprint)
 app.register_blueprint(geo_blueprint)
 
 #Flask Admin
-from project.models import edit_form, user
-from project.views.admin import IndexView, UserModelView, EditFormModelView, ContactView
+from project.models import edit_form, user, event
+from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView
 
 admin_app = Admin(app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3")
 admin_app.add_view(UserModelView(user, db.session, name="Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
+admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
 
 # Flask Login Manager
