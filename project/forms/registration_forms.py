@@ -28,26 +28,16 @@ class NotEqualTo(object):
 
 class RegistrationForm(FlaskForm):
     first_name = StringField('First Name', [InputRequired(' ')])
-
     last_name = StringField('Last Name', [InputRequired(' ')])
-
     primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
-
     confirm_primary = StringField(
         'Confirm Primary Email',
         [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
-
     secondary_email = StringField(
         'Secondary Email Address',
         [InputRequired(' '),
          Email(), NotEqualTo('primary_email', message='Can not be the same email')])
-
     confirm_secondary = StringField(
         'Confirm Secondary Email',
         [InputRequired(' '), EqualTo('secondary_email', message='Must match secondary email')])
-
-    submit = SubmitField('Submit')
-
-
-class InformationForm(FlaskForm):
     submit = SubmitField('Submit')

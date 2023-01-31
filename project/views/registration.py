@@ -3,13 +3,15 @@ from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context
-from project import app, wks
+from flask_wtf import FlaskForm
+from wtforms import SubmitField
+from project import app, wks, sh
 from project.models import edit_form
 from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token, confirm_token_no_expiry
 from project.utils.index_helper import wks_indices, arr_indices
-from project.forms.registration_forms import RegistrationForm, InformationForm
+from project.forms.registration_forms import RegistrationForm
 
 registration_blueprint = Blueprint("registration",
                                    __name__,
@@ -29,7 +31,26 @@ def register():
     wks_idx = wks_indices()
     arr_idx = arr_indices()
 
-    if request.method == "POST" and form.validate():
+    if request.method == "POST" and form.validate_on_submit():
+
+        def log_registration():
+            worksheets = []
+            for worksheet in sh.worksheets():
+                worksheets.append(worksheet.title)
+
+            if "Registration Logs" not in worksheets:
+                sh.add_worksheet("Registration Logs", 1, 5)
+                sh.worksheet("Registration Logs").append_row(
+                    ["First Name", "Last Name", "Primary Email", "Secondary Email", "DateTime"])
+
+            row = [
+                form.first_name.data, form.last_name.data, form.primary_email.data, form.secondary_email.data,
+                str(datetime.now().replace(second=0, microsecond=0))
+            ]
+            sh.worksheet("Registration Logs").append_row(row)
+
+        Thread(target=log_registration).start()
+
         prim_email = request.form["primary_email"].lower()
         sec_email = request.form["secondary_email"].lower()
 
@@ -363,6 +384,10 @@ def resend(token):
 
 @registration_blueprint.route("/info/<token>", methods=["GET", "POST"])
 def info(token):
+
+    class InformationForm(FlaskForm):
+        submit = SubmitField('Submit')
+
     for row in edit_form.query.all():
         setattr(InformationForm, row.label, get_field(row))
 

@@ -7,23 +7,42 @@ from flask_admin import Admin
 from config.default import Config, APP_ROOT
 from werkzeug.security import generate_password_hash
 
-# Google Sheet
-import gspread
-
-gc = gspread.service_account()
-sh = gc.open("I2G Membership")
-wks = sh.worksheet("Members")
-
-#Flask
+# Flask
 app = Flask(__name__)
 
 app.config.from_object(Config())
 
-#SQLAlchemy
+# SQLAlchemy
 db = SQLAlchemy(app)
 db.init_app(app)
 
-#Flask Blueprints
+# Google Sheet
+import gspread
+from project.models import user, edit_form, event
+
+gc = gspread.service_account()
+sh = gc.open("I2G Membership")
+
+worksheets = []
+for worksheet in sh.worksheets():
+    worksheets.append(worksheet.title)
+
+if "Members" not in worksheets:
+    sh.add_worksheet("Members", 1, 100)
+    row = [
+        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Info Completed"
+    ]
+    sh.worksheet("Members").append_row(row)
+
+    for row in edit_form.query.all():
+        if row.label not in sh.worksheet("Members").row_values(1):
+            sh.worksheet("Members").update_cell(1, len(sh.worksheet("Members").row_values(1)) + 1, row.label)
+
+wks = sh.worksheet("Members")
+
+# Flask Blueprints
 from project.views.home import home_blueprint
 from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
@@ -38,8 +57,7 @@ app.register_blueprint(update_blueprint)
 app.register_blueprint(events_blueprint)
 app.register_blueprint(geo_blueprint)
 
-#Flask Admin
-from project.models import edit_form, user, event
+# Flask Admin
 from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView
 
 admin_app = Admin(app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3")

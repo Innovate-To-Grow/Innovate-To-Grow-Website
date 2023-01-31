@@ -2,18 +2,17 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField
-from wtforms.validators import InputRequired
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField, SubmitField
+from wtforms.validators import EqualTo, Email, InputRequired
 from project import db, wks, sh
-from gspread.cell import Cell
 from project.models import edit_form, user
 from project.utils.email import send_email
 from project.utils.field import get_field
 from project.utils.token import generate_token, confirm_token_no_expiry
 from project.utils.index_helper import arr_indices
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
-from project.forms.registration_forms import InformationForm
-from project.forms.update_forms import UpdateForm
+from project.forms.update_forms import NotEqualTo
 from werkzeug.security import generate_password_hash
 
 
@@ -136,11 +135,37 @@ class EditFormModelView(ModelView):
     def preview(self):
         if request.method == "POST":
             if request.form.get("Preview Info Form"):
+
+                class InformationForm(FlaskForm):
+                    submit = SubmitField('Submit')
+
                 for row in edit_form.query.all():
                     setattr(InformationForm, row.label, get_field(row))
                 form = InformationForm()
 
             if request.form.get("Preview Update Form"):
+
+                class UpdateForm(FlaskForm):
+                    first_name = StringField('First Name', [InputRequired(' ')])
+                    last_name = StringField('Last Name', [InputRequired(' ')])
+                    primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
+                    confirm_primary = StringField(
+                        'Confirm Primary Email',
+                        [InputRequired(' '),
+                         EqualTo('primary_email', message='Must match primary email')])
+                    primary_subscribe = BooleanField('Enable Email Notifications with Primary')
+                    secondary_email = StringField(
+                        'Secondary Email Address',
+                        [InputRequired(' '),
+                         Email(),
+                         NotEqualTo('primary_email', message='Can not be the same email')])
+                    confirm_secondary = StringField(
+                        'Confirm Secondary Email',
+                        [InputRequired(' '),
+                         EqualTo('secondary_email', message='Must match secondary email')])
+                    secondary_subscribe = BooleanField('Enable Email Notifications with Secondary')
+                    submit = SubmitField('Submit')
+
                 for row in edit_form.query.all():
                     setattr(UpdateForm, row.label, get_field(row))
                 form = UpdateForm()
@@ -164,13 +189,9 @@ class EditFormModelView(ModelView):
         db.session.commit()
 
     def after_model_change(self, form, model, is_created):
-        cells = []
         for row in model.query.all():
-            label = wks.find(row.label, in_row=1)
-            if label is None:
-                cells.append(Cell(1, len(wks.row_values(1)) + 1, row.label))
-        if len(cells) > 0:
-            wks.update_cells(cells)
+            if row.label not in wks.row_values(1):
+                wks.update_cell(1, len(wks.row_values(1)) + 1, row.label)
 
     def on_form_prefill(self, form, id):
         model = self.get_one(id)
@@ -224,7 +245,7 @@ class EventModelView(ModelView):
             sh.add_worksheet(model.name, 1, 30)
             columns = ["First Name", "Last Name", "Email", "Ticket Type"]
             sh.worksheet(model.name).append_row(columns)
-            
+
         for question in model.questions.split("\n"):
             if question not in sh.worksheet(model.name).row_values(1):
                 sh.worksheet(model.name).update_cell(1, len(sh.worksheet(model.name).row_values(1)) + 1, question)
