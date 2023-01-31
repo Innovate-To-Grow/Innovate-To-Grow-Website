@@ -48,7 +48,7 @@ class DBClass():
         connection = None
         # try:
         connection = sqlite3.connect(
-            "project/db/sf_food_program_db_project_ver.sqlite")
+            "project/db/data.sqlite3")
         # except sqlite3.error as e:
         #     print(e)
         return connection
