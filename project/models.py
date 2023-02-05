@@ -65,19 +65,18 @@ class event(db.Model):
         self.tickets = tickets
         self.questions = questions
 
+
 class areas(db.Model):
     __tablename__ = "areas"
 
-    id = db.Column("id", db.Integer, primary_key=True)
-    area_id = db.Column("area_id", db.Integer)
+    area_id = db.Column("area_id", db.Integer, primary_key=True)
     latitude1 = db.Column("latitude1", db.Float)
     longitude1 = db.Column("longitude1", db.Float)
     latitude2 = db.Column("latitude2", db.Float)
     longitude2 = db.Column("longitude2", db.Float)
-    composite_id = db.Column("composite_id", db.Integer)
+    composite_id = db.Column("composite_id", db.Integer, db.ForeignKey("composites.composite_id"))
 
-    def __init__(self, area_id, latitude1, longitude1, latitude2, longitude2, composite_id):
-        self.area_id = area_id
+    def __init__(self, latitude1, longitude1, latitude2, longitude2, composite_id):
         self.latitude1 = latitude1
         self.longitude1 = longitude1
         self.latitude2 = latitude2
@@ -88,23 +87,30 @@ class areas(db.Model):
 class composites(db.Model):
     __tablename__ = "composites"
 
-    id = db.Column("id", db.Integer, primary_key=True)
-    composite_id = db.Column("composite_id", db.Integer)
+    composite_id = db.Column("composite_id", db.Integer, primary_key=True)
     composite_name = db.Column("composite_name", db.String())
     user_id = db.Column("user_id", db.Integer)
 
-    def __init__(self, composite_id, composite_name, user_id):
-        self.composite_id = composite_id
+    def __init__(self, composite_name, user_id):
         self.composite_name = composite_name
         self.user_id = user_id
+
 
 class businesses(db.Model):
     __tablename__ = "businesses"
 
-    id = db.Column("id", db.Integer, primary_key=True)
+    business_id = db.Column("business_id", db.Integer, primary_key=True)
+    name = db.Column("name", db.String())
+    address = db.Column("address", db.String())
+    city = db.Column("city", db.String())
+    postal_code = db.Column("postal_code", db.Integer)
     latitude = db.Column("latitude", db.Float)
     longitude = db.Column("longitude", db.Float)
 
-    def __init__(self, latitude, longitude):
+    def __init__(self, name, address, city, postal_code, latitude, longitude):
+        self.name = name
+        self.address = address
+        self.city = city
+        self.postal_code = postal_code
         self.latitude = latitude
         self.longitude = longitude
