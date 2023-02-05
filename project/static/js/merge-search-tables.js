@@ -479,6 +479,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     // Merge results function START
     $('#merge').click(function () {
+        var first_merge = false;
 
         if (unique_url == true) {
             $(".mergeTable").show();
@@ -511,9 +512,22 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
                     if (deleted.length == 0) {
                         deleted[0] = new Set();
+                        first_merge = true;
                     }
 
-                    expected_merges = deleted.length;
+                    function count_search_tables() {
+                        var count = $('[id^="example"]').filter(function () {
+                            return /example\d_wrapper$/.test(this.id);
+                        }).length;
+                        return count;
+                    }
+
+                    if (first_merge == true) {
+                        expected_merges = count_search_tables() - 1;
+                    }
+                    else {
+                        expected_merges = deleted.length + count_search_tables() - 1;
+                    }
 
                     merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
 
