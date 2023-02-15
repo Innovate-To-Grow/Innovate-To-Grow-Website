@@ -28,4 +28,5 @@ class NotEqualTo(object):
 
 class EmailForm(FlaskForm):
     email = StringField('Email Address', [InputRequired(' '), Email()])
+
     submit = SubmitField('Send')

@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html>
     {% import "membership/render_helper.html" as forms %}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("#also_member").change(function () {
+                if ($(this).is(":checked")) {
+                    $("#secondary").show();
+                    $("#confirm_secondary").show();
+                } else {
+                    $("#secondary").hide();
+                    $("#confirm_secondary").hide();
+                    $("#secondary").val("");
+                    $("#confirm_secondary").val("");
+                }
+            });
+        });
+    </script>
 
     {% block content %}
 

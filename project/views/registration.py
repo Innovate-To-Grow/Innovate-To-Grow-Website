@@ -28,8 +28,8 @@ def register():
     global can_register
     can_register = True
 
-    wks_idx = wks_indices()
-    arr_idx = arr_indices()
+    wks_idx = wks_indices(wks)
+    arr_idx = arr_indices(wks)
 
     if request.method == "POST" and form.validate_on_submit():
 
@@ -39,12 +39,13 @@ def register():
                 worksheets.append(worksheet.title)
 
             if "Registration Logs" not in worksheets:
-                sh.add_worksheet("Registration Logs", 1, 5)
+                sh.add_worksheet("Registration Logs", 1, 6)
                 sh.worksheet("Registration Logs").append_row(
-                    ["First Name", "Last Name", "Primary Email", "Secondary Email", "DateTime"])
+                    ["Order", "First Name", "Last Name", "Primary Email", "Secondary Email", "DateTime"])
 
             row = [
-                form.first_name.data, form.last_name.data, form.primary_email.data, form.secondary_email.data,
+                int(sh.worksheet("Registration Logs").col_values(1)[-1]) + 1, form.first_name.data, form.last_name.data,
+                form.primary_email.data, form.secondary_email.data,
                 str(datetime.now().replace(second=0, microsecond=0))
             ]
             sh.worksheet("Registration Logs").append_row(row)
@@ -207,7 +208,7 @@ def register():
             @copy_current_request_context
             def can_register():
                 user = ["" for i in range(len(wks_idx))]
-                user[arr_idx["Order"]] = len(wks.col_values(wks_idx["Order"]))
+                user[arr_idx["Order"]] = int(wks.col_values(wks_idx["Order"])[-1]) + 1
                 user[arr_idx["First Name"]] = form.first_name.data
                 user[arr_idx["Last Name"]] = form.last_name.data
                 user[arr_idx["When Started"]] = str(datetime.now().replace(second=0, microsecond=0))
@@ -273,8 +274,8 @@ def confirm(token):
     user = None
     email = confirm_token(token)
 
-    wks_idx = wks_indices()
-    arr_idx = arr_indices()
+    wks_idx = wks_indices(wks)
+    arr_idx = arr_indices(wks)
 
     if email:
 
@@ -344,8 +345,8 @@ def resend_page(token):
 def resend(token):
     email = confirm_token_no_expiry(token)
 
-    wks_idx = wks_indices()
-    arr_idx = arr_indices()
+    wks_idx = wks_indices(wks)
+    arr_idx = arr_indices(wks)
 
     if email:
 
@@ -395,7 +396,7 @@ def info(token):
 
     email = confirm_token_no_expiry(token)
 
-    wks_idx = wks_indices()
+    wks_idx = wks_indices(wks)
 
     if email:
 

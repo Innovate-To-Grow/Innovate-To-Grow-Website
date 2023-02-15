@@ -1,6 +1,4 @@
-from project import wks
-
-def wks_indices():
+def wks_indices(wks):
     dict = {}
     counter = 1
     row_values = wks.row_values(1)
@@ -12,7 +10,7 @@ def wks_indices():
     return dict
 
 
-def arr_indices():
+def arr_indices(wks):
     dict = {}
     counter = 0
     row_values = wks.row_values(1)

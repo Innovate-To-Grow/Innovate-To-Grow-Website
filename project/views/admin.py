@@ -217,6 +217,7 @@ class EventModelView(ModelView):
         form.time = StringField("Event Time", [InputRequired(" ")])
         form.location = StringField("Location", [InputRequired(" ")])
         form.description = TextAreaField("Description", [InputRequired(" ")])
+        form.live = BooleanField("Live?")
         form.tickets = FieldList(StringField())
         form.questions = FieldList(StringField())
         return form
@@ -243,7 +244,7 @@ class EventModelView(ModelView):
 
         if model.name not in worksheets:
             sh.add_worksheet(model.name, 1, 30)
-            columns = ["First Name", "Last Name", "Email", "Ticket Type"]
+            columns = ["Order", "First Name", "Last Name", "Email", "Ticket Type", "Zoom or In-Person?"]
             sh.worksheet(model.name).append_row(columns)
 
         for question in model.questions.split("\n"):
@@ -260,6 +261,7 @@ class EventModelView(ModelView):
             "time": model.time,
             "location": model.location,
             "description": model.description,
+            "live": model.live,
             "tickets": tickets,
             "questions": questions
         }
@@ -278,7 +280,7 @@ class ContactView(BaseView):
     def contact(self):
         form = EmailForm(request.form)
 
-        arr_idx = arr_indices()
+        arr_idx = arr_indices(wks)
 
         if request.method == "POST" and form.validate():
             selection = request.form.get("selection")

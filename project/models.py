@@ -49,19 +49,21 @@ class user(db.Model):
 class event(db.Model):
     id = db.Column("id", db.Integer, primary_key=True)
     name = db.Column("name", db.String())
-    description = db.Column("description", db.String())
     date = db.Column("date", db.String())
     time = db.Column("time", db.String())
     location = db.Column("location", db.String())
+    description = db.Column("description", db.String())
+    live = db.Column("live", db.Boolean)
     tickets = db.Column("tickets", db.String())
     questions = db.Column("questions", db.String())
 
-    def __init__(self, name, description, date, time, location, tickets, questions):
+    def __init__(self, name, date, time, location, description, live, tickets, questions):
         self.name = name
-        self.description = description
         self.date = date
         self.time = time
         self.location = location
+        self.description = description
+        self.live = live
         self.tickets = tickets
         self.questions = questions
 
