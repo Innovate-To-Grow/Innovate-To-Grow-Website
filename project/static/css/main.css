@@ -114,21 +114,21 @@ h1 {
 /*Right for map */
 .float-child1 {
   margin:0;
-  width: 70%;
+  width: 65%;
   float: right;
-  height: 951px;
+  height: auto;
 }
 
 /* Left for DataTables */
 .float-child2 {
   border-top: none;
-  width: 30%;
+  width: 35%;
   float: left;
-  height: 900px;
+  height: auto;
 }
 
 #map {
-  height: 951px;
+  height: 685px;
 }
 
 #datas {
