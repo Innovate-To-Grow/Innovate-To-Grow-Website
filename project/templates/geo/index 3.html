@@ -8,37 +8,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
-  <!-- Title for website tab-->
-  <title>   
-    Veracruz Map Search
-  </title>
-
   <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/main.css') }}">
   <!-- {{ styles() }} -->
 </head>
 
 <body>
-  <h1>
-    <div class = "logo-img">  <!--- Logo image class w/ link to veracruz website-->
-      <A href="https://veracruz.ventures/" > 
-       <img src="https://veracruz.ventures/wp-content/uploads/sites/49/brizy/imgs/herdade-vera-cruz-logo-rgb-85x53x0x0x85x53x1561499314.png"
-       height = "60px" width="110px"> 
-      </A>
-    </div>
-    
-    <div class = "title" style="display: inline"> <!--- Title on top of page -->
-      Veracruz Map Search
-    </div>
-    
-  </h1>
-
-  <div class="topnav"><a class="active" href="/">Map</a> </div>  <!--- TOPNAV class holds contact and map -->
-
   <div class="float-container">  <!-- Float container for putting map and searches side by side -->
     <div class="float-child2">    <!-- child 2 = search tab -->
       <div class="tab">
         <button class="tablinks active" onclick="openTable(event,'search')">Search Results</button>
-        <button class="tablinks" onclick="openTable(event,'saved'); refreshSearchTable()">Saved Composites</button>
+        <!-- <button class="tablinks" onclick="openTable(event,'saved'); refreshSearchTable()">Saved Composites</button> -->
       </div>
       <div id="search" class="tabcontent" style="display:block">
         <caption><span class="table-caption">Results</span></caption>
@@ -56,7 +35,7 @@
             class="material-icons">refresh</i>
           <span class="button-text">Refresh Results</span> </button>
       </div>
-      <div id="saved" class="tabcontent">
+      <!-- <div id="saved" class="tabcontent">
         <caption><span class="table-caption">Saved Composites</span></caption>
         <table id="searches" class="cell-border compact stripe hover">
           <thead>
@@ -73,16 +52,16 @@
         <button onclick="refreshSearchTable()" class="button" style="position:relative; left:-15px; top:4px;"> <i
             class="material-icons">refresh</i>
           <span class="button-text">Refresh Saved Composite Areas</span> </button>
-      </div>
+      </div> -->
 
 
-      <form action="{{url_for('geo.save_composite_search')}}" method='POST' class="fbutton">
+      <!-- <form action="{{url_for('geo.save_composite_search')}}" method='POST' class="fbutton">
         <label for="name">Enter name to save search results: </label>
         <input type="text" name="name" placeholder="Name of composite..">
         </input>
         <button type="submit" class="button"> <i class="material-icons">file_download</i>
           <span class="button-text">Save to Composites</span> </button>
-      </form>
+      </form> -->
     </div>
     <div id="map" class="float-child1">   <!--- Float child 1 for map -->
       <script src="{{url_for('static', filename='js/jquery-3.6.0.min.js')}}"></script>
