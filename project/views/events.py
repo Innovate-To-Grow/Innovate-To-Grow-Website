@@ -236,8 +236,12 @@ def event_register(event_name, token):
 
         user_search = event_wks.find(email, in_column=event_wks_idx["Event Email"])
 
-        if user_search is not None and user_search.row != event_user.row:
-            return render_template("error6.html")
+        if already_registered:
+            if user_search is not None and user_search.row != event_user.row:
+                return render_template("error6.html")
+        else:
+            if user_search is not None:
+                return render_template("error6.html")
 
         @copy_current_request_context
         def update_event_wks():
@@ -264,6 +268,8 @@ def event_register(event_name, token):
                 subject = "I2G Membership - Event Registration Updated"
 
             else:
+                row = event_wks.row_count + 1
+
                 event_wks.append_row([
                     int(event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1,
                     user[arr_idx["Primary Email"]], user[arr_idx["Secondary Email"]], form.first_name.data,
@@ -271,7 +277,7 @@ def event_register(event_name, token):
                 ])
 
                 for question in event_obj.questions.split("\n"):
-                    cells.append(Cell(event_wks.row_count + 1, event_wks_idx[question], form[question].data))
+                    cells.append(Cell(row, event_wks_idx[question], form[question].data))
 
                 if len(cells) > 0:
                     event_wks.update_cells(cells)
@@ -289,4 +295,4 @@ def event_register(event_name, token):
 
         return render_template("successfully_registered.html", event=event_obj, token=token)
 
-    return render_template("event_registration.html", form=form, token=token, event=event_obj)
+    return render_template("event_registration.html", form=form, event=event_obj, token=token)
