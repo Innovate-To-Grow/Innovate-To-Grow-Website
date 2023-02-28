@@ -16,9 +16,14 @@ app.config.from_object(Config())
 db = SQLAlchemy(app)
 db.init_app(app)
 
+from project.models import user, edit_form, event
+
+@app.context_processor 
+def inject_event(): 
+    return dict(event=event.query.filter_by(live=True).order_by(event.id.desc()).first())
+
 # Google Sheet
 import gspread
-from project.models import user, edit_form, event
 
 gc = gspread.service_account()
 sh = gc.open("I2G Membership")

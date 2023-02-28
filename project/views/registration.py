@@ -43,9 +43,11 @@ def register():
                 sh.worksheet("Registration Logs").append_row(
                     ["Order", "First Name", "Last Name", "Primary Email", "Secondary Email", "DateTime"])
 
+            order = int(sh.worksheet("Registration Logs").col_values(1)[-1]) + 1 if sh.worksheet(
+                "Registration Logs").col_values(1)[-1].isdigit() else 1
+
             row = [
-                int(sh.worksheet("Registration Logs").col_values(1)[-1]) + 1, form.first_name.data, form.last_name.data,
-                form.primary_email.data, form.secondary_email.data,
+                order, form.first_name.data, form.last_name.data, form.primary_email.data, form.secondary_email.data,
                 str(datetime.now().replace(second=0, microsecond=0))
             ]
             sh.worksheet("Registration Logs").append_row(row)
@@ -208,7 +210,8 @@ def register():
             @copy_current_request_context
             def can_register():
                 user = ["" for i in range(len(wks_idx))]
-                user[arr_idx["Order"]] = int(wks.col_values(wks_idx["Order"])[-1]) + 1
+                user[arr_idx["Order"]] = int(wks.col_values(wks_idx["Order"])[-1]) + 1 if wks.col_values(
+                    wks_idx["Order"])[-1].isdigit() else 1
                 user[arr_idx["First Name"]] = form.first_name.data
                 user[arr_idx["Last Name"]] = form.last_name.data
                 user[arr_idx["When Started"]] = str(datetime.now().replace(second=0, microsecond=0))

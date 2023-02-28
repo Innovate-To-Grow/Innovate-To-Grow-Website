@@ -1,0 +1,7 @@
+<p>Dear {{ first }} {{ last }},</p>
+
+<p> Thank you for registering for {{ event.name }}. Your registration has been confirmed.</p>
+
+<p> Note that you can always go back to update the details on your application: </p>
+<p> <a href="{{ url_for('events.event_register', event_name=event.name, token=token, _external=True) }}">{{ event.name }}
+        Registration</a> </p>

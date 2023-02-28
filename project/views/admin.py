@@ -12,7 +12,7 @@ from project.utils.field import get_field
 from project.utils.token import generate_token, confirm_token_no_expiry
 from project.utils.index_helper import arr_indices
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
-from project.forms.update_forms import NotEqualTo
+from project.forms.registration_forms import NotEqualTo
 from werkzeug.security import generate_password_hash
 
 
@@ -244,7 +244,10 @@ class EventModelView(ModelView):
 
         if model.name not in worksheets:
             sh.add_worksheet(model.name, 1, 30)
-            columns = ["Order", "First Name", "Last Name", "Email", "Ticket Type", "Zoom or In-Person?"]
+            columns = [
+                "Order", "Membership Primary", "Membership Secondary", "First Name", "Last Name", "Event Email",
+                "Ticket Type", "Zoom or In-Person?"
+            ]
             sh.worksheet(model.name).append_row(columns)
 
         for question in model.questions.split("\n"):

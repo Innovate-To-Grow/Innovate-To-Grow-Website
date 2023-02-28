@@ -12,7 +12,8 @@ from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token_no_expiry
 from project.utils.index_helper import wks_indices, arr_indices
-from project.forms.update_forms import EmailForm, NotEqualTo
+from project.forms.registration_forms import NotEqualTo
+from project.forms.update_forms import EmailForm
 
 update_blueprint = Blueprint("update",
                              __name__,
@@ -25,8 +26,8 @@ update_blueprint = Blueprint("update",
 def enter_email():
     form = EmailForm()
 
-    wks_idx = wks_indices()
-    arr_idx = arr_indices()
+    wks_idx = wks_indices(wks)
+    arr_idx = arr_indices(wks)
 
     if request.method == "POST" and form.validate():
         email = request.form["email"].lower()
@@ -158,8 +159,8 @@ def enter_email():
 def update_info(token):
     email = confirm_token_no_expiry(token)
 
-    wks_idx = wks_indices()
-    arr_idx = arr_indices()
+    wks_idx = wks_indices(wks)
+    arr_idx = arr_indices(wks)
 
     if email:
 
@@ -182,22 +183,22 @@ def update_info(token):
         return render_template("error2.html")
 
     class UpdateForm(FlaskForm):
-        first_name = StringField('First Name', [InputRequired(' ')])
-        last_name = StringField('Last Name', [InputRequired(' ')])
-        primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
+        first_name = StringField("First Name", [InputRequired(" ")])
+        last_name = StringField("Last Name", [InputRequired(" ")])
+        primary_email = StringField("Primary Email Address", [InputRequired(" "), Email()])
         confirm_primary = StringField(
-            'Confirm Primary Email',
-            [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
-        primary_subscribe = BooleanField('Enable Email Notifications with Primary')
+            "Confirm Primary Email",
+            [InputRequired(" "), EqualTo("primary_email", message="Must match primary email")])
+        primary_subscribe = BooleanField("Enable Email Notifications with Primary")
         secondary_email = StringField(
-            'Secondary Email Address',
-            [InputRequired(' '),
-             Email(), NotEqualTo('primary_email', message='Can not be the same email')])
+            "Secondary Email Address",
+            [InputRequired(" "),
+             Email(), NotEqualTo("primary_email", message="Can not be the same email")])
         confirm_secondary = StringField(
-            'Confirm Secondary Email',
-            [InputRequired(' '), EqualTo('secondary_email', message='Must match secondary email')])
-        secondary_subscribe = BooleanField('Enable Email Notifications with Secondary')
-        submit = SubmitField('Submit')
+            "Confirm Secondary Email",
+            [InputRequired(" "), EqualTo("secondary_email", message="Must match secondary email")])
+        secondary_subscribe = BooleanField("Enable Email Notifications with Secondary")
+        submit = SubmitField("Submit")
 
     for row in edit_form.query.all():
         setattr(UpdateForm, row.label, get_field(row))

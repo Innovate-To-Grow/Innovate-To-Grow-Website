@@ -1,44 +1,15 @@
-<!DOCTYPE html>
-<html>
-    {% import "membership/render_helper.html" as forms %}
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $("#also_member").change(function () {
-                if ($(this).is(":checked")) {
-                    $("#secondary").show();
-                    $("#confirm_secondary").show();
-                } else {
-                    $("#secondary").hide();
-                    $("#confirm_secondary").hide();
-                    $("#secondary").val("");
-                    $("#confirm_secondary").val("");
-                }
-            });
-        });
-    </script>
+{% extends "membership/layout.html" %}
+{% import "membership/render_helper.html" as forms %}
 
-    {% block content %}
+{% block content %}
 
-    {{ name }}
-    <br><br>
-    {{ description }}
-    <br><br>
-    {{ date }}
-    <br><br>
-    {{ time }}
-    <br><br>
-    {{ location }}
-    <br><br>
+<form action="{{ url_for('events.event_register', event_name=event.name, token=token) }}" method=post>
+  {{ form.hidden_tag() }}
 
-    <form action="{{ url_for('events.event_register', token=token) }}" method=post>
-        {{ form.hidden_tag() }}
-      
-        {{ forms.render(form) }}
-      
-        <br>
-        {{ form.submit }}
-        <br>
-      </form>
-    {% endblock %}
-</html>
+  {{ forms.render(form) }}
+
+  <br>
+  {{ form.submit }}
+  <br>
+</form>
+{% endblock %}
