@@ -271,8 +271,7 @@ def event_register(event_name, token):
                 ])
 
                 for question in event_obj.questions.split("\n"):
-                    cells.append(
-                        Cell(int(event_wks.col_values(1)[-1]) + 1, event_wks_idx[question], form[question].data))
+                    cells.append(Cell(event_wks.row_count + 1, event_wks_idx[question], form[question].data))
 
                 if len(cells) > 0:
                     event_wks.update_cells(cells)
