@@ -268,19 +268,21 @@ def event_register(event_name, token):
                 subject = "I2G Membership - Event Registration Updated"
 
             else:
-                row = event_wks.row_count + 1
+                row = ["" for i in range(len(event_wks_idx))]
 
-                event_wks.append_row([
-                    int(event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1,
-                    user[arr_idx["Primary Email"]], user[arr_idx["Secondary Email"]], form.first_name.data,
-                    form.last_name.data, email, form.tickets.data, form.zoom_or_not.data
-                ])
+                row[event_arr_idx["Order"]] = int(event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
+                row[event_arr_idx["Membership Primary"]] = user[arr_idx["Primary Email"]]
+                row[event_arr_idx["Membership Secondary"]] = user[arr_idx["Secondary Email"]]
+                row[event_arr_idx["First Name"]] = form.first_name.data
+                row[event_arr_idx["Last Name"]] = form.last_name.data
+                row[event_arr_idx["Event Email"]] = email
+                row[event_arr_idx["Ticket Type"]] = form.tickets.data
+                row[event_arr_idx["Zoom or In-Person?"]] = form.zoom_or_not.data
 
                 for question in event_obj.questions.split("\n"):
-                    cells.append(Cell(row, event_wks_idx[question], form[question].data))
+                    row[event_arr_idx[question]] = form[question].data
 
-                if len(cells) > 0:
-                    event_wks.update_cells(cells)
+                event_wks.append_row(row)
 
                 html = render_template("event_confirmed_email.html",
                                        first=form.first_name.data,

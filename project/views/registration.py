@@ -210,6 +210,7 @@ def register():
             @copy_current_request_context
             def can_register():
                 user = ["" for i in range(len(wks_idx))]
+                
                 user[arr_idx["Order"]] = int(wks.col_values(wks_idx["Order"])[-1]) + 1 if wks.col_values(
                     wks_idx["Order"])[-1].isdigit() else 1
                 user[arr_idx["First Name"]] = form.first_name.data
