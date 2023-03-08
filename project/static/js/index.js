@@ -80,7 +80,16 @@ function initMap(){
     // Creates a drawing manager attached to the map that allows the user to draw
     // markers, lines, and shapes.
     drawingManager = new google.maps.drawing.DrawingManager({
-      drawingMode: google.maps.drawing.OverlayType.RECTANGLE,
+      drawingMode: google.maps.drawing.OverlayType,
+      drawingControl: true,
+      drawingControlOptions: {
+        position: google.maps.ControlPosition.TOP_CENTER,
+        drawingModes: [
+          google.maps.drawing.OverlayType.CIRCLE,
+          google.maps.drawing.OverlayType.RECTANGLE,
+          google.maps.drawing.OverlayType.POLYGON,
+      ],
+    },
       markerOptions: {
         draggable: true
       },
@@ -88,7 +97,9 @@ function initMap(){
         editable: true
       },
       rectangleOptions: polyOptions,
-      map: map
+      map: map,
+      
+      
     });
 
   
@@ -96,7 +107,7 @@ function initMap(){
       all_overlays.push(e);
       if (e.type != google.maps.drawing.OverlayType.MARKER) {
         // Switch back to non-drawing mode after drawing a shape.
-        drawingManager.setDrawingMode(null);
+        // drawingManager.setDrawingMode(null);
   
         // Add an event listener that selects the newly-drawn shape when the user
         // mouses down on it.

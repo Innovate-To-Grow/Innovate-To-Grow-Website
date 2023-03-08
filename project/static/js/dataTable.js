@@ -8,7 +8,27 @@ $(document).ready(function () {
     },
     columns: [
       { data: 'name' },
-      { data: 'formatted_address' }
+      { data: 'formatted_address' },
+      { data: 'rating'},
+      { data: 'website'},
+      { data: 'formatted_phone_number'},
+      {
+        data: 'reviews',
+        render: function (data, type, row) {
+          if (data && data.length > 0) {
+            var reviewText = '';
+            for (var i = 0; i < data.length; i++) {
+              if (i > 0) {
+                reviewText += ', ';
+              }
+              reviewText += data[i]['text'] + ' (' + data[i]['rating'] + ')';
+            }
+            return reviewText;
+          } else {
+            return 'N/A';
+          }
+        }
+      }
     ], 
     scrollY: "510px",
     scrollCollapse: true
@@ -50,7 +70,27 @@ function refreshTable() {
     "autoWidth": false,
     columns: [
       { 'data': 'name' },
-      { 'data': 'formatted_address' }
+      { 'data': 'formatted_address' },
+      { 'data': 'rating'},
+      { 'data': 'website'},
+      { 'data': 'formatted_phone_number'},
+      {
+        data: 'reviews',
+        render: function (data, type, row) {
+          if (data && data.length > 0) {
+            var reviewText = '';
+            for (var i = 0; i < data.length; i++) {
+              if (i > 0) {
+                reviewText += ', ';
+              }
+              reviewText += data[i]['text'] + ' (' + data[i]['rating'] + ')';
+            }
+            return reviewText;
+          } else {
+            return 'N/A';
+          }
+        }
+      }
     ], 
     scrollY: "510px",
     scrollCollapse: true
