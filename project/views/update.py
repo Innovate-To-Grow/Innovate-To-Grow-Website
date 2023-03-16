@@ -283,8 +283,12 @@ def update_info(token):
         person["register_event"] = True
         person["event_zoom_or_not"] = temp_event_user[event_arr_idx["Zoom or In-Person?"]]
         person["event_tickets"] = temp_event_user[event_arr_idx["Ticket Type"]]
+        
         for question in event_obj.questions.split("\n"):
-            person["event_" + question] = temp_event_user[event_arr_idx[question]]
+            if event_wks_idx[question] > len(temp_event_user):
+                person["event_" + question] = ""
+            else:
+                person["event_" + question] = temp_event_user[event_arr_idx[question]]
 
     form = UpdateForm(data=person)
 

@@ -34,10 +34,6 @@
     const registerCheckbox = document.querySelector('#register_event');
     const eventDivs = document.querySelectorAll('div[id^="event_"]');
 
-    window.addEventListener('load', function () {
-        registerCheckbox.dispatchEvent(new Event('change'));
-    });
-
     registerCheckbox.addEventListener('change', function () {
         if (this.checked) {
             eventDivs.forEach(div => {
@@ -55,6 +51,17 @@
             });
         }
     });
+
+    window.addEventListener('load', function () {
+        registerCheckbox.dispatchEvent(new Event('change'));
+    });
+
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            registerCheckbox.dispatchEvent(new Event('change'));
+        }
+    });
+
 </script>
 
 {% endblock %}
