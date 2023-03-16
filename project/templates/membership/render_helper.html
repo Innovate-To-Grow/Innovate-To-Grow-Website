@@ -19,7 +19,7 @@
       background-color: #DAA900 !important
     }
   </style>
-  <div class="w3-container w3-theme-UCGold w3-round-xlarge w3-margin" style="max-width:500px; min-height:75px;">
+  <div id="{{ field.name }}_wrapper" class="w3-container w3-theme-UCGold w3-round-xlarge w3-margin" style="max-width:500px; min-height:75px;">
     <div class="form-group {% if field.errors %} error {% endif %}">
       {{ field.label }}
       <div class="input">

@@ -6,22 +6,55 @@
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 
 <style>
-  .w3-theme-UCBlue {
-  color:#fff !important;background-color:#002856 !important}
-  .w3-theme-UCGold {
-  color:#fff !important;background-color:#DAA900 !important}
-</style> 
+    .w3-theme-UCBlue {
+        color: #fff !important;
+        background-color: #002856 !important
+    }
+
+    .w3-theme-UCGold {
+        color: #fff !important;
+        background-color: #DAA900 !important
+    }
+</style>
 
 <div class="w3-container w3-theme-UCBlue">
     <h2 style="color:#DAA900;">Fill out your information below</h2>
 </div>
 <form action="{{ url_for('registration.info', token=token) }}" method=post>
-  {{ form.hidden_tag() }}
+    {{ form.hidden_tag() }}
 
-  {{ forms.render(form) }}
+    {{ forms.render(form) }}
 
-  <br>
-  {{ form.submit }}
-  <br>
+    <br>
+    {{ form.submit }}
+    <br>
 </form>
+
+<script>
+    const registerCheckbox = document.querySelector('#register_event');
+    const eventDivs = document.querySelectorAll('div[id^="event_"]');
+
+    window.addEventListener('load', function () {
+        registerCheckbox.dispatchEvent(new Event('change'));
+    });
+
+    registerCheckbox.addEventListener('change', function () {
+        if (this.checked) {
+            eventDivs.forEach(div => {
+                div.style.display = 'block';
+                div.querySelectorAll('input').forEach(input => {
+                    input.setAttribute('required', '');
+                });
+            });
+        } else {
+            eventDivs.forEach(div => {
+                div.style.display = 'none';
+                div.querySelectorAll('input').forEach(input => {
+                    input.removeAttribute('required');
+                });
+            });
+        }
+    });
+</script>
+
 {% endblock %}

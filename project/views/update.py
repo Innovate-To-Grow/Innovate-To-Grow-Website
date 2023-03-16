@@ -4,10 +4,10 @@ from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request, copy_current_request_context
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, BooleanField
-from wtforms.validators import EqualTo, Email, InputRequired
-from project import app, wks
-from project.models import edit_form
+from wtforms import StringField, SubmitField, BooleanField, RadioField
+from wtforms.validators import EqualTo, Email, InputRequired, Optional
+from project import app, sh, wks
+from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.field import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token_no_expiry
@@ -44,7 +44,14 @@ def enter_email():
         user = asyncio.run(main())
         user = user[0] if user[0] is not None else user[1] if user[1] is not None else None
         if user is None:
-            return render_template("error3.html")
+            subject = "I2G Membership - Complete Registration"
+            token = generate_token(email)
+            url = url_for("registration.complete_registration", token=token, _external=True)
+            html = render_template("complete_email.html", url=url)
+            send_email(email, subject, html)
+
+            return render_template("instructions_sent.html")
+
         else:
             user = wks.row_values(user.row)
 
@@ -162,6 +169,14 @@ def update_info(token):
     wks_idx = wks_indices(wks)
     arr_idx = arr_indices(wks)
 
+    event_cells = []
+    event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+
+    if event_obj is not None:
+        event_wks = sh.worksheet(event_obj.name)
+        event_wks_idx = wks_indices(event_wks)
+        event_arr_idx = arr_indices(event_wks)
+
     if email:
 
         async def query_prim_col():
@@ -203,6 +218,34 @@ def update_info(token):
     for row in edit_form.query.all():
         setattr(UpdateForm, row.label, get_field(row))
 
+    if event_obj is not None:
+        setattr(UpdateForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
+        setattr(
+            UpdateForm, "event_zoom_or_not",
+            RadioField("Zoom or In-Person",
+                       choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
+                       validators=[Optional()]))
+        setattr(
+            UpdateForm, "event_tickets",
+            RadioField("Ticket Type",
+                       choices=[(ticket, ticket) for ticket in event_obj.tickets.split("\n")],
+                       validators=[Optional()]))
+
+        for question in event_obj.questions.split("\n"):
+            setattr(UpdateForm, "event_" + question, StringField(question))
+
+        async def query_event_prim_col():
+            return event_wks.find(email, in_column=event_wks_idx["Membership Primary"])
+
+        async def query_event_sec_col():
+            return event_wks.find(email, in_column=event_wks_idx["Membership Secondary"])
+
+        async def main():
+            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
+
+        event_user = asyncio.run(main())
+        event_user = event_user[0] if event_user[0] is not None else event_user[1] if event_user[1] is not None else None
+
     primary_temp = False
     if user[arr_idx["Primary Subscribed"]] == "TRUE":
         primary_temp = True
@@ -235,6 +278,14 @@ def update_info(token):
             else:
                 person.update([(row.label, user[arr_idx[row.label]])])
 
+    if event_user is not None:
+        temp_event_user = event_wks.row_values(event_user.row)
+        person["register_event"] = True
+        person["event_zoom_or_not"] = temp_event_user[event_arr_idx["Zoom or In-Person?"]]
+        person["event_tickets"] = temp_event_user[event_arr_idx["Ticket Type"]]
+        for question in event_obj.questions.split("\n"):
+            person["event_" + question] = temp_event_user[event_arr_idx[question]]
+
     form = UpdateForm(data=person)
 
     if request.method == "POST" and form.validate_on_submit():
@@ -264,6 +315,12 @@ def update_info(token):
                     can_update = False
                 elif user_prim1[arr_idx["Primary Expired"]] == "TRUE":
                     cells.append(Cell(row_prim1, wks_idx["Primary Email"], ""))
+
+                    if event_obj is not None:
+                        event_user = event_wks.find(prim_email, in_column=event_wks_idx["Membership Primary"])
+                        if event_user is not None:
+                            event_cells.append(Cell(event_user.row, event_wks_idx["Membership Primary"], ""))
+
                     if user_prim1[arr_idx["Secondary Email"]] != "" and user_prim1[
                             arr_idx["Secondary Verified"]] == "TRUE":
                         html = render_template("deleting_email.html",
@@ -287,6 +344,12 @@ def update_info(token):
                     can_update = False
                 elif user_prim2[arr_idx["Secondary Expired"]] == "TRUE":
                     cells.append(Cell(row_prim2, wks_idx["Secondary Email"], ""))
+
+                    if event_obj is not None:
+                        event_user = event_wks.find(prim_email, in_column=event_wks_idx["Membership Secondary"])
+                        if event_user is not None:
+                            event_cells.append(Cell(event_user.row, event_wks_idx["Membership Secondary"], ""))
+
                     if user_prim2[arr_idx["Primary Email"]] != "" and user_prim2[arr_idx["Primary Verified"]] == "TRUE":
                         html = render_template("deleting_email.html",
                                                first=user_prim2[arr_idx["First Name"]],
@@ -308,6 +371,12 @@ def update_info(token):
                     can_update = False
                 elif user_sec1[arr_idx["Primary Expired"]] == "TRUE":
                     cells.append(Cell(row_sec1, wks_idx["Primary Email"], ""))
+
+                    if event_obj is not None:
+                        event_user = event_wks.find(sec_email, in_column=event_wks_idx["Membership Primary"])
+                        if event_user is not None:
+                            event_cells.append(Cell(event_user.row, event_wks_idx["Membership Primary"], ""))
+
                     if user_sec1[arr_idx["Secondary Email"]] != "" and user_sec1[
                             arr_idx["Secondary Verified"]] == "TRUE":
                         html = render_template("deleting_email.html",
@@ -331,6 +400,12 @@ def update_info(token):
                     can_update = False
                 elif user_sec2[arr_idx["Secondary Expired"]] == "TRUE":
                     cells.append(Cell(row_sec2, wks_idx["Secondary Email"], ""))
+
+                    if event_obj is not None:
+                        event_user = event_wks.find(sec_email, in_column=event_wks_idx["Membership Secondary"])
+                        if event_user is not None:
+                            event_cells.append(Cell(event_user.row, event_wks_idx["Membership Secondary"], ""))
+
                     if user_sec2[arr_idx["Primary Email"]] != "" and user_sec2[arr_idx["Primary Verified"]] == "TRUE":
                         html = render_template("deleting_email.html",
                                                first=user_sec2[arr_idx["First Name"]],
@@ -344,6 +419,9 @@ def update_info(token):
             if len(cells) > 0:
                 wks.update_cells(cells)
 
+            if len(event_cells) > 0:
+                event_wks.update_cells(event_cells)
+
         async def main():
             await asyncio.gather(search_prim_in_prim_col(), search_prim_in_sec_col(), search_sec_in_prim_col(),
                                  search_sec_in_sec_col(), update_sheet())
@@ -351,6 +429,7 @@ def update_info(token):
         asyncio.run(main())
 
         cells.clear()
+        event_cells.clear()
 
         if not can_update:
             return render_template("error4.html")
@@ -532,6 +611,13 @@ def update_info(token):
                 cells.append(Cell(row_find, wks_idx["Primary Email"], prim_email))
                 cells.append(Cell(row_find, wks_idx["Secondary Email"], sec_email))
 
+                if event_obj is not None:
+                    if event_user is not None:
+                        event_cells.append(Cell(event_user.row, event_wks_idx["First Name"], form.first_name.data))
+                        event_cells.append(Cell(event_user.row, event_wks_idx["Last Name"], form.last_name.data))
+                        event_cells.append(Cell(event_user.row, event_wks_idx["Membership Primary"], prim_email))
+                        event_cells.append(Cell(event_user.row, event_wks_idx["Membership Secondary"], sec_email))
+
                 for row in edit_form.query.all():
                     if row.field_type == "Checkbox":
                         vals = []
@@ -552,7 +638,6 @@ def update_info(token):
                 if user[arr_idx["Primary Verified"]] == "FALSE":
                     cells.append(Cell(row_find, wks_idx["Primary Subscribed"], "FALSE"))
                     if not sent_to_prim:
-
                         p_token = generate_token(prim_email)
                         confirm_url = url_for("registration.confirm", token=p_token, _external=True)
                         html = render_template(
@@ -566,7 +651,6 @@ def update_info(token):
                 if user[arr_idx["Secondary Verified"]] == "FALSE":
                     cells.append(Cell(row_find, wks_idx["Secondary Subscribed"], "FALSE"))
                     if not sent_to_sec:
-
                         s_token = generate_token(sec_email)
                         confirm_url = url_for("registration.confirm", token=s_token, _external=True)
                         html = render_template(
@@ -600,8 +684,45 @@ def update_info(token):
 
                 cells.append(Cell(row_find, wks_idx["Info Completed"], "TRUE"))
 
+                if event_obj is not None:
+                    if form.register_event.data:
+                        if event_user is not None:
+                            event_cells.append(
+                                Cell(event_user.row, event_wks_idx["Last Updated"],
+                                     str(datetime.now().replace(second=0, microsecond=0))))
+                            event_cells.append(
+                                Cell(event_user.row, event_wks_idx["Zoom or In-Person?"], form.event_zoom_or_not.data))
+                            event_cells.append(
+                                Cell(event_user.row, event_wks_idx["Ticket Type"], form.event_tickets.data))
+
+                            for question in event_obj.questions.split("\n"):
+                                event_cells.append(
+                                    Cell(event_user.row, event_wks_idx[question], form["event_" + question].data))
+
+                        else:
+                            row = ["" for i in range(len(event_wks.row_values(1)))]
+
+                            row[event_arr_idx["Order"]] = int(
+                                event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
+                            row[event_arr_idx["First Name"]] = user[arr_idx["First Name"]]
+                            row[event_arr_idx["Last Name"]] = user[arr_idx["Last Name"]]
+                            row[event_arr_idx["When Started"]] = str(datetime.now().replace(second=0, microsecond=0))
+                            row[event_arr_idx["Last Updated"]] = str(datetime.now().replace(second=0, microsecond=0))
+                            row[event_arr_idx["Membership Primary"]] = user[arr_idx["Primary Email"]]
+                            row[event_arr_idx["Membership Secondary"]] = user[arr_idx["Secondary Email"]]
+                            row[event_arr_idx["Ticket Type"]] = form.event_tickets.data
+                            row[event_arr_idx["Zoom or In-Person?"]] = form.event_zoom_or_not.data
+
+                            for question in event_obj.questions.split("\n"):
+                                row[event_arr_idx[question]] = form["event_" + question].data
+
+                            event_wks.append_row(row)
+
                 if len(cells) > 0:
                     wks.update_cells(cells)
+
+                if len(event_cells) > 0:
+                    event_wks.update_cells(event_cells)
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()
