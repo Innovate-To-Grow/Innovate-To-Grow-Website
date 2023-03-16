@@ -18,8 +18,8 @@
     <p><br><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></p>
     <p>
     <nav>
-      <a href="{{ url_for('about.about_us') }}">About</a>
-      <a href="{{ url_for('registration.register') }}">Register</a>
+      <!-- <a href="{{ url_for('about.about_us') }}">About</a> -->
+      <a href="{{ url_for('registration.register') }}">Signup</a>
       <a href="{{ url_for('update.enter_email') }}">Update</a>
       {% if event is not none %}
         <a href="{{ url_for('events.enter_email', event_name=event.name) }}"> {{event.name}} </a>
@@ -27,12 +27,11 @@
       <div id="indicator"></div>
     </nav>
     </p>
-    <p>
+    <br><br>
     <!-- <div class="container" style="background-color: lightgrey;"> -->
       {% block content %}
       {% endblock %}
     <!-- </div> -->
-    </p>
   </body>
 </center>
 
