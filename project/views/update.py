@@ -218,34 +218,6 @@ def update_info(token):
     for row in edit_form.query.all():
         setattr(UpdateForm, row.label, get_field(row))
 
-    if event_obj is not None:
-        setattr(UpdateForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
-        setattr(
-            UpdateForm, "event_zoom_or_not",
-            RadioField("Zoom or In-Person",
-                       choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
-                       validators=[Optional()]))
-        setattr(
-            UpdateForm, "event_tickets",
-            RadioField("Ticket Type",
-                       choices=[(ticket, ticket) for ticket in event_obj.tickets.split("\n")],
-                       validators=[Optional()]))
-
-        for question in event_obj.questions.split("\n"):
-            setattr(UpdateForm, "event_" + question, StringField(question))
-
-        async def query_event_prim_col():
-            return event_wks.find(email, in_column=event_wks_idx["Membership Primary"])
-
-        async def query_event_sec_col():
-            return event_wks.find(email, in_column=event_wks_idx["Membership Secondary"])
-
-        async def main():
-            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
-
-        event_user = asyncio.run(main())
-        event_user = event_user[0] if event_user[0] is not None else event_user[1] if event_user[1] is not None else None
-
     primary_temp = False
     if user[arr_idx["Primary Subscribed"]] == "TRUE":
         primary_temp = True
@@ -278,17 +250,45 @@ def update_info(token):
             else:
                 person.update([(row.label, user[arr_idx[row.label]])])
 
-    if event_user is not None:
-        temp_event_user = event_wks.row_values(event_user.row)
-        person["register_event"] = True
-        person["event_zoom_or_not"] = temp_event_user[event_arr_idx["Zoom or In-Person?"]]
-        person["event_tickets"] = temp_event_user[event_arr_idx["Ticket Type"]]
-        
+    if event_obj is not None:
+        setattr(UpdateForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
+        setattr(
+            UpdateForm, "event_zoom_or_not",
+            RadioField("Zoom or In-Person",
+                       choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
+                       validators=[Optional()]))
+        setattr(
+            UpdateForm, "event_tickets",
+            RadioField("Ticket Type",
+                       choices=[(ticket, ticket) for ticket in event_obj.tickets.split("\n")],
+                       validators=[Optional()]))
+
         for question in event_obj.questions.split("\n"):
-            if event_wks_idx[question] > len(temp_event_user):
-                person["event_" + question] = ""
-            else:
-                person["event_" + question] = temp_event_user[event_arr_idx[question]]
+            setattr(UpdateForm, "event_" + question, StringField(question))
+
+        async def query_event_prim_col():
+            return event_wks.find(email, in_column=event_wks_idx["Membership Primary"])
+
+        async def query_event_sec_col():
+            return event_wks.find(email, in_column=event_wks_idx["Membership Secondary"])
+
+        async def main():
+            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
+
+        event_user = asyncio.run(main())
+        event_user = event_user[0] if event_user[0] is not None else event_user[1] if event_user[1] is not None else None
+
+        if event_user is not None:
+            temp_event_user = event_wks.row_values(event_user.row)
+            person["register_event"] = True
+            person["event_zoom_or_not"] = temp_event_user[event_arr_idx["Zoom or In-Person?"]]
+            person["event_tickets"] = temp_event_user[event_arr_idx["Ticket Type"]]
+            
+            for question in event_obj.questions.split("\n"):
+                if event_wks_idx[question] > len(temp_event_user):
+                    person["event_" + question] = ""
+                else:
+                    person["event_" + question] = temp_event_user[event_arr_idx[question]]
 
     form = UpdateForm(data=person)
 
