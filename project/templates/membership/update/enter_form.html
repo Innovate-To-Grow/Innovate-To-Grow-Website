@@ -3,25 +3,33 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 
 <style>
   .w3-theme-UCBlue {
-  color:#fff !important;background-color:#002856 !important}
+    color: #fff !important;
+    background-color: #002856 !important
+  }
+
   .w3-theme-UCGold {
-  color:#fff !important;background-color:#DAA900 !important}
-</style> 
+    color: #fff !important;
+    background-color: #DAA900 !important
+  }
+</style>
+<div class="clearfix main">
+  <div class="container">
+    <div class="content">
+      <h2>Please enter either the Primary or Secondary email address that you used to register.</h2>
+    </div>
+    <form action="{{ url_for('update.enter_email') }}" method=post>
+      {{ form.hidden_tag() }}
 
-<div class="w3-container w3-theme-UCBlue">
-  <h2 style="color:#DAA900;">Please enter either the Primary or Secondary email address that you used to register.</h2>
+      {{ forms.render(form) }}
+
+      <br>
+      {{ form.submit }}
+      <br>
+    </form>
+  </div>
 </div>
-<form action="{{ url_for('update.enter_email') }}" method=post>
-  {{ form.hidden_tag() }}
-  
-    {{ forms.render(form) }}
-
-  <br>
-  {{ form.submit }}
-  <br>
-</form>
 {% endblock %}

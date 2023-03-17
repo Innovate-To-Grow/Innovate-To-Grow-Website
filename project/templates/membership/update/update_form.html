@@ -3,19 +3,25 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-<div class="w3-container w3-theme-UCBlue">
-    <h2 style="color:#DAA900">Update your information below</h2>
+<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
+<div class="clearfix main">
+    <div class="container">
+        <div class="content">
+            <h2>Update your information below</h2>
+        </div>
+        <form action="{{ url_for('update.update_info', token=token) }}" method=post>
+            {{ form.hidden_tag() }}
+
+            {{ forms.render(form) }}
+
+            <br>
+            {{ form.submit }}
+            <br>
+        </form>
+
+    </div>
 </div>
-<form action="{{ url_for('update.update_info', token=token) }}" method=post>
-    {{ form.hidden_tag() }}
 
-    {{ forms.render(form) }}
-
-    <br>
-    {{ form.submit }}
-    <br>
-</form>
 
 <script>
     const registerCheckbox = document.querySelector('#register_event');

@@ -1,24 +1,27 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
 <html>
 
 <head>
   <title>Innovate to Grow</title>
-  <strong>
-    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
-  </strong>
+  <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"> -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <!-- <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script> -->
+  {{ styles() }}
 </head>
 <center>
-
   <body style="background-color: #ffffff;">
-    <p><br><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></p>
+    <!-- NAVBAR -->
+    {{ nav() }}
+    <!-- <p><br><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></p>
     <p>
     <nav>
-      <!-- <a href="{{ url_for('about.about_us') }}">About</a> -->
       <a href="{{ url_for('registration.register') }}">Signup</a>
       <a href="{{ url_for('update.enter_email') }}">Update</a>
       {% if event is not none %}
@@ -27,12 +30,14 @@
       <div id="indicator"></div>
     </nav>
     </p>
-    <br><br>
+    <br><br> -->
     <!-- <div class="container" style="background-color: lightgrey;"> -->
-      {% block content %}
-      {% endblock %}
+    {% block content %}
+    {% endblock %}
     <!-- </div> -->
   </body>
 </center>
+{{ footer() }}
+{{ scripts() }}
 
 </html>

@@ -1,87 +1,96 @@
 {% extends "membership/layout.html" %}
-{% from "membership/renderHelperRegister.html" import render_field  %}
+{% from "membership/renderHelperRegister.html" import render_field %}
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 
 <style>
   .w3-theme-UCBlue {
-  color:#fff !important;background-color:#002856 !important}
+    color: #fff !important;
+    background-color: #002856 !important
+  }
+
   .w3-theme-UCGold {
-  color:#fff !important;background-color:#DAA900 !important}
-</style> 
+    color: #fff !important;
+    background-color: #DAA900 !important
+  }
+</style>
 
-<div class="w3-container w3-theme-UCBlue">
-  <h1 style="color: #DAA900">Welcome to Innovate to Grow</h1>
-  <h2 style="color: #DAA900">Sign Up for Membership</h2>
-  <p style="font-size:120%; color:#DAA900;">Sign up as a Member of Innovate to Grow!.</p>
-  <p style="font-size:120%; color:#DAA900;">We have built an innovative "double email" membership system: you can provide a secondary 
-      email address you own in case your first one no longer works (e.g. you change job).</p>
-  <p style = "color:#DAA900">You can select to receive invitations and newsletters at either, both, or none of the two email addresses.</p>
-</div> 
-<form action="{{ url_for('registration.register') }}" method=post>
-  {{ form.hidden_tag() }}
-  
-  <div class="w3-container w3-white">
+<div class="clearfix main">
+  <div class="container">
+    <div class="content">
+      <h1>Welcome to Innovate to Grow</h1>
+      <h2>Sign Up for Membership</h2>
+      <p>Sign up as a Member of Innovate to Grow!.</p>
+      <p>We have built an innovative "double email" membership system: you can provide a secondary
+        email address you own in case your first one no longer works (e.g. you change job).</p>
+      <p>You can select to receive invitations and newsletters at either, both, or none of the two email addresses.</p>
+    </div>
+    <form action="{{ url_for('registration.register') }}" method=post>
+      {{ form.hidden_tag() }}
+
+      <!-- <div class="w3-container w3-white">
       
-    <div class="w3-row">
+    <div class="w3-row"> -->
 
       <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.first_name, placeholder="Bob") }}
+        {{ render_field(form.first_name, placeholder="Bob") }}
       </div>
 
-      <div class="w3-col" style="width:50px">
+      <!-- <div class="w3-col" style="width:50px">
       <p> </p>
-      </div>
+      </div> -->
 
       <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.last_name, placeholder="Johns") }}
+        {{ render_field(form.last_name, placeholder="Johns") }}
       </div>
 
-    </div>
+      <!-- </div> -->
 
-</div>
+      <!-- </div> -->
 
-  <div class="w3-container w3-white">
-    <div class="w3-row">
+      <!-- <div class="w3-container w3-white">
+    <div class="w3-row"> -->
 
       <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.primary_email, placeholder="primary@gmail.com") }}
+        {{ render_field(form.primary_email, placeholder="primary@gmail.com") }}
       </div>
 
-      <div class="w3-col" style="width:50px">
+      <!-- <div class="w3-col" style="width:50px">
         <p> </p>
-      </div>
+      </div> -->
 
       <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.confirm_primary, placeholder="primary@gmail.com") }}
+        {{ render_field(form.confirm_primary, placeholder="primary@gmail.com") }}
       </div>
 
-    </div>
-  </div>
+      <!-- </div>
+  </div> -->
 
-<div class="w3-container w3-white">
-  <div class="w3-row">
+      <!-- <div class="w3-container w3-white">
+  <div class="w3-row"> -->
 
-    <div class="w3-col w3-theme-UCGold w3-round-xlarge"style="width:400px; height: 100px;">
-      {{ render_field(form.secondary_email, placeholder="secondary@gmail.com") }}
-    </div>
+      <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
+        {{ render_field(form.secondary_email, placeholder="secondary@gmail.com") }}
+      </div>
 
-    <div class="w3-col" style="width:50px">
+      <!-- <div class="w3-col" style="width:50px">
       <p> </p>
-    </div>
-    
-    <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-      {{ render_field(form.confirm_secondary, placeholder="secondary@gmail.com") }}
-    </div>
-    
+    </div> -->
+
+      <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
+        {{ render_field(form.confirm_secondary, placeholder="secondary@gmail.com") }}
+      </div>
+
+      <!-- </div>
+</div> -->
+      <br>
+      {{ form.submit }}
+      <br>
+
+    </form>
   </div>
 </div>
 
-
-  <br>
-  {{ form.submit }}
-  <br>
-</form>
 {% endblock %}

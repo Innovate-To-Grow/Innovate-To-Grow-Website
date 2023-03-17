@@ -2,16 +2,24 @@
 {% import "membership/render_helper.html" as forms %}
 
 {% block content %}
+<div class="clearfix main">
+    <div class="container">
+        <div class="content">
+            <h2>Complete your registration below</h2>
+        </div>
+        <form action="{{ url_for('registration.complete_registration', token=token) }}" method=post>
 
-<form action="{{ url_for('registration.complete_registration', token=token) }}" method=post>
+            {{ form.hidden_tag() }}
 
-    {{ form.hidden_tag() }}
+            {{ forms.render(form) }}
+            <br>
+            {{ form.submit }}
+            <br>
+        </form>
 
-    {{ forms.render(form) }}
+    </div>
+</div>
 
-    {{ form.submit }}
-
-</form>
 
 <script>
     const registerCheckbox = document.querySelector('#register_event');

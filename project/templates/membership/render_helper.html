@@ -7,7 +7,7 @@
   {% if field.name == "submit" %}
   {% else %}
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
   <style>
     .w3-theme-UCBlue {
       color: #fff !important;
@@ -19,7 +19,7 @@
       background-color: #DAA900 !important
     }
   </style>
-  <div id="{{ field.name }}_wrapper" class="w3-container w3-theme-UCGold w3-round-xlarge w3-margin" style="max-width:500px; min-height:75px;">
+  <div id="{{ field.name }}_wrapper" class="w3-container w3-theme-UCGold w3-round-xlarge w3-margin" style="width:400px; min-height:100px; border-bottom: 2px solid #b58c00; border-left: none; border-right: none;">
     <div class="form-group {% if field.errors %} error {% endif %}">
       {{ field.label }}
       <div class="input">
