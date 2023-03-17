@@ -5,6 +5,7 @@ email-validator
 Flask
 Flask-Admin
 Flask-Login
+Flask-Caching
 Flask-SQLAlchemy
 greenlet
 idna
@@ -24,3 +25,4 @@ asyncio
 imap-tools
 yagmail
 pyjwt
+boto3

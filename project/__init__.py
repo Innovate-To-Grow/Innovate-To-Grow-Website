@@ -4,6 +4,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_admin import Admin
+from flask_caching import Cache
 from config.default import Config, APP_ROOT
 from werkzeug.security import generate_password_hash
 
@@ -16,16 +17,23 @@ app.config.from_object(Config())
 db = SQLAlchemy(app)
 db.init_app(app)
 
+# Caching
+cache = Cache(app, config={"CACHE_TYPE": "simple"})
+cache.init_app(app)
+
+# Models
 from project.models import user, edit_form, event
 
-@app.context_processor 
-def inject_event(): 
+@app.context_processor
+def inject_event():
     return dict(event=event.query.filter_by(live=True).order_by(event.id.desc()).first())
+
 
 # Google Sheet
 import gspread
+from gspread.client import BackoffClient
 
-gc = gspread.service_account()
+gc = gspread.service_account(client_factory=BackoffClient)
 sh = gc.open("I2G Membership")
 
 worksheets = []
@@ -51,12 +59,10 @@ wks = sh.worksheet("Members")
 from project.views.home import home_blueprint
 from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
-from project.views.about import about_blueprint
 from project.views.events import events_blueprint
 from project.views.geo import geo_blueprint
 
 app.register_blueprint(home_blueprint)
-app.register_blueprint(about_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 app.register_blueprint(events_blueprint)
