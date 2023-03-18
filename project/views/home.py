@@ -10,6 +10,10 @@ home_blueprint = Blueprint("home", __name__, template_folder="../templates/home"
 def page_not_found(e):
     return render_template("404.html"), 404
 
+@app.errorhandler(429)
+def too_many_requests(e):
+    return render_template("429.html"), 429
+
 
 @home_blueprint.route("/", methods=["GET", "POST"])
 def mainpage():
