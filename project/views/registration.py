@@ -632,7 +632,7 @@ def complete_registration(token):
         confirm_secondary = StringField(
             'Confirm Secondary Email',
             [InputRequired(' '), EqualTo('secondary_email', message='Must match secondary email')])
-        submit = SubmitField('Submit')
+        submit = SubmitField('SIGN ME UP')
 
     for row in edit_form.query.all():
         setattr(CompleteRegistrationForm, row.label, get_field(row))

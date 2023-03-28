@@ -7,25 +7,26 @@
 
 <style>
   .w3-theme-UCBlue {
-    color: #fff !important;
-    background-color: #002856 !important
+    /* color: #fff !important;
+    background-color: #002856 !important */
   }
 
   .w3-theme-UCGold {
-    color: #fff !important;
-    background-color: #DAA900 !important
+    /* color: #fff !important;
+    background-color: #DAA900 !important */
   }
 </style>
 
 <div class="clearfix main">
   <div class="container">
     <div class="content">
-      <h1>Welcome to Innovate to Grow</h1>
-      <h2>Sign Up for Membership</h2>
-      <p>Sign up as a Member of Innovate to Grow!.</p>
+      <h1 class="title">Welcome to Innovate to Grow</h1>
+      <h2 class="subtitle">SIGN UP FOR MEMBERSHIP</h2>
+      <hr class="line">
+      <!-- <p>Sign up as a Member of Innovate to Grow!.</p>
       <p>We have built an innovative "double email" membership system: you can provide a secondary
         email address you own in case your first one no longer works (e.g. you change job).</p>
-      <p>You can select to receive invitations and newsletters at either, both, or none of the two email addresses.</p>
+      <p>You can select to receive invitations and newsletters at either, both, or none of the two email addresses.</p> -->
     </div>
     <form action="{{ url_for('registration.register') }}" method=post>
       {{ form.hidden_tag() }}
@@ -34,16 +35,16 @@
       
     <div class="w3-row"> -->
 
-      <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-        {{ render_field(form.first_name, placeholder="Bob") }}
+      <div class="field-container" >
+        {{ render_field(form.first_name, placeholder="Enter your first name") }}
       </div>
 
       <!-- <div class="w3-col" style="width:50px">
       <p> </p>
       </div> -->
 
-      <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-        {{ render_field(form.last_name, placeholder="Johns") }}
+      <div class="field-container" >
+        {{ render_field(form.last_name, placeholder="Enter your last name") }}
       </div>
 
       <!-- </div> -->
@@ -53,16 +54,16 @@
       <!-- <div class="w3-container w3-white">
     <div class="w3-row"> -->
 
-      <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-        {{ render_field(form.primary_email, placeholder="primary@gmail.com") }}
+      <div class="field-container" >
+        {{ render_field(form.primary_email, placeholder="Enter your primary email address") }}
       </div>
 
       <!-- <div class="w3-col" style="width:50px">
         <p> </p>
       </div> -->
 
-      <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-        {{ render_field(form.confirm_primary, placeholder="primary@gmail.com") }}
+      <div class="field-container" >
+        {{ render_field(form.confirm_primary, placeholder="Confirm your primary email address") }}
       </div>
 
       <!-- </div>
@@ -71,21 +72,22 @@
       <!-- <div class="w3-container w3-white">
   <div class="w3-row"> -->
 
-      <div class="w3-col w3-theme-UCGold w3-round-xlarge" style="width:400px; height: 100px;">
-        {{ render_field(form.secondary_email, placeholder="secondary@gmail.com") }}
+      <div class="field-container" >
+        {{ render_field(form.secondary_email, placeholder="Enter your secondary email address") }}
       </div>
 
       <!-- <div class="w3-col" style="width:50px">
       <p> </p>
     </div> -->
 
-      <div class="w3-col w3-theme-UCBlue w3-round-xlarge" style="width:400px; height: 100px;">
-        {{ render_field(form.confirm_secondary, placeholder="secondary@gmail.com") }}
+      <div class="field-container">
+        {{ render_field(form.confirm_secondary, placeholder="Confirm your secondary email address") }}
       </div>
 
       <!-- </div>
 </div> -->
       <br>
+      
       {{ form.submit }}
       <br>
 
