@@ -8177,31 +8177,32 @@ input[type="submit"].btn.btn-mini {
     float: left;
 }
 
-/* Add styles for the navbar and ul elements */
-.navbar {
-    display: flex;
-    justify-content: center;
-}
+@media (min-width: 980px) {
+    /* Add styles for the navbar and ul elements */
+    .navbar {
+        display: flex;
+        justify-content: center;
+    }
 
-.sf-menu.main-menu {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    padding-left: 0;
-}
+    .sf-menu.main-menu {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding-left: 0;
+    }
 
-/* Add style for li elements */
-.sf-menu.main-menu > li {
-    display: flex;
-    align-items: center;
-    position: relative;
-}
+    /* Add style for li elements */
+    .sf-menu.main-menu > li {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
 
-.sf-menu.main-menu > li > ul > li {
-    display: block;
-    text-align: left;
+    .sf-menu.main-menu > li > ul > li {
+        display: block;
+        text-align: left;
+    }
 }
-
 
 .navbar .nav>li>a {
     float: none;
