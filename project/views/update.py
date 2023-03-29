@@ -172,6 +172,8 @@ def update_info(token):
     event_cells = []
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
+    update_url = url_for("update.update_info", token=token, _external=True)
+
     if event_obj is not None:
         event_wks = sh.worksheet(event_obj.name)
         event_wks_idx = wks_indices(event_wks)
@@ -439,6 +441,25 @@ def update_info(token):
             return render_template("error4.html")
 
         else:
+            info_fields = {}
+            for row in edit_form.query.all():
+                if row.field_type == "Checkbox":
+                    vals = []
+                    choices = checkbox_get_choices(row.options)
+                    for key in request.form.getlist(row.label):
+                        vals.append(choices[int(key)][1])
+                    info_fields[row.label] = " ".join(vals)
+                else:
+                    info_fields[row.label] = request.form[row.label]
+
+            event_fields = {}
+            if event_obj is not None:
+                if form.register_event.data:
+                    event_fields["Zoom or In-Person?"] = form.event_zoom_or_not.data
+                    event_fields["Ticket Type"] = form.event_tickets.data
+
+                    for question in event_obj.questions.split("\n"):
+                        event_fields[question] = form["event_" + question].data
 
             @copy_current_request_context
             def can_update(user):
@@ -728,10 +749,40 @@ def update_info(token):
                 if len(event_cells) > 0:
                     event_wks.update_cells(event_cells)
 
+
+                subject = "I2G Membership - Receipt"
+                html = render_template("info_receipt_email.html", 
+                                    update_url=update_url,
+                                    first=user[arr_idx["First Name"]],
+                                    last=user[arr_idx["Last Name"]],
+                                    primary_email=user[arr_idx["Primary Email"]],
+                                    primary_verified=user[arr_idx["Primary Verified"]],
+                                    primary_subscribed=user[arr_idx["Primary Subscribed"]],
+                                    secondary_email=user[arr_idx["Secondary Email"]],
+                                    secondary_verified=user[arr_idx["Secondary Verified"]],
+                                    secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                    info_fields=info_fields,
+                                    event_name=event_obj.name if event_obj is not None else None,
+                                    event_fields=event_fields)
+                                        
+                send_email(email, subject, html)
+
             thread = Thread(target=can_update, args=(user,))
             thread.start()
-
-            return render_template("thanks_update.html")
+          
+            return render_template("thanks_update.html",
+                                    update_url=update_url,
+                                    first=user[arr_idx["First Name"]],
+                                    last=user[arr_idx["Last Name"]],
+                                    primary_email=user[arr_idx["Primary Email"]],
+                                    primary_verified=user[arr_idx["Primary Verified"]],
+                                    primary_subscribed=user[arr_idx["Primary Subscribed"]],
+                                    secondary_email=user[arr_idx["Secondary Email"]],
+                                    secondary_verified=user[arr_idx["Secondary Verified"]],
+                                    secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                    info_fields=info_fields,
+                                    event_name=event_obj.name if event_obj is not None else None,
+                                    event_fields=event_fields)
 
     else:
         return render_template("update_form.html", form=form, token=token)

@@ -1,9 +1,6 @@
-{% extends "membership/layout.html" %}
-
-{% block content %}
 <h1>I2G Membership - Receipt</h1>
 <p>Hello {{ first }} {{ last }},</p>
-<p>You have successfully registered for {{ event.name }} </p>
+<p>Thank you for your membership to the I2G. Your membership is now active.</p>
 <p>Below is a summary of your membership information. If you have any questions, please contact us <a href="mailto:innovatetogrow@ucmerced.edu">here.</a></p>
 <p>Update your membership anytime <a href="{{ update_url }}">here.</a></p>
 <br>
@@ -24,14 +21,20 @@
 <br>
 <br>
 
-<h2>Event Information:</h2>
-<p><strong>{{ event_name }}</strong></p>
+<h2>Other Information:</h2>
 <div>
-    <p>Zoom or In-Person?: {{ zoom_or_not }}</p>
-    <p>Ticket Type: {{ tickets }}</p>
-    {% for key, value in event_questions.items() %}
+{% for key, value in info_fields.items() %}
+    <p>{{ key }}: {{ value }}</p>
+{% endfor %}
+</div>
+
+{% if event_fields %}
+<br>
+<h3>Event Information:</h3>
+<p><strong>{{ event_name }}</strong></p>
+{% endif %}
+<div>
+    {% for key, value in event_fields.items() %}
         <p>{{ key }}: {{ value }}</p>
     {% endfor %}
 </div>
-
-{% endblock %}

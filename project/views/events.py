@@ -7,10 +7,11 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, RadioField
 from wtforms.validators import InputRequired
 from project import app, sh, wks
-from project.models import event
+from project.models import event, edit_form
 from project.utils.email import send_email
 from project.utils.token import generate_token, confirm_token_no_expiry
 from project.utils.index_helper import wks_indices, arr_indices
+from project.utils.field import checkbox_get_choices
 from project.forms.update_forms import EmailForm
 
 events_blueprint = Blueprint("events",
@@ -133,6 +134,8 @@ def event_register(event_name, token):
     wks_idx = wks_indices(wks)
     arr_idx = arr_indices(wks)
 
+    update_url = url_for("update.update_info", token=token, _external=True)
+
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
     if event_obj is None:
@@ -220,6 +223,21 @@ def event_register(event_name, token):
         def update_event_wks():
             cells = []
 
+            info_fields = {}
+            for row in edit_form.query.all():
+                if row.field_type == "Checkbox":
+                    info_fields[row.label] = " ".join(user[arr_idx[row.label]].split("\n"))
+                else:
+                    info_fields[row.label] = user[arr_idx[row.label]]
+
+            event_fields = {}
+            if event_obj is not None:
+                event_fields["Zoom or In-Person?"] = form.zoom_or_not.data
+                event_fields["Ticket Type"] = form.tickets.data
+
+                for question in event_obj.questions.split("\n"):
+                    event_fields[question] = form[question].data
+
             if already_registered:
                 cells.append(
                     Cell(event_user.row, event_wks_idx["Last Updated"],
@@ -234,10 +252,20 @@ def event_register(event_name, token):
                     event_wks.update_cells(cells)
 
                 html = render_template("event_updated_email.html",
-                                       first=user[arr_idx["First Name"]],
-                                       last=user[arr_idx["Last Name"]],
-                                       event=event_obj,
-                                       token=token)
+                                        update_url=update_url,
+                                        first=user[arr_idx["First Name"]],
+                                        last=user[arr_idx["Last Name"]],
+                                        primary_email=user[arr_idx["Primary Email"]],
+                                        primary_verified=user[arr_idx["Primary Verified"]],
+                                        primary_subscribed=user[arr_idx["Primary Subscribed"]],
+                                        secondary_email=user[arr_idx["Secondary Email"]],
+                                        secondary_verified=user[arr_idx["Secondary Verified"]],
+                                        secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                        event_name=event_obj.name if event_obj is not None else None,
+                                        info_fields=info_fields,
+                                        event_fields=event_fields,
+                                        event=event_obj,
+                                        token=token)
                 subject = "I2G Membership - Event Registration Updated"
 
             else:
@@ -260,16 +288,43 @@ def event_register(event_name, token):
                 event_wks.append_row(row)
 
                 html = render_template("event_confirmed_email.html",
-                                       first=user[arr_idx["First Name"]],
-                                       last=user[arr_idx["Last Name"]],
-                                       event=event_obj,
-                                       token=token)
+                                        update_url=update_url,
+                                        first=user[arr_idx["First Name"]],
+                                        last=user[arr_idx["Last Name"]],
+                                        primary_email=user[arr_idx["Primary Email"]],
+                                        primary_verified=user[arr_idx["Primary Verified"]],
+                                        primary_subscribed=user[arr_idx["Primary Subscribed"]],
+                                        secondary_email=user[arr_idx["Secondary Email"]],
+                                        secondary_verified=user[arr_idx["Secondary Verified"]],
+                                        secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                        info_fields=info_fields,
+                                        event_name=event_obj.name if event_obj is not None else None,
+                                        event_fields=event_fields,
+                                        event=event_obj,
+                                        token=token)
                 subject = "I2G Membership - Event Registration Confirmed"
 
             send_email(email, subject, html)
 
         Thread(target=update_event_wks).start()
 
-        return render_template("successfully_registered.html", event=event_obj, token=token)
+        event_questions = {}
+
+        for question in event_obj.questions.split("\n"):
+            event_questions[question] = form[question].data
+
+        return render_template("successfully_registered.html", event=event_obj, token=token,
+                                update_url=update_url,
+                                first=user[arr_idx["First Name"]],
+                                last=user[arr_idx["Last Name"]],
+                                primary_email=user[arr_idx["Primary Email"]],
+                                primary_verified=user[arr_idx["Primary Verified"]],
+                                primary_subscribed=user[arr_idx["Primary Subscribed"]],
+                                secondary_email=user[arr_idx["Secondary Email"]],
+                                secondary_verified=user[arr_idx["Secondary Verified"]],
+                                secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                zoom_or_not=form.zoom_or_not.data,
+                                tickets=form.tickets.data,
+                                event_questions=event_questions)
 
     return render_template("event_registration.html", form=form, event=event_obj, token=token)

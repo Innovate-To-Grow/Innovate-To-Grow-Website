@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.config.from_object(Config())
 
 # SQLAlchemy
-db = SQLAlchemy(app)
+db = SQLAlchemy()
 db.init_app(app)
 
 # Caching

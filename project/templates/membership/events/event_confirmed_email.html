@@ -1,7 +1,42 @@
-<p>Dear {{ first }} {{ last }},</p>
-
+<h1>I2G Membership - Receipt</h1>
+<p>Hello {{ first }} {{ last }},</p>
 <p> Thank you for registering for {{ event.name }}. Your registration has been confirmed.</p>
-
+<p>Below is a summary of your membership information. If you have any questions, please contact us <a
+                href="mailto:innovatetogrow@ucmerced.edu">here.</a></p>
 <p> Note that you can always go back to update the details on your application: </p>
-<p> <a href="{{ url_for('events.event_register', event_name=event.name, token=token, _external=True) }}">{{ event.name }}
-        Registration</a> </p>
+<p> <a href="{{ url_for('events.event_register', event_name=event.name, token=token, _external=True) }}">{{ event.name
+                }}
+                Registration</a> </p>
+<br>
+<br>
+
+<h2>Membership Information:</h2>
+<div>
+        <p> Primary Email : {{ primary_email }} </p>
+        <p> Verified: {{ primary_verified }} </p>
+        <p> Subscribed: {{ primary_subscribed }} </p>
+</div>
+<br>
+<div>
+        <p> Secondary Email : {{ secondary_email }} </p>
+        <p> Verified: {{ secondary_verified }} </p>
+        <p> Subscribed: {{ secondary_subscribed }} </p>
+</div>
+<br>
+<br>
+
+<h2>Other Information:</h2>
+<div>
+{% for key, value in info_fields.items() %}
+    <p>{{ key }}: {{ value }}</p>
+{% endfor %}
+</div>
+
+<br>
+<h3>Event Information:</h3>
+<p><strong>{{ event_name }}</strong></p>
+<div>
+    {% for key, value in event_fields.items() %}
+        <p>{{ key }}: {{ value }}</p>
+    {% endfor %}
+</div>
