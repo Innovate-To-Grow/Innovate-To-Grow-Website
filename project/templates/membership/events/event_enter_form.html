@@ -5,23 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 
-<style>
-  .w3-theme-UCBlue {
-  color:#fff !important;background-color:#002856 !important}
-  .w3-theme-UCGold {
-  color:#fff !important;background-color:#DAA900 !important}
-</style> 
-
-<div class="w3-container w3-theme-UCBlue">
-  <h2 style="color:#DAA900;">Please enter your email to register for the event</h2>
+<div>
+  <h2 >Please enter your email to register for the event</h2>
 </div>
 <form action="{{ url_for('events.enter_email', event_name=event.name) }}" method=post>
   {{ form.hidden_tag() }}
-  
+  <div class="input-row">
     {{ forms.render(form) }}
-    <br>
-{{ form.submit }}
-<br>
+  </div>
+<div class="submit-container">
+  {{ form.submit }}
+  <br>
+</div>
   
 </form>
 

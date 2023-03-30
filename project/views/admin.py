@@ -153,7 +153,7 @@ class EditFormModelView(ModelView):
                         'Confirm Primary Email',
                         [InputRequired(' '),
                          EqualTo('primary_email', message='Must match primary email')])
-                    primary_subscribe = BooleanField('Enable Email Notifications with Primary')
+                    primary_subscribe = BooleanField('Enable Email Notifications')
                     secondary_email = StringField(
                         'Secondary Email Address',
                         [InputRequired(' '),
@@ -163,7 +163,7 @@ class EditFormModelView(ModelView):
                         'Confirm Secondary Email',
                         [InputRequired(' '),
                          EqualTo('secondary_email', message='Must match secondary email')])
-                    secondary_subscribe = BooleanField('Enable Email Notifications with Secondary')
+                    secondary_subscribe = BooleanField('Enable Email Notifications')
                     submit = SubmitField('Submit')
 
                 for row in edit_form.query.all():

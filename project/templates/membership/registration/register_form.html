@@ -1,21 +1,8 @@
 {% extends "membership/layout.html" %}
-{% from "membership/renderHelperRegister.html" import render_field %}
+{% import "membership/render_helper.html" as forms %}
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
-
-<style>
-  .w3-theme-UCBlue {
-    /* color: #fff !important;
-    background-color: #002856 !important */
-  }
-
-  .w3-theme-UCGold {
-    /* color: #fff !important;
-    background-color: #DAA900 !important */
-  }
-</style>
 
 <div class="clearfix main">
   <div class="container">
@@ -31,65 +18,14 @@
     <form action="{{ url_for('registration.register') }}" method=post>
       {{ form.hidden_tag() }}
 
-      <!-- <div class="w3-container w3-white">
-      
-    <div class="w3-row"> -->
-
-      <div class="field-container" >
-        {{ render_field(form.first_name, placeholder="Enter your first name") }}
+      <div class="input-row">
+        {{ forms.render(form) }}
       </div>
 
-      <!-- <div class="w3-col" style="width:50px">
-      <p> </p>
-      </div> -->
-
-      <div class="field-container" >
-        {{ render_field(form.last_name, placeholder="Enter your last name") }}
+      <div class="submit-container">
+        {{ form.submit(value="SIGN ME UP")}}
+        <br>
       </div>
-
-      <!-- </div> -->
-
-      <!-- </div> -->
-
-      <!-- <div class="w3-container w3-white">
-    <div class="w3-row"> -->
-
-      <div class="field-container" >
-        {{ render_field(form.primary_email, placeholder="Enter your primary email address") }}
-      </div>
-
-      <!-- <div class="w3-col" style="width:50px">
-        <p> </p>
-      </div> -->
-
-      <div class="field-container" >
-        {{ render_field(form.confirm_primary, placeholder="Confirm your primary email address") }}
-      </div>
-
-      <!-- </div>
-  </div> -->
-
-      <!-- <div class="w3-container w3-white">
-  <div class="w3-row"> -->
-
-      <div class="field-container" >
-        {{ render_field(form.secondary_email, placeholder="Enter your secondary email address") }}
-      </div>
-
-      <!-- <div class="w3-col" style="width:50px">
-      <p> </p>
-    </div> -->
-
-      <div class="field-container">
-        {{ render_field(form.confirm_secondary, placeholder="Confirm your secondary email address") }}
-      </div>
-
-      <!-- </div>
-</div> -->
-      <br>
-      
-      {{ form.submit(value="SIGN ME UP")}}
-      <br>
 
     </form>
   </div>

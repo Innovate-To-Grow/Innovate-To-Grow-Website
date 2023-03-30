@@ -5,6 +5,59 @@ form {
   /* gap: 20px 0px; */
 }
 
+.form-fix{
+  width: 100% !important;
+  display: block;
+  flex-wrap: nowrap;
+}
+
+/* Add this rule to the existing CSS */
+#register_event_wrapper .form-group {
+  display: flex;
+  margin-left: 30px;
+  align-items: center;
+}
+
+#register_event_wrapper label {
+  margin-right: -240px;
+}
+
+
+#primary_email_wrapper,
+#secondary_email_wrapper {  
+  margin-bottom: -7%;
+}
+
+.primary_subscribe_wrapper,
+.secondary_subscribe_wrapper {
+  display: inline-flex;
+  align-items: center;
+  margin-top: -13px;
+}
+
+.primary_subscribe_wrapper label,
+.secondary_subscribe_wrapper label {
+  color: #daa900;
+  margin: -7px 0 0 0px;
+}
+
+
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+}
+
+form .input-field[type="checkbox"] {
+  margin-right: 5px;
+}
+
+.form-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 form label {
   font-size: 10pt;
   font-weight: bold;
@@ -15,9 +68,18 @@ form label {
   margin-bottom: 0px;
 }
 
+.input-field li label {
+  display: inline-flex;
+}
+
+.input-field li {
+  display: flex;
+}
+
+
 .input-w label,
 .input-w input {
-  float: none;
+  /* float: none; */
   display: inline-block;
   vertical-align: middle;
 }
@@ -50,23 +112,39 @@ li {
   list-style: none;
 }
 
+/* form input:not(#submit):not([type="radio"]):not([type="checkbox"]),
 form input#first_name,
 form input#last_name,
 form input#primary_email,
 form input#confirm_primary,
 form input#secondary_email,
-form input#confirm_secondary {
+form input#confirm_secondary,
+form input#email { 
   min-height: 41px;
   max-width: 400px;
   width: 80%;
   line-height: 3em;
-  background: #ffffff;
+  background: #ffffff !important;
   font-size: small;
   margin: 0em 2em;
-  border-radius: 10px;
+  border-radius: 10px !important;
+  outline: none;
+  padding-left: 10px;
+} */
+
+form .input-field {
+  min-height: 41px;
+  max-width: 400px;
+  width: 80%;
+  line-height: 3em;
+  background: #ffffff !important;
+  font-size: small;
+  margin: 0em 2em;
+  border-radius: 10px !important;
   outline: none;
   padding-left: 10px;
 }
+
 
 form input#secondary_email,
 form input#confirm_secondary {
@@ -133,9 +211,42 @@ form input#confirm_primary {
   font-size: inherit;
 }
 
+.form-fix label {
+  margin-left: 0px;
+  display: inline-block;
+  width: 100%;
+}
+
+.input-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.last-field-container {
+  width: 400px;
+  height: 100%;
+  margin: 0 auto;
+}
+
+.last-field-container .input {
+  display: flex
+}
+
+.form-fix .field-container{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.form-fix input{
+  display: inline-block;
+}
+
 .field-container {
+  margin-bottom: 2.5%;
   width:50%; 
-  height: 100px;
+  height: 100%;
 }
 
 @media (min-width: 768px) {
@@ -147,6 +258,12 @@ form input#confirm_primary {
   input {
       width: 250px;
   }
+}
+
+.submit-container{
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {

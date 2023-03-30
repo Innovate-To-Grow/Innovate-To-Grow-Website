@@ -678,6 +678,9 @@ def complete_registration(token):
         first_name = StringField("First Name", validators=[InputRequired()])
         last_name = StringField("Last Name", validators=[InputRequired()])
         primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
+        confirm_primary = StringField(
+            'Confirm Primary Email',
+            [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
         secondary_email = StringField(
             'Secondary Email Address',
             [InputRequired(' '),
@@ -706,10 +709,11 @@ def complete_registration(token):
         for question in event_obj.questions.split("\n"):
             setattr(CompleteRegistrationForm, "event_" + question, StringField(question))
 
-    person = {"primary_email": email}
+    person = {"primary_email": email, "confirm_primary": email}
 
     form = CompleteRegistrationForm(data=person)
     form.primary_email.render_kw = {"readonly": True}
+    form.confirm_primary.render_kw = {"readonly": True}
 
     if request.method == "POST" and form.validate_on_submit():
         prim_email = request.form["primary_email"].lower()

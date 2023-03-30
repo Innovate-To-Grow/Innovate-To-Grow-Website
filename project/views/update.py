@@ -206,7 +206,7 @@ def update_info(token):
         confirm_primary = StringField(
             "Confirm Primary Email",
             [InputRequired(" "), EqualTo("primary_email", message="Must match primary email")])
-        primary_subscribe = BooleanField("Enable Email Notifications with Primary")
+        primary_subscribe = BooleanField("Enable Email Notifications")
         secondary_email = StringField(
             "Secondary Email Address",
             [InputRequired(" "),
@@ -214,7 +214,7 @@ def update_info(token):
         confirm_secondary = StringField(
             "Confirm Secondary Email",
             [InputRequired(" "), EqualTo("secondary_email", message="Must match secondary email")])
-        secondary_subscribe = BooleanField("Enable Email Notifications with Secondary")
+        secondary_subscribe = BooleanField("Enable Email Notifications")
         submit = SubmitField("Submit")
 
     for row in edit_form.query.all():

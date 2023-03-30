@@ -3,20 +3,22 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 <div class="clearfix main">
     <div class="container">
         <div class="content">
             <h2>Update your information below</h2>
         </div>
-        <form action="{{ url_for('update.update_info', token=token) }}" method=post>
+        <form class="" action="{{ url_for('update.update_info', token=token) }}" method=post>
             {{ form.hidden_tag() }}
 
-            {{ forms.render(form) }}
+            <div class="input-row">
+                {{ forms.render(form) }}
+            </div>
 
-            <br>
-            {{ form.submit }}
-            <br>
+            <div class="submit-container">
+                {{ form.submit }}
+            </div>
+
         </form>
 
     </div>
