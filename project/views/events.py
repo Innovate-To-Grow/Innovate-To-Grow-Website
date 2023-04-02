@@ -228,7 +228,10 @@ def event_register(event_name, token):
                 if row.field_type == "Checkbox":
                     info_fields[row.label] = " ".join(user[arr_idx[row.label]].split("\n"))
                 else:
-                    info_fields[row.label] = user[arr_idx[row.label]]
+                    if wks_idx[row.label] > len(user):
+                        info_fields[row.label] = ""
+                    else:
+                        info_fields[row.label] = user[arr_idx[row.label]]
 
             event_fields = {}
             if event_obj is not None:

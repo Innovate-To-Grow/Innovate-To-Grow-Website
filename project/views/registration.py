@@ -521,7 +521,10 @@ def info(token):
                     vals.append(choices[int(key)][1])
                 info_fields[row.label] = " ".join(vals)
             else:
-                info_fields[row.label] = request.form[row.label]
+                if wks_idx[row.label] > len(user):
+                    info_fields[row.label] = ""
+                else:
+                    info_fields[row.label] = request.form[row.label]
 
         event_fields = {}
         if event_obj is not None:
@@ -823,7 +826,10 @@ def complete_registration(token):
                         vals.append(choices[int(key)][1])
                     info_fields[row.label] = " ".join(vals)
                 else:
-                    info_fields[row.label] = request.form[row.label]
+                    if wks_idx[row.label] > len(user):
+                        info_fields[row.label] = ""
+                    else:
+                        info_fields[row.label] = request.form[row.label]
 
             event_fields = {}
             if event_obj is not None:
