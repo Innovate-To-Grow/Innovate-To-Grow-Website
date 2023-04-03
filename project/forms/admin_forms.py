@@ -4,13 +4,13 @@ from wtforms.validators import InputRequired, Email, EqualTo
 
 
 class EmailForm(FlaskForm):
-    subject = StringField("Subject")
+    subject = StringField("Subject", [InputRequired(" ")])
 
-    body = TextAreaField("Body")
+    body = TextAreaField("Body", [InputRequired(" ")])
 
     selection = RadioField("Send to:",
-                           choices=[("Subscribed", "Subscribed Users"), ("Verified", "Verified Users")],
-                           default="Subscribed")
+                           choices=[("Admin", "Administrators"), ("Event", "Event Attendees"), ("Subscribed", "Subscribed Users")],
+                           default="Admin")
 
     submit = SubmitField("Send")
 
@@ -32,6 +32,10 @@ class NewAdmin(FlaskForm):
 
 
 class RegisterAdmin(FlaskForm):
+    first_name = StringField("First Name", [InputRequired(" ")])
+
+    last_name = StringField("Last Name", [InputRequired(" ")])
+
     password = PasswordField("Password", [InputRequired(" ")])
 
     confirm_password = PasswordField(

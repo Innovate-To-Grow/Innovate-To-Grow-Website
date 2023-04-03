@@ -4,7 +4,6 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_admin import Admin
-from flask_caching import Cache
 from config.default import Config, APP_ROOT
 from werkzeug.security import generate_password_hash
 
@@ -16,10 +15,6 @@ app.config.from_object(Config())
 # SQLAlchemy
 db = SQLAlchemy()
 db.init_app(app)
-
-# Caching
-cache = Cache(app, config={"CACHE_TYPE": "simple"})
-cache.init_app(app)
 
 # Models
 from project.models import user, edit_form, event
@@ -54,6 +49,20 @@ if "Members" not in worksheets:
             sh.worksheet("Members").update_cell(1, len(sh.worksheet("Members").row_values(1)) + 1, row.label)
 
 wks = sh.worksheet("Members")
+
+
+def get_wks_records(wks):
+    wks_records = wks.get_all_records()
+    for i, row in enumerate(wks_records, start=2):
+        row['Row'] = i
+    return wks_records
+
+
+def get_wks_columns(wks):
+    header_row = wks.row_values(1)
+    wks_columns = {header_row[i]: i+1 for i in range(len(header_row))}
+    return wks_columns
+
 
 # Flask Blueprints
 from project.views.home import home_blueprint
@@ -91,7 +100,8 @@ def load_user(user_id):
 if not path.exists(APP_ROOT + "/db"):
     os.makedirs(APP_ROOT + "/db")
 if not path.exists(APP_ROOT + "/db/data.sqlite3"):
-    db.create_all(app=app)
-    u = user("admin@admin.com", generate_password_hash("admin"), "superadmin")
-    db.session.add(u)
-    db.session.commit()
+    with app.app_context():
+        db.create_all()
+        u = user("Admin", "Admin", "admin@admin.com", generate_password_hash("admin"), "superadmin")
+        db.session.add(u)
+        db.session.commit()

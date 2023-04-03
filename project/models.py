@@ -18,11 +18,15 @@ class edit_form(db.Model):
 
 class user(db.Model):
     id = db.Column("id", db.Integer, primary_key=True)
+    first_name = db.Column("first_name", db.String())
+    last_name = db.Column("last_name", db.String())
     email = db.Column("email", db.String(), unique=True)
     password = db.Column("password", db.String())
     role = db.Column("role", db.String())
 
-    def __init__(self, email, password, role):
+    def __init__(self, first_name, last_name, email, password, role):
+        self.first_name = first_name
+        self.last_name = last_name
         self.email = email
         self.password = password
         self.role = role

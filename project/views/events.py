@@ -6,12 +6,10 @@ from flask import Blueprint, render_template, request, url_for, redirect, copy_c
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, RadioField
 from wtforms.validators import InputRequired
-from project import app, sh, wks
+from project import app, sh, wks, get_wks_records, get_wks_columns
 from project.models import event, edit_form
 from project.utils.email import send_email
 from project.utils.token import generate_token, confirm_token_no_expiry
-from project.utils.index_helper import wks_indices, arr_indices
-from project.utils.field import checkbox_get_choices
 from project.forms.update_forms import EmailForm
 
 events_blueprint = Blueprint("events",
@@ -34,28 +32,27 @@ def event_redirect():
 def enter_email(event_name):
     form = EmailForm()
 
-    wks_idx = wks_indices(wks)
-    arr_idx = arr_indices(wks)
-
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
     if event_obj is None:
         return render_template("no_live_event.html")
 
     if request.method == "POST" and form.validate_on_submit():
+        wks_records = get_wks_records(wks)
+        
         email = request.form["email"].lower()
 
         async def query_prim_col():
-            return wks.find(email, in_column=wks_idx["Primary Email"])
+            return [row for row in wks_records if row["Primary Email"] == email]
 
         async def query_sec_col():
-            return wks.find(email, in_column=wks_idx["Secondary Email"])
+            return [row for row in wks_records if row["Secondary Email"] == email]
 
         async def main():
             return await asyncio.gather(query_prim_col(), query_sec_col())
 
         user = asyncio.run(main())
-        user = user[0] if user[0] is not None else user[1] if user[1] is not None else None
+        user = user[0][0] if user[0] else user[1][0] if user[1] else None
 
         if user is None:
             subject = "I2G Membership - Complete Registration"
@@ -65,49 +62,72 @@ def enter_email(event_name):
             send_email(email, subject, html)
 
             return render_template("not_registered.html")
-        else:
-            user = wks.row_values(user.row)
+        
 
         @copy_current_request_context
         def send_instructions():
-            if (user[arr_idx["Primary Verified"]] == "FALSE" and user[arr_idx["Secondary Verified"]] == "TRUE"):
-                if user[arr_idx["Secondary Email"]] != "":
-                    token = generate_token(user[arr_idx["Secondary Email"]])
+            if (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "TRUE"):
+                if user["Primary Email"] != "":
+                    token = generate_token(user["Primary Email"])
+                    confirm_url = url_for("registration.confirm", token=token, _external=True)
+                    html = render_template(
+                        "verify_email.html",
+                        first=user["First Name"],
+                        last=user["Last Name"],
+                        confirm_url=confirm_url,
+                    )
+                    send_email(user["Primary Email"], app.config["VERIF_SUBJECT"], html)
+
+                if user["Secondary Email"] != "":
+                    token = generate_token(user["Secondary Email"])
                     event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
                     html = render_template(
                         "event_email.html",
-                        first=user[arr_idx["First Name"]],
-                        last=user[arr_idx["Last Name"]],
+                        first=user["First Name"],
+                        last=user["Last Name"],
                         event_url=event_url,
                     )
-                    send_email(user[arr_idx["Secondary Email"]], "I2G Membership - Event Registration", html)
+                    send_email(user["Secondary Email"], "I2G Membership - Event Registration", html)
 
-            elif (user[arr_idx["Primary Verified"]] == "TRUE" and user[arr_idx["Secondary Verified"]] == "FALSE"):
-                if user[arr_idx["Primary Email"]] != "":
-                    token = generate_token(user[arr_idx["Primary Email"]])
+
+            elif (user["Primary Verified"] == "TRUE" and user["Secondary Verified"] == "FALSE"):
+                if user["Primary Email"] != "":
+                    token = generate_token(user["Primary Email"])
                     event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
                     html = render_template(
                         "event_email.html",
-                        first=user[arr_idx["First Name"]],
-                        last=user[arr_idx["Last Name"]],
+                        first=user["First Name"],
+                        last=user["Last Name"],
                         event_url=event_url,
                     )
-                    send_email(user[arr_idx["Primary Email"]], "I2G Membership - Event Registration", html)
+                    send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
 
-            elif (user[arr_idx["Primary Verified"]] == "FALSE" and user[arr_idx["Secondary Verified"]] == "FALSE"):
+                if user["Secondary Email"] != "":
+                    token = generate_token(user["Secondary Email"])
+                    confirm_url = url_for("registration.confirm", token=token, _external=True)
+                    html = render_template(
+                        "verify_email.html",
+                        first=user["First Name"],
+                        last=user["Last Name"],
+                        confirm_url=confirm_url,
+                    )
+                    send_email(user["Secondary Email"], app.config["VERIF_SUBJECT"], html)
+
+
+            elif (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "FALSE"):
                 return render_template("not_registered.html")
 
             else:
-                if user[arr_idx["Primary Email"]] != "":
-                    token = generate_token(user[arr_idx["Primary Email"]])
+                if user["Primary Email"] != "":
+                    token = generate_token(user["Primary Email"])
                     event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
                     html = render_template(
                         "event_email.html",
-                        first=user[arr_idx["First Name"]],
-                        last=user[arr_idx["Last Name"]],
+                        first=user["First Name"],
+                        last=user["Last Name"],
                         event_url=event_url,
                     )
-                    send_email(user[arr_idx["Primary Email"]], "I2G Membership - Event Registration", html)
+                    send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
 
                 # if user[arr_idx["Secondary Email"]] != "":
                 #     token = generate_token(user[arr_idx["Secondary Email"]])
@@ -131,8 +151,8 @@ def enter_email(event_name):
 def event_register(event_name, token):
     email = confirm_token_no_expiry(token)
 
-    wks_idx = wks_indices(wks)
-    arr_idx = arr_indices(wks)
+    wks_records = get_wks_records(wks)
+    wks_columns = get_wks_columns(wks)
 
     update_url = url_for("update.update_info", token=token, _external=True)
 
@@ -143,43 +163,41 @@ def event_register(event_name, token):
 
     event_wks = sh.worksheet(event_obj.name)
 
-    event_wks_idx = wks_indices(event_wks)
-    event_arr_idx = arr_indices(event_wks)
+    event_wks_records = get_wks_records(event_wks)
+    event_wks_columns = get_wks_columns(event_wks)
 
     if email:
 
         async def query_prim_col():
-            return wks.find(email, in_column=wks_idx["Primary Email"])
+            return [row for row in wks_records if row["Primary Email"] == email]
 
         async def query_sec_col():
-            return wks.find(email, in_column=wks_idx["Secondary Email"])
+            return [row for row in wks_records if row["Secondary Email"] == email]
 
         async def main():
             return await asyncio.gather(query_prim_col(), query_sec_col())
 
         user = asyncio.run(main())
-        user = user[0] if user[0] is not None else user[1] if user[1] is not None else None
+        user = user[0][0] if user[0] else user[1][0] if user[1] else None
         if user is None:
             return render_template("error5.html")
         else:
-            user = wks.row_values(user.row)
-
-            if user[arr_idx["Primary Verified"]] == "FALSE" and user[arr_idx["Secondary Verified"]] == "FALSE":
+            if user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "FALSE":
                 return render_template("error5.html")
     else:
         return render_template("error5.html")
 
     async def query_event_prim_col():
-        return event_wks.find(email, in_column=event_wks_idx["Membership Primary"])
+        return [row for row in event_wks_records if row["Membership Primary"] == email]
 
     async def query_event_sec_col():
-        return event_wks.find(email, in_column=event_wks_idx["Membership Secondary"])
+        return [row for row in event_wks_records if row["Membership Secondary"] == email]
 
     async def main():
         return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
 
     event_user = asyncio.run(main())
-    event_user = event_user[0] if event_user[0] is not None else event_user[1] if event_user[1] is not None else None
+    event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
 
     already_registered = False
 
@@ -204,20 +222,19 @@ def event_register(event_name, token):
     person = {}
 
     if already_registered:
-        temp_event_user = event_wks.row_values(event_user.row)
-
-        person["zoom_or_not"] = temp_event_user[event_arr_idx["Zoom or In-Person?"]]
-        person["tickets"] = temp_event_user[event_arr_idx["Ticket Type"]]
+        person["zoom_or_not"] = event_user["Zoom or In-Person?"]
+        person["tickets"] = event_user["Ticket Type"]
 
         for question in event_obj.questions.split("\n"):
-            if event_wks_idx[question] > len(temp_event_user):
+            if event_wks_columns[question] > len(event_user):
                 person[question] = ""
             else:
-                person[question] = temp_event_user[event_arr_idx[question]]
+                person[question] = event_user[question]
 
     form = EventRegistrationForm(data=person)
 
     if request.method == "POST" and form.validate_on_submit():
+        event_wks_columns = get_wks_columns(event_wks)
 
         @copy_current_request_context
         def update_event_wks():
@@ -226,12 +243,12 @@ def event_register(event_name, token):
             info_fields = {}
             for row in edit_form.query.all():
                 if row.field_type == "Checkbox":
-                    info_fields[row.label] = " ".join(user[arr_idx[row.label]].split("\n"))
+                    info_fields[row.label] = " ".join(user[row.label].split("\n"))
                 else:
-                    if wks_idx[row.label] > len(user):
+                    if wks_columns[row.label] > len(user):
                         info_fields[row.label] = ""
                     else:
-                        info_fields[row.label] = user[arr_idx[row.label]]
+                        info_fields[row.label] = user[row.label]
 
             event_fields = {}
             if event_obj is not None:
@@ -243,27 +260,27 @@ def event_register(event_name, token):
 
             if already_registered:
                 cells.append(
-                    Cell(event_user.row, event_wks_idx["Last Updated"],
+                    Cell(event_user["Row"], event_wks_columns["Last Updated"],
                          str(datetime.now().replace(second=0, microsecond=0))))
-                cells.append(Cell(event_user.row, event_wks_idx["Ticket Type"], form.tickets.data))
-                cells.append(Cell(event_user.row, event_wks_idx["Zoom or In-Person?"], form.zoom_or_not.data))
+                cells.append(Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.tickets.data))
+                cells.append(Cell(event_user["Row"], event_wks_columns["Zoom or In-Person?"], form.zoom_or_not.data))
 
                 for question in event_obj.questions.split("\n"):
-                    cells.append(Cell(event_user.row, event_wks_idx[question], form[question].data))
+                    cells.append(Cell(event_user["Row"], event_wks_columns[question], form[question].data))
 
                 if len(cells) > 0:
                     event_wks.update_cells(cells)
 
                 html = render_template("event_updated_email.html",
                                         update_url=update_url,
-                                        first=user[arr_idx["First Name"]],
-                                        last=user[arr_idx["Last Name"]],
-                                        primary_email=user[arr_idx["Primary Email"]],
-                                        primary_verified=user[arr_idx["Primary Verified"]],
-                                        primary_subscribed=user[arr_idx["Primary Subscribed"]],
-                                        secondary_email=user[arr_idx["Secondary Email"]],
-                                        secondary_verified=user[arr_idx["Secondary Verified"]],
-                                        secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                        first=user["First Name"],
+                                        last=user["Last Name"],
+                                        primary_email=user["Primary Email"],
+                                        primary_verified=user["Primary Verified"],
+                                        primary_subscribed=user["Primary Subscribed"],
+                                        secondary_email=user["Secondary Email"],
+                                        secondary_verified=user["Secondary Verified"],
+                                        secondary_subscribed=user["Secondary Subscribed"],
                                         event_name=event_obj.name if event_obj is not None else None,
                                         info_fields=info_fields,
                                         event_fields=event_fields,
@@ -272,34 +289,34 @@ def event_register(event_name, token):
                 subject = "I2G Membership - Event Registration Updated"
 
             else:
-                row = ["" for i in range(len(event_wks_idx))]
+                row = ["" for i in range(len(event_wks_columns))]
 
-                row[event_arr_idx["Order"]] = int(
+                row[event_wks_columns["Order"] - 1] = int(
                     event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
-                row[event_arr_idx["First Name"]] = user[arr_idx["First Name"]]
-                row[event_arr_idx["Last Name"]] = user[arr_idx["Last Name"]]
-                row[event_arr_idx["When Started"]] = str(datetime.now().replace(second=0, microsecond=0))
-                row[event_arr_idx["Last Updated"]] = str(datetime.now().replace(second=0, microsecond=0))
-                row[event_arr_idx["Membership Primary"]] = user[arr_idx["Primary Email"]]
-                row[event_arr_idx["Membership Secondary"]] = user[arr_idx["Secondary Email"]]
-                row[event_arr_idx["Ticket Type"]] = form.tickets.data
-                row[event_arr_idx["Zoom or In-Person?"]] = form.zoom_or_not.data
+                row[event_wks_columns["First Name"] - 1] = user["First Name"]
+                row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
+                row[event_wks_columns["When Started"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
+                row[event_wks_columns["Last Updated"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
+                row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
+                row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
+                row[event_wks_columns["Ticket Type"] - 1] = form.tickets.data
+                row[event_wks_columns["Zoom or In-Person?"] - 1] = form.zoom_or_not.data
 
                 for question in event_obj.questions.split("\n"):
-                    row[event_arr_idx[question]] = form[question].data
+                    row[event_wks_columns[question] - 1] = form[question].data
 
                 event_wks.append_row(row)
 
                 html = render_template("event_confirmed_email.html",
                                         update_url=update_url,
-                                        first=user[arr_idx["First Name"]],
-                                        last=user[arr_idx["Last Name"]],
-                                        primary_email=user[arr_idx["Primary Email"]],
-                                        primary_verified=user[arr_idx["Primary Verified"]],
-                                        primary_subscribed=user[arr_idx["Primary Subscribed"]],
-                                        secondary_email=user[arr_idx["Secondary Email"]],
-                                        secondary_verified=user[arr_idx["Secondary Verified"]],
-                                        secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                        first=user["First Name"],
+                                        last=user["Last Name"],
+                                        primary_email=user["Primary Email"],
+                                        primary_verified=user["Primary Verified"],
+                                        primary_subscribed=user["Primary Subscribed"],
+                                        secondary_email=user["Secondary Email"],
+                                        secondary_verified=user["Secondary Verified"],
+                                        secondary_subscribed=user["Secondary Subscribed"],
                                         info_fields=info_fields,
                                         event_name=event_obj.name if event_obj is not None else None,
                                         event_fields=event_fields,
@@ -318,14 +335,14 @@ def event_register(event_name, token):
 
         return render_template("successfully_registered.html", event=event_obj, token=token,
                                 update_url=update_url,
-                                first=user[arr_idx["First Name"]],
-                                last=user[arr_idx["Last Name"]],
-                                primary_email=user[arr_idx["Primary Email"]],
-                                primary_verified=user[arr_idx["Primary Verified"]],
-                                primary_subscribed=user[arr_idx["Primary Subscribed"]],
-                                secondary_email=user[arr_idx["Secondary Email"]],
-                                secondary_verified=user[arr_idx["Secondary Verified"]],
-                                secondary_subscribed=user[arr_idx["Secondary Subscribed"]],
+                                first=user["First Name"],
+                                last=user["Last Name"],
+                                primary_email=user["Primary Email"],
+                                primary_verified=user["Primary Verified"],
+                                primary_subscribed=user["Primary Subscribed"],
+                                secondary_email=user["Secondary Email"],
+                                secondary_verified=user["Secondary Verified"],
+                                secondary_subscribed=user["Secondary Subscribed"],
                                 zoom_or_not=form.zoom_or_not.data,
                                 tickets=form.tickets.data,
                                 event_questions=event_questions)

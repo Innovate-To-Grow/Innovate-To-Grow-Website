@@ -26,3 +26,5 @@ imap-tools
 yagmail
 pyjwt
 boto3
+googlemaps
+numpy

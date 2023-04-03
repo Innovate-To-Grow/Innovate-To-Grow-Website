@@ -5,8 +5,8 @@ from flask_admin.contrib.sqla import ModelView
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField, SubmitField
 from wtforms.validators import EqualTo, Email, InputRequired
-from project import db, wks, sh
-from project.models import edit_form, user
+from project import db, sh, wks, get_wks_records, get_wks_columns
+from project.models import edit_form, event, user
 from project.utils.email import send_email
 from project.utils.field import get_field
 from project.utils.token import generate_token, confirm_token_no_expiry
@@ -64,7 +64,8 @@ class IndexView(AdminIndexView):
                     flash("Administrator already registered")
                     return redirect(url_for("admin.index"))
                 else:
-                    u = user(email, generate_password_hash(request.form["password"]), role_str)
+                    u = user(request.form["first_name"], request.form["last_name"],
+                              email, generate_password_hash(request.form["password"]), role_str)
                     db.session.add(u)
                     db.session.commit()
                     login_user(u)
@@ -281,49 +282,62 @@ class ContactView(BaseView):
 
     @expose("/", methods=["GET", "POST"])
     def contact(self):
-        form = EmailForm(request.form)
-
-        arr_idx = arr_indices(wks)
+        form = EmailForm()
 
         if request.method == "POST" and form.validate():
             selection = request.form.get("selection")
-            email_list = []
 
-            if selection == "Subscribed":
-                for i in range(2, wks.row_count + 1):
-                    user = wks.row_values(i)
-                    if user[arr_idx["Primary Subscribed"]] == "TRUE":
-                        email_list.append(
-                            (user[arr_idx["First Name"]], user[arr_idx["Last Name"]], user[arr_idx["Primary Email"]]))
-                    if user[arr_idx["Secondary Subscribed"]] == "TRUE":
-                        email_list.append((user[arr_idx["First Name"]], user[arr_idx["First Name"]],
-                                           user[arr_idx["Secondary Email"]]))
-            elif selection == "Verified":
-                for i in range(2, wks.row_count + 1):
-                    user = wks.row_values(i)
-                    if user[arr_idx["Primary Verified"]] == "TRUE":
-                        email_list.append(
-                            (user[arr_idx["First Name"]], user[arr_idx["Last Name"]], user[arr_idx["Primary Email"]]))
-                    if user[arr_idx["Secondary Verified"]] == "TRUE":
-                        email_list.append(
-                            (user[arr_idx["First Name"]], user[arr_idx["Last Name"]], user[arr_idx["Secondary Email"]]))
+            wks_records = get_wks_records(wks)
 
-            if len(email_list) == 0:
-                flash("No valid emails in database")
+            event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+            if event_obj is not None:
+                event_records = get_wks_records(sh.worksheet(event_obj.name))
 
+            if event_obj is None and selection == "Event":
+                flash("There is no live event right now")
+            
             else:
                 subject = request.form.get("subject")
 
                 body = request.form.get("body")
                 body = body.replace("\n", "<br>")
 
-                for user in email_list:
-                    html = render_template("admin/basic_email.html",
-                                           first=user[arr_idx["First Name"]],
-                                           last=user[arr_idx["Last Name"]],
-                                           body=body)
-                    send_email(user[2], subject, html)
+                if selection == "Admin":
+                    for admin in user.query.all():
+                        html = render_template("admin/basic_email.html", 
+                                            first=admin.first_name,
+                                            last=admin.last_name, 
+                                            body=body)
+                        send_email(admin.email, subject, html)
 
+                elif selection == "Event":
+                    for attendee in event_records:
+                        person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"]]
+                        if person:
+                            person = person[0]
+                            html = render_template("admin/basic_email.html", 
+                                                first=person["First Name"],
+                                                last=person["Last Name"], 
+                                                body=body)
+                            
+                            if person["Primary Verified"] == "TRUE":
+                                send_email(person["Primary Email"], subject, html)
+
+                            if person["Secondary Verified"] == "TRUE":
+                                send_email(person["Secondary Email"], subject, html)
+
+                elif selection == "Subscribed":
+                    for subscriber in wks_records:
+                        html = render_template("admin/basic_email.html",
+                                            first=subscriber["First Name"],
+                                            last=subscriber["Last Name"],
+                                            body=body)
+                        if subscriber["Primary Subscribed"] == "TRUE":
+                            send_email(subscriber["Primary Email"], subject, html)
+
+                        if subscriber["Secondary Subscribed"] == "TRUE":
+                            send_email(subscriber["Secondary Email"], subject, html)
+                
                 flash("Emails sent successfully to " + str(selection) + " users.")
 
         return self.render("admin/contact.html", form=form)
