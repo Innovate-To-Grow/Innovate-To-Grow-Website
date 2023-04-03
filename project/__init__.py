@@ -1,6 +1,6 @@
 import os
 from os import path
-from flask import Flask
+from flask import Flask, render_template, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_admin import Admin
@@ -12,9 +12,25 @@ app = Flask(__name__)
 
 app.config.from_object(Config())
 
+
 # SQLAlchemy
 db = SQLAlchemy()
 db.init_app(app)
+
+import boto3
+
+aws_access_key_id = "***REMOVED_AWS_KEY_ID***"
+aws_secret_access_key = "***REMOVED_AWS_SECRET***"
+
+ses = boto3.client('ses',
+                   region_name='us-west-2',
+                   aws_access_key_id=aws_access_key_id,
+                   aws_secret_access_key=aws_secret_access_key)
+
+sqs = boto3.client('sqs',
+                   region_name='us-west-2',
+                   aws_access_key_id=aws_access_key_id,
+                   aws_secret_access_key=aws_secret_access_key)
 
 # Models
 from project.models import user, edit_form, event
@@ -105,3 +121,75 @@ if not path.exists(APP_ROOT + "/db/data.sqlite3"):
         u = user("Admin", "Admin", "admin@admin.com", generate_password_hash("admin"), "superadmin")
         db.session.add(u)
         db.session.commit()
+
+
+import json, time
+from threading import Thread
+from project.utils.email import send_email
+from project.utils.token import generate_token
+
+queue_name = 'BounceNotificationsQueue'
+queue_url = sqs.get_queue_url(QueueName=queue_name)['QueueUrl']
+
+def detect_bounces():
+    while True:
+        wks_records = get_wks_records(wks)
+        wks_columns = get_wks_columns(wks)
+
+        response = sqs.receive_message(
+            QueueUrl=queue_url,
+        )
+
+        if 'Messages' in response:
+            messages = response['Messages']
+            for message in messages:
+                notification = json.loads(message['Body'])
+                bounce = json.loads(notification['Message'])
+
+                email = bounce['bounce']['bouncedRecipients'][0]['emailAddress']
+                diagnostic_code = bounce['bounce']['bouncedRecipients'][0]['diagnosticCode']
+
+                for row in wks_records:
+                    subject = "I2G Membership - Bounce Notification"
+
+                    if row['Primary Email'] == email:
+                        wks.update_cell(row['Row'], wks_columns['Primary Bounced'], diagnostic_code)
+                        wks.update_cell(row['Row'], wks_columns['Primary Subscribed'], "FALSE")
+
+                        if row['Secondary Email'] != "" and row["Secondary Verified"] == "TRUE":
+                            with app.test_request_context():
+                                token = generate_token(row['Secondary Email'])
+                                update_url = url_for("update.update_info", token=token, _external=True)
+                                html = render_template("membership/bounce_email.html", 
+                                                       first=row['First Name'],
+                                                       last=row['Last Name'],
+                                                       email=row['Primary Email'],
+                                                       update_url=update_url)
+                                send_email(row['Secondary Email'], subject, html)
+                        
+                    elif row['Secondary Email'] == email:
+                        wks.update_cell(row['Row'], wks_columns['Secondary Bounced'], diagnostic_code)
+                        wks.update_cell(row['Row'], wks_columns['Secondary Subscribed'], "FALSE")
+
+                        if row['Primary Email'] != "" and row["Primary Verified"] == "TRUE":
+                            with app.test_request_context():
+                                token = generate_token(row['Primary Email'])
+                                update_url = url_for("update.update_info", token=token, _external=True)
+                                html = render_template("membership/bounce_email.html", 
+                                                    first=row['First Name'],
+                                                    last=row['Last Name'],
+                                                    email=row['Secondary Email'],
+                                                    update_url=update_url)
+                                send_email(row['Primary Email'], subject, html)
+                
+                receipt_handle = message['ReceiptHandle']
+                sqs.delete_message(
+                    QueueUrl=queue_url,
+                    ReceiptHandle=receipt_handle
+                )
+        
+        time.sleep(app.config['BOUNCE_DETECTION_INTERVAL'])
+
+thread = Thread(target=detect_bounces)
+thread.daemon = True
+thread.start()

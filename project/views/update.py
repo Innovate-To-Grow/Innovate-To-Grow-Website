@@ -9,7 +9,7 @@ from wtforms.validators import EqualTo, Email, InputRequired, Optional
 from project import app, sh, wks, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
-from project.utils.field import get_field, checkbox_get_choices
+from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token_no_expiry
 from project.forms.registration_forms import NotEqualTo
 from project.forms.update_forms import EmailForm

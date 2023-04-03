@@ -1,19 +1,20 @@
-from flask import request, flash, render_template, redirect, url_for
+import time
+from flask import request, flash, render_template, redirect, url_for, copy_current_request_context
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField, SubmitField
 from wtforms.validators import EqualTo, Email, InputRequired
-from project import db, sh, wks, get_wks_records, get_wks_columns
+from project import db, sh, wks, get_wks_records
 from project.models import edit_form, event, user
 from project.utils.email import send_email
-from project.utils.field import get_field
+from project.utils.dynamic_fields import get_field
 from project.utils.token import generate_token, confirm_token_no_expiry
-from project.utils.index_helper import arr_indices
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
 from project.forms.registration_forms import NotEqualTo
 from werkzeug.security import generate_password_hash
+from threading import Thread
 
 
 class IndexView(AdminIndexView):
@@ -302,41 +303,50 @@ class ContactView(BaseView):
                 body = request.form.get("body")
                 body = body.replace("\n", "<br>")
 
-                if selection == "Admin":
-                    for admin in user.query.all():
-                        html = render_template("admin/basic_email.html", 
-                                            first=admin.first_name,
-                                            last=admin.last_name, 
-                                            body=body)
-                        send_email(admin.email, subject, html)
-
-                elif selection == "Event":
-                    for attendee in event_records:
-                        person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"]]
-                        if person:
-                            person = person[0]
+                @copy_current_request_context
+                def send_blast():
+                    if selection == "Admin":
+                        for admin in user.query.all():
                             html = render_template("admin/basic_email.html", 
-                                                first=person["First Name"],
-                                                last=person["Last Name"], 
+                                                first=admin.first_name,
+                                                last=admin.last_name, 
                                                 body=body)
-                            
-                            if person["Primary Verified"] == "TRUE":
-                                send_email(person["Primary Email"], subject, html)
+                            send_email(admin.email, subject, html)
+                            time.sleep(1)
 
-                            if person["Secondary Verified"] == "TRUE":
-                                send_email(person["Secondary Email"], subject, html)
+                    elif selection == "Event":
+                        for attendee in event_records:
+                            person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"]]
+                            if person:
+                                person = person[0]
+                                html = render_template("admin/basic_email.html", 
+                                                    first=person["First Name"],
+                                                    last=person["Last Name"], 
+                                                    body=body)
+                                
+                                if person["Primary Verified"] == "TRUE":
+                                    send_email(person["Primary Email"], subject, html)
 
-                elif selection == "Subscribed":
-                    for subscriber in wks_records:
-                        html = render_template("admin/basic_email.html",
-                                            first=subscriber["First Name"],
-                                            last=subscriber["Last Name"],
-                                            body=body)
-                        if subscriber["Primary Subscribed"] == "TRUE":
-                            send_email(subscriber["Primary Email"], subject, html)
+                                if person["Secondary Verified"] == "TRUE":
+                                    send_email(person["Secondary Email"], subject, html)
 
-                        if subscriber["Secondary Subscribed"] == "TRUE":
-                            send_email(subscriber["Secondary Email"], subject, html)
+                            time.sleep(1)
+
+                    elif selection == "Subscribed":
+                        for subscriber in wks_records:
+                            html = render_template("admin/basic_email.html",
+                                                first=subscriber["First Name"],
+                                                last=subscriber["Last Name"],
+                                                body=body)
+                            if subscriber["Primary Subscribed"] == "TRUE":
+                                send_email(subscriber["Primary Email"], subject, html)
+
+                            if subscriber["Secondary Subscribed"] == "TRUE":
+                                send_email(subscriber["Secondary Email"], subject, html)
+
+                            time.sleep(1)
+
+                Thread(target=send_blast).start()
                 
                 flash("Emails sent successfully to " + str(selection) + " users.")
 

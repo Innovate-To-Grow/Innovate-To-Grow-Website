@@ -1,7 +1,6 @@
 import threading, time
 from project import app
 from waitress import serve
-from project.utils.email import detect_bounce
 
 # thread = threading.Thread(target=detect_bounce, args=(30,))
 # thread.daemon = True
