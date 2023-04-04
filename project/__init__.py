@@ -7,15 +7,26 @@ from flask_admin import Admin
 from config.default import Config, APP_ROOT
 from werkzeug.security import generate_password_hash
 
+
 # Flask
 app = Flask(__name__)
 
 app.config.from_object(Config())
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    return render_template("429.html"), 429
+
+
 # SQLAlchemy
 db = SQLAlchemy()
 db.init_app(app)
+
 
 import boto3
 
@@ -31,6 +42,7 @@ sqs = boto3.client('sqs',
                    region_name='us-west-2',
                    aws_access_key_id=aws_access_key_id,
                    aws_secret_access_key=aws_secret_access_key)
+
 
 # Models
 from project.models import user, edit_form, event
@@ -93,6 +105,7 @@ app.register_blueprint(update_blueprint)
 app.register_blueprint(events_blueprint)
 app.register_blueprint(geo_blueprint)
 
+
 # Flask Admin
 from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView
 
@@ -101,6 +114,7 @@ admin_app.add_view(UserModelView(user, db.session, name="Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
 admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
+
 
 # Flask Login Manager
 login_manager = LoginManager(app)
@@ -138,6 +152,7 @@ def detect_bounces():
 
         response = sqs.receive_message(
             QueueUrl=queue_url,
+            MaxNumberOfMessages=10
         )
 
         if 'Messages' in response:
@@ -190,6 +205,4 @@ def detect_bounces():
         
         time.sleep(app.config['BOUNCE_DETECTION_INTERVAL'])
 
-thread = Thread(target=detect_bounces)
-thread.daemon = True
-thread.start()
+Thread(target=detect_bounces, daemon=True).start()
