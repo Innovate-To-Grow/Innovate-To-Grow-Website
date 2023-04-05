@@ -13,10 +13,10 @@ function format(d) {
         '</table>';
 }
 var datas = [];
-// Pulls data from "2022-08-Fall-I2G-WEB" spreadsheet.
+// Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1XA1WXfZyZ1GzaEmmCY5RNuHM-q1WEuAQ89vSuepJtp8/values/2022-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1AoW60T0IHSkqO4dUzYV6ErWxMHKOhg73NpddUc2ZUxM/values/2023-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
@@ -48,7 +48,7 @@ function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
     console.log("second");
     var table = $('#example').DataTable({
-        // dom: 'Bfrltip',
+        dom: 'Bfrltip',
         pageLength: 10,
         search: {
             search: document.location.search.replace(/^.*?\=/, '')
@@ -125,29 +125,29 @@ function passvalue(slot) {
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 2;
+let totalTrackForCAP = 5;
 // the amount of order for CAP
 let totalOrderForCAP = 6;
 // the time start for CAP
-let timestartForCAP = "12:30";
+let timestartForCAP = "2:00";
 // time per slot for CAP
 let timePerSlotForCAP = "30";
 
 // the amount of tracks for CEE
 let totalTrackForCEE = 1;
 // the amount of order for CEE
-let totalOrderForCEE = 2;
+let totalOrderForCEE = 4;
 // the time start for CEE
-let timestartForCEE = "12:30";
+let timestartForCEE = "2:00";
 // time per slot for CEE
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 2;
+let totalTrackForCSE = 3;
 // the amount of order for CSE
-let totalOrderForCSE = 9;
+let totalOrderForCSE = 8;
 // the time start for CSE
-let timestartForCSE = "12:30";
+let timestartForCSE = "2:00";
 // time per slot for CSE
 let timePerSlotForCSE = "20";
 
@@ -342,13 +342,13 @@ $(document).ready(function () {
 
     }
 
-    // Pulls the room column from "2022-08-Fall-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1L3fgZFAWnwXbRqn2Gt8Qf14-MCGxB46KZ3lfWe1a5ps/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
-        // Pull the class column from "2022-08-Fall-I2G-MASTER" spreadsheet. 
+    // Pulls the room column from "2023-01-Spring-I2G-MASTER" spreadsheet.
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1nqwEiLllm2wsL0SUUSIdT8nqspEMLFP41wtC-akKASE/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+        // Pull the class column from "2023-01-Spring-I2G-MASTER" spreadsheet. 
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i + 1][1]);
         }
-        // Pulls the zoom column from "2022-08-Fall-I2G-MASTER" spreadsheet. 
+        // Pulls the zoom column from "2023-01-Spring-I2G-MASTER" spreadsheet. 
         // It will add href to make zoom button active if there is a link present in zoom spreadsheet column
         for (let i = 1; i <= totalRooms; i++) {
             if (data.values[i + 1][2] != "") {
@@ -359,8 +359,9 @@ $(document).ready(function () {
 });
 
 $(document).ready(function () {
-    // Pulls data from "2022-08-Fall-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1XA1WXfZyZ1GzaEmmCY5RNuHM-q1WEuAQ89vSuepJtp8/values/2022-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+
+    // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
+$.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1AoW60T0IHSkqO4dUzYV6ErWxMHKOhg73NpddUc2ZUxM/values/2023-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
@@ -407,4 +408,4 @@ $(document).ready(function () {
             }
         }
     });
-});            
+});   
