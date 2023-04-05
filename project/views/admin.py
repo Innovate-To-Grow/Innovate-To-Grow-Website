@@ -307,10 +307,12 @@ class ContactView(BaseView):
                 def send_blast():
                     if selection == "Admin":
                         for admin in user.query.all():
+                            token = generate_token(admin.email)
                             html = render_template("admin/basic_email.html", 
                                                 first=admin.first_name,
                                                 last=admin.last_name, 
-                                                body=body)
+                                                body=body,
+                                                token=token)
                             send_email(admin.email, subject, html)
 
                     elif selection == "Event":
@@ -318,11 +320,12 @@ class ContactView(BaseView):
                             person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"]]
                             if person:
                                 person = person[0]
+                                token = generate_token(person["Primary Email"])
                                 html = render_template("admin/basic_email.html", 
-                                                    first=person["First Name"],
-                                                    last=person["Last Name"], 
-                                                    body=body)
-                                
+                                                    body=body,
+                                                    person=person,
+                                                    token=token)
+                                                    
                                 if person["Primary Verified"] == "TRUE":
                                     send_email(person["Primary Email"], subject, html)
 
@@ -331,10 +334,12 @@ class ContactView(BaseView):
 
                     elif selection == "Subscribed":
                         for subscriber in wks_records:
+                            token = generate_token(subscriber["Primary Email"])
                             html = render_template("admin/basic_email.html",
-                                                first=subscriber["First Name"],
-                                                last=subscriber["Last Name"],
-                                                body=body)
+                                                body=body,
+                                                person=subscriber,
+                                                token=token)
+                                                
                             if subscriber["Primary Subscribed"] == "TRUE":
                                 send_email(subscriber["Primary Email"], subject, html)
 
@@ -346,3 +351,4 @@ class ContactView(BaseView):
                 flash("Emails sent successfully to " + str(selection) + " users.")
 
         return self.render("admin/contact.html", form=form)
+    
