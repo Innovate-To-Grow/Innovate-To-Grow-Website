@@ -29,5 +29,5 @@ class Config():
     REMOVE_SUBJECT = "I2G Membership - Unverified Email Removed"
 
     TOKEN_EXPIRATION = 300
-    VERIF_EXPIRATION = 90
+    VERIF_EXPIRATION = 300
     BOUNCE_DETECTION_INTERVAL = 90
