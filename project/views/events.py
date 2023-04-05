@@ -27,7 +27,7 @@ def event_redirect():
     if event_obj is None:
         return render_template("no_live_event.html")
 
-    return redirect(url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-")))
+    return redirect(url_for("events.enter_email", event_name=event_obj.name))
 
 
 @events_blueprint.route("/events/<event_name>", methods=["GET", "POST"])
