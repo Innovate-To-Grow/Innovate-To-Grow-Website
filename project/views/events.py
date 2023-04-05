@@ -126,7 +126,27 @@ def enter_email(event_name):
 
 
             elif (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "FALSE"):
-                return render_template("not_registered.html")
+                if user["Primary Email"] != "":
+                    token = generate_token(user["Primary Email"])
+                    confirm_url = url_for("registration.confirm", token=token, _external=True)
+                    html = render_template(
+                        "verify_email.html",
+                        first=user["First Name"],
+                        last=user["Last Name"],
+                        confirm_url=confirm_url,
+                    )
+                    send_email(user["Primary Email"], app.config["VERIF_SUBJECT"], html)
+
+                    token = generate_token(user["Secondary Email"])
+                    confirm_url = url_for("registration.confirm", token=token, _external=True)
+                    html = render_template(
+                        "verify_email.html",
+                        first=user["First Name"],
+                        last=user["Last Name"],
+                        confirm_url=confirm_url,
+                    )
+                    send_email(user["Secondary Email"], app.config["VERIF_SUBJECT"], html)
+
 
             else:
                 if user["Primary Email"] != "":
