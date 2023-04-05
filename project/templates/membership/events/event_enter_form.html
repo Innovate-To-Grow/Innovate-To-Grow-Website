@@ -6,7 +6,7 @@
 <div>
   <h2 >Please enter your email to register for the event</h2>
 </div>
-<form action="{{ url_for('events.enter_email', event_name=event.name) }}" method=post>
+<form action="{{ url_for('events.enter_email', event_name=event.name.replace(' ', '-')) }}" method=post>
   {{ form.hidden_tag() }}
   <div class="input-row">
     {{ forms.render(form) }}

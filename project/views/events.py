@@ -27,7 +27,7 @@ def event_redirect():
     if event_obj is None:
         return render_template("no_live_event.html")
 
-    return redirect(url_for("events.enter_email", event_name=event_obj.name))
+    return redirect(url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-")))
 
 
 @events_blueprint.route("/events/<event_name>", methods=["GET", "POST"])
@@ -91,7 +91,7 @@ def enter_email(event_name):
 
                 if user["Secondary Email"] != "":
                     token = generate_token(user["Secondary Email"])
-                    event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
+                    event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
                     html = render_template(
                         "event_email.html",
                         first=user["First Name"],
@@ -104,7 +104,7 @@ def enter_email(event_name):
             elif (user["Primary Verified"] == "TRUE" and user["Secondary Verified"] == "FALSE"):
                 if user["Primary Email"] != "":
                     token = generate_token(user["Primary Email"])
-                    event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
+                    event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
                     html = render_template(
                         "event_email.html",
                         first=user["First Name"],
@@ -131,7 +131,7 @@ def enter_email(event_name):
             else:
                 if user["Primary Email"] != "":
                     token = generate_token(user["Primary Email"])
-                    event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
+                    event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
                     html = render_template(
                         "event_email.html",
                         first=user["First Name"],
@@ -142,7 +142,7 @@ def enter_email(event_name):
 
                 # if user[arr_idx["Secondary Email"]] != "":
                 #     token = generate_token(user[arr_idx["Secondary Email"]])
-                #     event_url = url_for("events.event_register", event_name=event_obj.name, token=token, _external=True)
+                #     event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
                 #     html = render_template(
                 #         "event_email.html",
                 #         first=user[arr_idx["First Name"]],

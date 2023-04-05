@@ -4,7 +4,7 @@
 <p>Below is a summary of your membership information. If you have any questions, please contact us <a
                 href="mailto:innovatetogrow@ucmerced.edu">here.</a></p>
 <p> Note that you can always go back to update the details on your application: </p>
-<p> <a href="{{ url_for('events.event_register', event_name=event.name, token=token, _external=True) }}">{{ event.name
+<p> <a href="{{ url_for('events.event_register', event_name=event.name.replace(' ', '-'), token=token, _external=True) }}">{{ event.name
                 }}
                 Registration</a> </p>
 <br>

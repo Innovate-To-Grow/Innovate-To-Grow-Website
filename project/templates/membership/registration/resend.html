@@ -10,8 +10,9 @@
     color:#fff !important;background-color:#DAA900 !important}
 </style> 
 
-<div class="w3-container w3-theme-UCBlue">
-<p style="font-size:120%; color:#DAA900;">The confirmation link is invalid or has expired. 
+<br>
+<br>
+<p style="font-size:120%;">The confirmation link is invalid or has expired. 
         <a style="font-size:120%; color:#0091b3; text-decoration: underline;" href="{{ url_for('registration.resend', token=token) }}">Click here to resend</a>.</p>
 </div>
 {% endblock %}
