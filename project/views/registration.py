@@ -386,7 +386,7 @@ def confirm(token):
                 event_wks = sh.worksheet(event_obj.name)
                 event_wks_records = get_wks_records(event_wks)
                 event_wks_columns = get_wks_columns(event_wks)
-                event_url = url_for("events.event_register", event_name = event_obj.name, token=token, _external=True)
+                event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
 
                 async def query_event_prim_col():
                     return [row for row in event_wks_records if row["Membership Primary"] == email]
@@ -527,7 +527,7 @@ def info(token):
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
-        event_url = url_for("events.event_register", event_name = event_obj.name, token=token, _external=True)
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
 
 
     if email:
@@ -777,6 +777,8 @@ def complete_registration(token):
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+        
 
     async def query_prim_col():
         return [row for row in wks_records if row["Primary Email"] == email]
@@ -1058,7 +1060,8 @@ def complete_registration(token):
 
 
                 subject = "I2G Membership - Receipt"
-                html = render_template("info_receipt_email.html", 
+                html = render_template("info_receipt_email.html",
+                                    event_url=event_url, 
                                     update_url=update_url,
                                     first=user[wks_columns["First Name"] - 1],
                                     last=user[wks_columns["Last Name"] - 1],
@@ -1078,6 +1081,8 @@ def complete_registration(token):
             thread.start()
 
             return render_template("receipt.html",
+                                    event_url=event_url,
+                                    update_url=update_url,
                                     first=form.first_name.data,
                                     last=form.last_name.data,
                                     primary_email=form.primary_email.data,

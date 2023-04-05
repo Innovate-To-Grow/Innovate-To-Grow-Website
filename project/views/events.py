@@ -177,7 +177,7 @@ def event_register(event_name, token):
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
-        event_url = url_for("events.event_register", event_name = event_obj.name, token=token, _external=True)
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
 
     if email:
 
@@ -858,7 +858,7 @@ def event_register(event_name, token):
 
                 subject = "I2G Membership - Receipt"
                 html = render_template("info_receipt_email.html",
-                                    event_url = event_url, 
+                                    event_url=event_url, 
                                     update_url=update_url,
                                     first=user["First Name"],
                                     last=user["Last Name"],
@@ -879,7 +879,7 @@ def event_register(event_name, token):
             thread.start()
           
             return render_template("successfully_registered.html",
-                                    event_url = event_url,
+                                    event_url=event_url,
                                     update_url=update_url,
                                     first=user["First Name"],
                                     last=user["Last Name"],
