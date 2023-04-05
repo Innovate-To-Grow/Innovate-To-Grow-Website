@@ -771,6 +771,7 @@ def complete_registration(token):
     event_cells = []
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
+    event_url = None
     update_url = url_for("update.update_info", token=token, _external=True)
 
     if event_obj is not None:

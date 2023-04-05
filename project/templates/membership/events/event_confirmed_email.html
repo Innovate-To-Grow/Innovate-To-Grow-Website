@@ -2,7 +2,7 @@
 <p>Hello {{ first }} {{ last }},</p>
 <p> Thank you for registering for {{ event.name }}. Your registration has been confirmed.</p>
 <p>Below is a summary of your membership information. If you have any questions, please contact us <a
-                href="mailto:innovatetogrow@ucmerced.edu">here.</a></p>
+                href="mailto:i2g@ucmerced.edu">here.</a></p>
 <p> Note that you can always go back to update the details on your application: </p>
 <p> <a href="{{ url_for('events.event_register', event_name=event.name.replace(' ', '-'), token=token, _external=True) }}">{{ event.name
                 }}

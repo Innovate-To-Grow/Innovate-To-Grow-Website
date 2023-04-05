@@ -168,17 +168,27 @@
     }
   }
 </style>
-<div class="sb-row" style="padding-top: 0px; text-align: center; justify-content: center; margin-top: 50px;">
-  <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a style="color: #0091B3;"
-      class="btn--invert-gold hb__play" href="{{ url_for('events.event_redirect') }}">I2G
-      Event Registration</a></div>
-  <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a style="color: #0091B3;"
-      class="btn--invert-gold hb__play" href="{{ url_for('home.project_submission') }}">Submit a project</a> </div>
-  <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a style="color: #0091B3;"
-      class="btn--invert-gold hb__play" href="{{ url_for('registration.register') }}">Signup for I2G news!</a></div>
-  <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a style="color: #0091B3;"
-      class="btn--invert-gold hb__play" href="{{ url_for('update.enter_email') }}">Update your membership!</a></div>
+<div class="sb-row" style="padding-top: 0px; text-align: center; justify-content: center; margin-top: 10px;">
+  <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('home.about') }}">About Us</a></div>
+
+  <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('home.past_projects') }}">Past Projects</a></div>
+
+  <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('events.event_redirect') }}">Event Registration</a></div>
+  
+  <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('home.project_submission') }}">Submit a Project</a></div>
+  
+  <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('registration.register') }}">Signup for News</a></div>
+  
+  <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('update.enter_email') }}" target="_blank">Update Membership</a></div>
+
+  <div class="i2gHome">
+    <p>&nbsp;</p>
+    <p>For any questions or comments, please send an email to: <a
+            href="mailto:i2g@ucmerced.edu">i2g@ucmerced.edu</a>
+    </p>
+  </div>
 </div>
+
 </div>
 <div id="footer" class="clearfix site-footer" role="contentinfo">
   <div class="container">

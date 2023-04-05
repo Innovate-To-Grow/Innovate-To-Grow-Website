@@ -6,7 +6,7 @@ from wtforms.validators import InputRequired, Email, EqualTo
 class EmailForm(FlaskForm):
     subject = StringField("Subject", [InputRequired(" ")])
 
-    body = TextAreaField("Body", [InputRequired(" ")])
+    body = TextAreaField("Body")
 
     selection = RadioField("Send to:",
                            choices=[("Admin", "Administrators"), ("Event", "Event Attendees"), ("Subscribed", "Subscribed Users")],

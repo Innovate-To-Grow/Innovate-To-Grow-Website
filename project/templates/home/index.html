@@ -43,19 +43,15 @@
                             <div class="i2gHome" style="text-align: left;">
                                 <div class="sb-row"
                                     style="padding-top: 0px; text-align: center; justify-content: center;">
-                                    <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a
-                                            style="color: #0091B3;" class="btn--invert-gold hb__play"
-                                            href="{{ url_for('events.event_redirect') }}">I2G
-                                            Event Registration</a></div>
-                                    <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a
-                                            style="color: #0091B3;" class="btn--invert-gold hb__play"
-                                            href="{{ url_for('home.project_submission') }}">Submit a project</a> </div>
-                                    <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a
-                                            style="color: #0091B3;" class="btn--invert-gold hb__play"
-                                            href="{{ url_for('registration.register') }}">Signup for I2G news!</a></div>
-                                    <div class="sb-col hb__buttons-gold" style="padding-top: 0px;"><a
-                                            style="color: #0091B3;" class="btn--invert-gold hb__play"
-                                            href="{{ url_for('update.enter_email') }}">Update your membership!</a></div>
+                                    <div class="sb-row" style="padding-top: 0px; text-align: center; justify-content: center; margin-top: 10px;">
+                                        <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('events.event_redirect') }}">Event Registration</a></div>
+                                        
+                                        <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('home.project_submission') }}">Submit a Project</a></div>
+                                        
+                                        <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('registration.register') }}">Signup for News</a></div>
+                                        
+                                        <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('update.enter_email') }}" target="_blank">Update Membership</a></div>
+                                      </div>
                                 </div>
                                 <br>
                                 <h4>The Innovate to Grow program</h4>
@@ -180,28 +176,7 @@
                         <div id="content-bottom" class="row-fluid content-bottom">
                             <div class="region region-content-bottom clearfix">
                                 <div id="block-block-61" class="clearfix block block-block">
-                                    <div class="content">
-                                        <div class="sb-row" style="text-align: center; padding-top: 50px;">
-                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="{{ url_for('home.about') }}">About Us</a></div>
-                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="{{ url_for('home.projects') }}">Projects</a></div>
-                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                    href="{{ url_for('home.project_submission') }}">Project
-                                                    Submission</a></div>
-                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                    href="{{ url_for('home.contact_us') }}" target="_blank">Contact
-                                                    Us</a></div>
-                                        </div>
-                                        <p> </p>
-                                        <div class="i2gHome">
-                                            <p>For any questions or comments, please <a
-                                                    href="{{ url_for('home.contact_us') }}" target="_blank">contact us
-                                                    here</a> or email to: <a
-                                                    href="mailto:innovatetogrow@ucmerced.edu">innovatetogrow@ucmerced.edu</a>
-                                            </p>
-                                        </div>
-                                    </div>
+                                    <p>&nbsp;</p>
                                 </div>
                             </div>
                         </div>

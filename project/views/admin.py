@@ -308,11 +308,13 @@ class ContactView(BaseView):
                     if selection == "Admin":
                         for admin in user.query.all():
                             token = generate_token(admin.email)
-                            html = render_template("admin/basic_email.html", 
+                            event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                            html = render_template("admin/event_blast.html", 
                                                 first=admin.first_name,
                                                 last=admin.last_name, 
                                                 body=body,
-                                                token=token)
+                                                event_url=event_url)
+                            
                             send_email(admin.email, subject, html)
 
                     elif selection == "Event":
@@ -321,10 +323,11 @@ class ContactView(BaseView):
                             if person:
                                 person = person[0]
                                 token = generate_token(person["Primary Email"])
-                                html = render_template("admin/basic_email.html", 
+                                event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                                html = render_template("admin/event_blast.html", 
                                                     body=body,
                                                     person=person,
-                                                    token=token)
+                                                    event_url=event_url)
                                                     
                                 if person["Primary Verified"] == "TRUE":
                                     send_email(person["Primary Email"], subject, html)
@@ -335,10 +338,11 @@ class ContactView(BaseView):
                     elif selection == "Subscribed":
                         for subscriber in wks_records:
                             token = generate_token(subscriber["Primary Email"])
-                            html = render_template("admin/basic_email.html",
+                            event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                            html = render_template("admin/event_blast.html",
                                                 body=body,
                                                 person=subscriber,
-                                                token=token)
+                                                event_url=event_url)
                                                 
                             if subscriber["Primary Subscribed"] == "TRUE":
                                 send_email(subscriber["Primary Email"], subject, html)
