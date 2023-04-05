@@ -22,6 +22,15 @@
 
 
 <script>
+    const submitBtn = document.getElementById("submit");
+    submitBtn.addEventListener("click", function() {
+        submitBtn.style.pointerEvents = "none";
+
+        setTimeout(function() {
+        submitBtn.style.pointerEvents = "auto";
+        }, 5000);
+    });
+    
     const registerCheckbox = document.querySelector('#register_event');
     const eventDivs = document.querySelectorAll('div[id^="event_"]');
 

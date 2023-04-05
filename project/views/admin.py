@@ -312,7 +312,6 @@ class ContactView(BaseView):
                                                 last=admin.last_name, 
                                                 body=body)
                             send_email(admin.email, subject, html)
-                            time.sleep(1)
 
                     elif selection == "Event":
                         for attendee in event_records:
@@ -330,8 +329,6 @@ class ContactView(BaseView):
                                 if person["Secondary Verified"] == "TRUE":
                                     send_email(person["Secondary Email"], subject, html)
 
-                            time.sleep(1)
-
                     elif selection == "Subscribed":
                         for subscriber in wks_records:
                             html = render_template("admin/basic_email.html",
@@ -343,8 +340,6 @@ class ContactView(BaseView):
 
                             if subscriber["Secondary Subscribed"] == "TRUE":
                                 send_email(subscriber["Secondary Email"], subject, html)
-
-                            time.sleep(1)
 
                 Thread(target=send_blast).start()
                 

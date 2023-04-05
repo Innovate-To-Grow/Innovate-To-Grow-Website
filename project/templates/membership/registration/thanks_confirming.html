@@ -1,16 +1,47 @@
 {% extends "membership/layout.html" %}
 
 {% block content %}
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
-<style>
-    .w3-theme-UCBlue {
-    color:#fff !important;background-color:#002856 !important}
-    .w3-theme-UCGold {
-    color:#fff !important;background-color:#DAA900 !important}
-</style> 
 
-<div class="w3-container w3-theme-UCBlue">
-    <p style="font-size:120%; color:#DAA900;">Thank you for confirming your email.</p>
+<br>
+<h1>I2G Membership - Receipt</h1>
+<p>Hello {{ first }} {{ last }},</p>
+<p>Thank you for confirming your other email.</p>
+<p>Below is a summary of your membership information. If you have any questions, please contact us <a
+        href="mailto:innovatetogrow@ucmerced.edu">here.</a></p>
+<p>Update your membership anytime <a href="{{ update_url }}">here.</a></p>
+<br>
+<br>
+
+<h2>Membership Information:</h2>
+<div>
+    <p> Primary Email: {{ primary_email }} {% if primary_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} {% if primary_subscribed == "TRUE" %}(Subscribed){% else %}(Unsubscribed){% endif %}</p>
 </div>
+<div>
+    <p> Secondary Email: {{ secondary_email }} {% if secondary_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} {% if secondary_subscribed == "TRUE" %}(Subscribed){% else %}(Unsubscribed){% endif %}</p>
+</div>
+<br>
+<br>
+
+<h2>Other Information:</h2>
+<div>
+{% for key, value in info_fields.items() %}
+    <p>{{ key }}: {{ value }}</p>
+{% endfor %}
+</div>
+
+{% if event_fields %}
+<br>
+<h3>Event Information:</h3>
+<p><strong>{{ event_name }}</strong></p>
+<div>
+    {% for key, value in event_fields.items() %}
+        <p>{{ key }}: {{ value }}</p>
+    {% endfor %}
+</div>
+
+{% elif not event_fields and event_url is not none %}
+<br>
+<h3>Event Registration:</h3>
+<p>Not Registered - Click <a href = "{{ event_url }}">here</a> to register for {{ event_name }}</p>
+{% endif %}
 {% endblock %}

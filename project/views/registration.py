@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, url_for, request, redirect, copy_c
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
-from project import app, sh, wks, get_wks_records, get_wks_columns
+from project import app, sh, wks, logs, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
@@ -30,6 +30,16 @@ def register():
     can_register = True
 
     if request.method == "POST" and form.validate_on_submit():
+        def log_registration():
+            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+            row = [
+                order, "/register", str(datetime.now().replace(second=0, microsecond=0)), "First Name: " + form.first_name.data, "Last Name: " + 
+                form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
+            ]
+            logs.append_row(row)
+
+        Thread(target=log_registration).start()
+
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)
 
@@ -39,27 +49,6 @@ def register():
             event_wks = sh.worksheet(event_obj.name)
             event_wks_records = get_wks_records(event_wks)
             event_wks_columns = get_wks_columns(event_wks)
-
-        # def log_registration():
-        #     worksheets = []
-        #     for worksheet in sh.worksheets():
-        #         worksheets.append(worksheet.title)
-
-        #     if "Registration Logs" not in worksheets:
-        #         sh.add_worksheet("Registration Logs", 1, 6)
-        #         sh.worksheet("Registration Logs").append_row(
-        #             ["Order", "First Name", "Last Name", "Primary Email", "Secondary Email", "DateTime"])
-
-        #     order = int(sh.worksheet("Registration Logs").col_values(1)[-1]) + 1 if sh.worksheet(
-        #         "Registration Logs").col_values(1)[-1].isdigit() else 1
-
-        #     row = [
-        #         order, form.first_name.data, form.last_name.data, form.primary_email.data, form.secondary_email.data,
-        #         str(datetime.now().replace(second=0, microsecond=0))
-        #     ]
-        #     sh.worksheet("Registration Logs").append_row(row)
-
-        # Thread(target=log_registration).start()
 
         prim_email = request.form["primary_email"].lower()
         sec_email = request.form["secondary_email"].lower()
@@ -388,7 +377,90 @@ def confirm(token):
         if user["Info Completed"] == "FALSE":
             return redirect(url_for("registration.info", token=token, _external=True))
         else:
-            return render_template("thanks_confirming.html")
+            event_url = None
+            update_url = url_for("update.update_info", token=token, _external=True)
+
+            event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+
+            if event_obj is not None:
+                event_wks = sh.worksheet(event_obj.name)
+                event_wks_records = get_wks_records(event_wks)
+                event_wks_columns = get_wks_columns(event_wks)
+                event_url = url_for("events.event_register", event_name = event_obj.name, token=token, _external=True)
+
+                async def query_event_prim_col():
+                    return [row for row in event_wks_records if row["Membership Primary"] == email]
+
+                async def query_event_sec_col():
+                    return [row for row in event_wks_records if row["Membership Secondary"] == email]
+
+                async def main():
+                    return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
+
+                event_user = asyncio.run(main())
+                event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
+
+            if verif_key == "Primary Verified":
+                primary_verified = "TRUE"
+                secondary_verified = user["Secondary Verified"]
+                primary_subscribed = "TRUE"
+                secondary_subscribed = user["Secondary Subscribed"]
+            else:
+                primary_verified = user["Primary Verified"]
+                secondary_verified = "TRUE"
+                primary_subscribed = user["Primary Subscribed"]
+                secondary_subscribed = "TRUE"
+
+            info_fields = {}
+            for row in edit_form.query.all():
+                if row.field_type == "Checkbox":
+                    vals = []
+                    for val in user[row.label].split("\n"):
+                        vals.append(val)
+                    info_fields[row.label] = " ".join(vals)
+                else:
+                    info_fields[row.label] = user[row.label]
+
+            event_fields = {}
+            if event_obj is not None:
+                if event_user is not None:
+                    event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
+                    event_fields["Ticket Type"] = event_user["Ticket Type"]
+
+                    for question in event_obj.questions.split("\n"):
+                        if event_wks_columns[question] > len(event_user):
+                            event_fields[question] = ""
+                        else:
+                            event_fields[question] = event_user[question]
+
+            subject = "I2G Membership - Receipt"
+            html = render_template("info_receipt_email.html",
+                                   event_url=event_url,
+                                   update_url=update_url,
+                                   first=user["First Name"], 
+                                   last=user["Last Name"],
+                                   primary_verified=primary_verified,
+                                   secondary_verified=secondary_verified,
+                                   primary_subscribed=primary_subscribed,
+                                   secondary_subscribed=secondary_subscribed,
+                                   info_fields=info_fields, 
+                                   event_fields=event_fields, 
+                                   event_name=event_obj.name if event_obj is not None else None)
+            send_email(email, subject, html)
+            
+            return render_template("thanks_confirming.html", 
+                                   event_url=event_url,
+                                   update_url=update_url,
+                                   first=user["First Name"],
+                                   last=user["Last Name"],
+                                   primary_verified=primary_verified,
+                                   secondary_verified=secondary_verified,
+                                   primary_subscribed=primary_subscribed,
+                                   secondary_subscribed=secondary_subscribed,
+                                   info_fields=info_fields,
+                                   event_name=event_obj.name if event_obj is not None else None,
+                                   event_fields=event_fields
+                                )
 
 
 @registration_blueprint.route("/res<token>p")
@@ -448,12 +520,15 @@ def info(token):
     event_cells = []
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
+    event_url = None
     update_url = url_for("update.update_info", token=token, _external=True)
 
     if event_obj is not None:
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
+        event_url = url_for("events.event_register", event_name = event_obj.name, token=token, _external=True)
+
 
     if email:
 
@@ -483,7 +558,24 @@ def info(token):
         setattr(InformationForm, row.label, get_field(row))
 
     if event_obj is not None:
-        setattr(InformationForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
+        async def query_event_prim_col():
+            return [row for row in event_wks_records if row["Membership Primary"] == email]
+
+        async def query_event_sec_col():
+            return [row for row in event_wks_records if row["Membership Secondary"] == email]
+
+        async def main():
+            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
+
+        event_user = asyncio.run(main())
+        event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
+
+        if event_user is not None:
+            register_event_label = "Update " + event_obj.name + " registration?"
+        else:
+            register_event_label = "Also register for " + event_obj.name + "?"
+
+        setattr(InformationForm, "register_event", BooleanField(register_event_label))
         setattr(
             InformationForm, "event_zoom_or_not",
             RadioField("Zoom or In-Person?",
@@ -497,18 +589,6 @@ def info(token):
 
         for question in event_obj.questions.split("\n"):
             setattr(InformationForm, "event_" + question, StringField(question))
-
-        async def query_event_prim_col():
-            return [row for row in event_wks_records if row["Membership Primary"] == email]
-
-        async def query_event_sec_col():
-            return [row for row in event_wks_records if row["Membership Secondary"] == email]
-
-        async def main():
-            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
-
-        event_user = asyncio.run(main())
-        event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
 
         if event_user is not None:
             person["register_event"] = True
@@ -552,7 +632,24 @@ def info(token):
                 event_fields["Ticket Type"] = form.event_tickets.data
 
                 for question in event_obj.questions.split("\n"):
-                    event_fields[question] = form["event_" + question].data
+                    if event_user is not None:
+                        if event_wks_columns[question] > len(event_user):
+                            event_fields[question] = ""
+                        else:
+                            event_fields[question] = form["event_" + question].data
+                    else:
+                        event_fields[question] = form["event_" + question].data
+                
+            else:
+                if event_user is not None:
+                    event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
+                    event_fields["Ticket Type"] = event_user["Ticket Type"]
+
+                    for question in event_obj.questions.split("\n"):
+                        if event_wks_columns[question] > len(event_user):
+                            event_fields[question] = ""
+                        else:
+                            event_fields[question] = event_user[question]
 
 
         @copy_current_request_context
@@ -616,6 +713,7 @@ def info(token):
 
             subject = "I2G Membership - Receipt"
             html = render_template("info_receipt_email.html", 
+                                   event_url=event_url,
                                    update_url=update_url,
                                    first=user["First Name"],
                                    last=user["Last Name"],
@@ -635,6 +733,7 @@ def info(token):
         thread.start()
 
         return render_template("receipt.html",
+                               event_url=event_url,
                                update_url=update_url,
                                first=user["First Name"],
                                last=user["Last Name"],
@@ -737,6 +836,16 @@ def complete_registration(token):
     form.confirm_primary.render_kw = {"readonly": True}
 
     if request.method == "POST" and form.validate_on_submit():
+        def log_registration():
+            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+            row = [
+                order, "/complete-registration/<token>", str(datetime.now().replace(second=0, microsecond=0)), "First Name: " + form.first_name.data,
+                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
+            ]
+            logs.append_row(row)
+
+        Thread(target=log_registration).start()
+
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)
 

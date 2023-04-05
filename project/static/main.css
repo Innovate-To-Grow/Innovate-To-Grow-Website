@@ -14,14 +14,16 @@ form {
 /* Add this rule to the existing CSS */
 #register_event_wrapper .form-group {
   display: flex;
-  margin-left: 30px;
-  align-items: center;
+  align-items: left;
 }
 
 #register_event_wrapper label {
-  margin-right: -240px;
+  margin-right: 10px;
 }
 
+#register_event {
+  margin-top: 1px;
+}
 
 #primary_email_wrapper,
 #secondary_email_wrapper {  
@@ -38,7 +40,7 @@ form {
 .primary_subscribe_wrapper label,
 .secondary_subscribe_wrapper label {
   color: #daa900;
-  margin: -7px 0 0 0px;
+  margin: -7px 7px 0px 0px;
 }
 
 
@@ -65,7 +67,6 @@ form label {
   padding-top: 10px;
   text-align: left;
   color: #000000;
-  margin-bottom: 0px;
 }
 
 .input-field li label {

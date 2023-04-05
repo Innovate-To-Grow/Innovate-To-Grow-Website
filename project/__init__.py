@@ -1,6 +1,8 @@
 import os
 from os import path
-from flask import Flask, render_template, url_for
+from flask import Flask, render_template, url_for, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_admin import Admin
@@ -12,6 +14,12 @@ from werkzeug.security import generate_password_hash
 app = Flask(__name__)
 
 app.config.from_object(Config())
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["15 per 30 seconds"]
+)
 
 
 @app.errorhandler(404)
@@ -72,12 +80,20 @@ if "Members" not in worksheets:
     ]
     sh.worksheet("Members").append_row(row)
 
-    for row in edit_form.query.all():
-        if row.label not in sh.worksheet("Members").row_values(1):
-            sh.worksheet("Members").update_cell(1, len(sh.worksheet("Members").row_values(1)) + 1, row.label)
+    with app.app_context():
+        for row in edit_form.query.all():
+            if row.label not in sh.worksheet("Members").row_values(1):
+                sh.worksheet("Members").update_cell(1, len(sh.worksheet("Members").row_values(1)) + 1, row.label)
+
+if "Logs" not in worksheets:
+    sh.add_worksheet("Logs", 1, 100)
+    row = [
+        "Order", "Transaction", "DateTime"
+    ]
+    sh.worksheet("Logs").append_row(row)
 
 wks = sh.worksheet("Members")
-
+logs = sh.worksheet("Logs")
 
 def get_wks_records(wks):
     wks_records = wks.get_all_records()

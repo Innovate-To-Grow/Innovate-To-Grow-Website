@@ -12,4 +12,15 @@
   <br>
 </form>
 
+<script>
+  const submitBtn = document.getElementById("submit");
+  submitBtn.addEventListener("click", function() {
+    submitBtn.style.pointerEvents = "none";
+
+    setTimeout(function() {
+      submitBtn.style.pointerEvents = "auto";
+    }, 5000);
+  });
+</script>
+
 {% endblock %}

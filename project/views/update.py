@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, url_for, request, copy_current_req
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
-from project import app, sh, wks, get_wks_records, get_wks_columns
+from project import app, sh, wks, logs, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
@@ -26,6 +26,15 @@ def enter_email():
     form = EmailForm()
 
     if request.method == "POST" and form.validate():
+        def log_email():
+            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+            row = [
+                order, "/update", str(datetime.now().replace(second=0, microsecond=0)), "Email: " + form.email.data
+            ]
+            logs.append_row(row)
+
+        Thread(target=log_email).start()
+
         wks_records = get_wks_records(wks)
 
         email = request.form["email"].lower()
@@ -170,12 +179,14 @@ def update_info(token):
     event_cells = []
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
+    event_url = None
     update_url = url_for("update.update_info", token=token, _external=True)
 
     if event_obj is not None:
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
+        event_url = url_for("events.event_register", event_name = event_obj.name, token=token, _external=True)
 
     if email:
 
@@ -229,7 +240,9 @@ def update_info(token):
         "first_name": user["First Name"],
         "last_name": user["Last Name"],
         "primary_email": user["Primary Email"],
+        "confirm_primary": user["Primary Email"],
         "secondary_email": user["Secondary Email"],
+        "confirm_secondary": user["Secondary Email"],
         "primary_subscribe": primary_temp,
         "secondary_subscribe": secondary_temp,
     }
@@ -250,7 +263,24 @@ def update_info(token):
                 person.update([(row.label, user[row.label])])
 
     if event_obj is not None:
-        setattr(UpdateForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
+        async def query_event_prim_col():
+            return [row for row in event_wks_records if row["Membership Primary"] == email]
+
+        async def query_event_sec_col():
+            return [row for row in event_wks_records if row["Membership Secondary"] == email]
+
+        async def main():
+            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
+
+        event_user = asyncio.run(main())
+        event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
+
+        if event_user is not None:
+            register_event_label = "Update " + event_obj.name + " registration?"
+        else:
+            register_event_label = "Also register for " + event_obj.name + "?"
+
+        setattr(UpdateForm, "register_event", BooleanField(register_event_label))
         setattr(
             UpdateForm, "event_zoom_or_not",
             RadioField("Zoom or In-Person?",
@@ -264,18 +294,6 @@ def update_info(token):
 
         for question in event_obj.questions.split("\n"):
             setattr(UpdateForm, "event_" + question, StringField(question))
-
-        async def query_event_prim_col():
-            return [row for row in event_wks_records if row["Membership Primary"] == email]
-
-        async def query_event_sec_col():
-            return [row for row in event_wks_records if row["Membership Secondary"] == email]
-
-        async def main():
-            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
-
-        event_user = asyncio.run(main())
-        event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
 
         if event_user is not None:
             person["register_event"] = True
@@ -291,6 +309,16 @@ def update_info(token):
     form = UpdateForm(data=person)
 
     if request.method == "POST" and form.validate_on_submit():
+        def log_update():
+            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+            row = [
+                order, "/update/<token>", str(datetime.now().replace(second=0, microsecond=0)), "First Name: " + form.first_name.data,
+                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
+            ]
+            logs.append_row(row)
+
+        Thread(target=log_update).start()
+
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)
 
@@ -456,6 +484,49 @@ def update_info(token):
             return render_template("error4.html")
 
         else:
+            swap = False
+
+            primary_verified = user["Primary Verified"]
+            if form.primary_subscribe.data:
+                primary_subscribed = "TRUE"
+            else:
+                primary_subscribed = "FALSE"
+
+            secondary_verified = user["Secondary Verified"]
+            if form.secondary_subscribe.data:
+                secondary_subscribed = "TRUE"
+            else:
+                secondary_subscribed = "FALSE"
+
+            if (user["Primary Email"] == sec_email and user["Secondary Email"] == prim_email):
+                swap = True
+                primary_verified = user["Secondary Verified"]
+                primary_subscribed = user["Secondary Subscribed"]
+                secondary_verified = user["Primary Verified"]
+                secondary_subscribed = user["Primary Subscribed"]
+
+            elif user["Primary Email"] == sec_email:
+                swap = True
+                primary_verified = "FALSE"
+                primary_subscribed = "FALSE"
+                secondary_verified = user["Primary Verified"]
+                secondary_subscribed = user["Primary Subscribed"]
+
+            elif user["Secondary Email"] == prim_email:
+                swap = True
+                primary_verified = user["Secondary Verified"]
+                primary_subscribed = user["Secondary Subscribed"]
+                secondary_verified = "FALSE"
+                secondary_subscribed = "FALSE"
+
+            if user["Primary Email"] != prim_email and not swap:
+                primary_verified = "FALSE"
+                primary_subscribed = "FALSE"
+
+            if user["Secondary Email"] != sec_email and not swap:
+                secondary_verified = "FALSE"
+                secondary_subscribed = "FALSE"
+
             info_fields = {}
             for row in edit_form.query.all():
                 if row.field_type == "Checkbox":
@@ -477,7 +548,24 @@ def update_info(token):
                     event_fields["Ticket Type"] = form.event_tickets.data
 
                     for question in event_obj.questions.split("\n"):
-                        event_fields[question] = form["event_" + question].data
+                        if event_user is not None:
+                            if event_wks_columns[question] > len(event_user):
+                                event_fields[question] = ""
+                            else:
+                                event_fields[question] = form["event_" + question].data
+                        else:
+                            event_fields[question] = form["event_" + question].data
+                    
+                else:
+                    if event_user is not None:
+                        event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
+                        event_fields["Ticket Type"] = event_user["Ticket Type"]
+
+                        for question in event_obj.questions.split("\n"):
+                            if event_wks_columns[question] > len(event_user):
+                                event_fields[question] = ""
+                            else:
+                                event_fields[question] = event_user[question]
 
             @copy_current_request_context
             def can_update(user):
@@ -774,9 +862,12 @@ def update_info(token):
                 if len(event_cells) > 0:
                     event_wks.update_cells(event_cells)
 
+                wks_records = wks.get_all_records()
+                user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
 
                 subject = "I2G Membership - Receipt"
-                html = render_template("info_receipt_email.html", 
+                html = render_template("info_receipt_email.html",
+                                    event_url = event_url, 
                                     update_url=update_url,
                                     first=user["First Name"],
                                     last=user["Last Name"],
@@ -790,21 +881,23 @@ def update_info(token):
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)
                                         
-                send_email(email, subject, html)
+                send_email(form.primary_email.data, subject, html)
+                send_email(form.secondary_email.data, subject, html)
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()
           
             return render_template("thanks_update.html",
+                                    event_url = event_url,
                                     update_url=update_url,
                                     first=user["First Name"],
                                     last=user["Last Name"],
-                                    primary_email=user["Primary Email"],
-                                    primary_verified=user["Primary Verified"],
-                                    primary_subscribed=user["Primary Subscribed"],
-                                    secondary_email=user["Secondary Email"],
-                                    secondary_verified=user["Secondary Verified"],
-                                    secondary_subscribed=user["Secondary Subscribed"],
+                                    primary_email=form.primary_email.data,
+                                    primary_verified=primary_verified,
+                                    primary_subscribed=primary_subscribed,
+                                    secondary_email=form.secondary_email.data,
+                                    secondary_verified=secondary_verified,
+                                    secondary_subscribed=secondary_subscribed,
                                     info_fields=info_fields,
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)

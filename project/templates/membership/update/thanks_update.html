@@ -1,14 +1,6 @@
 {% extends "membership/layout.html" %}
 
 {% block content %}
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
-<!-- <style>
-    .w3-theme-UCBlue {
-    color:#fff !important;background-color:#002856 !important}
-    .w3-theme-UCGold {
-    color:#fff !important;background-color:#DAA900 !important}
-</style>  -->
 
 <br>
 <h1>I2G Membership - Receipt</h1>
@@ -22,15 +14,10 @@
 
 <h2>Membership Information:</h2>
 <div>
-    <p> Primary Email : {{ primary_email }} </p>
-    <p> Verified: {{ primary_verified }} </p>
-    <p> Subscribed: {{ primary_subscribed }} </p>
+    <p> Primary Email: {{ primary_email }} {% if primary_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} {% if primary_subscribed == "TRUE" %}(Subscribed){% else %}(Unsubscribed){% endif %}</p>
 </div>
-<br>
 <div>
-    <p> Secondary Email : {{ secondary_email }} </p>
-    <p> Verified: {{ secondary_verified }} </p>
-    <p> Subscribed: {{ secondary_subscribed }} </p>
+    <p> Secondary Email: {{ secondary_email }} {% if secondary_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} {% if secondary_subscribed == "TRUE" %}(Subscribed){% else %}(Unsubscribed){% endif %}</p>
 </div>
 <br>
 <br>
@@ -46,10 +33,15 @@
 <br>
 <h3>Event Information:</h3>
 <p><strong>{{ event_name }}</strong></p>
-{% endif %}
 <div>
     {% for key, value in event_fields.items() %}
         <p>{{ key }}: {{ value }}</p>
     {% endfor %}
 </div>
+
+{% elif not event_fields and event_url is not none %}
+<br>
+<h3>Event Registration:</h3>
+<p>Not Registered - Click <a href = "{{ event_url }}">here</a> to register for {{ event_name }}</p>
+{% endif %}
 {% endblock %}

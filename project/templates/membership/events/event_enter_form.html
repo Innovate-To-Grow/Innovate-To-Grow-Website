@@ -2,8 +2,6 @@
 {% import "membership/render_helper.html" as forms %}
 
 {% block content %}
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 
 <div>
   <h2 >Please enter your email to register for the event</h2>
@@ -19,5 +17,16 @@
 </div>
   
 </form>
+
+<script>
+  const submitBtn = document.getElementById("submit");
+  submitBtn.addEventListener("click", function() {
+    submitBtn.style.pointerEvents = "none";
+
+    setTimeout(function() {
+      submitBtn.style.pointerEvents = "auto";
+    }, 5000);
+  });
+</script>
 
 {% endblock %}

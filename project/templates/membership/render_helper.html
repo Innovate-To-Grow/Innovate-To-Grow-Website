@@ -33,12 +33,12 @@
               </div>
               {% if field.name == 'primary_email' and 'primary_subscribe' in form %}
                 <div class="primary_subscribe_wrapper">
-                  {{ form.primary_subscribe(class="input-field") }} {{ form.primary_subscribe.label }}
+                  {{ form.primary_subscribe.label }} {{ form.primary_subscribe(class="input-field") }} 
                 </div>
               {% endif %}
               {% if field.name == 'secondary_email' and 'secondary_subscribe' in form %}
                 <div class="secondary_subscribe_wrapper">
-                  {{ form.secondary_subscribe(class="input-field") }} {{ form.secondary_subscribe.label }}
+                  {{ form.secondary_subscribe.label }} {{ form.secondary_subscribe(class="input-field") }} 
                 </div>
               {% endif %}
             </div>
