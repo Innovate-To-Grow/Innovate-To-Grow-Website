@@ -2,11 +2,19 @@
 
 {% block content %}
 
+<style>
+    h1, h2, h3, p {
+        text-align: left;
+        margin-left: 15%;
+    }
+</style>
+
 <br>
-<h1>I2G Membership - Receipt</h1>
-<p>Hello {{ first }} {{ last }},</p>
-<p>Thank you for updating your information. Verification links have been sent to newly registered emails. (Please check the spam folders too.).</p>
-<p>Below is a summary of your membership information. If you have any questions, please contact us <a
+<h1>I2G Membership Updated</h1>
+<p>Dear {{ first }} {{ last }},</p>
+<br>
+<p>Thank you for being a member of Innovate to Grow. Verification links have been sent to newly registered emails. (Please check the spam folders too.).</p>
+<p>You have updated your I2G membership with the following information. If you have any questions, please contact us <a
         href="mailto:i2g@ucmerced.edu">here.</a></p>
 <p>Update your membership anytime <a href="{{ update_url }}">here.</a></p>
 <br>

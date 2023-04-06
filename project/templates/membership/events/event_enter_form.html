@@ -3,29 +3,34 @@
 
 {% block content %}
 
-<div>
-  <h2 >Please enter your email to register for the event</h2>
+<br>
+<div class="text-prompt">
+  <h3>Enter your email address: you will receive a verification link to continue with the event registration and update,
+    or signup for your I2G Membership</h3>
 </div>
+<br>
 <form action="{{ url_for('events.enter_email', event_name=event.name.replace(' ', '-')) }}" method=post>
   {{ form.hidden_tag() }}
+
   <div class="input-row">
     {{ forms.render(form) }}
   </div>
-<div class="submit-container">
-  {{ form.submit }}
+
+  <div class="submit-container">
+    {{ form.submit }}
+  </div>
   <br>
-</div>
-  
+
 </form>
 
 <script>
   const submitBtn = document.getElementById("submit");
-  submitBtn.addEventListener("click", function() {
+  submitBtn.addEventListener("click", function () {
     submitBtn.style.pointerEvents = "none";
 
-    setTimeout(function() {
+    setTimeout(function () {
       submitBtn.style.pointerEvents = "auto";
-    }, 5000);
+    }, 3000);
   });
 </script>
 

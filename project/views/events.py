@@ -72,7 +72,7 @@ def enter_email(event_name):
             html = render_template("complete_email.html", url=url)
             send_email(email, subject, html)
 
-            return render_template("event_instructions_sent.html")
+            return render_template("instructions_sent.html")
         
 
         @copy_current_request_context
@@ -173,7 +173,7 @@ def enter_email(event_name):
 
         Thread(target=send_instructions).start()
 
-        return render_template("event_instructions_sent.html", event=event_obj)
+        return render_template("instructions_sent.html", event=event_obj)
 
     return render_template("event_enter_form.html", form=form)
 
@@ -286,29 +286,22 @@ def event_register(event_name, token):
         event_user = asyncio.run(main())
         event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
 
-        if event_user is not None:
-            register_event_label = "Update " + event_obj.name + " registration?"
-        else:
-            register_event_label = "Also register for " + event_obj.name + "?"
-
-        setattr(UpdateForm, "register_event", BooleanField(register_event_label, default=True))
         setattr(
             UpdateForm, "event_zoom_or_not",
-            RadioField("Zoom or In-Person?",
+            RadioField("Will you attend on Zoom or In-Person?",
                        choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
-                       validators=[Optional()]))
+                       validators=[InputRequired(" ")]))
         setattr(
             UpdateForm, "event_tickets",
             RadioField("Ticket Type",
                        choices=[(ticket, ticket) for ticket in event_obj.tickets.split("\n")],
-                       validators=[Optional()]))
+                       validators=[InputRequired(" ")]))
 
         for question in event_obj.questions.split("\n"):
-            setattr(UpdateForm, "event_" + question, StringField(question))
+            setattr(UpdateForm, "event_" + question, StringField(question, validators=[InputRequired(" ")]))
 
         if event_user is not None:
-            person["register_event"] = True
-            person["event_zoom_or_not"] = event_user["Zoom or In-Person?"]
+            person["event_zoom_or_not"] = event_user["Will you attend on Zoom or In-Person?"]
             person["event_tickets"] = event_user["Ticket Type"]
 
             for question in event_obj.questions.split("\n"):
@@ -318,6 +311,7 @@ def event_register(event_name, token):
                     person["event_" + question] = event_user[question]
 
     form = UpdateForm(data=person)
+
 
     if request.method == "POST" and form.validate_on_submit():
         def log_update():
@@ -554,30 +548,18 @@ def event_register(event_name, token):
 
             event_fields = {}
             if event_obj is not None:
-                if form.register_event.data:
-                    event_fields["Zoom or In-Person?"] = form.event_zoom_or_not.data
-                    event_fields["Ticket Type"] = form.event_tickets.data
+                event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
+                event_fields["Ticket Type"] = form.event_tickets.data
 
-                    for question in event_obj.questions.split("\n"):
-                        if event_user is not None:
-                            if event_wks_columns[question] > len(event_user):
-                                event_fields[question] = ""
-                            else:
-                                event_fields[question] = form["event_" + question].data
+                for question in event_obj.questions.split("\n"):
+                    if event_user is not None:
+                        if event_wks_columns[question] > len(event_user):
+                            event_fields[question] = ""
                         else:
                             event_fields[question] = form["event_" + question].data
+                    else:
+                        event_fields[question] = form["event_" + question].data
                     
-                else:
-                    if event_user is not None:
-                        event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
-                        event_fields["Ticket Type"] = event_user["Ticket Type"]
-
-                        for question in event_obj.questions.split("\n"):
-                            if event_wks_columns[question] > len(event_user):
-                                event_fields[question] = ""
-                            else:
-                                event_fields[question] = event_user[question]
-
             @copy_current_request_context
             def can_update(user):
                 swap = False
@@ -834,38 +816,37 @@ def event_register(event_name, token):
                 cells.append(Cell(row_find, wks_columns["Info Completed"], "TRUE"))
 
                 if event_obj is not None:
-                    if form.register_event.data:
-                        if event_user is not None:
+                    if event_user is not None:
+                        event_cells.append(
+                            Cell(event_user["Row"], event_wks_columns["Last Updated"],
+                                    str(datetime.now().replace(second=0, microsecond=0))))
+                        event_cells.append(
+                            Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
+                        event_cells.append(
+                            Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
+
+                        for question in event_obj.questions.split("\n"):
                             event_cells.append(
-                                Cell(event_user["Row"], event_wks_columns["Last Updated"],
-                                     str(datetime.now().replace(second=0, microsecond=0))))
-                            event_cells.append(
-                                Cell(event_user["Row"], event_wks_columns["Zoom or In-Person?"], form.event_zoom_or_not.data))
-                            event_cells.append(
-                                Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
+                                Cell(event_user["Row"], event_wks_columns[question], form["event_" + question].data))
 
-                            for question in event_obj.questions.split("\n"):
-                                event_cells.append(
-                                    Cell(event_user["Row"], event_wks_columns[question], form["event_" + question].data))
+                    else:
+                        row = ["" for i in range(len(event_wks.row_values(1)))]
 
-                        else:
-                            row = ["" for i in range(len(event_wks.row_values(1)))]
+                        row[event_wks_columns["Order"] - 1] = int(
+                            event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
+                        row[event_wks_columns["First Name"] - 1] = user["First Name"]
+                        row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
+                        row[event_wks_columns["When Started"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
+                        row[event_wks_columns["Last Updated"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
+                        row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
+                        row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
+                        row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
+                        row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
-                            row[event_wks_columns["Order"] - 1] = int(
-                                event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
-                            row[event_wks_columns["First Name"] - 1] = user["First Name"]
-                            row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
-                            row[event_wks_columns["When Started"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
-                            row[event_wks_columns["Last Updated"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
-                            row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
-                            row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
-                            row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                            row[event_wks_columns["Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+                        for question in event_obj.questions.split("\n"):
+                            row[event_wks_columns[question] - 1] = form["event_" + question].data
 
-                            for question in event_obj.questions.split("\n"):
-                                row[event_wks_columns[question] - 1] = form["event_" + question].data
-
-                            event_wks.append_row(row)
+                        event_wks.append_row(row)
 
                 if len(cells) > 0:
                     wks.update_cells(cells)
@@ -876,8 +857,8 @@ def event_register(event_name, token):
                 wks_records = wks.get_all_records()
                 user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
 
-                subject = "I2G Membership - Receipt"
-                html = render_template("info_receipt_email.html",
+                subject = event_obj.name + " Registration Completed"
+                html = render_template("event_receipt_email.html",
                                     event_url=event_url, 
                                     update_url=update_url,
                                     first=user["First Name"],
@@ -891,9 +872,11 @@ def event_register(event_name, token):
                                     info_fields=info_fields,
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)
-                                        
-                send_email(form.primary_email.data, subject, html)
-                send_email(form.secondary_email.data, subject, html)
+
+                if user["Primary Verified"] == "TRUE":
+                    send_email(user["Primary Email"], subject, html)
+                if user["Secondary Verified"] == "TRUE":
+                    send_email(form.secondary_email.data, subject, html)
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()

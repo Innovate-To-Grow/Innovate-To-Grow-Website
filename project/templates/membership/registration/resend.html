@@ -2,17 +2,11 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
-<style>
-    .w3-theme-UCBlue {
-    color:#fff !important;background-color:#002856 !important}
-    .w3-theme-UCGold {
-    color:#fff !important;background-color:#DAA900 !important}
-</style> 
 
 <br>
 <br>
+<div class="text-prompt">
 <p style="font-size:120%;">The confirmation link is invalid or has expired. 
-        <a style="font-size:120%; color:#0091b3; text-decoration: underline;" href="{{ url_for('registration.resend', token=token) }}">Click here to resend</a>.</p>
+        <a style="font-size:120%; color:#0091b3; text-decoration: underline;" href="{{ url_for('registration.resend', token=token) }}">Resend Link!</a></p>
 </div>
 {% endblock %}

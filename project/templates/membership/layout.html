@@ -20,22 +20,10 @@
   <body style="background-color: #ffffff;">
     <!-- NAVBAR -->
     {{ nav() }}
-    <!-- <p><br><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></p>
-    <p>
-    <nav>
-      <a href="{{ url_for('registration.register') }}">Signup</a>
-      <a href="{{ url_for('update.enter_email') }}">Update</a>
-      {% if event is not none %}
-        <a href="{{ url_for('events.enter_email', event_name=event.name) }}"> {{event.name}} </a>
-      {% endif %}
-      <div id="indicator"></div>
-    </nav>
-    </p>
-    <br><br> -->
-    <!-- <div class="container" style="background-color: lightgrey;"> -->
+    
     {% block content %}
     {% endblock %}
-    <!-- </div> -->
+
   </body>
 </center>
 {{ footer() }}

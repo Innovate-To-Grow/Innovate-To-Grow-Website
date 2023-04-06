@@ -21,4 +21,4 @@ def send_email(recipient, subject, template):
             'Data': subject,
         },
     },
-    Source="Innovate to Grow - UC Merced <i2g@g.ucmerced.edu>",)
+    Source="Innovate to Grow - University of California Merced <i2g@g.ucmerced.edu>",)

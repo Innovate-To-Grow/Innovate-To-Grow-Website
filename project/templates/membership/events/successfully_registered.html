@@ -1,8 +1,18 @@
 {% extends "membership/layout.html" %}
 
 {% block content %}
-<h1>I2G Membership - Receipt</h1>
-<p>Hello {{ first }} {{ last }},</p>
+
+<style>
+    h1, h2, h3, p {
+        text-align: left;
+        margin-left: 15%;
+    }
+</style>
+
+<br>
+<h1> {{ event_name }} Registration Completed </h1>
+<p>Dear {{ first }} {{ last }},</p>
+<br>
 <p>You have successfully registered for {{ event.name }} </p>
 <p>Below is a summary of your membership information. If you have any questions, please contact us <a href="mailto:i2g@ucmerced.edu">here.</a></p>
 <p>Update your membership anytime <a href="{{ update_url }}">here.</a></p>

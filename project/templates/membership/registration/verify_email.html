@@ -1,19 +1,32 @@
-<p style="font-family: Kievit Regular;">Dear {{ first }} {{ last }},</p>
+<style>
+    p { 
+        margin: 5px;
+    }
 
-<p style="font-family: Kievit Regular;">
-    Please click on "Confirm Email" to verify ownership for the registration of this email for your I2G membership.</p>
+    br {
+        margin-top: 10px;
+    }
+</style>
+
+<p> Dear {{ first }} {{ last }},</p>
+
+<br>
+
+<p> Please click on "Confirm Email" to verify ownership for the registration of this email for your I2G membership.</p>
 <p> <a href="{{ confirm_url }}">Confirm Email</a></p>
 
-<p style="font-family: Kievit Regular;">
-    Please notice that this is a "double email" membership and registration system, and you shall receive a verification
-    message to the other email as well.</p>
+<br>
 
-<p style="font-family: Kievit Regular;">
-    Attention: this link is only valid for 5 minutes.</p>
+<p> Please notice: </p>
+<p> - this link is only valid for 5 minutes </p>
+<p> - if the link has expired, you will be prompted to request a new confirmation link </p>
+<p> - if you did not initiate this action, please ignore this email </p>
+<p> - this is a "double email" membership system, and you shall receive a verification message to the other email as well </p>
+<p> - if you do not verify either email address within 5 minutes it will not be associated to your membership, and it may be open for other registrations </p>
 
-<p style="font-family: Kievit Regular;">
-    If the link has expired, you may request a new confirmation link.
-    If you did not initiate this action, please ignore this email.
 
-<p style="font-family:Kievit Bold Italic;">
-    Thank you, the I2G Team @ University of California, Merced</p>
+<br>
+
+<p> Thank you, the I2G Team - <a href="i2g.ucmerced.edu">i2g.ucmerced.edu</a> - <a href="mailto:i2g@ucmerced.edu">i2g@ucmerced.edu</a> </p>
+<p> School of Engineering, University of California, Merced </p>
+<p> 5200 North Lake Road, Merced, California 95343 US </p>

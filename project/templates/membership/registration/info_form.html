@@ -3,24 +3,23 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 
-<style>
-    .w3-theme-UCBlue {
-        color: #fff !important;
-        background-color: #002856 !important
-    }
-
-    .w3-theme-UCGold {
-        color: #fff !important;
-        background-color: #DAA900 !important
-    }
-</style>
+<br>
+<br>
 <div class="clearfix main">
     <div class="container">
-        <div class="content">
-            <h2>Fill out your information below</h2>
+        <div class="info-content">
+            <p>You have signed up as an I2G member with the following information</p>
+            <p> First Name:       {{ user["First Name"] }}</p>
+            <p> Last Name:        {{ user["Last Name"] }}</p>
+            <p> Primary Email:    {{ user["Primary Email"] }} {% if user["Primary Verified"] == "TRUE" %}(Verified){% else %}(Unverified){% endif %}</p>
+            <p> Secondary Email:  {{ user["Secondary Email"] }} {% if user["Secondary Verified"] == "TRUE" %}(Verified){% else %}(Unverified){% endif %}</p>
+            <br>
+            <p> You may enter the additional info below: </p>
         </div>
+
+        <br>
+        <br>
         <form action="{{ url_for('registration.info', token=token) }}" method=post>
             {{ form.hidden_tag() }}
 
@@ -41,7 +40,7 @@
 
         setTimeout(function() {
         submitBtn.style.pointerEvents = "auto";
-        }, 5000);
+        }, 3000);
     });
 
     const registerCheckbox = document.querySelector('#register_event');

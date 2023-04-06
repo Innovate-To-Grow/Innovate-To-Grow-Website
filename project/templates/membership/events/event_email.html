@@ -1,4 +1,30 @@
-<p>Dear {{ first }} {{ last }},</p>
+<style>
+    p { 
+        margin: 5px;
+    }
 
-<p> Here is the link to the event registration page: </p>
+    br {
+        margin-top: 10px;
+    }
+</style>
+
+<p> Dear {{ first }} {{ last }}, </p>
+
+<br>
+
+<p> This email address was prompted for {{ event.name }} registration. </p>
+<p> Please click on "{{ event.name }} Registration" </p>
 <p> <a href="{{ event_url }}">{{ event.name }} Registration</a> </p>
+
+<br>
+
+<p> Please notice: </p>
+<p> - if you did not initiate this action, please ignore this email </p>
+<p> - remember that this is a "double email" membership system, and you shall check and confirm the other email verification as well - if you have not done it already </p>
+<p> - if you do not verify either email address within 5 minutes it will not be associated to your membership, and it may be open for other registrations </p>
+
+<br>
+
+<p> Thank you, the I2G Team - <a href="i2g.ucmerced.edu">i2g.ucmerced.edu</a> - <a href="mailto:i2g@ucmerced.edu">i2g@ucmerced.edu</a> </p>
+<p> School of Engineering, University of California, Merced </p>
+<p> 5200 North Lake Road, Merced, California 95343 US </p>

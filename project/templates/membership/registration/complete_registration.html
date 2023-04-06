@@ -8,13 +8,17 @@
             <h2>Complete your registration below</h2>
         </div>
         <form action="{{ url_for('registration.complete_registration', token=token) }}" method=post>
-
             {{ form.hidden_tag() }}
 
-            {{ forms.render(form) }}
+            <div class="input-row">
+                {{ forms.render(form) }}
+            </div>
+
+            <div class="submit-container">
+                {{ form.submit }}
+            </div>
             <br>
-            {{ form.submit }}
-            <br>
+
         </form>
 
     </div>
@@ -28,7 +32,7 @@
 
         setTimeout(function() {
         submitBtn.style.pointerEvents = "auto";
-        }, 5000);
+        }, 3000);
     });
     
     const registerCheckbox = document.querySelector('#register_event');

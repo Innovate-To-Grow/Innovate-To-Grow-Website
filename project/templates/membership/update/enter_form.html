@@ -3,10 +3,11 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<br>
 <div class="clearfix main">
   <div class="container">
     <div class="content">
-      <h2>Please enter either the Primary or Secondary email address that you used to register.</h2>
+      <h2>Please enter either the Primary or Secondary email address that you used to SIGN UP</h2>
     </div>
     <form class="" action="{{ url_for('update.enter_email') }}" method=post>
       {{ form.hidden_tag() }}
@@ -31,7 +32,7 @@
 
     setTimeout(function() {
       submitBtn.style.pointerEvents = "auto";
-    }, 5000);
+    }, 3000);
   });
 </script>
 

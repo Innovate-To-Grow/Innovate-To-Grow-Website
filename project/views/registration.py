@@ -424,7 +424,7 @@ def confirm(token):
             event_fields = {}
             if event_obj is not None:
                 if event_user is not None:
-                    event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
+                    event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
                     event_fields["Ticket Type"] = event_user["Ticket Type"]
 
                     for question in event_obj.questions.split("\n"):
@@ -433,7 +433,7 @@ def confirm(token):
                         else:
                             event_fields[question] = event_user[question]
 
-            subject = "I2G Membership - Receipt"
+            subject = "I2G Membership Completed"
             html = render_template("info_receipt_email.html",
                                    event_url=event_url,
                                    update_url=update_url,
@@ -514,6 +514,7 @@ def info(token):
 
     cells = []
 
+    time.sleep(1)
     wks_records = get_wks_records(wks)
     wks_columns = get_wks_columns(wks)
 
@@ -578,7 +579,7 @@ def info(token):
         setattr(InformationForm, "register_event", BooleanField(register_event_label))
         setattr(
             InformationForm, "event_zoom_or_not",
-            RadioField("Zoom or In-Person?",
+            RadioField("Will you attend on Zoom or In-Person?",
                        choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
                        validators=[Optional()]))
         setattr(
@@ -592,7 +593,7 @@ def info(token):
 
         if event_user is not None:
             person["register_event"] = True
-            person["event_zoom_or_not"] = event_user["Zoom or In-Person?"]
+            person["event_zoom_or_not"] = event_user["Will you attend on Zoom or In-Person?"]
             person["event_tickets"] = event_user["Ticket Type"]
 
             for question in event_obj.questions.split("\n"):
@@ -628,7 +629,7 @@ def info(token):
         event_fields = {}
         if event_obj is not None:
             if form.register_event.data:
-                event_fields["Zoom or In-Person?"] = form.event_zoom_or_not.data
+                event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
                 event_fields["Ticket Type"] = form.event_tickets.data
 
                 for question in event_obj.questions.split("\n"):
@@ -642,7 +643,7 @@ def info(token):
                 
             else:
                 if event_user is not None:
-                    event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
+                    event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
                     event_fields["Ticket Type"] = event_user["Ticket Type"]
 
                     for question in event_obj.questions.split("\n"):
@@ -679,7 +680,7 @@ def info(token):
                             Cell(event_user["Row"], event_wks_columns["Last Updated"],
                                  str(datetime.now().replace(second=0, microsecond=0))))
                         event_cells.append(
-                            Cell(event_user["Row"], event_wks_columns["Zoom or In-Person?"], form.event_zoom_or_not.data))
+                            Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
                         event_cells.append(Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
 
                         for question in event_obj.questions.split("\n"):
@@ -698,7 +699,7 @@ def info(token):
                         row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
                         row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
                         row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                        row[event_wks_columns["Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+                        row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
                         for question in event_obj.questions.split("\n"):
                             row[event_wks_columns[question] - 1] = form["event_" + question].data
@@ -711,7 +712,7 @@ def info(token):
             if len(event_cells) > 0:
                 event_wks.update_cells(event_cells)
 
-            subject = "I2G Membership - Receipt"
+            subject = "I2G Membership Completed"
             html = render_template("info_receipt_email.html", 
                                    event_url=event_url,
                                    update_url=update_url,
@@ -748,7 +749,7 @@ def info(token):
                                event_fields=event_fields)
 
     else:
-        return render_template("info_form.html", form=form, token=token)
+        return render_template("info_form.html", form=form, token=token, user=user)
 
 
 @registration_blueprint.route("/complete-registration/<token>", methods=["GET", "POST"])
@@ -820,7 +821,7 @@ def complete_registration(token):
         setattr(CompleteRegistrationForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
         setattr(
             CompleteRegistrationForm, "event_zoom_or_not",
-            RadioField("Zoom or In-Person?",
+            RadioField("Will you attend on Zoom or In-Person?",
                        choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
                        validators=[Optional()]))
         setattr(
@@ -973,7 +974,7 @@ def complete_registration(token):
             event_fields = {}
             if event_obj is not None:
                 if form.register_event.data:
-                    event_fields["Zoom or In-Person?"] = form.event_zoom_or_not.data
+                    event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
                     event_fields["Ticket Type"] = form.event_tickets.data
 
                     for question in event_obj.questions.split("\n"):
@@ -1051,7 +1052,7 @@ def complete_registration(token):
                         event_row[event_wks_columns["Membership Primary"] - 1] = prim_email
                         event_row[event_wks_columns["Membership Secondary"] - 1] = sec_email
                         event_row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                        event_row[event_wks_columns["Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+                        event_row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
                         for question in event_obj.questions.split("\n"):
                             form_key = "event_" + question
@@ -1060,7 +1061,7 @@ def complete_registration(token):
                         event_wks.append_row(event_row)
 
 
-                subject = "I2G Membership - Receipt"
+                subject = "I2G Membership Completed"
                 html = render_template("info_receipt_email.html",
                                     event_url=event_url, 
                                     update_url=update_url,

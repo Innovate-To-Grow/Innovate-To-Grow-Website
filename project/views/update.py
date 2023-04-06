@@ -283,7 +283,7 @@ def update_info(token):
         setattr(UpdateForm, "register_event", BooleanField(register_event_label))
         setattr(
             UpdateForm, "event_zoom_or_not",
-            RadioField("Zoom or In-Person?",
+            RadioField("Will you attend on Zoom or In-Person?",
                        choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
                        validators=[Optional()]))
         setattr(
@@ -297,7 +297,7 @@ def update_info(token):
 
         if event_user is not None:
             person["register_event"] = True
-            person["event_zoom_or_not"] = event_user["Zoom or In-Person?"]
+            person["event_zoom_or_not"] = event_user["Will you attend on Zoom or In-Person?"]
             person["event_tickets"] = event_user["Ticket Type"]
 
             for question in event_obj.questions.split("\n"):
@@ -544,7 +544,7 @@ def update_info(token):
             event_fields = {}
             if event_obj is not None:
                 if form.register_event.data:
-                    event_fields["Zoom or In-Person?"] = form.event_zoom_or_not.data
+                    event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
                     event_fields["Ticket Type"] = form.event_tickets.data
 
                     for question in event_obj.questions.split("\n"):
@@ -558,7 +558,7 @@ def update_info(token):
                     
                 else:
                     if event_user is not None:
-                        event_fields["Zoom or In-Person?"] = event_user["Zoom or In-Person?"]
+                        event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
                         event_fields["Ticket Type"] = event_user["Ticket Type"]
 
                         for question in event_obj.questions.split("\n"):
@@ -829,7 +829,7 @@ def update_info(token):
                                 Cell(event_user["Row"], event_wks_columns["Last Updated"],
                                      str(datetime.now().replace(second=0, microsecond=0))))
                             event_cells.append(
-                                Cell(event_user["Row"], event_wks_columns["Zoom or In-Person?"], form.event_zoom_or_not.data))
+                                Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
                             event_cells.append(
                                 Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
 
@@ -849,7 +849,7 @@ def update_info(token):
                             row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
                             row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
                             row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                            row[event_wks_columns["Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+                            row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
                             for question in event_obj.questions.split("\n"):
                                 row[event_wks_columns[question] - 1] = form["event_" + question].data
@@ -865,8 +865,8 @@ def update_info(token):
                 wks_records = wks.get_all_records()
                 user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
 
-                subject = "I2G Membership - Receipt"
-                html = render_template("info_receipt_email.html",
+                subject = "I2G Membership Updated"
+                html = render_template("update_receipt_email.html",
                                     event_url=event_url, 
                                     update_url=update_url,
                                     first=user["First Name"],
@@ -881,8 +881,10 @@ def update_info(token):
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)
                                         
-                send_email(form.primary_email.data, subject, html)
-                send_email(form.secondary_email.data, subject, html)
+                if user["Primary Verified"] == "TRUE":
+                    send_email(user["Primary Email"], subject, html)
+                if user["Secondary Verified"] == "TRUE":
+                    send_email(form.secondary_email.data, subject, html)
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()
