@@ -19,7 +19,7 @@ registration_blueprint = Blueprint("registration",
                                    url_prefix=app.config["URL_PREFIX"])
 
 
-@registration_blueprint.route("/register", methods=["GET", "POST"])
+@registration_blueprint.route("/signup", methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
 
@@ -311,7 +311,7 @@ def register():
         return render_template("register_form.html", form=form)
 
 
-@registration_blueprint.route("/con<token>")
+@registration_blueprint.route("/confirm/<token>")
 def confirm(token):
     user = None
     email = confirm_token(token)
@@ -463,12 +463,12 @@ def confirm(token):
                                 )
 
 
-@registration_blueprint.route("/res<token>p")
+@registration_blueprint.route("/resend-page/<token>")
 def resend_page(token):
     return render_template("resend.html", token=token, _external=True)
 
 
-@registration_blueprint.route("/res<token>")
+@registration_blueprint.route("/resend/<token>")
 def resend(token):
     email = confirm_token_no_expiry(token)
 
@@ -508,7 +508,7 @@ def resend(token):
     return redirect(url_for("registration.resend_page", token=token, _external=True))
 
 
-@registration_blueprint.route("/info/<token>", methods=["GET", "POST"])
+@registration_blueprint.route("/info-form/<token>", methods=["GET", "POST"])
 def info(token):
     email = confirm_token_no_expiry(token)
 
@@ -752,7 +752,7 @@ def info(token):
         return render_template("info_form.html", form=form, token=token, user=user)
 
 
-@registration_blueprint.route("/complete-registration/<token>", methods=["GET", "POST"])
+@registration_blueprint.route("/full-registration/<token>", methods=["GET", "POST"])
 def complete_registration(token):
     email = confirm_token_no_expiry(token)
 

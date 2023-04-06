@@ -169,7 +169,7 @@ def enter_email():
         return render_template("enter_form.html", form=form)
 
 
-@update_blueprint.route("/enter_update/<token>", methods=["GET", "POST"])
+@update_blueprint.route("/update/<token>", methods=["GET", "POST"])
 def update_info(token):
     email = confirm_token_no_expiry(token)
 

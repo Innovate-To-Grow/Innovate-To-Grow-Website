@@ -286,6 +286,12 @@ def event_register(event_name, token):
         event_user = asyncio.run(main())
         event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
 
+        if event_user is not None:
+            register_event_label = "Update " + event_obj.name + " Registration"
+        else:
+            register_event_label = "Register for " + event_obj.name
+
+        setattr(UpdateForm, "register_event", BooleanField(register_event_label, default=True))
         setattr(
             UpdateForm, "event_zoom_or_not",
             RadioField("Will you attend on Zoom or In-Person?",
@@ -311,6 +317,7 @@ def event_register(event_name, token):
                     person["event_" + question] = event_user[question]
 
     form = UpdateForm(data=person)
+    form.register_event.render_kw = {"disabled": True}
 
 
     if request.method == "POST" and form.validate_on_submit():
