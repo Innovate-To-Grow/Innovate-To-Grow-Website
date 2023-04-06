@@ -7,14 +7,17 @@
 <div class="clearfix main">
   <div class="container">
     <div class="content">
-      <h1 class="title">Welcome to Innovate to Grow</h1>
-      <h2 class="subtitle">SIGN UP FOR MEMBERSHIP</h2>
-      <hr class="line">
+      <h1 class="title" style="text-align: center;">Welcome to Innovate to Grow</h1>
+      <h2 class="subtitle" style="text-align: center;">SIGN UP FOR MEMBERSHIP</h2>
+      <hr class="line" style="margin: auto;">
       <!-- <p>Sign up as a Member of Innovate to Grow!.</p>
       <p>We have built an innovative "double email" membership system: you can provide a secondary
         email address you own in case your first one no longer works (e.g. you change job).</p>
       <p>You can select to receive invitations and newsletters at either, both, or none of the two email addresses.</p> -->
     </div>
+
+    <br>
+
     <form action="{{ url_for('registration.register') }}" method=post>
       {{ form.hidden_tag() }}
 
