@@ -49,7 +49,7 @@
                                         </ul>
                             
                                         <div class="pull-left sb-row">
-                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="https://i2g.ucmerced.edu/membership/events/I2G%20Spring%202023" target="_blank">Register NOW</a>&nbsp;!</div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('events.event_redirect') }}" target="_blank">Register NOW</a>&nbsp;!</div>
                                             <!--			<div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/current-projects" target="_blank">Projects &amp; Teams</a></div> --></div>
                                     </div>
                             
@@ -57,7 +57,7 @@
                                         <h4>Preparing for the Event</h4>
                             
                                         <ul>
-                                            <li><strong><a href="https://i2g.ucmerced.edu/membership/events/I2G%20Spring%202023" target="_blank">Register ASAP</a></strong>&nbsp; to attend <strong>in person</strong> or <strong>on zoom</strong>!</li>
+                                            <li><strong><a href="{{ url_for('events.event_redirect') }}" target="_blank">Register ASAP</a></strong>&nbsp; to attend <strong>in person</strong> or <strong>on zoom</strong>!</li>
                                             <li>To attend on Zoom, ensure&nbsp;<strong>your account</strong> displays your <strong>Full Name</strong>.</li>
                                             <li>Review schedule,&nbsp;projects, and teams (below):&nbsp;check for updates!</li>
                                             <li>You may <strong>click on a team</strong> (e.g. CSE-314) to open that <strong>team info</strong>.</li>
@@ -65,9 +65,9 @@
                                         </ul>
                             
                                         <div class="pull-left sb-row">
-                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="https://i2g.ucmerced.edu/attendees">For Attendees</a></div>
+                                            <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('home.attendees') }}">For Attendees</a></div>
                             
-                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="https://i2g.ucmerced.edu/judges">For Judges</a></div>
+                                            <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('home.judges') }}">For Judges</a></div>
                                             <!--	<div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/current-projects">Projects &amp; Teams</a></div>   --></div>
                                     </div>
                                 </div>
@@ -95,8 +95,8 @@
                                         <ul>
                                             <li>You may <strong>only</strong>&nbsp;view the&nbsp;<strong>Presentations</strong>, not the Expo and Awards.</li>
                                             <li><strong>Each Track</strong> is held in a <strong>separate Zoom Room</strong>.</li>
-                                            <li>Plan to click the <a href="https://i2g.ucmerced.edu/">I2G Home Page</a> <strong> by 1:50&nbsp;</strong>to find and join a track!</li>
-                                            <li>Access to <strong>Zoom rooms </strong> will appear in the Schedule below and in the <a href="https://i2g.ucmerced.edu/">I2G Home Page</a><strong>&nbsp;</strong>on the event day<strong>&nbsp;after&nbsp;1:50!</strong></li>
+                                            <li>Plan to click the <a href="{{ url_for('home.mainpage') }}">I2G Home Page</a> <strong> by 1:50&nbsp;</strong>to find and join a track!</li>
+                                            <li>Access to <strong>Zoom rooms </strong> will appear in the Schedule below and in the <a href="{{ url_for('home.mainpage') }}">I2G Home Page</a><strong>&nbsp;</strong>on the event day<strong>&nbsp;after&nbsp;1:50!</strong></li>
                                             <li>Sign in <strong>your Zoom account,&nbsp;</strong>make sure your <strong>&ldquo;Display Name&rdquo;</strong> is your Full Name.</li>
                                             <li><strong>Click the button&nbsp;</strong>of the desired&nbsp;<strong>Track #&nbsp;</strong>(passcode is:&nbsp;&nbsp;I2G).</li>
                                             <li>Presentations will <strong>start promptly at 2:00</strong>!&nbsp;&nbsp;</li>
