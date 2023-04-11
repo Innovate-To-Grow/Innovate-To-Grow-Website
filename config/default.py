@@ -7,8 +7,6 @@ APP_ROOT = re.sub('config', '', APP_ROOT) + "/project"
 
 
 class Config():
-    SERVER_NAME = "i2g.ucmerced.edu"
-
     SECRET_KEY = "\xa6NF\x17\x8b\xc7a\xcc\x80`\xef\x90\x13M\xcc\xe5\xa8\x05\xed\x07\n\xa5oN"
     SECURITY_PASSWORD_SALT = "\xb6\x04\x91\xf8\xcf\x02CKT\xc6G\xef\x9fq\xe0\xff\xbfu\xd4\x10q\x07\x8a"
 
@@ -20,7 +18,6 @@ class Config():
 
     MAIL_USERNAME = "i2g@g.ucmerced.edu"
     MAIL_PASSWORD = "iekmvhditchuxnik"
-    MAIL_ALIAS = "Innovate to Grow - UC Merced"
 
     URL_PREFIX = "/membership"
 
@@ -28,6 +25,7 @@ class Config():
     UPDATE_SUBJECT = "I2G membership - Link to Update Your Information"
     REMOVE_SUBJECT = "I2G Membership - Unverified Email Removed"
 
-    TOKEN_EXPIRATION = 300
+    VERIFY_TOKEN_EXPIRATION = 300
+    EVENT_TOKEN_EXPIRATION = 259200
+    
     VERIF_EXPIRATION = 300
-    BOUNCE_DETECTION_INTERVAL = 90

@@ -10,7 +10,7 @@ from project import app, sh, wks, logs, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
-from project.utils.token import generate_token, confirm_token_no_expiry
+from project.utils.token import generate_token, confirm_token
 from project.forms.registration_forms import NotEqualTo
 from project.forms.update_forms import EmailForm
 
@@ -171,7 +171,7 @@ def enter_email():
 
 @update_blueprint.route("/update/<token>", methods=["GET", "POST"])
 def update_info(token):
-    email = confirm_token_no_expiry(token)
+    email = confirm_token(token, None)
 
     wks_records = get_wks_records(wks)
     wks_columns = get_wks_columns(wks)
@@ -884,7 +884,7 @@ def update_info(token):
                 if user["Primary Verified"] == "TRUE":
                     send_email(user["Primary Email"], subject, html)
                 if user["Secondary Verified"] == "TRUE":
-                    send_email(form.secondary_email.data, subject, html)
+                    send_email(user["Secondary Email"], subject, html)
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()

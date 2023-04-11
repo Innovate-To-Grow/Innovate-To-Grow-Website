@@ -10,7 +10,7 @@ from project import app, sh, wks, logs, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
-from project.utils.token import generate_token, confirm_token, confirm_token_no_expiry
+from project.utils.token import generate_token, confirm_token
 from project.forms.registration_forms import NotEqualTo, RegistrationForm
 
 registration_blueprint = Blueprint("registration",
@@ -314,7 +314,7 @@ def register():
 @registration_blueprint.route("/confirm/<token>")
 def confirm(token):
     user = None
-    email = confirm_token(token)
+    email = confirm_token(token, app.config["VERIFY_TOKEN_EXPIRATION"])
 
     wks_records = get_wks_records(wks)
     wks_columns = get_wks_columns(wks)
@@ -470,7 +470,7 @@ def resend_page(token):
 
 @registration_blueprint.route("/resend/<token>")
 def resend(token):
-    email = confirm_token_no_expiry(token)
+    email = confirm_token(token, None)
 
     wks_records = get_wks_records(wks)
 
@@ -510,7 +510,7 @@ def resend(token):
 
 @registration_blueprint.route("/info-form/<token>", methods=["GET", "POST"])
 def info(token):
-    email = confirm_token_no_expiry(token)
+    email = confirm_token(token, None)
 
     cells = []
 
@@ -754,7 +754,7 @@ def info(token):
 
 @registration_blueprint.route("/full-registration/<token>", methods=["GET", "POST"])
 def complete_registration(token):
-    email = confirm_token_no_expiry(token)
+    email = confirm_token(token, None)
 
     if not email:
         return render_template("error5.html")

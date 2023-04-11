@@ -1,6 +1,6 @@
 import os
 from os import path
-from flask import Flask, render_template, url_for, request
+from flask import Flask, render_template
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
@@ -123,13 +123,14 @@ app.register_blueprint(geo_blueprint)
 
 
 # Flask Admin
-from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView
+from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView, CatchBouncesView
 
 admin_app = Admin(app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3")
 admin_app.add_view(UserModelView(user, db.session, name="Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
 admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
+admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounces"))
 
 
 # Flask Login Manager
@@ -151,74 +152,3 @@ if not path.exists(APP_ROOT + "/db/data.sqlite3"):
         u = user("Admin", "Admin", "admin@admin.com", generate_password_hash("admin"), "superadmin")
         db.session.add(u)
         db.session.commit()
-
-
-import json, time
-from threading import Thread
-from project.utils.email import send_email
-from project.utils.token import generate_token
-
-queue_name = 'BounceNotificationsQueue'
-queue_url = sqs.get_queue_url(QueueName=queue_name)['QueueUrl']
-
-def detect_bounces():
-    while True:
-        wks_records = get_wks_records(wks)
-        wks_columns = get_wks_columns(wks)
-
-        response = sqs.receive_message(
-            QueueUrl=queue_url,
-            MaxNumberOfMessages=10
-        )
-
-        if 'Messages' in response:
-            messages = response['Messages']
-            for message in messages:
-                notification = json.loads(message['Body'])
-                bounce = json.loads(notification['Message'])
-
-                email = bounce['bounce']['bouncedRecipients'][0]['emailAddress']
-                diagnostic_code = bounce['bounce']['bouncedRecipients'][0]['diagnosticCode']
-
-                for row in wks_records:
-                    subject = "I2G Membership - Bounce Notification"
-
-                    if row['Primary Email'] == email:
-                        wks.update_cell(row['Row'], wks_columns['Primary Bounced'], diagnostic_code)
-                        wks.update_cell(row['Row'], wks_columns['Primary Subscribed'], "FALSE")
-
-                        if row['Secondary Email'] != "" and row["Secondary Verified"] == "TRUE":
-                            with app.test_request_context():
-                                token = generate_token(row['Secondary Email'])
-                                update_url = url_for("update.update_info", token=token, _external=True)
-                                html = render_template("membership/bounce_email.html", 
-                                                       first=row['First Name'],
-                                                       last=row['Last Name'],
-                                                       email=row['Primary Email'],
-                                                       update_url=update_url)
-                                send_email(row['Secondary Email'], subject, html)
-                        
-                    elif row['Secondary Email'] == email:
-                        wks.update_cell(row['Row'], wks_columns['Secondary Bounced'], diagnostic_code)
-                        wks.update_cell(row['Row'], wks_columns['Secondary Subscribed'], "FALSE")
-
-                        if row['Primary Email'] != "" and row["Primary Verified"] == "TRUE":
-                            with app.test_request_context():
-                                token = generate_token(row['Primary Email'])
-                                update_url = url_for("update.update_info", token=token, _external=True)
-                                html = render_template("membership/bounce_email.html", 
-                                                    first=row['First Name'],
-                                                    last=row['Last Name'],
-                                                    email=row['Secondary Email'],
-                                                    update_url=update_url)
-                                send_email(row['Primary Email'], subject, html)
-                
-                receipt_handle = message['ReceiptHandle']
-                sqs.delete_message(
-                    QueueUrl=queue_url,
-                    ReceiptHandle=receipt_handle
-                )
-        
-        time.sleep(app.config['BOUNCE_DETECTION_INTERVAL'])
-
-Thread(target=detect_bounces, daemon=True).start()

@@ -6,7 +6,7 @@ def generate_token(email):
     return serializer.dumps(email, salt=app.config["SECURITY_PASSWORD_SALT"])
 
 
-def confirm_token(token, expiration=app.config["TOKEN_EXPIRATION"]): 
+def confirm_token(token, expiration): 
     serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
     
     try:
@@ -14,15 +14,4 @@ def confirm_token(token, expiration=app.config["TOKEN_EXPIRATION"]):
     except:
         return False
 
-    return email
-
-
-def confirm_token_no_expiry(token): 
-    serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
-    
-    try:
-        email = serializer.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'])
-    except:
-        return False
-
-    return email
+    return email.lower()

@@ -1,4 +1,5 @@
-import time
+import time, json
+from gspread.cell import Cell
 from flask import request, flash, render_template, redirect, url_for, copy_current_request_context
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose
@@ -6,11 +7,11 @@ from flask_admin.contrib.sqla import ModelView
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField, SubmitField
 from wtforms.validators import EqualTo, Email, InputRequired
-from project import db, sh, wks, get_wks_records
+from project import app, db, sh, wks, sqs, get_wks_records, get_wks_columns
 from project.models import edit_form, event, user
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field
-from project.utils.token import generate_token, confirm_token_no_expiry
+from project.utils.token import generate_token, confirm_token
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
 from project.forms.registration_forms import NotEqualTo
 from werkzeug.security import generate_password_hash
@@ -52,7 +53,7 @@ class IndexView(AdminIndexView):
     def register_admin(self, role, token):
         form = RegisterAdmin()
         role_str = "superadmin" if role == "1" else "admin"
-        email = confirm_token_no_expiry(token)
+        email = confirm_token(token, None)
         if not email:
             flash("Invalid token or link has expired")
             return redirect(url_for("admin.index"))
@@ -356,3 +357,97 @@ class ContactView(BaseView):
 
         return self.render("admin/contact.html", form=form)
     
+
+class CatchBouncesView(BaseView):
+
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for("admin.login", next=request.url))
+    
+    @expose("/", methods=["GET"])
+    def catch_bounces(self):
+        return self.render("admin/catch_bounces.html")
+    
+    @expose("/start", methods=["POST"])
+    def start(self):
+        queue_name = 'BounceNotificationsQueue'
+        queue_url = sqs.get_queue_url(QueueName=queue_name)['QueueUrl']
+
+        @copy_current_request_context
+        def detect_bounces():
+            while True:
+                wks_records = get_wks_records(wks)
+                wks_columns = get_wks_columns(wks)
+
+                response = sqs.receive_message(
+                    QueueUrl=queue_url,
+                    MaxNumberOfMessages=10
+                )
+
+                if 'Messages' in response:
+                    cells = []
+                    messages = response['Messages']
+                    
+                    for message in messages:
+                        notification = json.loads(message['Body'])
+                        bounce = json.loads(notification['Message'])
+                        email = bounce['bounce']['bouncedRecipients'][0]['emailAddress']
+
+                        try:
+                            reason = bounce['bounce']['bouncedRecipients'][0]['diagnosticCode']
+                        except (KeyError, IndexError):
+                            reason = json.dumps(bounce['bounce'])
+
+                        for row in wks_records:
+                            subject = "I2G Membership - Bounce Notification"
+
+                            if row['Primary Email'] == email:
+                                cells.append(Cell(row['Row'], wks_columns['Primary Bounced'], reason))
+                                cells.append(Cell(row['Row'], wks_columns['Primary Subscribed'], "FALSE"))
+
+                                if row['Secondary Email'] != "" and row["Secondary Verified"] == "TRUE":
+                                    token = generate_token(row['Secondary Email'])
+                                    update_url = url_for("update.update_info", token=token, _external=True)
+                                    html = render_template("admin/bounce_email.html", 
+                                                        first=row['First Name'],
+                                                        last=row['Last Name'],
+                                                        email=row['Primary Email'],
+                                                        update_url=update_url)
+                                    send_email(row['Secondary Email'], subject, html)
+                                
+                            elif row['Secondary Email'] == email:
+                                cells.append(Cell(row['Row'], wks_columns['Secondary Bounced'], reason))
+                                cells.append(Cell(row['Row'], wks_columns['Secondary Subscribed'], "FALSE"))
+
+                                if row['Primary Email'] != "" and row["Primary Verified"] == "TRUE":
+                                    token = generate_token(row['Primary Email'])
+                                    update_url = url_for("update.update_info", token=token, _external=True)
+                                    html = render_template("admin/bounce_email.html", 
+                                                        first=row['First Name'],
+                                                        last=row['Last Name'],
+                                                        email=row['Secondary Email'],
+                                                        update_url=update_url)
+                                    send_email(row['Primary Email'], subject, html)
+
+                        receipt_handle = message['ReceiptHandle']
+                        sqs.delete_message(
+                            QueueUrl=queue_url,
+                            ReceiptHandle=receipt_handle
+                        )
+
+                    if len(cells) > 0:
+                        wks.update_cells(cells)
+
+                else:
+                    break
+
+                time.sleep(5)
+
+
+        Thread(target=detect_bounces).start()
+
+        flash("Documented bounces will be added to the database and emails will be sent to the user to update their information.")
+
+        return redirect(url_for("catch_bounces.catch_bounces"))

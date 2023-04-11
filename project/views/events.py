@@ -10,7 +10,7 @@ from project import app, sh, wks, logs, get_wks_records, get_wks_columns
 from project.models import event, edit_form
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
-from project.utils.token import generate_token, confirm_token_no_expiry
+from project.utils.token import generate_token, confirm_token
 from project.forms.registration_forms import NotEqualTo
 from project.forms.update_forms import EmailForm
 
@@ -180,7 +180,8 @@ def enter_email(event_name):
 
 @events_blueprint.route("/event-registration/<event_name>/<token>", methods=["GET", "POST"])
 def event_register(event_name, token):
-    email = confirm_token_no_expiry(token)
+    user = None
+    email = confirm_token(token, app.config["EVENT_TOKEN_EXPIRATION"])
 
     wks_records = get_wks_records(wks)
     wks_columns = get_wks_columns(wks)
@@ -215,8 +216,8 @@ def event_register(event_name, token):
         if user is None:
             return render_template("error2.html")
         
-    else:
-        return render_template("error2.html")
+    if user is None:
+        return redirect(url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True))
 
     class UpdateForm(FlaskForm):
         first_name = StringField("First Name", [InputRequired(" ")])
@@ -883,7 +884,7 @@ def event_register(event_name, token):
                 if user["Primary Verified"] == "TRUE":
                     send_email(user["Primary Email"], subject, html)
                 if user["Secondary Verified"] == "TRUE":
-                    send_email(form.secondary_email.data, subject, html)
+                    send_email(user["Secondary Email"], subject, html)
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()

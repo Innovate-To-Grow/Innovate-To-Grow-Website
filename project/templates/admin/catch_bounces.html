@@ -1,0 +1,11 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+
+<h4> Click the button below to start catching bounces in the SQS queue </h4> 
+<h4> Please do not spam the button, it will take some time to catch all the bounces </h4> 
+<br>
+<form action="{{ url_for('catch_bounces.start') }}" method=post>
+    <input type="submit" name="Catch Bounces" value="Catch Bounces" class="btn btn-default">
+</form>
+
+{% endblock body%}
