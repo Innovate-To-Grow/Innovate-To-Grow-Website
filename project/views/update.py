@@ -580,7 +580,7 @@ def update_info(token):
                     row = [row for row in wks_records if row["Primary Email"] == prim_email]
                     if row:
                         row = row[0]
-                        if user["Primary Verified"] == "FALSE":
+                        if row["Primary Verified"] == "FALSE":
                             wks.update_cell(row["Row"], wks_columns["Primary Expired"], "TRUE")
 
                 def sec_expiry_timer():
@@ -590,7 +590,7 @@ def update_info(token):
                     row = [row for row in wks_records if row["Secondary Email"] == sec_email]
                     if row:
                         row = row[0]
-                        if user["Secondary Verified"] == "FALSE":
+                        if row["Secondary Verified"] == "FALSE":
                             wks.update_cell(row["Row"], wks_columns["Secondary Expired"], "TRUE")
 
                 if (user["Primary Email"] == sec_email and user["Secondary Email"] == prim_email):
