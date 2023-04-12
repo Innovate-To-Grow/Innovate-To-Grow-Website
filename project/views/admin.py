@@ -15,7 +15,7 @@ from project.utils.token import generate_token, confirm_token
 from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
 from project.forms.registration_forms import NotEqualTo
 from werkzeug.security import generate_password_hash
-from threading import Thread
+from threading import Thread, enumerate
 
 
 class IndexView(AdminIndexView):
@@ -308,7 +308,6 @@ class ContactView(BaseView):
                 def send_blast():
                     if selection == "Admin":
                         for admin in user.query.all():
-                            token = generate_token(admin.email)
                             event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
                             html = render_template("admin/event_blast.html", 
                                                 first=admin.first_name,
@@ -323,7 +322,6 @@ class ContactView(BaseView):
                             person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"]]
                             if person:
                                 person = person[0]
-                                token = generate_token(person["Primary Email"])
                                 event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
                                 html = render_template("admin/event_blast.html", 
                                                     body=body,
@@ -336,9 +334,10 @@ class ContactView(BaseView):
                                 if person["Secondary Verified"] == "TRUE":
                                     send_email(person["Secondary Email"], subject, html)
 
+                                time.sleep(1)
+
                     elif selection == "Subscribed":
                         for subscriber in wks_records:
-                            token = generate_token(subscriber["Primary Email"])
                             event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
                             html = render_template("admin/event_blast.html",
                                                 body=body,
@@ -350,6 +349,8 @@ class ContactView(BaseView):
 
                             if subscriber["Secondary Subscribed"] == "TRUE":
                                 send_email(subscriber["Secondary Email"], subject, html)
+
+                            time.sleep(1)
 
                 Thread(target=send_blast).start()
                 
@@ -368,7 +369,12 @@ class CatchBouncesView(BaseView):
     
     @expose("/", methods=["GET"])
     def catch_bounces(self):
-        return self.render("admin/catch_bounces.html")
+        if not any(thread.name == "Bounce Detection" for thread in enumerate()):
+            label = "Click below to start automated bounce detection process"
+        else:
+            label = "Automated bounce detection process is currently running"
+
+        return self.render("admin/catch_bounces.html", label=label)
     
     @expose("/start", methods=["POST"])
     def start(self):
@@ -440,14 +446,13 @@ class CatchBouncesView(BaseView):
                     if len(cells) > 0:
                         wks.update_cells(cells)
 
-                else:
-                    break
+                time.sleep(60)
 
-                time.sleep(5)
-
-
-        Thread(target=detect_bounces).start()
-
-        flash("Documented bounces will be added to the database and emails will be sent to the user to update their information.")
+        if not any(thread.name == "Bounce Detection" for thread in enumerate()):
+            Thread(target=detect_bounces, daemon=True, name="Bounce Detection").start()
+            flash("Documented bounces will be added to the database, and emails will be sent to the user to update their information.")
+        else:
+            flash("Automated bounce detection thread is already running.")
+        
 
         return redirect(url_for("catch_bounces.catch_bounces"))
