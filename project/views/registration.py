@@ -818,7 +818,7 @@ def complete_registration(token):
         setattr(CompleteRegistrationForm, row.label, get_field(row))
 
     if event_obj is not None:
-        setattr(CompleteRegistrationForm, "register_event", BooleanField("Also register for " + event_obj.name + "?"))
+        setattr(CompleteRegistrationForm, "register_event", BooleanField("Also register for " + event_obj.name + "?", default=True))
         setattr(
             CompleteRegistrationForm, "event_zoom_or_not",
             RadioField("Will you attend on Zoom or In-Person?",

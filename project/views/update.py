@@ -55,7 +55,7 @@ def enter_email():
             subject = "I2G Membership - Complete Registration"
             token = generate_token(email)
             url = url_for("registration.complete_registration", token=token, _external=True)
-            html = render_template("complete_email.html", url=url)
+            html = render_template("complete_email.html", email=email, url=url)
             send_email(email, subject, html)
 
             return render_template("instructions_sent.html")

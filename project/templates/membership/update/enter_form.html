@@ -3,12 +3,17 @@
 
 {% block content %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<br>
+
 <div class="clearfix main">
   <div class="container">
     <div class="content">
-      <h2>Please enter either the Primary or Secondary email address that you used to SIGN UP</h2>
+      <h1 class="title" style="text-align: center;">Update Your I2G Membership</h1>
+      <h4 class="subtitle" style="text-align: center;">Enter one of the emails that you used to sign up</h4>
+      <hr class="line" style="margin: auto;">
     </div>
+
+    <br>
+
     <form class="" action="{{ url_for('update.enter_email') }}" method=post>
       {{ form.hidden_tag() }}
 
