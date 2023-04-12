@@ -288,7 +288,7 @@ def register():
                 send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
 
                 def expiry_timer():
-                    time.sleep(app.config["VERIF_EXPIRATION"])
+                    time.sleep(app.config["EXPIRY_TIMER"])
                     wks_records = get_wks_records(wks)
                     wks_columns = get_wks_columns(wks)
                     row = [row for row in wks_records if row["Primary Email"] == prim_email]
@@ -1026,7 +1026,7 @@ def complete_registration(token):
                 send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
 
                 def sec_expiry_timer():
-                    time.sleep(app.config["VERIF_EXPIRATION"])
+                    time.sleep(app.config["EXPIRY_TIMER"])
                     wks_records = get_wks_records(wks)
                     wks_columns = get_wks_columns(wks)
                     row = [row for row in wks_records if row["Secondary Email"] == sec_email]

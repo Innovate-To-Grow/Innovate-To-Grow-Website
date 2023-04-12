@@ -575,7 +575,7 @@ def event_register(event_name, token):
                 sent_to_sec = False
 
                 def prim_expiry_timer():
-                    time.sleep(app.config["VERIF_EXPIRATION"])
+                    time.sleep(app.config["EXPIRY_TIMER"])
                     wks_records = get_wks_records(wks)
                     wks_columns = get_wks_columns(wks)
                     row = [row for row in wks_records if row["Primary Email"] == prim_email]
@@ -585,7 +585,7 @@ def event_register(event_name, token):
                             wks.update_cell(row["Row"], wks_columns["Primary Expired"], "TRUE")
 
                 def sec_expiry_timer():
-                    time.sleep(app.config["VERIF_EXPIRATION"])
+                    time.sleep(app.config["EXPIRY_TIMER"])
                     wks_records = get_wks_records(wks)
                     wks_columns = get_wks_columns(wks)
                     row = [row for row in wks_records if row["Secondary Email"] == sec_email]
