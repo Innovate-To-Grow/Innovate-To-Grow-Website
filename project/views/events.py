@@ -5,8 +5,8 @@ from gspread.cell import Cell
 from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
-from wtforms.validators import EqualTo, Email, InputRequired, Optional
-from project import app, sh, wks, logs, get_wks_records, get_wks_columns
+from wtforms.validators import EqualTo, Email, InputRequired
+from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
 from project.models import event, edit_form
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
@@ -43,7 +43,7 @@ def enter_email(event_name):
         def log_email():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/events/<event_name>", str(datetime.now().replace(second=0, microsecond=0)), "Email: " + form.email.data
+                order, "/events/<event_name>", str(datetime.now(tz).replace(second=0, microsecond=0)), "Email: " + form.email.data
             ]
             logs.append_row(row)
 
@@ -325,7 +325,7 @@ def event_register(event_name, token):
         def log_update():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/event-registration/<event_name>/<token>", str(datetime.now().replace(second=0, microsecond=0)), "First Name: " + form.first_name.data,
+                order, "/event-registration/<event_name>/<token>", str(datetime.now(tz).replace(second=0, microsecond=0)), "First Name: " + form.first_name.data,
                 "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
             ]
             logs.append_row(row)
@@ -818,7 +818,7 @@ def event_register(event_name, token):
                     Cell(
                         row_find,
                         wks_columns["Last Updated"],
-                        str(datetime.now().replace(second=0, microsecond=0)),
+                        str(datetime.now(tz).replace(second=0, microsecond=0)),
                     ))
 
                 cells.append(Cell(row_find, wks_columns["Info Completed"], "TRUE"))
@@ -827,7 +827,7 @@ def event_register(event_name, token):
                     if event_user is not None:
                         event_cells.append(
                             Cell(event_user["Row"], event_wks_columns["Last Updated"],
-                                    str(datetime.now().replace(second=0, microsecond=0))))
+                                    str(datetime.now(tz).replace(second=0, microsecond=0))))
                         event_cells.append(
                             Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
                         event_cells.append(
@@ -844,8 +844,8 @@ def event_register(event_name, token):
                             event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
                         row[event_wks_columns["First Name"] - 1] = user["First Name"]
                         row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
-                        row[event_wks_columns["When Started"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
-                        row[event_wks_columns["Last Updated"] - 1] = str(datetime.now().replace(second=0, microsecond=0))
+                        row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
+                        row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
                         row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
                         row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
                         row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data

@@ -52,6 +52,11 @@ sqs = boto3.client('sqs',
                    aws_secret_access_key=aws_secret_access_key)
 
 
+import pytz
+
+tz = pytz.timezone("America/Los_Angeles")
+
+
 # Models
 from project.models import user, edit_form, event
 
