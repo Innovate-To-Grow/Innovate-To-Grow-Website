@@ -309,7 +309,7 @@ class ContactView(BaseView):
                     if selection == "Admin":
                         for admin in user.query.all():
                             token = generate_token(admin.email)
-                            event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                            event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
                             html = render_template("admin/event_blast.html", 
                                                 first=admin.first_name,
                                                 last=admin.last_name, 
@@ -324,7 +324,7 @@ class ContactView(BaseView):
                             if person:
                                 person = person[0]
                                 token = generate_token(person["Primary Email"])
-                                event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                                event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
                                 html = render_template("admin/event_blast.html", 
                                                     body=body,
                                                     person=person,
@@ -339,7 +339,7 @@ class ContactView(BaseView):
                     elif selection == "Subscribed":
                         for subscriber in wks_records:
                             token = generate_token(subscriber["Primary Email"])
-                            event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                            event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
                             html = render_template("admin/event_blast.html",
                                                 body=body,
                                                 person=subscriber,
