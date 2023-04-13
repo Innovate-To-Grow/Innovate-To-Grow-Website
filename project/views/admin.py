@@ -1,6 +1,6 @@
-import time, json
+import re, time, json, imap_tools
 from gspread.cell import Cell
-from flask import request, flash, render_template, redirect, url_for, copy_current_request_context
+from flask import request, flash, render_template, render_template_string, redirect, url_for, copy_current_request_context
 from flask_login import current_user, login_user, login_required, logout_user
 from flask_admin import BaseView, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
@@ -286,8 +286,9 @@ class ContactView(BaseView):
     def contact(self):
         form = EmailForm()
 
-        if request.method == "POST" and form.validate():
-            selection = request.form.get("selection")
+        if request.method == "POST" and form.validate_on_submit():
+            recip_selection = request.form.get("recip_selection")
+            email_selection = request.form.get("email_selection")
 
             wks_records = get_wks_records(wks)
 
@@ -295,66 +296,83 @@ class ContactView(BaseView):
             if event_obj is not None:
                 event_records = get_wks_records(sh.worksheet(event_obj.name))
 
-            if event_obj is None and selection == "Event":
+            if event_obj is None and recip_selection == "Event":
                 flash("There is no live event right now")
             
             else:
                 subject = request.form.get("subject")
+                html_from_email = None
 
-                body = request.form.get("body")
-                body = body.replace("\n", "<br>")
+                with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(app.config["MAIL_USERNAME"], app.config["MAIL_PASSWORD"], "Email Blasts") as mailbox:
+                    for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
+                        html_from_email = msg.html
 
-                @copy_current_request_context
-                def send_blast():
-                    if selection == "Admin":
-                        for admin in user.query.all():
-                            event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
-                            html = render_template("admin/event_blast.html", 
-                                                first=admin.first_name,
-                                                last=admin.last_name, 
-                                                body=body,
-                                                event_url=event_url)
-                            
-                            send_email(admin.email, subject, html)
+                        for img in re.findall(r'<img[^>]+>', html_from_email):
+                            proxy_url = re.search(r'<img src="([^"]+)"[^>]+>', img)
+                            img_url = re.search(r'<img src="[^"]+#([^"]+)"[^>]+>', img)
+                            html_from_email = html_from_email.replace(proxy_url.group(1), img_url.group(1))
 
-                    elif selection == "Event":
-                        for attendee in event_records:
-                            person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"]]
-                            if person:
-                                person = person[0]
-                                event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
-                                html = render_template("admin/event_blast.html", 
-                                                    body=body,
-                                                    person=person,
-                                                    event_url=event_url)
-                                                    
-                                if person["Primary Verified"] == "TRUE":
-                                    send_email(person["Primary Email"], subject, html)
 
-                                if person["Secondary Verified"] == "TRUE":
-                                    send_email(person["Secondary Email"], subject, html)
+                if html_from_email is None:
+                    flash("There is no email template to send.")
+
+                else:
+                    @copy_current_request_context
+                    def send_blast():
+                        if recip_selection == "Admin":
+                            for admin in user.query.all():
+                                html = render_template_string(html_from_email)
+                                send_email(admin.email, subject, html)
+
+                        elif recip_selection == "Event":
+                            for attendee in event_records:
+                                person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"] and row["Secondary Email"] == attendee["Membership Secondary"]]
+                                if person:
+                                    person = person[0]
+                                    html = render_template_string(html_from_email)
+                                    
+                                    if email_selection == "Primary" or email_selection == "Both":
+                                        if person["Primary Email"] != "" and person["Primary Verified"] == "TRUE":
+                                            send_email(person["Primary Email"], subject, html)
+                                    
+                                    if email_selection == "Secondary" or email_selection == "Both":
+                                        if person["Secondary Email"] != "" and person["Secondary Verified"] == "TRUE":
+                                            send_email(person["Secondary Email"], subject, html)
+
+                                    time.sleep(1)
+                                        
+                        elif recip_selection == "Subscribed":
+                            for subscriber in wks_records:
+                                html = render_template_string(html_from_email)
+
+                                if email_selection == "Primary" or email_selection == "Both":
+                                    if subscriber["Primary Email"] != "" and subscriber["Primary Subscribed"] == "TRUE":
+                                        send_email(subscriber["Primary Email"], subject, html)
+
+                                if email_selection == "Secondary" or email_selection == "Both":
+                                    if subscriber["Secondary Email"] != "" and subscriber["Secondary Subscribed"] == "TRUE":
+                                        send_email(subscriber["Secondary Email"], subject, html)
 
                                 time.sleep(1)
 
-                    elif selection == "Subscribed":
-                        for subscriber in wks_records:
-                            event_url = url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True)
-                            html = render_template("admin/event_blast.html",
-                                                body=body,
-                                                person=subscriber,
-                                                event_url=event_url)
-                                                
-                            if subscriber["Primary Subscribed"] == "TRUE":
-                                send_email(subscriber["Primary Email"], subject, html)
+                        elif recip_selection == "Verified":
+                            for subscriber in wks_records:
+                                html = render_template_string(html_from_email)
 
-                            if subscriber["Secondary Subscribed"] == "TRUE":
-                                send_email(subscriber["Secondary Email"], subject, html)
+                                if email_selection == "Primary" or email_selection == "Both":
+                                    if subscriber["Primary Email"] != "" and subscriber["Primary Verified"] == "TRUE":
+                                        send_email(subscriber["Primary Email"], subject, html)
 
-                            time.sleep(1)
+                                if email_selection == "Secondary" or email_selection == "Both":
+                                    if subscriber["Secondary Email"] != "" and subscriber["Secondary Verified"] == "TRUE":
+                                        send_email(subscriber["Secondary Email"], subject, html)
 
-                Thread(target=send_blast).start()
-                
-                flash("Emails sent successfully to " + str(selection) + " users.")
+                                time.sleep(1)
+
+
+                    Thread(target=send_blast).start()
+                    
+                    flash("Emails sent successfully to " + str(recip_selection) + " users.")
 
         return self.render("admin/contact.html", form=form)
     

@@ -8,19 +8,17 @@
     <div>
         {{ form.subject(class="form-group", autocomplete="off", size=50) }}
     </div>
-
-    {{ form.body.label }}
-    <div>
-        {{ form.body(class="form-group", rows='25', cols='100') }}
-    </div>
+    <br>
     <div class="selections">
-        <strong>
-            <p>Send to:</p>
-        </strong>
-        {{ form.selection(class="form-group") }}
+        {{ form.recip_selection.label }}
+        {{ form.recip_selection(class="form-group") }}
     </div>
-
-    <p></p>
+    <br>
+    <div class="selections">
+        {{ form.email_selection.label }}
+        {{ form.email_selection(class="form-group") }}
+    </div>
+    <br>
     {{ form.submit(class="form-group", class="btn btn-info") }}
 </form>
 

@@ -1,16 +1,19 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, TextAreaField, RadioField
+from wtforms import StringField, PasswordField, SubmitField, RadioField
 from wtforms.validators import InputRequired, Email, EqualTo
 
 
 class EmailForm(FlaskForm):
     subject = StringField("Subject", [InputRequired(" ")])
 
-    body = TextAreaField("Body")
-
-    selection = RadioField("Send to:",
-                           choices=[("Admin", "Administrators"), ("Event", "Event Attendees"), ("Subscribed", "Subscribed Users")],
+    recip_selection = RadioField("Select recipients:",
+                           choices=[("Admin", "Administrators"), ("Event", "Event Attendees"),
+                                    ("Subscribed", "Subscribed Users"), ("Verified", "Verified Users")],
                            default="Admin")
+    
+    email_selection = RadioField("Send to:",
+                            choices=[("Primary", "Primary Email"), ("Secondary", "Secondary Email"),
+                                     ("Both", "Both Emails")], default="Primary")
 
     submit = SubmitField("Send")
 
