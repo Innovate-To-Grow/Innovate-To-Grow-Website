@@ -326,18 +326,18 @@ class ContactView(BaseView):
 
                         elif recip_selection == "Event":
                             for attendee in event_records:
-                                person = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"] and row["Secondary Email"] == attendee["Membership Secondary"]]
-                                if person:
-                                    person = person[0]
+                                member = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"] and row["Secondary Email"] == attendee["Membership Secondary"]]
+                                if member:
+                                    member = member[0]
                                     html = render_template_string(html_from_email)
                                     
                                     if email_selection == "Primary" or email_selection == "Both":
-                                        if person["Primary Email"] != "" and person["Primary Verified"] == "TRUE":
-                                            send_email(person["Primary Email"], subject, html)
+                                        if member["Primary Email"] != "" and member["Primary Verified"] == "TRUE":
+                                            send_email(member["Primary Email"], subject, html)
                                     
                                     if email_selection == "Secondary" or email_selection == "Both":
-                                        if person["Secondary Email"] != "" and person["Secondary Verified"] == "TRUE":
-                                            send_email(person["Secondary Email"], subject, html)
+                                        if member["Secondary Email"] != "" and member["Secondary Verified"] == "TRUE":
+                                            send_email(member["Secondary Email"], subject, html)
 
                                     time.sleep(1)
                                         

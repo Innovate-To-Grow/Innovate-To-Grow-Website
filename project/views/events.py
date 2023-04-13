@@ -772,7 +772,7 @@ def event_register(event_name, token):
                 cells.clear()
 
                 wks_records = wks.get_all_records()
-                user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
+                user = [row for row in wks_records if row["Primary Email"] == prim_email and row["Secondary Email"] == sec_email][0]
 
                 if user["Primary Verified"] == "FALSE":
                     cells.append(Cell(row_find, wks_columns["Primary Subscribed"], "FALSE"))
@@ -863,7 +863,7 @@ def event_register(event_name, token):
                     event_wks.update_cells(event_cells)
 
                 wks_records = wks.get_all_records()
-                user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
+                user = [row for row in wks_records if row["Primary Email"] == prim_email and row["Secondary Email"] == sec_email][0]
 
                 subject = event_obj.name + " Registration Completed"
                 html = render_template("event_receipt_email.html",

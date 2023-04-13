@@ -771,7 +771,7 @@ def update_info(token):
                 cells.clear()
 
                 wks_records = wks.get_all_records()
-                user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
+                user = [row for row in wks_records if row["Primary Email"] == prim_email and row["Secondary Email"] == sec_email][0]
 
                 if user["Primary Verified"] == "FALSE":
                     cells.append(Cell(row_find, wks_columns["Primary Subscribed"], "FALSE"))
@@ -863,7 +863,7 @@ def update_info(token):
                     event_wks.update_cells(event_cells)
 
                 wks_records = wks.get_all_records()
-                user = [row for row in wks_records if row["Primary Email"] == prim_email or row["Secondary Email"] == sec_email][0]
+                user = [row for row in wks_records if row["Primary Email"] == prim_email and row["Secondary Email"] == sec_email][0]
 
                 subject = "I2G Membership Updated"
                 html = render_template("update_receipt_email.html",
