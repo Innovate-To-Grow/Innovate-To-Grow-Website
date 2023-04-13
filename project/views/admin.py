@@ -342,30 +342,30 @@ class ContactView(BaseView):
                                     time.sleep(1)
                                         
                         elif recip_selection == "Subscribed":
-                            for subscriber in wks_records:
+                            for member in wks_records:
                                 html = render_template_string(html_from_email)
 
                                 if email_selection == "Primary" or email_selection == "Both":
-                                    if subscriber["Primary Email"] != "" and subscriber["Primary Subscribed"] == "TRUE":
-                                        send_email(subscriber["Primary Email"], subject, html)
+                                    if member["Primary Email"] != "" and member["Primary Subscribed"] == "TRUE":
+                                        send_email(member["Primary Email"], subject, html)
 
                                 if email_selection == "Secondary" or email_selection == "Both":
-                                    if subscriber["Secondary Email"] != "" and subscriber["Secondary Subscribed"] == "TRUE":
-                                        send_email(subscriber["Secondary Email"], subject, html)
+                                    if member["Secondary Email"] != "" and member["Secondary Subscribed"] == "TRUE":
+                                        send_email(member["Secondary Email"], subject, html)
 
                                 time.sleep(1)
 
                         elif recip_selection == "Verified":
-                            for subscriber in wks_records:
+                            for member in wks_records:
                                 html = render_template_string(html_from_email)
 
                                 if email_selection == "Primary" or email_selection == "Both":
-                                    if subscriber["Primary Email"] != "" and subscriber["Primary Verified"] == "TRUE":
-                                        send_email(subscriber["Primary Email"], subject, html)
+                                    if member["Primary Email"] != "" and member["Primary Verified"] == "TRUE":
+                                        send_email(member["Primary Email"], subject, html)
 
                                 if email_selection == "Secondary" or email_selection == "Both":
-                                    if subscriber["Secondary Email"] != "" and subscriber["Secondary Verified"] == "TRUE":
-                                        send_email(subscriber["Secondary Email"], subject, html)
+                                    if member["Secondary Email"] != "" and member["Secondary Verified"] == "TRUE":
+                                        send_email(member["Secondary Email"], subject, html)
 
                                 time.sleep(1)
 
