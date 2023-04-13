@@ -70,7 +70,7 @@ import gspread
 from gspread.client import BackoffClient
 
 gc = gspread.service_account(client_factory=BackoffClient)
-sh = gc.open("I2G Membership")
+sh = gc.open(app.config["CURRENT_SPREADSHEET"])
 
 worksheets = []
 for worksheet in sh.worksheets():

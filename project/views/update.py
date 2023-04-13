@@ -29,7 +29,7 @@ def enter_email():
         def log_email():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/update", str(datetime.now(tz).replace(second=0, microsecond=0)), "Email: " + form.email.data
+                order, "/update", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "Email: " + form.email.data
             ]
             logs.append_row(row)
 
@@ -312,7 +312,7 @@ def update_info(token):
         def log_update():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/update/<token>", str(datetime.now(tz).replace(second=0, microsecond=0)), "First Name: " + form.first_name.data,
+                order, "/update/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
                 "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
             ]
             logs.append_row(row)
@@ -817,7 +817,7 @@ def update_info(token):
                     Cell(
                         row_find,
                         wks_columns["Last Updated"],
-                        str(datetime.now(tz).replace(second=0, microsecond=0)),
+                        str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")),
                     ))
 
                 cells.append(Cell(row_find, wks_columns["Info Completed"], "TRUE"))
@@ -827,7 +827,7 @@ def update_info(token):
                         if event_user is not None:
                             event_cells.append(
                                 Cell(event_user["Row"], event_wks_columns["Last Updated"],
-                                     str(datetime.now(tz).replace(second=0, microsecond=0))))
+                                     str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
                             event_cells.append(
                                 Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
                             event_cells.append(
@@ -844,8 +844,8 @@ def update_info(token):
                                 event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
                             row[event_wks_columns["First Name"] - 1] = user["First Name"]
                             row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
-                            row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
-                            row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
+                            row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                            row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
                             row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
                             row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
                             row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data

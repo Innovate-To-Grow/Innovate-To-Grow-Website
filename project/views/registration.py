@@ -33,7 +33,7 @@ def register():
         def log_registration():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/register", str(datetime.now(tz).replace(second=0, microsecond=0)), "First Name: " + form.first_name.data, "Last Name: " + 
+                order, "/register", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data, "Last Name: " + 
                 form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
             ]
             logs.append_row(row)
@@ -250,8 +250,8 @@ def register():
                     wks_columns["Order"])[-1].isdigit() else 1
                 user[wks_columns["First Name"] - 1] = form.first_name.data
                 user[wks_columns["Last Name"] - 1] = form.last_name.data
-                user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
-                user[wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
+                user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                user[wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
                 user[wks_columns["Primary Email"] - 1] = prim_email
                 user[wks_columns["Primary Verified"] - 1] = "FALSE"
                 user[wks_columns["Primary Subscribed"] - 1] = "FALSE"
@@ -678,7 +678,7 @@ def info(token):
                     if event_user is not None:
                         event_cells.append(
                             Cell(event_user["Row"], event_wks_columns["Last Updated"],
-                                 str(datetime.now(tz).replace(second=0, microsecond=0))))
+                                 str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
                         event_cells.append(
                             Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
                         event_cells.append(Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
@@ -694,8 +694,8 @@ def info(token):
                             event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
                         row[event_wks_columns["First Name"] - 1] = user["First Name"]
                         row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
-                        row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
-                        row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
+                        row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                        row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
                         row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
                         row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
                         row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
@@ -843,7 +843,7 @@ def complete_registration(token):
         def log_registration():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/full-registration/<token>", str(datetime.now(tz).replace(second=0, microsecond=0)), "First Name: " + form.first_name.data,
+                order, "/full-registration/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
                 "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data, 
                 "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
             ]
@@ -989,8 +989,8 @@ def complete_registration(token):
                     wks_columns["Order"])[-1].isdigit() else 1
                 user[wks_columns["First Name"] - 1] = form.first_name.data
                 user[wks_columns["Last Name"] - 1] = form.last_name.data
-                user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
-                user[wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
+                user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                user[wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
                 user[wks_columns["Primary Email"] - 1] = prim_email
                 user[wks_columns["Primary Verified"] - 1] = "TRUE"
                 user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
@@ -1048,8 +1048,8 @@ def complete_registration(token):
                                 event_wks_columns["Order"])[-1].isdigit() else 1
                         event_row[event_wks_columns["First Name"] - 1] = form.first_name.data
                         event_row[event_wks_columns["Last Name"] - 1] = form.last_name.data
-                        event_row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
-                        event_row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0))
+                        event_row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                        event_row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
                         event_row[event_wks_columns["Membership Primary"] - 1] = prim_email
                         event_row[event_wks_columns["Membership Secondary"] - 1] = sec_email
                         event_row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
