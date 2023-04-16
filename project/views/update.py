@@ -25,6 +25,8 @@ update_blueprint = Blueprint("update",
 def enter_email():
     form = EmailForm()
 
+    event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+
     if request.method == "POST" and form.validate():
         def log_email():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
@@ -52,10 +54,10 @@ def enter_email():
         user = user[0][0] if user[0] else user[1][0] if user[1] else None
 
         if user is None:
-            subject = "I2G Membership - Complete Registration"
+            subject = "I2G Membership - Complete Your Registration"
             token = generate_token(email)
             url = url_for("registration.complete_registration", token=token, _external=True)
-            html = render_template("complete_email.html", email=email, url=url)
+            html = render_template("complete_email.html", email=email, url=url, live_event=True if event_obj else False)
             send_email(email, subject, html)
 
             return render_template("instructions_sent.html")

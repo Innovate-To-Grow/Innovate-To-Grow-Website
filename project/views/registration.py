@@ -576,7 +576,7 @@ def info(token):
         else:
             register_event_label = "Also register for " + event_obj.name + "?"
 
-        setattr(InformationForm, "register_event", BooleanField(register_event_label))
+        setattr(InformationForm, "register_event", BooleanField(register_event_label, default=True))
         setattr(
             InformationForm, "event_zoom_or_not",
             RadioField("Will you attend on Zoom or In-Person?",
