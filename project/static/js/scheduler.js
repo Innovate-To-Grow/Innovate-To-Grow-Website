@@ -185,7 +185,7 @@ $(document).ready(function () {
                                 '</tr>'+
                                 '<tr class="zoomCAP">'+
                                     '<th scope="col" style="background-color: #efefef;">'+
-                                        '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
+                                        '<gg-icon class="gg-camera" scope="col" style="align-content: center; margin-top: 13px;"></gg-icon>'+
                                     '</th>'+
                                 '</tr>'+
                                 '<tr class="trackCAP">'+
