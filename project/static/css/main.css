@@ -144,7 +144,9 @@ h1 {
 
 .table-caption {
   position: relative;
-  left: 35%;
+  display: flex;
+  justify-content: center;
+  /* left: 35%; */
   color: #4a6762;
   font-size: 30px;
   font-weight: bold;

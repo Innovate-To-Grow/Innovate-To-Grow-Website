@@ -10,7 +10,6 @@ $(document).ready(function () {
       { data: 'name' },
       { data: 'formatted_address' },
       { data: 'rating'},
-      { data: 'website'},
       { data: 'formatted_phone_number'},
       {
         data: 'reviews',
@@ -72,7 +71,6 @@ function refreshTable() {
       { 'data': 'name' },
       { 'data': 'formatted_address' },
       { 'data': 'rating'},
-      { 'data': 'website'},
       { 'data': 'formatted_phone_number'},
       {
         data: 'reviews',

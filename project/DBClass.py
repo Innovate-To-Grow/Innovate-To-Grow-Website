@@ -92,24 +92,39 @@ class DBClass():
                        "lat2": latitude2, "long2": longitude2}
         self.coordinate_array.append(coordinates)
 
-    def save_area_to_db(self, data):
-        """ Takes the coodrinate data and saves them to the database. It also stores the coodinates into the temporary storage self.coodinate_array.
+    def save_polygon_to_db(self, data):
+        json_data = json.loads(data['coordinates'])
 
-        Args:
-            data (JSON/Dictionary):  Rectangle area coordinates 
-
-        Returns:
-            String: Lets the user know that it has been saved.
-        """
-        # print("saving to db")
         connection = self.get_db_connect()
         cursor = connection.cursor()
         cursor.execute('''pragma foreign_keys = ON''')
         connection.commit()
+
+        latitude1 = json_data[0]['lat']
+        longitude1 = json_data[0]['lng']
+        latitude2 = json_data[1]['lat']
+        longitude2 = json_data[1]['lng']
+
+        self.area_id += 1
+        cursor.execute('''INSERT INTO areas(area_id, latitude1, longitude1, latitude2, longitude2, composite_id) VALUES(?,?,?,?,?,?)
+                        ''', (self.area_id, latitude1, longitude1, latitude2, longitude2, self.composite_id))
+        connection.commit()
+        coordinates = {"lat1": latitude1, "long1": longitude1,
+                       "lat2": latitude2, "long2": longitude2}
+        self.coordinate_array.append(coordinates)
+        return "Saved Successfully"
+
+    def save_area_to_db(self, data):
+        connection = self.get_db_connect()
+        cursor = connection.cursor()
+        cursor.execute('''pragma foreign_keys = ON''')
+        connection.commit()
+
         latitude1 = data['testcoordNE[lat]']  # assign to latitude1
         longitude1 = data['testcoordNE[lng]']  # assign to longitude1
         latitude2 = data['testcoordSW[lat]']  # assign to latitude2
         longitude2 = data['testcoordSW[lng]']  # assign to longitude2
+
         self.area_id += 1
         cursor.execute('''INSERT INTO areas(area_id, latitude1, longitude1, latitude2, longitude2, composite_id) VALUES(?,?,?,?,?,?)
                         ''', (self.area_id, latitude1, longitude1, latitude2, longitude2, self.composite_id))
@@ -319,13 +334,11 @@ class DBClass():
 
             for place in response_dict['results']:
                 my_place_id = place['place_id']
-                my_fields = ['name', 'formatted_address', 'rating', 'website', 'formatted_phone_number', 'reviews']
+                my_fields = ['name', 'formatted_address', 'rating', 'formatted_phone_number', 'reviews']
                 places_details = gmaps.place(place_id=my_place_id, fields=my_fields)
                 place_data = places_details['result']
                 if 'rating' not in place_data:
                     place_data['rating'] = 'N/A'
-                if 'website' not in place_data:
-                    place_data['website'] = 'N/A'
                 if 'formatted_phone_number' not in place_data:
                     place_data['formatted_phone_number'] = 'N/A'
                 if 'reviews' not in place_data:
@@ -363,13 +376,11 @@ class DBClass():
 
         for place in response_dict['results']:
             my_place_id = place['place_id']
-            my_fields = ['name', 'formatted_address', 'rating', 'website', 'formatted_phone_number', 'reviews']
+            my_fields = ['name', 'formatted_address', 'rating', 'formatted_phone_number', 'reviews']
             places_details = gmaps.place(place_id=my_place_id, fields=my_fields)
             place_data = places_details['result']
             if 'rating' not in place_data:
                 place_data['rating'] = 'N/A'
-            if 'website' not in place_data:
-                place_data['website'] = 'N/A'
             if 'formatted_phone_number' not in place_data:
                 place_data['formatted_phone_number'] = 'N/A'
             if 'reviews' not in place_data:

@@ -140,7 +140,7 @@ admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounce
 
 # Flask Login Manager
 login_manager = LoginManager(app)
-login_manager.session_protection = "strong"
+login_manager.session_protection = "basic"
 login_manager.login_view = "admin.login"
 
 

@@ -75,7 +75,7 @@ var coordinates;
             setSelection(newShape);
         }
     });
-google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
+        google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
         coordinates = (polygon.getPath().getArray());
         console.log(coordinates);
       });

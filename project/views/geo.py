@@ -4,10 +4,10 @@ import time
 
 geo_blueprint = Blueprint("geo", __name__, template_folder="../templates/geo", url_prefix="/geo")
 
+dbc = DBClass()  # Move dbc initialization outside route functions
+
 @geo_blueprint.route('/', methods=['GET', 'POST'])
 def index():
-    global dbc
-    dbc = DBClass()
     return render_template('index 3.html')
 
 @geo_blueprint.route('/save', methods=['GET', 'POST'])
@@ -17,6 +17,13 @@ def save_area_to_db():
         data2 = request.form.to_dict()
         dbc.save_area_to_db(data2)
     return ""
+
+@geo_blueprint.route('/save_polygon', methods=['POST'])
+def save_polygon():
+    if request.method == 'POST':
+        data = request.form.to_dict()
+        dbc.save_polygon_to_db(data) 
+    return jsonify({"message": "Saved Successfully"}), 200
 
 @geo_blueprint.route('/savecomposite', methods=['POST'])
 def save_composite_search():
@@ -30,7 +37,7 @@ def save_composite_search():
     return "Saved composite to DB", 204
 
 @geo_blueprint.route('/load', methods=['GET', 'POST'])
-def load_areas_from_db(id):
+def load_areas_from_db(id=None):  # Add default value for id parameter
     print("load called")
     return dbc.load_areas_from_composite()
 
@@ -40,11 +47,6 @@ def delete_all_shapes():
 
 @geo_blueprint.route('/test/tables', methods=['POST', 'GET'])
 def tables():
-    """ Function that sends output of search_querying of the composite area to the DataTable
-
-    Returns:
-        dict/json: Returns the data from shape_querying as a readable json file
-    """
     start = time.time()
     data_to_send = dbc.composite_logic()
     print("Time to populate table = ", str(time.time() - start))

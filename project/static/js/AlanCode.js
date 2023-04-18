@@ -132,7 +132,7 @@ function initMap(){
           google.maps.drawing.OverlayType.RECTANGLE,
         ],
       },
-      polygonOptions: {editable: true}
+      // polygonOptions: {editable: true}
   })
   
   drawMgr.setMap(map);

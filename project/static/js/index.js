@@ -24,6 +24,14 @@ function initMap(){
 
   }
 
+  function handleKeyDown(event) {
+    // Check if the Backspace key (key code 8) is pressed
+    if (event.keyCode === 8) {
+      // Call the deleteSelectedShape function
+      deleteSelectedShape();
+    }
+  }
+  
 
   function deleteSelectedShape() {
     if (selectedShape) {
@@ -101,45 +109,58 @@ function initMap(){
       
       
     });
-
   
-    google.maps.event.addListener(drawingManager, 'overlaycomplete', function(e) {
-      all_overlays.push(e);
-      if (e.type != google.maps.drawing.OverlayType.MARKER) {
-        // Switch back to non-drawing mode after drawing a shape.
-        // drawingManager.setDrawingMode(null);
-  
-        // Add an event listener that selects the newly-drawn shape when the user
-        // mouses down on it.
+    google.maps.event.addListener(drawingManager, 'overlaycomplete', function (e) {
+    all_overlays.push(e);
+    if (e.type != google.maps.drawing.OverlayType.MARKER && e.type != google.maps.drawing.OverlayType.POLYGON) {
         var newShape = e.overlay;
         newShape.type = e.type;
-
 
         var bounds = e.overlay.getBounds();
         var start = bounds.getNorthEast();
         var end = bounds.getSouthWest();
 
-        const testcoordNE = start.toJSON(); 
+        const testcoordNE = start.toJSON();
         const testcoordSW = end.toJSON();
-        
+
         start = new Date().getTime();
 
         $.ajax({
-          type: 'POST',
-          url: "/geo/save",
-          data: {
-          //'data': JSON.stringify(data),
-          'testcoordNE': testcoordNE,
-          'testcoordSW': testcoordSW
-          }
+            type: 'POST',
+            url: "/geo/save",
+            data: {
+                'testcoordNE': testcoordNE,
+                'testcoordSW': testcoordSW
+            }
         })
-       
-        google.maps.event.addListener(newShape, 'click', function() {
-          setSelection(newShape);
+
+        google.maps.event.addListener(newShape, 'click', function () {
+            setSelection(newShape);
         });
         setSelection(newShape);
-      }
-    });
+
+      } else if (e.type == google.maps.drawing.OverlayType.POLYGON) {
+        var newShape = e.overlay;
+        newShape.type = e.type;
+        google.maps.event.addListener(newShape, 'click', function () {
+            setSelection(newShape);
+        });
+        setSelection(newShape);
+
+        var coordinates = e.overlay.getPath().getArray();
+        var coordsArray = coordinates.map(function(coord) {
+          return coord.toJSON();
+        });
+
+        $.ajax({
+            type: 'POST',
+            url: "/geo/save_polygon",
+            data: {
+                'coordinates': JSON.stringify(coordsArray)
+            }
+        });
+    }
+});
 //---------------------------------------------
 
 
@@ -447,12 +468,13 @@ var checkbox_select = function(params)
     google.maps.event.addListener(drawingManager, 'drawingmode_changed', clearSelection);
     google.maps.event.addListener(map, 'click', clearSelection);
     google.maps.event.addDomListener(document.getElementById('delete-button'), 'click', deleteSelectedShape);
+    google.maps.event.addDomListener(document, 'keydown', handleKeyDown);
     google.maps.event.addDomListener(document.getElementById('delete-all-button'), 'click', deleteAllShape);
 
   };
   
 
-  // Store map coordinates for polygons
+    
   // read this for tomorrow https://stackoverflow.com/questions/32899213/getting-coordinates-of-rectangle-polygon-when-drawn-on-google-maps-with-drawing/32902755
   // google.maps.event.addListener(drawMgr, 'overlaycomplete', function(overlay) {
   // //alert("Created Box!");
