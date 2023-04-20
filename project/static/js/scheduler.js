@@ -79,7 +79,7 @@ function fnLoadDataTableInstance() {
             }
         ],
         order: [
-            [1, 'asc']
+            [1, 'desc']
         ],
         fixedHeader: {
             header: true,
