@@ -14,7 +14,7 @@ class NotEqualTo(object):
             other = form[self.fieldname]
         except KeyError:
             raise ValidationError(field.gettext("Invalid field name '%s'.") % self.fieldname)
-        if field.data == other.data:
+        if field.data.lower() == other.data.lower():
             d = {
                 'other_label': hasattr(other, 'label') and other.label.text or self.fieldname,
                 'other_name': self.fieldname
