@@ -3,7 +3,7 @@ $(document).ready(function () {
     var selectedShape;
     var map;
     var drawingManager;
-var coordinates;
+    var coordinates;
         function clearSelection() {
             if (selectedShape) {
                 selectedShape.setEditable(false);

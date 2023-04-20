@@ -361,7 +361,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
-$.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1AoW60T0IHSkqO4dUzYV6ErWxMHKOhg73NpddUc2ZUxM/values/2023-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1AoW60T0IHSkqO4dUzYV6ErWxMHKOhg73NpddUc2ZUxM/values/2023-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
