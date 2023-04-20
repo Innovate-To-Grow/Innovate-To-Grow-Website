@@ -339,7 +339,7 @@ class ContactView(BaseView):
                                         if member["Secondary Email"] != "" and member["Secondary Verified"] == "TRUE":
                                             send_email(member["Secondary Email"], subject, html)
 
-                                    time.sleep(1)
+                                    time.sleep(0.5)
                                         
                         elif recip_selection == "Subscribed":
                             for member in wks_records:
@@ -353,7 +353,7 @@ class ContactView(BaseView):
                                     if member["Secondary Email"] != "" and member["Secondary Subscribed"] == "TRUE":
                                         send_email(member["Secondary Email"], subject, html)
 
-                                time.sleep(1)
+                                time.sleep(0.5)
 
                         elif recip_selection == "Non-Event Subscribed":
                             for member in wks_records:
@@ -368,7 +368,7 @@ class ContactView(BaseView):
                                         if member["Secondary Email"] != "" and member["Secondary Subscribed"] == "TRUE":
                                             send_email(member["Secondary Email"], subject, html)
 
-                                    time.sleep(1)
+                                    time.sleep(0.5)
 
                         elif recip_selection == "Verified":
                             for member in wks_records:
@@ -382,7 +382,7 @@ class ContactView(BaseView):
                                     if member["Secondary Email"] != "" and member["Secondary Verified"] == "TRUE":
                                         send_email(member["Secondary Email"], subject, html)
 
-                                time.sleep(1)
+                                time.sleep(0.5)
 
 
                     Thread(target=send_blast).start()
