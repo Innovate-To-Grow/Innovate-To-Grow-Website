@@ -296,7 +296,7 @@ class ContactView(BaseView):
             if event_obj is not None:
                 event_records = get_wks_records(sh.worksheet(event_obj.name))
 
-            if event_obj is None and recip_selection == "Event":
+            if event_obj is None and (recip_selection == "Event" or recip_selection == "Non-Event Subscribed"):
                 flash("There is no live event right now")
             
             else:
@@ -354,6 +354,21 @@ class ContactView(BaseView):
                                         send_email(member["Secondary Email"], subject, html)
 
                                 time.sleep(1)
+
+                        elif recip_selection == "Non-Event Subscribed":
+                            for member in wks_records:
+                                if not any(member["Primary Email"] == attendee["Membership Primary"] and member["Secondary Email"] == attendee["Membership Secondary"] for attendee in event_records):
+                                    html = render_template_string(html_from_email)
+
+                                    if email_selection == "Primary" or email_selection == "Both":
+                                        if member["Primary Email"] != "" and member["Primary Subscribed"] == "TRUE":
+                                            send_email(member["Primary Email"], subject, html)
+
+                                    if email_selection == "Secondary" or email_selection == "Both":
+                                        if member["Secondary Email"] != "" and member["Secondary Subscribed"] == "TRUE":
+                                            send_email(member["Secondary Email"], subject, html)
+
+                                    time.sleep(1)
 
                         elif recip_selection == "Verified":
                             for member in wks_records:

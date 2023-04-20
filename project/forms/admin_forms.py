@@ -8,8 +8,8 @@ class EmailForm(FlaskForm):
 
     recip_selection = RadioField("Select recipients:",
                            choices=[("Admin", "Administrators"), ("Event", "Event Attendees"),
-                                    ("Subscribed", "Subscribed Users"), ("Verified", "Verified Users")],
-                           default="Admin")
+                                    ("Subscribed", "Subscribed Users"), ("Non-Event Subscribed", "Non-Event Subscribed Users"),
+                                    ("Verified", "Verified Users")], default="Admin")
     
     email_selection = RadioField("Send to:",
                             choices=[("Primary", "Primary Email"), ("Secondary", "Secondary Email"),
