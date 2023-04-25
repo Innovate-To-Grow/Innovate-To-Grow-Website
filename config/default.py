@@ -9,10 +9,10 @@ APP_ROOT = re.sub('config', '', APP_ROOT) + "/project"
 class Config():
     CURRENT_SPREADSHEET = "I2G Membership"
 
-    VERIFY_TOKEN_EXPIRATION = 300
+    VERIFY_TOKEN_EXPIRATION = 600
     EVENT_TOKEN_EXPIRATION = 302400
     
-    EXPIRY_TIMER = 129600
+    EXPIRY_TIMER = 172800
 
     URL_PREFIX = "/membership"
 
