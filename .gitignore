@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 project/db/data.sqlite3
+
+# .ini files
+*.ini
