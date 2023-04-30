@@ -119,6 +119,10 @@ def judging():
 def template():
     return render_template("template.html")
 
+@home_blueprint.route("/2022-fall-event", methods=["GET", "POST"])
+def fall_event_2022():
+    return render_template("2022-fall-event.html")
+
 @home_blueprint.route("/2022-spring-event", methods=["GET", "POST"])
 def spring_event_2022():
     return render_template("2022-spring-event.html")

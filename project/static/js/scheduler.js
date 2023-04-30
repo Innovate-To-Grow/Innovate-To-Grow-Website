@@ -48,7 +48,7 @@ function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
     console.log("second");
     var table = $('#example').DataTable({
-        dom: 'Bfrltip',
+        // dom: 'Bfrltip',
         pageLength: 10,
         search: {
             search: document.location.search.replace(/^.*?\=/, '')
@@ -192,7 +192,35 @@ $(document).ready(function () {
                                     '<th scope="col" style="background-color: #efefef;">&nbsp;</th>'+
                                 '</tr>'+
                             '</tbody>'+
-                            '<tbody class="classCAP">'+
+                            '<tbody class="classCAP">'+ 
+                            '<tr>'+
+                            '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
+                            '<td data-header="Track 1" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Health</b>'+
+                                '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 2" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Mechanics</b>'+
+                                '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 3" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>AgTech</b>'+
+                                '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 4" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Precision</b>'+
+                                '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 5" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Food</b>'+
+                                '</p>'+
+                            '</td>'+
+                        '</tr>'+
                             '</tbody>'+
                         '</table>'+
                     '</div>'+
@@ -249,6 +277,12 @@ $(document).ready(function () {
                                 '</tr>'+
                             '</thead>'+
                             '<tbody class="classCEE">'+
+                                '<tr>'+
+                                '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
+                                    '<td data-header="Track 6">'+
+                                        '<p style="color: #002856;"><b>Environment (CEE)</b></p>'+
+                                    '</td>'+
+                                '</tr>'+
                             '</tbody>'+
                         '</table>'+
                     '</div>'+
@@ -306,6 +340,24 @@ $(document).ready(function () {
                             '</tr>'+
                         '</thead>'+
                         '<tbody class="classCSE">'+
+                            '<tr>'+
+                                '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
+                                '<td data-header="Track 1" style="color: #FFBF3C;">'+
+                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                        '<b>Ag-Food</b>'+
+                                    '</p>'+
+                                '</td>'+
+                                '<td data-header="Track 2" style="color: #FFBF3C;">'+
+                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                        '<b>Data</b>'+
+                                    '</p>'+
+                                '</td>'+
+                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
+                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                        '<b>Industry</b>'+
+                                    '</p>'+
+                                '</td>'+
+                            '</tr>'+
                         '</tbody>'+
                     '</table>'+
                 '</div>'+
