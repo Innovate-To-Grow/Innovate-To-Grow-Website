@@ -6,4 +6,4 @@ from wtforms.validators import Email, InputRequired
 class EmailForm(FlaskForm):
     email = StringField("Email Address", [InputRequired(" "), Email()])
 
-    submit = SubmitField("Send")
+    submit = SubmitField("Email Me a Link")
