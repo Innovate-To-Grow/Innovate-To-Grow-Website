@@ -123,6 +123,10 @@ def template():
 def home_during_event():
     return render_template("home-during-event.html")
 
+@home_blueprint.route("/home-post-event", methods=["GET", "POST"])
+def home_post_event():
+    return render_template("home-post-event.html")
+
 @home_blueprint.route("/2022-fall-event", methods=["GET", "POST"])
 def fall_event_2022():
     return render_template("2022-fall-event.html")
