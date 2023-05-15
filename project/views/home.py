@@ -10,7 +10,7 @@ home_blueprint = Blueprint("home", __name__, template_folder="../templates/home"
 @home_blueprint.route("/", methods=["GET", "POST"])
 def mainpage():
     # return render_template("index.html")
-    return render_template("home-during-event.html")
+    return render_template("home-post-event.html")
 
 @home_blueprint.route("/about", methods=["GET", "POST"])
 def about():
@@ -128,6 +128,10 @@ def home_during_event():
 def home_post_event():
     return render_template("home-post-event.html")
 
+@home_blueprint.route("/2023-spring-event", methods=["GET", "POST"])
+def spring_event_2023():
+    return render_template("2023-spring-event.html")
+    
 @home_blueprint.route("/2022-fall-event", methods=["GET", "POST"])
 def fall_event_2022():
     return render_template("2022-fall-event.html")
