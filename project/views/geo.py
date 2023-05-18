@@ -1,59 +1,48 @@
-from flask import Flask, request, jsonify, render_template, url_for, current_app, g, redirect, flash, Blueprint
-from project.DBClass import DBClass
-import time
+from flask import Blueprint, request, jsonify, render_template
+from geopy.geocoders import Nominatim
 
-geo_blueprint = Blueprint("geo", __name__, template_folder="../templates/geo", url_prefix="/geo")
+geo_blueprint = Blueprint("geo", __name__, template_folder="../templates/geo")
 
-dbc = DBClass()  # Move dbc initialization outside route functions
+seen_nodes = {}  # Store seen_nodes in memory
 
-@geo_blueprint.route('/', methods=['GET', 'POST'])
-def index():
-    return render_template('index 3.html')
 
-@geo_blueprint.route('/save', methods=['GET', 'POST'])
-def save_area_to_db():
-    print("saving to db")
-    if request.method == 'POST':
-        data2 = request.form.to_dict()
-        dbc.save_area_to_db(data2)
-    return ""
+@geo_blueprint.route('/geo')
+def home():
+    return render_template('geo.html')
 
-@geo_blueprint.route('/save_polygon', methods=['POST'])
-def save_polygon():
-    if request.method == 'POST':
-        data = request.form.to_dict()
-        dbc.save_polygon_to_db(data) 
-    return jsonify({"message": "Saved Successfully"}), 200
 
-@geo_blueprint.route('/savecomposite', methods=['POST'])
-def save_composite_search():
-    if request.method == 'POST':
-        name = request.form['name']
-        print(name)
-        if not name:
-            flash('name needed')
-        else:
-            dbc.rename_composite_to_db(name)
-    return "Saved composite to DB", 204
+@geo_blueprint.route('/geo/api/process_data', methods=['POST'])
+def process_data():
+    global seen_nodes
+    data = request.get_json()
+    nodes = data['elements']
+    print("Total nodes: ", len(nodes))
+    # geolocator = Nominatim(user_agent="myGeocoder")
+    for node in nodes:
+        if node['id'] not in seen_nodes:
+            if 'tags' in node:
+                if 'name' in node['tags']:
+                    node_type = node['tags'].get('amenity') or node['tags'].get('shop') or node['tags'].get('office') or node['tags'].get('building') or 'unknown'
+                    # location = geolocator.reverse((node['lat'], node['lon']))
+                    # address = location.address.replace(",", " ")
+                    # node['address'] = address
+                    node['type'] = node_type
+                    seen_nodes[node['id']] = node
+            #     else:
+            #         print(f"Node {node} doesn't have a name tag")
+            # else:
+            #     print(f"Node {node} doesn't have tags")
 
-@geo_blueprint.route('/load', methods=['GET', 'POST'])
-def load_areas_from_db(id=None):  # Add default value for id parameter
-    print("load called")
-    return dbc.load_areas_from_composite()
+    return 'Success', 200
 
-@geo_blueprint.route('/deleteallshapes', methods=['DELETE'])
-def delete_all_shapes():
-    dbc.delete_all_areas_from_db()
 
-@geo_blueprint.route('/test/tables', methods=['POST', 'GET'])
-def tables():
-    start = time.time()
-    data_to_send = dbc.composite_logic()
-    print("Time to populate table = ", str(time.time() - start))
-    return {"data": data_to_send}
+@geo_blueprint.route('/geo/api/get_data', methods=['GET'])
+def get_data():
+    return jsonify(list(seen_nodes.values()))
 
-@geo_blueprint.route('/test/searchtables', methods=['POST', 'GET'])
-def searchtables():
-    print("Search table setup")
-    data_to_send = dbc.load_composites_from_user(0)
-    return {"data": data_to_send}
+
+@geo_blueprint.route('/geo/api/clear_data', methods=['POST'])
+def clear_data():
+    global seen_nodes
+    seen_nodes = {}
+    return 'Success', 200

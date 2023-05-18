@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenStreetMap API Example</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/geo.css') }}" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.css">
+</head>
+<body>
+    <div id="map"></div>
+    <button id="loadDataButton">Fetch & Display Data</button>
+    <table class="display" id="data-table">
+        <thead>
+            <tr id="row">
+                <!-- <th>Latitude</th>
+                <th>Longitude</th> -->
+                <th>Name</th>
+                <th>Type</th>
+                <th class="details-control">Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be inserted here -->
+        </tbody>
+    </table>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.js"></script>
+    <script src="{{ url_for('static',filename='js/geo.js') }}"></script>
+</body>
+</html>
