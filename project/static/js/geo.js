@@ -25,6 +25,11 @@ map.addControl(drawControl);
 // console.log(overpassQuery);
 // return fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
 
+// on document ready, click the load data button
+$(document).ready(function() {
+    $('#loadDataButton').click();
+});
+
 // This function fetches new data based on the bounds of a shape and returns it
 async function fetchDataForShape(shape) {
     var bounds = shape.getBounds();
