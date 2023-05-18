@@ -10,7 +10,7 @@ let drawControl = new L.Control.Draw({
     draw: {
         polygon: true,
         polyline: false,
-        circle: false,
+        circle: true,
         marker: false,
         circlemarker: false,
         rectangle: true,
@@ -33,13 +33,49 @@ $(document).ready(function() {
 // This function fetches new data based on the bounds of a shape and returns it
 async function fetchDataForShape(shape) {
     var bounds = shape.getBounds();
-    let shapeType = shape instanceof L.Polygon ? "polygon" : "rectangle";
+
+    let shapeType = shape.shapeType; 
+    // console.log(shapeType);
     var data = [];
-    if(shapeType === "rectangle") {
+    if (shapeType === "rectangle") {
+        console.log("rectangle");
         for (let i = 0; i < tags.length; i++) {
             try {
                 // console.log(`[out:json][timeout:25];(node["${tags[i]}"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}););out body;>;out skel qt;`)
-                let response = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];(node["${tags[i]}"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}););out body;>;out skel qt;`);
+                let response = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];
+                (
+                    node["${tags[i]}"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
+                    way["${tags[i]}"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
+                );
+                out body;
+                >;
+                out skel qt;
+                `);
+                if (!response.ok) {
+                    throw Error(`HTTP error! status: ${response.status}`);
+                }
+                let json = await response.json();
+                data = [...data, ...json.elements];
+            } catch (error) {
+                console.log('Error: ', error);
+            }
+        }
+    } 
+    else if (shapeType === "circle") {
+        console.log("circle");
+        let center = shape.getLatLng();
+        let radius = shape.getRadius();
+        for (let i = 0; i < tags.length; i++) {
+            try {
+                let response = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];
+                (
+                    node["${tags[i]}"](around:${radius},${center.lat},${center.lng});
+                    way["${tags[i]}"](around:${radius},${center.lat},${center.lng});
+                );
+                out body;
+                >;
+                out skel qt;
+                `);
                 if (!response.ok) {
                     throw Error(`HTTP error! status: ${response.status}`);
                 }
@@ -50,6 +86,7 @@ async function fetchDataForShape(shape) {
             }
         }
     } else {
+        console.log("polygon");
         let points = shape.getLatLngs()[0]; // the first array is the outer ring of the polygon
         let pointString = points.map(point => `${point.lat} ${point.lng}`).join(" ");
 
@@ -57,7 +94,15 @@ async function fetchDataForShape(shape) {
         let overpassQuery = `(poly:"${pointString}")`;
         for (let i = 0; i < tags.length; i++) {
             try {
-                let response = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];(node["${tags[i]}"]${overpassQuery};);out body;>;out skel qt;`);
+                let response = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];
+                (
+                    node["${tags[i]}"]${overpassQuery};
+                    way["${tags[i]}"]${overpassQuery};
+                );
+                out body;
+                >;
+                out skel qt;
+                `);
                 if (!response.ok) {
                     throw Error(`HTTP error! status: ${response.status}`);
                 }
@@ -76,6 +121,9 @@ async function fetchDataForShape(shape) {
 map.on('draw:created', function (e) {
     var type = e.layerType,
         layer = e.layer;
+
+    // Store the type of the shape in the layer
+    layer.shapeType = type;
 
     // Add the drawn layer to the group
     drawnItems.addLayer(layer);
@@ -181,7 +229,12 @@ async function loadData() {
         // Store the data for the details view in the row
         let tagsList = Object.entries(node.tags).map(([key, value]) => `<b>${key}</b>: ${value}`);
         let tagsString = tagsList.join('&emsp;');
-        row.dataset.details = `<b>Latitude</b>: ${node.lat}&emsp;<b>Longitude</b>: ${node.lon}&emsp;${tagsString}`;
+        if (node.lat !== undefined && node.lon !== undefined){
+            row.dataset.details = `<b>Latitude</b>: ${node.lat}&emsp;<b>Longitude</b>: ${node.lon}&emsp;${tagsString}`;
+        } else {
+            row.dataset.details = tagsString;
+        }
+        
 
         // Add details data to array
         detailsData.push(row.dataset.details);
