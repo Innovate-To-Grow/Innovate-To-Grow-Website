@@ -89,6 +89,7 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
         throw Error(`HTTP error! status: ${response.status}`);
     }
 
+
     // Destroy existing DataTable before updating table data
     if ( $.fn.dataTable.isDataTable( '#data-table' ) ) {
         $('#data-table').DataTable().destroy();
@@ -97,6 +98,12 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
     // Clear the table body
     let tableBody = document.querySelector('#data-table tbody');
     tableBody.innerHTML = '';
+
+    // Show the loading spinner and disable button
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('loadDataButton').disabled = true;
+    document.getElementById('loadDataButton').style.cursor = 'wait';
+    document.querySelector('#data-table thead').style.visibility = 'hidden';
     
     // Fetch data for all drawn items
     let data = [];
@@ -124,6 +131,12 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
 
     // Load the data into the table (or whatever you want to do with it)
     await loadData();
+
+    // Hide the loader and renable button
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('loadDataButton').disabled = false;
+    document.getElementById('loadDataButton').style.cursor = 'default';
+    document.querySelector('#data-table thead').style.visibility = 'visible';
 });
 
 // This function will generate the child row content.
