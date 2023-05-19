@@ -26,7 +26,7 @@ map.addControl(drawControl);
 // return fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
 
 // on document ready, click the load data button
-$(document).ready(function() {
+$(document).ready(function () {
     $('#loadDataButton').click();
 });
 
@@ -34,7 +34,7 @@ $(document).ready(function() {
 async function fetchDataForShape(shape) {
     var bounds = shape.getBounds();
 
-    let shapeType = shape.shapeType; 
+    let shapeType = shape.shapeType;
     // console.log(shapeType);
     var data = [];
     if (shapeType === "rectangle") {
@@ -55,12 +55,22 @@ async function fetchDataForShape(shape) {
                     throw Error(`HTTP error! status: ${response.status}`);
                 }
                 let json = await response.json();
-                data = [...data, ...json.elements];
+                let filteredJson = json.elements.filter(element => {
+                    if (element.hasOwnProperty('tags')) {
+                        if (element.tags.hasOwnProperty('name')) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+
+                data = [...data, ...filteredJson];
+
             } catch (error) {
                 console.log('Error: ', error);
             }
         }
-    } 
+    }
     else if (shapeType === "circle") {
         console.log("circle");
         let center = shape.getLatLng();
@@ -80,7 +90,17 @@ async function fetchDataForShape(shape) {
                     throw Error(`HTTP error! status: ${response.status}`);
                 }
                 let json = await response.json();
-                data = [...data, ...json.elements];
+                let filteredJson = json.elements.filter(element => {
+                    if (element.hasOwnProperty('tags')) {
+                        if (element.tags.hasOwnProperty('name')) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+
+                data = [...data, ...filteredJson];
+
             } catch (error) {
                 console.log('Error: ', error);
             }
@@ -107,7 +127,17 @@ async function fetchDataForShape(shape) {
                     throw Error(`HTTP error! status: ${response.status}`);
                 }
                 let json = await response.json();
-                data = [...data, ...json.elements];
+                let filteredJson = json.elements.filter(element => {
+                    if (element.hasOwnProperty('tags')) {
+                        if (element.tags.hasOwnProperty('name')) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+
+                data = [...data, ...filteredJson];
+
             } catch (error) {
                 console.log('Error: ', error);
             }
@@ -139,7 +169,7 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
 
 
     // Destroy existing DataTable before updating table data
-    if ( $.fn.dataTable.isDataTable( '#data-table' ) ) {
+    if ($.fn.dataTable.isDataTable('#data-table')) {
         $('#data-table').DataTable().destroy();
     }
 
@@ -152,7 +182,7 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
     document.getElementById('loadDataButton').disabled = true;
     document.getElementById('loadDataButton').style.cursor = 'wait';
     document.querySelector('#data-table thead').style.visibility = 'hidden';
-    
+
     // Fetch data for all drawn items
     let data = [];
     let promises = [];
@@ -188,7 +218,7 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
 });
 
 // This function will generate the child row content.
-function formatDetail ( node ) {
+function formatDetail(node) {
     let tagDetails = '';
     Object.entries(node.tags).forEach(([key, value]) => {
         tagDetails += `<p><b>${key}:</b> ${value}</p>`;
@@ -229,12 +259,12 @@ async function loadData() {
         // Store the data for the details view in the row
         let tagsList = Object.entries(node.tags).map(([key, value]) => `<b>${key}</b>: ${value}`);
         let tagsString = tagsList.join('&emsp;');
-        if (node.lat !== undefined && node.lon !== undefined){
+        if (node.lat !== undefined && node.lon !== undefined) {
             row.dataset.details = `<b>Latitude</b>: ${node.lat}&emsp;<b>Longitude</b>: ${node.lon}&emsp;${tagsString}`;
         } else {
             row.dataset.details = tagsString;
         }
-        
+
 
         // Add details data to array
         detailsData.push(row.dataset.details);
@@ -252,7 +282,7 @@ async function loadData() {
                 "className": 'details-control',
                 "orderable": false,
                 "defaultContent": '',
-                "render": function(data, type, row, meta) {
+                "render": function (data, type, row, meta) {
                     // Return details data for search and order actions
                     if (type === 'filter' || type === 'sort') {
                         return detailsData[meta.row];

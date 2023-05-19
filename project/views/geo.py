@@ -20,18 +20,14 @@ def process_data():
     # geolocator = Nominatim(user_agent="myGeocoder")
     for node in nodes:
         if node['id'] not in seen_nodes:
-            if 'tags' in node:
-                if 'name' in node['tags']:
-                    node_type = node['tags'].get('amenity') or node['tags'].get('shop') or node['tags'].get('office') or node['tags'].get('building') or 'unknown'
-                    # location = geolocator.reverse((node['lat'], node['lon']))
-                    # address = location.address.replace(",", " ")
-                    # node['address'] = address
-                    node['type'] = node_type
-                    seen_nodes[node['id']] = node
-            #     else:
-            #         print(f"Node {node} doesn't have a name tag")
-            # else:
-            #     print(f"Node {node} doesn't have tags")
+            node_type = node['tags'].get('amenity') or node['tags'].get(
+                'shop') or node['tags'].get('office') or node['tags'].get(
+                    'building') or 'other'
+            # location = geolocator.reverse((node['lat'], node['lon']))
+            # address = location.address.replace(",", " ")
+            # node['address'] = address
+            node['type'] = node_type
+            seen_nodes[node['id']] = node
 
     return 'Success', 200
 
