@@ -120,6 +120,14 @@ def judging():
 def template():
     return render_template("template.html")
 
+@home_blueprint.route("/template-email-team-students", methods=["GET", "POST"])
+def template_email_team_students():
+    return render_template("template-email-team-students.html")
+
+@home_blueprint.route("/I2G-project-sponsor-acknowledgement", methods=["GET", "POST"])
+def I2G_project_sponsor_acknowledgement():
+    return render_template("I2G-project-sponsor-acknowledgement.html")
+
 @home_blueprint.route("/home-during-event", methods=["GET", "POST"])
 def home_during_event():
     return render_template("home-during-event.html")
