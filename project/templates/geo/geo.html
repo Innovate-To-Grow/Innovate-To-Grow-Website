@@ -5,11 +5,15 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
     <link rel="stylesheet" href="{{ url_for('static',filename='css/geo.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/merge-tables.css') }}" />
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <div id="map"></div>
     <button id="loadDataButton">Fetch & Display Data</button>
+    <button id="saveShapesButton">Save Shapes</button>
+    <button id="loadShapesButton">Load Shapes</button>  
     <div id="loader" class="loader" style="display: none"></div>
     <table class="display" id="data-table">
         <thead>
@@ -18,6 +22,15 @@
                 <th>Longitude</th> -->
                 <th>Name</th>
                 <th>Type</th>
+                <th>Last Updated 
+                <!-- <i class="fas fa-filter" id="dateFilterIcon"></i>
+                <center><div id="dateFilterDropdown" class="dropdown-content">
+                    <label for="min">From:</label>
+                    <input style="margin-bottom: 6px;" type="date" id="min-date" placeholder="From:"><br>
+                    <label for="max">To:</label>
+                    <input type="date" id="max-date" placeholder="To:">
+                </div></center> -->
+                </th>                  
                 <th class="details-control">Details</th>
             </tr>
         </thead>

@@ -1,4 +1,4 @@
-let tags = ["aerialway", "aeroway", "amenity", "boundary", "building", "craft", "emergency", "geological", "healthcare", "historic", "landuse", "leisure", "man_made", "military", "natural", "office", "place", "public_transport", "route", "shop", "sport", "telecom", "tourism", "water", "waterway"]
+let tags = ["shop", "amenity", "building"]
 
 let map = L.map('map').setView([37.3616569, -120.4326071], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -47,7 +47,7 @@ async function fetchDataForShape(shape) {
                     node["${tags[i]}"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
                     way["${tags[i]}"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});
                 );
-                out body;
+                out body meta;
                 >;
                 out skel qt;
                 `);
@@ -243,8 +243,30 @@ async function loadData() {
     data.forEach((node, i) => {
         let row = document.createElement('tr');
 
+        // Convert timestamp to PST and format it
+        let date = new Date(node.timestamp);
+        let formattedDate = new Intl.DateTimeFormat('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'America/Los_Angeles'
+        }).format(date);
+        formattedDate = formattedDate.replace(',', ''); // remove comma
+
+        // Split the date and time parts
+        let [datePart, timePart, period] = formattedDate.split(' ');
+
+        // Re-order the date part to 'YYYY-MM-DD'
+        datePart = datePart.split('/').reverse().join('-');
+
+        // Combine the parts again
+        formattedDate = `${datePart} ${timePart} ${period}`;
+
         // Create data cells
-        let cells = [node.tags.name, node.type];
+        let cells = [node.tags.name, node.type, formattedDate];
         cells.forEach(cell => {
             let cellElement = document.createElement('td');
             cellElement.textContent = cell;
@@ -259,9 +281,12 @@ async function loadData() {
         // Store the data for the details view in the row
         let tagsList = Object.entries(node.tags).map(([key, value]) => `<b>${key}</b>: ${value}`);
         let tagsString = tagsList.join('&emsp;');
+
         if (node.lat !== undefined && node.lon !== undefined) {
             row.dataset.details = `<b>Latitude</b>: ${node.lat}&emsp;<b>Longitude</b>: ${node.lon}&emsp;${tagsString}`;
-        } else {
+        }
+
+        else {
             row.dataset.details = tagsString;
         }
 
@@ -272,11 +297,52 @@ async function loadData() {
         tableBody.appendChild(row);
     });
 
+    // // Custom filtering function which will search data in column four between two values
+    // $.fn.dataTable.ext.search.push(
+    //     function (settings, data, dataIndex) {
+    //         let min = new Date($('#min-date').val()).getTime();
+    //         let max = new Date($('#max-date').val()).getTime();
+    //         let date = new Date(data[2]).getTime(); // column number where date data is
+
+    //         if ((isNaN(min) && isNaN(max)) ||
+    //             (isNaN(min) && date <= max) ||
+    //             (min <= date && isNaN(max)) ||
+    //             (min <= date && date <= max)) {
+    //             return true;
+    //         }
+    //         return false;
+    //     }
+    // );
+
+    // var dropdown = document.getElementById("dateFilterDropdown");
+    // var btn = document.getElementById("dateFilterIcon");
+
+    // // Toggle the dropdown when the button is clicked
+    // btn.onclick = function(event) {
+    //     event.stopPropagation();
+    //     dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    // }
+
+    // // Close the dropdown when the user clicks outside of it
+    // window.onclick = function (event) {
+    //     if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
+    //         dropdown.style.display = "none";
+    //     }
+    // }
+
+    // // Prevent hiding the dropdown when clicking inside it
+    // dropdown.onclick = function (event) {
+    //     event.stopPropagation();
+    // }
+
+    
+
     // Initialize DataTable
     let table = $('#data-table').DataTable({
         "columns": [
             { "data": "tags.name" },
             { "data": "type" },
+            { "data": "timestamp" },
             {
                 "data": null,
                 "className": 'details-control',
@@ -291,7 +357,16 @@ async function loadData() {
                 }
             }
         ],
-        "order": [[1, 'asc']]
+        "order": [[1, 'asc']],
+        "columnDefs": [
+            { "width": "50%", "targets": 0 }
+        ],
+        "stateSave": true
+    });
+
+    // Event listener to the two range filtering inputs to redraw on input
+    $('#min-date, #max-date').change(function () {
+        table.draw();
     });
 
     // Add event listener for opening and closing details
