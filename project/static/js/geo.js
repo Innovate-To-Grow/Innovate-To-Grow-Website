@@ -82,7 +82,7 @@ async function fetchDataForShape(shape) {
                     node["${tags[i]}"](around:${radius},${center.lat},${center.lng});
                     way["${tags[i]}"](around:${radius},${center.lat},${center.lng});
                 );
-                out body;
+                out body meta;
                 >;
                 out skel qt;
                 `);
@@ -119,7 +119,7 @@ async function fetchDataForShape(shape) {
                     node["${tags[i]}"]${overpassQuery};
                     way["${tags[i]}"]${overpassQuery};
                 );
-                out body;
+                out body meta;
                 >;
                 out skel qt;
                 `);
