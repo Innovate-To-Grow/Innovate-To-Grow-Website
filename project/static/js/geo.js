@@ -35,7 +35,8 @@ async function fetchDataForShape(shape) {
     var bounds = shape.getBounds();
 
     let shapeType = shape.shapeType;
-    // console.log(shapeType);
+    console.log("test");
+    console.log(shapeType);
     var data = [];
     if (shapeType === "rectangle") {
         console.log("rectangle");
@@ -159,6 +160,94 @@ map.on('draw:created', function (e) {
     drawnItems.addLayer(layer);
 });
 
+
+
+// Saving function
+function saveShapeSelection() {
+    let name = prompt("Please enter a name for this selection");
+    if (name === null || name === "") {
+        alert("You must enter a valid name!");
+        return;
+    }
+
+    let selectedShapes = {
+        type: "FeatureCollection",
+        features: []
+    };
+
+    drawnItems.eachLayer(function (layer) {
+        let shapeType;
+        if (layer instanceof L.Circle) {
+            shapeType = "circle";
+            selectedShapes.features.push({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
+                },
+                properties: {
+                    radius: layer.getRadius(),
+                    shapeType: shapeType
+                }
+            });
+        } else if (layer instanceof L.Rectangle) {
+            shapeType = "rectangle";
+            let feature = layer.toGeoJSON();
+            feature.properties.shapeType = shapeType;
+            selectedShapes.features.push(feature);
+        } else {
+            // Defaulting to polygon if it's not a circle or a rectangle.
+            shapeType = "polygon";
+            let feature = layer.toGeoJSON();
+            feature.properties.shapeType = shapeType;
+            selectedShapes.features.push(feature);
+        }
+    });
+
+    // Save the selection into the local storage
+    let savedShapes = JSON.parse(localStorage.getItem('savedShapes')) || {};
+    savedShapes[name] = selectedShapes;
+    localStorage.setItem('savedShapes', JSON.stringify(savedShapes));
+}
+
+// Loading function
+function loadShapeSelection() {
+    // Get the saved selections from the local storage
+    let savedShapes = JSON.parse(localStorage.getItem('savedShapes'));
+
+    if (!savedShapes) {
+        alert("No saved selections found!");
+        return;
+    }
+
+    // Prompt the user to select a name
+    let name = prompt("Please enter the name of the selection you want to load");
+    if (!(name in savedShapes)) {
+        alert("No saved selections found with this name!");
+        return;
+    }
+
+    // Load the selected shapes
+    let selectedShapes = savedShapes[name];
+
+    // Clear the drawn items
+    drawnItems.clearLayers();
+
+    // Load the shapes into the layer group
+    L.geoJSON(selectedShapes, {
+        pointToLayer: function (feature, latlng) {
+            if (feature.properties.shapeType === "circle") {
+                return L.circle(latlng, { radius: feature.properties.radius });
+            }
+        }
+    }).addTo(drawnItems);
+}
+
+document.getElementById('saveShapesButton').addEventListener('click', saveShapeSelection);
+document.getElementById('loadShapesButton').addEventListener('click', loadShapeSelection);
+
+
+
 document.getElementById('loadDataButton').addEventListener('click', async function () {
     let response = await fetch('/geo/api/clear_data', {
         method: 'POST',
@@ -254,13 +343,17 @@ async function loadData() {
             hour12: true,
             timeZone: 'America/Los_Angeles'
         }).format(date);
+
         formattedDate = formattedDate.replace(',', ''); // remove comma
 
         // Split the date and time parts
         let [datePart, timePart, period] = formattedDate.split(' ');
 
-        // Re-order the date part to 'YYYY-MM-DD'
-        datePart = datePart.split('/').reverse().join('-');
+        // Split the date part into month, day, year
+        let [month, day, year] = datePart.split('/');
+
+        // Re-order the parts to 'YYYY-MM-DD'
+        datePart = `${year}-${month}-${day}`;
 
         // Combine the parts again
         formattedDate = `${datePart} ${timePart} ${period}`;
@@ -297,45 +390,44 @@ async function loadData() {
         tableBody.appendChild(row);
     });
 
-    // // Custom filtering function which will search data in column four between two values
-    // $.fn.dataTable.ext.search.push(
-    //     function (settings, data, dataIndex) {
-    //         let min = new Date($('#min-date').val()).getTime();
-    //         let max = new Date($('#max-date').val()).getTime();
-    //         let date = new Date(data[2]).getTime(); // column number where date data is
+    // Custom filtering function which will search data in column four between two values
+    $.fn.dataTable.ext.search.push(
+        function (settings, data, dataIndex) {
+            let min = new Date($('#min-date').val()).getTime();
+            let max = new Date($('#max-date').val()).getTime();
+            let date = new Date(data[2]).getTime(); // column number where date data is
 
-    //         if ((isNaN(min) && isNaN(max)) ||
-    //             (isNaN(min) && date <= max) ||
-    //             (min <= date && isNaN(max)) ||
-    //             (min <= date && date <= max)) {
-    //             return true;
-    //         }
-    //         return false;
-    //     }
-    // );
+            if ((isNaN(min) && isNaN(max)) ||
+                (isNaN(min) && date <= max) ||
+                (min <= date && isNaN(max)) ||
+                (min <= date && date <= max)) {
+                return true;
+            }
+            return false;
+        }
+    );
 
-    // var dropdown = document.getElementById("dateFilterDropdown");
-    // var btn = document.getElementById("dateFilterIcon");
+    var dropdown = document.getElementById("dateFilterDropdown");
+    var btn = document.getElementById("dateFilterIcon");
 
-    // // Toggle the dropdown when the button is clicked
-    // btn.onclick = function(event) {
-    //     event.stopPropagation();
-    //     dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-    // }
+    // Toggle the dropdown when the button is clicked
+    btn.onclick = function(event) {
+        event.stopPropagation();
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
 
-    // // Close the dropdown when the user clicks outside of it
-    // window.onclick = function (event) {
-    //     if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
-    //         dropdown.style.display = "none";
-    //     }
-    // }
+    // Close the dropdown when the user clicks outside of it
+    window.onclick = function (event) {
+        if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
+            dropdown.style.display = "none";
+        }
+    }
 
-    // // Prevent hiding the dropdown when clicking inside it
-    // dropdown.onclick = function (event) {
-    //     event.stopPropagation();
-    // }
+    // Prevent hiding the dropdown when clicking inside it
+    dropdown.onclick = function (event) {
+        event.stopPropagation();
+    }
 
-    
 
     // Initialize DataTable
     let table = $('#data-table').DataTable({
@@ -385,8 +477,6 @@ async function loadData() {
         }
     });
 }
-
-
 
 
 function formatDetail(rowData) {
