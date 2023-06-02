@@ -497,7 +497,7 @@ async function loadData() {
                 }
             }
         ],
-        "order": [[1, 'asc']],
+        "order": [[0, 'asc']],
         "columnDefs": [
             { "width": "50%", "targets": 0 },
             { "width": "1%", "targets": 3 }, // set the width of the details column
