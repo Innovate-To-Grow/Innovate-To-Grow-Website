@@ -10,10 +10,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
-    <div id="map"></div>
-    <button id="loadDataButton">Fetch & Display Data</button>
-    <button id="saveShapesButton">Save Shapes</button>
-    <button id="loadShapesButton">Load Shapes</button>  
+    <div id="cookies">
+        <p>Cookies are currently disabled in your browser. To use this feature, please enable cookies.</p>
+        <button href="https://support.google.com/accounts/answer/61416" target="_blank">Enable Cookies</button>
+    </div>
+    <div id="map"></div>    
+    <button id="loadDataButton" style="margin-right: 15px;"> Fetch & Display Data </button>
+    <button id="saveShapesButton"> Save Shapes </button>
+    <select id="savedShapesSelection">
+        <!-- Options will be filled dynamically -->
+    </select>
+    <!-- <button id="loadShapesButton">Load Shapes</button>   -->
     <div id="loader" class="loader" style="display: none"></div>
     <table class="display" id="data-table">
         <thead>

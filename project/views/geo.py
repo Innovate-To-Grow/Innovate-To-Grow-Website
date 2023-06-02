@@ -16,7 +16,6 @@ def process_data():
     global seen_nodes
     data = request.get_json()
     nodes = data['elements']
-    print("Total nodes: ", len(nodes))
     # geolocator = Nominatim(user_agent="myGeocoder")
     for node in nodes:
         if node['id'] not in seen_nodes:

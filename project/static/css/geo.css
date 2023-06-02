@@ -1,3 +1,4 @@
+
 #map {
     height: 500px;
     width: 100%;
@@ -701,6 +702,7 @@ table.dataTable td {
         margin-top: .5em
     }
 }
+
 table.dataTable>tbody>tr>.selected {
     background-color: rgba(13, 110, 253, 0.9);
     color: white
@@ -771,6 +773,7 @@ div.dataTables_wrapper span.select-item {
         display: block
     }
 }
+
 /* Set arrow buttons for search tables START */
 td.details-control {
     background: url('https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/images/details_open.png') no-repeat center center !important;
@@ -831,8 +834,69 @@ th {
 
 /* Color for all buttons */
 button {
+    margin: 10px;
+    font-size: medium;
+    padding: 5px;
     color: #DAA900;
     background-color: #002856;
+    border-radius: 5px;
+    padding: 5px 15px;
+    font-family: "Open Sans", sans-serif;
+    font-weight: 500;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: inline-block;
+    box-shadow: inset 2px 2px 2px 0px rgba(255, 255, 255, .5),
+        7px 7px 20px 0px rgba(0, 0, 0, .1),
+        4px 4px 5px 0px rgba(0, 0, 0, .1);
+    outline: none;
+
+}
+
+button:before {
+    height: 0%;
+    width: 2px;
+}
+
+button:hover {
+    box-shadow: 4px 4px 6px 0 rgba(255, 255, 255, .5),
+        -4px -4px 6px 0 rgba(116, 125, 136, .5),
+        inset -4px -4px 6px 0 rgba(255, 255, 255, .2),
+        inset 4px 4px 6px 0 rgba(0, 0, 0, .4);
+}
+
+#savedShapesSelection {
+    font-size: medium;
+    color: #DAA900;
+    background-color: #002856;
+    padding: 6px;
+    border-radius: 5px;
+    padding: 5px 15px;
+    font-family: "Open Sans", sans-serif;
+    font-weight: 500;
+    /* background: transparent; */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: inline-block;
+    box-shadow: inset 2px 2px 2px 0px rgba(255, 255, 255, .5),
+        7px 7px 20px 0px rgba(0, 0, 0, .1),
+        4px 4px 5px 0px rgba(0, 0, 0, .1);
+    outline: none;
+}
+
+#savedShapesSelection:before {
+    height: 0%;
+    width: 2px;
+}
+
+#savedShapesSelection:hover {
+    box-shadow: 4px 4px 6px 0 rgba(255, 255, 255, .5),
+        -4px -4px 6px 0 rgba(116, 125, 136, .5),
+        inset -4px -4px 6px 0 rgba(255, 255, 255, .2),
+        inset 4px 4px 6px 0 rgba(0, 0, 0, .4);
 }
 
 /* Condition to recolor buttons that have class gray (when delete and row buttons are gray) */
@@ -1038,11 +1102,13 @@ tr.selected td {
     display: none;
     position: absolute;
     background-color: #f1f1f1;
-    min-width: 200px; 
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    min-width: 200px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
     z-index: 1;
-    border: 1px solid #ccc;  /* Add border */
-    padding: 10px;  /* Add padding */
-    border-radius: 5px;  /* Round corners */
+    border: 1px solid #ccc;
+    /* Add border */
+    padding: 10px;
+    /* Add padding */
+    border-radius: 5px;
+    /* Round corners */
 }
-  

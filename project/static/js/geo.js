@@ -1,3 +1,16 @@
+// Cookies
+document.getElementById("cookies").style.display = "none";
+if (!navigator.cookieEnabled) {
+    document.getElementById("cookies").style.display = "block";
+    document.getElementById("map").style.display = "none";
+    document.getElementById("loadDataButton").style.display = "none";
+    document.getElementById("saveShapesButton").style.display = "none";
+    document.getElementById("savedShapesSelection").style.display = "none";
+    document.getElementById("data-table").style.display = "none";
+    document.getElementById("data-table_wrapper").style.display = "none";
+}
+
+
 let tags = ["shop", "amenity", "building"]
 
 let map = L.map('map').setView([37.3616569, -120.4326071], 13);
@@ -33,10 +46,8 @@ $(document).ready(function () {
 // This function fetches new data based on the bounds of a shape and returns it
 async function fetchDataForShape(shape) {
     var bounds = shape.getBounds();
-
+    
     let shapeType = shape.shapeType;
-    console.log("test");
-    console.log(shapeType);
     var data = [];
     if (shapeType === "rectangle") {
         console.log("rectangle");
@@ -164,66 +175,69 @@ map.on('draw:created', function (e) {
 
 // Saving function
 function saveShapeSelection() {
-    let name = prompt("Please enter a name for this selection");
-    if (name === null || name === "") {
-        alert("You must enter a valid name!");
+    if (drawnItems.getLayers().length != 0) {
+        let name = prompt("Please enter a name for this selection");
+        // if name is null (which happens if Cancel is clicked) or empty, return from the function
+        if (name === null || name === "") {
+            if (name === "") alert("You must enter a valid name!");
+            return;
+        }
+
+        let selectedShapes = {
+            type: "FeatureCollection",
+            features: []
+        };
+
+        drawnItems.eachLayer(function (layer) {
+            let shapeType;
+            if (layer instanceof L.Circle) {
+                shapeType = "circle";
+                selectedShapes.features.push({
+                    type: "Feature",
+                    geometry: {
+                        type: "Point",
+                        coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
+                    },
+                    properties: {
+                        radius: layer.getRadius(),
+                        shapeType: shapeType
+                    }
+                });
+            } else if (layer instanceof L.Rectangle) {
+                shapeType = "rectangle";
+                let feature = layer.toGeoJSON();
+                feature.properties.shapeType = shapeType;
+                selectedShapes.features.push(feature);
+            } else {
+                // Defaulting to polygon if it's not a circle or a rectangle.
+                shapeType = "polygon";
+                let feature = layer.toGeoJSON();
+                feature.properties.shapeType = shapeType;
+                selectedShapes.features.push(feature);
+            }
+        });
+
+        // Save the selection into the local storage
+        let savedShapes = JSON.parse(localStorage.getItem('savedShapes')) || {};
+        savedShapes[name] = selectedShapes;
+        localStorage.setItem('savedShapes', JSON.stringify(savedShapes));
+        updateShapeSelectionDropdown();
+    } else {
+        alert("You must draw a shape first!");
         return;
     }
-
-    let selectedShapes = {
-        type: "FeatureCollection",
-        features: []
-    };
-
-    drawnItems.eachLayer(function (layer) {
-        let shapeType;
-        if (layer instanceof L.Circle) {
-            shapeType = "circle";
-            selectedShapes.features.push({
-                type: "Feature",
-                geometry: {
-                    type: "Point",
-                    coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
-                },
-                properties: {
-                    radius: layer.getRadius(),
-                    shapeType: shapeType
-                }
-            });
-        } else if (layer instanceof L.Rectangle) {
-            shapeType = "rectangle";
-            let feature = layer.toGeoJSON();
-            feature.properties.shapeType = shapeType;
-            selectedShapes.features.push(feature);
-        } else {
-            // Defaulting to polygon if it's not a circle or a rectangle.
-            shapeType = "polygon";
-            let feature = layer.toGeoJSON();
-            feature.properties.shapeType = shapeType;
-            selectedShapes.features.push(feature);
-        }
-    });
-
-    // Save the selection into the local storage
-    let savedShapes = JSON.parse(localStorage.getItem('savedShapes')) || {};
-    savedShapes[name] = selectedShapes;
-    localStorage.setItem('savedShapes', JSON.stringify(savedShapes));
 }
 
 // Loading function
 function loadShapeSelection() {
     // Get the saved selections from the local storage
     let savedShapes = JSON.parse(localStorage.getItem('savedShapes'));
-
-    if (!savedShapes) {
-        alert("No saved selections found!");
-        return;
-    }
-
-    // Prompt the user to select a name
-    let name = prompt("Please enter the name of the selection you want to load");
-    if (!(name in savedShapes)) {
-        alert("No saved selections found with this name!");
+    let selectElement = document.getElementById('savedShapesSelection');
+    // Get the selected name from the dropdown
+    let name = document.getElementById('savedShapesSelection').value;
+    
+    if (!name || !(name in savedShapes)) {
+        console.log("No saved selections found with this name!");
         return;
     }
 
@@ -237,15 +251,49 @@ function loadShapeSelection() {
     L.geoJSON(selectedShapes, {
         pointToLayer: function (feature, latlng) {
             if (feature.properties.shapeType === "circle") {
-                return L.circle(latlng, { radius: feature.properties.radius });
+                let circle = L.circle(latlng, { radius: feature.properties.radius });
+                circle.shapeType = feature.properties.shapeType;
+                drawnItems.addLayer(circle);
+            }
+        },
+        onEachFeature: function (feature, layer) {
+            if (feature.properties.shapeType === "rectangle" || feature.properties.shapeType === "polygon") {
+                layer.shapeType = feature.properties.shapeType;
+                drawnItems.addLayer(layer);
             }
         }
-    }).addTo(drawnItems);
+    });
+    updateShapeSelectionDropdown();
 }
 
-document.getElementById('saveShapesButton').addEventListener('click', saveShapeSelection);
-document.getElementById('loadShapesButton').addEventListener('click', loadShapeSelection);
+updateShapeSelectionDropdown();
 
+document.getElementById('saveShapesButton').addEventListener('click', saveShapeSelection);
+document.getElementById('savedShapesSelection').addEventListener('change', loadShapeSelection);
+
+
+// Update the dropdown with the names of saved shapes
+function updateShapeSelectionDropdown() {
+    let savedShapes = JSON.parse(localStorage.getItem('savedShapes')) || {};
+    let selectElement = document.getElementById('savedShapesSelection');
+
+    // Clear the current options
+    selectElement.innerHTML = "";
+
+    // Create a default option
+    let defaultOption = document.createElement("option");
+    defaultOption.text = "Load Shapes";
+    defaultOption.value = "";
+    selectElement.add(defaultOption);
+
+    // Add an option for each saved shape
+    for (let name in savedShapes) {
+        let option = document.createElement("option");
+        option.text = name;
+        option.value = name;
+        selectElement.add(option);
+    }
+}
 
 
 document.getElementById('loadDataButton').addEventListener('click', async function () {
@@ -451,9 +499,18 @@ async function loadData() {
         ],
         "order": [[1, 'asc']],
         "columnDefs": [
-            { "width": "50%", "targets": 0 }
+            { "width": "50%", "targets": 0 },
+            { "width": "1%", "targets": 3 }, // set the width of the details column
+            { "width": "auto", "targets": "_all" } // let other columns adjust automatically
         ],
         "stateSave": true
+    });
+    // Adjust table width on window resize
+    $(window).resize(function() {
+        var width = $(window).width();
+        var newWidth = width - 16; // 8px padding on each side
+        $('#data-table').css('width', newWidth);
+        table.columns.adjust().draw();
     });
 
     // Event listener to the two range filtering inputs to redraw on input
