@@ -868,6 +868,7 @@ button:hover {
 }
 
 #savedShapesSelection {
+    max-width: 150px;
     font-size: medium;
     color: #DAA900;
     background-color: #002856;
