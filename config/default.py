@@ -31,3 +31,9 @@ class Config():
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + APP_ROOT + "/db/data.sqlite3"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    CACHE_TYPE = "simple"
+    CACHE_DEFAULT_TIMEOUT = 300
+
+    AWS_ACCESS_KEY_ID = "***REMOVED_AWS_KEY_ID***"
+    AWS_SECRET_ACCESS_KEY = "***REMOVED_AWS_SECRET***"

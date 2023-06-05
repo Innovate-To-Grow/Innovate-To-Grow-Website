@@ -1,6 +1,7 @@
 import os
 from os import path
-from flask import Flask, render_template
+from flask import Flask, render_template, request
+from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
@@ -15,13 +16,14 @@ app = Flask(__name__)
 
 app.config.from_object(Config())
 
+cache = Cache(app)
 
-# limiter = Limiter(
-#     get_remote_address,
-#     app=app,
-#     default_limits=["15 per 30 seconds"]
-# )
-
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["15 per 30 seconds"],
+    default_limits_exempt_when=lambda: request.path.startswith("/admin")
+)
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -39,18 +41,15 @@ db.init_app(app)
 
 import boto3
 
-aws_access_key_id = "***REMOVED_AWS_KEY_ID***"
-aws_secret_access_key = "***REMOVED_AWS_SECRET***"
-
 ses = boto3.client('ses',
                    region_name='us-west-2',
-                   aws_access_key_id=aws_access_key_id,
-                   aws_secret_access_key=aws_secret_access_key)
+                   aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
+                   aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"])
 
 sqs = boto3.client('sqs',
                    region_name='us-west-2',
-                   aws_access_key_id=aws_access_key_id,
-                   aws_secret_access_key=aws_secret_access_key)
+                   aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
+                   aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"])
 
 
 import pytz
@@ -100,12 +99,12 @@ if "Logs" not in worksheets:
 wks = sh.worksheet("Members")
 logs = sh.worksheet("Logs")
 
+
 def get_wks_records(wks):
     wks_records = wks.get_all_records()
     for i, row in enumerate(wks_records, start=2):
         row['Row'] = i
     return wks_records
-
 
 def get_wks_columns(wks):
     header_row = wks.row_values(1)
