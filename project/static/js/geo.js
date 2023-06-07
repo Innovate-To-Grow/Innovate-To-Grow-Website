@@ -355,15 +355,6 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
     document.querySelector('#data-table thead').style.visibility = 'visible';
 });
 
-// This function will generate the child row content.
-function formatDetail(node) {
-    let tagDetails = '';
-    Object.entries(node.tags).forEach(([key, value]) => {
-        tagDetails += `<p><b>${key}:</b> ${value}</p>`;
-    });
-    return `<div class="detail-container">${tagDetails}</div>`;
-}
-
 let dataTable = null;
 
 let detailsData = [];  // Array to hold details data
@@ -425,7 +416,7 @@ async function loadData() {
 
         // Create details control cell and append it to the row
         let detailCell = document.createElement('td');
-        detailCell.className = "details-control";
+        // detailCell.className = "details-control";
         row.appendChild(detailCell);
 
         // Store the data for the details view in the row
@@ -527,10 +518,11 @@ async function loadData() {
     });
 
     // Add event listener for opening and closing details
-    $('#data-table tbody').on('click', 'td.details-control', function () {
+    $('#data-table tbody').on('click', 'td.details-control', function (e) {
+        e.stopPropagation();
         var tr = $(this).closest('tr');
         var row = table.row(tr);
-
+    
         if (row.child.isShown()) {
             // This row is already open - close it
             row.child.hide();
@@ -548,6 +540,23 @@ async function loadData() {
 // create master-table
 $(document).ready(function () {
     let masterTable = $('#master-table').DataTable({
+        "columns": [
+            { "data": "tags.name" },
+            { "data": "type" },
+            { "data": "timestamp" },
+            {
+                "data": null,
+                "className": 'details-control',
+                "orderable": false,
+                "defaultContent": '',
+                "render": function (data, type, row, meta) {
+                    if (type === 'filter' || type === 'sort') {
+                        return detailsData[meta.row];
+                    }
+                    return '';
+                }
+            }
+        ],
         "order": [[0, 'asc']],
         "columnDefs": [
             { "width": "50%", "targets": 0 },
@@ -556,43 +565,92 @@ $(document).ready(function () {
         ],
         "stateSave": true
     });
+
+    // Add event listener for opening and closing details on the master-table
+    $('#master-table tbody').on('click', 'td.details-control', function () {
+        var tr = $(this).closest('tr');
+        var row = masterTable.row(tr);
+
+        if (row.child.isShown()) {
+            // This row is already open - close it
+            row.child.hide();
+            tr.removeClass('shown');
+        } else {
+            // Open this row
+            row.child(tr.data('details')).show();
+            tr.addClass('shown');
+            // add class to child in order to not select it when clicking on it
+            tr.next().addClass('child-row');
+        }
+    });
 });
 
-$('#data-table').on('click', 'tbody > tr', function (e) {
+$('#data-table tbody').on('click', 'tr', function (e) {
     var $checkbox = $(this).find('input[type="checkbox"].row-checkbox');
 
     // Prevent selecting row if clicking on details-control button or child row
-    if ($(e.target).hasClass('details-control') || $(e.target).closest('tr.child-row').length > 0) {
+    if ($(e.target).hasClass('details-control') || $(e.target).closest('.child-row').length > 0) {
         return;
     }
 
     // Prevent the double-toggle issue
-    if (!$(e.target).is($checkbox)) {
+    if (!$(e.target).is($checkbox) && !$(e.target).is('.row-checkbox-label')) {
         $checkbox.prop('checked', !$checkbox.prop('checked'));
     }
 
     $(this).toggleClass('selected');
 });
 
-$('#data-table').on('click', 'input[type="checkbox"].row-checkbox', function (e) {
+
+$('#data-table tbody').on('click', 'input[type="checkbox"].row-checkbox', function (e) {
     $(this).closest('tr').toggleClass('selected');
     e.stopPropagation();
 });
 
+$('#merge').click(function () {
+    let table = $('#data-table').DataTable();
+    let merged_array = table.rows('.selected').data().toArray();
+    let rows = table.rows('.selected').nodes();
+    let masterTable = $('#master-table').DataTable();
+    let existingData = masterTable.data().toArray(); // Get current data from masterTable
 
-function formatDetail(rowData) {
-    return `<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">
-        <tr>
-            <td>Latitude:</td>
-            <td>${rowData.lat}</td>
-        </tr>
-        <tr>
-            <td>Longitude:</td>
-            <td>${rowData.lon}</td>
-        </tr>
-        <tr>
-            <td>Tags:</td>
-            <td>${rowData.tags}</td>
-        </tr>
-    </table>`;
-}
+    for (let i = 0; i < merged_array.length; i++) {
+        let isDuplicate = false;
+        let rowData = table.row(rows[i]).data();
+        let details = $(rows[i]).data('details');
+        let details_json = {};
+
+        // Generate details_json from details string
+        let details_array = details.split('<br>');
+        for (let j = 0; j < details_array.length; j++) {
+            let detail = details_array[j].split(':');
+            if (detail.length > 1) {
+                let key = detail[0].trim();
+                let value = detail[1].trim();
+                details_json[key] = value;
+            }
+        }
+
+        rowData['details'] = details_json;
+
+        // Check if rowData already exists in masterTable
+        for (let j = 0; j < existingData.length; j++) {
+            // Modify this condition based on how you define two rows as identical
+            // Currently, it checks if 'tags.name', 'type', 'timestamp' and 'details' are identical
+            if (existingData[j]['tags.name'] === rowData['tags.name']
+                && existingData[j]['type'] === rowData['type']
+                && existingData[j]['timestamp'] === rowData['timestamp']
+                && JSON.stringify(existingData[j]['details']) === JSON.stringify(rowData['details'])) {
+                isDuplicate = true;
+                break;
+            }
+        }
+
+        // If rowData is not a duplicate, add it to masterTable
+        if (!isDuplicate) {
+            let row = masterTable.row.add(rowData).draw().node();
+            $(row).data('details', details);
+        }
+    }
+});
+
