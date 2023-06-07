@@ -522,17 +522,21 @@ async function loadData() {
         e.stopPropagation();
         var tr = $(this).closest('tr');
         var row = table.row(tr);
-    
+
         if (row.child.isShown()) {
             // This row is already open - close it
             row.child.hide();
             tr.removeClass('shown');
+            tr.next().removeClass('child-row'); // Remove the child-row class from the next row
         } else {
+            // Close any other open rows
+            table.rows('.shown').nodes().to$().removeClass('shown');
+            table.rows('.child-row').nodes().to$().removeClass('child-row');
+
             // Open this row
             row.child(tr.data('details')).show();
             tr.addClass('shown');
-            // add class to child in order to not select it when clicking on it
-            tr.next().addClass('child-row');
+            tr.next().addClass('child-row'); // Add the child-row class to the next row
         }
     });
 }
@@ -600,7 +604,6 @@ $('#data-table tbody').on('click', 'tr', function (e) {
 
     $(this).toggleClass('selected');
 });
-
 
 $('#data-table tbody').on('click', 'input[type="checkbox"].row-checkbox', function (e) {
     $(this).closest('tr').toggleClass('selected');
