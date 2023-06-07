@@ -440,9 +440,9 @@ async function loadData() {
     // Custom filtering function which will search data in column four between two values
     $.fn.dataTable.ext.search.push(
         function (settings, data, dataIndex) {
-            let min = new Date($('#min-date').val()).getTime();
-            let max = new Date($('#max-date').val()).getTime();
-            let date = new Date(data[2]).getTime(); // column number where date data is
+            let min = new Date($('#data-min-date').val()).getTime();
+            let max = new Date($('#data-max-date').val()).getTime();
+            let date = new Date(data[3]).getTime(); // column number where date data is
 
             if ((isNaN(min) && isNaN(max)) ||
                 (isNaN(min) && date <= max) ||
@@ -454,8 +454,8 @@ async function loadData() {
         }
     );
 
-    var dropdown = document.getElementById("dateFilterDropdown");
-    var btn = document.getElementById("dateFilterIcon");
+    var dropdown = document.getElementById("data-dateFilterDropdown");
+    var btn = document.getElementById("data-dateFilterIcon");
 
     // Toggle the dropdown when the button is clicked
     btn.onclick = function(event) {
@@ -464,12 +464,12 @@ async function loadData() {
     }
 
     // Close the dropdown when the user clicks outside of it
-    window.onclick = function (event) {
+    window.addEventListener('click', function(event) {
         if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
-            dropdown.style.display = "none";
+          dropdown.style.display = "none";
         }
-    }
-
+    });
+      
     // Prevent hiding the dropdown when clicking inside it
     dropdown.onclick = function (event) {
         event.stopPropagation();
@@ -543,6 +543,44 @@ async function loadData() {
 
 // create master-table
 $(document).ready(function () {
+    // Custom filtering function which will search data in column four between two values
+    $.fn.dataTable.ext.search.push(
+        function (settings, data, dataIndex) {
+            let min = new Date($('#master-min-date').val()).getTime();
+            let max = new Date($('#master-max-date').val()).getTime();
+            let date = new Date(data[2]).getTime(); // column number where date data is
+
+            if ((isNaN(min) && isNaN(max)) ||
+                (isNaN(min) && date <= max) ||
+                (min <= date && isNaN(max)) ||
+                (min <= date && date <= max)) {
+                return true;
+            }
+            return false;
+        }
+    );
+
+    var dropdown = document.getElementById("master-dateFilterDropdown");
+    var btn = document.getElementById("master-dateFilterIcon");
+
+    // Toggle the dropdown when the button is clicked
+    btn.onclick = function(event) {
+        event.stopPropagation();
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
+
+    // Close the dropdown when the user clicks outside of it
+    window.addEventListener('click', function(event) {
+        if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
+          dropdown.style.display = "none";
+        }
+    });
+      
+    // Prevent hiding the dropdown when clicking inside it
+    dropdown.onclick = function (event) {
+        event.stopPropagation();
+    }
+
     let masterTable = $('#master-table').DataTable({
         "columns": [
             { "data": "tags.name" },
@@ -568,6 +606,11 @@ $(document).ready(function () {
             { "width": "auto", "targets": "_all" } // let other columns adjust automatically
         ],
         "stateSave": true
+    });
+
+    // Event listener to the two range filtering inputs to redraw on input
+    $('#min-date, #max-date').change(function () {
+        masterTable.draw();
     });
 
     // Add event listener for opening and closing details on the master-table

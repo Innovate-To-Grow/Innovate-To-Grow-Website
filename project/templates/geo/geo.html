@@ -19,7 +19,15 @@
             <tr id="row">
                 <th>Name</th>
                 <th>Type</th>
-                <th>Last Updated</th>                  
+                <th>Last Updated 
+                <i class="fas fa-filter" id="master-dateFilterIcon"></i>
+                    <center><div id="master-dateFilterDropdown" class="dropdown-content">
+                        <label for="min">From:</label>
+                        <input style="margin-bottom: 6px;" type="date" id="master-min-date" placeholder="From:"><br>
+                        <label for="max">To:</label>
+                        <input type="date" id="master-max-date" placeholder="To:">
+                    </div></center>
+                    </th>                    
                 <th class="details-control">Details</th>
             </tr>
         </thead>
@@ -42,12 +50,12 @@
                 <th>Name</th>
                 <th>Type</th>
                 <th>Last Updated 
-                <i class="fas fa-filter" id="dateFilterIcon"></i>
-                <center><div id="dateFilterDropdown" class="dropdown-content">
+                <i class="fas fa-filter" id="data-dateFilterIcon"></i>
+                <center><div id="data-dateFilterDropdown" class="dropdown-content">
                     <label for="min">From:</label>
-                    <input style="margin-bottom: 6px;" type="date" id="min-date" placeholder="From:"><br>
+                    <input style="margin-bottom: 6px;" type="date" id="data-min-date" placeholder="From:"><br>
                     <label for="max">To:</label>
-                    <input type="date" id="max-date" placeholder="To:">
+                    <input type="date" id="data-max-date" placeholder="To:">
                 </div></center>
                 </th>                  
                 <th class="details-control">Details</th>
