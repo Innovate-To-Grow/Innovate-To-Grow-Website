@@ -513,7 +513,7 @@ async function loadData() {
     });
 
     // Event listener to the two range filtering inputs to redraw on input
-    $('#min-date, #max-date').change(function () {
+    $('#data-min-date, #data-max-date').change(function () {
         table.draw();
     });
 
@@ -609,7 +609,7 @@ $(document).ready(function () {
     });
 
     // Event listener to the two range filtering inputs to redraw on input
-    $('#min-date, #max-date').change(function () {
+    $('#master-min-date, #master-max-date').change(function () {
         masterTable.draw();
     });
 
