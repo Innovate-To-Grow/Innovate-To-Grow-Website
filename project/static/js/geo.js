@@ -10,7 +10,7 @@ if (!navigator.cookieEnabled) {
     document.getElementById("data-table_wrapper").style.display = "none";
 }
 
-
+let select_count2 = 0; // keeps track of how many rows are selected
 let tags = ["shop", "amenity", "building"]
 
 let map = L.map('map').setView([37.3616569, -120.4326071], 13);
@@ -264,6 +264,7 @@ function loadShapeSelection() {
         }
     });
     updateShapeSelectionDropdown();
+    map.fitBounds(drawnItems.getBounds());
 }
 
 updateShapeSelectionDropdown();
@@ -406,6 +407,14 @@ async function loadData() {
         // Combine the parts again
         formattedDate = `${datePart} ${timePart} ${period}`;
 
+        // Add a checkbox cell
+        let checkboxCell = document.createElement('td');
+        let checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'row-checkbox';
+        checkboxCell.appendChild(checkbox);
+        row.appendChild(checkboxCell);
+
         // Create data cells
         let cells = [node.tags.name, node.type, formattedDate];
         cells.forEach(cell => {
@@ -430,7 +439,6 @@ async function loadData() {
         else {
             row.dataset.details = tagsString;
         }
-
 
         // Add details data to array
         detailsData.push(row.dataset.details);
@@ -480,6 +488,7 @@ async function loadData() {
     // Initialize DataTable
     let table = $('#data-table').DataTable({
         "columns": [
+            { "data": null, "defaultContent": "<input type='checkbox' class='row-checkbox'>" }, // Checkbox column
             { "data": "tags.name" },
             { "data": "type" },
             { "data": "timestamp" },
@@ -489,7 +498,6 @@ async function loadData() {
                 "orderable": false,
                 "defaultContent": '',
                 "render": function (data, type, row, meta) {
-                    // Return details data for search and order actions
                     if (type === 'filter' || type === 'sort') {
                         return detailsData[meta.row];
                     }
@@ -497,11 +505,11 @@ async function loadData() {
                 }
             }
         ],
-        "order": [[0, 'asc']],
+        "order": [[1, 'asc']],
         "columnDefs": [
-            { "width": "50%", "targets": 0 },
-            { "width": "1%", "targets": 3 }, // set the width of the details column
-            { "width": "auto", "targets": "_all" } // let other columns adjust automatically
+            { "width": "50%", "targets": 1 },
+            { "width": "1%", "targets": 4 },
+            { "width": "auto", "targets": "_all" }
         ],
         "stateSave": true
     });
@@ -531,9 +539,45 @@ async function loadData() {
             // Open this row
             row.child(tr.data('details')).show();
             tr.addClass('shown');
+            // add class to child in order to not select it when clicking on it
+            tr.next().addClass('child-row');
         }
     });
 }
+
+// create master-table
+$(document).ready(function () {
+    let masterTable = $('#master-table').DataTable({
+        "order": [[0, 'asc']],
+        "columnDefs": [
+            { "width": "50%", "targets": 0 },
+            { "width": "1%", "targets": 3 }, // set the width of the details column
+            { "width": "auto", "targets": "_all" } // let other columns adjust automatically
+        ],
+        "stateSave": true
+    });
+});
+
+$('#data-table').on('click', 'tbody > tr', function (e) {
+    var $checkbox = $(this).find('input[type="checkbox"].row-checkbox');
+
+    // Prevent selecting row if clicking on details-control button or child row
+    if ($(e.target).hasClass('details-control') || $(e.target).closest('tr.child-row').length > 0) {
+        return;
+    }
+
+    // Prevent the double-toggle issue
+    if (!$(e.target).is($checkbox)) {
+        $checkbox.prop('checked', !$checkbox.prop('checked'));
+    }
+
+    $(this).toggleClass('selected');
+});
+
+$('#data-table').on('click', 'input[type="checkbox"].row-checkbox', function (e) {
+    $(this).closest('tr').toggleClass('selected');
+    e.stopPropagation();
+});
 
 
 function formatDetail(rowData) {

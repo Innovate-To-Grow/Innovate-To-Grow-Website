@@ -14,19 +14,9 @@
         <p>Cookies are currently disabled in your browser. To use this feature, please enable cookies.</p>
         <button href="https://support.google.com/accounts/answer/61416" target="_blank">Enable Cookies</button>
     </div>
-    <div id="map"></div>    
-    <button id="loadDataButton" style="margin-right: 15px;"> Fetch & Display Data </button>
-    <button id="saveShapesButton"> Save Shapes </button>
-    <select id="savedShapesSelection">
-        <!-- Options will be filled dynamically -->
-    </select>
-    <!-- <button id="loadShapesButton">Load Shapes</button>   -->
-    <div id="loader" class="loader" style="display: none"></div>
-    <table class="display" id="data-table">
+    <table class="display" id="master-table">
         <thead>
             <tr id="row">
-                <!-- <th>Latitude</th>
-                <th>Longitude</th> -->
                 <th>Name</th>
                 <th>Type</th>
                 <th>Last Updated 
@@ -45,7 +35,43 @@
             <!-- Data will be inserted here -->
         </tbody>
     </table>
-
+    <div id="map"></div>    
+    <button id="loadDataButton" style="margin-right: 15px;"> Fetch & Display Data </button>
+    <button id="saveShapesButton"> Save Shapes </button>
+    <select id="savedShapesSelection">
+        <!-- Options will be filled dynamically -->
+    </select>
+    <!-- <button id="loadShapesButton">Load Shapes</button>   -->
+    <div id="loader" class="loader" style="display: none"></div>
+    <table class="display" id="data-table">
+        <thead>
+            <tr id="row">
+                <th>Select</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Last Updated 
+                <i class="fas fa-filter" id="dateFilterIcon"></i>
+                <center><div id="dateFilterDropdown" class="dropdown-content">
+                    <label for="min">From:</label>
+                    <input style="margin-bottom: 6px;" type="date" id="min-date" placeholder="From:"><br>
+                    <label for="max">To:</label>
+                    <input type="date" id="max-date" placeholder="To:">
+                </div></center>
+                </th>                  
+                <th class="details-control">Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be inserted here -->
+        </tbody>
+    </table>
+    <button class="merge" id="merge" style="margin-left: 10px;" type="button"
+        value="false">Save/Merge Results</button>
+    <button class="deleterow" id="rowdelete" style="margin-left: 10px;" type="button"
+        value="false">Delete Selected Rows</button>
+    <button class="keeprow" id="rowkeep" style="margin-left: 10px;" type="button"
+        value="false">Keep Selected
+        Rows</button>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
