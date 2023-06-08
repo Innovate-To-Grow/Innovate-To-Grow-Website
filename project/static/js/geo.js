@@ -440,6 +440,10 @@ async function loadData() {
     // Custom filtering function which will search data in column four between two values
     $.fn.dataTable.ext.search.push(
         function (settings, data, dataIndex) {
+            if (settings.nTable.id !== 'data-table') {
+                return true;
+            }
+
             let min = new Date($('#data-min-date').val()).getTime();
             let max = new Date($('#data-max-date').val()).getTime();
             let date = new Date(data[3]).getTime(); // column number where date data is
@@ -546,6 +550,10 @@ $(document).ready(function () {
     // Custom filtering function which will search data in column four between two values
     $.fn.dataTable.ext.search.push(
         function (settings, data, dataIndex) {
+            if (settings.nTable.id !== 'master-table') {
+                return true;
+            }
+
             let min = new Date($('#master-min-date').val()).getTime();
             let max = new Date($('#master-max-date').val()).getTime();
             let date = new Date(data[2]).getTime(); // column number where date data is

@@ -21,6 +21,7 @@ cache = Cache(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
+    storage_uri="memory://",
     default_limits=["15 per 30 seconds"],
     default_limits_exempt_when=lambda: request.path.startswith("/admin")
 )
