@@ -28,6 +28,9 @@
             <input type="date" id="master-max-date" placeholder="To:">
         </div>
     </div>
+    <div id="saved-title">
+        <h1 class="saved-titles">Saved Places</h1>
+    </div>
     <table class="display" id="master-table">
         <thead>
             <tr id="row">
@@ -41,7 +44,7 @@
             <!-- Data will be inserted here -->
         </tbody>
     </table>
-    <div id="map"></div>
+    <div style="border: 2px solid #002856;" id="map"></div>
     <button id="loadDataButton" style="margin-right: 15px;"> Fetch & Display Data </button>
     <button id="saveShapesButton"> Save Shapes </button>
     <select id="savedShapesSelection">
@@ -61,6 +64,9 @@
             <label for="max">To:</label>
             <input type="date" id="data-max-date" placeholder="To:">
         </div>
+    </div>
+    <div id="saved-title">
+        <h3 class="saved-titles">Main Search</h3>
     </div>
     <table class="display" id="data-table">
         <thead>

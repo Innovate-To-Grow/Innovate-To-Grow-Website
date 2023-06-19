@@ -1158,3 +1158,15 @@ body .dt-buttons {
 .search-bar input{
     margin-left: 5px;
 }
+
+.saved-titles {
+    margin: 0px !important;
+    float: left;
+    font-size: xxx-large;
+    font-family: "Open Sans";
+    color: #002856;
+}
+
+#data-dateFilterDropdown {
+    top: 60px;
+}
