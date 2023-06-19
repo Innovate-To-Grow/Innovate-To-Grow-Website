@@ -46,7 +46,7 @@ $(document).ready(function () {
 // This function fetches new data based on the bounds of a shape and returns it
 async function fetchDataForShape(shape) {
     var bounds = shape.getBounds();
-    
+
     let shapeType = shape.shapeType;
     var data = [];
     if (shapeType === "rectangle") {
@@ -235,7 +235,7 @@ function loadShapeSelection() {
     let selectElement = document.getElementById('savedShapesSelection');
     // Get the selected name from the dropdown
     let name = document.getElementById('savedShapesSelection').value;
-    
+
     if (!name || !(name in savedShapes)) {
         console.log("No saved selections found with this name!");
         return;
@@ -356,8 +356,20 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
 });
 
 let dataTable = null;
-
 let detailsData = [];  // Array to hold details data
+// Function to move the search bar on page load
+function moveSearchBar() {
+    let searchContainer = $("#data-dateFilterDropdown .search-bar");
+    let searchBar = $("#data-table_filter");
+  
+    // If the search bar already exists in the search container, remove it
+    if (searchContainer.children().length > 0) {
+        searchContainer.empty();
+    }
+
+    // Move the search bar to the search container
+    searchContainer.append(searchBar.children());
+}
 
 async function loadData() {
     const response = await fetch('/geo/api/get_data');
@@ -459,26 +471,7 @@ async function loadData() {
     );
 
     var dropdown = document.getElementById("data-dateFilterDropdown");
-    var btn = document.getElementById("data-dateFilterIcon");
-
-    // Toggle the dropdown when the button is clicked
-    btn.onclick = function(event) {
-        event.stopPropagation();
-        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-    }
-
-    // Close the dropdown when the user clicks outside of it
-    window.addEventListener('click', function(event) {
-        if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
-          dropdown.style.display = "none";
-        }
-    });
-      
-    // Prevent hiding the dropdown when clicking inside it
-    dropdown.onclick = function (event) {
-        event.stopPropagation();
-    }
-
+    dropdown.style.display = "block";
 
     // Initialize DataTable
     let table = $('#data-table').DataTable({
@@ -508,8 +501,11 @@ async function loadData() {
         ],
         "stateSave": true
     });
+    moveSearchBar();
+    
+
     // Adjust table width on window resize
-    $(window).resize(function() {
+    $(window).resize(function () {
         var width = $(window).width();
         var newWidth = width - 16; // 8px padding on each side
         $('#data-table').css('width', newWidth);
@@ -569,25 +565,7 @@ $(document).ready(function () {
     );
 
     var dropdown = document.getElementById("master-dateFilterDropdown");
-    var btn = document.getElementById("master-dateFilterIcon");
-
-    // Toggle the dropdown when the button is clicked
-    btn.onclick = function(event) {
-        event.stopPropagation();
-        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-    }
-
-    // Close the dropdown when the user clicks outside of it
-    window.addEventListener('click', function(event) {
-        if (!event.target.matches('.fa-filter') && !dropdown.contains(event.target)) {
-          dropdown.style.display = "none";
-        }
-    });
-      
-    // Prevent hiding the dropdown when clicking inside it
-    dropdown.onclick = function (event) {
-        event.stopPropagation();
-    }
+    dropdown.style.display = "block";
 
     let masterTable = $('#master-table').DataTable({
         "columns": [
@@ -605,15 +583,39 @@ $(document).ready(function () {
                     }
                     return '';
                 }
+            },
+            {
+                "data": null,
+                "visible": false,
+                "render": function (data, type, row, meta) {
+                    return detailsData[meta.row];
+                }
             }
         ],
         "order": [[0, 'asc']],
+        "stateSave": true,
+        "lengthChange": true,
+        "dom": 'lBftrip',
+        "buttons": [
+            'copyHtml5', 'csvHtml5', 'excelHtml5', 'pdfHtml5', 'print'
+        ],
         "columnDefs": [
             { "width": "50%", "targets": 0 },
-            { "width": "1%", "targets": 3 }, // set the width of the details column
-            { "width": "auto", "targets": "_all" } // let other columns adjust automatically
-        ],
-        "stateSave": true
+            { "width": "1%", "targets": 3 },
+            { "width": "auto", "targets": "_all" }
+        ]
+    });
+
+    let searchContainer = $("#master-dateFilterDropdown .search-bar");
+    searchContainer.prepend($("#master-table_filter label"));
+    searchContainer.prepend($("#master-table_filter input"));
+
+    // Adjust masterTable width on window resize
+    $(window).resize(function () {
+        var width = $(window).width();
+        var newWidth = width - 16; // 8px padding on each side
+        $('#master-table').css('width', newWidth);
+        masterTable.columns.adjust().draw();
     });
 
     // Event listener to the two range filtering inputs to redraw on input
@@ -638,27 +640,43 @@ $(document).ready(function () {
             tr.next().addClass('child-row');
         }
     });
-});
 
-$('#data-table tbody').on('click', 'tr', function (e) {
-    var $checkbox = $(this).find('input[type="checkbox"].row-checkbox');
+    $('#data-table tbody').on('click', 'tr', function (e) {
+        var $checkbox = $(this).find('input[type="checkbox"].row-checkbox');
 
-    // Prevent selecting row if clicking on details-control button or child row
-    if ($(e.target).hasClass('details-control') || $(e.target).closest('.child-row').length > 0) {
-        return;
-    }
+        // Prevent selecting row if clicking on details-control button or child row
+        if ($(e.target).hasClass('details-control') || $(e.target).closest('.child-row').length > 0) {
+            return;
+        }
 
-    // Prevent the double-toggle issue
-    if (!$(e.target).is($checkbox) && !$(e.target).is('.row-checkbox-label')) {
-        $checkbox.prop('checked', !$checkbox.prop('checked'));
-    }
+        // Prevent the double-toggle issue
+        if (!$(e.target).is($checkbox) && !$(e.target).is('.row-checkbox-label')) {
+            $checkbox.prop('checked', !$checkbox.prop('checked'));
+        }
 
-    $(this).toggleClass('selected');
-});
+        $(this).toggleClass('selected');
+    });
 
-$('#data-table tbody').on('click', 'input[type="checkbox"].row-checkbox', function (e) {
-    $(this).closest('tr').toggleClass('selected');
-    e.stopPropagation();
+    $('#data-table tbody').on('click', 'input[type="checkbox"].row-checkbox', function (e) {
+        $(this).closest('tr').toggleClass('selected');
+        e.stopPropagation();
+    });
+
+
+    $.ajax({
+        type: "POST",
+        url: "/past-projects/<uuid_string>",
+        data: JSON.stringify(share_datas),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function (data) {
+            uuid = data["uuid_string"];
+            window.open("/past-projects/" + uuid, "_blank");
+        },
+        failure: function (errMsg) {
+            alert(errMsg);
+        }
+    })
 });
 
 $('#merge').click(function () {
