@@ -146,7 +146,7 @@ def tracking_pixel(email):
     row = [order, "/tracking_pixel/<email>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), email]
     logs.append_row(row)
 
-    return send_file("static/img/tracking_pixel.png")
+    return send_file("static/images/tracking_pixel.png")
 
 
 # Flask Login Manager
