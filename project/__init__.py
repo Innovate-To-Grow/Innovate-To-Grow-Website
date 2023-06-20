@@ -142,6 +142,12 @@ admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounce
 # Email Pixel Tracking
 @app.route("/tracking_pixel/<email>.png")
 def tracking_pixel(email):
+    is_gmail_proxy = 'googleusercontent.com' in request.headers.get('Host', '')
+
+    if is_gmail_proxy:
+        # Request is from Gmail's image proxy, do not log data
+        return send_file("static/images/tracking_pixel.png", mimetype="image/png")
+
     order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
     row = [order, "/tracking_pixel/<email>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), email]
     logs.append_row(row)
