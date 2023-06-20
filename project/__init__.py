@@ -142,7 +142,10 @@ admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounce
 # Email Pixel Tracking
 @app.route("/tracking_pixel/<email>.png")
 def tracking_pixel(email):
-    is_gmail_proxy = 'googleusercontent.com' in request.headers.get('Host', '')
+    is_gmail_proxy = (
+        'X-Client-Data' in request.headers and
+        'X-Cloud-Trace-Context' in request.headers
+    )
 
     if is_gmail_proxy:
         # Request is from Gmail's image proxy, do not log data
