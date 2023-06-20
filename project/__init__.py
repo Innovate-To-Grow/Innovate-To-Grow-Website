@@ -142,6 +142,12 @@ admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounce
 # Email Pixel Tracking
 @app.route("/tracking_pixel/<email>.png")
 def tracking_pixel(email):
+    if "User-Agent" in request.headers:
+        user_agent = request.headers["User-Agent"]
+
+        if "GoogleImageProxy" in user_agent:
+            return
+    
     order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
     row = [order, "/tracking_pixel/<email>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), email]
     logs.append_row(row)
