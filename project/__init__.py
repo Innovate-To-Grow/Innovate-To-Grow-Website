@@ -1,6 +1,7 @@
 import os
 from os import path
-from flask import Flask, render_template, request
+from datetime import datetime
+from flask import Flask, render_template, request, send_file
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -136,6 +137,16 @@ admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
 admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
 admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounces"))
+
+
+# Email Pixel Tracking
+@app.route("/tracking_pixel/<email>.png")
+def tracking_pixel(email):
+    order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+    row = [order, "/tracking_pixel/<email>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), email]
+    logs.append_row(row)
+
+    return send_file("static/img/tracking_pixel.png")
 
 
 # Flask Login Manager
