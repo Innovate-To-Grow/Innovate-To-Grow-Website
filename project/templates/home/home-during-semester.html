@@ -1,0 +1,135 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+        href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}"
+        type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>Innovate To Grow | School of Engineering</title>
+    {{ styles() }}
+</head>
+
+<body class="html front not-logged-in no-sidebars page-node">
+    <!-- NAVBAR -->
+    {{ nav() }}
+    <!-- END NAVBAR -->
+    <div id="fullwidth-top" class="row-fluid fullwidth">
+        <div class="container">
+            <div class="region region-fullwidth-top clearfix">
+                <div id="block-block-161" class="clearfix block block-block">
+                    <div class="content">
+                        <p><img alt="" src="{{url_for('static', filename='images/i2g-header-img.jpg') }}"
+                                style="width: 100%;" /></p>
+                    </div>
+                </div>
+            </div>
+            <!-- /.region -->
+        </div>
+    </div>
+    <div id="main" class="clearfix main" role="main">
+        <div class="container">
+            <div id="main-top" class="row-fluid main-top">
+                <div class="region region-main-top clearfix">
+                    <div id="block-block-141" class="clearfix block block-block">
+                        <div class="content">
+                            <div class="i2gHome" style="text-align: left;">
+                                <div class="sb-row"
+                                    style="padding-top: 0px; text-align: center; justify-content: center;">
+                                    <div class="sb-row" style="padding-top: 0px; text-align: center; justify-content: center; margin-top: 10px;">
+                                        <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('events.event_redirect') }}">Event Registration</a></div>
+                                        
+                                        <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('home.project_submission') }}">Submit a Project</a></div>
+                                        
+                                        <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="{{ url_for('registration.register') }}">Signup for News</a></div>
+                                        
+                                        <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play" href="{{ url_for('update.enter_email') }}">Update Membership</a></div>
+                                      </div>
+                                </div>
+                                <br>
+                                <h4>The Innovate to Grow program</h4>
+                                <p>Innovate to Grow (I2G) is a unique “experiential learning” program that engages
+                                    external partner
+                                    organizations with teams of students who design systems to solve real-world
+                                    problems. The Innovate to
+                                    Grow program encompasses the following experiential learning classes: <a
+                                        href="{{ url_for('home.engineering_capstone') }}">Engineering Capstone</a>, <a
+                                        href="{{ url_for('home.about_EngSL') }}">Engineering
+                                        Service Learning</a>, and <a
+                                        href="{{ url_for('home.software_capstone') }}">Software Engineering
+                                        Capstone</a>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="main-upper" class="row-fluid main-upper">
+                <div class="region region-main-upper clearfix">
+                    <div id="block-block-621" class="clearfix block block-block">
+                        <div class="content">
+                            <div class="i2gHome">
+                                <div class="span12" style="text-align: left; padding-bottom: 20px;">
+                                    <div 12px="" class="span6" padding-top:="" style="padding-right: 20px;">
+                                        <h4>The Innovate to Grow showcase</h4>
+
+                                        <p dir="ltr">At the end of each semester, the work completed by the student teams culminates in the Innovate to Grow event, a showcase of UC Merced student ingenuity and creativity, and the marquee event for the School of Engineering.</p> 
+                                        
+                                            <p>Presentations will be on Campus and also streamed on Zoom.</p>
+
+                                        <p><strong>Stay tuned for the date and registration...</strong></p>
+
+                                        <div class="pull-left sb-row">
+                                        </div>
+                                    </div>
+                                    <div class="span6">
+                                        <div class="iframe-container">
+                                            <iframe class="responsive-iframe"
+                                                src="https://www.youtube.com/embed/gWBs9QYW1nA"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="main-content" class="row main-content">
+                <div id="content" class="mc-content span12">
+                    <div id="content-wrapper" class="content-wrapper">
+                        <div id="content-head" class="row-fluid content-head">
+                            <div id="help" class="clearfix">
+                                <div class="region region-help clearfix">
+                                    <div id="block-block-41" class="clearfix block block-block">
+                                        <div class="content">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="content-bottom" class="row-fluid content-bottom">
+                            <div class="region region-content-bottom clearfix">
+                                <div id="block-block-61" class="clearfix block block-block">
+                                    <p>&nbsp;</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
+</body>
+
+</html>
