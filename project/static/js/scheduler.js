@@ -13,7 +13,7 @@ function format(d) {
         '</table>';
 }
 var datas = [];
-// Pulls data from "2023-01-Fall-I2G-WEB" spreadsheet.
+// Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1fLRbUOkzH1YJhsuV49tiQf0ahXa2U3TrekE8FJgdzOM/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
@@ -125,7 +125,7 @@ function passvalue(slot) {
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 5;
+let totalTrackForCAP = 3;
 // the amount of order for CAP
 let totalOrderForCAP = 6;
 // the time start for CAP
@@ -143,7 +143,7 @@ let timestartForCEE = "2:00";
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 3;
+let totalTrackForCSE = 2;
 // the amount of order for CSE
 let totalOrderForCSE = 8;
 // the time start for CSE
@@ -197,28 +197,28 @@ $(document).ready(function () {
                             '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                             '<td data-header="Track 1" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Health</b>'+
+                                    '<b>TBD</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 2" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Mechanics</b>'+
+                                    '<b>TBD</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>AgTech</b>'+
+                                    '<b>TBD</b>'+
                                 '</p>'+
-                            '</td>'+
-                            '<td data-header="Track 4" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Precision</b>'+
-                                '</p>'+
-                            '</td>'+
-                            '<td data-header="Track 5" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Food</b>'+
-                                '</p>'+
+                            // '</td>'+
+                            // '<td data-header="Track 4" style="color: #002856;">'+
+                            //     '<p style="color:#002856; font-weight: bolder;">'+
+                            //         '<b>Precision</b>'+
+                            //     '</p>'+
+                            // '</td>'+
+                            // '<td data-header="Track 5" style="color: #002856;">'+
+                            //     '<p style="color:#002856; font-weight: bolder;">'+
+                            //         '<b>Food</b>'+
+                            //     '</p>'+
                             '</td>'+
                         '</tr>'+
                             '</tbody>'+
@@ -344,18 +344,18 @@ $(document).ready(function () {
                                 '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                                 '<td data-header="Track 1" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Ag-Food</b>'+
+                                        '<b>TBD</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 2" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Data</b>'+
+                                        '<b>TBD</b>'+
                                     '</p>'+
-                                '</td>'+
-                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
-                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Industry</b>'+
-                                    '</p>'+
+                                // '</td>'+
+                                // '<td data-header="Track 3" style="color: #FFBF3C;">'+
+                                //     '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                //         '<b>Industry</b>'+
+                                //     '</p>'+
                                 '</td>'+
                             '</tr>'+
                         '</tbody>'+
@@ -412,8 +412,8 @@ $(document).ready(function () {
 
 $(document).ready(function () {
 
-    // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1AoW60T0IHSkqO4dUzYV6ErWxMHKOhg73NpddUc2ZUxM/values/2023-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1fLRbUOkzH1YJhsuV49tiQf0ahXa2U3TrekE8FJgdzOM/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
