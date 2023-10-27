@@ -2,7 +2,7 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context
+from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context, abort
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired
@@ -38,6 +38,11 @@ def enter_email(event_name):
 
     if event_obj is None:
         return render_template("no_live_event.html")
+
+    event_obj = event.query.filter_by(name=event_name.replace("-", " "), live=True).order_by(event.id.desc()).first()
+
+    if event_obj is None:
+        abort(404)
 
     if request.method == "POST" and form.validate_on_submit():
         def log_email():
