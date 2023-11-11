@@ -128,10 +128,10 @@ def i2g_students_preparation():
 def video_preparation():
     return render_template("video-preparation.html")
 
-@home_blueprint.route("/capstone-purchasing-reimbursement-forms", methods=["GET", "POST"])
+@home_blueprint.route("/capstone-purchasing-reimbursement", methods=["GET", "POST"])
 @cache.cached()
-def capstone_purchasing_reimbursement_forms():
-    return render_template("capstone-purchasing-reimbursement-forms.html")
+def capstone_purchasing_reimbursement():
+    return render_template("capstone-purchasing-reimbursement.html")
 
 @home_blueprint.route("/contact-us", methods=["GET", "POST"])
 @cache.cached()
