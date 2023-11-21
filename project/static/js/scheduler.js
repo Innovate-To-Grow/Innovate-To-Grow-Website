@@ -136,7 +136,7 @@ let timePerSlotForCAP = "30";
 // the amount of tracks for CEE
 let totalTrackForCEE = 1;
 // the amount of order for CEE
-let totalOrderForCEE = 4;
+let totalOrderForCEE = 5;
 // the time start for CEE
 let timestartForCEE = "2:00";
 // time per slot for CEE
