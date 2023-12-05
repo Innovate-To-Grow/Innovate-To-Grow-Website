@@ -446,7 +446,7 @@ class CatchBouncesView(BaseView):
                                 cells.append(Cell(row['Row'], wks_columns['Primary Bounced'], reason))
                                 cells.append(Cell(row['Row'], wks_columns['Primary Subscribed'], "FALSE"))
 
-                                if row['Secondary Email'] != "" and row["Secondary Verified"] == "TRUE":
+                                if row['Secondary Email'] != "" and row["Secondary Verified"] == "TRUE" and row["Secondary Bounced"] == "":
                                     token = generate_token(row['Secondary Email'])
                                     update_url = url_for("update.update_info", token=token, _external=True)
                                     html = render_template("admin/bounce_email.html", 
@@ -460,7 +460,7 @@ class CatchBouncesView(BaseView):
                                 cells.append(Cell(row['Row'], wks_columns['Secondary Bounced'], reason))
                                 cells.append(Cell(row['Row'], wks_columns['Secondary Subscribed'], "FALSE"))
 
-                                if row['Primary Email'] != "" and row["Primary Verified"] == "TRUE":
+                                if row['Primary Email'] != "" and row["Primary Verified"] == "TRUE" and row["Primary Bounced"] == "":
                                     token = generate_token(row['Primary Email'])
                                     update_url = url_for("update.update_info", token=token, _external=True)
                                     html = render_template("admin/bounce_email.html", 
