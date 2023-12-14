@@ -307,10 +307,10 @@ class ContactView(BaseView):
                     for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
                         html_from_email = msg.html
 
-                        for img in re.findall(r'<img[^>]+>', html_from_email):
-                            proxy_url = re.search(r'<img src="([^"]+)"[^>]+>', img)
-                            img_url = re.search(r'<img src="[^"]+#([^"]+)"[^>]+>', img)
-                            html_from_email = html_from_email.replace(proxy_url.group(1), img_url.group(1))
+                        # for img in re.findall(r'<img[^>]+>', html_from_email):
+                        #     proxy_url = re.search(r'<img src="([^"]+)"[^>]+>', img)
+                        #     img_url = re.search(r'<img src="[^"]+#([^"]+)"[^>]+>', img)
+                        #     html_from_email = html_from_email.replace(proxy_url.group(1), img_url.group(1))
 
 
                 if html_from_email is None:
