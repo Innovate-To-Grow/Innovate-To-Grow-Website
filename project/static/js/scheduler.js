@@ -151,7 +151,7 @@ let timestartForCSE = "2:00";
 // time per slot for CSE
 let timePerSlotForCSE = "20";
 
-let totalRooms = totalTrackForCAP + totalTrackForCEE + totalOrderForCSE; // totalRooms = totalTrackForCAP + totalTrackForCEE + totaltrackForCSE
+let totalRooms = totalTrackForCAP + totalTrackForCEE + totalTrackForCSE; // totalRooms = totalTrackForCAP + totalTrackForCEE + totaltrackForCSE
 
 function getTime(time, addMinute){
     let [h,m] = time.split(":");
