@@ -381,16 +381,16 @@ th {
     $(document).ready(function () {
         // Pulls the winner column from "2022-08-Fall-I2G-MASTER" spreadsheet.
 		// .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-       $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1nqwEiLllm2wsL0SUUSIdT8nqspEMLFP41wtC-akKASE/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+       $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/19VoMJrwiybqCNlepCa6QTBYIx5mqzZBVeOcPNxNvLnc/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
             $(".winnert1").prepend(data.values[2][6]); 
             $(".winnert2").prepend(data.values[3][6]);
             $(".winnert3").prepend(data.values[4][6]);
             $(".winnert4").prepend(data.values[5][6]);
             $(".winnert5").prepend(data.values[6][6]);
             $(".winnert6").prepend(data.values[7][6]); 
-            $(".winnert7").prepend(data.values[8][6]);
-            $(".winnert8").prepend(data.values[9][6]);
-            $(".winnert9").prepend(data.values[10][6]);
+            // $(".winnert7").prepend(data.values[8][6]);
+            // $(".winnert8").prepend(data.values[9][6]);
+            // $(".winnert9").prepend(data.values[10][6]);
 
             $(".trackname1").prepend(data.values[2][4]);
             $(".trackname2").prepend(data.values[3][4]);
@@ -398,9 +398,9 @@ th {
             $(".trackname4").prepend(data.values[5][4]);
             $(".trackname5").prepend(data.values[6][4]);
             $(".trackname6").prepend(data.values[7][4]);
-            $(".trackname7").prepend(data.values[8][4]);
-            $(".trackname8").prepend(data.values[9][4]);
-            $(".trackname9").prepend(data.values[10][4]);
+            // $(".trackname7").prepend(data.values[8][4]);
+            // $(".trackname8").prepend(data.values[9][4]);
+            // $(".trackname9").prepend(data.values[10][4]);
                 
     });
    });
@@ -432,7 +432,7 @@ th {
 		<div class="span12">
 			<div style="text-align: center;">&nbsp;</div>
 
-			<div style="text-align: center;"><span style="font-size:28px;"><strong><span style="color:#c0392b;">Winners!&nbsp; Innovate to Grow - Spring 2023</span></strong></span></div>
+			<div style="text-align: center;"><span style="font-size:28px;"><strong><span style="color:#c0392b;">Winners!&nbsp; Innovate to Grow - Fall 2023</span></strong></span></div>
 
 			<div>&nbsp;</div>
 
@@ -447,8 +447,8 @@ th {
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 1</th>
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 2</th>
                                 <th scope="col" style="background-color: #efefef; color: #002856;">Track 3</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th>
+                                <!-- <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
+                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th> -->
 							</tr>
 						</thead>
 						<tbody>
@@ -457,16 +457,16 @@ th {
 								<td data-header="Track 1"><b class="trackname1">&nbsp;</b></td>
 								<td data-header="Track 2"><b class="trackname2">&nbsp;</b></td>
                                 <td data-header="Track 3"><b class="trackname3">&nbsp;</b></td>
-								<td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
-                                <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td>
+								<!-- <td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
+                                <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td> -->
 							</tr>
 							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
 								<td data-header="Track 1"><b class="winnert1">&nbsp;</b></td>
 								<td data-header="Track 2"><b class="winnert2">&nbsp;</b></td>
                                 <td data-header="Track 3"><b class="winnert3">&nbsp;</b></td>
-								<td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
-                                <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td>
+								<!-- <td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
+                                <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td> -->
 							</tr>
 						</tbody>
 					</table>
@@ -487,17 +487,17 @@ th {
 						<thead>
 							<tr>
 								<th scope="col" style="background-color: #fff; max-width: 70px;">&nbsp;</th>
-								<th scope="col" style="background-color: #efefef; color: #002856; max-width: 150px;">Track 6</th>
+								<th scope="col" style="background-color: #efefef; color: #002856; max-width: 150px;">Track 4</th>
 							</tr>
 						</thead>
 						<tbody>
                             <tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 6"><b class="trackname6">&nbsp;</b></td>
+								<td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
 							</tr>
 							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 6"><b class="winnert6">&nbsp;</b></td>
+								<td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
 							</tr>
 						</tbody>
 					</table>
@@ -518,23 +518,23 @@ th {
 						<thead>
 							<tr>
 								<th scope="col" style="background-color: #fff; color: #002856; max-width: 100px;">&nbsp;</th>
-								<th scope="col" style="background-color: #efefef; color: #002856;">Track 7</th>
-								<th scope="col" style="background-color: #efefef; color: #002856;">Track 8</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 9</th>
+								<th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th>
+								<th scope="col" style="background-color: #efefef; color: #002856;">Track 6</th>
+                                <!-- <th scope="col" style="background-color: #efefef; color: #002856;">Track 9</th> -->
 							</tr>
 						</thead>
 						<tbody>
 							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 7" style="color: #FFBF3C;"><b class="trackname7">&nbsp;</b></td>
-								<td data-header="Track 8" style="color: #FFBF3C;"><b class="trackname8">&nbsp;</b></td>
-                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname9">&nbsp;</b></td>
+								<td data-header="Track 5" style="color: #FFBF3C;"><b class="trackname5">&nbsp;</b></td>
+								<td data-header="Track 6" style="color: #FFBF3C;"><b class="trackname6">&nbsp;</b></td>
+                                <!-- <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname9">&nbsp;</b></td> -->
 							</tr>
                             <tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 7" style="color: #FFBF3C;"><b class="winnert7">&nbsp;</b></td>
-								<td data-header="Track 8" style="color: #FFBF3C;"><b class="winnert8">&nbsp;</b></td>
-                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert9">&nbsp;</b></td>
+								<td data-header="Track 5" style="color: #FFBF3C;"><b class="winnert5">&nbsp;</b></td>
+								<td data-header="Track 6" style="color: #FFBF3C;"><b class="winnert6">&nbsp;</b></td>
+                                <!-- <td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert9">&nbsp;</b></td> -->
 							</tr>
 						</tbody>
 					</table>
