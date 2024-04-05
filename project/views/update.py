@@ -283,11 +283,11 @@ def update_info(token):
             register_event_label = "Also register for " + event_obj.name + "?"
 
         setattr(UpdateForm, "register_event", BooleanField(register_event_label))
-        setattr(
-            UpdateForm, "event_zoom_or_not",
-            RadioField("Will you attend on Zoom or In-Person?",
-                       choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
-                       validators=[Optional()]))
+        # setattr(
+        #     UpdateForm, "event_zoom_or_not",
+        #     RadioField("Will you attend on Zoom or In-Person?",
+        #                choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
+        #                validators=[Optional()]))
         setattr(
             UpdateForm, "event_tickets",
             RadioField("Ticket Type",
@@ -299,7 +299,7 @@ def update_info(token):
 
         if event_user is not None:
             person["register_event"] = True
-            person["event_zoom_or_not"] = event_user["Will you attend on Zoom or In-Person?"]
+            # person["event_zoom_or_not"] = event_user["Will you attend on Zoom or In-Person?"]
             person["event_tickets"] = event_user["Ticket Type"]
 
             for question in event_obj.questions.split("\n"):
@@ -546,7 +546,7 @@ def update_info(token):
             event_fields = {}
             if event_obj is not None:
                 if form.register_event.data:
-                    event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
+                    # event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
                     event_fields["Ticket Type"] = form.event_tickets.data
 
                     for question in event_obj.questions.split("\n"):
@@ -560,7 +560,7 @@ def update_info(token):
                     
                 else:
                     if event_user is not None:
-                        event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
+                        # event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
                         event_fields["Ticket Type"] = event_user["Ticket Type"]
 
                         for question in event_obj.questions.split("\n"):
@@ -830,8 +830,8 @@ def update_info(token):
                             event_cells.append(
                                 Cell(event_user["Row"], event_wks_columns["Last Updated"],
                                      str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
-                            event_cells.append(
-                                Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
+                            # event_cells.append(
+                            #     Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
                             event_cells.append(
                                 Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
 
@@ -851,7 +851,7 @@ def update_info(token):
                             row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
                             row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
                             row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                            row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+                            # row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
                             for question in event_obj.questions.split("\n"):
                                 row[event_wks_columns[question] - 1] = form["event_" + question].data
