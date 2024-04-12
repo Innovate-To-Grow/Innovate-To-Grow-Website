@@ -183,11 +183,11 @@ $(document).ready(function () {
                                 '<tr class="roomCAP">'+
                                     '<th scope="col" style="background-color: #efefef; color: #002856; text-align: center;">Room:</th>'+
                                 '</tr>'+
-                                '<tr class="zoomCAP">'+
-                                    '<th scope="col" style="background-color: #efefef;">'+
-                                        '<gg-icon class="gg-camera" scope="col" style="align-content: center; margin-top: 13px;"></gg-icon>'+
-                                    '</th>'+
-                                '</tr>'+
+                                // '<tr class="zoomCAP">'+
+                                //     '<th scope="col" style="background-color: #efefef;">'+
+                                //         '<gg-icon class="gg-camera" scope="col" style="align-content: center; margin-top: 13px;"></gg-icon>'+
+                                //     '</th>'+
+                                // '</tr>'+
                                 '<tr class="trackCAP">'+
                                     '<th scope="col" style="background-color: #efefef;">&nbsp;</th>'+
                                 '</tr>'+
@@ -330,11 +330,11 @@ $(document).ready(function () {
                             '<tr class="roomCSE">'+
                                 '<th scope="col" style="background-color: #efefef; color: #002856; max-width: 100px; text-align: center;">Room:</th>'+
                             '</tr>'+
-                            '<tr class="zoomCSE">'+
-                                '<th scope="col" style="background-color: #efefef; max-width: 100px">'+
-                                    '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
-                                '</th>'+
-                            '</tr>'+
+                            // '<tr class="zoomCSE">'+
+                            //     '<th scope="col" style="background-color: #efefef; max-width: 100px">'+
+                            //         '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
+                            //     '</th>'+
+                            // '</tr>'+
                             '<tr class="trackCSE">'+
                                 '<th scope="col" style="background-color: #efefef; max-width: 100px">&nbsp;</th>'+
                             '</tr>'+
