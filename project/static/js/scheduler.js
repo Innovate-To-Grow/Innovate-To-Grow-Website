@@ -125,7 +125,7 @@ function passvalue(slot) {
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 3;
+let totalTrackForCAP = 5;
 // the amount of order for CAP
 let totalOrderForCAP = 6;
 // the time start for CAP
@@ -134,7 +134,7 @@ let timestartForCAP = "2:00";
 let timePerSlotForCAP = "30";
 
 // the amount of tracks for CEE
-let totalTrackForCEE = 1;
+let totalTrackForCEE = 0;
 // the amount of order for CEE
 let totalOrderForCEE = 5;
 // the time start for CEE
@@ -143,9 +143,9 @@ let timestartForCEE = "2:00";
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 2;
+let totalTrackForCSE = 3;
 // the amount of order for CSE
-let totalOrderForCSE = 8;
+let totalOrderForCSE = 9;
 // the time start for CSE
 let timestartForCSE = "2:00";
 // time per slot for CSE
@@ -209,16 +209,16 @@ $(document).ready(function () {
                                 '<p style="color:#002856; font-weight: bolder;">'+
                                     '<b>Precision</b>'+
                                 '</p>'+
-                            // '</td>'+
-                            // '<td data-header="Track 4" style="color: #002856;">'+
-                            //     '<p style="color:#002856; font-weight: bolder;">'+
-                            //         '<b>Precision</b>'+
-                            //     '</p>'+
-                            // '</td>'+
-                            // '<td data-header="Track 5" style="color: #002856;">'+
-                            //     '<p style="color:#002856; font-weight: bolder;">'+
-                            //         '<b>Food</b>'+
-                            //     '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 4" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Precision</b>'+
+                                '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 5" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Food</b>'+
+                                '</p>'+
                             '</td>'+
                         '</tr>'+
                             '</tbody>'+
@@ -351,11 +351,11 @@ $(document).ready(function () {
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
                                         '<b>Data</b>'+
                                     '</p>'+
-                                // '</td>'+
-                                // '<td data-header="Track 3" style="color: #FFBF3C;">'+
-                                //     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                //         '<b>Industry</b>'+
-                                //     '</p>'+
+                                '</td>'+
+                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
+                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                        '<b>Industry</b>'+
+                                    '</p>'+
                                 '</td>'+
                             '</tr>'+
                         '</tbody>'+
@@ -395,7 +395,7 @@ $(document).ready(function () {
     }
 
     // Pulls the room column from "2023-08-Fall-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/19VoMJrwiybqCNlepCa6QTBYIx5mqzZBVeOcPNxNvLnc/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1MfFpZ0mn90UkqEuegBWopPqucfkmzzUWNl0oR2eSWdo/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
         // Pull the class column from "2023-08-Fall-I2G-MASTER" spreadsheet. 
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i + 1][1]);
@@ -413,7 +413,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1fLRbUOkzH1YJhsuV49tiQf0ahXa2U3TrekE8FJgdzOM/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
