@@ -129,7 +129,7 @@ let totalTrackForCAP = 5;
 // the amount of order for CAP
 let totalOrderForCAP = 6;
 // the time start for CAP
-let timestartForCAP = "2:00";
+let timestartForCAP = "1:00";
 // time per slot for CAP
 let timePerSlotForCAP = "30";
 
@@ -138,7 +138,7 @@ let totalTrackForCEE = 0;
 // the amount of order for CEE
 let totalOrderForCEE = 5;
 // the time start for CEE
-let timestartForCEE = "2:00";
+let timestartForCEE = "1:00";
 // time per slot for CEE
 let timePerSlotForCEE = "30";
 
@@ -147,7 +147,7 @@ let totalTrackForCSE = 3;
 // the amount of order for CSE
 let totalOrderForCSE = 9;
 // the time start for CSE
-let timestartForCSE = "2:00";
+let timestartForCSE = "1:00";
 // time per slot for CSE
 let timePerSlotForCSE = "20";
 
