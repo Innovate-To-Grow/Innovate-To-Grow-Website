@@ -381,16 +381,16 @@ th {
     $(document).ready(function () {
         // Pulls the winner column from "2022-08-Fall-I2G-MASTER" spreadsheet.
 		// .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-       $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/19VoMJrwiybqCNlepCa6QTBYIx5mqzZBVeOcPNxNvLnc/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+       $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1MfFpZ0mn90UkqEuegBWopPqucfkmzzUWNl0oR2eSWdo/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
             $(".winnert1").prepend(data.values[2][6]); 
             $(".winnert2").prepend(data.values[3][6]);
             $(".winnert3").prepend(data.values[4][6]);
             $(".winnert4").prepend(data.values[5][6]);
             $(".winnert5").prepend(data.values[6][6]);
             $(".winnert6").prepend(data.values[7][6]); 
-            // $(".winnert7").prepend(data.values[8][6]);
-            // $(".winnert8").prepend(data.values[9][6]);
-            // $(".winnert9").prepend(data.values[10][6]);
+            $(".winnert7").prepend(data.values[8][6]);
+            $(".winnert8").prepend(data.values[9][6]);
+            $(".winnert9").prepend(data.values[10][6]);
 
             $(".trackname1").prepend(data.values[2][4]);
             $(".trackname2").prepend(data.values[3][4]);
@@ -398,9 +398,9 @@ th {
             $(".trackname4").prepend(data.values[5][4]);
             $(".trackname5").prepend(data.values[6][4]);
             $(".trackname6").prepend(data.values[7][4]);
-            // $(".trackname7").prepend(data.values[8][4]);
-            // $(".trackname8").prepend(data.values[9][4]);
-            // $(".trackname9").prepend(data.values[10][4]);
+            $(".trackname7").prepend(data.values[8][4]);
+            $(".trackname8").prepend(data.values[9][4]);
+            $(".trackname9").prepend(data.values[10][4]);
                 
     });
    });
@@ -447,8 +447,8 @@ th {
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 1</th>
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 2</th>
                                 <th scope="col" style="background-color: #efefef; color: #002856;">Track 3</th>
-                                <!-- <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th> -->
+                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
+                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -457,16 +457,16 @@ th {
 								<td data-header="Track 1"><b class="trackname1">&nbsp;</b></td>
 								<td data-header="Track 2"><b class="trackname2">&nbsp;</b></td>
                                 <td data-header="Track 3"><b class="trackname3">&nbsp;</b></td>
-								<!-- <td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
-                                <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td> -->
+								<td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
+                                <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td>
 							</tr>
 							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
 								<td data-header="Track 1"><b class="winnert1">&nbsp;</b></td>
 								<td data-header="Track 2"><b class="winnert2">&nbsp;</b></td>
                                 <td data-header="Track 3"><b class="winnert3">&nbsp;</b></td>
-								<!-- <td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
-                                <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td> -->
+								<td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
+                                <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td>
 							</tr>
 						</tbody>
 					</table>
@@ -476,7 +476,7 @@ th {
 	</div>
 </div>
 
-<div class="row-fluid i2gTable ">
+<!-- <div class="row-fluid i2gTable ">
 	<div class="WinnerCEETable">
 		<div class="span2" style="margin-right: 0px;">
 			<div style="text-align: center; color: #002856;"><strong>Civil &amp; Environmental</strong></div>
@@ -504,7 +504,7 @@ th {
 				</div>
 			</section>
 		</div>
-	</div>
+	</div> -->
 
 	<div class="WinnerCSETable">
 		<div class="span10">
@@ -518,23 +518,23 @@ th {
 						<thead>
 							<tr>
 								<th scope="col" style="background-color: #fff; color: #002856; max-width: 100px;">&nbsp;</th>
-								<th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th>
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 6</th>
-                                <!-- <th scope="col" style="background-color: #efefef; color: #002856;">Track 9</th> -->
+								<th scope="col" style="background-color: #efefef; color: #002856;">Track 7</th>
+                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 8</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 5" style="color: #FFBF3C;"><b class="trackname5">&nbsp;</b></td>
-								<td data-header="Track 6" style="color: #FFBF3C;"><b class="trackname6">&nbsp;</b></td>
-                                <!-- <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname9">&nbsp;</b></td> -->
+								<td data-header="Track 5" style="color: #FFBF3C;"><b class="trackname6">&nbsp;</b></td>
+								<td data-header="Track 6" style="color: #FFBF3C;"><b class="trackname7">&nbsp;</b></td>
+                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname8">&nbsp;</b></td>
 							</tr>
                             <tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 5" style="color: #FFBF3C;"><b class="winnert5">&nbsp;</b></td>
-								<td data-header="Track 6" style="color: #FFBF3C;"><b class="winnert6">&nbsp;</b></td>
-                                <!-- <td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert9">&nbsp;</b></td> -->
+								<td data-header="Track 5" style="color: #FFBF3C;"><b class="winnert6">&nbsp;</b></td>
+								<td data-header="Track 6" style="color: #FFBF3C;"><b class="winnert7">&nbsp;</b></td>
+                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert8">&nbsp;</b></td>
 							</tr>
 						</tbody>
 					</table>
@@ -543,6 +543,7 @@ th {
 
 					<p>&nbsp;</p>
 				</div>
+                <div style="text-align: center;"><span style="font-size:28px;"><strong><span style="color:#c0392b;">Mark your calendar!&nbsp; Fall 2024 I2G: Thursday, Decemeber 19, 2024</span></strong></span></div>
 			</section>
 		</div>
 	</div>
@@ -1159,19 +1160,19 @@ th {
                                                       </thead>
                                                       <tbody>
                                                           <tr><!-- EX:      TIME                EVENT AT THAT TIME    -->
-                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">10:30</th>
+                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">9:00</th>
                                                               <td data-header="Track 1" style="color: #002856; background-color: rgb(247, 247, 247);">
                                                                   <p style="color: rgb(0, 40, 86); font-weight: bolder; text-align: center;">Registration and Coffee</p>
                                                               </td>
                                                           </tr>
                                                           <tr><!-- EX:      TIME                EVENT AT THAT TIME    -->
-                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">11:30</th>
+                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">10:00</th>
                                                               <td data-header="Track 1" style="color: #002856; background-color: rgb(247, 247, 247);">
                                                                   <p style="color: rgb(0, 40, 86); font-weight: bolder; text-align: center;">Demos and Posters - Lunch Boxes</p>
                                                               </td>
                                                           </tr>
                                                           <tr style="border-bottom: 1px solid #5B5B5B !important;"><!-- EX:      TIME                EVENT AT THAT TIME    -->
-                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856; border-bottom: 1px solid #5B5B5B !important;">2:00</th>
+                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856; border-bottom: 1px solid #5B5B5B !important;">12:00</th>
                                                               <td data-header="Track 1" style="color: #002856; background-color: rgb(247, 247, 247);">
                                                                   <p style="color: rgb(0, 40, 86); font-weight: bolder; text-align: center;">Networking - Transition to Presentations</p>
                                                               </td>
@@ -1222,13 +1223,13 @@ th {
                                                       </thead>
                                                       <tbody>
                                                           <tr>
-                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">5:45</th>
+                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">4:30</th>
                                                               <td data-header="Track 1" style="color: #002856; background-color: rgb(247, 247, 247)">
                                                                   <p style="color: rgb(0, 40, 86); font-weight: bolder; text-align: center; ">Award Ceremony</p>
                                                               </td>
                                                           </tr>
                                                           <tr>
-                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">6:00</th>
+                                                              <th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">5:00</th>
                                                               <td data-header="Track 1" style="color: #002856; background-color: rgb(247, 247, 247)">
                                                                   <p style="color: rgb(0, 40, 86); font-weight: bolder; text-align: center;">Reception</p>
                                                               </td>
@@ -1285,7 +1286,7 @@ var datas = [];
 // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1fLRbUOkzH1YJhsuV49tiQf0ahXa2U3TrekE8FJgdzOM/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
@@ -1394,16 +1395,16 @@ function passvalue(slot) {
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 3;
+let totalTrackForCAP = 5;
 // the amount of order for CAP
 let totalOrderForCAP = 6;
 // the time start for CAP
-let timestartForCAP = "2:00";
+let timestartForCAP = "1:00";
 // time per slot for CAP
 let timePerSlotForCAP = "30";
 
 // the amount of tracks for CEE
-let totalTrackForCEE = 1;
+let totalTrackForCEE = 0;
 // the amount of order for CEE
 let totalOrderForCEE = 5;
 // the time start for CEE
@@ -1412,11 +1413,11 @@ let timestartForCEE = "2:00";
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 2;
+let totalTrackForCSE = 3;
 // the amount of order for CSE
-let totalOrderForCSE = 8;
+let totalOrderForCSE = 9;
 // the time start for CSE
-let timestartForCSE = "2:00";
+let timestartForCSE = "1:00";
 // time per slot for CSE
 let timePerSlotForCSE = "20";
 
@@ -1452,11 +1453,11 @@ $(document).ready(function () {
                                 '<tr class="roomCAP">'+
                                     '<th scope="col" style="background-color: #efefef; color: #002856; text-align: center;">Room:</th>'+
                                 '</tr>'+
-                                '<tr class="zoomCAP">'+
-                                    '<th scope="col" style="background-color: #efefef;">'+
-                                        '<gg-icon class="gg-camera" scope="col" style="align-content: center; margin-top: 13px;"></gg-icon>'+
-                                    '</th>'+
-                                '</tr>'+
+                                // '<tr class="zoomCAP">'+
+                                //     '<th scope="col" style="background-color: #efefef;">'+
+                                //         '<gg-icon class="gg-camera" scope="col" style="align-content: center; margin-top: 13px;"></gg-icon>'+
+                                //     '</th>'+
+                                // '</tr>'+
                                 '<tr class="trackCAP">'+
                                     '<th scope="col" style="background-color: #efefef;">&nbsp;</th>'+
                                 '</tr>'+
@@ -1466,29 +1467,29 @@ $(document).ready(function () {
                             '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                             '<td data-header="Track 1" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>AgTech</b>'+
+                                    '<b>Devices</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 2" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>FoodTech</b>'+
+                                    '<b>Precision</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Precision</b>'+
+                                    '<b>AgTech</b>'+
                                 '</p>'+
                             '</td>'+
-                            // '<td data-header="Track 4" style="color: #002856;">'+
-                            //     '<p style="color:#002856; font-weight: bolder;">'+
-                            //         '<b>Precision</b>'+
-                            //     '</p>'+
-                            // '</td>'+
-                            // '<td data-header="Track 5" style="color: #002856;">'+
-                            //     '<p style="color:#002856; font-weight: bolder;">'+
-                            //         '<b>Food</b>'+
-                            //     '</p>'+
-                            // '</td>'+
+                            '<td data-header="Track 4" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>Lab</b>'+
+                                '</p>'+
+                            '</td>'+
+                            '<td data-header="Track 5" style="color: #002856;">'+
+                                '<p style="color:#002856; font-weight: bolder;">'+
+                                    '<b>FoodTech</b>'+
+                                '</p>'+
+                            '</td>'+
                         '</tr>'+
                             '</tbody>'+
                         '</table>'+
@@ -1498,13 +1499,13 @@ $(document).ready(function () {
         $(".capTable").append(html);
         for(let i = 0; i < totalTrackForCAP; i++){
             $(".roomCAP").append('<th class="roomt'+(i+1)+'" scope="col" style="background-color: #efefef; color: #002856; text-align: center; font-weight: normal;">&nbsp;</th>');
-            $(".zoomCAP").append('<th class="zoomborder" scope="col">'+
-                '<a class="zoom" id="zoomt'+(i+1)+'" scope="col" target="_blank" title="Zoom link activated 10 minutes before start!">'+
-                    '<span>'+
-                        '<strong style="text-decoration: none;">Zoom ' + (i+1) + ' </strong> '  +
-                    '</span>'+
-                '</a>'+
-            '</th>');
+            // $(".zoomCAP").append('<th class="zoomborder" scope="col">'+
+            //     '<a class="zoom" id="zoomt'+(i+1)+'" scope="col" target="_blank" title="Zoom link activated 10 minutes before start!">'+
+            //         '<span>'+
+            //             '<strong style="text-decoration: none;">Zoom ' + (i+1) + ' </strong> '  +
+            //         '</span>'+
+            //     '</a>'+
+            // '</th>');
             $(".trackCAP").append('<th scope="col" style="background-color: #efefef; color: #002856; text-align: center;">Track ' + (i+1) + '</th>');
         }
         let CAPhtml = "";
@@ -1536,11 +1537,11 @@ $(document).ready(function () {
                                 '<tr class="roomCEE">'+
                                     '<th scope="col" style="background-color: #efefef; color: #002856; max-width: 70px; text-align: center;">Room:</th>'+
                                 '</tr>'+
-                                '<tr class="zoomCEE">'+
-                                    '<th scope="col" style="background-color: #efefef; max-width: 70px">'+
-                                        '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
-                                    '</th>'+
-                                '</tr>'+
+                                // '<tr class="zoomCEE">'+
+                                //     '<th scope="col" style="background-color: #efefef; max-width: 70px">'+
+                                //         '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
+                                //     '</th>'+
+                                // '</tr>'+
                                 '<tr class="trackCEE">'+
                                     '<th scope="col" style="background-color: #efefef; max-width: 70px">&nbsp;</th>'+
                                 '</tr>'+
@@ -1560,13 +1561,13 @@ $(document).ready(function () {
         $(".engslTable").append(html);
         for(let i = (0 + totalTrackForCAP); i < (totalTrackForCEE + totalTrackForCAP); i++){
             $(".roomCEE").append('<th class="roomt'+(i+1)+'" scope="col" style="background-color: #efefef; color: #002856; max-width: 150px; font-weight: normal; text-align: center;">&nbsp;</th>');
-            $(".zoomCEE").append('<th class="zoomborder" scope="col">'+
-                '<a class="zoom" id="zoomt'+(i+1)+'" scope="col" target="_blank" title="Zoom link activated 10 minutes before start!">'+
-                    '<span>'+
-                        '<strong style="text-decoration: none;">Zoom ' + (i+1) +  '</strong>'+
-                    '</span>'+
-                '</a>'+
-            '</th>');
+            // $(".zoomCEE").append('<th class="zoomborder" scope="col">'+
+            //     '<a class="zoom" id="zoomt'+(i+1)+'" scope="col" target="_blank" title="Zoom link activated 10 minutes before start!">'+
+            //         '<span>'+
+            //             '<strong style="text-decoration: none;">Zoom ' + (i+1) +  '</strong>'+
+            //         '</span>'+
+            //     '</a>'+
+            // '</th>');
             $(".trackCEE").append('<th scope="col" style="background-color: #efefef; color: #002856; text-align: center; max-width: 150px">Track ' + (i+1) + '</th>');
         }
         let CEEhtml = "";
@@ -1599,11 +1600,11 @@ $(document).ready(function () {
                             '<tr class="roomCSE">'+
                                 '<th scope="col" style="background-color: #efefef; color: #002856; max-width: 100px; text-align: center;">Room:</th>'+
                             '</tr>'+
-                            '<tr class="zoomCSE">'+
-                                '<th scope="col" style="background-color: #efefef; max-width: 100px">'+
-                                    '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
-                                '</th>'+
-                            '</tr>'+
+                            // '<tr class="zoomCSE">'+
+                            //     '<th scope="col" style="background-color: #efefef; max-width: 100px">'+
+                            //         '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
+                            //     '</th>'+
+                            // '</tr>'+
                             '<tr class="trackCSE">'+
                                 '<th scope="col" style="background-color: #efefef; max-width: 100px">&nbsp;</th>'+
                             '</tr>'+
@@ -1621,11 +1622,11 @@ $(document).ready(function () {
                                         '<b>Data</b>'+
                                     '</p>'+
                                 '</td>'+
-                                // '<td data-header="Track 3" style="color: #FFBF3C;">'+
-                                //     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                //         '<b>Industry</b>'+
-                                //     '</p>'+
-                                // '</td>'+
+                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
+                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                        '<b>Industry</b>'+
+                                    '</p>'+
+                                '</td>'+
                             '</tr>'+
                         '</tbody>'+
                     '</table>'+
@@ -1635,13 +1636,13 @@ $(document).ready(function () {
         $(".cseTable").append(html);
         for(let i = (0 + totalTrackForCAP + totalTrackForCEE); i < (totalTrackForCSE + totalTrackForCAP + totalTrackForCEE); i++){
             $(".roomCSE").append('<th class="roomt'+(i+1)+'" scope="col" style="background-color: #efefef; color: #002856; font-weight: normal; text-align: center;">&nbsp;</th>');
-            $(".zoomCSE").append('<th class="zoomborder" scope="col">'+
-                '<a class="zoom" id="zoomt'+(i+1)+'" scope="col" target="_blank" title="Zoom link activated 10 minutes before start!">'+
-                    '<span>'+
-                        '<strong style="text-decoration: none;">Zoom ' + (i+1) + '</strong>'+
-                    '</span>'+
-                '</a>'+
-            '</th>');
+            // $(".zoomCSE").append('<th class="zoomborder" scope="col">'+
+            //     '<a class="zoom" id="zoomt'+(i+1)+'" scope="col" target="_blank" title="Zoom link activated 10 minutes before start!">'+
+            //         '<span>'+
+            //             '<strong style="text-decoration: none;">Zoom ' + (i+1) + '</strong>'+
+            //         '</span>'+
+            //     '</a>'+
+            // '</th>');
             $(".trackCSE").append('<th scope="col" style="background-color: #efefef; color: #002856; text-align: center;">Track ' + (i+1) + '</th>');
         }
         let CSEhtml = "";
@@ -1664,25 +1665,25 @@ $(document).ready(function () {
     }
 
     // Pulls the room column from "2023-01-Spring-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/19VoMJrwiybqCNlepCa6QTBYIx5mqzZBVeOcPNxNvLnc/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1MfFpZ0mn90UkqEuegBWopPqucfkmzzUWNl0oR2eSWdo/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
         // Pull the class column from "2023-01-Spring-I2G-MASTER" spreadsheet. 
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i + 1][1]);
         }
         // Pulls the zoom column from "2023-01-Spring-I2G-MASTER" spreadsheet. 
         // It will add href to make zoom button active if there is a link present in zoom spreadsheet column
-        for (let i = 1; i <= totalRooms; i++) {
-            if (data.values[i + 1][2] != "") {
-                document.getElementById("zoomt" + i).href = data.values[i + 1][2];
-            }
-        }
+        // for (let i = 1; i <= totalRooms; i++) {
+        //     if (data.values[i + 1][2] != "") {
+        //         document.getElementById("zoomt" + i).href = data.values[i + 1][2];
+        //     }
+        // }
     });
 });
 
 $(document).ready(function () {
 
     // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1fLRbUOkzH1YJhsuV49tiQf0ahXa2U3TrekE8FJgdzOM/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
