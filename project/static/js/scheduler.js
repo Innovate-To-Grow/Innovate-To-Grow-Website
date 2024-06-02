@@ -16,7 +16,7 @@ var datas = [];
 // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2024-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
@@ -413,7 +413,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2023-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2024-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
