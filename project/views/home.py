@@ -179,6 +179,11 @@ def fall_event_2023():
 def spring_event_2023():
     return render_template("2023-spring-event.html")
     
+@home_blueprint.route("/2024-spring-event", methods=["GET", "POST"])
+@cache.cached()
+def spring_event_2024():
+    return render_template("2024-spring-event.html")
+
 @home_blueprint.route("/2022-fall-event", methods=["GET", "POST"])
 @cache.cached()
 def fall_event_2022():
