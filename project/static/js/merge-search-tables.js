@@ -326,6 +326,29 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                         $("#rowdelete").addClass('gray');
                     }
                 }
+            },
+            {
+                //new show details button here
+                "text": "Show all details",
+                "action": function () {
+                    $('#example' + search_counter).find('td.details-control').each(function () {
+                        var tr = $(this).closest('tr');
+                        var td = $(this).closest('td');
+                        //$(this).parent().find('input[type="checkbox"]').trigger('click'); this line causes show details button to select all rows
+                        var row = search_table.row(tr);
+                        if (row.child.isShown()) {
+                            row.child.hide();
+                            tr.removeClass('shown');
+                            tr.css('color', 'Black');
+                            tr.css('font-weight', 'normal');
+                        } else {
+                            row.child(format(row.data())).show();
+                            tr.addClass('shown');
+                            tr.css('color', '#162D4F');
+                            tr.css('font-weight', 'bold');
+                        }
+                    });
+                } 
             }
         ],
         "pageLength": 5,
@@ -359,6 +382,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 "defaultContent": ''
             },
             {
+                // true shows abstract but formatting is super ugly; false does not show abstract by default
                 "data": "Abstract",
                 "bVisible": false
             },
