@@ -162,6 +162,31 @@ $(document).ready(function () {
                         $('.CopyURL').text('Copy URL');
                     }, 2000);
                 }
+            },
+            {
+                // Merged table show details button
+                "text": 'Show Details',
+                "action": function () {
+                    $('#example').find('td.details-control-merge').each(function () {
+                        var tr = $(this).closest('tr');
+                        var td = $(this).closest('td');
+                        var row = merged_table.row(tr);
+                        if (row.child.isShown()) {
+                            // This row is already open - close it
+                            row.child.hide();
+                            tr.removeClass('shown');
+                            tr.css('color', 'Black');
+                            tr.css('font-weight', 'normal');
+                        } else {
+                            // Open this row
+                            row.child(mergeformat(row.data())).show();
+                            tr.addClass('shown');
+                            // Change color of text to tell user that the row is associated with the abstract and student name
+                            tr.css('color', '#162D4F');
+                            tr.css('font-weight', 'bold');
+                        }
+                    });
+                }
             }
         ],
         "pageLength": 5,
@@ -328,7 +353,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 }
             },
             {
-                //new show details button here
+                //search table show all details button
                 "text": "Show all details",
                 "action": function () {
                     $('#example' + search_counter).find('td.details-control').each(function () {
