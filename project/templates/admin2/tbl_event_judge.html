@@ -1,0 +1,67 @@
+{% extends 'admin2/base.html' %}
+
+{% block content %}
+
+<div class="login-container">
+    <h1>Make a Event</h1>
+    <form action="" method="POST" class="login-form">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.Judge_ID.label(class="form-label") }}
+            {{ form.Judge_ID(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Event_ID.label(class="form-label") }}
+            {{ form.Event_ID(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Link.label(class="form-label") }}
+            {{ form.Link(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Link2.label(class="form-label") }}
+            {{ form.Link2(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Link3.label(class="form-label") }}
+            {{ form.Link3(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Link4.label(class="form-label") }}
+            {{ form.Link4(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="submit-btn") }}
+        </div>
+    </form>
+</div>
+<h1>All Current Events</h1>
+<table class="table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Judge ID</th>
+        <th>Event ID</th>
+        <th>Link</th>
+        <th>Link2</th>
+        <th>Link3</th>
+        <th>Link4</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for EventJudge in Event_Judges %}
+    <tr>
+        <td>{{ EventJudge.ID }}</td>
+        <td>{{ EventJudge.Judge_ID }}</td>
+        <td>{{ EventJudge.Event_ID }}</td>
+        <td>{{ EventJudge.Link }}</td>
+        <td>{{ EventJudge.Link2 }}</td>
+        <td>{{ EventJudge.Link3 }}</td>
+        <td>{{ EventJudge.Link4 }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+
+{% endblock %}

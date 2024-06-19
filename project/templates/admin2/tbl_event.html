@@ -1,0 +1,45 @@
+{% extends 'admin2/base.html' %}
+
+{% block content %}
+
+<div class="login-container">
+    <h1>Make a Event</h1>
+    <form action="" method="POST" class="login-form">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.Project_ID.label(class="form-label") }}
+            {{ form.Project_ID(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Room_ID.label(class="form-label") }}
+            {{ form.Room_ID(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="submit-btn") }}
+        </div>
+    </form>
+</div>
+<h1>All Current Events</h1>
+<table class="table">
+    <thead>
+    <tr>
+        <th>Event ID</th>
+        <th>Event Name</th>
+        <th>Event Project ID</th>
+        <th>Event Room ID</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for event in Events %}
+    <tr>
+        <td>{{ event.ID }}</td>
+        <td>{{ event.Name }}</td>
+        <td>{{ event.Project_ID }}</td>
+        <td>{{ event.Room_ID }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+
+{% endblock %}
