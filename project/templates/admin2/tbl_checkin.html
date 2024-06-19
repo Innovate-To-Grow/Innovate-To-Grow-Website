@@ -1,0 +1,29 @@
+{% extends 'admin2/base.html' %}
+
+{% block content %}
+
+<h1>All Current Checkins</h1>
+<table class="table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>User ID</th>
+        <th>Checkin Time</th>
+        <th>Check Out</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for Checkin in Checkins %}
+    <tr>
+        <td>{{ Checkin.ID }}</td>
+        <td>{{ Checkin.User_ID }}</td>
+        <td>{{ Checkin.Checkin_Time }}</td>
+        <td>{{ Checkin.Check_Out }}</td>
+
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+
+{% endblock %}

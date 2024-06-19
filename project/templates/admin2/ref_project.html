@@ -1,0 +1,63 @@
+{% extends 'admin2/base.html' %}
+
+{% block content %}
+
+<div class="login-container">
+    <h1>Register Project</h1>
+    <form action="" method="POST" class="login-form">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+            {{ form.Project_Name.label(class="form-label") }}
+            {{ form.Project_Name(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Project_Des.label(class="form-label") }}
+            {{ form.Project_Des(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Mentor.label(class="form-label") }}
+            {{ form.Mentor(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Mentor1.label(class="form-label") }}
+            {{ form.Mentor1(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.Mentor2.label(class="form-label") }}
+            {{ form.Mentor2(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="submit-btn") }}
+        </div>
+    </form>
+</div>
+<h1>All Current Registrations</h1>
+<table class="table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Project Name</th>
+        <th>Project Des</th>
+        <th>Mentor</th>
+        <th>Mentor1</th>
+        <th>Mentor2</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for project in projects %}
+    <tr>
+        <td>{{ project.ID }}</td>
+        <td>{{ project.Project_Name }}</td>
+        <td>{{ project.Project_Des }}</td>
+        <td>{{ project.Mentor }}</td>
+        <td>{{ project.Mentor1 }}</td>
+        <td>{{ project.Mentor2 }}</td>
+
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+
+{% endblock %}

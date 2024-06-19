@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}I2G{% endblock %}</title>
+    <link rel="shortcut icon" href="https://www.ucmerced.edu/sites/ucmerced.edu/files/favicon-new.ico" type="image/vnd.microsoft.icon" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='general.css') }}">
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="top-banner">
+        <a href="/">
+            <img src="https://www.ucmerced.edu/sites/ucmerced.edu/files/ucmlogo_0.gif" alt="UC Merced Logo" class="logo">
+        </a>
+    </div>
+    {% block content %}{% endblock %}
+</body>
+</html>

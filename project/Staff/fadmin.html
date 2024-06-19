@@ -1,0 +1,28 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Admin Panel</a>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('login') }}">Database</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('view_staff_logins') }}">View Staff Logins</a>
+        </li>
+        <!-- Add more navbar items as needed -->
+
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- Example within an admin panel page -->
+<!-- Example within an admin panel page -->
+{% for user in firebase_users %}
+  <div>
+    {{ user.email }}
+    <form action="{{ url_for('remove_firebase_user', user_uid=user.uid) }}" method="POST">
+      <button type="submit">Remove</button>
+    </form>
+  </div>
+{% endfor %}
+

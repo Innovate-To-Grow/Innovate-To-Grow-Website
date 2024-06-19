@@ -1,0 +1,51 @@
+{% extends "admin2/base.html" %}
+
+{% block content %}
+
+<div class="login-container">
+    <h2>Add Staff</h2>
+    <form id="addStaffForm" class="signup-form">
+        Email:<br>
+        <input type="text" id="email" placeholder="Email" required><br>
+        Password:<br>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <input type="submit" value="Add Staff">
+    </form>
+</div>
+
+<script>
+    document.getElementById('addStaffForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the form from submitting normally
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        // Create a JSON object with the form data
+        const data = {
+            email: email,
+            password: password
+        };
+
+        // Send a POST request with the form data as JSON
+        fetch('/add_firebase_user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        });
+    });
+</script>
+
+{% endblock %}
