@@ -8,6 +8,7 @@ from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_admin import Admin
+from flask_migrate import Migrate
 from config.default import Config, APP_ROOT
 from werkzeug.security import generate_password_hash
 import firebase_admin
@@ -42,7 +43,7 @@ def too_many_requests(e):
 db = SQLAlchemy()
 db.init_app(app)
 
-
+migrate = Migrate(app, db)
 import boto3
 
 ses = boto3.client('ses',
@@ -558,7 +559,8 @@ def manual_add():
             ]
             wks.append_row(row)
 
-            sheet2 = sh.worksheet("I2G Fall 2024")
+            #sheet name from google sheet I2G Membership
+            sheet2 = sh.worksheet("I2G Summer testing")
             row2 = [
                 user_id,
                 new_user.First_Name,
@@ -657,7 +659,8 @@ def checkin():
 
 
     if request.method == 'POST':
-        wks = sh.worksheet("I2G Fall 2024")
+        #sheet name from google sheet I2G Membership
+        wks = sh.worksheet("I2G Summer testing")
 
         qr_id = request.form['new_user_id']
         cell = wks.find(qr_id)

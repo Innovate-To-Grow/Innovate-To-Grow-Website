@@ -1,6 +1,6 @@
 import gspread, uuid
 from threading import Thread
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session,redirect,url_for
 from project import cache
 
 
@@ -218,6 +218,36 @@ def sponsors_2014():
 @cache.cached()
 def sponsors_2015():
     return render_template("2015-sponsors.html")
+'''
+PASSWORD = 'peepoofart'
+
+@home_blueprint.route("/docslogin", methods=["GET", "POST"])
+@cache.cached()
+def docslogin():
+    message = ""
+    if request.method == 'POST':
+        password = request.form['password']
+        if password == PASSWORD:
+            return render_template("docs.html")
+        else:
+            return render_template("docslogin.html", message="Invalid Password. Please try again.")
+
+    return render_template("docslogin.html", message = message)
+
+@home_blueprint.route("/docs", methods=["GET", "POST"])
+@cache.cached()
+def docs():
+    if request.method == 'POST':
+        password = request.form['password']
+        if password == PASSWORD:
+            return render_template("docs.html")
+        else:
+            return render_template("docslogin.html", message="Invalid Password. Please try again.")
+
+    return render_template("docslogin.html", message="Please log in to access the docs page.")
+
+
+'''
 
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
