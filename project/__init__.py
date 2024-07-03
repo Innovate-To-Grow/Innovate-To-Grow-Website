@@ -560,7 +560,7 @@ def manual_add():
             wks.append_row(row)
 
             #sheet name from google sheet I2G Membership
-            sheet2 = sh.worksheet("I2G Summer testing")
+            sheet2 = sh.worksheet("I2G Summer testing (locally)")
             row2 = [
                 user_id,
                 new_user.First_Name,
@@ -660,7 +660,7 @@ def checkin():
 
     if request.method == 'POST':
         #sheet name from google sheet I2G Membership
-        wks = sh.worksheet("I2G Summer testing")
+        wks = sh.worksheet("I2G Summer testing (locally)")
 
         qr_id = request.form['new_user_id']
         cell = wks.find(qr_id)
