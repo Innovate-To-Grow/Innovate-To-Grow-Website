@@ -12,8 +12,7 @@ home_blueprint = Blueprint("home", __name__, template_folder="../templates/home"
 def mainpage():
     # return render_template("home-pre-event.html")
     # return render_template("home-during-event.html")
-    # return render_template("home-post-event.html")
-    return render_template("home-during-semester.html")
+    return render_template("home-post-event.html")
 
 @home_blueprint.route("/about", methods=["GET", "POST"])
 @cache.cached()
