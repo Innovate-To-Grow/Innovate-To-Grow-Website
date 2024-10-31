@@ -4,7 +4,7 @@ from threading import Thread
 from gspread.cell import Cell
 from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, BooleanField, RadioField, SelectField
+from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
 from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
 from project.models import edit_form, event
@@ -245,8 +245,9 @@ def register():
             @copy_current_request_context
             def can_register():
                 user = ["" for i in range(len(wks_columns))]
-                order_number = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(wks_columns["Order"])[-1].isdigit() else 1
-                user[wks_columns["Order"] - 1] = order_number
+
+                user[wks_columns["Order"] - 1] = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(
+                    wks_columns["Order"])[-1].isdigit() else 1
                 user[wks_columns["First Name"] - 1] = form.first_name.data
                 user[wks_columns["Last Name"] - 1] = form.last_name.data
                 user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
@@ -262,13 +263,7 @@ def register():
                 user[wks_columns["Secondary Expired"] - 1] = "FALSE"
                 user[wks_columns["Secondary Bounced"] - 1] = ""
                 user[wks_columns["Info Completed"] - 1] = "FALSE"
-                #populate QR code field with Order and date of today
-                #----------------------------------------------------------------------------------------------------------------------------------------------------------------
                 
-                qr_code_value = str(order_number) + "-" + datetime.now().strftime("%Y%m%d")  # Order number followed by the current date
-                user[wks_columns["QR Code"] - 1] = qr_code_value
-                #----------------------------------------------------------------------------------------------------------------------------------------------------------------
-                                
                 wks.append_row(user)
 
                 p_token = generate_token(prim_email)
@@ -291,7 +286,6 @@ def register():
 
                 send_email(prim_email, app.config["VERIF_SUBJECT"], p_html)
                 send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
-                
 
                 def expiry_timer():
                     time.sleep(app.config["EXPIRY_TIMER"])
@@ -453,26 +447,6 @@ def confirm(token):
                                    event_fields=event_fields, 
                                    event_name=event_obj.name if event_obj is not None else None)
             send_email(email, subject, html)
-            #-----------------------------------------------------------------------Add to table of confirmed emails to send QR code later on --------------------
-            send_qr = render_template("send_qr.html",
-                                      event_url=event_url,
-                                      qr_url=user["QR Code"],
-                                      update_url=update_url,
-                                      first=user["First Name"],
-                                      last=user["Last Name"],
-                                      primary_verified=primary_verified,
-                                      secondary_verified=secondary_verified,
-                                      primary_subscribed=primary_subscribed,
-                                      secondary_subscribed=secondary_subscribed,
-                                      info_fields=info_fields,
-                                      event_name=event_obj.name if event_obj is not None else None,
-                                      event_fields=event_fields)
-            send_email(email,"I2G Event Check-In QR Code",send_qr)
-            
-            
-            
-            
-            #------------------------------------------------------------------END of 325 I2G QR Attached Email -------------------------------------
             
             return render_template("thanks_confirming.html", 
                                    event_url=event_url,
@@ -855,13 +829,9 @@ def complete_registration(token):
             RadioField("Ticket Type",
                        choices=[(ticket, ticket) for ticket in event_obj.tickets.split("\n")],
                        validators=[Optional()]))
-        teams = [(str(i), f'CSE-{300+i}') for i in range(1, 28)]
+
         for question in event_obj.questions.split("\n"):
-             if question == "What is your Team Number?":
-       
-                setattr(CompleteRegistrationForm, "event_" + question, SelectField(question, choices=teams))
-             else:
-                setattr(CompleteRegistrationForm, "event_" + question, StringField(question))
+            setattr(CompleteRegistrationForm, "event_" + question, StringField(question))
 
     person = {"primary_email": email, "confirm_primary": email}
 
@@ -1014,10 +984,9 @@ def complete_registration(token):
             @copy_current_request_context
             def can_register():
                 user = ["" for i in range(len(wks_columns))]
-                order_number = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(wks_columns["Order"])[-1].isdigit() else 1
-                current_date = datetime.now().strftime("%Y%m%d")  # Current date in YYYYMMDD format
 
-                user[wks_columns["Order"] - 1] = order_number
+                user[wks_columns["Order"] - 1] = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(
+                    wks_columns["Order"])[-1].isdigit() else 1
                 user[wks_columns["First Name"] - 1] = form.first_name.data
                 user[wks_columns["Last Name"] - 1] = form.last_name.data
                 user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
@@ -1033,7 +1002,6 @@ def complete_registration(token):
                 user[wks_columns["Secondary Expired"] - 1] = "FALSE"
                 user[wks_columns["Secondary Bounced"] - 1] = ""
                 user[wks_columns["Info Completed"] - 1] = "TRUE"
-                #user[wks_columns["QR Code"] - 1] =  f"{order_number}-{current_date}"
 
                 for row in edit_form.query.all():
                     if row.field_type == "Checkbox":
@@ -1055,24 +1023,8 @@ def complete_registration(token):
                     last=form.last_name.data,
                     confirm_url=s_confirm_url,
                 )
-                
 
                 send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
-                # send_qr = render_template("send_qr.html",
-                #                       event_url=event_url,
-                #                       qr_url=f"{order_number}-{current_date}",
-                #                       update_url=update_url,
-                #                       first=form.first_name.data,
-                #                       last=form.last_name.data,
-                #                       primary_verified="TRUE",
-                #                       secondary_verified=0,
-                #                       primary_subscribed="TRUE",
-                #                       secondary_subscribed=0,
-                #                       info_fields=info_fields,
-                #                       event_name=event_obj.name if event_obj is not None else None,
-                #                       event_fields=event_fields)
-                # send_email(email,"I2G Event Check-In QR Code",send_qr) 
-                
 
                 def sec_expiry_timer():
                     time.sleep(app.config["EXPIRY_TIMER"])
@@ -1090,7 +1042,7 @@ def complete_registration(token):
                 if event_obj is not None:
                     if form.register_event.data:
                         event_row = ["" for i in range(len(event_wks_columns))]
-                        current_date = datetime.now().strftime("%Y%m%d")  # Current date in YYYYMMDD format
+
                         event_row[event_wks_columns["Order"] - 1] = int(
                             event_wks.col_values(event_wks_columns["Order"])[-1]) + 1 if event_wks.col_values(
                                 event_wks_columns["Order"])[-1].isdigit() else 1
@@ -1101,7 +1053,6 @@ def complete_registration(token):
                         event_row[event_wks_columns["Membership Primary"] - 1] = prim_email
                         event_row[event_wks_columns["Membership Secondary"] - 1] = sec_email
                         event_row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                        event_row[event_wks_columns["QR Code"] - 1] =  f"{order_number}-{current_date}"
                         # event_row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
                         for question in event_obj.questions.split("\n"):
@@ -1109,20 +1060,6 @@ def complete_registration(token):
                             event_row[event_wks_columns[question] - 1] = form[form_key].data
 
                         event_wks.append_row(event_row)
-                        send_qr = render_template("send_qr.html",
-                        event_url=event_url,
-                        qr_url=f"{order_number}-{current_date}",
-                        update_url=update_url,
-                        first=form.first_name.data,
-                        last=form.last_name.data,
-                        primary_verified="TRUE",
-                        secondary_verified=0,
-                        primary_subscribed="TRUE",
-                        secondary_subscribed=0,
-                        info_fields=info_fields,
-                        event_name=event_obj.name if event_obj is not None else None,
-                        event_fields=event_fields)
-                        send_email(email,"I2G Event Check-In QR Code",send_qr) 
 
 
                 subject = "I2G Membership Completed"
@@ -1163,4 +1100,3 @@ def complete_registration(token):
 
     else:
         return render_template("complete_registration.html", form=form, token=token)
-    

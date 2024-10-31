@@ -61,11 +61,6 @@ th {
     z-index: 100;
 }
 
-.projectfix{
-    overflow: scroll !important;
-}
-/* added ths to fix the tables that are made with jquery */
-
 .tableHeader {
     background: color #e5e5e5;
     ;
@@ -102,11 +97,11 @@ button {
     }
 }
 
-/* @media (min-width: 200px) {
+@media (min-width: 200px) {
     .row-fluid .span2 {
         width: 14% !important;
     }
-} */
+}
 
 @media (max-width: 200px) {
 
@@ -124,13 +119,11 @@ button {
 
 .table__wrapper {
     width: 100%;
-    overflow: scroll;
 }
 
 .table__wrapper .table {
     /* width: 100%; */
     max-width: 100%;
-    overflow: scroll;
 }
 
 /* ------- Presentational Formatting --------- */
@@ -276,42 +269,7 @@ button {
 */
 /* -------------------------------- */
 
-/* Default styling for all tables */
-/* .capTable tr td,
-.cseTable tr td,
-.engslTable tr td {
-    min-width: 50px;
-    max-width: 100px;
-} */
 
-/* Default styling for company names */
-.companyName,
-.companyNameE,
-.companyNameC {
-    font-size: 10px;
-    color: #002856;
-    padding: 0;
-    margin: 0;
-}
-
-@media screen and (max-width: 200px) {
-    /* Adjusting the width for all tables */
-    .capTable tr td,
-    .cseTable tr td,
-    .engslTable tr td {
-        min-width: auto;
-        max-width: none;
-        width: auto;
-    }
-
-    /* Adjusting the width for company names */
-    .companyName,
-    .companyNameE,
-    .companyNameC {
-        min-width: auto;
-        width: auto;
-    }
-}
 /* Full Screen */
 @media screen and (min-width:200px) {
 
@@ -383,7 +341,7 @@ button {
     /* Coloring of the Columns (EngSL) */
     .engslTable tr td:nth-child(2) {
         background: #99D9D9;
-        /* max-width: 120px; */
+        max-width: 120px;
     }
 
     /* Company Names */
@@ -425,7 +383,7 @@ button {
 
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 200px) {
 
     /* Coloring of the Columns (CAP) */
     .capTable tr td:nth-child(2) {
@@ -455,16 +413,11 @@ button {
     /* Coloring of the Columns (CSE) */
     .cseTable tr td:nth-child(2) {
         background: #002856;
-        /* display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100pm, 1fr));
-        gap: 10px;
-        position: absolute; */
     }
 
     .cseTable tr td:nth-child(3) {
         background: #002856;
         opacity: 0.90;
-
     }
 
     .cseTable tr td:nth-child(4) {
