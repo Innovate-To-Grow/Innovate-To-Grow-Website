@@ -125,18 +125,18 @@ function passvalue(slot) {
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 5;
+let totalTrackForCAP = 3;
 // the amount of order for CAP
-let totalOrderForCAP = 6;
+let totalOrderForCAP = 5;
 // the time start for CAP
 let timestartForCAP = "1:00";
 // time per slot for CAP
 let timePerSlotForCAP = "30";
 
 // the amount of tracks for CEE
-let totalTrackForCEE = 0;
+let totalTrackForCEE = 1;
 // the amount of order for CEE
-let totalOrderForCEE = 5;
+let totalOrderForCEE = 4;
 // the time start for CEE
 let timestartForCEE = "1:00";
 // time per slot for CEE
@@ -145,7 +145,7 @@ let timePerSlotForCEE = "30";
 // the amount of tracks for CSE
 let totalTrackForCSE = 3;
 // the amount of order for CSE
-let totalOrderForCSE = 9;
+let totalOrderForCSE = 7;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
@@ -197,29 +197,29 @@ $(document).ready(function () {
                             '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                             '<td data-header="Track 1" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Devices</b>'+
+                                    '<b>AgTech</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 2" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Precision</b>'+
+                                    '<b>FoodTech</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>AgTech</b>'+
+                                    '<b>Precision</b>'+
                                 '</p>'+
                             '</td>'+
-                            '<td data-header="Track 4" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Lab</b>'+
-                                '</p>'+
-                            '</td>'+
-                            '<td data-header="Track 5" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>FoodTech</b>'+
-                                '</p>'+
-                            '</td>'+
+                            // '<td data-header="Track 4" style="color: #002856;">'+
+                            //     '<p style="color:#002856; font-weight: bolder;">'+
+                            //         '<b>Lab</b>'+
+                            //     '</p>'+
+                            // '</td>'+
+                            // '<td data-header="Track 5" style="color: #002856;">'+
+                            //     '<p style="color:#002856; font-weight: bolder;">'+
+                            //         '<b>FoodTech</b>'+
+                            //     '</p>'+
+                            // '</td>'+
                         '</tr>'+
                             '</tbody>'+
                         '</table>'+
@@ -267,11 +267,11 @@ $(document).ready(function () {
                                 '<tr class="roomCEE">'+
                                     '<th scope="col" style="background-color: #efefef; color: #002856; max-width: 70px; text-align: center;">Room:</th>'+
                                 '</tr>'+
-                                '<tr class="zoomCEE">'+
-                                    '<th scope="col" style="background-color: #efefef; max-width: 70px">'+
-                                        '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
-                                    '</th>'+
-                                '</tr>'+
+                                // '<tr class="zoomCEE">'+
+                                //     '<th scope="col" style="background-color: #efefef; max-width: 70px">'+
+                                //         '<gg-icon class="gg-camera" scope="col" style="align-content: center;"></gg-icon>'+
+                                //     '</th>'+
+                                // '</tr>'+
                                 '<tr class="trackCEE">'+
                                     '<th scope="col" style="background-color: #efefef; max-width: 70px">&nbsp;</th>'+
                                 '</tr>'+
@@ -395,7 +395,7 @@ $(document).ready(function () {
     }
 
     // Pulls the room column from "2023-08-Fall-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1MfFpZ0mn90UkqEuegBWopPqucfkmzzUWNl0oR2eSWdo/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
         // Pull the class column from "2023-08-Fall-I2G-MASTER" spreadsheet. 
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i + 1][1]);

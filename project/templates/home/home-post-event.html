@@ -380,7 +380,7 @@ th {
     $(document).ready(function () {
         // Pulls the winner column from "2022-08-Fall-I2G-MASTER" spreadsheet.
 		// .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-       $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1MfFpZ0mn90UkqEuegBWopPqucfkmzzUWNl0oR2eSWdo/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+       $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
             $(".winnert1").prepend(data.values[2][6]); 
             $(".winnert2").prepend(data.values[3][6]);
             $(".winnert3").prepend(data.values[4][6]);
@@ -449,8 +449,8 @@ th {
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 1</th>
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 2</th>
                                 <th scope="col" style="background-color: #efefef; color: #002856;">Track 3</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th>
+                                <!-- <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
+                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th> -->
 							</tr>
 						</thead>
 						<tbody>
@@ -459,16 +459,16 @@ th {
 								<td data-header="Track 1"><b class="trackname1">&nbsp;</b></td>
 								<td data-header="Track 2"><b class="trackname2">&nbsp;</b></td>
                                 <td data-header="Track 3"><b class="trackname3">&nbsp;</b></td>
-								<td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
-                                <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td>
+								<!-- <td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
+                                <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td> -->
 							</tr>
 							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
 								<td data-header="Track 1"><b class="winnert1">&nbsp;</b></td>
 								<td data-header="Track 2"><b class="winnert2">&nbsp;</b></td>
                                 <td data-header="Track 3"><b class="winnert3">&nbsp;</b></td>
-								<td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
-                                <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td>
+								<!-- <td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
+                                <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td> -->
 							</tr>
 						</tbody>
 					</table>
@@ -478,7 +478,7 @@ th {
 	</div>
 </div>
 
-<!-- <div class="row-fluid i2gTable ">
+<div class="row-fluid i2gTable ">
 	<div class="WinnerCEETable">
 		<div class="span2" style="margin-right: 0px;">
 			<div style="text-align: center; color: #002856;"><strong>Civil &amp; Environmental</strong></div>
@@ -506,7 +506,7 @@ th {
 				</div>
 			</section>
 		</div>
-	</div> -->
+	</div>
 
 	<div class="WinnerCSETable">
 		<div class="span12">
@@ -520,23 +520,22 @@ th {
 						<thead>
 							<tr>
 								<th scope="col" style="background-color: #fff; color: #002856; max-width: 100px;">&nbsp;</th>
+								<th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th>
 								<th scope="col" style="background-color: #efefef; color: #002856;">Track 6</th>
-								<th scope="col" style="background-color: #efefef; color: #002856;">Track 7</th>
-                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 8</th>
+                                <th scope="col" style="background-color: #efefef; color: #002856;">Track 7</th>
 							</tr>
 						</thead>
 						<tbody>
-							<tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 5" style="color: #FFBF3C;"><b class="trackname6">&nbsp;</b></td>
-								<td data-header="Track 6" style="color: #FFBF3C;"><b class="trackname7">&nbsp;</b></td>
-                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname8">&nbsp;</b></td>
+								<td data-header="Track 5" style="color: #FFBF3C;"><b class="trackname5">&nbsp;</b></td>
+								<td data-header="Track 6" style="color: #FFBF3C;"><b class="trackname6">&nbsp;</b></td>
+                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname7">&nbsp;</b></td>
 							</tr>
                             <tr>
 								<th class="borderLess" scope="row" style="background-color: #fff; color: #002856;">&nbsp;</th>
-								<td data-header="Track 5" style="color: #FFBF3C;"><b class="winnert6">&nbsp;</b></td>
-								<td data-header="Track 6" style="color: #FFBF3C;"><b class="winnert7">&nbsp;</b></td>
-                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert8">&nbsp;</b></td>
+								<td data-header="Track 5" style="color: #FFBF3C;"><b class="winnert5">&nbsp;</b></td>
+								<td data-header="Track 6" style="color: #FFBF3C;"><b class="winnert6">&nbsp;</b></td>
+                                <td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert7">&nbsp;</b></td>
 							</tr>
 						</tbody>
 					</table>
@@ -1289,7 +1288,7 @@ var datas = [];
 // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2024-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/2024-08-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
@@ -1398,27 +1397,27 @@ function passvalue(slot) {
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 5;
+let totalTrackForCAP = 3;
 // the amount of order for CAP
-let totalOrderForCAP = 6;
+let totalOrderForCAP = 5;
 // the time start for CAP
 let timestartForCAP = "1:00";
 // time per slot for CAP
 let timePerSlotForCAP = "30";
 
 // the amount of tracks for CEE
-let totalTrackForCEE = 0;
+let totalTrackForCEE = 1;
 // the amount of order for CEE
-let totalOrderForCEE = 5;
+let totalOrderForCEE = 4;
 // the time start for CEE
-let timestartForCEE = "2:00";
+let timestartForCEE = "1:00";
 // time per slot for CEE
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
 let totalTrackForCSE = 3;
 // the amount of order for CSE
-let totalOrderForCSE = 9;
+let totalOrderForCSE = 7;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
@@ -1470,29 +1469,29 @@ $(document).ready(function () {
                             '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                             '<td data-header="Track 1" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Devices</b>'+
+                                    '<b>AgTech</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 2" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Precision</b>'+
+                                    '<b>FoodTech</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>AgTech</b>'+
+                                    '<b>Precision</b>'+
                                 '</p>'+
                             '</td>'+
-                            '<td data-header="Track 4" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Lab</b>'+
-                                '</p>'+
-                            '</td>'+
-                            '<td data-header="Track 5" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>FoodTech</b>'+
-                                '</p>'+
-                            '</td>'+
+                            // '<td data-header="Track 4" style="color: #002856;">'+
+                            //     '<p style="color:#002856; font-weight: bolder;">'+
+                            //         '<b>Lab</b>'+
+                            //     '</p>'+
+                            // '</td>'+
+                            // '<td data-header="Track 5" style="color: #002856;">'+
+                            //     '<p style="color:#002856; font-weight: bolder;">'+
+                            //         '<b>FoodTech</b>'+
+                            //     '</p>'+
+                            // '</td>'+
                         '</tr>'+
                             '</tbody>'+
                         '</table>'+
@@ -1668,7 +1667,7 @@ $(document).ready(function () {
     }
 
     // Pulls the room column from "2023-01-Spring-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1MfFpZ0mn90UkqEuegBWopPqucfkmzzUWNl0oR2eSWdo/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
         // Pull the class column from "2023-01-Spring-I2G-MASTER" spreadsheet. 
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i + 1][1]);
@@ -1686,7 +1685,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1-p5yXTpgRKfbxVBuvehR8PPoxKCMRrHC_yXMfNNYB0E/values/2024-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
