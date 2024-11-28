@@ -489,3 +489,19 @@ class CatchBouncesView(BaseView):
         
 
         return redirect(url_for("catch_bounces.catch_bounces"))
+
+
+class DocumentationView(BaseView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for("admin.login", next=request.url))
+
+    @expose("/")  
+    def index(self):
+        return redirect(url_for('.documentation'))
+
+    @expose("/documentation", methods=["GET"])
+    def documentation(self):
+        return self.render("admin/documentation.html")
