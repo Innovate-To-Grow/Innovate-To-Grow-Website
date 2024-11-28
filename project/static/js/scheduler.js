@@ -197,12 +197,12 @@ $(document).ready(function () {
                             '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                             '<td data-header="Track 1" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>AgTech</b>'+
+                                    '<b>FoodTech</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 2" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>FoodTech</b>'+
+                                    '<b>AgTech</b>'+
                                 '</p>'+
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
@@ -344,17 +344,17 @@ $(document).ready(function () {
                                 '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                                 '<td data-header="Track 1" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Ag-Food</b>'+
+                                        '<b>Ag-Food - TBD</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 2" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Data</b>'+
+                                        '<b>Data - TBD</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Industry</b>'+
+                                        '<b>Industry - TBD</b>'+
                                     '</p>'+
                                 '</td>'+
                             '</tr>'+
