@@ -42,12 +42,24 @@
             <li><code>project</code> contains the bulk of the code for the application. The rest of the documentation will go over what is in this folder.</li>
         </ul>
 
-        <h2>Project</h2>
-        <p>(Details to be filled in this section)</p>
-
         <h2>Common Tasks</h2>
-        <p>(Details to be filled in this section)</p>
+        <p>Every semester, there is an I2G event. Therefore, there are routine tasks that must be completed before, during, and after each I2G event. Here is a list of common tasks and how to complete them:</p>
+        <ol>
+            <li>
+                <strong>Change home page to <code>home-pre-event.html</code></strong>
+                <ol>
+                    <li>Navigate to <code>project/views/home.py</code> and choose the correct template in the <code>mainpage</code> function.</li>
+                </ol>
+            </li>
+            <li>
+                <strong>Change times in the <code>home-pre-event.html</code> and <code>event.html</code></strong>
+                <ol>
+                    <li>These times must reflect the times of the upcoming event.</li>
+                    <li>Unfortunately, these times are hardcoded, so they must be changed manually in both HTML files.</li>
+                </ol>
+            </li>
+        </ol>
     </main>
 </body>
 </html>
-{% endblock body%}
+{% endblock body %}
