@@ -42,6 +42,35 @@
             <li><code>project</code> contains the bulk of the code for the application. The rest of the documentation will go over what is in this folder.</li>
         </ul>
 
+        <p><strong>The following files in the <code>project</code> directory are critical for the functioning of the I2G system:</strong></p>
+        <ul>
+            <li>
+                <code>admin.py</code>
+                <ul>
+                    <li>The admin dashboard for I2G.</li>
+                    <li>Handles catching email bounces.</li>
+                    <li>Allows creation and editing of events.</li>
+                    <li>Manages admin users and roles.</li>
+                </ul>
+            </li>
+            <li>
+                <code>event.py</code>
+                <ul>
+                    <li>Handles event registration for users already in the Google Sheet.</li>
+                    <li>Updates and adds entries to the Google Sheet.</li>
+                    <li>Sends confirmation emails to registered users.</li>
+                </ul>
+            </li>
+            <li>
+                <code>registration.py</code>
+                <ul>
+                    <li>Handles event registration for new users (not already in the Google Sheet).</li>
+                    <li>Updates and adds entries to the Google Sheet.</li>
+                    <li>Sends confirmation emails to users registered for the event.</li>
+                </ul>
+            </li>
+        </ul>
+
         <h2>Common Tasks</h2>
         <p>Every semester, there is an I2G event. Therefore, there are routine tasks that must be completed before, during, and after each I2G event. Here is a list of common tasks and how to complete them:</p>
         <ol>
