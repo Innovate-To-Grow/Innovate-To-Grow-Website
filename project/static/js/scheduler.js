@@ -344,17 +344,17 @@ $(document).ready(function () {
                                 '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                                 '<td data-header="Track 1" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Ag-Food - TBD</b>'+
+                                        '<b>Food</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 2" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Data - TBD</b>'+
+                                        '<b>Data</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Industry - TBD</b>'+
+                                        '<b>Language</b>'+
                                     '</p>'+
                                 '</td>'+
                             '</tr>'+
