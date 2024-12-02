@@ -129,7 +129,7 @@ app.register_blueprint(geo_blueprint)
 
 
 # Flask Admin
-from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView, CatchBouncesView
+from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView, CatchBouncesView, DocumentationView
 
 admin_app = Admin(app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3")
 admin_app.add_view(UserModelView(user, db.session, name="Administrators"))
@@ -137,6 +137,7 @@ admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
 admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
 admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounces"))
+admin_app.add_view(DocumentationView(name="Documentation", endpoint="documentation"))
 
 
 # Email Pixel Tracking
