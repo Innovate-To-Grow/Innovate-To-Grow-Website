@@ -20,6 +20,11 @@ def mainpage():
 def about():
     return render_template("about.html")
 
+@home_blueprint.route("/privacy", methods=["GET", "POST"])
+@cache.cached()
+def text_toc():
+    return render_template("terms_and_conditions.html")
+
 @home_blueprint.route("/engineering-capstone", methods=["GET", "POST"])
 @cache.cached()
 def engineering_capstone():
