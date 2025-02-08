@@ -17,9 +17,7 @@
 
         <h2>Running the system for the first time</h2>
         <p>After cloning the repository to your local machine, it is best to utilize a virtual environment to run the application locally.</p>
-        <p>To create a virtual environment on mac, run:</p>
         <pre><code>python3 -m venv .venv</code></pre>
-        <p>This creates a virtual environment using Python's venv module called <code>.venv</code>.</p>
         <p>To start the virtual environment, run:</p>
         <pre><code>source .venv/bin/activate</code></pre>
         <p>Now you must install all of the dependencies. Run:</p>
@@ -28,74 +26,55 @@
         <pre><code>python3 wsgi.py</code></pre>
 
         <h3>Common Error</h3>
-        <p>An error you might encounter is that the gspread config is in the wrong place. In the repository, it is located in:</p>
-        <pre><code>.config/gspread/service_account.json</code></pre>
-        <p>However, the file <code>service_account.json</code> should be in your home directory. Move the file to:</p>
+        <p>An error you might encounter is that the gspread config is in the wrong place. Move the file to:</p>
         <pre><code>~/.config/gspread/service_account.json</code></pre>
-        <p>This should resolve the error.</p>
 
         <h2>Important Files and Folders</h2>
-        <p>In the main folder, <code>wsgi.py</code> is the entry point of the app.</p>
-        <p>The two important subdirectories are <code>config</code> and <code>project</code>:</p>
+        <p>The main folder contains <code>wsgi.py</code>, which is the entry point of the app.</p>
         <ul>
-            <li><code>config</code> contains constants that need to be used throughout the application.</li>
-            <li><code>project</code> contains the bulk of the code for the application. The rest of the documentation will go over what is in this folder.</li>
+            <li><code>config</code>: Contains constants used throughout the application.</li>
+            <li><code>project</code>: Contains the bulk of the application's code.</li>
         </ul>
 
-        <p><strong>The following files in the <code>project</code> directory are critical for the functioning of the I2G system:</strong></p>
-        <ul>
-            <li>
-                <code>admin.py</code>
-                <ul>
-                    <li>The admin dashboard for I2G.</li>
-                    <li>Handles catching email bounces.</li>
-                    <li>Allows creation and editing of events.</li>
-                    <li>Manages admin users and roles.</li>
-                </ul>
-            </li>
-            <li>
-                <code>event.py</code>
-                <ul>
-                    <li>Handles event registration for users already in the Google Sheet.</li>
-                    <li>Updates and adds entries to the Google Sheet.</li>
-                    <li>Sends confirmation emails to registered users.</li>
-                </ul>
-            </li>
-            <li>
-                <code>registration.py</code>
-                <ul>
-                    <li>Handles event registration for new users (not already in the Google Sheet).</li>
-                    <li>Updates and adds entries to the Google Sheet.</li>
-                    <li>Sends confirmation emails to users registered for the event.</li>
-                </ul>
-            </li>
-        </ul>
+        <!-- <h2>Critical Files in <code>project</code></h2> -->
+        <!-- <ul> -->
+        <!--     <li><code>admin.py</code>: Admin dashboard, email bounce handling, event management.</li> -->
+        <!--     <li><code>event.py</code>: Event registration for users in Google Sheets.</li> -->
+        <!--     <li><code>registration.py</code>: Event registration for new users.</li> -->
+        <!-- </ul> -->
 
         <h2>Common Tasks</h2>
-        <p>Every semester, there is an I2G event. Therefore, there are routine tasks that must be completed before, during, and after each I2G event. Here is a list of common tasks and how to complete them:</p>
         <ol>
             <li>
-                <strong>Change home page to <code>home-pre-event.html</code></strong>
-                <ol>
-                    <li>Navigate to <code>project/views/home.py</code> and choose the correct template in the <code>mainpage</code> function.</li>
-                </ol>
+                <strong>Change home page</strong>
+                <p>Navigate to <code>project/views/home.py</code> and modify the <code>mainpage</code> function to return the correct template.</p>
             </li>
             <li>
-                <strong>Change times in the <code>home-pre-event.html</code> and <code>event.html</code></strong>
-                <ol>
-                    <li>These times must reflect the times of the upcoming event.</li>
-                    <li>Unfortunately, these times are hardcoded, so they must be changed manually in both HTML files.</li>
-                </ol>
+                <strong>Update homepage with final details</strong>
+                <p>Change times in <code>home-pre-event.html</code> and <code>event.html</code>Go to <code>project/templates/home</code> Ensure the event times are updated manually in both HTML files before each event.</p>
             </li>
             <li>
                 <strong>Add event to past events</strong>
-                <ol>
-                    <li>Go to <code>views/home.py</code> and add another route for that semester. There are many examples if you search up fall or spring in the file</li>
-                    <li>Copy the current <code>home-post-event.html</code> file and make a new file and make a new file like: <code>templates/home/2024-fall-event.html</code>
-                    <li>Go to <code>home/past-events.html</code> and add the new past event</li>
-                </ol>
+                <p>Update <code>views/home.py</code> by adding a new route for the semester. Copy the current <code>home-post-event.html</code> and create a new template, such as <code>templates/home/2024-fall-event.html</code>. Then update <code>home/past-events.html</code> accordingly.</p>
+            </li>
+            <li>
+                <strong>Make winners table</strong>
+                <p>...coming soon</p>
             </li>
         </ol>
+
+        <h2>Semester Workflow</h2>
+        <h3>Semester Start</h3>
+        <p>Ensure the home page is set to <code>home-during-semester.html</code> </p>
+        <p>Ensure the previous event is visible at <a href="https://i2g.ucmerced.edu/past-events">https://i2g.ucmerced.edu/past-events</a>.</p>
+        
+        <h3>I2G Dates/Times Finalized</h3>
+        <p>Update the homepage with the finalized event details. Now is also a good time to set up the winner's table. Documentation for this will be updated soon.</p>
+        
+        <h3>Day of the I2G Event</h3>
+        <p>Switch the homepage to the appropriate template. Stay in touch with Stefano/I2G to know when to update the page to the post-event template.</p>
+        <p>The Lakireddy Engineering winners are hardcoded. To update winners, navigate to:<code>project/templates/home/home-post-event.html</code></p>
+        <p>Then update the past projects section.</p>
     </main>
 </body>
 </html>
