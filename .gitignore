@@ -133,5 +133,5 @@ project/db/data.sqlite3
 *.ini
 
 # Class Diagrams
-# useCaseDiagram/
+useCaseDiagram/
 

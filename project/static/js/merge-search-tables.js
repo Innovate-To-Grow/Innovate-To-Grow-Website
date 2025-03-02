@@ -57,13 +57,13 @@ $(document).ready(function () {
                 subdata = {
                     "Year-Semester": subArray[0],
                     "Class": subArray[1],
-                    "Team#": subArray[2],
-                    "Team Name": subArray[3],
-                    "Project Title": subArray[4],
-                    "Organization": subArray[5],
-                    "Industry": subArray[6],
-                    "Abstract": subArray[7],
-                    "Student Names": subArray[8],
+                        "Team#": subArray[2],
+                        "Team Name": subArray[3],
+                        "Project Title": subArray[4],
+                        "Organization": subArray[5],
+                        "Industry": subArray[6],
+                        "Abstract": subArray[7],
+                        "Student Names": subArray[8],
                 };
                 JSON.stringify(subdata);
                 datas.push(subdata);
@@ -116,7 +116,7 @@ function format(d) {
         '</table>';
 }
 
-// Set the format of Abstract and Student Name when the button is clicked for Merge Table
+// Update the mergeformat function
 function mergeformat(d) {
     // `d` is the original data object for the row
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
@@ -128,8 +128,49 @@ function mergeformat(d) {
         '<td>Student Names:</td>' +
         '<td>' + d[9] + '</td>' +
         '</tr>' +
+        '<tr>' +
+        '<td colspan="2" style="text-align: center;">' +
+        '<button class="btn-share-url" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px;">Get Shareable URL</button>' +
+        '</td>' +
+        '</tr>' +
         '</table>';
 }
+
+// Add this after the mergeformat function but before the "Merge Table specific functions START" comment
+$(document).on('click', '.btn-share-url', function() {
+    var $button = $(this);
+    var row = $button.closest('tr').parent().closest('tr').prev();
+    var data = merged_table.row(row).data();
+    
+    var shareData = [{
+        "Year-Semester": data[0],
+        "Class": data[1],
+        "Team#": data[2],
+        "Team Name": data[3],
+        "Project Title": data[4],
+        "Organization": data[5],
+        "Industry": data[6],
+        "Abstract": data[8],
+        "Student Names": data[9]
+    }];
+
+    $.ajax({
+        type: "POST",
+        url: "/past-projects/<uuid_string>",
+        data: JSON.stringify(shareData),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function(response) {
+            uuid = response["uuid_string"];
+            window.open("/past-projects/" + uuid, "_blank");
+            // Remove the button after successful share
+            $button.remove();
+        },
+        failure: function(errMsg) {
+            alert(errMsg);
+        }
+    });
+});
 
 // Merge Table specific functions START
 $(document).ready(function () {
