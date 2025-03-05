@@ -101,7 +101,7 @@ $(document).ready(function () {
 });
 // Prep END
 
-// Set the format of Abstract and Student Name when the button is clicked for Search Tables
+// Function to display abstract and student names when clicking the details button in Search Tables
 function format(d) {
     // `d` is the original data object for the row
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
@@ -116,60 +116,172 @@ function format(d) {
         '</table>';
 }
 
-// Update the mergeformat function
+// Function to display abstract, student names, and action buttons in the Merged Table
 function mergeformat(d) {
-    // `d` is the original data object for the row
+    // Check if we're on a UUID page by looking for full UUID pattern
+    const isUuidPage = window.location.pathname.match(/\/past-projects\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
         '<td>Abstract:</td>' +
-        '<td>' + d[8] + '</td>' +
+        '<td class="abstract-content" contenteditable="false" style="padding-bottom: 10px;">' + d[8] + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td>Student Names:</td>' +
-        '<td>' + d[9] + '</td>' +
+        '<td class="student-names-content" contenteditable="false">' + d[9] + '</td>' +
         '</tr>' +
+        (isUuidPage ? '' : 
         '<tr>' +
         '<td colspan="2" style="text-align: center;">' +
+        '<button class="btn-edit-details" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px; margin-right: 10px;">Edit Details</button>' +
         '<button class="btn-share-url" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px;">Get Shareable URL</button>' +
         '</td>' +
-        '</tr>' +
+        '</tr>') +
         '</table>';
 }
 
-// Add this after the mergeformat function but before the "Merge Table specific functions START" comment
-$(document).on('click', '.btn-share-url', function() {
+// Add handler for edit details button
+$(document).on('click', '.btn-edit-details', function() {
     var $button = $(this);
-    var row = $button.closest('tr').parent().closest('tr').prev();
-    var data = merged_table.row(row).data();
+    var $shareButton = $button.siblings('.btn-share-url');
+    var $table = $button.closest('table');
+    var $editableFields = $table.find('.abstract-content, .student-names-content');
     
-    var shareData = [{
-        "Year-Semester": data[0],
-        "Class": data[1],
-        "Team#": data[2],
-        "Team Name": data[3],
-        "Project Title": data[4],
-        "Organization": data[5],
-        "Industry": data[6],
-        "Abstract": data[8],
-        "Student Names": data[9]
-    }];
+    if ($button.text() === 'Edit Details') {
+        // Enable editing mode
+        $editableFields.attr('contenteditable', 'true');
+        
+        // Apply common styles with vertical centering
+        $editableFields.css({
+            'border': '1px solid black',
+            'border-radius': '4px',
+            'background-color': 'white',
+            'min-height': '20px',
+            'padding': '5px'
+        });
+        
+        // Style specific to abstract content
+        $table.find('.abstract-content').css({
+            'border-bottom': '1px solid #b6b6b6',  // Consistent border color
+            'padding-bottom': '10px',
+            'margin-bottom': '10px'
+        });
+        
+        // Style specific to student names content
+        $table.find('.student-names-content').css({
+            'padding-top': '10px'
+        });
+        
+        // Update parent td styles for proper layout
+        $editableFields.parent('td').css({
+            'display': 'block',
+            'min-height': '40px'
+        });
+        
+        $button.text('Discard Edit');
+        $shareButton.text('Save Edit');
+        
+        // Store original content for potential discard
+        $editableFields.each(function() {
+            $(this).data('original-content', $(this).text());
+        });
+    } else {
+        // Disable editing and revert changes
+        $editableFields.attr('contenteditable', 'false');
+        $editableFields.css({
+            'border': 'none',
+            'background-color': 'transparent',
+            'padding': '0',
+            'margin': '0'
+        });
+        
+        // Reset table cell styles
+        $editableFields.parent('td').css({
+            'display': 'table-cell'
+        });
+        
+        // Restore original padding and border for abstract field with correct color
+        $table.find('.abstract-content').css({
+            'padding-bottom': '10px',
+            'border-bottom': '1px solid #b6b6b6',  // Corrected border color
+            'margin-bottom': '10px'
+        });
+        
+        $button.text('Edit Details');
+        $shareButton.text('Get Shareable URL');
+        
+        // Restore original content
+        $editableFields.each(function() {
+            $(this).text($(this).data('original-content'));
+        });
+    }
+});
 
-    $.ajax({
-        type: "POST",
-        url: "/past-projects/<uuid_string>",
-        data: JSON.stringify(shareData),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function(response) {
-            uuid = response["uuid_string"];
-            window.open("/past-projects/" + uuid, "_blank");
-            // Remove the button after successful share
-            $button.remove();
-        },
-        failure: function(errMsg) {
-            alert(errMsg);
-        }
-    });
+// Prevent share URL functionality when in edit mode
+$(document).on('click', '.btn-share-url', function(e) {
+    if ($(this).text() === 'Save Edit') {
+        e.preventDefault();
+        return false;
+    }
+});
+
+// Function to initialize share buttons behavior when on a shared URL page
+function initializeShareButtons() {
+    if (window.location.pathname.includes('/past-projects/')) {
+        $('.btn-share-url').each(function() {
+            var $button = $(this);
+            var currentUrl = window.location.href;
+            
+            $button
+                .text('Copy URL')
+                .off('click')
+                .on('click', function() {
+                    navigator.clipboard.writeText(currentUrl);
+                    $(this).text('Copied!');
+                    setTimeout(function() {
+                        $(this).text('Copy URL');
+                    }.bind(this), 2000);
+                });
+        });
+    }
+}
+
+// Handler for individual share URL button clicks
+$(document).on('click', '.btn-share-url', function() {
+    // Only generate new URL if we're not on a past-projects page
+    if (!window.location.pathname.includes('/past-projects/')) {
+        var $button = $(this);
+        var row = $button.closest('tr').parent().closest('tr').prev();
+        var data = merged_table.row(row).data();
+        
+        var shareData = [{
+            "Year-Semester": data[0],
+            "Class": data[1],
+            "Team#": data[2],
+            "Team Name": data[3],
+            "Project Title": data[4],
+            "Organization": data[5],
+            "Industry": data[6],
+            "Abstract": data[8],
+            "Student Names": data[9]
+        }];
+
+        $.ajax({
+            type: "POST",
+            url: "/past-projects/<uuid_string>",
+            data: JSON.stringify(shareData),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function(response) {
+                uuid = response["uuid_string"];
+                var shareUrl = "/past-projects/" + uuid;
+                window.open(shareUrl, "_blank");
+            },
+            failure: function(errMsg) {
+                alert(errMsg);
+            }
+        });
+    }
 });
 
 // Merge Table specific functions START
@@ -265,6 +377,9 @@ $(document).ready(function () {
         }
     });
 
+    // Add this line at the end of the document ready function
+    initializeShareButtons();
+
     // Detail button function, opens rows and closes them
     $('#example').on('click', 'td.details-control-merge', function () {
         var tr = $(this).closest('tr');
@@ -288,6 +403,7 @@ $(document).ready(function () {
 
 });
 // Merge Table specific functions END
+// Function to maintain checkbox selection state across table pages
 function updateDataTableSelectAllCtrl(table) {
     var $table = table.table().node();
     var $chkbox_all = $('tbody input[type="checkbox"]', $table);
@@ -316,7 +432,7 @@ function updateDataTableSelectAllCtrl(table) {
         }
     }
 }
-// All functions under the search table scope (.addtable) START
+// Handler for adding new search tables
 $(document).on('click', '.addtable', function () { // adds a new search table and appends it to the .tableManage html
     search_counter++
     var rows_selected = [];
@@ -567,7 +683,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         $("#rowdelete").addClass('gray');
     });
 
-    // Merge results function START
+    // Handler for merging selected items into the merged table
     $('#merge').click(function () {
         var first_merge = false;
 
@@ -761,7 +877,6 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             merged_table.row($(this).parents('tr')).remove().draw();
         });
     });
-    // Merge results function END
 
     // Detail button function, opens rows and closes them
     $('#example' + search_counter).on('click', 'td.details-control', function () {
