@@ -217,9 +217,17 @@ $(document).on('click', '.btn-edit-details', function() {
     }
 });
 
-// Prevent share URL functionality when in edit mode
+// Current placeholder that prevents share URL functionality when in edit mode
+// TODO: Replace this with actual save functionality
 $(document).on('click', '.btn-share-url', function(e) {
     if ($(this).text() === 'Save Edit') {
+        // TODO: Implement save functionality here
+        // 1. Get the edited content from abstract and student names fields
+        // 2. Validate the content
+        // 3. Send updates to backend/database
+        // 4. Handle success/failure responses
+        // 5. Update the display accordingly
+        // 6. Reset button states
         e.preventDefault();
         return false;
     }
