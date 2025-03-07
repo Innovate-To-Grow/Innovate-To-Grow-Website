@@ -20,9 +20,14 @@
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank"
                             rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
-                        <!-- <a href="http://Kiriblast.com" target="_blank" rel="noopener">Log Out</a> -->
-                        <a href="{{ url_for('registration.login') }}" >Log In</a>
-                        <a href="{{ url_for('registration.login') }}" >Sign Up</a>
+                        <!--changes the displayed nav buttons depending on if user or guest-->
+                        {% if session.get('logged_in') %}
+                         <a href="{{ url_for('account.logout') }}">Log Out</a>
+                        {% endif %}
+                        {% if not session.get('logged_in') %}
+                        <a href="{{ url_for('account.login') }}" >Log In</a>
+                        <a href="{{ url_for('account.signup') }}" >Sign Up</a>
+                        {% endif %}
                     </div>
 
                 </div>

@@ -311,10 +311,6 @@ def register():
         return render_template("register_form.html", form=form)
 
 
-@registration_blueprint.route("/login")
-def login():
-    return render_template("login.html")
-
 @registration_blueprint.route("/confirm/<token>")
 def confirm(token):
     user = None

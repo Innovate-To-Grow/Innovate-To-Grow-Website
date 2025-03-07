@@ -1,0 +1,16 @@
+<!--temporary file for testing no need to change-->
+
+<!DOCTYPE html>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <p>{{ email }} is logged in</p>
+</body>
+</html>
