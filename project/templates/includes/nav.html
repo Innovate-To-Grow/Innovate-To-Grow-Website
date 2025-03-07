@@ -20,9 +20,55 @@
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank"
                             rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
-
+                        <!-- <a target="_blank" rel="noopener" onclick="updateUserRole()">Login</a> -->
                     </div>
 
+                    <button onclick="addUser()">Add New User</button>
+                    <script>
+                        function addUser() {
+                            fetch('/add-user/')
+                                .then(response => response.json())
+                                .then(data => console.log(data.message))
+                                .catch(error => console.error('Error:', error));
+                        }
+                    </script>
+
+                    <!-- <button onclick="callPrintMessage()">Click me</button>
+                    <script>
+                        function callPrintMessage() {
+                            fetch('/print-message/')
+                                .then(response => response.text())
+                                .then(data => console.log(data));
+                        }
+                    </script> -->
+
+                    <!-- <button onclick="createUser()">Click Doro</button>
+                    <script>
+                        async function createUser() {
+                            try {
+                                const response = await fetch('http://localhost:8000/user/signUp', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        email: "test@example.com",
+                                        password: "testpassword",
+                                        role: "user"
+                                    })
+                                });
+
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    console.log('User created:', data);
+                                } else {
+                                    console.error('Failed to create user');
+                                }
+                            } catch (error) {
+                                console.error('Error:', error);
+                            }
+                        }
+                    </script> -->
                 </div>
             </div>
             <!-- /#header-content -->
@@ -242,4 +288,29 @@
         </div>
     </div>
 </div>
+
+<!-- <script>
+    async function updateUserRole() {
+        const response = await fetch('/user/signUp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                first_name: 'John',
+                last_name: 'Doe',
+                email: 'john.doe@example.com',
+                password: 'password123',
+                role: 'user'
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('User updated:', data);
+        } else {
+            console.error('Failed to update user');
+        }
+    }
+</script> -->
 {% endmacro %}
