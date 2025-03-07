@@ -116,15 +116,43 @@ function format(d) {
         '</table>';
 }
 
-// Function to display abstract, student names, and action buttons in the Merged Table
+//edited****************************************************************
+// Function to display all fields with edit functionality in the Merged Table
 function mergeformat(d) {
-    // Check if we're on a UUID page by looking for full UUID pattern
     const isUuidPage = window.location.pathname.match(/\/past-projects\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
+        '<td>Year-Semester:</td>' +
+        '<td class="year-semester-content" contenteditable="false">' + d[0] + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td>Class:</td>' +
+        '<td class="class-content" contenteditable="false">' + d[1] + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td>Team#:</td>' +
+        '<td class="team-number-content" contenteditable="false">' + d[2] + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td>Team Name:</td>' +
+        '<td class="team-name-content" contenteditable="false">' + d[3] + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td>Project Title:</td>' +
+        '<td class="project-title-content" contenteditable="false">' + d[4] + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td>Organization:</td>' +
+        '<td class="organization-content" contenteditable="false">' + d[5] + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td>Industry:</td>' +
+        '<td class="industry-content" contenteditable="false">' + d[6] + '</td>' +
+        '</tr>' +
+        '<tr>' +
         '<td>Abstract:</td>' +
-        '<td class="abstract-content" contenteditable="false" style="padding-bottom: 10px;">' + d[8] + '</td>' +
+        '<td class="abstract-content" contenteditable="false">' + d[8] + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td>Student Names:</td>' +
@@ -140,12 +168,13 @@ function mergeformat(d) {
         '</table>';
 }
 
-// Add handler for edit details button
+//edited****************************************************************
+// Update the edit handler
 $(document).on('click', '.btn-edit-details', function() {
     var $button = $(this);
     var $shareButton = $button.siblings('.btn-share-url');
     var $table = $button.closest('table');
-    var $editableFields = $table.find('.abstract-content, .student-names-content');
+    var $editableFields = $table.find('.year-semester-content, .class-content, .team-number-content, .team-name-content, .project-title-content, .organization-content, .industry-content, .abstract-content, .student-names-content');
     
     if ($button.text() === 'Edit Details') {
         // Enable editing mode
@@ -157,19 +186,15 @@ $(document).on('click', '.btn-edit-details', function() {
             'border-radius': '4px',
             'background-color': 'white',
             'min-height': '20px',
-            'padding': '5px'
-        });
-        
-        // Style specific to abstract content
-        $table.find('.abstract-content').css({
-            'border-bottom': '1px solid #b6b6b6',  // Consistent border color
-            'padding-bottom': '10px',
+            'padding': '5px',
             'margin-bottom': '10px'
         });
         
-        // Style specific to student names content
-        $table.find('.student-names-content').css({
-            'padding-top': '10px'
+        // Special styling for abstract (more space)
+        $table.find('.abstract-content').css({
+            'border-bottom': '1px solid #b6b6b6',
+            'padding-bottom': '10px',
+            'margin-bottom': '15px'
         });
         
         // Update parent td styles for proper layout
@@ -200,10 +225,10 @@ $(document).on('click', '.btn-edit-details', function() {
             'display': 'table-cell'
         });
         
-        // Restore original padding and border for abstract field with correct color
+        // Restore original padding and border for abstract field
         $table.find('.abstract-content').css({
             'padding-bottom': '10px',
-            'border-bottom': '1px solid #b6b6b6',  // Corrected border color
+            'border-bottom': '1px solid #b6b6b6',
             'margin-bottom': '10px'
         });
         
@@ -217,8 +242,8 @@ $(document).on('click', '.btn-edit-details', function() {
     }
 });
 
+//edited****************************************************************
 // Current placeholder that prevents share URL functionality when in edit mode
-// TODO: Replace this with actual save functionality
 $(document).on('click', '.btn-share-url', function(e) {
     if ($(this).text() === 'Save Edit') {
         // TODO: Implement save functionality here
@@ -233,6 +258,7 @@ $(document).on('click', '.btn-share-url', function(e) {
     }
 });
 
+//edited****************************************************************
 // Function to initialize share buttons behavior when on a shared URL page
 function initializeShareButtons() {
     if (window.location.pathname.includes('/past-projects/')) {
@@ -254,6 +280,7 @@ function initializeShareButtons() {
     }
 }
 
+//edited****************************************************************
 // Handler for individual share URL button clicks
 $(document).on('click', '.btn-share-url', function() {
     // Only generate new URL if we're not on a past-projects page
