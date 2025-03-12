@@ -5,7 +5,7 @@ from wtforms.validators import Email, EqualTo, InputRequired
 class LoginForm(FlaskForm):
     email = StringField('Email Address', [InputRequired(' '), Email()])
     password = PasswordField('Password', [InputRequired(' ')])
-    submit = SubmitField('Submit')
+    submit = SubmitField('Login')
 
 class SignupForm(FlaskForm):
     email = StringField('Email Address', [InputRequired(' '), Email()])
