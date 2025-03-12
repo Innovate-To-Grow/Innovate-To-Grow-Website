@@ -123,46 +123,27 @@ function mergeformat(d) {
     
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
-        '<td>Year-Semester:</td>' +
-        '<td class="year-semester-content" contenteditable="false">' + d[0] + '</td>' +
+        '<td style="vertical-align: top;">Abstract:</td>' +
+        '<td class="abstract-content" contenteditable="false" style="line-height: 1.5;">' + d[8] + '</td>' +
         '</tr>' +
         '<tr>' +
-        '<td>Class:</td>' +
-        '<td class="class-content" contenteditable="false">' + d[1] + '</td>' +
+        '<td style="vertical-align: top;">Student Names:</td>' +
+        '<td class="student-names-content" contenteditable="false" style="line-height: 1.5;">' + d[9] + '</td>' +
         '</tr>' +
         '<tr>' +
-        '<td>Team#:</td>' +
-        '<td class="team-number-content" contenteditable="false">' + d[2] + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td>Team Name:</td>' +
-        '<td class="team-name-content" contenteditable="false">' + d[3] + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td>Project Title:</td>' +
-        '<td class="project-title-content" contenteditable="false">' + d[4] + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td>Organization:</td>' +
-        '<td class="organization-content" contenteditable="false">' + d[5] + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td>Industry:</td>' +
-        '<td class="industry-content" contenteditable="false">' + d[6] + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td>Abstract:</td>' +
-        '<td class="abstract-content" contenteditable="false">' + d[8] + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td>Student Names:</td>' +
-        '<td class="student-names-content" contenteditable="false">' + d[9] + '</td>' +
+        '<td style="vertical-align: middle;">Project URL:</td>' +
+        '<td style="display: flex; justify-content: space-between; align-items: center;">' +
+            '<span class="project-url" style="flex: 1; padding-right: 10px;"></span>' +
+            '<button class="copy-url-btn" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin: 5px 0;">' +
+                '<i class="fa fa-copy"></i> Copy URL' +
+            '</button>' +
+        '</td>' +
         '</tr>' +
         (isUuidPage ? '' : 
         '<tr>' +
         '<td colspan="2" style="text-align: center;">' +
-        '<button class="btn-edit-details" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px; margin-right: 10px;">Edit Details</button>' +
-        '<button class="btn-share-url" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px;">Get Shareable URL</button>' +
+        '<button class="btn-edit-details" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px;">Edit Details</button>' +
+        // '<button class="btn-share-url" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px; margin-left: 10px;">Get Shareable URL</button>' +
         '</td>' +
         '</tr>') +
         '</table>';
@@ -174,7 +155,7 @@ $(document).on('click', '.btn-edit-details', function() {
     var $button = $(this);
     var $shareButton = $button.siblings('.btn-share-url');
     var $table = $button.closest('table');
-    var $editableFields = $table.find('.year-semester-content, .class-content, .team-number-content, .team-name-content, .project-title-content, .organization-content, .industry-content, .abstract-content, .student-names-content');
+    var $editableFields = $table.find('.abstract-content, .student-names-content');  // Only abstract and student names are editable
     
     if ($button.text() === 'Edit Details') {
         // Enable editing mode
@@ -182,7 +163,7 @@ $(document).on('click', '.btn-edit-details', function() {
         
         // Apply common styles with vertical centering
         $editableFields.css({
-            'border': '1px solid black',
+            //'border': '1px solid black',
             'border-radius': '4px',
             'background-color': 'white',
             'min-height': '20px',
@@ -282,6 +263,7 @@ function initializeShareButtons() {
 
 //edited****************************************************************
 // Handler for individual share URL button clicks
+/*
 $(document).on('click', '.btn-share-url', function() {
     // Only generate new URL if we're not on a past-projects page
     if (!window.location.pathname.includes('/past-projects/')) {
@@ -317,6 +299,20 @@ $(document).on('click', '.btn-share-url', function() {
             }
         });
     }
+});
+*/
+
+//edited****************************************************************
+$(document).on('click', '.copy-url-btn', function(e) {
+    e.stopPropagation();
+    const url = window.location.origin + $(this).siblings('.project-url').text();
+    navigator.clipboard.writeText(url);
+    
+    const $btn = $(this);
+    $btn.text('Copied!');
+    setTimeout(() => {
+        $btn.html('<i class="fa fa-copy"></i> Copy URL');
+    }, 2000);
 });
 
 // Merge Table specific functions START
@@ -354,26 +350,36 @@ $(document).ready(function () {
             {
                 // Merged table show details button
                 "text": 'Show Details',
+                "className": 'details-toggle-btn',
                 "action": function () {
+                    var $button = $('.details-toggle-btn');
+                    var isShowing = $button.text() === 'Hide Details';
+                    
                     $('#example').find('td.details-control-merge').each(function () {
                         var tr = $(this).closest('tr');
-                        var td = $(this).closest('td');
                         var row = merged_table.row(tr);
-                        if (row.child.isShown()) {
-                            // This row is already open - close it
-                            row.child.hide();
-                            tr.removeClass('shown');
-                            tr.css('color', 'Black');
-                            tr.css('font-weight', 'normal');
+                        
+                        if (isShowing) {
+                            // Hide all details
+                            if (row.child.isShown()) {
+                                row.child.hide();
+                                tr.removeClass('shown');
+                                tr.css('color', 'Black');
+                                tr.css('font-weight', 'normal');
+                            }
                         } else {
-                            // Open this row
-                            row.child(mergeformat(row.data())).show();
-                            tr.addClass('shown');
-                            // Change color of text to tell user that the row is associated with the abstract and student name
-                            tr.css('color', '#162D4F');
-                            tr.css('font-weight', 'bold');
+                            // Show all details
+                            if (!row.child.isShown()) {
+                                row.child(mergeformat(row.data())).show();
+                                tr.addClass('shown');
+                                tr.css('color', '#162D4F');
+                                tr.css('font-weight', 'bold');
+                            }
                         }
                     });
+                    
+                    // Toggle button text
+                    $button.text(isShowing ? 'Show Details' : 'Hide Details');
                 }
             }
         ],
@@ -430,7 +436,7 @@ $(document).ready(function () {
             // Open this row
             row.child(mergeformat(row.data())).show();
             tr.addClass('shown');
-            //change color of text to tell user that the row is assosiated to the abstract and student name
+            // Change color of text to tell user that the row is associated with the abstract and student name
             tr.css('color', '#162D4F');
             tr.css('font-weight', 'bold');
         }
@@ -1028,6 +1034,6 @@ $(document).ready(function () {
             failure: function (errMsg) {
                 alert(errMsg);
             }
-        })
+        });
     });
 });
