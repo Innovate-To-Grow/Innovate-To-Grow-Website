@@ -150,7 +150,7 @@ def forgot_password():
             email_template = render_template("password_reset_email.html", url=url)
             send_email(email, "Password Reset Requested", email_template)
             flash("Check your email for a password reset link", "success")
-            return render_template("forgot_password.html", form=form)
+            return redirect(url_for("account.login"))
 
         flash("Account with this email doesn't exist", "danger")
         return render_template("forgot_password.html", form=form), 404
