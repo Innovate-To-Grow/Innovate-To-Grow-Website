@@ -34,9 +34,19 @@ def block_user(func):
     @wraps(func)  
     def wrapped_function(*args, **kwargs):
         if session.get("logged_in"):
+            # If this is the login route with a POST request and a 'next' parameter
+            # Allow the function to continue so proper redirection can happen
+            if func.__name__ == 'login' and request.method == 'POST' and request.form.get('next'):
+                # But return immediately after successful login
+                result = func(*args, **kwargs)
+                if isinstance(result, tuple) and len(result) > 1 and result[1] == 200:
+                    # If the function succeeded without errors
+                    return result
+                
+            # Otherwise show already logged in message
             flash("You are already logged in", "danger")
-            #temporary landing page after signing in
             return redirect(url_for("account.account"))
+        
         return func(*args, **kwargs)
     return wrapped_function
 
@@ -50,14 +60,34 @@ def block_guest(func):
         return func(*args, **kwargs)
     return wrapped_function
 
+# Add a rate limiting helper function
+def rate_limit(key, limit_seconds=10):
+    """Check if operation is within rate limit window"""
+    current_time = time.time()
+    last_attempt = session.get(f"last_{key}_attempt", 0)
+    
+    if current_time - last_attempt < limit_seconds:
+        # Too soon since last attempt
+        return False
+    
+    # Update the timestamp of the last attempt
+    session[f"last_{key}_attempt"] = current_time
+    return True
+
 
 @account_blueprint.route("/login", methods=["GET","POST"])
 @block_user
 def login():
     form = LoginForm()
+    # Get next parameter or use referrer as fallback
+    next_page = request.args.get('next') or request.referrer or url_for('home.mainpage')
+    
+    # Don't redirect back to login/signup/account pages
+    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page or 'logout' in next_page):
+        next_page = url_for('home.mainpage')
 
     if request.method == "GET":
-        return render_template("login.html", form=form)
+        return render_template("login.html", form=form, next=next_page)
 
     #POST
     if form.validate_on_submit():
@@ -72,9 +102,14 @@ def login():
                     #set cookie
                     session["logged_in"] = True
                     session["email"] = email
+                    session.permanent = True  # Make session last longer
                     flash("Log in successful", "success")
-                    #temporary landing page after signing in
-                    return redirect(url_for("account.account"))
+                    
+                    # Use the next parameter from the form and perform a direct redirect
+                    redirect_url = request.form.get('next') or next_page
+                    
+                    # Use 302 status code for proper redirect without intermediate page
+                    return redirect(redirect_url, code=302)
                 
                 token = generate_token(email)
                 url = url_for("account.verify_email", token=token, _external=True)
@@ -139,20 +174,26 @@ def forgot_password():
     if request.method == "GET":
         return render_template("forgot_password.html", form=form)
 
-    #POST
+    # POST
     if form.validate_on_submit():
         email = form.email.data.lower()
-        #verify email exists
+        
+        # Check rate limiting (10 seconds between requests)
+        if not rate_limit("password_reset", 10):
+            flash("Please wait a moment before requesting another reset email", "danger")
+            return render_template("forgot_password.html", form=form), 429
+        
+        # Verify email exists
         if get_email(email):
-            #send password reset email
+            # Send password reset email
             token = generate_token(email)
             url = url_for("account.reset_password", token=token, _external=True)
             email_template = render_template("password_reset_email.html", url=url)
             send_email(email, "Password Reset Requested", email_template)
-            flash("Check your email for a password reset link", "success")
+            flash("Reset email has been sent to your address", "success")
             return redirect(url_for("account.login"))
 
-        flash("Account with this email doesn't exist", "danger")
+        flash("No account found with this email address", "danger")
         return render_template("forgot_password.html", form=form), 404
         
     else:
@@ -220,8 +261,15 @@ def account():
 
 
 @account_blueprint.route("/logout")
-@block_guest
-def logout():
+def logout():  # Remove @block_guest decorator to avoid circular dependency
+    # Store the referrer before clearing the session
+    next_page = request.referrer or url_for('home.mainpage')
+    
+    # Don't redirect to login/account pages
+    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page):
+        next_page = url_for('home.mainpage')
+    
+    # Clear the session
     session.clear()
     flash("You have been logged out", "success")
-    return redirect(url_for("account.login"))
+    return redirect(next_page)

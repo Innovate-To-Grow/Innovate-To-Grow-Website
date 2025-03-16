@@ -16,7 +16,7 @@ class PasswordComplexity(object):
         
     def complex_password(self, password):
         #UNCOMMENT THIS LINE TO DISABLE PASSWORD COMPLEXITY
-        #return True, None 
+        return True, None 
 
         if len(password) < 8:
             return False, "Password must be at least 8 characters"
@@ -41,11 +41,13 @@ class SignupForm(FlaskForm):
     submit = SubmitField('Sign Up')
 
 class ForgotPasswordForm(FlaskForm):
-    email = StringField('Email Address', [InputRequired(' '), Email()])
-    submit = SubmitField('Send Email')
+    email = StringField('Email', validators=[
+        InputRequired("Email is required"), 
+        Email("Invalid email address")
+    ])
+    submit = SubmitField('Send Reset Email')
 
 class ResetPasswordForm(FlaskForm):
     password = PasswordField('New Password', [InputRequired(' '), PasswordComplexity()])
     confirm_password = PasswordField('Confirm New Password', [InputRequired(' '), EqualTo('password', message='Passwords do not match')])
     submit = SubmitField('Update Password')
-    

@@ -135,3 +135,5 @@ project/db/data.sqlite3
 # Class Diagrams
 useCaseDiagram/
 
+# temp user database
+database.json
