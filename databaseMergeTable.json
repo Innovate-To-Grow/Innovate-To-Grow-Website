@@ -1,3 +1,14 @@
 [
-
+    {
+        "uuid": "2024-08-Fall-CAP-CEE-404",
+        "year_semester": "2024-08-Fall-CAP",
+        "class": "CEE",
+        "team_number": "404",
+        "team_name": "Safe Structure Squad",
+        "project_title": "Ronan Point Apartment Tower Case",
+        "organization": "SY Consulting LLC",
+        "industry": "Structural Engineering",
+        "abstract": "Modern buildings are built to withstand both internal and external forces, with the safety of the occupants as a top priority. When confronted with an unexpected force, their capacity to remain standing becomes a key test of resilience. Resilience was tested and ultimately failed on May 16, 1968 in East London when a gas explosion on the 18th story of the Ronan Point residential tower resulted in a progressive collapse that injured seventeen people and killing four. The lack of redundancy, poor material quality, and incorrect installation, current building practices and codes were brought into question nationwide. Our project evaluates the structural failure and redesigns the residential high-rise with a modular steel framework and precast concrete panels, which increases tensile strength and construction efficiency while also withstanding live, dead, wind, seismic, and instantaneous loads. Our recommendation, based on testing and structural analysis, would regularly assess new materials and construction techniques and apply them to reduce material usage, construction costs, and improve efficiency while assuring safety and code compliance.",
+        "student_names": "Eric Colomes, Jason Colomes, Eghosa Isibor"
+    }
 ]
