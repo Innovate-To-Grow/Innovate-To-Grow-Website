@@ -1,14 +1,182 @@
 [
     {
-        "uuid": "2024-08-Fall-CAP-CEE-404",
-        "year_semester": "2024-08-Fall-CAP",
-        "class": "CEE",
-        "team_number": "404",
-        "team_name": "Safe Structure Squad",
-        "project_title": "Ronan Point Apartment Tower Case",
-        "organization": "SY Consulting LLC",
-        "industry": "Structural Engineering",
-        "abstract": "Modern buildings are built to withstand both internal and external forces, with the safety of the occupants as a top priority. When confronted with an unexpected force, their capacity to remain standing becomes a key test of resilience. Resilience was tested and ultimately failed on May 16, 1968 in East London when a gas explosion on the 18th story of the Ronan Point residential tower resulted in a progressive collapse that injured seventeen people and killing four. The lack of redundancy, poor material quality, and incorrect installation, current building practices and codes were brought into question nationwide. Our project evaluates the structural failure and redesigns the residential high-rise with a modular steel framework and precast concrete panels, which increases tensile strength and construction efficiency while also withstanding live, dead, wind, seismic, and instantaneous loads. Our recommendation, based on testing and structural analysis, would regularly assess new materials and construction techniques and apply them to reduce material usage, construction costs, and improve efficiency while assuring safety and code compliance.",
-        "student_names": "Eric Colomes, Jason Colomes, Eghosa Isibor"
+        "_id": "curation_20250317_378",
+        "title": "Curated Projects - 3/16/2025",
+        "projects": [
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-401",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "401",
+                "team_name": "Sedimentation Protection Consultant Services",
+                "project_title": "Sustainable Wildfire-Driven Sediment Management in Reservoirs",
+                "organization": "CA Department of Water Resources",
+                "industry": "Water Resource Engineering and Water Quality",
+                "abstract": "The 2020 Creek Fire devastated the Upper San Joaquin Basin, a critical region supporting Millerton Lake and Friant Dam operations, providing water storage, recreation, flood control, and hydroelectric generation. The fire increased the soil erosion potential, influencing an increase in sediment deposits in Millerton Lake. The California Department of Water Resources (CA DWR) wanted to quantify the soil erosion and determine the best viable solution to prevent and manage sedimentation. With limited research on soil erosion caused by the fire, this study utilized Google Earth Engine to model soil loss and sediment yield using the Revised Universal Soil Loss Equation (RUSLE) under pre- and post-fire conditions. Design and analysis on the effects of seeding and mulching versus dredging were performed, including an in-depth evaluation of the economic feasibility over a 30-year period to find an optimal approach for reducing soil erosion in increasingly fire-prone watersheds around California\u2019s reservoirs.",
+                "student_names": "Jessica Lau, Marco Nava, Manjot Singh"
+            }
+        ],
+        "editorContent": "<p>Projects curated on 3/16/2025</p>",
+        "createdAt": "2025-03-17T03:22:03.296Z",
+        "lastUpdated": "2025-03-17T03:22:03.296Z"
+    },
+    {
+        "_id": "curation_20250317_368",
+        "title": "Curated Projects - 3/16/2025",
+        "projects": [
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-401",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "401",
+                "team_name": "Sedimentation Protection Consultant Services",
+                "project_title": "Sustainable Wildfire-Driven Sediment Management in Reservoirs",
+                "organization": "CA Department of Water Resources",
+                "industry": "Water Resource Engineering and Water Quality",
+                "abstract": "The 2020 Creek Fire devastated the Upper San Joaquin Basin, a critical region supporting Millerton Lake and Friant Dam operations, providing water storage, recreation, flood control, and hydroelectric generation. The fire increased the soil erosion potential, influencing an increase in sediment deposits in Millerton Lake. The California Department of Water Resources (CA DWR) wanted to quantify the soil erosion and determine the best viable solution to prevent and manage sedimentation. With limited research on soil erosion caused by the fire, this study utilized Google Earth Engine to model soil loss and sediment yield using the Revised Universal Soil Loss Equation (RUSLE) under pre- and post-fire conditions. Design and analysis on the effects of seeding and mulching versus dredging were performed, including an in-depth evaluation of the economic feasibility over a 30-year period to find an optimal approach for reducing soil erosion in increasingly fire-prone watersheds around California\u2019s reservoirs.",
+                "student_names": "Jessica Lau, Marco Nava, Manjot Singh"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-402",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "402",
+                "team_name": "Stormwater Saviors",
+                "project_title": "Bioretention for Removal of Microplastics in Stormwater",
+                "organization": "UC Merced",
+                "industry": "Stormwater Management",
+                "abstract": "Microplastics are an emerging pollutant that can affect our health and enter our environment through stormwater runoff. Although various types of microplastics are found in stormwater, the major contributors are rubber fragments and fibers from tires on the road. Our project consists of designing a bioretention cell that can be inserted into storm drains to filter out microplastics from roads on the UC Merced campus. UC Merced has a Triple Zero Initiative that strives for outstanding environmental goals such as zero net greenhouse gas emission, waste, and net energy consumption. Therefore, our storm drains insert address the issue of microplastic waste using organic materials like sand and pea gravel. The design structure utilizes stainless steel like that already used in storm drains to avoid using more plastics. Our research highlights the need for novel, cost-effective ways to address the issue of microplastics before they enter the stormwater system.",
+                "student_names": "Julian Bowles-Baji, Juan Martinez-Aquino, Natalie Salinas, Christopher Rodriguez"
+            }
+        ],
+        "editorContent": "<p>Projects curated on 3/16/2025</p>",
+        "createdAt": "2025-03-17T03:22:14.097Z",
+        "lastUpdated": "2025-03-16T20:28:32.853491"
+    },
+    {
+        "_id": "curation_20250317_087",
+        "title": "Curated Projects - 3/16/2025",
+        "projects": [
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-401",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "401",
+                "team_name": "Sedimentation Protection Consultant Services",
+                "project_title": "Sustainable Wildfire-Driven Sediment Management in Reservoirs",
+                "organization": "CA Department of Water Resources",
+                "industry": "Water Resource Engineering and Water Quality",
+                "abstract": "The 2020 Creek Fire devastated the Upper San Joaquin Basin, a critical region supporting Millerton Lake and Friant Dam operations, providing water storage, recreation, flood control, and hydroelectric generation. The fire increased the soil erosion potential, influencing an increase in sediment deposits in Millerton Lake. The California Department of Water Resources (CA DWR) wanted to quantify the soil erosion and determine the best viable solution to prevent and manage sedimentation. With limited research on soil erosion caused by the fire, this study utilized Google Earth Engine to model soil loss and sediment yield using the Revised Universal Soil Loss Equation (RUSLE) under pre- and post-fire conditions. Design and analysis on the effects of seeding and mulching versus dredging were performed, including an in-depth evaluation of the economic feasibility over a 30-year period to find an optimal approach for reducing soil erosion in increasingly fire-prone watersheds around California\u2019s reservoirs.",
+                "student_names": "Jessica Lau, Marco Nava, Manjot Singh"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-402",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "402",
+                "team_name": "Stormwater Saviors",
+                "project_title": "Bioretention for Removal of Microplastics in Stormwater",
+                "organization": "UC Merced",
+                "industry": "Stormwater Management",
+                "abstract": "Microplastics are an emerging pollutant that can affect our health and enter our environment through stormwater runoff. Although various types of microplastics are found in stormwater, the major contributors are rubber fragments and fibers from tires on the road. Our project consists of designing a bioretention cell that can be inserted into storm drains to filter out microplastics from roads on the UC Merced campus. UC Merced has a Triple Zero Initiative that strives for outstanding environmental goals such as zero net greenhouse gas emission, waste, and net energy consumption. Therefore, our storm drains insert address the issue of microplastic waste using organic materials like sand and pea gravel. The design structure utilizes stainless steel like that already used in storm drains to avoid using more plastics. Our research highlights the need for novel, cost-effective ways to address the issue of microplastics before they enter the stormwater system.",
+                "student_names": "Julian Bowles-Baji, Juan Martinez-Aquino, Natalie Salinas, Christopher Rodriguez"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-403",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "403",
+                "team_name": "F4 - Future-Focused Fluid Force",
+                "project_title": "Inland brackish water desalination with solar energy",
+                "organization": "AG Water Partners",
+                "industry": "Water Supply & Desalination",
+                "abstract": "Climate change and population growth are straining California's freshwater resources. The energy demands and pollution of desalination efforts create economic and environmental strains. Our goal is to design a sustainable water supply with a target cost of $2-3 per 1,000 gallons, through an inland brackish water desalination plant paired with solar technology producing 3.5 million gallons per day of potable water, with total dissolved solids under 500 mg/L. Our research reviewed data publicly available by the United States Geological Survey, to find an ideal location, which is Gloria Valley and its surrounding communities of Soledad and Gonzales, which have a combined population of 32,000 residents. We qualitatively looked at solar potential, transportation accessibility, and brackish water availability to optimize cost and energy-efficiency. The plant will use multiple-effect distillation with concentrated solar thermal technology. To minimize environmental impact, solar evaporation ponds will be implemented for brine mitigation.",
+                "student_names": "Diana Condori, Diana Martinez-Gomez, Alex Ramirez, Christopher Rodriguez"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-201",
+                "year_semester": "2024-08-Fall",
+                "class": "CAP",
+                "team_number": "201",
+                "team_name": "Almondry Trailer",
+                "project_title": "Hopper Trailer Modification to Dry and Discharge Wet Almonds",
+                "organization": "UC Merced I2G - Almondry",
+                "industry": "Agriculture",
+                "abstract": "Almondry is an innovative agricultural project dedicated to addressing challenges in almond harvesting. Our team addressed the problem of wet almonds becoming stuck in hopper trailers. When loading almonds that are wet or with high moisture content, they may stick to walls and become prone to clumping in critical areas of the trailer, especially with the presence of soil. This leads to inefficient unloading processes, requiring hazardous and labor-intensive efforts to manually dislodge the almonds. Currently, workers must climb onto hopper trailers to remove the stuck almonds and break clumps, posing significant safety risks and increasing labor costs, which consumes valuable time that could be spent unloading additional trailers. To solve this, we developed a modified hopper trailer system that integrates industrial compressed air nozzles, air knives, and a modular vibration pad to dislodge wet almonds effectively. This system eliminates the need for dangerous manual labor, significantly improves unloading efficiency, and enhances worker safety. Additionally, our system facilitates off-ground harvesting and ensures efficient transportation to the huller, where the Almondry stockpile aeration system can be used to dry almonds. By implementing this innovative solution, Almondry is helping hullers reduce costs, save time, and increase operational safety.",
+                "student_names": "Arcadio Mercado, Daniel Carranza Gomez, Hassan Imran"
+            }
+        ],
+        "editorContent": "<p>Projects curated on 3/16/2025</p>",
+        "createdAt": "2025-03-17T03:28:35.349Z",
+        "lastUpdated": "2025-03-16T20:33:17.759610"
+    },
+    {
+        "_id": "curation_20250317_340",
+        "title": "Curated Projects - 3/16/2025",
+        "projects": [
+            {
+                "uuid": "2024-08-Fall-CAP-201",
+                "year_semester": "2024-08-Fall",
+                "class": "CAP",
+                "team_number": "201",
+                "team_name": "Almondry Trailer",
+                "project_title": "Hopper Trailer Modification to Dry and Discharge Wet Almonds",
+                "organization": "UC Merced I2G - Almondry",
+                "industry": "Agriculture",
+                "abstract": "Almondry is an innovative agricultural project dedicated to addressing challenges in almond harvesting. Our team addressed the problem of wet almonds becoming stuck in hopper trailers. When loading almonds that are wet or with high moisture content, they may stick to walls and become prone to clumping in critical areas of the trailer, especially with the presence of soil. This leads to inefficient unloading processes, requiring hazardous and labor-intensive efforts to manually dislodge the almonds. Currently, workers must climb onto hopper trailers to remove the stuck almonds and break clumps, posing significant safety risks and increasing labor costs, which consumes valuable time that could be spent unloading additional trailers. To solve this, we developed a modified hopper trailer system that integrates industrial compressed air nozzles, air knives, and a modular vibration pad to dislodge wet almonds effectively. This system eliminates the need for dangerous manual labor, significantly improves unloading efficiency, and enhances worker safety. Additionally, our system facilitates off-ground harvesting and ensures efficient transportation to the huller, where the Almondry stockpile aeration system can be used to dry almonds. By implementing this innovative solution, Almondry is helping hullers reduce costs, save time, and increase operational safety.",
+                "student_names": "Arcadio Mercado, Daniel Carranza Gomez, Hassan Imran"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-401",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "401",
+                "team_name": "Sedimentation Protection Consultant Services",
+                "project_title": "Sustainable Wildfire-Driven Sediment Management in Reservoirs",
+                "organization": "CA Department of Water Resources",
+                "industry": "Water Resource Engineering and Water Quality",
+                "abstract": "The 2020 Creek Fire devastated the Upper San Joaquin Basin, a critical region supporting Millerton Lake and Friant Dam operations, providing water storage, recreation, flood control, and hydroelectric generation. The fire increased the soil erosion potential, influencing an increase in sediment deposits in Millerton Lake. The California Department of Water Resources (CA DWR) wanted to quantify the soil erosion and determine the best viable solution to prevent and manage sedimentation. With limited research on soil erosion caused by the fire, this study utilized Google Earth Engine to model soil loss and sediment yield using the Revised Universal Soil Loss Equation (RUSLE) under pre- and post-fire conditions. Design and analysis on the effects of seeding and mulching versus dredging were performed, including an in-depth evaluation of the economic feasibility over a 30-year period to find an optimal approach for reducing soil erosion in increasingly fire-prone watersheds around California\u2019s reservoirs.",
+                "student_names": "Jessica Lau, Marco Nava, Manjot Singh"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-402",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "402",
+                "team_name": "Stormwater Saviors",
+                "project_title": "Bioretention for Removal of Microplastics in Stormwater",
+                "organization": "UC Merced",
+                "industry": "Stormwater Management",
+                "abstract": "Microplastics are an emerging pollutant that can affect our health and enter our environment through stormwater runoff. Although various types of microplastics are found in stormwater, the major contributors are rubber fragments and fibers from tires on the road. Our project consists of designing a bioretention cell that can be inserted into storm drains to filter out microplastics from roads on the UC Merced campus. UC Merced has a Triple Zero Initiative that strives for outstanding environmental goals such as zero net greenhouse gas emission, waste, and net energy consumption. Therefore, our storm drains insert address the issue of microplastic waste using organic materials like sand and pea gravel. The design structure utilizes stainless steel like that already used in storm drains to avoid using more plastics. Our research highlights the need for novel, cost-effective ways to address the issue of microplastics before they enter the stormwater system.",
+                "student_names": "Julian Bowles-Baji, Juan Martinez-Aquino, Natalie Salinas, Christopher Rodriguez"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-403",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "403",
+                "team_name": "F4 - Future-Focused Fluid Force",
+                "project_title": "Inland brackish water desalination with solar energy",
+                "organization": "AG Water Partners",
+                "industry": "Water Supply & Desalination",
+                "abstract": "Climate change and population growth are straining California's freshwater resources. The energy demands and pollution of desalination efforts create economic and environmental strains. Our goal is to design a sustainable water supply with a target cost of $2-3 per 1,000 gallons, through an inland brackish water desalination plant paired with solar technology producing 3.5 million gallons per day of potable water, with total dissolved solids under 500 mg/L. Our research reviewed data publicly available by the United States Geological Survey, to find an ideal location, which is Gloria Valley and its surrounding communities of Soledad and Gonzales, which have a combined population of 32,000 residents. We qualitatively looked at solar potential, transportation accessibility, and brackish water availability to optimize cost and energy-efficiency. The plant will use multiple-effect distillation with concentrated solar thermal technology. To minimize environmental impact, solar evaporation ponds will be implemented for brine mitigation.",
+                "student_names": "Diana Condori, Diana Martinez-Gomez, Alex Ramirez, Christopher Rodriguez"
+            },
+            {
+                "uuid": "2024-08-Fall-CAP-CEE-404",
+                "year_semester": "2024-08-Fall-CAP",
+                "class": "CEE",
+                "team_number": "404",
+                "team_name": "Safe Structure Squad",
+                "project_title": "Ronan Point Apartment Tower Case",
+                "organization": "SY Consulting LLC",
+                "industry": "Structural Engineering",
+                "abstract": "Modern buildings are built to withstand both internal and external forces, with the safety of the occupants as a top priority. When confronted with an unexpected force, their capacity to remain standing becomes a key test of resilience. Resilience was tested and ultimately failed on May 16, 1968 in East London when a gas explosion on the 18th story of the Ronan Point residential tower resulted in a progressive collapse that injured seventeen people and killing four. The lack of redundancy, poor material quality, and incorrect installation, current building practices and codes were brought into question nationwide. Our project evaluates the structural failure and redesigns the residential high-rise with a modular steel framework and precast concrete panels, which increases tensile strength and construction efficiency while also withstanding live, dead, wind, seismic, and instantaneous loads. Our recommendation, based on testing and structural analysis, would regularly assess new materials and construction techniques and apply them to reduce material usage, construction costs, and improve efficiency while assuring safety and code compliance.",
+                "student_names": "Eric Colomes, Jason Colomes, Eghosa Isibor"
+            }
+        ],
+        "editorContent": "<p>Projects curated on 3/16/2025</p>",
+        "createdAt": "2025-03-17T03:33:36.359Z",
+        "lastUpdated": "2025-03-17T03:33:36.359Z"
     }
 ]

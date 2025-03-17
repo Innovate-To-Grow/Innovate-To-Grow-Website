@@ -15,6 +15,52 @@ var uuid;
 var unique_url = false;
 // global variable END
 
+/*
+ * DATABASE INTEGRATION OVERVIEW:
+ * 
+ * The current implementation uses a simple JSON file (databaseMergeTable.json) for data storage.
+ * To implement a proper database, consider the following structure:
+ *
+ * Tables:
+ * 1. projects - Stores individual project data with columns matching the project properties
+ *    - id (primary key)
+ *    - uuid (for URL friendly identifiers)
+ *    - year_semester
+ *    - class
+ *    - team_number
+ *    - team_name
+ *    - project_title
+ *    - organization
+ *    - industry
+ *    - abstract (TEXT type for longer content)
+ *    - student_names (TEXT type)
+ *    - created_at
+ *    - updated_at
+ *
+ * 2. collections - Stores collection metadata
+ *    - id (primary key)
+ *    - collection_uuid (for URL friendly identifiers)
+ *    - title
+ *    - editor_content (HTML/rich text content)
+ *    - created_at
+ *    - updated_at
+ *    - user_id (if implementing user authentication)
+ *
+ * 3. collection_projects - Junction table for many-to-many relationship
+ *    - collection_id (foreign key to collections.id)
+ *    - project_id (foreign key to projects.id)
+ *    - display_order (optional, for controlling display sequence)
+ *    - added_at
+ *
+ * This structure would support:
+ * - Projects existing independently of collections
+ * - Projects belonging to multiple collections
+ * - Efficient queries for both projects and collections
+ * - Proper data normalization for a production environment
+ */
+
+
+
 // Prep START
 $(document).ready(function () {
     // get the team_names and team_numbers from the html
@@ -131,10 +177,78 @@ function generateProjectUuid(yearSemester, classCode, teamNumber) {
 // Add this function after generateProjectUuid
 function saveProjectToDatabase(projectData) {
     // Send project data to server to be stored in JSON file
+    // DATABASE INTEGRATION POINT #1:
+    // Replace this AJAX call with a connection to a persistent database.
+    // Implement a server endpoint that stores project data in a database table 
+    // such as 'projects' with columns that match the projectData structure.
     return $.ajax({
         type: "POST",
         url: "/api/save-project",
         data: JSON.stringify(projectData),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json"
+    });
+}
+
+// Generate a unique collection ID
+function generateCollectionId() {
+    const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `curation_${timestamp}_${random}`;
+}
+
+// Create a collection from the merged table data
+function createCollectionFromMergedTable() {
+    const tableData = merged_table.rows().data().toArray();
+    
+    // Create projects array
+    const projects = tableData.map(row => {
+        // Generate uuid if it doesn't exist
+        const uuid = row[11] || generateProjectUuid(row[0], row[1], row[2]);
+        
+        return {
+            uuid: uuid,
+            year_semester: row[0],
+            class: row[1],
+            team_number: row[2],
+            team_name: row[3],
+            project_title: row[4],
+            organization: row[5],
+            industry: row[6],
+            abstract: row[8],
+            student_names: row[9]
+        };
+    });
+    
+    // DATABASE INTEGRATION POINT #3:
+    // In a database implementation:
+    // 1. Create collection record first to get a database-generated ID
+    // 2. Then create project records or link to existing ones
+    // 3. Update relationships in the junction table
+    // This would replace the all-in-one JSON structure below
+    return {
+        _id: generateCollectionId(),
+        title: "Curated Projects - " + new Date().toLocaleDateString(),
+        projects: projects,
+        editorContent: "<p>Projects curated on " + new Date().toLocaleDateString() + "</p>",
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+    };
+}
+
+// Save collection to database
+function saveCollectionToDatabase(collection) {
+    // DATABASE INTEGRATION POINT #2:
+    // Replace with database storage for collections.
+    // Implement a proper database schema with tables for:
+    // 1. collections (with _id, title, editorContent, timestamps)
+    // 2. projects (with project details)
+    // 3. collection_projects (junction table for many-to-many relationship)
+    // This would allow projects to belong to multiple collections
+    return $.ajax({
+        type: "POST",
+        url: "/api/save-collection",
+        data: JSON.stringify(collection),
         contentType: "application/json; charset=utf-8",
         dataType: "json"
     });
@@ -147,6 +261,9 @@ function mergeformat(d) {
     
     // Generate a project UUID if it's not already in the data
     const projectUuid = d[11] || generateProjectUuid(d[0], d[1], d[2]);
+    
+    // Modify to show URL with collection path parameter
+    // We'll use a placeholder here that will be replaced when collection is saved
     const projectUrl = `/project/${projectUuid}`;
     
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
@@ -171,7 +288,6 @@ function mergeformat(d) {
         '<tr>' +
         '<td colspan="2" style="text-align: center;">' +
         '<button class="btn-edit-details" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px;">Edit Details</button>' +
-        // '<button class="btn-share-url" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin-top: 10px; margin-left: 10px;">Get Shareable URL</button>' +
         '</td>' +
         '</tr>') +
         '</table>';
@@ -290,59 +406,20 @@ function initializeShareButtons() {
 }
 
 //edited****************************************************************
-// Handler for individual share URL button clicks
-/*
-$(document).on('click', '.btn-share-url', function() {
-    // Only generate new URL if we're not on a past-projects page
-    if (!window.location.pathname.includes('/past-projects/')) {
-        var $button = $(this);
-        var row = $button.closest('tr').parent().closest('tr').prev();
-        var data = merged_table.row(row).data();
-        
-        var shareData = [{
-            "Year-Semester": data[0],
-            "Class": data[1],
-            "Team#": data[2],
-            "Team Name": data[3],
-            "Project Title": data[4],
-            "Organization": data[5],
-            "Industry": data[6],
-            "Abstract": data[8],
-            "Student Names": data[9]
-        }];
-
-        $.ajax({
-            type: "POST",
-            url: "/past-projects/<uuid_string>",
-            data: JSON.stringify(shareData),
-            contentType: "application/json; charset=utf-8",
-            dataType: "json",
-            success: function(response) {
-                uuid = response["uuid_string"];
-                var shareUrl = "/past-projects/" + uuid;
-                window.open(shareUrl, "_blank");
-            },
-            failure: function(errMsg) {
-                alert(errMsg);
-            }
-        });
-    }
-});
-*/
-
-//edited****************************************************************
 $(document).on('click', '.copy-url-btn', function(e) {
     e.stopPropagation();
     const $btn = $(this);
-    const url = window.location.origin + $(this).siblings('.project-url').text();
+    const projectUrl = $(this).siblings('.project-url').text();
+    const url = window.location.origin + projectUrl;
     
     // Get the row data for this project
     const $row = $(this).closest('tr').parent().closest('tr').prev();
     const data = merged_table.row($row).data();
     
-    // Create project object to save
+    // Create project object with UUID
+    const projectUuid = data[11] || generateProjectUuid(data[0], data[1], data[2]);
     const projectData = {
-        uuid: data[11] || generateProjectUuid(data[0], data[1], data[2]),
+        uuid: projectUuid,
         year_semester: data[0],
         class: data[1],
         team_number: data[2],
@@ -354,19 +431,44 @@ $(document).on('click', '.copy-url-btn', function(e) {
         student_names: data[9]
     };
     
-    // Save project data to JSON file before copying URL
-    saveProjectToDatabase(projectData)
-        .done(function() {
-            navigator.clipboard.writeText(url);
-            $btn.text('Copied!');
-            setTimeout(() => {
-                $btn.html('<i class="fa fa-copy"></i> Copy URL');
-            }, 2000);
-        })
-        .fail(function() {
-            alert('Could not save project. URL might not work correctly.');
-            navigator.clipboard.writeText(url);
-        });
+    // First, check if we already have a collection saved
+    $.ajax({
+        type: "GET",
+        url: "/api/get-latest-collection",
+        dataType: "json",
+        success: function(response) {
+            // DATABASE INTEGRATION POINT #4:
+            // Replace file-based lookup with a database query:
+            // SELECT * FROM collections ORDER BY createdAt DESC LIMIT 1
+            // This would retrieve the most recent collection from the database
+            if (response && response.collection) {
+                // Collection exists, add project to it if not already there
+                const collectionId = response.collection._id;
+                
+                // Add this project to the collection if not already there
+                $.ajax({
+                    type: "POST",
+                    url: `/api/add-project-to-collection/${collectionId}`,
+                    // DATABASE INTEGRATION POINT #5:
+                    // Replace with an INSERT or UPDATE to the collection_projects table
+                    // INSERT INTO collection_projects (collection_id, project_id) VALUES (collectionId, projectId)
+                    // ON DUPLICATE KEY UPDATE last_updated = NOW()
+                    data: JSON.stringify(projectData),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function() {
+                        // Copy URL with collection parameter
+                        const fullUrl = window.location.origin + `/project/${projectUuid}?collection=${collectionId}`;
+                        navigator.clipboard.writeText(fullUrl);
+                        $btn.text('Copied!');
+                        setTimeout(() => {
+                            $btn.html('<i class="fa fa-copy"></i> Copy URL');
+                        }, 2000);
+                    }
+                });
+            }
+        }
+    });
 });
 
 // Merge Table specific functions START
@@ -382,12 +484,12 @@ $(document).ready(function () {
         "buttons": [
             'csv', 'excel', 'pdf',
             {
-                "text": 'Get Shareable URL',
+                "text": 'Save & Share Collection',
                 "className": 'sharing',
                 "action": function () {
                     $('#share').click();
                     $('#share').remove();
-                    $('.sharing').text('Loading...');
+                    $('.sharing').text('Saving...');
                 }
             },
             {
@@ -1063,36 +1165,38 @@ $(document).ready(function () {
 
     $('#share').click(function () {
         $(this).hide();
-        var share_array = merged_table.rows().data().toArray();
-        var length = share_array.length;
-        for (var i = 0; i < length; i++) {
-            const subArray = share_array[i];
-            subdata = {
-                "Year-Semester": subArray[0],
-                "Class": subArray[1],
-                "Team#": subArray[2],
-                "Team Name": subArray[3],
-                "Project Title": subArray[4],
-                "Organization": subArray[5],
-                "Industry": subArray[6],
-                "Abstract": subArray[8],
-                "Student Names": subArray[9],
-            };
-            JSON.stringify(subdata);
-            share_datas.push(subdata);
-        }
-
+        
+        // Create a collection from the merged table
+        const collection = createCollectionFromMergedTable();
+        
+        // Save the collection to the database
         $.ajax({
             type: "POST",
-            url: "/past-projects/<uuid_string>",
-            data: JSON.stringify(share_datas),
+            url: "/api/save-collection",
+            data: JSON.stringify(collection),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             success: function (data) {
-                uuid = data["uuid_string"];
-                window.open("/past-projects/" + uuid, "_blank");
+                // Open the collection page
+                window.open(`/collection/${collection._id}`, "_blank");
+                
+                // Update collection ID for all URLs
+                $('.project-url').each(function() {
+                    const projectId = $(this).text().split('/').pop();
+                    $(this).text(`/project/${projectId}?collection=${collection._id}`);
+                });
+                
+                // Update UI with more accurate text
+                $('.sharing').text('Collection Saved!');
+                setTimeout(function() {
+                    $('.sharing').text('Save & Share Collection');
+                }, 2000);
             },
             failure: function (errMsg) {
+                $('.sharing').text('Error Saving Collection');
+                setTimeout(function() {
+                    $('.sharing').text('Save & Share Collection');
+                }, 2000);
                 alert(errMsg);
             }
         });

@@ -5,6 +5,7 @@ from project import cache
 import re
 import json
 import os
+from datetime import datetime
 
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
 
@@ -319,38 +320,42 @@ def save_project():
 @home_blueprint.route('/project/<project_uuid>')
 def project_detail(project_uuid):
     """Render the project detail page for a specific project"""
+    collection_id = request.args.get('collection')
+    
     # Read the database
     database = read_database()
     
-    # Find the project with matching UUID
+    # Find the project
     project_data = None
-    for project in database:
-        if project.get('uuid') == project_uuid:
-            project_data = project
-            break
+    collection_data = None
     
-    # If not found, try looking up by generated UUID format
-    if not project_data:
-        # Extract year, class, team from URL parts
-        parts = project_uuid.split('-')
-        if len(parts) >= 3:
-            # Try to find project by components
-            for project in database:
-                # Use Python's re.sub instead of JavaScript-style replace
-                import re
-                sanitized_year = re.sub(r'[^a-zA-Z0-9\-]', '-', project.get('year_semester', ''))
-                sanitized_class = re.sub(r'[^a-zA-Z0-9\-]', '-', project.get('class', ''))
-                sanitized_team = re.sub(r'[^a-zA-Z0-9\-]', '-', str(project.get('team_number', '')))
-                
-                if (sanitized_year == parts[0] and 
-                    sanitized_class == parts[1] and 
-                    sanitized_team == parts[2]):
-                    project_data = project
+    if collection_id:
+        # Look for the project in the specified collection
+        for collection in database:
+            if collection.get('_id') == collection_id:
+                collection_data = collection
+                for project in collection.get('projects', []):
+                    if project.get('uuid') == project_uuid:
+                        project_data = project
+                        break
+                if project_data:
                     break
+    else:
+        # No collection specified, search all collections
+        for collection in database:
+            for project in collection.get('projects', []):
+                if project.get('uuid') == project_uuid:
+                    project_data = project
+                    collection_data = collection
+                    break
+            if project_data:
+                break
     
     # If project found, render the template
     if project_data:
-        return render_template('home/project-detail.html', project_data=project_data)
+        return render_template('home/project-detail.html', 
+                               project_data=project_data, 
+                               collection=collection_data)
     
     # If project not found, redirect to projects list
     return redirect(url_for('home.past_projects'))
@@ -359,3 +364,101 @@ def project_detail(project_uuid):
 def legacy_project_detail(project_uuid):
     """Redirect from old URL format to new one"""
     return redirect(url_for('home.project_detail', project_uuid=project_uuid))
+
+@home_blueprint.route('/api/save-collection', methods=['POST'])
+def save_collection():
+    """API endpoint to save a collection"""
+    collection_data = request.json
+    
+    # Read current database
+    database = read_database()
+    
+    # Check if collection already exists
+    collection_exists = False
+    for i, collection in enumerate(database):
+        if collection.get('_id') == collection_data.get('_id'):
+            database[i] = collection_data
+            collection_exists = True
+            break
+    
+    # If collection doesn't exist, add it
+    if not collection_exists:
+        database.append(collection_data)
+    
+    # Save updated database
+    write_database(database)
+    
+    return jsonify({"success": True, "collection_id": collection_data.get('_id')})
+
+@home_blueprint.route('/api/get-latest-collection', methods=['GET'])
+def get_latest_collection():
+    """API endpoint to get the most recently created collection"""
+    database = read_database()
+    
+    if not database:
+        return jsonify({"success": False, "message": "No collections found"})
+    
+    # Sort collections by createdAt timestamp (newest first)
+    sorted_collections = sorted(database, key=lambda x: x.get('createdAt', ''), reverse=True)
+    
+    return jsonify({"success": True, "collection": sorted_collections[0] if sorted_collections else None})
+
+@home_blueprint.route('/api/add-project-to-collection/<collection_id>', methods=['POST'])
+def add_project_to_collection(collection_id):
+    """API endpoint to add a project to a collection"""
+    project_data = request.json
+    
+    # Read database
+    database = read_database()
+    
+    # Find the collection
+    collection_found = False
+    for i, collection in enumerate(database):
+        if collection.get('_id') == collection_id:
+            # Check if project already exists in collection
+            project_exists = False
+            for j, project in enumerate(collection.get('projects', [])):
+                if project.get('uuid') == project_data.get('uuid'):
+                    # Update existing project
+                    collection['projects'][j] = project_data
+                    project_exists = True
+                    break
+            
+            # Add project if it doesn't exist
+            if not project_exists:
+                if 'projects' not in collection:
+                    collection['projects'] = []
+                collection['projects'].append(project_data)
+            
+            # Update lastUpdated timestamp
+            collection['lastUpdated'] = datetime.now().isoformat()
+            
+            database[i] = collection
+            collection_found = True
+            break
+    
+    if not collection_found:
+        return jsonify({"success": False, "message": "Collection not found"})
+    
+    # Save updated database
+    write_database(database)
+    
+    return jsonify({"success": True})
+
+@home_blueprint.route('/collection/<collection_id>')
+def view_collection(collection_id):
+    """Render the collection view page"""
+    # Read database
+    database = read_database()
+    
+    # Find the collection
+    collection = None
+    for coll in database:
+        if coll.get('_id') == collection_id:
+            collection = coll
+            break
+    
+    if not collection:
+        return redirect(url_for('home.past_projects'))  # Changed from home_blueprint.past_projects
+    
+    return render_template('home/collection.html', collection=collection)
