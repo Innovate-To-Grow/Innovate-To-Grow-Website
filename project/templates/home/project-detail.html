@@ -1,0 +1,136 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+        href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>{{ project_data.project_title }} | Innovate To Grow</title>
+    {{ styles() }}
+    <style>
+        .project-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .project-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .project-meta-item {
+            background-color: #f5f5f5;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .project-section {
+            margin-bottom: 30px;
+        }
+        .project-section h3 {
+            color: #162D4F;
+            border-bottom: 2px solid #dbaa00;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .project-actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-action {
+            background-color: #162D4F;
+            color: #dbaa00;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body class="html front not-logged-in no-sidebars page-node">
+    <!-- NAVBAR -->
+    {{ nav() }}
+    <!-- END NAVBAR -->
+    <div id="main" class="clearfix main" role="main">
+        <div class="container">
+            <div id="main-content" class="row main-content">
+                <div id="content" class="mc-content span12">
+                    <div id="content-wrapper" class="content-wrapper">
+                        <div id="content-head" class="row-fluid content-head">
+                            <div class="project-container">
+                                <h1 class="title" id="page-title">{{ project_data.project_title }}</h1>
+                                
+                                <div class="project-meta">
+                                    <div class="project-meta-item">
+                                        <strong>Year-Semester:</strong> {{ project_data.year_semester }}
+                                    </div>
+                                    <div class="project-meta-item">
+                                        <strong>Class:</strong> {{ project_data.class }}
+                                    </div>
+                                    <div class="project-meta-item">
+                                        <strong>Team #:</strong> {{ project_data.team_number }}
+                                    </div>
+                                    <div class="project-meta-item">
+                                        <strong>Team Name:</strong> {{ project_data.team_name }}
+                                    </div>
+                                </div>
+                                
+                                <div class="project-section">
+                                    <h3>Organization & Industry</h3>
+                                    <p><strong>Organization:</strong> {{ project_data.organization }}</p>
+                                    <p><strong>Industry:</strong> {{ project_data.industry }}</p>
+                                </div>
+                                
+                                <div class="project-section">
+                                    <h3>Abstract</h3>
+                                    <p>{{ project_data.abstract }}</p>
+                                </div>
+                                
+                                <div class="project-section">
+                                    <h3>Student Team</h3>
+                                    <p>{{ project_data.student_names }}</p>
+                                </div>
+                                
+                                <div class="project-actions">
+                                    <button id="copy-url-btn" class="btn-action">
+                                        <i class="fa fa-copy"></i> Copy URL
+                                    </button>
+                                    <button id="export-pdf-btn" class="btn-action">
+                                        <i class="fa fa-file-pdf-o"></i> Export as PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
+    <script>
+        document.getElementById('copy-url-btn').addEventListener('click', function() {
+            navigator.clipboard.writeText(window.location.href);
+            this.innerHTML = '<i class="fa fa-check"></i> URL Copied!';
+            setTimeout(() => {
+                this.innerHTML = '<i class="fa fa-copy"></i> Copy URL';
+            }, 2000);
+        });
+        
+        document.getElementById('export-pdf-btn').addEventListener('click', function() {
+            alert('PDF export functionality will be implemented here.');
+            // You would implement PDF export using a library like jsPDF
+        });
+    </script>
+</body>
+</html>

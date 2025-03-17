@@ -9,7 +9,7 @@ var search_counter = 0; // how many search tables there are
 let select_count2 = 0; // keeps track of how many rows are selected
 let checker = 0; // Checking if we are at a fresh merge button press
 let confirmation_tracker = 0; // To Check and make sure that js alert does not be called more than once when you hit merge button
-var datas = [];
+var datas = [];  //where all the data from the google sheet is stored
 var share_datas = [];
 var uuid;
 var unique_url = false;
@@ -116,10 +116,38 @@ function format(d) {
         '</table>';
 }
 
+// Function to generate a UUID from project data
+function generateProjectUuid(yearSemester, classCode, teamNumber) {
+    // Create a URL-friendly identifier
+    // First sanitize inputs to remove any characters that would be problematic in URLs
+    const sanitizedYear = yearSemester.replace(/[^a-zA-Z0-9-]/g, '-');
+    const sanitizedClass = classCode.replace(/[^a-zA-Z0-9-]/g, '-');
+    const sanitizedTeam = teamNumber.toString().replace(/[^a-zA-Z0-9-]/g, '-');
+    
+    // Format: YYYY-MM-Season-Class-TeamNumber
+    return `${sanitizedYear}-${sanitizedClass}-${sanitizedTeam}`;
+}
+
+// Add this function after generateProjectUuid
+function saveProjectToDatabase(projectData) {
+    // Send project data to server to be stored in JSON file
+    return $.ajax({
+        type: "POST",
+        url: "/api/save-project",
+        data: JSON.stringify(projectData),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json"
+    });
+}
+
 //edited****************************************************************
 // Function to display all fields with edit functionality in the Merged Table
 function mergeformat(d) {
-    const isUuidPage = window.location.pathname.match(/\/past-projects\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    const isUuidPage = window.location.pathname.match(/\/project\/[^\/]+$/i);
+    
+    // Generate a project UUID if it's not already in the data
+    const projectUuid = d[11] || generateProjectUuid(d[0], d[1], d[2]);
+    const projectUrl = `/project/${projectUuid}`;
     
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
@@ -133,7 +161,7 @@ function mergeformat(d) {
         '<tr>' +
         '<td style="vertical-align: middle;">Project URL:</td>' +
         '<td style="display: flex; justify-content: space-between; align-items: center;">' +
-            '<span class="project-url" style="flex: 1; padding-right: 10px;"></span>' +
+            '<span class="project-url" style="flex: 1; padding-right: 10px;">' + projectUrl + '</span>' +
             '<button class="copy-url-btn" style="background-color: #162D4F; color: #dbaa00; border: none; padding: 5px 10px; cursor: pointer; margin: 5px 0;">' +
                 '<i class="fa fa-copy"></i> Copy URL' +
             '</button>' +
@@ -305,14 +333,40 @@ $(document).on('click', '.btn-share-url', function() {
 //edited****************************************************************
 $(document).on('click', '.copy-url-btn', function(e) {
     e.stopPropagation();
-    const url = window.location.origin + $(this).siblings('.project-url').text();
-    navigator.clipboard.writeText(url);
-    
     const $btn = $(this);
-    $btn.text('Copied!');
-    setTimeout(() => {
-        $btn.html('<i class="fa fa-copy"></i> Copy URL');
-    }, 2000);
+    const url = window.location.origin + $(this).siblings('.project-url').text();
+    
+    // Get the row data for this project
+    const $row = $(this).closest('tr').parent().closest('tr').prev();
+    const data = merged_table.row($row).data();
+    
+    // Create project object to save
+    const projectData = {
+        uuid: data[11] || generateProjectUuid(data[0], data[1], data[2]),
+        year_semester: data[0],
+        class: data[1],
+        team_number: data[2],
+        team_name: data[3],
+        project_title: data[4],
+        organization: data[5],
+        industry: data[6],
+        abstract: data[8],
+        student_names: data[9]
+    };
+    
+    // Save project data to JSON file before copying URL
+    saveProjectToDatabase(projectData)
+        .done(function() {
+            navigator.clipboard.writeText(url);
+            $btn.text('Copied!');
+            setTimeout(() => {
+                $btn.html('<i class="fa fa-copy"></i> Copy URL');
+            }, 2000);
+        })
+        .fail(function() {
+            alert('Could not save project. URL might not work correctly.');
+            navigator.clipboard.writeText(url);
+        });
 });
 
 // Merge Table specific functions START
@@ -397,16 +451,20 @@ $(document).ready(function () {
                 "defaultContent": ''
             },
             {
-                "bVisible": false
+                "bVisible": false // Abstract
             },
             {
-                "bVisible": false
+                "bVisible": false // Student Names
             },
             {
                 "data": null,
                 "className": "dt-center editor-delete",
                 "defaultContent": '<i class="fa fa-trash"/>',
                 "orderable": false
+            },
+            {
+                "bVisible": false, // UUID column
+                "data": null
             }
         ],
         order: [
@@ -744,6 +802,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     merged_array[i]["null"],
                     merged_array[i]["Abstract"],
                     merged_array[i]["Student Names"],
+                    generateProjectUuid(merged_array[i]["Year-Semester"], merged_array[i]["Class"], merged_array[i]["Team#"])
                 ]).draw();
             }
             merged_table.$('tr').toggleClass('keep');
@@ -811,6 +870,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                             merged_array[i]["Abstract"],
                             merged_array[i]["Student Names"],
                             deleted_counter,
+                            generateProjectUuid(merged_array[i]["Year-Semester"], merged_array[i]["Class"], merged_array[i]["Team#"])
                         ]).draw();
                     }
                     merged_table.$('tr').toggleClass('keep');
@@ -883,6 +943,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                         merged_array[i]["Abstract"],
                         merged_array[i]["Student Names"],
                         deleted_counter,
+                        generateProjectUuid(merged_array[i]["Year-Semester"], merged_array[i]["Class"], merged_array[i]["Team#"])
                     ]).draw();
                 }
                 merged_table.$('tr').toggleClass('keep');

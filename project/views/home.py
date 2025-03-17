@@ -1,11 +1,33 @@
 import gspread, uuid
 from threading import Thread
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from project import cache
-
+import re
+import json
+import os
 
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
 
+# Define the path to the database file
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'databaseMergeTable.json')
+
+def read_database():
+    # Read the database file
+    if not os.path.exists(DATABASE_PATH):
+        with open(DATABASE_PATH, 'w') as f:
+            json.dump([], f)
+        return []
+        
+    with open(DATABASE_PATH, 'r') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+def write_database(data):
+    # Write to the database file
+    with open(DATABASE_PATH, 'w') as f:
+        json.dump(data, f, indent=4)
 
 @home_blueprint.route("/", methods=["GET", "POST"])
 @cache.cached()
@@ -268,3 +290,72 @@ def past_projects(uuid_string=None):
                 team_numbers = query[2].split(" ; ")
     
     return render_template("past-projects.html", team_names=team_names, team_numbers=team_numbers)
+
+@home_blueprint.route('/api/save-project', methods=['POST'])
+def save_project():
+    """API endpoint to save project data to JSON database"""
+    project_data = request.json
+    
+    # Read current database
+    database = read_database()
+    
+    # Check if project already exists
+    project_exists = False
+    for i, project in enumerate(database):
+        if project.get('uuid') == project_data.get('uuid'):
+            database[i] = project_data
+            project_exists = True
+            break
+    
+    # If project doesn't exist, add it
+    if not project_exists:
+        database.append(project_data)
+    
+    # Save updated database
+    write_database(database)
+    
+    return jsonify({"success": True})
+
+@home_blueprint.route('/project/<project_uuid>')
+def project_detail(project_uuid):
+    """Render the project detail page for a specific project"""
+    # Read the database
+    database = read_database()
+    
+    # Find the project with matching UUID
+    project_data = None
+    for project in database:
+        if project.get('uuid') == project_uuid:
+            project_data = project
+            break
+    
+    # If not found, try looking up by generated UUID format
+    if not project_data:
+        # Extract year, class, team from URL parts
+        parts = project_uuid.split('-')
+        if len(parts) >= 3:
+            # Try to find project by components
+            for project in database:
+                # Use Python's re.sub instead of JavaScript-style replace
+                import re
+                sanitized_year = re.sub(r'[^a-zA-Z0-9\-]', '-', project.get('year_semester', ''))
+                sanitized_class = re.sub(r'[^a-zA-Z0-9\-]', '-', project.get('class', ''))
+                sanitized_team = re.sub(r'[^a-zA-Z0-9\-]', '-', str(project.get('team_number', '')))
+                
+                if (sanitized_year == parts[0] and 
+                    sanitized_class == parts[1] and 
+                    sanitized_team == parts[2]):
+                    project_data = project
+                    break
+    
+    # If project found, render the template
+    if project_data:
+        return render_template('home/project-detail.html', project_data=project_data)
+    
+    # If project not found, redirect to projects list
+    return redirect(url_for('home.past_projects'))
+
+@home_blueprint.route('/past-projects/<project_uuid>')
+def legacy_project_detail(project_uuid):
+    """Redirect from old URL format to new one"""
+    return redirect(url_for('home.project_detail', project_uuid=project_uuid))
