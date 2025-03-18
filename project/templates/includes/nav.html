@@ -20,55 +20,54 @@
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank"
                             rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
-                        <!-- <a target="_blank" rel="noopener" onclick="updateUserRole()">Login</a> -->
+                        <!-- <a onclick="addUser()">Add User</a>
+                        <a onclick="getID()">Get ID</a>
+                        <a onclick="updateUser()">Update User</a>
+                        <a onclick="deleteUser()">Delete User</a> -->
                     </div>
 
-                    <button onclick="addUser()">Add New User</button>
-                    <script>
+                    <!-- <script>
                         function addUser() {
-                            fetch('/add-user/')
-                                .then(response => response.json())
-                                .then(data => console.log(data.message))
-                                .catch(error => console.error('Error:', error));
+                            const userName = prompt("Enter the name of the user to add:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/add-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.message))
+                                    .catch(error => console.error('Error:', error));
+                            }
                         }
-                    </script>
-
-                    <!-- <button onclick="callPrintMessage()">Click me</button>
-                    <script>
-                        function callPrintMessage() {
-                            fetch('/print-message/')
-                                .then(response => response.text())
-                                .then(data => console.log(data));
+                    
+                        function getID() {
+                            const userName = prompt("Enter the name of the user to get ID:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/read-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.id))
+                                    .catch(error => console.error('Error:', error));
+                            }
                         }
-                    </script> -->
-
-                    <!-- <button onclick="createUser()">Click Doro</button>
-                    <script>
-                        async function createUser() {
-                            try {
-                                const response = await fetch('http://localhost:8000/user/signUp', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        email: "test@example.com",
-                                        password: "testpassword",
-                                        role: "user"
-                                    })
-                                });
-
-                                if (response.ok) {
-                                    const data = await response.json();
-                                    console.log('User created:', data);
-                                } else {
-                                    console.error('Failed to create user');
-                                }
-                            } catch (error) {
-                                console.error('Error:', error);
+                    
+                        function updateUser() {
+                            const userName = prompt("Enter the name of the user to update:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/update-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.message))
+                                    .catch(error => console.error('Error:', error));
+                            }
+                        }
+                    
+                        function deleteUser() {
+                            const userName = prompt("Enter the name of the user to delete:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/delete-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.message))
+                                    .catch(error => console.error('Error:', error));
                             }
                         }
                     </script> -->
+
                 </div>
             </div>
             <!-- /#header-content -->
