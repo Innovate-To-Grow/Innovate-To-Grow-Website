@@ -13,22 +13,17 @@ home_blueprint = Blueprint("home", __name__, template_folder="../templates/home"
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'databaseMergeTable.json')
 
 def read_database():
-    # Read the database file
-    if not os.path.exists(DATABASE_PATH):
-        with open(DATABASE_PATH, 'w') as f:
-            json.dump([], f)
-        return []
-        
-    with open(DATABASE_PATH, 'r') as f:
-        try:
+    """Read the database file"""
+    try:
+        with open(DATABASE_PATH, 'r') as f:
             return json.load(f)
-        except json.JSONDecodeError:
-            return []
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []  # Return empty list if file doesn't exist or is empty
 
 def write_database(data):
-    # Write to the database file
+    """Write to the database file"""
     with open(DATABASE_PATH, 'w') as f:
-        json.dump(data, f, indent=4)
+        json.dump(data, f, indent=2)
 
 @home_blueprint.route("/", methods=["GET", "POST"])
 @cache.cached()
@@ -320,44 +315,27 @@ def save_project():
 @home_blueprint.route('/project/<project_uuid>')
 def project_detail(project_uuid):
     """Render the project detail page for a specific project"""
-    collection_id = request.args.get('collection')
-    
     # Read the database
     database = read_database()
     
-    # Find the project
+    # Find the project in any collection
     project_data = None
-    collection_data = None
-    
-    if collection_id:
-        # Look for the project in the specified collection
-        for collection in database:
-            if collection.get('_id') == collection_id:
+    for collection in database:
+        for project in collection.get('projects', []):
+            if project.get('uuid') == project_uuid:
+                project_data = project
                 collection_data = collection
-                for project in collection.get('projects', []):
-                    if project.get('uuid') == project_uuid:
-                        project_data = project
-                        break
-                if project_data:
-                    break
-    else:
-        # No collection specified, search all collections
-        for collection in database:
-            for project in collection.get('projects', []):
-                if project.get('uuid') == project_uuid:
-                    project_data = project
-                    collection_data = collection
-                    break
-            if project_data:
                 break
+        if project_data:
+            break
     
     # If project found, render the template
     if project_data:
         return render_template('home/project-detail.html', 
-                               project_data=project_data, 
+                               project_data=project_data,
                                collection=collection_data)
     
-    # If project not found, redirect to projects list
+    # If project not found, redirect to projects list or show error
     return redirect(url_for('home.past_projects'))
 
 @home_blueprint.route('/past-projects/<project_uuid>')
@@ -367,7 +345,7 @@ def legacy_project_detail(project_uuid):
 
 @home_blueprint.route('/api/save-collection', methods=['POST'])
 def save_collection():
-    """API endpoint to save a collection"""
+    """API endpoint to save or update a collection"""
     collection_data = request.json
     
     # Read current database
@@ -377,7 +355,7 @@ def save_collection():
     collection_exists = False
     for i, collection in enumerate(database):
         if collection.get('_id') == collection_data.get('_id'):
-            database[i] = collection_data
+            database[i] = collection_data  # Update the existing collection
             collection_exists = True
             break
     
