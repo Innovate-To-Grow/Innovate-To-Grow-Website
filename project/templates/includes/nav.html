@@ -17,8 +17,18 @@
                         <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener">Directory</a>
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
+                        
+                        <!-- Auth links with proper styling -->
+                        {% set ts = (now() if now is defined else range(1, 999999) | random) %}
+                        {% if session.get('logged_in') %}
+                            <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
+                        {% else %}
+                            <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
+                            <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
+                        {% endif %}
                     </div>
 
+                    <!-- Keep the commented script section intact -->
                     <!-- <script>
                         function addUser() {
                             const userName = prompt("Enter the name of the user to add:");
@@ -60,16 +70,6 @@
                             }
                         }
                     </script> -->
-              
-                        <!-- Better cache-busting with epoch timestamp -->
-                        {% set ts = (now() if now is defined else range(1, 999999) | random) %}
-                        {% if session.get('logged_in') %}
-                            <a href="{{ url_for('account.logout', r=ts) }}">Log Out</a>
-                        {% else %}
-                            <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}">Log In</a>
-                            <a href="{{ url_for('account.signup', r=ts) }}">Sign Up</a>
-                        {% endif %}
-                    </div>
                 </div>
             </div>
         </div>
