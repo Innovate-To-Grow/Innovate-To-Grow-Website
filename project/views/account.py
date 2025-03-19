@@ -1,0 +1,275 @@
+#replace database.json dummy database with mongodb
+
+import asyncio, time
+from datetime import datetime
+from threading import Thread
+from gspread.cell import Cell
+from flask import Blueprint, flash, render_template, url_for, request, redirect, copy_current_request_context, session
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, BooleanField, RadioField
+from wtforms.validators import EqualTo, Email, InputRequired, Optional
+from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
+from project.models import edit_form, event
+from project.utils.email import send_email
+from project.utils.dynamic_fields import get_field, checkbox_get_choices
+from project.utils.token import generate_token, confirm_token
+from project.forms.account_forms import LoginForm, SignupForm, ForgotPasswordForm, ResetPasswordForm
+import hashlib
+import json
+from functools import wraps
+
+account_blueprint = Blueprint("account",
+                               __name__,
+                               template_folder="../templates/account")
+
+
+def get_email(email):
+    with open("database.json") as f:
+        table = json.load(f)
+    #returns dictionary or None if email not found
+    return next((row for row in table if row["email"] == email), None)
+
+#blocks logged in user from accessing certain resources by redirecting to temporary account page
+def block_user(func):
+    @wraps(func)  
+    def wrapped_function(*args, **kwargs):
+        if session.get("logged_in"):
+            # If this is the login route with a POST request and a 'next' parameter
+            # Allow the function to continue so proper redirection can happen
+            if func.__name__ == 'login' and request.method == 'POST' and request.form.get('next'):
+                # But return immediately after successful login
+                result = func(*args, **kwargs)
+                if isinstance(result, tuple) and len(result) > 1 and result[1] == 200:
+                    # If the function succeeded without errors
+                    return result
+                
+            # Otherwise show already logged in message
+            flash("You are already logged in", "danger")
+            return redirect(url_for("account.account"))
+        
+        return func(*args, **kwargs)
+    return wrapped_function
+
+#blocks guest from accessing certain resources by redirecting to login page
+def block_guest(func):
+    @wraps(func)
+    def wrapped_function(*args, **kwargs):
+        if not session.get("logged_in"):
+            flash("You are not logged in", "danger")
+            return redirect(url_for("account.login"))
+        return func(*args, **kwargs)
+    return wrapped_function
+
+# Add a rate limiting helper function
+def rate_limit(key, limit_seconds=10):
+    """Check if operation is within rate limit window"""
+    current_time = time.time()
+    last_attempt = session.get(f"last_{key}_attempt", 0)
+    
+    if current_time - last_attempt < limit_seconds:
+        # Too soon since last attempt
+        return False
+    
+    # Update the timestamp of the last attempt
+    session[f"last_{key}_attempt"] = current_time
+    return True
+
+
+@account_blueprint.route("/login", methods=["GET","POST"])
+@block_user
+def login():
+    form = LoginForm()
+    # Get next parameter or use referrer as fallback
+    next_page = request.args.get('next') or request.referrer or url_for('home.mainpage')
+    
+    # Don't redirect back to login/signup/account pages
+    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page or 'logout' in next_page):
+        next_page = url_for('home.mainpage')
+
+    if request.method == "GET":
+        return render_template("login.html", form=form, next=next_page)
+
+    #POST
+    if form.validate_on_submit():
+        email = form.email.data.lower()
+        #verify email exists
+        selected_row = get_email(email)
+
+        if selected_row:
+            password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
+            if password == selected_row["password"]:
+                if selected_row["verified"]:
+                    #set cookie
+                    session["logged_in"] = True
+                    session["email"] = email
+                    session.permanent = True  # Make session last longer
+                    flash("Log in successful", "success")
+                    
+                    # Use the next parameter from the form and perform a direct redirect
+                    redirect_url = request.form.get('next') or next_page
+                    
+                    # Use 302 status code for proper redirect without intermediate page
+                    return redirect(redirect_url, code=302)
+                
+                token = generate_token(email)
+                url = url_for("account.verify_email", token=token, _external=True)
+                email_template = render_template("account_verification_email.html", url=url)
+                send_email(email, "Verify Your Email", email_template)
+                flash("Unverified account. A new verification has been sent to "+email, "danger")
+                return render_template("login.html", form=form), 403
+
+            flash("Incorrect password", "danger")
+            return render_template("login.html", form=form), 401
+
+        flash("Account with this email doesn't exist", "danger")
+        return render_template("login.html", form=form), 404
+
+    else:
+        return render_template("login.html", form=form), 400
+    
+
+@account_blueprint.route("/signup", methods=["GET","POST"])
+@block_user
+def signup():
+    form = SignupForm()
+
+    if request.method == "GET":
+        return render_template("signup.html", form=form)
+
+    #POST
+    if form.validate_on_submit():
+        email = form.email.data.lower()
+        #verify email doesnt exist
+        if get_email(email):
+            flash("Account with this email already exists", "danger")
+            return render_template("signup.html", form=form), 409
+
+        #hash password and record signup
+        password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
+        timestamp = str(time.time())
+        row = {"email":email,"password":password,"timestamp":timestamp,"verified":False}
+        with open("database.json","r+") as f:
+            table = json.load(f)
+            table.append(row)
+            f.seek(0)
+            json.dump(table,f,indent=4)
+            f.truncate()
+        #send verification email after signup
+        token = generate_token(email)
+        url = url_for("account.verify_email", token=token, _external=True)
+        email_template = render_template("account_verification_email.html", url=url)
+        send_email(email, "Verify Your Email", email_template)
+        flash("Sign up successful. A verification email has been sent to "+email, "success")
+        return redirect(url_for("account.login"))
+
+    else:
+        return render_template("signup.html", form=form), 400
+
+
+@account_blueprint.route("/forgot-password", methods=["GET","POST"])
+@block_user
+def forgot_password():
+    form = ForgotPasswordForm()
+
+    if request.method == "GET":
+        return render_template("forgot_password.html", form=form)
+
+    # POST
+    if form.validate_on_submit():
+        email = form.email.data.lower()
+        
+        # Check rate limiting (10 seconds between requests)
+        if not rate_limit("password_reset", 10):
+            flash("Please wait a moment before requesting another reset email", "danger")
+            return render_template("forgot_password.html", form=form), 429
+        
+        # Verify email exists
+        if get_email(email):
+            # Send password reset email
+            token = generate_token(email)
+            url = url_for("account.reset_password", token=token, _external=True)
+            email_template = render_template("password_reset_email.html", url=url)
+            send_email(email, "Password Reset Requested", email_template)
+            flash("Reset email has been sent to your address", "success")
+            return redirect(url_for("account.login"))
+
+        flash("No account found with this email address", "danger")
+        return render_template("forgot_password.html", form=form), 404
+        
+    else:
+        return render_template("forgot_password.html", form=form), 400
+
+
+@account_blueprint.route("/reset-password/<token>", methods=["GET","POST"])
+def reset_password(token):
+    form = ResetPasswordForm()
+    #verify valid and unexpired (1 hour) token
+    email = confirm_token(token, 3600)
+    if not email:
+        return render_template("404.html"), 404
+
+    if request.method == "GET":
+        return render_template("reset_password.html", form=form, token=token)
+    
+    #POST
+    if form.validate_on_submit():
+        #hash new password and update database
+        password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
+        with open("database.json", "r+") as f:
+            table = json.load(f)
+            for row in table:
+                if row["email"] == email:
+                    row["password"] = password
+                    break
+            f.seek(0)
+            json.dump(table,f,indent=4)
+            f.truncate()
+        flash("Your password was reset", "success")
+        #redirect to login page
+        return redirect(url_for("account.login"))
+
+    else:
+        return render_template("reset_password.html", form=form, token=token), 400
+    
+
+@account_blueprint.route("/verify-email/<token>")
+@block_user
+def verify_email(token):
+    #verify valid and unexpired (1 hour) token
+    email = confirm_token(token, 3600)
+    if not email:
+        return render_template("404.html"), 404
+    #update verified status in database
+    with open("database.json", "r+") as f:
+        table = json.load(f)
+        for row in table:
+            if row["email"] == email:
+                row["verified"] = True
+                break
+        f.seek(0)
+        json.dump(table,f,indent=4)
+        f.truncate()
+    flash("Your email has been verified", "success")
+    return redirect(url_for("account.login"))
+
+
+@account_blueprint.route("/account")
+@block_guest
+def account():
+    #temporary landing page after signing in
+    return render_template("account.html", email=session.get("email"))
+
+
+@account_blueprint.route("/logout")
+def logout():  # Remove @block_guest decorator to avoid circular dependency
+    # Store the referrer before clearing the session
+    next_page = request.referrer or url_for('home.mainpage')
+    
+    # Don't redirect to login/account pages
+    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page):
+        next_page = url_for('home.mainpage')
+    
+    # Clear the session
+    session.clear()
+    flash("You have been logged out", "success")
+    return redirect(next_page)

@@ -55,7 +55,14 @@
             </li>
             <li>
                 <strong>Add event to past events</strong>
-                <p>Update <code>views/home.py</code> by adding a new route for the semester. Copy the current <code>home-post-event.html</code> and create a new template, such as <code>templates/home/2024-fall-event.html</code>. Then update <code>home/past-events.html</code> accordingly.</p>
+                <p>Update <code>views/home.py</code> by adding a new route for the semester. Copy the current <code>home-post-event.html</code> and create a new template, such as <code>templates/home/2024-fall-event.html</code>. Then update <code>home/past-events.html</code> accordingly by adding a new list element with that event. 
+                    We also need to make sure that the past event shows the correct events. Go to the new template you made for the past event. 
+                    In this file, the API url will be present to show the projects for that event. Go to the google sheet for that event and copy and paste the hash after d/
+                    paste that into the hash of the link in the template. Try to match the API call in the template to the sheet. Also if the spreadsheet only has one sheet, add this range A1:Y38 after /values.</p>
+            </li>
+            <li>
+                <strong>Showing current events</strong>
+                <p>Navigate to the current events template and make sure the API call for the google sheet matches the link of the online spreadsheet. If there is only one sheet in the spreadsheet add this range:A1:Y38</p>
             </li>
             <li>
                 <strong>Make winners table</strong>

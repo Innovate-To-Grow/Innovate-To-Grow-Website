@@ -1,0 +1,161 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>{{ collection.title }} | Innovate To Grow</title>
+    {{ styles() }}
+    <style>
+        .collection-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .collection-header {
+            margin-bottom: 30px;
+        }
+        .collection-editor-content {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-left: 4px solid #162D4F;
+        }
+        .collection-meta {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 20px;
+        }
+        .project-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .project-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .project-title {
+            color: #162D4F;
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .project-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .project-meta-item {
+            background-color: #f9f9f9;
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+        .project-abstract {
+            margin-top: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #555;
+        }
+        /* Standardized button styles */
+        .btn-action, .view-project-btn {
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #162D4F;
+            color: #dbaa00 !important;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .btn-action:hover, .view-project-btn:hover {
+            background-color: #0e1d33;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body class="html front not-logged-in no-sidebars page-node">
+    <!-- NAVBAR -->
+    {{ nav() }}
+    <!-- END NAVBAR -->
+    <div id="main" class="clearfix main" role="main">
+        <div class="container">
+            <div id="main-content" class="row main-content">
+                <div id="content" class="mc-content span12">
+                    <div id="content-wrapper" class="content-wrapper">
+                        <div id="content-head" class="row-fluid content-head">
+                            <div class="collection-container">
+                                <div class="collection-header">
+                                    <h1 class="title" id="page-title">{{ collection.title }}</h1>
+                                    <div class="collection-meta">
+                                        <span>Created: {{ collection.createdAt.split('T')[0] }}</span>
+                                        <span> | </span>
+                                        <span>Last Updated: {{ collection.lastUpdated.split('T')[0] }}</span>
+                                    </div>
+                                    
+                                    {% if collection.editorContent %}
+                                    <div class="collection-editor-content">
+                                        {{ collection.editorContent|safe }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <button id="copy-url-btn" class="btn-action">
+                                        <i class="fa fa-copy"></i> Copy Collection URL
+                                    </button>
+                                </div>
+                                
+                                <h2>Projects ({{ collection.projects|length }})</h2>
+                                
+                                {% for project in collection.projects %}
+                                <div class="project-card">
+                                    <div class="project-title">{{ project.project_title }}</div>
+                                    <div class="project-meta">
+                                        <div class="project-meta-item">{{ project.year_semester }}</div>
+                                        <div class="project-meta-item">{{ project.class }}</div>
+                                        <div class="project-meta-item">Team {{ project.team_number }}: {{ project.team_name }}</div>
+                                    </div>
+                                    <div>
+                                        <strong>Organization:</strong> {{ project.organization }}
+                                        <br>
+                                        <strong>Industry:</strong> {{ project.industry }}
+                                    </div>
+                                    
+                                    <div class="project-abstract">
+                                        {{ project.abstract|truncate(200) }}
+                                    </div>
+                                    
+                                    <a href="{{ url_for('home.project_detail', project_uuid=project.uuid, collection=collection._id) }}" class="view-project-btn">
+                                        View Project
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
+    <script>
+        document.getElementById('copy-url-btn').addEventListener('click', function() {
+            navigator.clipboard.writeText(window.location.href);
+            this.innerHTML = '<i class="fa fa-check"></i> URL Copied!';
+            setTimeout(() => {
+                this.innerHTML = '<i class="fa fa-copy"></i> Copy Collection URL';
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

@@ -120,13 +120,14 @@ from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
 from project.views.events import events_blueprint
 from project.views.geo import geo_blueprint
+from project.views.account import account_blueprint
 
 app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 app.register_blueprint(events_blueprint)
 app.register_blueprint(geo_blueprint)
-
+app.register_blueprint(account_blueprint)
 
 # Flask Admin
 from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView, CatchBouncesView, DocumentationView

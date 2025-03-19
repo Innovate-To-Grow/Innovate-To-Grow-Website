@@ -20,7 +20,7 @@ def run_fastapi():
     uvicorn.run(app_api, host="0.0.0.0", port=8000, reload=False)
 
 def run_flask():
-    app.run(port=5000)
+    app.run(port=5000, debug=True)
 
 if __name__ == "__main__":
     # Create processes instead of threads

@@ -1286,7 +1286,8 @@ th {
         '</table>';
 }
 var datas = [];
-// Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
+// THIS IS WHERE YOU CHANGE THE SHEET API FOR THE CORRECT PROJECTS SHOWING
+// Pulls data from "2024-01-Fall-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
