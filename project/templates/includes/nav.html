@@ -17,7 +17,50 @@
                         <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener">Directory</a>
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
-                        
+                    </div>
+
+                    <!-- <script>
+                        function addUser() {
+                            const userName = prompt("Enter the name of the user to add:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/add-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.message))
+                                    .catch(error => console.error('Error:', error));
+                            }
+                        }
+                    
+                        function getID() {
+                            const userName = prompt("Enter the name of the user to get ID:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/read-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.id))
+                                    .catch(error => console.error('Error:', error));
+                            }
+                        }
+                    
+                        function updateUser() {
+                            const userName = prompt("Enter the name of the user to update:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/update-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.message))
+                                    .catch(error => console.error('Error:', error));
+                            }
+                        }
+                    
+                        function deleteUser() {
+                            const userName = prompt("Enter the name of the user to delete:");
+                            if (userName) {
+                                fetch(`http://localhost:8000/user/delete-user/?name=${encodeURIComponent(userName)}`)
+                                    .then(response => response.json())
+                                    .then(data => console.log(data.message))
+                                    .catch(error => console.error('Error:', error));
+                            }
+                        }
+                    </script> -->
+              
                         <!-- Better cache-busting with epoch timestamp -->
                         {% set ts = (now() if now is defined else range(1, 999999) | random) %}
                         {% if session.get('logged_in') %}
@@ -243,4 +286,29 @@
         </div>
     </div>
 </div>
+
+<!-- <script>
+    async function updateUserRole() {
+        const response = await fetch('/user/signUp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                first_name: 'John',
+                last_name: 'Doe',
+                email: 'john.doe@example.com',
+                password: 'password123',
+                role: 'user'
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('User updated:', data);
+        } else {
+            console.error('Failed to update user');
+        }
+    }
+</script> -->
 {% endmacro %}
