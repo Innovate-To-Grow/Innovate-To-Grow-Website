@@ -105,7 +105,13 @@
                                     
                                     {% if collection.editorContent %}
                                     <div class="collection-editor-content">
-                                        {{ collection.editorContent|safe }}
+                                        {% if collection.editorContent.startswith('<') %}
+                                            {{ collection.editorContent|safe }}
+                                        {% else %}
+                                            {% for paragraph in collection.editorContent.split('\n\nx') %}
+                                                <p>{{ paragraph|replace('\n', '<br>')|safe }}</p>
+                                            {% endfor %}
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                     
