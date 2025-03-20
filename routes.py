@@ -63,3 +63,24 @@ async def delete_user(name: str = Query(...)):
     if result.deleted_count:
         return {"message": f"User {name} deleted from database."}
     raise HTTPException(status_code=404, detail="User not found")
+
+# Function for direct usage
+async def add_user_direct(email: str, password: str, timestamp: str, verified: bool = False):
+    client = MongoClient(CONNECTION_STRING)
+    dbname = client['I2GUserDatabase']
+    collection_name = dbname["users"]
+
+    user_details = {
+        "_id": str(uuid.uuid4()),
+        "email": email,
+        "password": password,
+        "timestamp": timestamp,
+        "verified": verified
+    }
+    
+    try:
+        collection_name.insert_one(user_details)
+        return True
+    except Exception as e:
+        print(f"Error adding user: {e}")
+        return False

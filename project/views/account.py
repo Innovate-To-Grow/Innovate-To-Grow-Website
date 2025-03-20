@@ -15,19 +15,25 @@ from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
 from project.forms.account_forms import LoginForm, SignupForm, ForgotPasswordForm, ResetPasswordForm
 import hashlib
-import json
 from functools import wraps
+from routes import add_user_direct
+from routes import CONNECTION_STRING
+from pymongo import MongoClient
 
 account_blueprint = Blueprint("account",
                                __name__,
                                template_folder="../templates/account")
 
 
+def get_db_connection():
+    client = MongoClient(CONNECTION_STRING)
+    dbname = client['I2GUserDatabase']
+    return dbname["users"]
+
 def get_email(email):
-    with open("database.json") as f:
-        table = json.load(f)
-    #returns dictionary or None if email not found
-    return next((row for row in table if row["email"] == email), None)
+    collection = get_db_connection()
+    user = collection.find_one({"email": email})
+    return user  # Returns None if not found
 
 #blocks logged in user from accessing certain resources by redirecting to temporary account page
 def block_user(func):
@@ -144,22 +150,24 @@ def signup():
             flash("Account with this email already exists", "danger")
             return render_template("signup.html", form=form), 409
 
-        #hash password and record signup
+        #hash password and prepare user data
         password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
         timestamp = str(time.time())
-        row = {"email":email,"password":password,"timestamp":timestamp,"verified":False}
-        with open("database.json","r+") as f:
-            table = json.load(f)
-            table.append(row)
-            f.seek(0)
-            json.dump(table,f,indent=4)
-            f.truncate()
+        
+        # Add user to MongoDB
+        success = asyncio.run(add_user_direct(email, password, timestamp, False))
+        
+        if not success:
+            flash("Error creating account", "danger")
+            return render_template("signup.html", form=form), 500
+
         #send verification email after signup
         token = generate_token(email)
         url = url_for("account.verify_email", token=token, _external=True)
         email_template = render_template("account_verification_email.html", url=url)
         send_email(email, "Verify Your Email", email_template)
         flash("Sign up successful. A verification email has been sent to "+email, "success")
+
         return redirect(url_for("account.login"))
 
     else:
@@ -213,20 +221,25 @@ def reset_password(token):
     
     #POST
     if form.validate_on_submit():
-        #hash new password and update database
+        # Hash new password
         password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
-        with open("database.json", "r+") as f:
-            table = json.load(f)
-            for row in table:
-                if row["email"] == email:
-                    row["password"] = password
-                    break
-            f.seek(0)
-            json.dump(table,f,indent=4)
-            f.truncate()
-        flash("Your password was reset", "success")
-        #redirect to login page
-        return redirect(url_for("account.login"))
+        
+        # Update password in MongoDB
+        client = MongoClient(CONNECTION_STRING)
+        dbname = client['I2GUserDatabase']
+        collection_name = dbname["users"]
+        
+        result = collection_name.update_one(
+            {"email": email},
+            {"$set": {"password": password}}
+        )
+        
+        if result.modified_count:
+            flash("Your password was reset", "success")
+            return redirect(url_for("account.login"))
+        else:
+            flash("Error resetting password", "danger")
+            return render_template("reset_password.html", form=form, token=token), 500
 
     else:
         return render_template("reset_password.html", form=form, token=token), 400
@@ -239,18 +252,23 @@ def verify_email(token):
     email = confirm_token(token, 3600)
     if not email:
         return render_template("404.html"), 404
-    #update verified status in database
-    with open("database.json", "r+") as f:
-        table = json.load(f)
-        for row in table:
-            if row["email"] == email:
-                row["verified"] = True
-                break
-        f.seek(0)
-        json.dump(table,f,indent=4)
-        f.truncate()
-    flash("Your email has been verified", "success")
-    return redirect(url_for("account.login"))
+
+    # Update verified status in MongoDB
+    client = MongoClient(CONNECTION_STRING)
+    dbname = client['I2GUserDatabase']
+    collection_name = dbname["users"]
+    
+    result = collection_name.update_one(
+        {"email": email},
+        {"$set": {"verified": True}}
+    )
+    
+    if result.modified_count:
+        flash("Your email has been verified", "success")
+        return redirect(url_for("account.login"))
+    else:
+        flash("Error verifying email", "danger")
+        return render_template("404.html"), 500
 
 
 @account_blueprint.route("/account")
