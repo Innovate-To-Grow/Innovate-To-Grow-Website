@@ -227,7 +227,8 @@ function generateCollectionId() {
     return `curation_${timestamp}_${random}`;
 }
 
-// Create a collection from the merged table data
+// Update the createCollectionFromMergedTable function to include editor content
+
 function createCollectionFromMergedTable() {
     const tableData = merged_table.rows().data().toArray();
     
@@ -269,11 +270,16 @@ function createCollectionFromMergedTable() {
     // Always include createdAt field, but use existing time for updates
     const now = new Date().toISOString();
     
+    // Get the editor content if it exists, otherwise use empty string
+    const editorContent = $('#project-editor').length ? 
+                          $('#project-editor').val() : 
+                          ""; // Empty by default instead of a paragraph
+    
     return {
         _id: collectionId,
         title: title,
         projects: projects,
-        editorContent: "<p>Projects curated on " + new Date().toLocaleDateString() + "</p>",
+        editorContent: editorContent,
         // Always provide a createdAt timestamp - either keep existing or use current time
         createdAt: currentCollectionId ? (currentCreatedAt || now) : now,
         lastUpdated: now
@@ -396,6 +402,13 @@ $(document).ready(function () {
                                 $('.sharing').text(currentCollectionId ? 'Update Collection' : 'Save & Share Collection');
                             }, 3000);
                         });
+                }
+            },
+            {
+                "text": 'Open in Editor',
+                "className": 'open-editor-btn',
+                "action": function () {
+                    openProjectEditor();
                 }
             },
             {
@@ -1111,24 +1124,234 @@ function initializeCurationTitle() {
         
         $('.mergeTable').prepend(titleHtml);
         
-        // Add change handler for title field
-        $('#curation-title').on('input', function() {
-            // Set flag indicating title has been changed
-            titleChanged = true;
-        });
-        
-        // Add click handler for save button
-        $('#save-title-btn').on('click', function() {
-            const newTitle = $('#curation-title').val().trim();
-            if (newTitle) {
-                currentCollectionTitle = newTitle;
-                // Show success message
-                const $btn = $(this);
-                $btn.html('<i class="fa fa-check"></i> Saved!');
-                setTimeout(() => {
-                    $btn.html('<i class="fa fa-check"></i> Save');
-                }, 2000);
-            }
-        });
+        // Add event handlers
+        addTitleEventHandlers();
+    } else {
+        // If it already exists, just update value and reattach handlers
+        $('#curation-title').val(currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString());
+        addTitleEventHandlers();
     }
+}
+
+// Separate function to add event handlers to avoid duplication
+function addTitleEventHandlers() {
+    // Remove existing handlers first to prevent duplicates
+    $('#curation-title').off('input');
+    $('#save-title-btn').off('click');
+    
+    // Add change handler for title field
+    $('#curation-title').on('input', function() {
+        // Set flag indicating title has been changed
+        titleChanged = true;
+    });
+    
+    // Add click handler for save button
+    $('#save-title-btn').on('click', function() {
+        const newTitle = $('#curation-title').val().trim();
+        if (newTitle) {
+            currentCollectionTitle = newTitle;
+            
+            // Update text in sharing button if collection exists
+            if (currentCollectionId) {
+                $('.sharing').text('Update Collection');
+            }
+            
+            // Show success message
+            const $btn = $(this);
+            $btn.html('<i class="fa fa-check"></i> Saved!');
+            
+            // Add visual feedback
+            $btn.css({
+                'background-color': '#28a745',
+                'color': 'white'
+            });
+            
+            setTimeout(() => {
+                $btn.html('<i class="fa fa-check"></i> Save');
+                $btn.css({
+                    'background-color': '#162D4F',
+                    'color': '#dbaa00'
+                });
+            }, 2000);
+        }
+    });
+    
+    // Add hover effects for better UX
+    $('#save-title-btn').hover(
+        function() {
+            $(this).css('background-color', '#0e1d33');
+        },
+        function() {
+            $(this).css('background-color', '#162D4F');
+        }
+    );
+}
+
+// Add this function after the initializeCurationTitle function
+
+// Function to handle opening the project editor with consistent button styling
+function openProjectEditor() {
+    // Check if editor already exists
+    if ($('#project-editor-container').length > 0) {
+        $('#project-editor-container').remove();
+    }
+    
+    // Get selected rows or all rows if none are selected
+    const selectedRows = merged_table.rows('.selected').data();
+    const rowsToEdit = selectedRows.length > 0 ? selectedRows : merged_table.rows().data();
+    
+    // Get the merged table's exact dimensions and positioning
+    const tableContainer = $('#example_wrapper');
+    const tableWidth = tableContainer.width();
+    const tableParentPadding = parseInt($('.mergeTable').css('padding-left') || 0);
+    
+    // Create editor container with updated styling
+    const editorHtml = `
+        <div id="project-editor-container" style="margin: 20px ${tableParentPadding}px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #dedede; box-sizing: border-box; width: calc(100% - ${tableParentPadding * 2}px);">
+            <h4 style="margin-bottom: 15px; color: #162D4F;">Project Curation Editor</h4>
+            <div class="editor-instructions" style="margin-bottom: 15px; font-size: 0.9rem; color: #333;">
+                <p>Edit the project information below. This template is pre-populated with data from ${rowsToEdit.length} project(s).</p>
+            </div>
+            <textarea id="project-editor" style="width: 100%; min-height: 400px; padding: 10px; font-family: monospace; color: #000; background-color: #fff; border: 1px solid #aaa; border-radius: 4px; resize: none; box-sizing: border-box;">${formatProjectsForEditor(rowsToEdit)}</textarea>
+            <div class="editor-actions" style="margin-top: 15px; display: flex; justify-content: flex-end;">
+                <button id="discard-edit-btn" 
+                    style="margin-right: 10px; background-color: #002856; color: #da9d2f; 
+                    border: none; border-radius: 2px; 
+                    padding: 0.5em 1em; font-size: 0.88em;">Discard Changes</button>
+                <button id="save-edit-btn" 
+                    style="background-color: #002856; color: #da9d2f; 
+                    border: none; border-radius: 2px; 
+                    padding: 0.5em 1em; font-size: 0.88em;">Save Changes</button>
+            </div>
+        </div>
+    `;
+    
+    // Append editor after the merged table
+    $('#example_wrapper').after(editorHtml);
+    
+    // Attach event handlers
+    $('#discard-edit-btn').on('click', function() {
+        if (confirm('Are you sure you want to discard your changes?')) {
+            $('#project-editor-container').remove();
+        }
+    });
+    
+    $('#save-edit-btn').on('click', function() {
+        saveProjectEdits();
+    });
+    
+    // Add hover effect to match DataTables buttons
+    $('.editor-actions button').on('mouseenter', function() {
+        $(this).css({
+            'background-color': '#001b3d',
+            'cursor': 'pointer'
+        });
+    }).on('mouseleave', function() {
+        $(this).css({
+            'background-color': '#002856'
+        });
+    });
+    
+    // Add window resize listener to adjust textarea width
+    $(window).on('resize', function() {
+        adjustTextareaWidth();
+    });
+    
+    // Function to adjust textarea width
+    function adjustTextareaWidth() {
+        // Get the container width and account for padding
+        const containerWidth = $('#project-editor-container').width() - 30; // 30px = 15px padding on each side
+        $('#project-editor').width(containerWidth);
+    }
+    
+    // Initial adjustment
+    setTimeout(adjustTextareaWidth, 0);
+}
+
+// Function to format projects for the editor - improved with project titles as headers
+function formatProjectsForEditor(rowsData) {
+    let formattedText = '';
+    
+    // Loop through each row
+    for (let i = 0; i < rowsData.length; i++) {
+        const row = rowsData[i];
+        const projectUrl = window.location.origin + `/project/${row[11] || generateProjectUuid(row[0], row[1], row[2], row[4])}`;
+        const projectTitle = row[4] || `Untitled Project ${i+1}`;
+        
+        // Format project data with project title as header
+        formattedText += `${projectTitle}\n`;
+        formattedText += `${'='.repeat(projectTitle.length)}\n`;
+        formattedText += `Year-Semester: ${row[0]}\n`;
+        formattedText += `Class: ${row[1]}\n`;
+        formattedText += `Team #: ${row[2]}\n`;
+        formattedText += `Team Name: ${row[3]}\n`;
+        formattedText += `Organization: ${row[5]}\n`;
+        formattedText += `Industry: ${row[6]}\n`;
+        formattedText += `Abstract:\n${row[8]}\n\n`;
+        formattedText += `Student Names:\n${row[9]}\n\n`;
+        formattedText += `Project URL: ${projectUrl}\n\n`;
+        
+        // Add separator between projects
+        if (i < rowsData.length - 1) {
+            formattedText += `\n-------------------------------------------\n\n`;
+        }
+    }
+    
+    return formattedText;
+}
+
+// Function to save project edits with consistent button styling during state changes
+function saveProjectEdits() {
+    const editedText = $('#project-editor').val();
+    
+    // Here you'd typically parse the edited text back into structured data
+    // For this implementation, we'll just save it as a note in the collection
+    
+    // Get the current collection
+    const collection = createCollectionFromMergedTable();
+    
+    // Add editor content to the collection
+    collection.editorContent = editedText;
+    
+    // Update button state to indicate saving in progress
+    $('#save-edit-btn').text('Saving...').prop('disabled', true)
+        .css({
+            'opacity': '0.7',
+            'cursor': 'wait'
+        });
+    
+    // Save the collection to the database
+    saveCollectionToDatabase(collection)
+        .done(function(data) {
+            // Store the collection ID for future updates
+            currentCollectionId = collection._id;
+            
+            // Store the creation timestamp for future updates
+            if (!currentCreatedAt && collection.createdAt) {
+                currentCreatedAt = collection.createdAt;
+            }
+            
+            // Show success message
+            $('#save-edit-btn').text('Saved!');
+            
+            // Reset button after a delay
+            setTimeout(function() {
+                $('#save-edit-btn').text('Save Changes').prop('disabled', false).css({
+                    'background-color': '#002856',
+                    'opacity': '1',
+                    'cursor': 'pointer'
+                });
+            }, 2000);
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.error("Error saving edited content:", textStatus, errorThrown);
+            $('#save-edit-btn').text('Error - Try Again').prop('disabled', false);
+            
+            // Reset button text after error
+            setTimeout(function() {
+                $('#save-edit-btn').text('Save Changes').css({
+                    'background-color': '#002856'
+                });
+            }, 3000);
+        });
 }
