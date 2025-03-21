@@ -1,7 +1,11 @@
-<!--temporary file for testing no need to change-->
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer  %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
 
 <!DOCTYPE html>
 <body>
+  {{ nav() }}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -11,6 +15,19 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-    <p>{{ email }} is logged in</p>
+    <p><strong>{{ email }}</strong> is logged in</p>
+
+    <!-- Shortcut to Collection -->
+    {% if collection %}
+      <a href="{{ url_for('collection', collection_id = collection._id) }}" class="btn-action">
+        View Collection
+      </a>
+    {% else %}
+      <p>No collections currently are available for <strong>{{ email }}</strong></p>
+    {% endif %}
+
+  {{ footer() }}
+  {{ styles() }}
+  {{ scripts() }}
 </body>
 </html>

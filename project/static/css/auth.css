@@ -14,11 +14,11 @@ body {
   flex-direction: column;
 }
 
-/* ----- HEADER ----- */
+/* ----- HEADER ----- Changed to be flexible with window types */
 .header {
-  position: fixed;
+  position: absolute; /* Change from fixed to absolute */
   top: 30px;
-  left: 300px;
+  left: 30px; /* Positioning in the top-left corner */
   z-index: 10;
 }
 
@@ -45,13 +45,14 @@ body {
   overflow-y: auto;
 }
 
-/* ----- LEFT SECTION ----- */
-.left-section {
+/* ----- LEFT SECTION ----- Changed to be flexible with different window types */
+.left-section { 
   position: absolute;
   top: 50%;
-  left: calc(50% - 650px);
-  transform: translateY(-50%);
-  width: 600px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  max-width: 600px;
   padding: 2rem;
   z-index: 2;
 }
@@ -103,7 +104,7 @@ body {
   transition: background-color 0.3s ease;
   width: fit-content;
   font-size: 1.1rem;
-  margin-top: 2rem;
+  margin-top: 3rem;
 }
 
 .learn-more-btn:hover {
