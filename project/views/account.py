@@ -24,6 +24,14 @@ account_blueprint = Blueprint("account",
                                __name__,
                                template_folder="../templates/account")
 
+def update_user_token(email: str, token: str | None):
+    """Update user's reset token in MongoDB"""
+    collection = get_db_connection()
+    result = collection.update_one(
+        {"email": email},
+        {"$set": {"token": token}}
+    )
+    return bool(result.modified_count)
 
 def get_db_connection():
     client = MongoClient(CONNECTION_STRING)
@@ -186,52 +194,64 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data.lower()
         
-        # Check rate limiting (10 seconds between requests)
+        # Check rate limiting
         if not rate_limit("password_reset", 10):
             flash("Please wait a moment before requesting another reset email", "danger")
             return render_template("forgot_password.html", form=form), 429
         
         # Verify email exists
-        if get_email(email):
-            # Send password reset email
+        user = get_email(email)
+        if user:
+            # Generate and store token
             token = generate_token(email)
-            url = url_for("account.reset_password", token=token, _external=True)
-            email_template = render_template("password_reset_email.html", url=url)
-            send_email(email, "Password Reset Requested", email_template)
-            flash("Reset email has been sent to your address", "success")
-            return redirect(url_for("account.login"))
+            if update_user_token(email, token):
+                # Send password reset email
+                url = url_for("account.reset_password", token=token, _external=True)
+                email_template = render_template("password_reset_email.html", url=url)
+                send_email(email, "Password Reset Requested", email_template)
+                flash("Reset email has been sent to your address", "success")
+                return redirect(url_for("account.login"))
+            else:
+                flash("Error processing request", "danger")
+                return render_template("forgot_password.html", form=form), 500
 
         flash("No account found with this email address", "danger")
         return render_template("forgot_password.html", form=form), 404
         
-    else:
-        return render_template("forgot_password.html", form=form), 400
+    return render_template("forgot_password.html", form=form), 400
 
 
 @account_blueprint.route("/reset-password/<token>", methods=["GET","POST"])
 def reset_password(token):
     form = ResetPasswordForm()
-    #verify valid and unexpired (1 hour) token
+    
+    # Verify token
     email = confirm_token(token, 3600)
     if not email:
+        return render_template("404.html"), 404
+
+    # Verify token matches stored token
+    user = get_email(email)
+    if not user or user.get('token') != token:
+        flash("Invalid or expired reset link", "danger")
         return render_template("404.html"), 404
 
     if request.method == "GET":
         return render_template("reset_password.html", form=form, token=token)
     
-    #POST
+    # POST
     if form.validate_on_submit():
         # Hash new password
         password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
         
-        # Update password in MongoDB
-        client = MongoClient(CONNECTION_STRING)
-        dbname = client['I2GUserDatabase']
-        collection_name = dbname["users"]
-        
-        result = collection_name.update_one(
+        collection = get_db_connection()
+        # Update password and clear token
+        result = collection.update_one(
             {"email": email},
-            {"$set": {"password": password}}
+            {
+                "$set": {"password": password},
+                "$unset": {"token": ""}
+            }
         )
         
         if result.modified_count:
@@ -241,9 +261,8 @@ def reset_password(token):
             flash("Error resetting password", "danger")
             return render_template("reset_password.html", form=form, token=token), 500
 
-    else:
-        return render_template("reset_password.html", form=form, token=token), 400
-    
+    return render_template("reset_password.html", form=form, token=token), 400
+
 
 @account_blueprint.route("/verify-email/<token>")
 @block_user

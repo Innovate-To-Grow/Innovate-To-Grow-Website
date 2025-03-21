@@ -5,6 +5,7 @@ import uuid
 router = APIRouter()
 
 CONNECTION_STRING = "mongodb+srv://***REMOVED_URL_CREDS***@i2guserdatabase.nthty.mongodb.net/"
+DEFAULT_ACCESS = "user"
 
 @router.get("/add-user/")
 async def add_user(name: str = Query(...)):
@@ -75,7 +76,9 @@ async def add_user_direct(email: str, password: str, timestamp: str, verified: b
         "email": email,
         "password": password,
         "timestamp": timestamp,
-        "verified": verified
+        "verified": verified,
+        "access": DEFAULT_ACCESS,
+        "token": None
     }
     
     try:
@@ -84,3 +87,12 @@ async def add_user_direct(email: str, password: str, timestamp: str, verified: b
     except Exception as e:
         print(f"Error adding user: {e}")
         return False
+    
+async def get_user_id(email: str):
+    client = MongoClient(CONNECTION_STRING)
+    dbname = client['I2GUserDatabase']
+    collection_name = dbname["users"]
+
+    user = collection_name.find_one({"email": email})
+    if user:
+        return str(user["_id"])
