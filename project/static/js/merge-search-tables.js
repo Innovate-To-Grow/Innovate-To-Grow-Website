@@ -17,53 +17,9 @@ var currentCollectionId = null; // Tracks the current collection ID
 var currentCollectionTitle = null; // Tracks the current collection title
 var titleChanged = false; // Flag to track if title has been edited
 var currentCreatedAt = null; // Tracks the original creation timestamp
+// Add this variable to track editor content
+let currentEditorContent = "";
 // global variable END
-
-/*
- * DATABASE INTEGRATION OVERVIEW:
- * 
- * The current implementation uses a simple JSON file (databaseMergeTable.json) for data storage.
- * To implement a proper database, consider the following structure:
- *
- * Tables:
- * 1. projects - Stores individual project data with columns matching the project properties
- *    - id (primary key)
- *    - uuid (for URL friendly identifiers)
- *    - year_semester
- *    - class
- *    - team_number
- *    - team_name
- *    - project_title
- *    - organization
- *    - industry
- *    - abstract (TEXT type for longer content)
- *    - student_names (TEXT type)
- *    - created_at
- *    - updated_at
- *
- * 2. collections - Stores collection metadata
- *    - id (primary key)
- *    - collection_uuid (for URL friendly identifiers)
- *    - title
- *    - editor_content (HTML/rich text content)
- *    - created_at
- *    - updated_at
- *    - user_id (if implementing user authentication)
- *
- * 3. collection_projects - Junction table for many-to-many relationship
- *    - collection_id (foreign key to collections.id)
- *    - project_id (foreign key to projects.id)
- *    - display_order (optional, for controlling display sequence)
- *    - added_at
- *
- * This structure would support:
- * - Projects existing independently of collections
- * - Projects belonging to multiple collections
- * - Efficient queries for both projects and collections
- * - Proper data normalization for a production environment
- */
-
-
 
 // Prep START
 $(document).ready(function () {
@@ -167,6 +123,44 @@ $(document).ready(function () {
             }
         </style>
     `);
+
+    // Add this near the top of your document.ready function to log collection ID status on page load
+    // Add this after your other document.ready setup code
+    
+    // Check if URL contains collection parameter and extract it
+    const urlParams = new URLSearchParams(window.location.search);
+    const collectionParam = urlParams.get('collection');
+    
+    if (collectionParam) {
+        console.log("Collection ID from URL:", collectionParam);
+        // Set current collection ID from URL parameter
+        currentCollectionId = collectionParam;
+        
+        // Fetch initial collection data on page load
+        $.ajax({
+            type: "GET",
+            url: `/api/get-collection/${currentCollectionId}`,
+            dataType: "json"
+        })
+        .done(function(data) {
+            console.log("Loaded collection data on page init:", data);
+            if (data && data.editorContent !== undefined) {
+                currentEditorContent = data.editorContent;
+                console.log("Initialized editor content:", currentEditorContent);
+            }
+            if (data && data.title) {
+                currentCollectionTitle = data.title;
+            }
+            if (data && data.createdAt) {
+                currentCreatedAt = data.createdAt;
+            }
+        })
+        .fail(function(error) {
+            console.error("Failed to load initial collection:", error);
+        });
+    } else {
+        console.log("No collection ID in URL, will create new collection when saving.");
+    }
 });
 // Prep END
 
@@ -270,10 +264,22 @@ function createCollectionFromMergedTable() {
     // Always include createdAt field, but use existing time for updates
     const now = new Date().toISOString();
     
-    // Get the editor content if it exists, otherwise use empty string
-    const editorContent = $('#project-editor').length ? 
-                          $('#project-editor').val() : 
-                          ""; // Empty by default instead of a paragraph
+    // Modified this section to handle editorContent correctly
+    // Don't try to get the content from the editor if we're just creating the base collection
+    // Only use the editor's content when explicitly saving edits
+    let editorContent;
+    
+    // Check if this is being called from saveProjectEdits
+    const calledFromSave = new Error().stack.includes('saveProjectEdits');
+    
+    if (calledFromSave && $('#project-editor').length) {
+        // If called from saveProjectEdits and editor exists, get current content
+        editorContent = $('#project-editor').val();
+    } else {
+        // Otherwise, preserve the existing editorContent from the database
+        // This ensures we don't overwrite it when just creating a collection object
+        editorContent = currentEditorContent || "";
+    }
     
     return {
         _id: collectionId,
@@ -297,7 +303,6 @@ function saveCollectionToDatabase(collection) {
     });
 }
 
-//edited****************************************************************
 // Function to display all fields with edit functionality in the Merged Table
 function mergeformat(d) {
     const isUuidPage = window.location.pathname.match(/\/project\/[^\/]+$/i);
@@ -332,7 +337,6 @@ function mergeformat(d) {
         '</table>';
 }
 
-//edited****************************************************************
 // Function to initialize share buttons behavior when on a shared URL page
 function initializeShareButtons() {
     if (window.location.pathname.includes('/past-projects/')) {
@@ -365,50 +369,23 @@ $(document).ready(function () {
         "buttons": [
             'csv', 'excel', 'pdf',
             {
-                "text": 'Save & Share Collection',
+                "text": 'Share Collection',  // Changed from "Save & Share Collection"
                 "className": 'sharing',
                 "action": function () {
-                    // Create a collection from the merged table
-                    const collection = createCollectionFromMergedTable();
-                    
-                    // Update button state to indicate saving in progress
-                    $('.sharing').text('Saving...').prop('disabled', true);
-                    
-                    // Save the collection to the database
-                    saveCollectionToDatabase(collection)
-                        .done(function(data) {
-                            // Store the collection ID for future updates
-                            currentCollectionId = collection._id;
-                            
-                            // Store the creation timestamp for future updates
-                            if (!currentCreatedAt && collection.createdAt) {
-                                currentCreatedAt = collection.createdAt;
-                            }
-                            
-                            // Open the collection page
-                            window.open(`/collection/${collection._id}`, "_blank");
-                            
-                            // Update button text to indicate we're now updating this collection
-                            setTimeout(function() {
-                                $('.sharing').text(currentCollectionId ? 'Update Collection' : 'Save & Share Collection').prop('disabled', false);
-                            }, 2000);
-                        })
-                        .fail(function(jqXHR, textStatus, errorThrown) {
-                            console.error("Error saving collection:", textStatus, errorThrown);
-                            $('.sharing').text('Error - Try Again').prop('disabled', false);
-                            
-                            // Reset button text after error
-                            setTimeout(function() {
-                                $('.sharing').text(currentCollectionId ? 'Update Collection' : 'Save & Share Collection');
-                            }, 3000);
-                        });
+                    // Just open the collection page for sharing
+                    if (currentCollectionId) {
+                        window.open(`/collection/${currentCollectionId}`, "_blank");
+                    } else {
+                        // If no collection ID exists yet, show a message
+                        alert("Please merge and save results first before sharing.");
+                    }
                 }
             },
             {
-                "text": 'Open in Editor',
+                "text": 'Add to Editor',  // Changed from "Open in Editor"
                 "className": 'open-editor-btn',
                 "action": function () {
-                    openProjectEditor();
+                    addToEditor();  // Changed function call
                 }
             },
             {
@@ -516,7 +493,37 @@ $(document).ready(function () {
     // Add this line at the end of the document ready function
     initializeCurationTitle();
 
+    // Add editor toggle button at the bottom of the merged table with proper centering
+    $('#example_wrapper').append(`
+        <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 15px;">
+            <button id="bottom-editor-toggle" class="dt-button buttons-html5" 
+                style="background-color: #002856; color: #dbaa00; 
+                border: none; border-radius: 2px; 
+                padding: 0.5em 1em; font-size: 0.88em;">
+                Open Editor
+            </button>
+        </div>
+    `);
+
+    // Add event handler for the toggle button
+    $('#bottom-editor-toggle').on('click', function() {
+        toggleProjectEditor();
+    });
+    
+    // Add hover effect to match DataTables buttons
+    $('#bottom-editor-toggle').on('mouseenter', function() {
+        $(this).css({
+            'background-color': '#001b3d',
+            'cursor': 'pointer'
+        });
+    }).on('mouseleave', function() {
+        $(this).css({
+            'background-color': '#002856'
+        });
+    });
+
 });
+
 // Merge Table specific functions END
 // Function to maintain checkbox selection state across table pages
 function updateDataTableSelectAllCtrl(table) {
@@ -999,6 +1006,50 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 resetCurrentCollection();
             }
         });
+
+        // NEW: Save the merged results to the database automatically
+        if (merged_table.rows().count() > 0) {
+            // Create a collection from the merged table
+            const collection = createCollectionFromMergedTable();
+            
+            // Show saving indicator
+            $('.merge').text('Saving...').prop('disabled', true);
+            
+            // Save the collection to the database
+            saveCollectionToDatabase(collection)
+                .done(function(data) {
+                    // Store the collection ID for future updates
+                    currentCollectionId = collection._id;
+                    
+                    // Store the creation timestamp for future updates
+                    if (!currentCreatedAt && collection.createdAt) {
+                        currentCreatedAt = collection.createdAt;
+                    }
+                    
+                    // Store the editor content for future reference
+                    if (collection.editorContent !== undefined) {
+                        currentEditorContent = collection.editorContent;
+                    }
+                    
+                    // Show success message
+                    $('.merge').text('Saved!');
+                    
+                    // Reset button text and update share button text
+                    setTimeout(function() {
+                        $('.merge').text('Save/Merge Results').prop('disabled', false);
+                        $('.sharing').text('Share Collection');
+                    }, 2000);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error("Error saving collection:", textStatus, errorThrown);
+                    $('.merge').text('Error - Try Again').prop('disabled', false);
+                    
+                    // Reset button text after error
+                    setTimeout(function() {
+                        $('.merge').text('Save/Merge Results');
+                    }, 3000);
+                });
+        }
     });
 
     // Initialize or update the title input
@@ -1151,28 +1202,57 @@ function addTitleEventHandlers() {
         if (newTitle) {
             currentCollectionTitle = newTitle;
             
-            // Update text in sharing button if collection exists
-            if (currentCollectionId) {
-                $('.sharing').text('Update Collection');
-            }
+            // Create and save the collection with the new title
+            const collection = createCollectionFromMergedTable();
             
-            // Show success message
+            // Show saving indicator
             const $btn = $(this);
-            $btn.html('<i class="fa fa-check"></i> Saved!');
+            $btn.html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+            $btn.prop('disabled', true);
             
-            // Add visual feedback
-            $btn.css({
-                'background-color': '#28a745',
-                'color': 'white'
-            });
-            
-            setTimeout(() => {
-                $btn.html('<i class="fa fa-check"></i> Save');
-                $btn.css({
-                    'background-color': '#162D4F',
-                    'color': '#dbaa00'
+            // Save to database
+            saveCollectionToDatabase(collection)
+                .done(function(data) {
+                    // Update text in sharing button if collection exists
+                    if (currentCollectionId) {
+                        $('.sharing').text('Share Collection');
+                    }
+                    
+                    // Show success message
+                    $btn.html('<i class="fa fa-check"></i> Saved!');
+                    
+                    // Add visual feedback
+                    $btn.css({
+                        'background-color': '#28a745',
+                        'color': 'white'
+                    });
+                    
+                    setTimeout(() => {
+                        $btn.html('<i class="fa fa-check"></i> Save');
+                        $btn.css({
+                            'background-color': '#162D4F',
+                            'color': '#dbaa00'
+                        });
+                        $btn.prop('disabled', false);
+                    }, 2000);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error("Error saving title:", textStatus, errorThrown);
+                    $btn.html('<i class="fa fa-times"></i> Error');
+                    $btn.css({
+                        'background-color': '#dc3545',
+                        'color': 'white'
+                    });
+                    
+                    setTimeout(() => {
+                        $btn.html('<i class="fa fa-check"></i> Save');
+                        $btn.css({
+                            'background-color': '#162D4F',
+                            'color': '#dbaa00'
+                        });
+                        $btn.prop('disabled', false);
+                    }, 2000);
                 });
-            }, 2000);
         }
     });
     
@@ -1191,81 +1271,35 @@ function addTitleEventHandlers() {
 
 // Function to handle opening the project editor with consistent button styling
 function openProjectEditor() {
-    // Check if editor already exists
+    // Remove existing editor if present
     if ($('#project-editor-container').length > 0) {
         $('#project-editor-container').remove();
     }
-    
-    // Get selected rows or all rows if none are selected
-    const selectedRows = merged_table.rows('.selected').data();
-    const rowsToEdit = selectedRows.length > 0 ? selectedRows : merged_table.rows().data();
-    
-    // Get the merged table's exact dimensions and positioning
-    const tableContainer = $('#example_wrapper');
-    const tableWidth = tableContainer.width();
-    const tableParentPadding = parseInt($('.mergeTable').css('padding-left') || 0);
-    
-    // Create editor container with updated styling
+
+    // Create the editor container
     const editorHtml = `
-        <div id="project-editor-container" style="margin: 20px ${tableParentPadding}px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #dedede; box-sizing: border-box; width: calc(100% - ${tableParentPadding * 2}px);">
+        <div id="project-editor-container" style="margin: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #dedede;">
             <h4 style="margin-bottom: 15px; color: #162D4F;">Project Curation Editor</h4>
-            <div class="editor-instructions" style="margin-bottom: 15px; font-size: 0.9rem; color: #333;">
-                <p>Edit the project information below. This template is pre-populated with data from ${rowsToEdit.length} project(s).</p>
-            </div>
-            <textarea id="project-editor" style="width: 100%; min-height: 400px; padding: 10px; font-family: monospace; color: #000; background-color: #fff; border: 1px solid #aaa; border-radius: 4px; resize: none; box-sizing: border-box;">${formatProjectsForEditor(rowsToEdit)}</textarea>
-            <div class="editor-actions" style="margin-top: 15px; display: flex; justify-content: flex-end;">
-                <button id="discard-edit-btn" 
-                    style="margin-right: 10px; background-color: #002856; color: #da9d2f; 
-                    border: none; border-radius: 2px; 
-                    padding: 0.5em 1em; font-size: 0.88em;">Discard Changes</button>
-                <button id="save-edit-btn" 
-                    style="background-color: #002856; color: #da9d2f; 
-                    border: none; border-radius: 2px; 
-                    padding: 0.5em 1em; font-size: 0.88em;">Save Changes</button>
+            <textarea id="project-editor" style="width: 100%; min-height: 400px; padding: 10px; font-family: monospace; color: #000; background-color: #fff; border: 1px solid #aaa; border-radius: 4px; resize: none;"></textarea>
+            <div style="margin-top: 15px; text-align: right;">
+                <button id="save-edit-btn" style="background-color: #002856; color: #dbaa00; border: none; padding: 10px 20px; border-radius: 4px;">Save Changes</button>
             </div>
         </div>
     `;
-    
-    // Append editor after the merged table
+
+    // Append the editor to the DOM
     $('#example_wrapper').after(editorHtml);
-    
-    // Attach event handlers
-    $('#discard-edit-btn').on('click', function() {
-        if (confirm('Are you sure you want to discard your changes?')) {
-            $('#project-editor-container').remove();
-        }
-    });
-    
-    $('#save-edit-btn').on('click', function() {
+
+    // Set the editor content
+    $('#project-editor').val(currentEditorContent || "");
+
+    // Attach event handler for the save button
+    $('#save-edit-btn').on('click', function () {
         saveProjectEdits();
     });
-    
-    // Add hover effect to match DataTables buttons
-    $('.editor-actions button').on('mouseenter', function() {
-        $(this).css({
-            'background-color': '#001b3d',
-            'cursor': 'pointer'
-        });
-    }).on('mouseleave', function() {
-        $(this).css({
-            'background-color': '#002856'
-        });
-    });
-    
-    // Add window resize listener to adjust textarea width
-    $(window).on('resize', function() {
-        adjustTextareaWidth();
-    });
-    
-    // Function to adjust textarea width
-    function adjustTextareaWidth() {
-        // Get the container width and account for padding
-        const containerWidth = $('#project-editor-container').width() - 30; // 30px = 15px padding on each side
-        $('#project-editor').width(containerWidth);
-    }
-    
-    // Initial adjustment
-    setTimeout(adjustTextareaWidth, 0);
+
+    // Update the toggle button text
+    $('#bottom-editor-toggle').text('Close Editor');
 }
 
 // Function to format projects for the editor - improved with project titles as headers
@@ -1302,56 +1336,154 @@ function formatProjectsForEditor(rowsData) {
 
 // Function to save project edits with consistent button styling during state changes
 function saveProjectEdits() {
-    const editedText = $('#project-editor').val();
-    
-    // Here you'd typically parse the edited text back into structured data
-    // For this implementation, we'll just save it as a note in the collection
-    
-    // Get the current collection
+    const editedText = $('#project-editor').val() || "";
+
+    // Update the global editor content variable
+    currentEditorContent = editedText;
+
+    // Create the collection object
     const collection = createCollectionFromMergedTable();
-    
-    // Add editor content to the collection
     collection.editorContent = editedText;
-    
-    // Update button state to indicate saving in progress
-    $('#save-edit-btn').text('Saving...').prop('disabled', true)
-        .css({
-            'opacity': '0.7',
-            'cursor': 'wait'
-        });
-    
+
     // Save the collection to the database
+    $('#save-edit-btn').text('Saving...').prop('disabled', true);
+
     saveCollectionToDatabase(collection)
-        .done(function(data) {
-            // Store the collection ID for future updates
-            currentCollectionId = collection._id;
-            
-            // Store the creation timestamp for future updates
-            if (!currentCreatedAt && collection.createdAt) {
-                currentCreatedAt = collection.createdAt;
-            }
-            
-            // Show success message
+        .done(function () {
             $('#save-edit-btn').text('Saved!');
-            
-            // Reset button after a delay
-            setTimeout(function() {
-                $('#save-edit-btn').text('Save Changes').prop('disabled', false).css({
-                    'background-color': '#002856',
-                    'opacity': '1',
-                    'cursor': 'pointer'
-                });
+            setTimeout(() => {
+                $('#save-edit-btn').text('Save Changes').prop('disabled', false);
             }, 2000);
         })
-        .fail(function(jqXHR, textStatus, errorThrown) {
+        .fail(function (jqXHR, textStatus, errorThrown) {
             console.error("Error saving edited content:", textStatus, errorThrown);
             $('#save-edit-btn').text('Error - Try Again').prop('disabled', false);
-            
-            // Reset button text after error
-            setTimeout(function() {
-                $('#save-edit-btn').text('Save Changes').css({
-                    'background-color': '#002856'
-                });
-            }, 3000);
         });
+}
+
+/**
+ * Toggle the project editor open/closed and update button states
+ * Checks for unsaved changes before closing
+ */
+function toggleProjectEditor() {
+    const $topButton = $('.open-editor-btn');
+    const $bottomButton = $('#bottom-editor-toggle');
+    const isEditorOpen = $('#project-editor-container').length > 0;
+
+    if (isEditorOpen) {
+        // Get current content from the editor
+        const currentText = $('#project-editor').val() || "";
+
+        // Normalize both strings for comparison
+        const normalize = str => (str || "").trim().replace(/\r\n/g, '\n');
+        const normalizedCurrent = normalize(currentText);
+        const normalizedOriginal = normalize(currentEditorContent);
+
+        // Check if there are unsaved changes
+        const hasChanges = normalizedCurrent !== normalizedOriginal;
+
+        if (!hasChanges || confirm('Close editor? Any unsaved changes will be lost.')) {
+            // Close the editor
+            $('#project-editor-container').remove();
+            $topButton.text('Add to Editor');
+            $bottomButton.text('Open Editor');
+        }
+    } else {
+        // Open the editor
+        if (currentCollectionId) {
+            // Fetch the latest content from the database
+            $bottomButton.text('Loading...').prop('disabled', true);
+
+            $.ajax({
+                type: "GET",
+                url: `/api/get-collection/${currentCollectionId}`,
+                dataType: "json",
+                cache: false // Prevent caching
+            })
+                .done(function (data) {
+                    if (data && data.editorContent !== undefined) {
+                        // Update the global editor content variable
+                        currentEditorContent = String(data.editorContent || "");
+                    } else {
+                        currentEditorContent = "";
+                    }
+
+                    // Open the editor with the latest content
+                    openProjectEditor();
+                    $topButton.text('Add to Editor');
+                    $bottomButton.text('Close Editor').prop('disabled', false);
+                })
+                .fail(function (jqXHR, textStatus, errorThrown) {
+                    console.error("Error fetching collection data:", textStatus, errorThrown);
+                    openProjectEditor(); // Open the editor even if the fetch fails
+                    $topButton.text('Add to Editor');
+                    $bottomButton.text('Close Editor').prop('disabled', false);
+                });
+        } else {
+            // No collection ID, open an empty editor
+            currentEditorContent = "";
+            openProjectEditor();
+            $topButton.text('Add to Editor');
+            $bottomButton.text('Close Editor');
+        }
+    }
+}
+
+/**
+ * Add selected or all projects to the editor
+ * Appends formatted project data to existing editor content
+ * No automatic database save - just puts content in the editor
+ */
+function addToEditor() {
+    // Check if editor is open, if not open it first
+    if ($('#project-editor-container').length === 0) {
+        toggleProjectEditor();
+        
+        // Need to wait for the editor to open before continuing
+        setTimeout(function() {
+            processAddToEditor();
+        }, 500); // Short delay to ensure editor is open
+    } else {
+        processAddToEditor();
+    }
+    
+    // Process the actual add to editor functionality
+    function processAddToEditor() {
+        // Get selected rows or all rows if none are selected
+        const selectedRows = merged_table.rows('.selected').data();
+        const rowsToAdd = selectedRows.length > 0 ? selectedRows : merged_table.rows().data();
+        
+        // Format the selected projects
+        const formattedProjects = formatProjectsForEditor(rowsToAdd);
+        
+        // Get current content from editor directly
+        let currentContent = $('#project-editor').val() || "";
+        
+        // Append new content to existing content
+        let newContent;
+        if (currentContent.trim() === "") {
+            // If there's no existing content, just use the new content
+            newContent = formattedProjects;
+        } else {
+            // Otherwise append with a separator
+            newContent = currentContent + "\n\n-------------------------------------------\n\n" + formattedProjects;
+        }
+        
+        // Update the editor with the new content
+        $('#project-editor').val(newContent);
+        
+        // Provide visual feedback that content was added
+        $('.open-editor-btn').html('Added!');
+        
+        // Reset button after a delay
+        setTimeout(function() {
+            $('.open-editor-btn').html('Add to Editor');
+        }, 2000);
+        
+        // Flash the editor to highlight the change
+        $('#project-editor').css('background-color', '#f8f9d4');
+        setTimeout(function() {
+            $('#project-editor').css('background-color', '#fff');
+        }, 500);
+    }
 }
