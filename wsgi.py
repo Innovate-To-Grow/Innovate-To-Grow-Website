@@ -34,3 +34,4 @@ if __name__ == "__main__":
     # Wait for both processes to complete
     fastapi_process.join()
     flask_process.join()
+    # app.run()
