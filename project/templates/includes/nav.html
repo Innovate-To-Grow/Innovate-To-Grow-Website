@@ -4,16 +4,15 @@
     <div class="container">
         <div class="row-fluid">
             <div class="header-section row-fluid span12">
-                <!-- /#logo -->
-                <div id="stickyHeader">
-                    <div class="site-logo">
+                <div id="stickyHeader" {% if request.path.startswith('/account') %}style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;"{% endif %}>
+                    <div class="site-logo" {% if request.path.startswith('/account') %}style="flex: 0 0 auto;"{% endif %}>
                         <a href="https://www.ucmerced.edu" title="Home" rel="home" style="border: none;"> <img
                                 src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png"
                                 alt="UC Merced logo" role="presentation"> </a>
                     </div>
-                    <a href="{{ url_for('home.mainpage') }}" style="width: 20%; margin: 0px 200px;"><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></a>
+                    <a href="{{ url_for('home.mainpage') }}" {% if request.path.startswith('/account') %}style="flex: 0 0 20%; margin: 0 20px;"{% else %}style="width: 20%; margin: 0px 200px;"{% endif %}><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></a>
 
-                    <div class="quick-links" id="quickLinksNavigation">
+                    <div class="quick-links" id="quickLinksNavigation" {% if request.path.startswith('/account') %}style="flex: 0 0 auto; margin-right: 20px;"{% endif %}>
                         <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener">Directory</a>
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
@@ -22,6 +21,7 @@
                         {% set ts = (now() if now is defined else range(1, 999999) | random) %}
                         {% if session.get('logged_in') %}
                             <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
+                            <a href="{{ url_for('account.account') }}" class="auth-link">Profile</a>
                         {% else %}
                             <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
                             <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
@@ -75,6 +75,8 @@
         </div>
     </div>
 </div>
+
+{% if not request.path.startswith('/account') %}
 <div id="siteName">
     <div class="container">
         <div class="row-fluid">
@@ -87,7 +89,9 @@
         </div>
     </div>
 </div>
-<div id="main-menu" class="clearfix site-main-menu">
+{% endif %}
+
+<div id="main-menu" class="clearfix site-main-menu" {% if request.path.startswith('/account') %}style="margin-top: 20px; border-top: 1px solid #eee; border-bottom: 1px solid #eee;"{% endif %}>
     <div class="container">
         <div class="navbar row-fluid">
             <div class="navbar-inner1 span12">

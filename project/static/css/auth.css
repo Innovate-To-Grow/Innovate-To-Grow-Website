@@ -33,6 +33,34 @@ body {
   transform: scale(1.05);
 }
 
+/* Reset header styles for account pages */
+.header-section {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+}
+
+#stickyHeader {
+    position: relative !important;
+    width: 100% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.quick-links {
+    position: relative !important;
+    right: auto !important;
+}
+
+/* Ensure content doesn't push header */
+.auth-content {
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+
 /* ----- MAIN CONTAINER ----- */
 .main-container {
   display: grid;
@@ -327,6 +355,18 @@ input[type="submit"]:hover, .btn:hover {
   text-decoration: underline;
 }
 
+/* Styling for text link */
+.text-link {
+  color: #F2A341;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.text-link:hover {
+  color: #d68936;
+  text-decoration: underline;
+}
+
 /* ----- SECTION DIVIDER ----- */
 .section-divider {
   width: 200px;
@@ -335,6 +375,45 @@ input[type="submit"]:hover, .btn:hover {
   margin: 15rem 0 5rem 0;
   border: none;
   display: block;
+}
+
+/* ----- CENTERED CONTAINER ----- */
+.collection-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 30vh;
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.collection-container p {
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.btn-action {
+  display: inline-block;
+  text-decoration: none;
+  background-color: #F2A341;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-action:hover {
+  background-color: #d68936;
+  color: #ffffff;
+}
+
+/* ----- PROFILE TITLE ----- */
+.profile-title {
+  font-size: 2em;  /* Makes text twice the size of normal text */
+  margin-bottom: 2rem;
 }
 
 /* ----- RESPONSIVE STYLES ----- */

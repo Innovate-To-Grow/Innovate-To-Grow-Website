@@ -4,30 +4,28 @@
 {% from "includes/scripts.html" import scripts %}
 
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    {{ styles() }}
+</head>
 <body>
   {{ nav() }}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-    <p><strong>{{ email }}</strong> is logged in</p>
+    <div class="collection-container">
+      <p class = "profile-title"><strong>{{ email }}</strong>'s Profile Page</p>
 
-    <!-- Shortcut to Collection -->
-    {% if collection %}
-      <a href="{{ url_for('collection', collection_id = collection._id) }}" class="btn-action">
-        View Collection
-      </a>
-    {% else %}
-      <p>No collections currently are available for <strong>{{ email }}</strong></p>
-    {% endif %}
+      {% if collection %}
+        <a href="{{ url_for('collection', collection_id = collection._id) }}" class="btn-action">View Collection</a>
+      {% else %}
+        <p>No collections currently are available for <strong>{{ email }}</strong>.</p>
+        <p>Start your own collection <a href="{{ url_for('home.past_projects') }}" class="text-link">here</a>.</p>
+      {% endif %}
+    </div>
 
   {{ footer() }}
-  {{ styles() }}
   {{ scripts() }}
 </body>
 </html>
