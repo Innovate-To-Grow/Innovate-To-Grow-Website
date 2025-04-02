@@ -20,6 +20,11 @@ from routes import add_user_direct
 from routes import CONNECTION_STRING
 from pymongo import MongoClient
 
+# Initialize MongoDB client and curated_lists collection
+client = MongoClient(CONNECTION_STRING)
+dbname = client['I2GUserDatabase']
+curated_lists = dbname["curated_lists"]
+
 account_blueprint = Blueprint("account",
                                __name__,
                                template_folder="../templates/account")
@@ -274,8 +279,28 @@ def verify_email(token):
 @account_blueprint.route("/account")
 @block_guest
 def account():
-    #temporary landing page after signing in
-    return render_template("account.html", email=session.get("email"))
+    # Get the current user's email from the session
+    email = session.get("email")
+    if not email:
+        return redirect(url_for("account.login"))
+
+    # Fetch the user document to get the user ID
+    user = get_email(email)
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for("account.login"))
+
+    user_id = str(user["_id"])
+
+    # Query the database for collections associated with this user ID
+    collections = curated_lists.find({"userId": user_id})
+
+    # Convert ObjectId to string for rendering in the template
+    collections = [
+        {**collection, "_id": str(collection["_id"])} for collection in collections
+    ]
+
+    return render_template("account.html", email=email, collections=collections)
 
 
 @account_blueprint.route("/logout")

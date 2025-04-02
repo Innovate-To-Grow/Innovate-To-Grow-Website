@@ -15,53 +15,65 @@
 <body>
 {{ nav() }}
 <div class="collection-container">
-    <p class="profile-title"><strong>{{ email }}</strong>'s Profile Page</p>
+    <h1 class="profile-title">{{ email }}'s Profile Page</h1>
 
-    {% if collection %}
-        <table class="collection-table">
-            <thead>
-                <tr>
-                    <th>Collection Name</th>
-                    <th>Last Edited</th>
-                    <th>Actions</th>
-                    <th>Share URL</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>{{ collection.name }}</td>
-                    <td>{{ collection.last_edited }}</td>
-                    <td>
-                        <a href="{{ url_for('collection', collection_id = collection._id) }}" class="btn-edit">Edit</a>
-                    </td>
-                    <td>
-                        <input type="text" value="{{ url_for('collection', collection_id = collection._id, _external=True) }}" class="share-url" readonly>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    {% if collections %}
+        <div class="table-responsive">
+            <table class="collection-table">
+                <thead>
+                    <tr>
+                        <th>Collection Name</th>
+                        <th>Last Edited</th>
+                        <th>Actions</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for collection in collections %}
+                    <tr>
+                        <td>{{ collection.title }}</td>
+                        <td>{{ collection.lastUpdated.split('T')[0] }}</td>
+                        <td>
+                            <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
+                               class="btn-action btn-view">View</a>
+                            <a href="{{ url_for('home.past_projects') }}?collection={{ collection._id }}" 
+                               class="btn-action btn-edit edit-collection-btn" 
+                               data-collection-id="{{ collection._id }}">
+                               Edit
+                            </a>
+                        </td>
+                        <td>
+                            <a href="#" 
+                               class="btn-action btn-copy-url" 
+                               data-url="{{ url_for('home.view_collection', collection_id=collection._id, _external=True) }}">
+                               Copy URL
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
-      <table class="collection-table">
-        <thead>
-            <tr>
-              <th>Collection Name</th>
-              <th>Last Edited</th>
-              <th>Actions</th>
-              <th>Share URL</th>
-            </tr>
-          </thead>
-          <tbody>
-            <td>Sample Name</td>
-            <td>Sample Date</td>
-            <td>Sample Text</td>
-            <td>Sample Text</td>
-          </tbody>
-        </table>
-        <p>No collections currently are available for <strong>{{ email }}</strong>.</p>
+        <p>No collections currently available for <strong>{{ email }}</strong>.</p>
         <p>Start your own collection <a href="{{ url_for('home.past_projects') }}" class="text-link">here</a>.</p>
     {% endif %}
 </div>
 {{ footer() }}
 {{ scripts() }}
+<script>
+    document.querySelectorAll('.btn-copy-url').forEach(button => {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+            const url = this.getAttribute('data-url');
+            navigator.clipboard.writeText(url).then(() => {
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = 'Copy URL';
+                }, 2000);
+            });
+        });
+    });
+</script>
 </body>
 </html>

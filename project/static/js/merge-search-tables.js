@@ -22,9 +22,6 @@ let currentEditorContent = ""; // Tracks the current editor content
 
 // Prep START
 $(document).ready(function () {
-    team_names = JSON.parse(document.getElementById("data").dataset.team_names);
-    team_numbers = JSON.parse(document.getElementById("data").dataset.team_numbers);
-
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1KATiK1Fnlb7Vsd186mCbaGjhID-OUGN-1QHWY8hIc5U/values/Past-Projects-WEB-LIVE?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         for (var i = 1; i < length; i++) {
@@ -40,37 +37,19 @@ $(document).ready(function () {
             } else if (subArray[1] == "CEE") {
                 subArray[0] = subArray[0].replace('-CEE', '');
             }
-            if (team_names.length > 0 || team_numbers.length > 0) {
-                if (team_names.includes(subArray[3]) && team_numbers.includes(subArray[2])) {
-                    subdata = {
-                        "Year-Semester": subArray[0],
-                        "Class": subArray[1],
-                        "Team#": subArray[2],
-                        "Team Name": subArray[3],
-                        "Project Title": subArray[4],
-                        "Organization": subArray[5],
-                        "Industry": subArray[6],
-                        "Abstract": subArray[7],
-                        "Student Names": subArray[8],
-                    };
-                    JSON.stringify(subdata);
-                    datas.push(subdata);
-                }
-            } else {
-                subdata = {
-                    "Year-Semester": subArray[0],
-                    "Class": subArray[1],
-                    "Team#": subArray[2],
-                    "Team Name": subArray[3],
-                    "Project Title": subArray[4],
-                    "Organization": subArray[5],
-                    "Industry": subArray[6],
-                    "Abstract": subArray[7],
-                    "Student Names": subArray[8],
-                };
-                JSON.stringify(subdata);
-                datas.push(subdata);
-            }
+            subdata = {
+                "Year-Semester": subArray[0],
+                "Class": subArray[1],
+                "Team#": subArray[2],
+                "Team Name": subArray[3],
+                "Project Title": subArray[4],
+                "Organization": subArray[5],
+                "Industry": subArray[6],
+                "Abstract": subArray[7],
+                "Student Names": subArray[8],
+            };
+            JSON.stringify(subdata);
+            datas.push(subdata);
         }
     });
 
@@ -80,24 +59,11 @@ $(document).ready(function () {
     $("#rowdelete").addClass('gray');
     $(".mergeTable").hide();
 
-    if (team_names.length > 0 || team_numbers.length > 0) {
-        unique_url = true;
-        $(".buttonStick").hide();
-        $(".tableManage").hide();
-        setTimeout(function () {
-            $('.addtable').click();
-            $('.merge').click();
-            $('.sharing').hide();
-            $('.loader').hide();
-            $(".mergeTable").show();
-        }, 2500);
-    } else {
-        setTimeout(function () {
-            $('.addtable').click();
-            $('.loader').hide();
-            $(".mergeTable").show();
-        }, 2500);
-    }
+    setTimeout(function () {
+        $('.addtable').click();
+        $('.loader').hide();
+        $(".mergeTable").show();
+    }, 2500);
 
     $('head').append(`
         <style>
@@ -118,38 +84,6 @@ $(document).ready(function () {
             }
         </style>
     `);
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const collectionParam = urlParams.get('collection');
-
-    if (collectionParam) {
-        console.log("Collection ID from URL:", collectionParam);
-        currentCollectionId = collectionParam;
-
-        $.ajax({
-            type: "GET",
-            url: `/api/get-collection/${currentCollectionId}`,
-            dataType: "json"
-        })
-        .done(function(data) {
-            console.log("Loaded collection data on page init:", data);
-            if (data && data.editorContent !== undefined) {
-                currentEditorContent = data.editorContent;
-                console.log("Initialized editor content:", currentEditorContent);
-            }
-            if (data && data.title) {
-                currentCollectionTitle = data.title;
-            }
-            if (data && data.createdAt) {
-                currentCreatedAt = data.createdAt;
-            }
-        })
-        .fail(function(error) {
-            console.error("Failed to load initial collection:", error);
-        });
-    } else {
-        console.log("No collection ID in URL, will create new collection when saving.");
-    }
 });
 // Prep END
 
@@ -179,7 +113,6 @@ function generateProjectUuid(yearSemester, classCode, teamNumber, projectTitle) 
     }
     return `proj-${Math.abs(hash).toString(16)}`;
 }
-
 
 // Generate a collection ID that uses MongoDB-compatible format
 function generateCollectionId() {
@@ -213,9 +146,9 @@ function createCollectionFromMergedTable() {
     const collectionId = currentCollectionId || generateCollectionId();
 
     // Get title from input field or use default
-    const title = $('#curation-title').length ?
-        $('#curation-title').val().trim() :
-        (currentCollectionTitle || "Curated Projects - " + new Date().toLocaleDateString());
+    const title = $('#curation-title').length
+    ? $('#curation-title').text().trim()
+    : (currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString());
 
     // Timestamps for collection tracking
     const now = new Date().toISOString();
@@ -233,7 +166,7 @@ function createCollectionFromMergedTable() {
     $.ajax({
         type: "GET",
         url: "/get_user_id",
-        async: false, // Synchronous request to ensure user ID is fetched before proceeding
+        async: false,
         success: function (response) {
             if (response && response.id) {
                 userId = response.id;
@@ -325,184 +258,178 @@ function initializeShareButtons() {
 
 // Merge Table specific functions START
 $(document).ready(function () {
-    merged_table = $('.display').DataTable({
-        "dom": 'lBfrtip',
-        "language": {
-            "emptyTable": "No entries have been saved yet."
-        },
-        "buttons": [
-            'csv', 'excel', 'pdf',
-            {
-                "text": 'Share Collection',  // Existing button
-                "className": 'sharing',
-                "action": function () {
-                    if (currentCollectionId) {
-                        window.open(`/collection/${currentCollectionId}`, "_blank");
-                    } else {
-                        alert("Please merge and save results first before sharing.");
-                    }
-                }
+    const urlParams = new URLSearchParams(window.location.search);
+    const collectionParam = urlParams.get('collection');
+    const tableElement = $('.display');
+
+    function initializeMergedTable(tableData = []) {
+        merged_table = tableElement.DataTable({
+            data: tableData,
+            dom: 'lBfrtip',
+            language: {
+                emptyTable: "No entries have been saved yet."
             },
-            {
-                "text": 'Update Collection',  // New "Update Collection" button
-                "className": 'update-collection-btn',
-                "action": function () {
-                    if (currentCollectionId) {
-                        // Create a collection object from the merged table
-                        const collection = createCollectionFromMergedTable();
-
-                        // Show saving indicator
-                        $('.update-collection-btn').text('Updating...').prop('disabled', true);
-
-                        // Save the updated collection to the database
-                        saveCollectionToDatabase(collection)
-                            .done(function (data) {
-                                // Show success message
-                                $('.update-collection-btn').text('Updated!');
-                                setTimeout(function () {
-                                    $('.update-collection-btn').text('Update Collection').prop('disabled', false);
-                                }, 2000);
-                            })
-                            .fail(function (jqXHR, textStatus, errorThrown) {
-                                console.error("Error updating collection:", textStatus, errorThrown);
-                                $('.update-collection-btn').text('Error - Try Again').prop('disabled', false);
-                            });
-                    } else {
-                        alert("No collection to update. Please save a collection first.");
-                    }
-                }
-            },
-            {
-                "text": 'Show Details',  // Existing button
-                "className": 'details-toggle-btn',
-                "action": function () {
-                    var $button = $('.details-toggle-btn');
-                    var isShowing = $button.text() === 'Hide Details';
-
-                    $('#example').find('td.details-control-merge').each(function () {
-                        var tr = $(this).closest('tr');
-                        var row = merged_table.row(tr);
-
-                        if (isShowing) {
-                            if (row.child.isShown()) {
-                                row.child.hide();
-                                tr.removeClass('shown');
-                                tr.css('color', 'Black');
-                                tr.css('font-weight', 'normal');
-                            }
+            buttons: [
+                'csv', 'excel', 'pdf',
+                {
+                    text: 'Share Collection',
+                    className: 'sharing',
+                    action: function () {
+                        if (currentCollectionId) {
+                            window.open(`/collection/${currentCollectionId}`, "_blank");
                         } else {
-                            if (!row.child.isShown()) {
-                                row.child(mergeformat(row.data())).show();
-                                tr.addClass('shown');
-                                tr.css('color', '#162D4F');
-                                tr.css('font-weight', 'bold');
-                            }
+                            alert("Please merge and save results first before sharing.");
                         }
-                    });
+                    }
+                },
+                {
+                    text: 'Show Details',
+                    className: 'details-toggle-btn',
+                    action: function () {
+                        const $button = $('.details-toggle-btn');
+                        const isShowing = $button.text() === 'Hide Details';
 
-                    $button.text(isShowing ? 'Show Details' : 'Hide Details');
+                        $('#example').find('td.details-control-merge').each(function () {
+                            const tr = $(this).closest('tr');
+                            const row = merged_table.row(tr);
+
+                            if (isShowing) {
+                                if (row.child.isShown()) {
+                                    row.child.hide();
+                                    tr.removeClass('shown');
+                                    tr.css('color', 'Black').css('font-weight', 'normal');
+                                }
+                            } else {
+                                if (!row.child.isShown()) {
+                                    row.child(mergeformat(row.data())).show();
+                                    tr.addClass('shown');
+                                    tr.css('color', '#162D4F').css('font-weight', 'bold');
+                                }
+                            }
+                        });
+
+                        $button.text(isShowing ? 'Show Details' : 'Hide Details');
+                    }
+                }
+            ],
+            pageLength: 5,
+            lengthMenu: [[5, 10, 25, 100], [5, 10, 25, 100]],
+            search: {
+                search: ""
+            },
+            aoColumns: [
+                {}, {}, {}, {}, {}, {}, {},
+                {
+                    className: 'details-control-merge',
+                    orderable: false,
+                    mDataProp: "null",
+                    defaultContent: ''
+                },
+                { bVisible: false }, // Abstract
+                { bVisible: false }, // Student Names
+                {
+                    data: null,
+                    className: "dt-center editor-delete",
+                    defaultContent: '<i class="fa fa-trash"/>',
+                    orderable: false
+                },
+                { bVisible: false, data: null } // UUID
+            ],
+            order: [[1, 'asc']],
+            fixedHeader: {
+                header: true,
+                footer: true
+            }
+        });
+
+        // Handle row expansion for details
+        $('#example').on('click', 'td.details-control-merge', function () {
+            const tr = $(this).closest('tr');
+            const row = merged_table.row(tr);
+            if (row.child.isShown()) {
+                row.child.hide();
+                tr.removeClass('shown').css({ color: 'Black', fontWeight: 'normal' });
+            } else {
+                row.child(mergeformat(row.data())).show();
+                tr.addClass('shown').css({ color: '#162D4F', fontWeight: 'bold' });
+            }
+        });
+
+        // Add editor toggle button
+        $('#example_wrapper').append(`
+            <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 15px;">
+                <button id="bottom-editor-toggle" class="dt-button buttons-html5"
+                    style="background-color: #002856; color: #dbaa00;
+                    border: none; border-radius: 2px;
+                    padding: 0.5em 1em; font-size: 0.88em;">
+                    Open Editor
+                </button>
+            </div>
+        `);
+
+        $('#bottom-editor-toggle').on('click', function () {
+            toggleProjectEditor();
+        }).on('mouseenter', function () {
+            $(this).css({ backgroundColor: '#001b3d', cursor: 'pointer' });
+        }).on('mouseleave', function () {
+            $(this).css({ backgroundColor: '#002856' });
+        });
+
+        // Init helper functions
+        initializeCurationTitle();
+        initializeShareButtons();
+    }
+
+    if (collectionParam) {
+        console.log("Collection ID from URL:", collectionParam);
+        currentCollectionId = collectionParam;
+
+        $.ajax({
+            type: "GET",
+            url: `/api/get-collection/${currentCollectionId}`,
+            dataType: "json"
+        }).done(function (data) {
+            console.log("Loaded collection data on page init:", data);
+
+            if (data) {
+                currentEditorContent = data.editorContent || "";
+                currentCollectionTitle = data.title || "Untitled Collection";
+                currentCreatedAt = data.createdAt || new Date().toISOString();
+
+                const tableData = (data.projects || []).map(project => [
+                    project.year_semester || '',
+                    project.class || '',
+                    project.team_number || '',
+                    project.team_name || '',
+                    project.project_title || '',
+                    project.organization || '',
+                    project.industry || '',
+                    '', // Details
+                    project.abstract || '',
+                    project.student_names || '',
+                    '', // Delete
+                    project.uuid || ''
+                ]);
+
+                initializeMergedTable(tableData);
+
+                if ($('#project-editor').length) {
+                    $('#project-editor').val(currentEditorContent);
                 }
             }
-        ],
-        "pageLength": 5,
-        "lengthMenu": [[5, 10, 25, 100], [5, 10, 25, 100]],
-        "search": {
-            "search": document.location.search.replace(/^.*?\=/, '')
-        },
-        "aoColumns": [
-            {}, {}, {}, {}, {}, {}, {},
-            {
-                "className": 'details-control-merge',
-                "orderable": false,
-                "mDataProp": "null",
-                "defaultContent": ''
-            },
-            {
-                "bVisible": false // Abstract
-            },
-            {
-                "bVisible": false // Student Names
-            },
-            {
-                "data": null,
-                "className": "dt-center editor-delete",
-                "defaultContent": '<i class="fa fa-trash"/>',
-                "orderable": false
-            },
-            {
-                "bVisible": false, // UUID column
-                "data": null
-            }
-        ],
-        order: [
-            [1, 'asc']
-        ],
-        fixedHeader: {
-            header: true,
-            footer: true
-        }
-    });
-
-    // Initialize title functionality
-    initializeCurationTitle();
-    
-    // Add this line at the end of the document ready function
-    initializeShareButtons();
-
-    // Detail button function, opens rows and closes them
-    $('#example').on('click', 'td.details-control-merge', function () {
-        var tr = $(this).closest('tr');
-        var td = $(this).closest('td');
-        var row = merged_table.row(tr);
-        if (row.child.isShown()) {
-            // This row is already open - close it
-            row.child.hide();
-            tr.removeClass('shown');
-            tr.css('color', 'Black');
-            tr.css('font-weight', 'normal');
-        } else {
-            // Open this row
-            row.child(mergeformat(row.data())).show();
-            tr.addClass('shown');
-            // Change color of text to tell user that the row is associated with the abstract and student name
-            tr.css('color', '#162D4F');
-            tr.css('font-weight', 'bold');
-        }
-    });
-
-    // Add this line at the end of the document ready function
-    initializeCurationTitle();
-
-    // Add editor toggle button at the bottom of the merged table with proper centering
-    $('#example_wrapper').append(`
-        <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 15px;">
-            <button id="bottom-editor-toggle" class="dt-button buttons-html5" 
-                style="background-color: #002856; color: #dbaa00; 
-                border: none; border-radius: 2px; 
-                padding: 0.5em 1em; font-size: 0.88em;">
-                Open Editor
-            </button>
-        </div>
-    `);
-
-    // Add event handler for the toggle button
-    $('#bottom-editor-toggle').on('click', function() {
-        toggleProjectEditor();
-    });
-    
-    // Add hover effect to match DataTables buttons
-    $('#bottom-editor-toggle').on('mouseenter', function() {
-        $(this).css({
-            'background-color': '#001b3d',
-            'cursor': 'pointer'
+        }).fail(function (error) {
+            console.error("Failed to load collection, fallback to empty table:", error);
+            initializeMergedTable([]);
         });
-    }).on('mouseleave', function() {
-        $(this).css({
-            'background-color': '#002856'
-        });
-    });
-
+    } else {
+        console.log("No collection ID in URL, initializing a new collection.");
+        currentCollectionTitle = 'Curated Projects - ' + new Date().toLocaleDateString();
+        currentEditorContent = '';
+        currentCreatedAt = new Date().toISOString();
+        initializeMergedTable([]);
+    }
 });
+
 
 // Merge Table specific functions END
 // Function to maintain checkbox selection state across table pages
@@ -527,9 +454,7 @@ function updateDataTableSelectAllCtrl(table) {
         }
 
     // If some of the checkboxes are checked
-    } else {33
-        3
-        
+    } else {
         chkbox_select_all.checked = true;
         if ('indeterminate' in chkbox_select_all) {
             chkbox_select_all.indeterminate = true;
@@ -640,7 +565,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         "pageLength": 5,
         "lengthMenu": [[5, 10, 25, 100], [5, 10, 25, 100]],
         "search": {
-            "search": document.location.search.replace(/^.*?\=/, '')
+            "search": ""
         },
         data: datas,
         columns: [
@@ -1142,118 +1067,94 @@ function resetCurrentCollection() {
 function initializeCurationTitle() {
     // Check if title container already exists
     if ($('#curation-title-container').length === 0) {
-        // Create title container before the merged table
+        // Set the default title if no title exists
+        if (!currentCollectionTitle) {
+            currentCollectionTitle = 'Curated Projects - ' + new Date().toLocaleDateString();
+        }
+
+        // Create title container and place it within the Saved Merged Results section
         const titleHtml = `
-            <div id="curation-title-container" class="mb-3" style="margin-bottom: 15px;">
-                <div class="d-flex align-items-center">
-                    <input type="text" id="curation-title" 
-                        class="form-control" 
-                        value="${currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString()}"
-                        placeholder="Enter curation title..." 
-                        style="font-size: 1.25rem; font-weight: 600; color: #162D4F; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <button id="save-title-btn" 
-                        style="margin-left: 10px; background-color: #162D4F; color: #dbaa00; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px;">
-                        <i class="fa fa-check"></i> Save
-                    </button>
-                </div>
+            <div id="curation-title-container" style="margin-top: 15px; text-align: center;">
+                <h3 id="curation-title" 
+                    contenteditable="true" 
+                    style="display: inline-block; font-size: 1.5rem; font-weight: 600; color: #162D4F; margin: 0; padding: 5px 10px; border: 1px solid transparent; border-radius: 4px; background-color: #f9f9f9; transition: border-color 0.2s ease; cursor: pointer;">
+                    ${currentCollectionTitle}
+                </h3>
                 <small class="text-muted" style="display: block; margin-top: 5px; font-style: italic;">
-                    Edit the curation title above. Changes will be saved when you update the collection.
+                    Double-click the title to edit. Press Enter to save or click away to cancel.
                 </small>
             </div>
         `;
-        
-        $('.mergeTable').prepend(titleHtml);
-        
+
+        // Append the title container below the "Saved Merged Results" text
+        $('.mergeTable').before(titleHtml);
+
         // Add event handlers
         addTitleEventHandlers();
     } else {
-        // If it already exists, just update value and reattach handlers
-        $('#curation-title').val(currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString());
+        // If it already exists, just update the value and reattach handlers
+        $('#curation-title').text(currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString());
         addTitleEventHandlers();
     }
 }
 
 // Separate function to add event handlers to avoid duplication
 function addTitleEventHandlers() {
-    // Remove existing handlers first to prevent duplicates
-    $('#curation-title').off('input');
-    $('#save-title-btn').off('click');
-    
-    // Add change handler for title field
-    $('#curation-title').on('input', function() {
-        // Set flag indicating title has been changed
-        titleChanged = true;
+    const $title = $('#curation-title');
+    let originalTitle = currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString();
+
+    // Enable editing on double-click
+    $title.off('dblclick').on('dblclick', function () {
+        $(this).attr('contenteditable', 'true').focus();
+        $(this).css('border', '1px solid #162D4F'); // Highlight the border to indicate edit mode
     });
-    
-    // Add click handler for save button
-    $('#save-title-btn').on('click', function() {
-        const newTitle = $('#curation-title').val().trim();
+
+    // Save title on pressing Enter
+    $title.off('keydown').on('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent a new line from being added
+            saveTitle($(this));
+        }
+    });
+
+    // Restore original title if clicked away without saving
+    $title.off('blur').on('blur', function () {
+        if ($(this).attr('contenteditable') === 'true') {
+            $(this).text(originalTitle); // Restore the original title
+            $(this).attr('contenteditable', 'false');
+            $(this).css('border', '1px solid transparent'); // Remove the border
+        }
+    });
+
+    // Function to save the title
+    function saveTitle($titleElement) {
+        const newTitle = $titleElement.text().trim();
         if (newTitle) {
+            originalTitle = newTitle; // Update the original title
             currentCollectionTitle = newTitle;
-            
-            // Create and save the collection with the new title
-            const collection = createCollectionFromMergedTable();
-            
-            // Show saving indicator
-            const $btn = $(this);
-            $btn.html('<i class="fa fa-spinner fa-spin"></i> Saving...');
-            $btn.prop('disabled', true);
-            
-            // Save to database
-            saveCollectionToDatabase(collection)
-                .done(function(data) {
-                    // Update text in sharing button if collection exists
-                    if (currentCollectionId) {
-                        $('.sharing').text('Share Collection');
-                    }
-                    
-                    // Show success message
-                    $btn.html('<i class="fa fa-check"></i> Saved!');
-                    
-                    // Add visual feedback
-                    $btn.css({
-                        'background-color': '#28a745',
-                        'color': 'white'
-                    });
-                    
-                    setTimeout(() => {
-                        $btn.html('<i class="fa fa-check"></i> Save');
-                        $btn.css({
-                            'background-color': '#162D4F',
-                            'color': '#dbaa00'
-                        });
-                        $btn.prop('disabled', false);
-                    }, 2000);
-                })
-                .fail(function(jqXHR, textStatus, errorThrown) {
-                    console.error("Error saving title:", textStatus, errorThrown);
-                    $btn.html('<i class="fa fa-times"></i> Error');
-                    $btn.css({
-                        'background-color': '#dc3545',
-                        'color': 'white'
-                    });
-                    
-                    setTimeout(() => {
-                        $btn.html('<i class="fa fa-check"></i> Save');
-                        $btn.css({
-                            'background-color': '#162D4F',
-                            'color': '#dbaa00'
-                        });
-                        $btn.prop('disabled', false);
-                    }, 2000);
-                });
+        } else {
+            // If no title is provided, use the default title
+            currentCollectionTitle = 'Curated Projects - ' + new Date().toLocaleDateString();
+            $titleElement.text(currentCollectionTitle);
         }
-    });
-    
-    // Add hover effects for better UX
-    $('#save-title-btn').hover(
-        function() {
-            $(this).css('background-color', '#0e1d33');
-        },
-        function() {
-            $(this).css('background-color', '#162D4F');
-        }
-    );
+
+        // Create the collection object
+        const collection = createCollectionFromMergedTable();
+        collection.title = currentCollectionTitle; // Update the title
+        collection._id = currentCollectionId; // Ensure we use the existing collection ID
+
+        // Save to database
+        saveCollectionToDatabase(collection)
+            .done(function () {
+                console.log('Title saved successfully:', currentCollectionTitle);
+            })
+            .fail(function (jqXHR, textStatus, errorThrown) {
+                console.error('Error saving title:', textStatus, errorThrown);
+            });
+
+        $titleElement.attr('contenteditable', 'false');
+        $titleElement.css('border', '1px solid transparent'); // Remove the border
+    }
 }
 
 // Add this function after the initializeCurationTitle function
@@ -1265,15 +1166,19 @@ function openProjectEditor() {
         $('#project-editor-container').remove();
     }
 
-    // Create the editor container with the "Add to Editor" button positioned below the heading
+    // Create the editor container with the "Add to Editor" and "Save Changes" buttons centered
     const editorHtml = `
         <div id="project-editor-container" style="margin: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #dedede; box-sizing: border-box;">
-            <h4 style="margin-bottom: 15px; color: #162D4F;">Project Curation Editor</h4>
-            <button id="add-to-editor-btn" style="margin-bottom: 15px; background-color: #002856; color: #dbaa00; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-                Add to Editor
-            </button>
+            <h3 style="margin-bottom: 15px; color: #162D4F; text-align: center; font-size: 1.5rem; font-weight: 600;">
+                Project Curation Editor
+            </h3>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <button id="add-to-editor-btn" style="background-color: #002856; color: #dbaa00; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    Add Curation Detail to Editor
+                </button>
+            </div>
             <textarea id="project-editor" style="width: 100%; min-height: 400px; padding: 15px; font-family: monospace; color: #000; background-color: #fff; border: 1px solid #aaa; border-radius: 4px; resize: none; box-sizing: border-box;"></textarea>
-            <div style="margin-top: 15px; text-align: right;">
+            <div style="margin-top: 15px; text-align: center;">
                 <button id="save-edit-btn" style="background-color: #002856; color: #dbaa00; border: none; padding: 10px 20px; border-radius: 4px;">Save Changes</button>
             </div>
         </div>

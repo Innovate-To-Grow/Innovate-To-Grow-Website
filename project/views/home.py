@@ -243,7 +243,6 @@ def sponsors_2015():
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
-    # Remove the gspread integration
     if request.method == "POST":
         data = request.get_json()
         uuid_string = str(uuid.uuid4())
@@ -262,28 +261,8 @@ def past_projects(uuid_string=None):
         
         return jsonify({"uuid_string": uuid_string, "collection_id": uuid_string})
     
-    # For GET requests
-    team_names = []
-    team_numbers = []
-
-    if uuid_string is not None:
-        # Get collection from MongoDB instead of gspread
-        collection = curated_lists.find_one({"_id": uuid_string})
-        
-        if collection:
-            # Extract team names and numbers from projects
-            for project in collection.get('projects', []):
-                if 'team_name' in project and project['team_name']:
-                    team_names.append(project['team_name'])
-                elif 'Team Name' in project and project['Team Name']:
-                    team_names.append(project['Team Name'])
-                
-                if 'team_number' in project and project['team_number']:
-                    team_numbers.append(project['team_number'])
-                elif 'Team#' in project and project['Team#']:
-                    team_numbers.append(project['Team#'])
-    
-    return render_template("past-projects.html", team_names=team_names, team_numbers=team_numbers)
+    # For GET requests, pass only the collection ID to the template
+    return render_template("past-projects.html", collection_id=uuid_string)
 
 @home_blueprint.route('/project/<project_uuid>')
 def project_detail(project_uuid):
@@ -316,11 +295,20 @@ def project_detail(project_uuid):
         print(f"Error in project_detail: {str(e)}")
         return redirect(url_for('home.past_projects'))
 
-# Keep this as is for backward compatibility
-@home_blueprint.route('/past-projects/<project_uuid>')
-def legacy_project_detail(project_uuid):
-    """Redirect from old URL format to new one"""
-    return redirect(url_for('home.project_detail', project_uuid=project_uuid))
+@home_blueprint.route('/collection/<collection_id>')
+def view_collection(collection_id):
+    """View a specific collection"""
+    if ObjectId.is_valid(collection_id):
+        collection = curated_lists.find_one({"_id": ObjectId(collection_id)})
+    else:
+        collection = curated_lists.find_one({"_id": collection_id})
+    
+    if not collection:
+        return redirect(url_for('home.past_projects'))
+    
+    collection['_id'] = str(collection['_id'])
+    return render_template('home/collection.html', collection=collection)
+
 
 @home_blueprint.route('/api/save-collection', methods=['POST'])
 def save_collection():
@@ -362,63 +350,3 @@ def get_collection(collection_id):
     collection['_id'] = str(collection['_id'])
     return json_util.dumps(collection)
 
-@home_blueprint.route('/api/get-latest-collection', methods=['GET'])
-def get_latest_collection():
-    """Get the most recently created collection from MongoDB"""
-    collection = curated_lists.find_one(sort=[("createdAt", -1)])
-    
-    if not collection:
-        return jsonify({"success": False, "message": "No collections found"})
-    
-    collection['_id'] = str(collection['_id'])
-    return jsonify({"success": True, "collection": collection})
-
-@home_blueprint.route('/api/add-project-to-collection/<collection_id>', methods=['POST'])
-def add_project_to_collection(collection_id):
-    """Add a project to a collection in MongoDB"""
-    project_data = request.json
-
-    if ObjectId.is_valid(collection_id):
-        collection_id = ObjectId(collection_id)
-
-    collection = curated_lists.find_one({"_id": collection_id})
-    if not collection:
-        return jsonify({"success": False, "message": "Collection not found"}), 404
-
-    # Check if project exists
-    project_exists = any(
-        project.get('uuid') == project_data.get('uuid') 
-        for project in collection.get('projects', [])
-    )
-
-    if project_exists:
-        # Update existing project
-        curated_lists.update_one(
-            {"_id": collection_id, "projects.uuid": project_data.get('uuid')},
-            {"$set": {"projects.$": project_data}}
-        )
-    else:
-        # Add new project
-        curated_lists.update_one(
-            {"_id": collection_id},
-            {
-                "$push": {"projects": project_data},
-                "$set": {"lastUpdated": datetime.now().isoformat()}
-            }
-        )
-
-    return jsonify({"success": True})
-
-@home_blueprint.route('/collection/<collection_id>')
-def view_collection(collection_id):
-    """View a specific collection"""
-    if ObjectId.is_valid(collection_id):
-        collection = curated_lists.find_one({"_id": ObjectId(collection_id)})
-    else:
-        collection = curated_lists.find_one({"_id": collection_id})
-    
-    if not collection:
-        return redirect(url_for('home.past_projects'))
-    
-    collection['_id'] = str(collection['_id'])
-    return render_template('home/collection.html', collection=collection)
