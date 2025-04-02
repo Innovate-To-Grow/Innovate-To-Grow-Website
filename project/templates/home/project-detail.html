@@ -129,9 +129,6 @@
                                     <button id="copy-url-btn" class="btn-action">
                                         <i class="fa fa-copy"></i> Copy URL
                                     </button>
-                                    <button id="export-pdf-btn" class="btn-action">
-                                        <i class="fa fa-file-pdf-o"></i> Export as PDF
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -149,11 +146,6 @@
             setTimeout(() => {
                 this.innerHTML = '<i class="fa fa-copy"></i> Copy URL';
             }, 2000);
-        });
-        
-        document.getElementById('export-pdf-btn').addEventListener('click', function() {
-            alert('PDF export functionality will be implemented here.');
-            // You would implement PDF export using a library like jsPDF
         });
     </script>
 </body>

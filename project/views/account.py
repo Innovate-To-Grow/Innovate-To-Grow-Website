@@ -291,3 +291,13 @@ def logout():  # Remove @block_guest decorator to avoid circular dependency
     session.clear()
     flash("You have been logged out", "success")
     return redirect(next_page)
+
+@account_blueprint.route("/get_user_id", methods=["GET"])
+@block_guest
+def get_user_id():
+    email = session.get("email")
+    if email:
+        user = get_email(email)
+        if user:
+            return {"id": str(user["_id"])}
+    return {"error": "User not found"}, 404
