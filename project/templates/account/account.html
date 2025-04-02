@@ -9,23 +9,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Profile</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acc.css') }}">
     {{ styles() }}
 </head>
 <body>
-  {{ nav() }}
-    <div class="collection-container">
-      <p class = "profile-title"><strong>{{ email }}</strong>'s Profile Page</p>
+{{ nav() }}
+<div class="collection-container">
+    <p class="profile-title"><strong>{{ email }}</strong>'s Profile Page</p>
 
-      {% if collection %}
-        <a href="{{ url_for('collection', collection_id = collection._id) }}" class="btn-action">View Collection</a>
-      {% else %}
+    {% if collection %}
+        <table class="collection-table">
+            <thead>
+                <tr>
+                    <th>Collection Name</th>
+                    <th>Last Edited</th>
+                    <th>Actions</th>
+                    <th>Share URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ collection.name }}</td>
+                    <td>{{ collection.last_edited }}</td>
+                    <td>
+                        <a href="{{ url_for('collection', collection_id = collection._id) }}" class="btn-edit">Edit</a>
+                    </td>
+                    <td>
+                        <input type="text" value="{{ url_for('collection', collection_id = collection._id, _external=True) }}" class="share-url" readonly>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    {% else %}
+      <table class="collection-table">
+        <thead>
+            <tr>
+              <th>Collection Name</th>
+              <th>Last Edited</th>
+              <th>Actions</th>
+              <th>Share URL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <td>Sample Name</td>
+            <td>Sample Date</td>
+            <td>Sample Text</td>
+            <td>Sample Text</td>
+          </tbody>
+        </table>
         <p>No collections currently are available for <strong>{{ email }}</strong>.</p>
         <p>Start your own collection <a href="{{ url_for('home.past_projects') }}" class="text-link">here</a>.</p>
-      {% endif %}
-    </div>
-
-  {{ footer() }}
-  {{ scripts() }}
+    {% endif %}
+</div>
+{{ footer() }}
+{{ scripts() }}
 </body>
 </html>

@@ -4,20 +4,20 @@
     <div class="container">
         <div class="row-fluid">
             <div class="header-section row-fluid span12">
-                <div id="stickyHeader" {% if request.path.startswith('/account') %}style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;"{% endif %}>
-                    <div class="site-logo" {% if request.path.startswith('/account') %}style="flex: 0 0 auto;"{% endif %}>
+                <div id="stickyHeader">
+                    <div class="site-logo">
                         <a href="https://www.ucmerced.edu" title="Home" rel="home" style="border: none;"> <img
                                 src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png"
                                 alt="UC Merced logo" role="presentation"> </a>
                     </div>
-                    <a href="{{ url_for('home.mainpage') }}" {% if request.path.startswith('/account') %}style="flex: 0 0 20%; margin: 0 20px;"{% else %}style="width: 20%; margin: 0px 200px;"{% endif %}><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></a>
+                    <a href="{{ url_for('home.mainpage') }}" style="width: 20%; margin: 0px 200px;"><img src="{{url_for('static', filename='images/I2G_logo.png') }}" alt="I2G Logo"></a>
 
-                    <div class="quick-links" id="quickLinksNavigation" {% if request.path.startswith('/account') %}style="flex: 0 0 auto; margin-right: 20px;"{% endif %}>
+                    <div class="quick-links" id="quickLinksNavigation">
                         <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener">Directory</a>
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
                         
-                        <!-- Auth links with proper styling -->
+                        <!-- Auth links -->
                         {% set ts = (now() if now is defined else range(1, 999999) | random) %}
                         {% if session.get('logged_in') %}
                             <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
@@ -27,71 +27,24 @@
                             <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
                         {% endif %}
                     </div>
-
-                    <!-- Keep the commented script section intact -->
-                    <!-- <script>
-                        function addUser() {
-                            const userName = prompt("Enter the name of the user to add:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/add-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.message))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    
-                        function getID() {
-                            const userName = prompt("Enter the name of the user to get ID:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/read-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.id))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    
-                        function updateUser() {
-                            const userName = prompt("Enter the name of the user to update:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/update-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.message))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    
-                        function deleteUser() {
-                            const userName = prompt("Enter the name of the user to delete:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/delete-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.message))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    </script> -->
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-{% if not request.path.startswith('/account') %}
 <div id="siteName">
     <div class="container">
         <div class="row-fluid">
             <div class="name-slogan span12">
                 <div id="site-name" class="site-name"><a href="{{ url_for('home.mainpage') }}" title="Home"
-                        rel="home">Innovate
-                        To Grow</a></div>
-                <!-- <div id="site-slogan" class="site-slogan">School of Engineering</div> -->
+                        rel="home">Innovate To Grow</a></div>
             </div>
         </div>
     </div>
 </div>
-{% endif %}
 
-<div id="main-menu" class="clearfix site-main-menu" {% if request.path.startswith('/account') %}style="margin-top: 20px; border-top: 1px solid #eee; border-bottom: 1px solid #eee;"{% endif %}>
+<div id="main-menu" class="clearfix site-main-menu">
     <div class="container">
         <div class="navbar row-fluid">
             <div class="navbar-inner1 span12">
@@ -290,29 +243,4 @@
         </div>
     </div>
 </div>
-
-<!-- <script>
-    async function updateUserRole() {
-        const response = await fetch('/user/signUp', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                first_name: 'John',
-                last_name: 'Doe',
-                email: 'john.doe@example.com',
-                password: 'password123',
-                role: 'user'
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log('User updated:', data);
-        } else {
-            console.error('Failed to update user');
-        }
-    }
-</script> -->
 {% endmacro %}
