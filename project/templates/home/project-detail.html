@@ -82,16 +82,6 @@
                     <div id="content-wrapper" class="content-wrapper">
                         <div id="content-head" class="row-fluid content-head">
                             <div class="project-container">
-                                {% if collection %}
-                                <div class="collection-banner">
-                                    <p>
-                                        This project is part of the collection: 
-                                        <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" class="collection-link">
-                                            {{ collection.title }}
-                                        </a>
-                                    </p>
-                                </div>
-                                {% endif %}
                                 <h1 class="title" id="page-title">{{ project_data.project_title }}</h1>
                                 
                                 <div class="project-meta">
