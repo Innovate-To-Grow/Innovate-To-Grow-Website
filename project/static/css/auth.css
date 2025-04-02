@@ -14,14 +14,6 @@ body {
   flex-direction: column;
 }
 
-/* ----- HEADER ----- Changed to be flexible with window types */
-.header {
-  position: absolute; /* Change from fixed to absolute */
-  top: 30px;
-  left: 30px; /* Positioning in the top-left corner */
-  z-index: 10;
-}
-
 .logo img {
   height: 250px;
   width: auto;
@@ -31,6 +23,34 @@ body {
 
 .logo img:hover {
   transform: scale(1.05);
+}
+
+/* Reset header styles for account pages */
+.header-section {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+}
+
+#stickyHeader {
+    position: relative !important;
+    width: 100% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.quick-links {
+    position: relative !important;
+    right: auto !important;
+}
+
+/* Ensure content doesn't push header */
+.auth-content {
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
 }
 
 /* ----- MAIN CONTAINER ----- */
@@ -49,7 +69,7 @@ body {
 .left-section { 
   position: absolute;
   top: 50%;
-  left: 40%; /* Change from 50% to 40% */
+  left: 40%;
   transform: translate(-50%, -50%);
   width: 80%;
   max-width: 600px;
@@ -323,6 +343,18 @@ input[type="submit"]:hover, .btn:hover {
 }
 
 .forgot-password-link a:hover {
+  color: #d68936;
+  text-decoration: underline;
+}
+
+/* Styling for text link */
+.text-link {
+  color: #F2A341;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.text-link:hover {
   color: #d68936;
   text-decoration: underline;
 }
