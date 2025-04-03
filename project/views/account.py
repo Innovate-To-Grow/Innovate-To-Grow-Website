@@ -4,7 +4,7 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, flash, render_template, url_for, request, redirect, copy_current_request_context, session
+from flask import Blueprint, flash, render_template, url_for, request, redirect, copy_current_request_context, session, jsonify
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
@@ -345,3 +345,37 @@ def get_user_id():
         if user:
             return {"id": str(user["_id"])}
     return {"error": "User not found"}, 404
+
+@account_blueprint.route("/collection/<collection_id>/delete", methods=["GET"])
+@block_guest
+def delete_collection(collection_id):
+    """Delete a collection from user's profile"""
+    try:
+        # Get current user's email from session
+        email = session.get("email")
+        if not email:
+            flash("Not authenticated", "danger")
+            return redirect(url_for("account.login"))
+
+        # Get user details
+        user = get_email(email)
+        if not user:
+            flash("User not found", "danger")
+            return redirect(url_for("account.login"))
+
+        # Delete the collection
+        result = curated_lists.delete_one({
+            "_id": collection_id,
+            "userId": str(user["_id"])
+        })
+
+        if result.deleted_count:
+            flash("Collection deleted successfully", "success")
+        else:
+            flash("Collection not found", "danger")
+
+        return redirect(url_for("account.account"))
+
+    except Exception as e:
+        flash(f"Error deleting collection: {str(e)}", "danger")
+        return redirect(url_for("account.account"))

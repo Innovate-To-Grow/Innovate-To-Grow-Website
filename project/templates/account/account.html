@@ -26,6 +26,7 @@
                         <th>Last Edited</th>
                         <th>Actions</th>
                         <th>URL</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,6 +48,13 @@
                                class="btn-action btn-copy-url" 
                                data-url="{{ url_for('home.view_collection', collection_id=collection._id, _external=True) }}">
                                Copy URL
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('account.delete_collection', collection_id=collection._id) }}" 
+                               class="btn-action btn-delete"
+                               onclick="return confirm('Are you sure you want to delete this collection? This action cannot be undone.');">
+                                Delete
                             </a>
                         </td>
                     </tr>

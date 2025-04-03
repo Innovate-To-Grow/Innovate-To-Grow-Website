@@ -117,6 +117,30 @@ body, html {
     color: #ffffff;
 }
 
+/* Delete button styling */
+.btn-delete {
+    background-color: #dc3545;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+.btn-delete.deleting {
+    background-color: #6c757d;
+    pointer-events: none;
+    opacity: 0.65;
+}
+
+.btn-delete:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 /* Text link styling */
 .text-link {
     color: #007bff;
@@ -134,4 +158,41 @@ body, html {
     border-radius: 4px;
     font-size: 0.9rem;
     background-color: #f8f9fa;
+}
+
+/* Confirmation modal styling */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+}
+
+.error-message {
+    color: #dc3545;
+    margin-top: 10px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.success-message {
+    color: #28a745;
+    margin-top: 10px;
+    font-size: 14px;
+    text-align: center;
 }
