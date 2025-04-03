@@ -271,7 +271,7 @@ $(document).ready(function () {
             },
             buttons: [
                 {
-                    text: 'Export PDF',
+                    text: 'PDF',
                     className: 'export-pdf',
                     action: function(e, dt, node, config) {
                         try {
@@ -285,7 +285,7 @@ $(document).ready(function () {
                         }
                     }
                 },
-                'csv', 'excel', 'pdf',
+                'csv', 'excel',
                 {
                     text: 'Share Collection',
                     className: 'sharing',
