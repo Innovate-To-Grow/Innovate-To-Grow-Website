@@ -270,6 +270,21 @@ $(document).ready(function () {
                 emptyTable: "No entries have been saved yet."
             },
             buttons: [
+                {
+                    text: 'Export PDF',
+                    className: 'export-pdf',
+                    action: function(e, dt, node, config) {
+                        try {
+                            console.log('Export PDF button clicked');
+                            const collection = createCollectionFromMergedTable();
+                            console.log('Collection data created:', collection);
+                            exportToPDF(collection);
+                        } catch (error) {
+                            console.error('Error in Export PDF button handler:', error);
+                            alert('Error preparing PDF export. Check console for details.');
+                        }
+                    }
+                },
                 'csv', 'excel', 'pdf',
                 {
                     text: 'Share Collection',
@@ -1373,3 +1388,155 @@ $(document).on('click', 'a', function (e) {
         }
     }
 });
+
+function exportToPDF(collection) {
+    console.log('Starting PDF export...');
+    console.log('Collection data:', collection);
+
+    try {
+        // Check if pdfMake is available
+        if (typeof pdfMake === 'undefined') {
+            throw new Error('pdfMake library not loaded');
+        }
+
+        console.log('Creating document definition...');
+        const docDefinition = {
+            pageSize: 'A4',
+            pageMargins: [40, 100, 40, 60],
+            header: {
+                margin: [40, 20, 40, 20],
+                columns: [
+                    {
+                        text: 'Innovate to Grow',
+                        alignment: 'center',
+                        fontSize: 16,
+                        bold: true,
+                        color: '#162D4F'
+                    }
+                ]
+            },
+            footer: function(currentPage, pageCount) {
+                return {
+                    margin: [40, 0, 40, 0],
+                    columns: [
+                        { text: 'Generated on: ' + new Date().toLocaleDateString(), alignment: 'left' },
+                        { text: `Page ${currentPage} of ${pageCount}`, alignment: 'right' }
+                    ]
+                };
+            },
+            content: [
+                {
+                    text: collection.title || 'Project Collection',
+                    style: 'collectionTitle',
+                    margin: [0, 0, 0, 20]
+                }
+            ],
+            styles: {
+                collectionTitle: {
+                    fontSize: 28,
+                    bold: true,
+                    color: '#162D4F',
+                    alignment: 'center'
+                },
+                projectTitle: {
+                    fontSize: 22,
+                    bold: true,
+                    color: '#162D4F',
+                    margin: [0, 15, 0, 10]
+                },
+                sectionHeader: {
+                    fontSize: 16,
+                    bold: true,
+                    color: '#162D4F',
+                    margin: [0, 15, 0, 10]
+                },
+                normalText: {
+                    fontSize: 12,
+                    margin: [0, 5, 0, 10]
+                },
+                abstractText: {
+                    fontSize: 12,
+                    margin: [0, 10, 0, 10],
+                    lineHeight: 1.4
+                }
+            }
+        };
+
+        // Add projects to content
+        collection.projects.forEach((project, index) => {
+            try {
+                docDefinition.content.push(
+                    // Project Title
+                    {
+                        text: project.project_title,
+                        style: 'projectTitle'
+                    },
+                    // Project Metadata
+                    {
+                        table: {
+                            widths: ['*', '*'],
+                            body: [
+                                [
+                                    { text: `Year-Semester: ${project.year_semester}`, style: 'normalText' },
+                                    { text: `Class: ${project.class}`, style: 'normalText' }
+                                ],
+                                [
+                                    { text: `Team: ${project.team_number} - ${project.team_name}`, colSpan: 2, style: 'normalText' }
+                                ],
+                                [
+                                    { text: `Organization: ${project.organization}`, style: 'normalText' },
+                                    { text: `Industry: ${project.industry}`, style: 'normalText' }
+                                ]
+                            ]
+                        },
+                        layout: 'lightHorizontalLines',
+                        margin: [0, 10, 0, 20]
+                    },
+                    // Abstract Section
+                    {
+                        text: 'Abstract',
+                        style: 'sectionHeader'
+                    },
+                    {
+                        text: project.abstract,
+                        style: 'abstractText'
+                    },
+                    // Student Team Section
+                    {
+                        text: 'Student Team',
+                        style: 'sectionHeader'
+                    },
+                    {
+                        text: project.student_names,
+                        style: 'normalText',
+                        margin: [0, 10, 0, 20]
+                    }
+                );
+
+                // Add page break if not the last project
+                if (index < collection.projects.length - 1) {
+                    docDefinition.content.push({ text: '', pageBreak: 'after' });
+                }
+
+            } catch (projectError) {
+                console.error(`Error processing project ${index + 1}:`, projectError);
+            }
+        });
+
+        console.log('Generating PDF...');
+        // Generate filename
+        const filename = collection.title
+            ? collection.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf'
+            : 'project_collection.pdf';
+
+        console.log('Creating PDF with filename:', filename);
+        // Create and download PDF
+        pdfMake.createPdf(docDefinition).download(filename);
+        console.log('PDF generation completed');
+
+    } catch (error) {
+        console.error('PDF Export Error:', error);
+        console.error('Error Stack:', error.stack);
+        alert(`Error generating PDF: ${error.message}. Check console for details.`);
+    }
+}
