@@ -4,7 +4,6 @@
     <div class="container">
         <div class="row-fluid">
             <div class="header-section row-fluid span12">
-                <!-- /#logo -->
                 <div id="stickyHeader">
                     <div class="site-logo">
                         <a href="https://www.ucmerced.edu" title="Home" rel="home" style="border: none;"> <img
@@ -17,57 +16,15 @@
                         <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener">Directory</a>
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
-                    </div>
-
-                    <!-- <script>
-                        function addUser() {
-                            const userName = prompt("Enter the name of the user to add:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/add-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.message))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    
-                        function getID() {
-                            const userName = prompt("Enter the name of the user to get ID:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/read-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.id))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    
-                        function updateUser() {
-                            const userName = prompt("Enter the name of the user to update:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/update-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.message))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    
-                        function deleteUser() {
-                            const userName = prompt("Enter the name of the user to delete:");
-                            if (userName) {
-                                fetch(`http://localhost:8000/user/delete-user/?name=${encodeURIComponent(userName)}`)
-                                    .then(response => response.json())
-                                    .then(data => console.log(data.message))
-                                    .catch(error => console.error('Error:', error));
-                            }
-                        }
-                    </script> -->
-              
-                        <!-- Better cache-busting with epoch timestamp -->
+                        
+                        <!-- Auth links -->
                         {% set ts = (now() if now is defined else range(1, 999999) | random) %}
                         {% if session.get('logged_in') %}
-                            <a href="{{ url_for('account.logout', r=ts) }}">Log Out</a>
+                            <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
+                            <a href="{{ url_for('account.account') }}" class="auth-link">Profile</a>
                         {% else %}
-                            <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}">Log In</a>
-                            <a href="{{ url_for('account.signup', r=ts) }}">Sign Up</a>
+                            <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
+                            <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
                         {% endif %}
                     </div>
                 </div>
@@ -75,18 +32,18 @@
         </div>
     </div>
 </div>
+
 <div id="siteName">
     <div class="container">
         <div class="row-fluid">
             <div class="name-slogan span12">
                 <div id="site-name" class="site-name"><a href="{{ url_for('home.mainpage') }}" title="Home"
-                        rel="home">Innovate
-                        To Grow</a></div>
-                <!-- <div id="site-slogan" class="site-slogan">School of Engineering</div> -->
+                        rel="home">Innovate To Grow</a></div>
             </div>
         </div>
     </div>
 </div>
+
 <div id="main-menu" class="clearfix site-main-menu">
     <div class="container">
         <div class="navbar row-fluid">
@@ -286,29 +243,4 @@
         </div>
     </div>
 </div>
-
-<!-- <script>
-    async function updateUserRole() {
-        const response = await fetch('/user/signUp', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                first_name: 'John',
-                last_name: 'Doe',
-                email: 'john.doe@example.com',
-                password: 'password123',
-                role: 'user'
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log('User updated:', data);
-        } else {
-            console.error('Failed to update user');
-        }
-    }
-</script> -->
 {% endmacro %}

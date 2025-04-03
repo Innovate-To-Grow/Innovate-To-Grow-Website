@@ -64,7 +64,6 @@
             line-height: 1.5;
             color: #555;
         }
-        /* Standardized button styles */
         .btn-action, .view-project-btn {
             display: inline-block;
             padding: 8px 15px;
@@ -85,9 +84,7 @@
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node">
-    <!-- NAVBAR -->
     {{ nav() }}
-    <!-- END NAVBAR -->
     <div id="main" class="clearfix main" role="main">
         <div class="container">
             <div id="main-content" class="row main-content">
@@ -105,7 +102,13 @@
                                     
                                     {% if collection.editorContent %}
                                     <div class="collection-editor-content">
-                                        {{ collection.editorContent|safe }}
+                                        {% if collection.editorContent.startswith('<') %}
+                                            {{ collection.editorContent|safe }}
+                                        {% else %}
+                                            {% for paragraph in collection.editorContent.split('\n\nx') %}
+                                                <p>{{ paragraph|replace('\n', '<br>')|safe }}</p>
+                                            {% endfor %}
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                     
@@ -134,7 +137,7 @@
                                         {{ project.abstract|truncate(200) }}
                                     </div>
                                     
-                                    <a href="{{ url_for('home.project_detail', project_uuid=project.uuid, collection=collection._id) }}" class="view-project-btn">
+                                    <a href="{{ url_for('home.project_detail', project_uuid=project.uuid) }}" class="view-project-btn">
                                         View Project
                                     </a>
                                 </div>

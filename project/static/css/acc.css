@@ -1,0 +1,137 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+}
+
+/* Centered container */
+.collection-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 30vh;
+    max-width: 1000px;
+    width: 100%;
+    text-align: center;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.collection-container p {
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.profile-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #162D4F;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Table styling */
+.collection-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.collection-table th,
+.collection-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.collection-table th {
+    background-color: #162D4F;
+    color: #ffffff;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.collection-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.collection-table td {
+    font-size: 14px;
+    color: #555;
+}
+
+/* Common button styling - applied to all buttons */
+.btn-action {
+    display: inline-block;
+    min-width: 80px;
+    padding: 8px 12px;
+    text-align: center;
+    background-color: #007bff;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.btn-action:hover {
+    background-color: #0063cd;
+    color: #ffffff;
+}
+
+/* View button styling */
+.btn-view {
+    background-color: #007bff;
+}
+
+.btn-view:hover {
+    background-color: #0063cd;
+}
+
+/* Edit button styling */
+.btn-edit {
+    background-color: #007bff;
+    color: #ffffff;
+}
+
+.btn-edit:hover {
+    background-color: #0063cd;
+}
+
+/* Copy URL button styling */
+.btn-copy-url {
+    background-color: #007bff;
+    color: #ffffff;
+}
+
+.btn-copy-url:hover {
+    background-color: #0063cd;
+    color: #ffffff;
+}
+
+/* Text link styling */
+.text-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.text-link:hover {
+    text-decoration: underline;
+}
+
+.share-url {
+    width: 200px;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background-color: #f8f9fa;
+}

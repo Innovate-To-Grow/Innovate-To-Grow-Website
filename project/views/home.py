@@ -6,24 +6,16 @@ import re
 import json
 import os
 from datetime import datetime
+from pymongo import MongoClient
+from bson import ObjectId, json_util
+from routes import CONNECTION_STRING
 
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
 
-# Define the path to the database file
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'databaseMergeTable.json')
-
-def read_database():
-    """Read the database file"""
-    try:
-        with open(DATABASE_PATH, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []  # Return empty list if file doesn't exist or is empty
-
-def write_database(data):
-    """Write to the database file"""
-    with open(DATABASE_PATH, 'w') as f:
-        json.dump(data, f, indent=2)
+# Initialize MongoDB client
+client = MongoClient(CONNECTION_STRING)
+dbname = client['I2GUserDatabase']
+curated_lists = dbname["curated_lists"]  # Use consistent collection reference
 
 @home_blueprint.route("/", methods=["GET", "POST"])
 @cache.cached()
@@ -251,192 +243,110 @@ def sponsors_2015():
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
-    wks = gspread.service_account().open("Shareable Merge Tables").worksheet("Sheet1")
     if request.method == "POST":
         data = request.get_json()
         uuid_string = str(uuid.uuid4())
         
-        def update_sheet():
-            team_name = ""
-            team_number = ""
-
-            for d in data[:-1]:
-                team_name += d["Team Name"] + " ; "
-                team_number += d["Team#"] + " ; "
-
-            if len(data) > 0:
-                team_name += data[-1]["Team Name"] 
-                team_number += data[-1]["Team#"] 
-            
-            wks.append_row(values=[uuid_string, team_name, team_number])
-
-        Thread(target=update_sheet).start()
+        # Create a MongoDB collection entry
+        collection_data = {
+            "_id": uuid_string,
+            "title": f"Collection {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "projects": data,
+            "createdAt": datetime.now().isoformat(),
+            "lastUpdated": datetime.now().isoformat()
+        }
         
-        return jsonify({"uuid_string": uuid_string})
-       
-    team_names = []
-    team_numbers = []
-
-    if uuid_string is not None:
-        cell = wks.find(uuid_string, in_column=1)
-        if cell is not None:
-            query = wks.row_values(cell.row)
-            if len(query) == 3:
-                team_names = query[1].split(" ; ")
-                team_numbers = query[2].split(" ; ")
+        # Insert directly into MongoDB
+        curated_lists.insert_one(collection_data)
+        
+        return jsonify({"uuid_string": uuid_string, "collection_id": uuid_string})
     
-    return render_template("past-projects.html", team_names=team_names, team_numbers=team_numbers)
-
-@home_blueprint.route('/api/save-project', methods=['POST'])
-def save_project():
-    """API endpoint to save project data to JSON database"""
-    project_data = request.json
-    
-    # Read current database
-    database = read_database()
-    
-    # Check if project already exists
-    project_exists = False
-    for i, project in enumerate(database):
-        if project.get('uuid') == project_data.get('uuid'):
-            database[i] = project_data
-            project_exists = True
-            break
-    
-    # If project doesn't exist, add it
-    if not project_exists:
-        database.append(project_data)
-    
-    # Save updated database
-    write_database(database)
-    
-    return jsonify({"success": True})
+    # For GET requests, pass only the collection ID to the template
+    return render_template("past-projects.html", collection_id=uuid_string)
 
 @home_blueprint.route('/project/<project_uuid>')
 def project_detail(project_uuid):
-    """Render the project detail page for a specific project"""
-    # Read the database
-    database = read_database()
-    
-    # Find the project in any collection
-    project_data = None
-    for collection in database:
-        for project in collection.get('projects', []):
-            if project.get('uuid') == project_uuid:
-                project_data = project
-                collection_data = collection
-                break
-        if project_data:
-            break
-    
-    # If project found, render the template
-    if project_data:
-        return render_template('home/project-detail.html', 
-                               project_data=project_data,
-                               collection=collection_data)
-    
-    # If project not found, redirect to projects list or show error
-    return redirect(url_for('home.past_projects'))
-
-@home_blueprint.route('/past-projects/<project_uuid>')
-def legacy_project_detail(project_uuid):
-    """Redirect from old URL format to new one"""
-    return redirect(url_for('home.project_detail', project_uuid=project_uuid))
-
-@home_blueprint.route('/api/save-collection', methods=['POST'])
-def save_collection():
-    """API endpoint to save or update a collection"""
-    collection_data = request.json
-    
-    # Read current database
-    database = read_database()
-    
-    # Check if collection already exists
-    collection_exists = False
-    for i, collection in enumerate(database):
-        if collection.get('_id') == collection_data.get('_id'):
-            database[i] = collection_data  # Update the existing collection
-            collection_exists = True
-            break
-    
-    # If collection doesn't exist, add it
-    if not collection_exists:
-        database.append(collection_data)
-    
-    # Save updated database
-    write_database(database)
-    
-    return jsonify({"success": True, "collection_id": collection_data.get('_id')})
-
-@home_blueprint.route('/api/get-latest-collection', methods=['GET'])
-def get_latest_collection():
-    """API endpoint to get the most recently created collection"""
-    database = read_database()
-    
-    if not database:
-        return jsonify({"success": False, "message": "No collections found"})
-    
-    # Sort collections by createdAt timestamp (newest first)
-    sorted_collections = sorted(database, key=lambda x: x.get('createdAt', ''), reverse=True)
-    
-    return jsonify({"success": True, "collection": sorted_collections[0] if sorted_collections else None})
-
-@home_blueprint.route('/api/add-project-to-collection/<collection_id>', methods=['POST'])
-def add_project_to_collection(collection_id):
-    """API endpoint to add a project to a collection"""
-    project_data = request.json
-    
-    # Read database
-    database = read_database()
-    
-    # Find the collection
-    collection_found = False
-    for i, collection in enumerate(database):
-        if collection.get('_id') == collection_id:
-            # Check if project already exists in collection
-            project_exists = False
-            for j, project in enumerate(collection.get('projects', [])):
-                if project.get('uuid') == project_data.get('uuid'):
-                    # Update existing project
-                    collection['projects'][j] = project_data
-                    project_exists = True
+    """View a specific project"""
+    try:
+        cursor = curated_lists.find({"projects.uuid": project_uuid})
+        
+        project_data = None
+        collection = None
+        
+        for doc in cursor:
+            for project in doc.get('projects', []):
+                if project.get('uuid') == project_uuid:
+                    project_data = project
+                    collection = doc
                     break
-            
-            # Add project if it doesn't exist
-            if not project_exists:
-                if 'projects' not in collection:
-                    collection['projects'] = []
-                collection['projects'].append(project_data)
-            
-            # Update lastUpdated timestamp
-            collection['lastUpdated'] = datetime.now().isoformat()
-            
-            database[i] = collection
-            collection_found = True
-            break
-    
-    if not collection_found:
-        return jsonify({"success": False, "message": "Collection not found"})
-    
-    # Save updated database
-    write_database(database)
-    
-    return jsonify({"success": True})
+            if project_data:
+                break
+        
+        if not project_data:
+            return redirect(url_for('home.past_projects'))
+        
+        if collection:
+            collection['_id'] = str(collection['_id'])
+        
+        return render_template('home/project-detail.html', 
+                             project_data=project_data,
+                             collection=collection)
+    except Exception as e:
+        print(f"Error in project_detail: {str(e)}")
+        return redirect(url_for('home.past_projects'))
 
 @home_blueprint.route('/collection/<collection_id>')
 def view_collection(collection_id):
-    """Render the collection view page"""
-    # Read database
-    database = read_database()
-    
-    # Find the collection
-    collection = None
-    for coll in database:
-        if coll.get('_id') == collection_id:
-            collection = coll
-            break
+    """View a specific collection"""
+    if ObjectId.is_valid(collection_id):
+        collection = curated_lists.find_one({"_id": ObjectId(collection_id)})
+    else:
+        collection = curated_lists.find_one({"_id": collection_id})
     
     if not collection:
-        return redirect(url_for('home.past_projects'))  # Changed from home_blueprint.past_projects
+        return redirect(url_for('home.past_projects'))
     
+    collection['_id'] = str(collection['_id'])
     return render_template('home/collection.html', collection=collection)
+
+
+@home_blueprint.route('/api/save-collection', methods=['POST'])
+def save_collection():
+    """API endpoint to save or update a collection in MongoDB"""
+    collection_data = request.json
+    
+    # Check if the collection already exists
+    if "_id" in collection_data:
+        if ObjectId.is_valid(collection_data["_id"]):
+            collection_data["_id"] = ObjectId(collection_data["_id"])
+            
+        # Update existing collection
+        result = curated_lists.update_one(
+            {"_id": collection_data["_id"]},
+            {"$set": collection_data},
+            upsert=True
+        )
+        if result.upserted_id or result.modified_count:
+            return jsonify({"success": True, "collection_id": str(collection_data["_id"])})
+        else:
+            return jsonify({"success": False, "message": "Failed to save collection."}), 500
+    else:
+        # Insert new collection
+        collection_data["_id"] = str(uuid.uuid4())
+        result = curated_lists.insert_one(collection_data)
+        return jsonify({"success": True, "collection_id": str(result.inserted_id)})
+
+@home_blueprint.route('/api/get-collection/<collection_id>', methods=['GET'])
+def get_collection(collection_id):
+    """Get a collection by ID from MongoDB"""
+    if ObjectId.is_valid(collection_id):
+        collection = curated_lists.find_one({"_id": ObjectId(collection_id)})
+    else:
+        collection = curated_lists.find_one({"_id": collection_id})
+    
+    if not collection:
+        return jsonify({"success": False, "message": "Collection not found"}), 404
+    
+    collection['_id'] = str(collection['_id'])
+    return json_util.dumps(collection)
+

@@ -82,16 +82,6 @@
                     <div id="content-wrapper" class="content-wrapper">
                         <div id="content-head" class="row-fluid content-head">
                             <div class="project-container">
-                                {% if collection %}
-                                <div class="collection-banner">
-                                    <p>
-                                        This project is part of the collection: 
-                                        <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" class="collection-link">
-                                            {{ collection.title }}
-                                        </a>
-                                    </p>
-                                </div>
-                                {% endif %}
                                 <h1 class="title" id="page-title">{{ project_data.project_title }}</h1>
                                 
                                 <div class="project-meta">
@@ -129,9 +119,6 @@
                                     <button id="copy-url-btn" class="btn-action">
                                         <i class="fa fa-copy"></i> Copy URL
                                     </button>
-                                    <button id="export-pdf-btn" class="btn-action">
-                                        <i class="fa fa-file-pdf-o"></i> Export as PDF
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -149,11 +136,6 @@
             setTimeout(() => {
                 this.innerHTML = '<i class="fa fa-copy"></i> Copy URL';
             }, 2000);
-        });
-        
-        document.getElementById('export-pdf-btn').addEventListener('click', function() {
-            alert('PDF export functionality will be implemented here.');
-            // You would implement PDF export using a library like jsPDF
         });
     </script>
 </body>
