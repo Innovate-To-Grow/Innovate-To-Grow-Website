@@ -11,6 +11,7 @@ let checker = 0; // Checking if we are at a fresh merge button press
 let confirmation_tracker = 0; // To Check and make sure that js alert does not be called more than once when you hit merge button
 var datas = [];  // where all the data from the Google sheet is stored
 var share_datas = [];
+let userId = null;
 var uuid;
 var unique_url = false;
 var currentCollectionId = null; // Tracks the current collection ID
@@ -162,7 +163,6 @@ function createCollectionFromMergedTable() {
     }
 
     // Fetch user ID from the server
-    let userId = null;
     $.ajax({
         type: "GET",
         url: "/get_user_id",
@@ -755,9 +755,20 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 $('#example' + i).DataTable().destroy();
                 $('#example' + i).remove();
             }
+
+            // Update the database with the new state of the merged table
+            const collection = createCollectionFromMergedTable();
+
+            saveCollectionToDatabase(collection)
+                .done(function () {
+                    console.log("Database updated successfully after merging rows.");
+                })
+                .fail(function (jqXHR, textStatus, errorThrown) {
+                    console.error("Error updating database after merging rows:", textStatus, errorThrown);
+                });
         } else {
             if (confirmation_tracker == 0) { // if its a fresh start, makes sure to ask for confirmation only once per press
-                if (confirm("Are you sure you want to merge all of your search tables? \n(this can not be undone!)")) {
+                if (confirm("Do you want to merge all of your search tables?")) {
                     alert_confirmation = true;
                     $(".mergeTable").show();
 
@@ -823,8 +834,17 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                         $('#example' + i).DataTable().destroy();
                         $('#example' + i).remove();
                     }
-                }
-                else {
+                    // Update the database with the new state of the merged table
+                    const collection = createCollectionFromMergedTable();
+
+                    saveCollectionToDatabase(collection)
+                        .done(function () {
+                            console.log("Database updated successfully after merging rows.");
+                        })
+                        .fail(function (jqXHR, textStatus, errorThrown) {
+                            console.error("Error updating database after merging rows:", textStatus, errorThrown);
+                        });
+                } else {
                     alert_confirmation = false;
                 }
             }
@@ -905,7 +925,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         }
 
         $('#example').on('click', 'td.editor-delete', function () {
-            // delete row in merged_table and search_table and update merged_array when trash can is clicked
+            // Delete row in merged_table and update deleted array
             var data = merged_table.row($(this).parents('tr')).data();
             if (deleted.length > 0) {
                 deleted[data[10]].add({
@@ -920,65 +940,25 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     "Student Names": data[9]
                 });
             }
-
+        
             merged_table.row($(this).parents('tr')).remove().draw();
-
-            // If all rows are removed, reset the collection
+        
+            // If all rows are removed, reset the collection metadata
             if (merged_table.rows().count() === 0) {
                 resetCurrentCollection();
             }
-        });
-
-        // Only perform MongoDB save if we have rows in the merged table
-        if (merged_table.rows().count() > 0) {
-            // Create a collection from the merged table
+        
+            // Update the database with the new state of the merged table
             const collection = createCollectionFromMergedTable();
-
-            // Show saving indicator
-            $('.merge').text('Saving to MongoDB...').prop('disabled', true);
-
-            // Save the collection to MongoDB
+        
             saveCollectionToDatabase(collection)
-                .done(function(data) {
-                    console.log("MongoDB response:", data);
-                    
-                    // Store the collection ID returned from the server
-                    if (data && data.collection_id) {
-                        currentCollectionId = data.collection_id;
-                        console.log("Saved collection ID:", currentCollectionId);
-                    } else {
-                        console.warn("No collection_id returned from server");
-                    }
-                    
-                    // Store the creation timestamp for future updates
-                    if (!currentCreatedAt && collection.createdAt) {
-                        currentCreatedAt = collection.createdAt;
-                    }
-                    
-                    // Store the editor content for future reference
-                    if (collection.editorContent !== undefined) {
-                        currentEditorContent = collection.editorContent;
-                    }
-                    
-                    // Show success message
-                    $('.merge').text('Saved to MongoDB!');
-                    
-                    // Reset button text and update share button text
-                    setTimeout(function() {
-                        $('.merge').text('Save/Merge Results').prop('disabled', false);
-                        $('.sharing').text('Share Collection');
-                    }, 2000);
+                .done(function () {
+                    console.log("Database updated successfully after row deletion.");
                 })
-                .fail(function(jqXHR, textStatus, errorThrown) {
-                    console.error("Error saving to MongoDB:", textStatus, errorThrown);
-                    $('.merge').text('Error - Try Again').prop('disabled', false);
-                    
-                    // Reset button text after error
-                    setTimeout(function() {
-                        $('.merge').text('Save/Merge Results');
-                    }, 3000);
+                .fail(function (jqXHR, textStatus, errorThrown) {
+                    console.error("Error updating database after row deletion:", textStatus, errorThrown);
                 });
-        }
+        });
     });
 
     // Initialize or update the title input
@@ -1399,6 +1379,15 @@ function addToEditor() {
         }, 500);
     }
 }
+
+$(document).on('click', 'a', function (e) {
+    if (!userId) {
+        const confirmLeave = confirm("If you leave this page without being logged in, you won’t be able to access or edit your curation later.");
+        if (!confirmLeave) {
+            e.preventDefault(); // Prevent navigation
+        }
+    }
+});
 
 function exportToPDF(collection) {
     console.log('Starting PDF export...');
