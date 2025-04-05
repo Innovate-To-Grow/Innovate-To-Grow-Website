@@ -358,6 +358,9 @@ def save_collection():
             result = curated_lists.insert_one(collection_data)
             redirect_url = url_for('home.past_projects') + f"?collection={collection_data['_id']}"
             return jsonify({"success": True, "redirect": redirect_url})
+    
+    else:
+        return jsonify({"success": False, "message": "Failed to save collection."}), 400
 
 
 @home_blueprint.route('/api/get-collection/<collection_id>', methods=['GET'])

@@ -461,7 +461,8 @@ $(document).ready(function () {
             }
         }).fail(function (error) {
             console.error("Failed to load collection, fallback to empty table:", error);
-            initializeMergedTable([]);
+            // If collection ID in ?collection= does not exist in database redirect user to base past projects page
+            window.location.href = "/past-projects"
         });
     } else {
         console.log("No collection ID in URL, initializing a new collection.");
@@ -1163,7 +1164,7 @@ function addTitleEventHandlers() {
         // Create the collection object
         const collection = createCollectionFromMergedTable();
         collection.title = currentCollectionTitle; // Update the title
-        
+
         // Save to database
         saveCollectionToDatabase(collection)
             .done(function () {
@@ -1338,9 +1339,8 @@ function toggleProjectEditor() {
                 })
                 .fail(function (jqXHR, textStatus, errorThrown) {
                     console.error("Error fetching collection data:", textStatus, errorThrown);
-                    openProjectEditor(); // Open the editor even if the fetch fails
-                    $topButton.text('Add to Editor');
-                    $bottomButton.text('Close Editor').prop('disabled', false);
+                    // If collection ID in ?collection= does not exist in database redirect user to base past projects page
+                    window.location.href = "/past-projects"
                 });
         } else {
             // No collection ID, open an empty editor
