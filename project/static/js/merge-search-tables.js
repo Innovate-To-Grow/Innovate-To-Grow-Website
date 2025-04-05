@@ -185,21 +185,34 @@ function createCollectionFromMergedTable() {
         title: title,
         projects: projects,
         editorContent: editorContent,
-        createdAt: currentCollectionId ? (currentCreatedAt || now) : now,
-        lastUpdated: now,
+        createdAt: now,
     };
 }
 
-// Save collection to MongoDB via the Flask API endpoint
 function saveCollectionToDatabase(collection) {
     return $.ajax({
         type: "POST", 
         url: "/api/save-collection",
         data: JSON.stringify(collection),
         contentType: "application/json; charset=utf-8",
-        dataType: "json"
+        dataType: "json",
+        success: function(response) {
+            if (response.success) {
+                if (response.redirect) {
+                    window.location.href = response.redirect;  // Redirecting user
+                } else {
+                    console.log("Collection updated successfully!");
+                }
+            } else {
+                console.error("Failed to save collection:", response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("Error occurred while saving:", error);
+        }
     });
 }
+
 
 // Function to display all fields with edit functionality in the Merged Table
 function mergeformat(d) {
@@ -271,21 +284,35 @@ $(document).ready(function () {
             },
             buttons: [
                 {
-                    text: 'PDF',
-                    className: 'export-pdf',
-                    action: function(e, dt, node, config) {
-                        try {
-                            console.log('Export PDF button clicked');
-                            const collection = createCollectionFromMergedTable();
-                            console.log('Collection data created:', collection);
-                            exportToPDF(collection);
-                        } catch (error) {
-                            console.error('Error in Export PDF button handler:', error);
-                            alert('Error preparing PDF export. Check console for details.');
+                    extend: 'collection',
+                    text: 'Export',
+                    className: 'export-dropdown',
+                    buttons: [
+                        {
+                            extend: 'csv',
+                            text: 'CSV'
+                        },
+                        {
+                            extend: 'excel',
+                            text: 'XLSX'
+                        },
+                        {
+                            text: 'PDF',
+                            className: 'export-pdf',
+                            action: function(e, dt, node, config) {
+                                try {
+                                    console.log('Export PDF button clicked');
+                                    const collection = createCollectionFromMergedTable();
+                                    console.log('Collection data created:', collection);
+                                    exportToPDF(collection);
+                                } catch (error) {
+                                    console.error('Error in Export PDF button handler:', error);
+                                    alert('Error preparing PDF export. Check console for details.');
+                                }
+                            }
                         }
-                    }
+                    ]
                 },
-                'csv', 'excel',
                 {
                     text: 'Share Collection',
                     className: 'sharing',
@@ -1136,8 +1163,7 @@ function addTitleEventHandlers() {
         // Create the collection object
         const collection = createCollectionFromMergedTable();
         collection.title = currentCollectionTitle; // Update the title
-        collection._id = currentCollectionId; // Ensure we use the existing collection ID
-
+        
         // Save to database
         saveCollectionToDatabase(collection)
             .done(function () {
@@ -1380,14 +1406,6 @@ function addToEditor() {
     }
 }
 
-$(document).on('click', 'a', function (e) {
-    if (!userId) {
-        const confirmLeave = confirm("If you leave this page without being logged in, you won’t be able to access or edit your curation later.");
-        if (!confirmLeave) {
-            e.preventDefault(); // Prevent navigation
-        }
-    }
-});
 
 function exportToPDF(collection) {
     console.log('Starting PDF export...');

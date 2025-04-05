@@ -980,6 +980,10 @@ tr.selected td {
 }
 
 .dt-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: start;
+    gap: 10px;
     margin-left: 325px !important;
 }
 
@@ -999,6 +1003,13 @@ tr.selected td {
     height: 120px;
     animation: spin 2s linear infinite;
 }
+
+.export-dropdown {
+    min-width: 120px;
+    position: relative;
+    z-index: 1000;
+}
+
 
 @keyframes spin {
     0% {
