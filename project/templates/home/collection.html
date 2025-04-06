@@ -95,9 +95,9 @@
                                 <div class="collection-header">
                                     <h1 class="title" id="page-title">{{ collection.title }}</h1>
                                     <div class="collection-meta">
-                                        <span>Created: {{ collection.createdAt.split('T')[0] }}</span>
+                                        <span>Created: {{ collection.history[0].createdAt.split('T')[0] if collection.history else collection.createdAt.split('T')[0] }}</span>
                                         <span> | </span>
-                                        <span>Last Updated: {{ collection.lastUpdated.split('T')[0] }}</span>
+                                        <span>Last Updated: {{ collection.createdAt.split('T')[0] }}</span>
                                     </div>
                                     
                                     {% if collection.editorContent %}
@@ -119,29 +119,50 @@
                                 
                                 <h2>Projects ({{ collection.projects|length }})</h2>
                                 
-                                {% for project in collection.projects %}
-                                <div class="project-card">
-                                    <div class="project-title">{{ project.project_title }}</div>
-                                    <div class="project-meta">
-                                        <div class="project-meta-item">{{ project.year_semester }}</div>
-                                        <div class="project-meta-item">{{ project.class }}</div>
-                                        <div class="project-meta-item">Team {{ project.team_number }}: {{ project.team_name }}</div>
+                                <form action="" method="get">
+                                    <input type="hidden" name="collection" value="{{ request.args.get('collection') }}">
+                                    <label for="per_page">Projects per page:</label>
+                                    <select name="per_page" onchange="this.form.submit()">
+                                        <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+                                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                                    </select>
+                                </form>
+                                
+                                <!-- Loop through paginated projects -->
+                                {% for project in paginated_projects %}
+                                    <div class="project-card">
+                                        <div class="project-title">{{ project.project_title }}</div>
+                                        <div class="project-meta">
+                                            <div class="project-meta-item">{{ project.year_semester }}</div>
+                                            <div class="project-meta-item">{{ project.class }}</div>
+                                            <div class="project-meta-item">Team {{ project.team_number }}: {{ project.team_name }}</div>
+                                        </div>
+                                        <div>
+                                            <strong>Organization:</strong> {{ project.organization }}<br>
+                                            <strong>Industry:</strong> {{ project.industry }}
+                                        </div>
+                                        <div class="project-abstract">
+                                            {{ project.abstract|truncate(200) }}
+                                        </div>
+                                        <a href="{{ url_for('home.project_detail', project_uuid=project.uuid) }}" class="view-project-btn">
+                                            View Project
+                                        </a>
                                     </div>
-                                    <div>
-                                        <strong>Organization:</strong> {{ project.organization }}
-                                        <br>
-                                        <strong>Industry:</strong> {{ project.industry }}
-                                    </div>
-                                    
-                                    <div class="project-abstract">
-                                        {{ project.abstract|truncate(200) }}
-                                    </div>
-                                    
-                                    <a href="{{ url_for('home.project_detail', project_uuid=project.uuid) }}" class="view-project-btn">
-                                        View Project
-                                    </a>
-                                </div>
                                 {% endfor %}
+                                
+                                <!-- Pagination Controls -->
+                                <div class="pagination">
+                                    {% if page > 1 %}
+                                        <a href="{{ url_for('home.view_collection', collection_id=collection['_id'], page=page-1, per_page=per_page) }}">Previous</a>
+                                    {% endif %}
+                                    {% if (page * per_page) < total_projects %}
+                                        <a href="{{ url_for('home.view_collection', collection_id=collection['_id'], page=page+1, per_page=per_page) }}">Next</a>
+                                    {% endif %}
+                                </div>
+                                
                             </div>
                         </div>
                     </div>

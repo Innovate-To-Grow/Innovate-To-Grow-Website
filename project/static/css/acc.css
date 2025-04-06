@@ -196,3 +196,9 @@ body, html {
     font-size: 14px;
     text-align: center;
 }
+
+.pagination a {
+    color: blue;
+    text-decoration: underline;
+    font-weight: bold;
+}

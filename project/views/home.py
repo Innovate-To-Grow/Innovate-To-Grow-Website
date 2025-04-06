@@ -17,6 +17,10 @@ client = MongoClient(CONNECTION_STRING)
 dbname = client['I2GUserDatabase']
 curated_lists = dbname["curated_lists"]  # Use consistent collection reference
 
+def fetch_collection(id):
+    collection = curated_lists.find_one({"_id": id})
+    return collection #Returns None if not found
+
 @home_blueprint.route("/", methods=["GET", "POST"])
 # @cache.cached()
 def mainpage():
@@ -241,7 +245,6 @@ def sponsors_2015():
     return render_template("2015-sponsors.html")
 
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
-@home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
     if request.method == "POST":
         data = request.get_json()
@@ -307,7 +310,14 @@ def view_collection(collection_id):
         return redirect(url_for('home.past_projects'))
     
     collection['_id'] = str(collection['_id'])
-    return render_template('home/collection.html', collection=collection)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+    total_projects = len(collection["projects"])
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    paginated_projects = collection["projects"][start_index:end_index]
+    
+    return render_template('collection.html', collection=collection, paginated_projects=paginated_projects, page=page, per_page=per_page, total_projects=total_projects)
 
 
 @home_blueprint.route('/api/save-collection', methods=['POST'])
@@ -316,25 +326,42 @@ def save_collection():
     collection_data = request.json
     
     # Check if the collection already exists
-    if "_id" in collection_data:
-        if ObjectId.is_valid(collection_data["_id"]):
-            collection_data["_id"] = ObjectId(collection_data["_id"])
-            
-        # Update existing collection
-        result = curated_lists.update_one(
-            {"_id": collection_data["_id"]},
-            {"$set": collection_data},
-            upsert=True
-        )
-        if result.upserted_id or result.modified_count:
-            return jsonify({"success": True, "collection_id": str(collection_data["_id"])})
+    if "_id" in collection_data.keys():
+        collection = fetch_collection(collection_data["_id"])
+        if collection:         
+            #Update history
+            history = collection.get("history", [])
+            history_element = {
+                "createdAt": collection["createdAt"],
+                "title": collection["title"],
+                "projects": collection["projects"],
+                "editorContent": collection["editorContent"]
+            }
+            history.append(history_element)
+            # Update existing collection
+            result = curated_lists.update_one(
+                {"_id": collection_data["_id"]},
+                {"$set": {"history": history,
+                          "createdAt": collection_data["createdAt"],
+                          "title": collection_data["title"],
+                          "projects": collection_data["projects"],
+                          "editorContent": collection_data["editorContent"]
+                }}
+            )
+            if result.modified_count:
+                return jsonify({"success": True, "collection_id": str(collection_data["_id"])})
+            else:
+                return jsonify({"success": False, "message": "Failed to save collection."}), 500
         else:
-            return jsonify({"success": False, "message": "Failed to save collection."}), 500
+            # Insert new collection
+            collection_data["history"] = []
+            result = curated_lists.insert_one(collection_data)
+            redirect_url = url_for('home.past_projects') + f"?collection={collection_data['_id']}"
+            return jsonify({"success": True, "redirect": redirect_url})
+    
     else:
-        # Insert new collection
-        collection_data["_id"] = str(uuid.uuid4())
-        result = curated_lists.insert_one(collection_data)
-        return jsonify({"success": True, "collection_id": str(result.inserted_id)})
+        return jsonify({"success": False, "message": "Failed to save collection."}), 400
+
 
 @home_blueprint.route('/api/get-collection/<collection_id>', methods=['GET'])
 def get_collection(collection_id):
