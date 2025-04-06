@@ -144,7 +144,7 @@ function createCollectionFromMergedTable() {
     });
 
     // Use existing collection ID or generate a new one
-    const collectionId = currentCollectionId || generateCollectionId();
+    const collectionId = currentCollectionId;
 
     // Get title from input field or use default
     const title = $('#curation-title').length
@@ -284,6 +284,7 @@ $(document).ready(function () {
             },
             buttons: [
                 {
+
                     extend: 'collection',
                     text: 'Export',
                     className: 'export-dropdown',
@@ -317,11 +318,31 @@ $(document).ready(function () {
                     text: 'Share Collection',
                     className: 'sharing',
                     action: function () {
-                        if (currentCollectionId) {
-                            window.open(`/collection/${currentCollectionId}`, "_blank");
+                        if (!currentCollectionId) {
+                            // Generate a new collection ID if it doesn't exist
+                            currentCollectionId = generateCollectionId();
+                
+                            // Save the collection to the database
+                            const collection = createCollectionFromMergedTable();
+                            saveCollectionToDatabase(collection)
+                                .done(function () {
+                                    console.log("Collection saved successfully:", currentCollectionId);
+                                    window.open(`/collection/${currentCollectionId}`, "_blank");
+                                })
+                                .fail(function (jqXHR, textStatus, errorThrown) {
+                                    console.error("Error saving collection:", textStatus, errorThrown);
+                                    alert("An error occurred while saving the collection. Please try again.");
+                                });
                         } else {
-                            alert("Please merge and save results first before sharing.");
+                            // Open the collection URL if it already exists
+                            window.open(`/collection/${currentCollectionId}`, "_blank");
                         }
+
+                        // if (currentCollectionId) {
+                        //     window.open(`/collection/${currentCollectionId}`, "_blank");
+                        // } else {
+                        //     alert("Please merge and save results first before sharing.");
+                        // }
                     }
                 },
                 {
@@ -473,37 +494,37 @@ $(document).ready(function () {
     }
 });
 
-
 // Merge Table specific functions END
-// Function to maintain checkbox selection state across table pages
-function updateDataTableSelectAllCtrl(table) {
-    var $table = table.table().node();
-    var $chkbox_all = $('tbody input[type="checkbox"]', $table);
-    var $chkbox_checked = $('tbody input[type="checkbox"]:checked', $table);
-    var chkbox_select_all = $('thead input[name="select_all"]', $table).get(0);
 
-    // If none of the checkboxes are checked
-    if ($chkbox_checked.length === 0) {
-        chkbox_select_all.checked = false;
-        if ('indeterminate' in chkbox_select_all) {
-            chkbox_select_all.indeterminate = false;
-        }
-
-    // If all of the checkboxes are checked
-    } else if ($chkbox_checked.length === $chkbox_all.length) {
-        chkbox_select_all.checked = true;
-        if ('indeterminate' in chkbox_select_all) {
-            chkbox_select_all.indeterminate = false;
-        }
-
-    // If some of the checkboxes are checked
-    } else {
-        chkbox_select_all.checked = true;
-        if ('indeterminate' in chkbox_select_all) {
-            chkbox_select_all.indeterminate = true;
-        }
+//Function to check if user is not logged, sents warning about data lost. 
+$(document).on('click', 'a', function (e) {
+    // Fetch userId if not already set
+    if (!userId) {
+        $.ajax({
+            type: "GET",
+            url: "/get_user_id", // Endpoint to fetch the user ID
+            async: false, // Synchronous request to ensure userId is fetched before proceeding
+            success: function (response) {
+                if (response && response.id) {
+                    userId = response.id; // Set the userId
+                } else {
+                    console.error("User ID not found in response:", response);
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error("Error fetching user ID:", textStatus, errorThrown);
+            }
+        });
+    }
+if (!userId) {
+    const confirmLeave = confirm("If you leave this page without being logged in, you won’t be able to access or edit your curation later.");
+    if (!confirmLeave) {
+        e.preventDefault(); // Prevent navigation
     }
 }
+});
+
+
 // Handler for adding new search tables
 $(document).on('click', '.addtable', function () { // adds a new search table and appends it to the .tableManage html
     search_counter++
@@ -757,236 +778,122 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     // Handler for merging selected items into the merged table
     $('#merge').click(function () {
-        var first_merge = false;
-
-        if (unique_url == true) {
-            $(".mergeTable").show();
-            merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
-            for (let i = 0; i < merged_array.length; i++) {
-                var row = merged_table.row($(this).closest('tr'));
-                merged_table.row.add([
-                    merged_array[i]["Year-Semester"],
-                    merged_array[i]["Class"],
-                    merged_array[i]["Team#"],
-                    merged_array[i]["Team Name"],
-                    merged_array[i]["Project Title"],
-                    merged_array[i]["Organization"],
-                    merged_array[i]["Industry"],
-                    merged_array[i]["null"],
-                    merged_array[i]["Abstract"],
-                    merged_array[i]["Student Names"],
-                    generateProjectUuid(merged_array[i]["Year-Semester"], merged_array[i]["Class"], merged_array[i]["Team#"], merged_array[i]["Project Title"])
-                ]).draw();
-            }
-            merged_table.$('tr').toggleClass('keep');
-            for (let i = search_counter; i > 0; i--) {
-                $('#example' + i).DataTable().destroy();
-                $('#example' + i).remove();
-            }
-
-            // Update the database with the new state of the merged table
-            const collection = createCollectionFromMergedTable();
-
-            saveCollectionToDatabase(collection)
-                .done(function () {
-                    console.log("Database updated successfully after merging rows.");
-                })
-                .fail(function (jqXHR, textStatus, errorThrown) {
-                    console.error("Error updating database after merging rows:", textStatus, errorThrown);
-                });
-        } else {
-            if (confirmation_tracker == 0) { // if its a fresh start, makes sure to ask for confirmation only once per press
-                if (confirm("Do you want to merge all of your search tables?")) {
-                    alert_confirmation = true;
-                    $(".mergeTable").show();
-
-                    if (deleted.length == 0) {
-                        deleted[0] = new Set();
-                        first_merge = true;
-                    }
-
-                    function count_search_tables() {
-                        var count = $('[id^="example"]').filter(function () {
-                            return /example\d_wrapper$/.test(this.id);
-                        }).length;
-                        return count;
-                    }
-
-                    if (first_merge == true) {
-                        expected_merges = count_search_tables() - 1;
-                    }
-                    else {
-                        expected_merges = deleted.length + count_search_tables() - 1;
-                    }
-
-                    merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
-
-                    merged_array = merged_array.filter(function (element) {
-                        var is_deleted = false;
-                        deleted[0].forEach(function (del_element) {
-                            if (element["Year-Semester"] == del_element["Year-Semester"] &&
-                                element["Class"] == del_element["Class"] &&
-                                element["Team#"] == del_element["Team#"] &&
-                                element["Team Name"] == del_element["Team Name"] &&
-                                element["Project Title"] == del_element["Project Title"] &&
-                                element["Organization"] == del_element["Organization"] &&
-                                element["Industry"] == del_element["Industry"] &&
-                                element["Abstract"] == del_element["Abstract"] &&
-                                element["Student Names"] == del_element["Student Names"]) {
-                                is_deleted = true;
-                            }
-                        });
-                        return !is_deleted;
-                    });
-
-                    $('#example').DataTable().clear().draw(); // delete old table
-                    for (let i = 0; i < merged_array.length; i++) { // set 2D array as necessary
-                        var row = merged_table.row($(this).closest('tr'));
-                        merged_table.row.add([
-                            merged_array[i]["Year-Semester"],
-                            merged_array[i]["Class"],
-                            merged_array[i]["Team#"],
-                            merged_array[i]["Team Name"],
-                            merged_array[i]["Project Title"],
-                            merged_array[i]["Organization"],
-                            merged_array[i]["Industry"],
-                            merged_array[i]["null"],
-                            merged_array[i]["Abstract"],
-                            merged_array[i]["Student Names"],
-                            deleted_counter,
-                            generateProjectUuid(merged_array[i]["Year-Semester"], merged_array[i]["Class"], merged_array[i]["Team#"], merged_array[i]["Project Title"])
-                        ]).draw();
-                    }
-                    merged_table.$('tr').toggleClass('keep');
-                    for (let i = search_counter; i > 0; i--) { // delete search tables after merge
-                        $('#example' + i).DataTable().destroy();
-                        $('#example' + i).remove();
-                    }
-                    // Update the database with the new state of the merged table
-                    const collection = createCollectionFromMergedTable();
-
-                    saveCollectionToDatabase(collection)
-                        .done(function () {
-                            console.log("Database updated successfully after merging rows.");
-                        })
-                        .fail(function (jqXHR, textStatus, errorThrown) {
-                            console.error("Error updating database after merging rows:", textStatus, errorThrown);
-                        });
-                } else {
-                    alert_confirmation = false;
-                }
-            }
-            else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
-                $(".mergeTable").show();
-
-                deleted_counter++;
-                if (deleted.length == deleted_counter) {
-                    deleted[deleted_counter] = new Set();
-                }
-
-                merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
-
-                merged_array = merged_array.filter(function (element) {
-                    var is_deleted = false;
-                    deleted[deleted_counter].forEach(function (del_element) {
-                        if (element["Year-Semester"] == del_element["Year-Semester"] &&
-                            element["Class"] == del_element["Class"] &&
-                            element["Team#"] == del_element["Team#"] &&
-                            element["Team Name"] == del_element["Team Name"] &&
-                            element["Project Title"] == del_element["Project Title"] &&
-                            element["Organization"] == del_element["Organization"] &&
-                            element["Industry"] == del_element["Industry"] &&
-                            element["Abstract"] == del_element["Abstract"] &&
-                            element["Student Names"] == del_element["Student Names"]) {
-                            is_deleted = true;
-                        }
-                    });
-                    return !is_deleted;
-                });
-
-                for (let i = 0; i < merged_array.length; i++) {
-                    var row = merged_table.row($(this).closest('tr'));
-                    var data = merged_table.rows().data().toArray();
-                    var found = data.find(function (element) {
-                        return element[0] == merged_array[i]["Year-Semester"] &&
-                            element[1] == merged_array[i]["Class"] &&
-                            element[2] == merged_array[i]["Team#"] &&
-                            element[3] == merged_array[i]["Team Name"] &&
-                            element[4] == merged_array[i]["Project Title"] &&
-                            element[5] == merged_array[i]["Organization"] &&
-                            element[6] == merged_array[i]["Industry"] &&
-                            element[7] == merged_array[i]["null"] &&
-                            element[8] == merged_array[i]["Abstract"] &&
-                            element[9] == merged_array[i]["Student Names"];
-                    });
-
-                    if (found) {
-                        continue;
-                    }
-
-                    merged_table.row.add([
-                        merged_array[i]["Year-Semester"],
-                        merged_array[i]["Class"],
-                        merged_array[i]["Team#"],
-                        merged_array[i]["Team Name"],
-                        merged_array[i]["Project Title"],
-                        merged_array[i]["Organization"],
-                        merged_array[i]["Industry"],
-                        merged_array[i]["null"],
-                        merged_array[i]["Abstract"],
-                        merged_array[i]["Student Names"],
-                        deleted_counter,
-                        generateProjectUuid(merged_array[i]["Year-Semester"], merged_array[i]["Class"], merged_array[i]["Team#"], merged_array[i]["Project Title"])
-                    ]).draw();
-                }
-                merged_table.$('tr').toggleClass('keep');
-                for (let i = search_counter; i > 0; i--) {
-                    $('#example' + i).DataTable().destroy();
-                    $('#example' + i).remove();
-                }
-            }
-            confirmation_tracker++;
-
-            if (deleted_counter == expected_merges) {
-                deleted_counter = 0;
-            }
+        // Assign a new collection ID if it doesn't already exist
+        if (!currentCollectionId) {
+            currentCollectionId = generateCollectionId();
+            console.log("Assigned new collection ID:", currentCollectionId);
         }
 
-        $('#example').on('click', 'td.editor-delete', function () {
-            // Delete row in merged_table and update deleted array
-            var data = merged_table.row($(this).parents('tr')).data();
-            if (deleted.length > 0) {
-                deleted[data[10]].add({
-                    "Year-Semester": data[0],
-                    "Class": data[1],
-                    "Team#": data[2],
-                    "Team Name": data[3],
-                    "Project Title": data[4],
-                    "Organization": data[5],
-                    "Industry": data[6],
-                    "Abstract": data[8],
-                    "Student Names": data[9]
+        // Get the existing rows in the merged table
+        const existingData = merged_table.rows().data().toArray();
+
+        // Get the new rows to be merged from the search table
+        const newData = search_table.rows({ filter: 'applied' }).data().toArray();
+
+        if (existingData.length === 0) {
+            // If the merged table is empty, append all rows
+            newData.forEach(row => {
+                merged_table.row.add([
+                    row["Year-Semester"],
+                    row["Class"],
+                    row["Team#"],
+                    row["Team Name"],
+                    row["Project Title"],
+                    row["Organization"],
+                    row["Industry"],
+                    row["null"],
+                    row["Abstract"],
+                    row["Student Names"],
+                    generateProjectUuid(row["Year-Semester"], row["Class"], row["Team#"], row["Project Title"])
+                ]).draw();
+            });
+        } else {
+            // If the merged table has content, append only non-duplicate rows
+            newData.forEach(row => {
+                const isDuplicate = existingData.some(existingRow => {
+                    return (
+                        existingRow[0] === row["Year-Semester"] &&
+                        existingRow[1] === row["Class"] &&
+                        existingRow[2] === row["Team#"] &&
+                        existingRow[3] === row["Team Name"] &&
+                        existingRow[4] === row["Project Title"] &&
+                        existingRow[5] === row["Organization"] &&
+                        existingRow[6] === row["Industry"] &&
+                        existingRow[8] === row["Abstract"] &&
+                        existingRow[9] === row["Student Names"]
+                    );
                 });
-            }
-        
-            merged_table.row($(this).parents('tr')).remove().draw();
-        
-            // If all rows are removed, reset the collection metadata
-            if (merged_table.rows().count() === 0) {
-                resetCurrentCollection();
-            }
-        
-            // Update the database with the new state of the merged table
-            const collection = createCollectionFromMergedTable();
-        
-            saveCollectionToDatabase(collection)
-                .done(function () {
-                    console.log("Database updated successfully after row deletion.");
-                })
-                .fail(function (jqXHR, textStatus, errorThrown) {
-                    console.error("Error updating database after row deletion:", textStatus, errorThrown);
-                });
-        });
+
+                if (!isDuplicate) {
+                    merged_table.row.add([
+                        row["Year-Semester"],
+                        row["Class"],
+                        row["Team#"],
+                        row["Team Name"],
+                        row["Project Title"],
+                        row["Organization"],
+                        row["Industry"],
+                        row["null"],
+                        row["Abstract"],
+                        row["Student Names"],
+                        generateProjectUuid(row["Year-Semester"], row["Class"], row["Team#"], row["Project Title"])
+                    ]).draw();
+                }
+            });
+        }
+
+        // Clear and remove all search tables after merging
+        for (let i = search_counter; i > 0; i--) {
+            $('#example' + i).DataTable().destroy(); // Destroy the DataTable instance
+            $('#example' + i).remove(); // Remove the table element from the DOM
+        }
+
+        // Update the database with the new state of the merged table
+        const collection = createCollectionFromMergedTable();
+
+        saveCollectionToDatabase(collection)
+            .done(function () {
+                console.log("Database updated successfully after merging rows.");
+            })
+            .fail(function (jqXHR, textStatus, errorThrown) {
+                console.error("Error updating database after merging rows:", textStatus, errorThrown);
+            });
+    });
+
+    $('#example').on('click', 'td.editor-delete', function () {
+        // Delete row in merged_table and update deleted array
+        var data = merged_table.row($(this).parents('tr')).data();
+        if (deleted.length > 0) {
+            deleted[data[10]].add({
+                "Year-Semester": data[0],
+                "Class": data[1],
+                "Team#": data[2],
+                "Team Name": data[3],
+                "Project Title": data[4],
+                "Organization": data[5],
+                "Industry": data[6],
+                "Abstract": data[8],
+                "Student Names": data[9]
+            });
+        }
+    
+        merged_table.row($(this).parents('tr')).remove().draw();
+    
+        // If all rows are removed, reset the collection metadata
+        if (merged_table.rows().count() === 0) {
+            resetCurrentCollection();
+        }
+    
+        // Update the database with the new state of the merged table
+        const collection = createCollectionFromMergedTable();
+    
+        saveCollectionToDatabase(collection)
+            .done(function () {
+                console.log("Database updated successfully after row deletion.");
+            })
+            .fail(function (jqXHR, textStatus, errorThrown) {
+                console.error("Error updating database after row deletion:", textStatus, errorThrown);
+            });
     });
 
     // Initialize or update the title input
@@ -1019,6 +926,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
     checker++;
 });
+
 // All functions under the search table scope (.addtable) END
 
 // Disable merge button if there are no search tables
@@ -1072,6 +980,44 @@ $(document).ready(function () {
         })
     });
 });
+
+//
+$(document).ready(function () {
+    if (!currentCollectionId) {
+        currentCollectionId = generateCollectionId();
+        console.log("Initialized new collection ID on page load:", currentCollectionId);
+    }
+});
+
+// Function to maintain checkbox selection state across table pages
+function updateDataTableSelectAllCtrl(table) {
+    var $table = table.table().node();
+    var $chkbox_all = $('tbody input[type="checkbox"]', $table);
+    var $chkbox_checked = $('tbody input[type="checkbox"]:checked', $table);
+    var chkbox_select_all = $('thead input[name="select_all"]', $table).get(0);
+
+    // If none of the checkboxes are checked
+    if ($chkbox_checked.length === 0) {
+        chkbox_select_all.checked = false;
+        if ('indeterminate' in chkbox_select_all) {
+            chkbox_select_all.indeterminate = false;
+        }
+
+    // If all of the checkboxes are checked
+    } else if ($chkbox_checked.length === $chkbox_all.length) {
+        chkbox_select_all.checked = true;
+        if ('indeterminate' in chkbox_select_all) {
+            chkbox_select_all.indeterminate = false;
+        }
+
+    // If some of the checkboxes are checked
+    } else {
+        chkbox_select_all.checked = true;
+        if ('indeterminate' in chkbox_select_all) {
+            chkbox_select_all.indeterminate = true;
+        }
+    }
+}
 
 // Add this function
 function resetCurrentCollection() {
@@ -1178,8 +1124,6 @@ function addTitleEventHandlers() {
         $titleElement.css('border', '1px solid transparent'); // Remove the border
     }
 }
-
-// Add this function after the initializeCurationTitle function
 
 // Function to handle opening the project editor with consistent button styling
 function openProjectEditor() {
@@ -1352,6 +1296,7 @@ function toggleProjectEditor() {
     }
 }
 
+//Function add all merged info into editor
 function addToEditor() {
     // Check if editor is open, if not open it first
     if ($('#project-editor-container').length === 0) {
@@ -1405,7 +1350,6 @@ function addToEditor() {
         }, 500);
     }
 }
-
 
 function exportToPDF(collection) {
     console.log('Starting PDF export...');
