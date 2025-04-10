@@ -315,6 +315,22 @@ $(document).ready(function () {
                     ]
                 },
                 {
+                    text: 'Export Excel',
+                    className: 'export-excel',
+                    action: function(e, dt, node, config) {
+                        try {
+                            console.log('Export Excel button clicked');
+                            const collection = createCollectionFromMergedTable();
+                            console.log('Collection data created:', collection);
+                            exportToExcel(collection);
+                        } catch (error) {
+                            console.error('Error in Export Excel button handler:', error);
+                            alert('Error preparing Excel export. Check console for details.');
+                        }
+                    }
+                },
+                'csv', 'pdf',
+                {
                     text: 'Share Collection',
                     className: 'sharing',
                     action: function () {
@@ -1500,5 +1516,89 @@ function exportToPDF(collection) {
         console.error('PDF Export Error:', error);
         console.error('Error Stack:', error.stack);
         alert(`Error generating PDF: ${error.message}. Check console for details.`);
+    }
+}
+
+function exportToExcel(collection) {
+    console.log('Starting Excel export...');
+    
+    try {
+        // Create workbook data structure
+        const workbookData = [
+            // Collection Title & Metadata
+            ['Collection: ' + collection.title],
+            ['Created: ' + new Date(collection.createdAt).toLocaleDateString()],
+            ['Last Updated: ' + new Date(collection.lastUpdated).toLocaleDateString()],
+            [''],  // Empty row for spacing
+            
+            // Editor content if exists
+            ...(collection.editorContent ? [
+                ['Notes:'],
+                [collection.editorContent],
+                ['']  // Empty row for spacing
+            ] : []),
+            
+            // Projects header
+            ['Projects (' + collection.projects.length + ')'],
+            [''],  // Empty row for spacing
+            
+            // Headers for project details
+            ['Year-Semester', 'Class', 'Team #', 'Team Name', 'Project Title', 'Organization', 'Industry', 'Abstract', 'Student Team']
+        ];
+
+        // Add each project's data
+        collection.projects.forEach((project, index) => {
+            workbookData.push([
+                project.year_semester,
+                project.class,
+                project.team_number,
+                project.team_name,
+                project.project_title,
+                project.organization,
+                project.industry,
+                project.abstract,
+                project.student_names
+            ]);
+            
+            // Add spacing between projects
+            if (index < collection.projects.length - 1) {
+                workbookData.push(['']);  // Empty row between projects
+            }
+        });
+
+        // Generate filename
+        const filename = collection.title
+            ? collection.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.xlsx'
+            : 'project_collection.xlsx';
+
+        // Create a worksheet
+        const ws = XLSX.utils.aoa_to_sheet(workbookData);
+
+        // Set column widths
+        const colWidths = [
+            { wch: 15 },  // Year-Semester
+            { wch: 10 },  // Class
+            { wch: 8 },   // Team #
+            { wch: 15 },  // Team Name
+            { wch: 30 },  // Project Title
+            { wch: 20 },  // Organization
+            { wch: 15 },  // Industry
+            { wch: 50 },  // Abstract
+            { wch: 30 }   // Student Team
+        ];
+        ws['!cols'] = colWidths;
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Projects');
+
+        // Save file
+        XLSX.writeFile(wb, filename);
+        console.log('Excel export completed');
+
+    } catch (error) {
+        console.error('Excel Export Error:', error);
+        console.error('Error Stack:', error.stack);
+        alert(`Error generating Excel file: ${error.message}. Check console for details.`);
     }
 }
