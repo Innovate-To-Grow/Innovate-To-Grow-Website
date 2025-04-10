@@ -379,3 +379,96 @@ def delete_collection(collection_id):
     except Exception as e:
         flash(f"Error deleting collection: {str(e)}", "danger")
         return redirect(url_for("account.account"))
+    
+@account_blueprint.route("/admin")
+@account_blueprint.route("/admin/<int:page>")
+@block_guest
+def admin(page=1):
+    """Admin page to view curated lists with pagination"""
+    try:
+        # Get the current user's email from session
+        email = session.get("email")
+        if not email:
+            print("Debug - No email in session")
+            return redirect(url_for("account.login"))
+
+        # Get user details
+        user = get_email(email)
+        if not user:
+            print("Debug - User not found in database")
+            flash("User not found", "danger")
+            return redirect(url_for("account.login"))
+
+        # Pagination settings
+        per_page = 10
+        skip = (page - 1) * per_page
+
+        # Query collections with pagination
+        total_collections = curated_lists.count_documents({})
+        collections_cursor = curated_lists.find().skip(skip).limit(per_page)
+        
+        # Convert cursor to list and process collections
+        collections_list = []
+        for collection in collections_cursor:
+            try:
+                # Convert ObjectId to string
+                collection['_id'] = str(collection['_id'])
+                collections_list.append(collection)
+                
+            except Exception as e:
+                print(f"Debug - Error processing collection: {str(e)}")
+                continue
+
+        # Calculate pagination info
+        total_pages = (total_collections + per_page - 1) // per_page
+        has_next = page < total_pages
+        has_prev = page > 1
+
+        # Validate page number
+        if page > total_pages and total_pages > 0:
+            # If requested page is beyond total pages, redirect to last valid page
+            return redirect(url_for('account.admin', page=total_pages))
+        elif page < 1:
+            # If requested page is less than 1, redirect to first page
+            return redirect(url_for('account.admin', page=1))
+        
+        print(f"Debug - Total collections: {total_collections}")
+        print(f"Debug - Current page: {page} of {total_pages}")
+        
+        return render_template(
+            "account/admin.html",
+            email=email,
+            collections=collections_list,
+            page=page,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev
+        )
+
+    except Exception as e:
+        print(f"Debug - Error in admin route: {str(e)}")
+        flash("Error retrieving collections", "danger")
+        return redirect(url_for("account.account"))
+
+@account_blueprint.route("/admin/purge", methods=["POST"])
+@block_guest
+def purge_collections():
+    """Purge all collections from the database"""
+    try:
+        # Get current user's email from session
+        email = session.get("email")
+        if not email:
+            flash("Not authenticated", "danger")
+            return redirect(url_for("account.login"))
+
+        # Delete all collections
+        result = curated_lists.delete_many({})
+        
+        print(f"Debug - Purged {result.deleted_count} collections")
+        flash(f"Successfully purged {result.deleted_count} collections", "success")
+        
+    except Exception as e:
+        print(f"Debug - Error purging collections: {str(e)}")
+        flash("Error purging collections", "danger")
+    
+    return redirect(url_for("account.admin"))
