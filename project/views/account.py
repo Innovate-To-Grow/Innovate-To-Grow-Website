@@ -398,12 +398,17 @@ def admin(page=1):
             print("Debug - No email in session")
             return redirect(url_for("account.login"))
 
-        # Get user details
+        # Get user details and verify admin access
         user = get_email(email)
         if not user:
             print("Debug - User not found in database")
             flash("User not found", "danger")
             return redirect(url_for("account.login"))
+            
+        # Check for admin access
+        if not user.get('access') == 'admin':
+            flash("Unauthorized access", "danger")
+            return redirect(url_for("account.account"))
 
         # Pagination settings
         per_page = 10
@@ -503,3 +508,13 @@ def get_user_id():
         if user:
             return {"id": str(user["_id"])}
     return {"error": "User not found"}, 404
+
+@account_blueprint.route("/check_access", methods=["GET"])
+def check_access():
+    """Get current user's access level"""
+    email = session.get("email")
+    if email:
+        user = get_email(email)
+        if user and "access" in user:
+            return {"access": user["access"]}
+    return {"access": None}
