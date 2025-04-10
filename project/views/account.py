@@ -387,9 +387,8 @@ def delete_collection(collection_id):
         return redirect(url_for("account.account"))
     
 @account_blueprint.route("/admin")
-@account_blueprint.route("/admin/<int:page>")
 @block_guest
-def admin(page=1):
+def admin():
     """Admin page to view curated lists with pagination"""
     try:
         # Get the current user's email from session
@@ -398,20 +397,21 @@ def admin(page=1):
             print("Debug - No email in session")
             return redirect(url_for("account.login"))
 
-        # Get user details and verify admin access
+        # Get user details
         user = get_email(email)
         if not user:
             print("Debug - User not found in database")
             flash("User not found", "danger")
             return redirect(url_for("account.login"))
-            
+
         # Check for admin access
         if not user.get('access') == 'admin':
             flash("Unauthorized access", "danger")
             return redirect(url_for("account.account"))
 
         # Pagination settings
-        per_page = 10
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
         skip = (page - 1) * per_page
 
         # Query collections with pagination
@@ -420,10 +420,14 @@ def admin(page=1):
         
         # Convert cursor to list and process collections
         collections_list = []
+        user_database = get_db_connection()
         for collection in collections_cursor:
             try:
                 # Convert ObjectId to string
                 collection['_id'] = str(collection['_id'])
+                # Display collection owner's email in admin table
+                user_email = user_database.find_one({'_id': collection['userId']})['email']
+                collection['userEmail'] = user_email
                 collections_list.append(collection)
                 
             except Exception as e:
@@ -453,7 +457,8 @@ def admin(page=1):
             page=page,
             total_pages=total_pages,
             has_next=has_next,
-            has_prev=has_prev
+            has_prev=has_prev,
+            per_page=per_page
         )
 
     except Exception as e:

@@ -51,20 +51,35 @@
             <table class="collection-table">
                 <thead>
                     <tr>
+                        <th>User</th>
                         <th>Collection Name</th>
                         <th>Last Edited</th>
-                        <th>Projects</th>
                         <th>Actions</th>
                         <th>URL</th>
                         <th></th>
                     </tr>
                 </thead>
+
+                <!-- Dropdown for selecting items per page -->
+                <form action="{{ url_for('account.admin') }}" method="get">
+                    <label for="per_page">Collections per page:</label>
+                    <select name="per_page" id="per_page" onchange="this.form.submit()">
+                        <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                    </select>
+                    <input type="hidden" name="page" value="1"> <!-- Reset to first page -->
+                </form>
+
+
                 <tbody>
                     {% for collection in collections %}
                     <tr>
+                        <td>{{ collection.userEmail }}</td>
                         <td>{{ collection.title }}</td>
-                        <td>{{ collection.lastUpdated.split('T')[0] }}</td>
-                        <td>{{ collection.projects|length }}</td>
+                        <td>{{ collection.createdAt.split('T')[0] }}</td>
                         <td>
                             <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
                                class="btn-action btn-view">View</a>
@@ -96,7 +111,7 @@
             <!-- Pagination Controls -->
             <div class="pagination">
                 {% if has_prev %}
-                    <a href="{{ url_for('account.admin', page=page-1) }}" class="page-btn">Previous</a>
+                    <a href="{{ url_for('account.admin', page=page-1, per_page=per_page) }}" class="page-btn">Previous</a>
                 {% else %}
                     <button class="page-btn" disabled>Previous</button>
                 {% endif %}
@@ -104,7 +119,7 @@
                 <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
 
                 {% if has_next %}
-                    <a href="{{ url_for('account.admin', page=page+1) }}" class="page-btn">Next</a>
+                    <a href="{{ url_for('account.admin', page=page+1, per_page=per_page) }}" class="page-btn">Next</a>
                 {% else %}
                     <button class="page-btn" disabled>Next</button>
                 {% endif %}
