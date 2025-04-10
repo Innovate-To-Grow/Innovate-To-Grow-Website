@@ -1,7 +1,3 @@
-#save token in db to prevent:
-#-tokens remain valid after use (replay)
-#-old tokens remain valid after new ones are issued
-
 from itsdangerous import URLSafeTimedSerializer
 from project import app
 

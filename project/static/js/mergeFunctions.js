@@ -132,6 +132,7 @@ function createCollectionFromMergedTable() {
     });
     
     // Use the existing collection ID if available, otherwise generate a new one
+    const userId = window.userId;
     const collectionId = window.currentCollectionId || generateCollectionId();
     
     // Get the title from the input field if available, otherwise use default
@@ -155,14 +156,14 @@ function createCollectionFromMergedTable() {
                           $('#project-editor').val() : 
                           ""; 
     
+
     return {
         _id: collectionId,
+        userId: userId,
         title: title,
         projects: projects,
         editorContent: editorContent,
-        // Always provide a createdAt timestamp - either keep existing or use current time
-        createdAt: window.currentCollectionId ? (window.currentCreatedAt || now) : now,
-        lastUpdated: now
+        createdAt: now,
     };
 }
 

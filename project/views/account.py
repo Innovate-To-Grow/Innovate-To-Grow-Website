@@ -1,5 +1,3 @@
-#replace database.json dummy database with mongodb
-
 import asyncio, time
 from datetime import datetime
 from threading import Thread
@@ -30,7 +28,7 @@ account_blueprint = Blueprint("account",
                                template_folder="../templates/account")
 
 def update_user_token(email: str, token: str | None):
-    """Update user's reset token in MongoDB"""
+    #Update user's reset token in MongoDB
     collection = get_db_connection()
     result = collection.update_one(
         {"email": email},
@@ -48,7 +46,7 @@ def get_email(email):
     user = collection.find_one({"email": email})
     return user  # Returns None if not found
 
-#blocks logged in user from accessing certain resources by redirecting to temporary account page
+#blocks logged in user from accessing certain resources by redirecting to profile page
 def block_user(func):
     @wraps(func)  
     def wrapped_function(*args, **kwargs):
@@ -130,12 +128,27 @@ def login():
                     # Use 302 status code for proper redirect without intermediate page
                     return redirect(redirect_url, code=302)
                 
-                token = generate_token(email)
-                url = url_for("account.verify_email", token=token, _external=True)
-                email_template = render_template("account_verification_email.html", url=url)
-                send_email(email, "Verify Your Email", email_template)
-                flash("Unverified account. A new verification has been sent to "+email, "danger")
-                return render_template("login.html", form=form), 403
+                # Check rate limiting (10 seconds between requests)
+                if not rate_limit("verify_email", 10):
+                    flash("Please wait a moment before requesting another verification email", "danger")
+                    return render_template("login.html", form=form), 429
+
+                user = get_email(email)
+                if user:
+                    token = generate_token(email)
+                    if update_user_token(email, token):
+                        url = url_for("account.verify_email", token=token, _external=True)
+                        email_template = render_template("account_verification_email.html", url=url)
+                        send_email(email, "Verify Your Email", email_template)
+                        flash("Unverified account. A new verification has been sent to "+email, "danger")
+                        return render_template("login.html", form=form), 403
+                    else:
+                        flash("Error processing request", "danger")
+                        return render_template("login.html", form=form), 500
+
+                flash("No account found with this email address", "danger")
+                return render_template("login.html", form=form), 404
+
 
             flash("Incorrect password", "danger")
             return render_template("login.html", form=form), 401
@@ -174,14 +187,23 @@ def signup():
             flash("Error creating account", "danger")
             return render_template("signup.html", form=form), 500
 
-        #send verification email after signup
-        token = generate_token(email)
-        url = url_for("account.verify_email", token=token, _external=True)
-        email_template = render_template("account_verification_email.html", url=url)
-        send_email(email, "Verify Your Email", email_template)
-        flash("Sign up successful. A verification email has been sent to "+email, "success")
-
-        return redirect(url_for("account.login"))
+        # Verify email exists
+        user = get_email(email)
+        if user:
+            token = generate_token(email)
+            if update_user_token(email, token):
+                #send verification email after signup
+                url = url_for("account.verify_email", token=token, _external=True)
+                email_template = render_template("account_verification_email.html", url=url)
+                send_email(email, "Verify Your Email", email_template)
+                flash("Sign up successful. A verification email has been sent to "+email, "success")
+                return redirect(url_for("account.login"))
+            else:
+                flash("Error processing request", "danger")
+                return render_template("signup.html", form=form), 500
+        
+        flash("No account found with this email address", "danger")
+        return render_template("signup.html", form=form), 404
 
     else:
         return render_template("signup.html", form=form), 400
@@ -277,14 +299,19 @@ def verify_email(token):
     if not email:
         return render_template("404.html"), 404
 
+    user = get_email(email)
+    if not user or user.get('token') != token:
+        flash("Invalid or expired verification link", "danger")
+        return render_template("404.html"), 404
+
     # Update verified status in MongoDB
-    client = MongoClient(CONNECTION_STRING)
-    dbname = client['I2GUserDatabase']
-    collection_name = dbname["users"]
-    
+    collection_name = get_db_connection()
+
     result = collection_name.update_one(
         {"email": email},
-        {"$set": {"verified": True}}
+        {"$set": {"verified": True},
+         "$unset": {"token": ""}
+        }
     )
     
     if result.modified_count:
@@ -311,40 +338,19 @@ def account():
 
     user_id = str(user["_id"])
 
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
     # Query the database for collections associated with this user ID
-    collections = curated_lists.find({"userId": user_id})
+    total_collections = curated_lists.count_documents({"userId": user_id})
+    collections = curated_lists.find({"userId": user_id}).skip((page - 1) * per_page).limit(per_page)
 
     # Convert ObjectId to string for rendering in the template
     collections = [
         {**collection, "_id": str(collection["_id"])} for collection in collections
     ]
 
-    return render_template("account.html", email=email, collections=collections)
+    return render_template("account.html", email=email, collections=collections, page=page, per_page=per_page, total_collections=total_collections)
 
-
-@account_blueprint.route("/logout")
-def logout():  # Remove @block_guest decorator to avoid circular dependency
-    # Store the referrer before clearing the session
-    next_page = request.referrer or url_for('home.mainpage')
-    
-    # Don't redirect to login/account pages
-    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page):
-        next_page = url_for('home.mainpage')
-    
-    # Clear the session
-    session.clear()
-    flash("You have been logged out", "success")
-    return redirect(next_page)
-
-@account_blueprint.route("/get_user_id", methods=["GET"])
-@block_guest
-def get_user_id():
-    email = session.get("email")
-    if email:
-        user = get_email(email)
-        if user:
-            return {"id": str(user["_id"])}
-    return {"error": "User not found"}, 404
 
 @account_blueprint.route("/collection/<collection_id>/delete", methods=["GET"])
 @block_guest
@@ -472,3 +478,28 @@ def purge_collections():
         flash("Error purging collections", "danger")
     
     return redirect(url_for("account.admin"))
+
+
+@account_blueprint.route("/logout")
+def logout():  # Remove @block_guest decorator to avoid circular dependency
+    # Store the referrer before clearing the session
+    next_page = request.referrer or url_for('home.mainpage')
+    
+    # Don't redirect to login/account pages
+    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page):
+        next_page = url_for('home.mainpage')
+    
+    # Clear the session
+    session.clear()
+    flash("You have been logged out", "success")
+    return redirect(next_page)
+
+@account_blueprint.route("/get_user_id", methods=["GET"])
+@block_guest
+def get_user_id():
+    email = session.get("email")
+    if email:
+        user = get_email(email)
+        if user:
+            return {"id": str(user["_id"])}
+    return {"error": "User not found"}, 404
