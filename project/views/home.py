@@ -1,7 +1,7 @@
 import gspread, uuid
 from threading import Thread
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
-from project import cache
+from project import cache, app
 import re
 import json
 import os
@@ -10,7 +10,12 @@ from pymongo import MongoClient
 from bson import ObjectId, json_util
 from routes import CONNECTION_STRING
 
+from project.views.account import get_email  # Add this import at the top
+
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
+
+# Add this before the routes
+app.jinja_env.globals['get_email'] = get_email
 
 # Initialize MongoDB client
 client = MongoClient(CONNECTION_STRING)
@@ -25,9 +30,6 @@ def fetch_collection(id):
 # @cache.cached()
 def mainpage():
     return render_template("home-pre-event.html")
-    # return render_template("home-during-event.html")
-    # return render_template("home-post-event.html")
-    # return render_template("home-during-semester.html")
 
 @home_blueprint.route("/about", methods=["GET", "POST"])
 # @cache.cached()

@@ -20,9 +20,12 @@
                         <!-- Auth links -->
                         {% set ts = (now() if now is defined else range(1, 999999) | random) %}
                         {% if session.get('logged_in') %}
+                            {% set user = get_email(session.get('email')) %}
                             <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
                             <a href="{{ url_for('account.account') }}" class="auth-link">Profile</a>
-                            <a href="{{ url_for('account.admin') }}" class="auth-link">Admin</a> 
+                            {% if user and 'access' in user and user['access'] == 'admin' %}
+                                <a href="{{ url_for('account.admin') }}" class="auth-link">Admin</a>
+                            {% endif %}
                         {% else %}
                             <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
                             <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
