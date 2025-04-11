@@ -202,3 +202,59 @@ body, html {
     text-decoration: underline;
     font-weight: bold;
 }
+
+.settings-shortcut {
+    margin: 1.5rem auto;
+    text-align: center;
+}
+
+.settings-shortcut .btn-settings {
+    background-color: #28a745;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.settings-shortcut .btn-settings:hover {
+    background-color: #218838;
+    color: white;
+}
+
+.settings-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.settings-buttons .btn-settings,
+.settings-buttons .btn-delete {
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.settings-buttons .btn-settings {
+    background-color: #007bff;
+    color: white;
+}
+
+.settings-buttons .btn-settings:hover {
+    background-color: #0056b3;
+}
+
+.settings-buttons .btn-delete {
+    background-color: #dc3545;
+    color: white;
+}
+
+.settings-buttons .btn-delete:hover {
+    background-color: #c82333;
+}

@@ -1,0 +1,30 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acc.css') }}">
+    {{ styles() }}
+</head>
+<body>
+{{ nav() }}
+<div class="collection-container">
+    <h1 class="profile-title">Account Settings</h1>
+    <p><strong>User Email:</strong> {{ email }}</p>
+
+    <div class="settings-buttons">
+        <button class="btn-action btn-settings">Change Email</button>
+        <button class="btn-action btn-settings">Change Password</button>
+        <button class="btn-action btn-delete">Delete Account</button>
+    </div>
+</div>
+{{ footer() }}
+{{ scripts() }}
+</body>
+</html>

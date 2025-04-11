@@ -294,8 +294,19 @@ $(document).ready(function () {
                             text: 'CSV'
                         },
                         {
-                            extend: 'excel',
-                            text: 'XLSX'
+                            text: 'XLSX',
+                            className: 'export-excel',
+                            action: function(e, dt, node, config) {
+                                try {
+                                    console.log('Export Excel button clicked');
+                                    const collection = createCollectionFromMergedTable();
+                                    console.log('Collection data created:', collection);
+                                    exportToExcel(collection);
+                                } catch (error) {
+                                    console.error('Error in Export Excel button handler:', error);
+                                    alert('Error preparing Excel export. Check console for details.');
+                                }
+                            }
                         },
                         {
                             text: 'PDF',
@@ -314,22 +325,6 @@ $(document).ready(function () {
                         }
                     ]
                 },
-                {
-                    text: 'Export Excel',
-                    className: 'export-excel',
-                    action: function(e, dt, node, config) {
-                        try {
-                            console.log('Export Excel button clicked');
-                            const collection = createCollectionFromMergedTable();
-                            console.log('Collection data created:', collection);
-                            exportToExcel(collection);
-                        } catch (error) {
-                            console.error('Error in Export Excel button handler:', error);
-                            alert('Error preparing Excel export. Check console for details.');
-                        }
-                    }
-                },
-                'csv', 'pdf',
                 {
                     text: 'Share Collection',
                     className: 'sharing',
@@ -379,7 +374,7 @@ $(document).ready(function () {
                                     tr.css('color', 'Black').css('font-weight', 'normal');
                                 }
                             } else {
-                                if (!row.child.isShown()) {
+                                if (!row.child.isexample1_lengthn()) {
                                     row.child(mergeformat(row.data())).show();
                                     tr.addClass('shown');
                                     tr.css('color', '#162D4F').css('font-weight', 'bold');
@@ -390,6 +385,7 @@ $(document).ready(function () {
                         $button.text(isShowing ? 'Show Details' : 'Hide Details');
                     }
                 }
+
             ],
             pageLength: 5,
             lengthMenu: [[5, 10, 25, 100], [5, 10, 25, 100]],
@@ -575,15 +571,44 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         },
         "buttons": [
             {
-                "text": 'Select All Entries',
+                "text": "Select All",
+                "className": "toggle-select-btn",
                 "action": function () {
+                    const $button = $('.toggle-select-btn');
+            
+                    // Before toggling, remove the count of currently selected rows
                     select_count2 -= search_table.rows('.selected').count();
-                    search_table.rows().select();
-                    search_table.$('tr').find('input[type="checkbox"]').prop('checked', true);
-                    // $('th').find('input[type="checkbox"]').prop('checked', true);
-                    select_count2 += search_table.rows('.selected').count();
+            
+                    // Determine current selection state
+                    let selectedRows = search_table.rows('.selected').count();
+                    const isSelecting = (selectedRows === 0); // If no rows are selected, we are selecting all
+            
+                    if (isSelecting) {
+                        // Select all rows and check the checkboxes
+                        search_table.rows().select();
+                        search_table.$('th').find('input[type="checkbox"]').prop('checked', true);
+                        search_table.$('tr').find('input[type="checkbox"]').prop('checked', true);
+                    } else {
+                        // Otherwise, deselect all rows and uncheck the checkboxes
+                        search_table.rows().deselect();
+                        search_table.$('th').find('input[type="checkbox"]').prop('checked', false);
+                        search_table.$('tr').find('input[type="checkbox"]').prop('checked', false);
+                    }
+            
+                    // Recalculate the number of selected rows after action
+                    selectedRows = search_table.rows('.selected').count();
+            
+                    // Update the global counter by adding the new selection count
+                    select_count2 += selectedRows;
+            
+                    // Redraw pages to ensure the changes reflect across all table views
                     search_table.page('next').draw(false);
                     search_table.page('previous').draw(false);
+            
+                    // Update toggle button text based on whether any rows are selected
+                    $button.text(selectedRows > 0 ? "Deselect All" : "Select All");
+            
+                    // Update the states of the row action buttons based on the current count
                     if (select_count2 > 0) {
                         document.getElementById("rowdelete").disabled = false;
                         document.getElementById("rowkeep").disabled = false;
@@ -595,51 +620,39 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                         $("#rowkeep").addClass('gray');
                         $("#rowdelete").addClass('gray');
                     }
+            
+                    console.log("Updated Button text:", $button.text());
                 }
-            },
+            },            
             {
-                "text": 'Deselect',
+                "text": "Show Details",
+                "className": "details-btn",
                 "action": function () {
-                    select_count2 -= search_table.rows('.selected').count();
-                    search_table.rows().deselect();
-                    search_table.$('tr').find('input[type="checkbox"]').prop('checked', false);
-                    search_table.page('next').draw(false);
-                    search_table.page('previous').draw(false);
-                    if (select_count2 > 0) {
-                        document.getElementById("rowdelete").disabled = false;
-                        document.getElementById("rowkeep").disabled = false;
-                        $("#rowkeep").removeClass('gray');
-                        $("#rowdelete").removeClass('gray');
-                    } else {
-                        document.getElementById("rowdelete").disabled = true;
-                        document.getElementById("rowkeep").disabled = true;
-                        $("#rowkeep").addClass('gray');
-                        $("#rowdelete").addClass('gray');
-                    }
-                }
-            },
-            {
-                //search table show all details button
-                "text": "Show all details",
-                "action": function () {
+                    const $button = $('.details-btn'); // Ensure selection of the button
+                    const isShowing = $button.text() === "Hide Details"; // Check current text state
+            
                     $('#example' + search_counter).find('td.details-control').each(function () {
-                        var tr = $(this).closest('tr');
-                        var td = $(this).closest('td');
-                        //$(this).parent().find('input[type="checkbox"]').trigger('click'); this line causes show details button to select all rows
-                        var row = search_table.row(tr);
-                        if (row.child.isShown()) {
-                            row.child.hide();
-                            tr.removeClass('shown');
-                            tr.css('color', 'Black');
-                            tr.css('font-weight', 'normal');
+                        const tr = $(this).closest('tr');
+                        const row = search_table.row(tr);
+            
+                        if (isShowing) {
+                            if (row.child.isShown()) {
+                                row.child.hide();
+                                tr.removeClass('shown');
+                                tr.css('color', 'Black').css('font-weight', 'normal');
+                            }
                         } else {
-                            row.child(format(row.data())).show();
-                            tr.addClass('shown');
-                            tr.css('color', '#162D4F');
-                            tr.css('font-weight', 'bold');
+                            if (!row.child.isShown()) {
+                                row.child(format(row.data())).show();
+                                tr.addClass('shown');
+                                tr.css('color', '#162D4F').css('font-weight', 'bold');
+                            }
                         }
                     });
-                } 
+            
+                    $button.text(isShowing ? "Show Details" : "Hide Details"); // Toggle button text dynamically
+                    console.log("Button text:", $button.text()); // Log the current button text
+                }
             }
         ],
         "pageLength": 5,
@@ -736,6 +749,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
         // Update state of "Select all" control
         updateDataTableSelectAllCtrl(search_table);
+        updateSelectButtonText(search_table);
 
         // Prevent click event from propagating to parent
         e.stopPropagation();
@@ -744,6 +758,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
     // Handle click on table cells with checkboxes
     $('#example' + search_counter).on('click', 'tbody td, thead th:first-child', function (e) {
         $(this).parent().find('input[type="checkbox"]').trigger('click');
+        updateSelectButtonText(search_table);
         e.stopPropagation();
     });
 
@@ -773,6 +788,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         document.getElementById("rowkeep").disabled = true;
         $("#rowkeep").addClass('gray');
         $("#rowdelete").addClass('gray');
+        $('.toggle-select-btn').text("Select All");
     });
 
     // Keep row function
@@ -790,6 +806,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         document.getElementById("rowkeep").disabled = true;
         $("#rowkeep").addClass('gray');
         $("#rowdelete").addClass('gray');
+        $('.toggle-select-btn').text("Select All");
     });
 
     // Handler for merging selected items into the merged table
@@ -1034,6 +1051,18 @@ function updateDataTableSelectAllCtrl(table) {
         }
     }
 }
+
+// Function to update the button text based on selection state
+function updateSelectButtonText(search_table) {
+    const $button = $('.toggle-select-btn'); // Select the button
+    const selectedRows = search_table.rows('.selected').count(); // Count selected rows
+
+    // If at least one row is selected, show "Deselect All", otherwise "Select All"
+    $button.text(selectedRows > 0 ? "Deselect All" : "Select All");
+
+    console.log("Updated Button text:", $button.text()); // Log for debugging
+}
+
 
 // Add this function
 function resetCurrentCollection() {
