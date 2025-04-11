@@ -1528,7 +1528,6 @@ function exportToExcel(collection) {
             // Collection Title & Metadata
             ['Collection: ' + collection.title],
             ['Created: ' + new Date(collection.createdAt).toLocaleDateString()],
-            ['Last Updated: ' + new Date(collection.lastUpdated).toLocaleDateString()],
             [''],  // Empty row for spacing
             
             // Editor content if exists

@@ -52,7 +52,7 @@
                 <thead>
                     <tr>
                         <th>Collection Name</th>
-                        <th>Last Edited</th>
+                        <th>Created At</th>
                         <th>Projects</th>
                         <th>Actions</th>
                         <th>URL</th>
@@ -63,7 +63,7 @@
                     {% for collection in collections %}
                     <tr>
                         <td>{{ collection.title }}</td>
-                        <td>{{ collection.lastUpdated.split('T')[0] }}</td>
+                        <td>{{ collection.createdAt.split('T')[0] }}</td>
                         <td>{{ collection.projects|length }}</td>
                         <td>
                             <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 

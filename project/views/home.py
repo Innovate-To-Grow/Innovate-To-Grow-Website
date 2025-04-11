@@ -258,7 +258,6 @@ def past_projects(uuid_string=None):
             "title": f"Collection {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "projects": data,
             "createdAt": datetime.now().isoformat(),
-            "lastUpdated": datetime.now().isoformat()
         }
         
         # Insert directly into MongoDB
