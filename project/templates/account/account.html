@@ -98,6 +98,11 @@
         <p>Start your own collection <a href="{{ url_for('home.past_projects') }}" class="text-link">here</a>.</p>
     {% endif %}
 </div>
+
+<div class="settings-shortcut">
+    <a href="{{ url_for('account.settings') }}" class="btn-action btn-settings">Go to Settings</a>
+</div>
+
 {{ footer() }}
 {{ scripts() }}
 <script>

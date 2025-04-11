@@ -523,3 +523,13 @@ def check_access():
         if user and "access" in user:
             return {"access": user["access"]}
     return {"access": None}
+
+@account_blueprint.route("/settings")
+@block_guest
+def settings():
+    """Render the settings page for the user."""
+    email = session.get("email")
+    if not email:
+        flash("You must be logged in to access settings.", "danger")
+        return redirect(url_for("account.login"))
+    return render_template("settings.html", email=email)
