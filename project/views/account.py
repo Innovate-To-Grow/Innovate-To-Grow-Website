@@ -495,6 +495,10 @@ def logout():  # Remove @block_guest decorator to avoid circular dependency
     # Store the referrer before clearing the session
     next_page = request.referrer or url_for('home.mainpage')
     
+    # Explicitly redirect to home if logging out from settings page
+    if 'settings' in request.referrer:
+        next_page = url_for('home.mainpage')
+    
     # Don't redirect to login/account pages
     if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page):
         next_page = url_for('home.mainpage')
