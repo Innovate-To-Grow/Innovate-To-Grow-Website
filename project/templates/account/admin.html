@@ -44,7 +44,7 @@
 <body>
 {{ nav() }}
 <div class="collection-container">
-    <h1 class="profile-title">Admin Dashboard - All Curated Lists</h1>
+    <h1 class="profile-title">Admin Dashboard - All Curated Lists ({{ collections | length }})</h1>
 
     {% if collections %}
         <div class="table-responsive">

@@ -51,3 +51,13 @@ class ResetPasswordForm(FlaskForm):
     password = PasswordField('New Password', [InputRequired(' '), PasswordComplexity()])
     confirm_password = PasswordField('Confirm New Password', [InputRequired(' '), EqualTo('password', message='Passwords do not match')])
     submit = SubmitField('Update Password')
+
+class UpdatePasswordForm(FlaskForm):
+    password = PasswordField('New Password', [InputRequired(' '), PasswordComplexity()])
+    confirm_password = PasswordField('Confirm New Password', [InputRequired(' '), EqualTo('password', message='Passwords do not match')])
+    submit = SubmitField('Change Password')
+
+class UpdateEmailForm(FlaskForm):
+    email = StringField('New Email', [InputRequired(' '), Email()])
+    password = PasswordField('Confirm Password', [InputRequired(' ')])
+    submit = SubmitField('Change Email')

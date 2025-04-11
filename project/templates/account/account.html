@@ -13,9 +13,17 @@
     {{ styles() }}
 </head>
 <body>
+
 {{ nav() }}
+
+<!-- Put settings button on top so not buried under collections list-->
+<br>
+<div class="settings-shortcut">
+    <a href="{{ url_for('account.settings') }}" class="btn-action btn-settings">Go to Settings</a>
+</div>
+
 <div class="collection-container">
-    <h1 class="profile-title">{{ email }}'s Profile Page</h1>
+    <h1 class="profile-title">{{ email }}'s Collections ({{collections | length}})</h1>
 
     {% if collections %}
         <div class="table-responsive">
@@ -97,10 +105,7 @@
         <p>No collections currently available for <strong>{{ email }}</strong>.</p>
         <p>Start your own collection <a href="{{ url_for('home.past_projects') }}" class="text-link">here</a>.</p>
     {% endif %}
-</div>
-
-<div class="settings-shortcut">
-    <a href="{{ url_for('account.settings') }}" class="btn-action btn-settings">Go to Settings</a>
+    <br>
 </div>
 
 {{ footer() }}

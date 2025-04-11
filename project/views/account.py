@@ -2,7 +2,7 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, flash, render_template, url_for, request, redirect, copy_current_request_context, session, jsonify
+from flask import Blueprint, flash, render_template, url_for, request, redirect, copy_current_request_context, session, jsonify, Response
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
@@ -11,7 +11,7 @@ from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
-from project.forms.account_forms import LoginForm, SignupForm, ForgotPasswordForm, ResetPasswordForm
+from project.forms.account_forms import LoginForm, SignupForm, ForgotPasswordForm, ResetPasswordForm, UpdatePasswordForm, UpdateEmailForm
 import hashlib
 from functools import wraps
 from routes import add_user_direct
@@ -495,12 +495,12 @@ def logout():  # Remove @block_guest decorator to avoid circular dependency
     # Store the referrer before clearing the session
     next_page = request.referrer or url_for('home.mainpage')
     
-    # Explicitly redirect to home if logging out from settings page
+    # Explicitly redirect to login if logging out from settings page
     if 'settings' in request.referrer:
-        next_page = url_for('home.mainpage')
+        next_page = url_for('account.login')
     
-    # Don't redirect to login/account pages
-    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page):
+    # Don't redirect to signup/account pages
+    if next_page and ('signup' in next_page or 'account' in next_page):
         next_page = url_for('home.mainpage')
     
     # Clear the session
@@ -528,12 +528,148 @@ def check_access():
             return {"access": user["access"]}
     return {"access": None}
 
+
 @account_blueprint.route("/settings")
 @block_guest
 def settings():
-    """Render the settings page for the user."""
+    password_form = UpdatePasswordForm()
+    email_form = UpdateEmailForm()
+
     email = session.get("email")
     if not email:
         flash("You must be logged in to access settings.", "danger")
         return redirect(url_for("account.login"))
-    return render_template("settings.html", email=email)
+    return render_template("settings.html", email=email, form=password_form, email_form=email_form)
+
+
+@account_blueprint.route("/update-password", methods=["POST"])
+def update_password():
+    password_form = UpdatePasswordForm()
+    email_form = UpdateEmailForm()
+
+    email = session.get("email")
+    if not email:
+        flash("You must be logged in to update password.", "danger")
+        return redirect(url_for("account.login"))
+
+    user = get_email(email)
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("account.login"))
+
+    if password_form.validate_on_submit():
+        #hash and save new password in database
+        password = hashlib.sha256((email[::-1]+password_form.password.data).encode("utf-8")).hexdigest()
+        user_database = get_db_connection()
+        result = user_database.update_one(
+            {"email": email},
+            {
+                "$set": {"password": password}
+            }
+        )
+
+        if result.modified_count:
+            flash("Your password was updated", "success")
+            return redirect(url_for("account.settings"))
+        else:
+            flash("Error updating password", "danger")
+            return redirect(url_for("account.settings"))
+    
+    return render_template("settings.html", email=email, form=password_form, email_form=email_form), 400
+
+
+@account_blueprint.route("/update-email", methods=["POST"])
+def update_email():
+    password_form = UpdatePasswordForm()
+    email_form = UpdateEmailForm()
+
+    #current email of the user
+    email = session.get("email")
+    if not email:
+        flash("You must be logged in to update email.", "danger")
+        return redirect(url_for("account.login"))
+
+    user = get_email(email)
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("account.login"))
+
+    if email_form.validate_on_submit():
+        #new email submitted in form
+        new_email = email_form.email.data.lower()
+
+        if new_email == email:
+            flash("This email is already connected to your account", "danger")
+            return redirect(url_for("account.settings"))
+
+        if get_email(new_email):
+            flash("This email is already connected to another account", "danger")
+            return redirect(url_for("account.settings"))
+
+        #hash plaintext password with old email to authenticate the email update attempt
+        old_password = hashlib.sha256((email[::-1]+email_form.password.data).encode("utf-8")).hexdigest()
+        if old_password != user["password"]:
+            flash("Incorrect password.", "danger")
+            return redirect(url_for("account.settings"))
+
+        #use new email to hash the plaintext password from form
+        password = hashlib.sha256((new_email[::-1]+email_form.password.data).encode("utf-8")).hexdigest()
+        #update email in database
+        #update password in database so login continues functioning since the hashing salt (email address) has changed
+        #update verified status to false in database so blocks login until new email verified
+        user_database = get_db_connection()
+        result = user_database.update_one(
+            {"email": email},
+            {
+                "$set": {"password": password, "email":new_email, "verified":False}
+            }
+        )
+
+        if result.modified_count:
+            token = generate_token(new_email)
+            if update_user_token(new_email, token):
+                #send verification email after update email
+                url = url_for("account.verify_email", token=token, _external=True)
+                email_template = render_template("account_verification_email.html", url=url)
+                send_email(new_email, "Verify Your Email", email_template)
+                flash("Email updated successfully. A verification email has been sent to "+new_email, "success")
+                #force log out user
+                return redirect(url_for("account.logout"))
+            else:
+                flash("Error processing request", "danger")
+                return redirect(url_for("account.logout"))
+
+        else:
+            flash("Error updating email", "danger")
+            return redirect(url_for("account.settings"))
+
+    return render_template("settings.html", email=email, form=password_form, email_form=email_form), 400
+
+
+
+@account_blueprint.route("/delete-account", methods=["POST"])
+def delete_account():
+    email = session.get("email")
+    if not email:
+        return jsonify({"error":"You must be logged in to delete account","redirect":url_for("account.login")}), 401
+
+    user = get_email(email)
+    if not user:
+        return jsonify({"error":"User not found","redirect":url_for("account.login")}), 404
+
+    data = request.get_json()
+    if not data or "password" not in data:
+        return jsonify({"error": "No password provided"}), 400
+
+    password = hashlib.sha256((email[::-1]+data.get("password")).encode("utf-8")).hexdigest()
+    if password != user["password"]:
+        return jsonify({"error":"Incorrect password"}), 401
+
+    user_database = get_db_connection()
+    result = user_database.delete_one({"email": email})
+    if result.deleted_count:
+        return jsonify({"message":"Account deletion successful","redirect":url_for("account.logout")})
+    else:
+        return jsonify({"error":"Account deletion failed"}), 500
+
+    

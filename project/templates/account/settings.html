@@ -11,19 +11,89 @@
     <title>Account Settings</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acc.css') }}">
     {{ styles() }}
+    <script>
+        function confirmDelete() {
+            let password = prompt("Enter your password to confirm account deletion:");
+            if (password) {
+                fetch("{{ url_for('account.delete_account') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password: password })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // If there's an error:
+                    if (data.error) {
+                        alert(data.error);
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    }
+                    // Otherwise, if there's a success message:
+                    else if (data.message) {
+                        alert(data.message);
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Error:", err);
+                    alert("An error occurred. Please try again.");
+                });
+            }
+        }
+
+    </script>
 </head>
 <body>
 {{ nav() }}
+
 <div class="collection-container">
     <h1 class="profile-title">Account Settings</h1>
     <p><strong>User Email:</strong> {{ email }}</p>
 
-    <div class="settings-buttons">
-        <button class="btn-action btn-settings">Change Email</button>
-        <button class="btn-action btn-settings">Change Password</button>
-        <button class="btn-action btn-delete">Delete Account</button>
-    </div>
+    <!-- Change Password Form -->
+    <form method="POST" action="{{ url_for('account.update_password') }}">
+        {{ form.hidden_tag() }}
+    
+        <div>
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-field") }}
+        </div>
+    
+        <div>
+            {{ form.confirm_password.label(class="form-label") }}
+            {{ form.confirm_password(class="form-field") }}
+        </div>
+    
+        {{ form.submit(class="form-button") }}
+    </form>
+    
+
+    <hr>
+
+    <!-- Change Email Form -->
+    <form method="POST" action="{{ url_for('account.update_email') }}">
+        {{ email_form.hidden_tag() }}
+        <div>
+            {{ email_form.email.label(class="form-label") }}
+            {{ email_form.email(class="form-field") }}
+        </div>
+        <div>
+            {{ email_form.password.label(class="form-label") }}
+            {{ email_form.password(class="form-field") }}
+        </div>    
+        {{ email_form.submit(class="form-button") }}
+    </form>
+
+    <hr>
+
+    <!-- Delete Account Button with Confirmation -->
+    <button class="btn-action btn-delete" onclick="confirmDelete()">Delete Account</button>
+    <p class="delete-label">Warning: This is a permanent action and cannot be undone.</p>
 </div>
+
 {{ footer() }}
 {{ scripts() }}
 </body>

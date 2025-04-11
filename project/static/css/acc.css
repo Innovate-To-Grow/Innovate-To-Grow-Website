@@ -258,3 +258,22 @@ body, html {
 .settings-buttons .btn-delete:hover {
     background-color: #c82333;
 }
+
+.delete-label {
+    color: red; 
+    font-weight: bold;
+}
+
+/* Style the settings forms below */
+
+.form-label {
+
+}
+
+.form-field {
+
+}
+
+.form-button {
+    
+}
