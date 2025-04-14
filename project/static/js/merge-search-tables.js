@@ -374,7 +374,7 @@ $(document).ready(function () {
                                     tr.css('color', 'Black').css('font-weight', 'normal');
                                 }
                             } else {
-                                if (!row.child.isexample1_lengthn()) {
+                                if (!row.child.isShown()) {
                                     row.child(mergeformat(row.data())).show();
                                     tr.addClass('shown');
                                     tr.css('color', '#162D4F').css('font-weight', 'bold');
