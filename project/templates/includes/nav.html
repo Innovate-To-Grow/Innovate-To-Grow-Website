@@ -10,7 +10,23 @@
                                 src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png"
                                 alt="UC Merced logo" role="presentation"> </a>
                     </div>
-                    <a href="{{ url_for('home.mainpage') }}" style="display: block; width: 70px; position: sticky; left: 50%; transform: translateX(-50%); margin-left: -75px; text-align: center;"><img src="{{url_for('static', filename='images/i2glogo.png') }}" alt="I2G Logo" style="width: 100%;"></a>
+
+                        <style>
+                        @media (max-width: 768px) {
+                          .logo-link {
+                            margin-left: -10% !important;
+                            margin-right: auto !important;
+                            text-align: left !important;
+                          }
+                        }
+                        </style>
+                        <a href="{{ url_for('home.mainpage') }}"
+                           class="logo-link"
+                           style="display: block; width: 200px; max-width: 80%; margin-left: 24%; text-align: left;">
+                            <img src="{{ url_for('static', filename='images/I2G-fullname-low.png') }}"
+                                 alt="I2G Logo"
+                                 style="width: 100%; height: auto; display: block;">
+                        </a>
 
                     <div class="quick-links" id="quickLinksNavigation">
                         <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener">Directory</a>
