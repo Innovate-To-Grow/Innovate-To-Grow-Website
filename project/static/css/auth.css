@@ -1,9 +1,22 @@
 /* ----- GLOBAL STYLES ----- */
+:root {
+  --main-padding: clamp(1rem, 2vw, 2.5rem);
+  --heading-size: clamp(2rem, 5vw, 4.75rem);
+  --subtext-size: clamp(1rem, 2vw, 1.75rem);
+  --form-width: clamp(300px, 90%, 600px);
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: 'Montserrat', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -14,8 +27,16 @@ body {
   flex-direction: column;
 }
 
+/* ----- HEADER ----- */
+.header {
+  position: fixed;
+  top: 30px;
+  left: 300px;
+  z-index: 10;
+}
+
 .logo img {
-  height: 250px;
+  height: 80px;
   width: auto;
   max-height: none;
   transition: transform 0.2s ease;
@@ -25,56 +46,26 @@ body {
   transform: scale(1.05);
 }
 
-/* Reset header styles for account pages */
-.header-section {
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    width: 100% !important;
-}
-
-#stickyHeader {
-    position: relative !important;
-    width: 100% !important;
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
-.quick-links {
-    position: relative !important;
-    right: auto !important;
-}
-
-/* Ensure content doesn't push header */
-.auth-content {
-    margin-top: 20px;
-    position: relative;
-    z-index: 1;
-}
-
 /* ----- MAIN CONTAINER ----- */
 .main-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: 100vw;
-  height: 100vh;
-  position: fixed;
-  top: 0;
-  left: 0;
-  overflow-y: auto;
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  padding: var(--main-padding);
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
 }
 
-/* ----- LEFT SECTION ----- Changed to be flexible with different window types */
-.left-section { 
-  position: absolute;
-  top: 50%;
-  left: 40%;
-  transform: translate(-50%, -50%);
-  width: 80%;
+/* ----- LEFT SECTION ----- */
+.left-section {
+  flex: 1;
+  min-width: 300px;
   max-width: 600px;
-  padding: 2rem;
-  z-index: 2;
+  padding: var(--main-padding);
+  margin: 1rem;
 }
 
 .left-heading-container {
@@ -83,7 +74,7 @@ body {
 }
 
 .left-heading {
-  font-size: 4.75rem;
+  font-size: var(--heading-size);
   font-weight: 800;
   margin-bottom: 0.75rem;
   color: #ffffff;
@@ -91,7 +82,7 @@ body {
 }
 
 .left-subtext {
-  font-size: 1.75rem;
+  font-size: var(--subtext-size);
   font-weight: 400;
   margin-bottom: 2.5rem;
   color: #d1d1d1;
@@ -124,7 +115,7 @@ body {
   transition: background-color 0.3s ease;
   width: fit-content;
   font-size: 1.1rem;
-  margin-top: 3rem;
+  margin-top: 2rem;
 }
 
 .learn-more-btn:hover {
@@ -152,19 +143,19 @@ body {
 
 /* ----- RIGHT SECTION ----- */
 .right-section {
-  position: absolute;
-  top: 50%;
-  left: calc(50% + 100px);
-  transform: translateY(-50%);
-  width: 600px;
-  z-index: 2;
+  flex: 1;
+  min-width: 300px;
+  max-width: 600px;
+  padding: var(--main-padding);
+  margin: 1rem;
 }
 
 /* ----- FORM CONTAINER ----- */
 .form-container {
+  width: var(--form-width);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  width: 100%;
   align-items: center;
   max-width: 600px;
 }
@@ -172,7 +163,7 @@ body {
 /* ----- LOGIN/SIGNUP BOX ----- */
 .input-row {
   background-color: rgba(217, 217, 217, 0.3);
-  padding: 2.5rem;
+  padding: var(--main-padding);
   border-radius: 8px;
   width: 100%;
   max-width: 600px;
@@ -347,18 +338,6 @@ input[type="submit"]:hover, .btn:hover {
   text-decoration: underline;
 }
 
-/* Styling for text link */
-.text-link {
-  color: #F2A341;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.text-link:hover {
-  color: #d68936;
-  text-decoration: underline;
-}
-
 /* ----- SECTION DIVIDER ----- */
 .section-divider {
   width: 200px;
@@ -423,6 +402,23 @@ input[type="submit"]:hover, .btn:hover {
 }
 
 @media screen and (max-width: 768px) {
+  .main-container {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+
+  .form-container {
+    width: 100%;
+  }
+
   .header {
     position: fixed;
     top: 20px;
