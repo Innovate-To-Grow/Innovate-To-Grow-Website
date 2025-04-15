@@ -9,19 +9,20 @@
 <head>
   <meta charset="UTF-8">
   <title>Innovate to Grow - Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+  <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
 </head>
 
 <body>
   <header class="header">
     <div class="logo">
       <a href="{{ url_for('home.mainpage') }}">
-        <img src="{{url_for('static', filename='images/I2G_logo.png') }}" 
+        <img src="{{url_for('static', filename='images/I2G-fullname-low.png') }}" 
              alt="I2G Logo" />
       </a>
     </div>
@@ -29,9 +30,9 @@
 
   <div class="main-container">
     <div class="watermark">
-      <img src="{{url_for('static', filename='images/i2g-logo-square-blu.png') }}" 
+      <img src="{{url_for('static', filename='images/i2g-logo-square-blu.png') }}" project
            alt="I2G Watermark"
-           style="width: 100%; height: 100%; object-fit: contain;">
+           style="max-width: 100%; height: auto;">
     </div>
     
     <div class="left-section">
