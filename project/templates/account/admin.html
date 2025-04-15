@@ -1,5 +1,5 @@
 {% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer  %}
+{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 
@@ -8,7 +8,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Curated Lists</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acc.css') }}">
     {{ styles() }}
     <style>
@@ -39,79 +39,143 @@
         .page-btn:hover:not(:disabled) {
             background-color: #0e1d33;
         }
+        .view-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .view-toggle .btn-action {
+            margin: 0 5px;
+            padding: 8px 16px;
+        }
+        .view-toggle .btn-action.active {
+            background-color: #162D4F;
+        }
+        .view-toggle .btn-action:not(.active) {
+            background-color: #666;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .tab-button.active {
+            background-color: #162D4F;
+        }
+        .tab-button:not(.active) {
+            background-color: #666;
+        }
     </style>
 </head>
 <body>
 {{ nav() }}
 <div class="collection-container">
-    <h1 class="profile-title">Admin Dashboard - All Curated Lists ({{ collections | length }})</h1>
+    <!-- Tab buttons -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="{{ url_for('account.admin', view='users') }}" 
+           class="tab-button {% if not request.args.get('view') or request.args.get('view') == 'users' %}active{% endif %}">
+            Users
+        </a>
+        <a href="{{ url_for('account.admin', view='lists') }}" 
+           class="tab-button {% if request.args.get('view') == 'lists' %}active{% endif %}">
+            Curated Lists
+        </a>
+    </div>
 
-    {% if collections %}
-        <div class="table-responsive">
-            <table class="collection-table">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Collection Name</th>
-                        <th>Last Edited</th>
-                        <th>Actions</th>
-                        <th>URL</th>
-                        <th></th>
-                    </tr>
-                </thead>
+    <!-- Users View (Default) -->
+    {% if not request.args.get('view') or request.args.get('view') == 'users' %}
+        <h1 class="profile-title">Admin Dashboard - All Users</h1>
+        
+        <!-- Per page selector for users -->
+        <form action="{{ url_for('account.admin') }}" method="get" style="margin-bottom: 20px;">
+            <input type="hidden" name="view" value="users">
+            <label for="per_page">Users per page:</label>
+            <select name="per_page" id="per_page" onchange="this.form.submit()">
+                <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+                <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+            </select>
+        </form>
 
-                <!-- Dropdown for selecting items per page -->
-                <form action="{{ url_for('account.admin') }}" method="get">
-                    <label for="per_page">Collections per page:</label>
-                    <select name="per_page" id="per_page" onchange="this.form.submit()">
-                        <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
-                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
-                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-                    </select>
-                    <input type="hidden" name="page" value="1"> <!-- Reset to first page -->
-                </form>
+        {% if users %}
+            <div class="table-responsive">
+                <table class="collection-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('account.admin', view='users', sort='email', 
+                                         order='desc' if request.args.get('sort') == 'email' and request.args.get('order') != 'desc' else 'asc', 
+                                         page=page, per_page=per_page) }}" 
+                                   style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                    Email
+                                    <span style="display: inline-block; font-size: 0.8em;">
+                                        {% if request.args.get('sort') == 'email' %}
+                                            {% if request.args.get('order') == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% else %}
+                                            ⇅
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('account.admin', view='users', sort='id',
+                                         order='desc' if request.args.get('sort') == 'id' and request.args.get('order') != 'desc' else 'asc',
+                                         page=page, per_page=per_page) }}"
+                                   style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                    User ID
+                                    <span style="display: inline-block; font-size: 0.8em;">
+                                        {% if request.args.get('sort') == 'id' %}
+                                            {% if request.args.get('order') == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% else %}
+                                            ⇅
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user._id }}</td>
+                            <td>
+                                {% if user.access != 'admin' %}
+                                    <a href="{{ url_for('account.delete_admin_user', user_id=user._id) }}"
+                                       class="btn-action btn-delete"
+                                       onclick="return confirm('Are you sure you want to delete this user? This will also delete all their collections. This action cannot be undone.');">
+                                        Delete
+                                    </a>
+                                {% else %}
+                                    <span style="color: #666;">Admin (Protected)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
-
-                <tbody>
-                    {% for collection in collections %}
-                    <tr>
-                        <td>{{ collection.userEmail }}</td>
-                        <td>{{ collection.title }}</td>
-                        <td>{{ collection.createdAt.split('T')[0] }}</td>
-                        <td>
-                            <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
-                               class="btn-action btn-view">View</a>
-                            <a href="{{ url_for('home.past_projects') }}?collection={{ collection._id }}" 
-                               class="btn-action btn-edit edit-collection-btn" 
-                               data-collection-id="{{ collection._id }}">
-                               Edit
-                            </a>
-                        </td>
-                        <td>
-                            <a href="#" 
-                               class="btn-action btn-copy-url" 
-                               data-url="{{ url_for('home.view_collection', collection_id=collection._id, _external=True) }}">
-                               Copy URL
-                            </a>
-                        </td>
-                        <td>
-                            <a href="{{ url_for('account.delete_collection', collection_id=collection._id) }}" 
-                               class="btn-action btn-delete"
-                               onclick="return confirm('Are you sure you want to delete this collection? This action cannot be undone.');">
-                                Delete
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <!-- Pagination Controls -->
+            <!-- Pagination Controls for Users -->
             <div class="pagination">
                 {% if has_prev %}
-                    <a href="{{ url_for('account.admin', page=page-1, per_page=per_page) }}" class="page-btn">Previous</a>
+                    <a href="{{ url_for('account.admin', view='users', sort=request.args.get('sort'), order=request.args.get('order'), page=page-1, per_page=per_page) }}" 
+                       class="page-btn">Previous</a>
                 {% else %}
                     <button class="page-btn" disabled>Previous</button>
                 {% endif %}
@@ -119,44 +183,158 @@
                 <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
 
                 {% if has_next %}
-                    <a href="{{ url_for('account.admin', page=page+1, per_page=per_page) }}" class="page-btn">Next</a>
+                    <a href="{{ url_for('account.admin', view='users', sort=request.args.get('sort'), order=request.args.get('order'), page=page+1, per_page=per_page) }}" 
+                       class="page-btn">Next</a>
                 {% else %}
                     <button class="page-btn" disabled>Next</button>
                 {% endif %}
             </div>
-        </div>
-    {% else %}
-        <p>No collections found in the database.</p>
-    {% endif %}
+        {% else %}
+            <p>No users found in the database.</p>
+        {% endif %}
 
-    <div class="purge-section" style="margin-top: 30px; text-align: center;">
-        <form id="purge-form" action="{{ url_for('account.purge_collections') }}" method="POST">
-            <button type="button" 
-                    onclick="confirmPurge()" 
-                    class="btn-action"
-                    style="background-color: #dc3545; padding: 10px 20px; font-size: 16px;">
-                Purge All Collections
-            </button>
+    <!-- Curated Lists View -->
+    {% else %}
+        <h1 class="profile-title">Admin Dashboard - All Curated Lists</h1>
+        
+        <!-- Per page selector for lists -->
+        <form action="{{ url_for('account.admin') }}" method="get" style="margin-bottom: 20px;">
+            <input type="hidden" name="view" value="lists">
+            <label for="per_page">Collections per page:</label>
+            <select name="per_page" id="per_page" onchange="this.form.submit()">
+                <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+                <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+            </select>
         </form>
-    </div>
+
+        {% if collections %}
+            <div class="table-responsive">
+                <table class="collection-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('account.admin', view='lists', sort='userEmail',
+                                         order='desc' if request.args.get('sort') == 'userEmail' and request.args.get('order') != 'desc' else 'asc',
+                                         page=page, per_page=per_page) }}"
+                                   style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                    User Email
+                                    <span style="display: inline-block; font-size: 0.8em;">
+                                        {% if request.args.get('sort') == 'userEmail' %}
+                                            {% if request.args.get('order') == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% else %}
+                                            ⇅
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('account.admin', view='lists', sort='title',
+                                         order='desc' if request.args.get('sort') == 'title' and request.args.get('order') != 'desc' else 'asc',
+                                         page=page, per_page=per_page) }}"
+                                   style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                    Collection Name
+                                    <span style="display: inline-block; font-size: 0.8em;">
+                                        {% if request.args.get('sort') == 'title' %}
+                                            {% if request.args.get('order') == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% else %}
+                                            ⇅
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('account.admin', view='lists', sort='createdAt',
+                                         order='desc' if request.args.get('sort') == 'createdAt' and request.args.get('order') != 'desc' else 'asc',
+                                         page=page, per_page=per_page) }}"
+                                   style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                    Created At
+                                    <span style="display: inline-block; font-size: 0.8em;">
+                                        {% if request.args.get('sort') == 'createdAt' %}
+                                            {% if request.args.get('order') == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% else %}
+                                            ⇅
+                                        {% endif %}
+                                    </span>
+                                </a>
+                            </th>
+                            <th>Actions</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for collection in collections %}
+                        <tr>
+                            <td>{{ collection.userEmail }}</td>
+                            <td>{{ collection.title }}</td>
+                            <td>{{ collection.createdAt.split('T')[0] }}</td>
+                            <td>
+                                <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
+                                   class="btn-action btn-view">View</a>
+                                <a href="{{ url_for('account.delete_collection', collection_id=collection._id) }}" 
+                                   class="btn-action btn-delete"
+                                   onclick="return confirm('Are you sure you want to delete this collection? This action cannot be undone.');">
+                                    Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination for Lists -->
+            <div class="pagination">
+                {% if has_prev %}
+                    <a href="{{ url_for('account.admin', view='lists', page=page-1, per_page=per_page) }}" class="page-btn">Previous</a>
+                {% else %}
+                    <button class="page-btn" disabled>Previous</button>
+                {% endif %}
+
+                <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
+
+                {% if has_next %}
+                    <a href="{{ url_for('account.admin', view='lists', page=page+1, per_page=per_page) }}" class="page-btn">Next</a>
+                {% else %}
+                    <button class="page-btn" disabled>Next</button>
+                {% endif %}
+            </div>
+
+            <!-- Purge Collections Button -->
+            <div class="purge-section" style="margin-top: 30px; text-align: center;">
+                <form id="purge-form" action="{{ url_for('account.purge_collections') }}" method="POST">
+                    <button type="button" 
+                            onclick="confirmPurge()" 
+                            class="btn-action"
+                            style="background-color: #dc3545; padding: 10px 20px; font-size: 16px;">
+                        Purge All Collections
+                    </button>
+                </form>
+            </div>
+        {% else %}
+            <p>No collections found in the database.</p>
+        {% endif %}
+    {% endif %}
 </div>
 
 {{ footer() }}
 {{ scripts() }}
-<script>
-    document.querySelectorAll('.btn-copy-url').forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.preventDefault();
-            const url = this.getAttribute('data-url');
-            navigator.clipboard.writeText(url).then(() => {
-                this.textContent = 'Copied!';
-                setTimeout(() => {
-                    this.textContent = 'Copy URL';
-                }, 2000);
-            });
-        });
-    });
 
+<script>
     function confirmPurge() {
         const confirmMessage = `WARNING: This will permanently delete ALL collections from the database.\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?`;
         

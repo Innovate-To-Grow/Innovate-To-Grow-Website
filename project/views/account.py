@@ -389,81 +389,116 @@ def delete_collection(collection_id):
 @account_blueprint.route("/admin")
 @block_guest
 def admin():
-    """Admin page to view curated lists with pagination"""
     try:
-        # Get the current user's email from session
         email = session.get("email")
         if not email:
-            print("Debug - No email in session")
             return redirect(url_for("account.login"))
 
-        # Get user details
         user = get_email(email)
-        if not user:
-            print("Debug - User not found in database")
-            flash("User not found", "danger")
-            return redirect(url_for("account.login"))
-
-        # Check for admin access
-        if not user.get('access') == 'admin':
+        if not user or user.get('access') != 'admin':
             flash("Unauthorized access", "danger")
             return redirect(url_for("account.account"))
 
-        # Pagination settings
+        # Get pagination parameters
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        skip = (page - 1) * per_page
-
-        # Query collections with pagination
-        total_collections = curated_lists.count_documents({})
-        collections_cursor = curated_lists.find().skip(skip).limit(per_page)
+        view = request.args.get('view', 'users')
         
-        # Convert cursor to list and process collections
-        collections_list = []
-        user_database = get_db_connection()
-        for collection in collections_cursor:
-            try:
-                # Convert ObjectId to string
-                collection['_id'] = str(collection['_id'])
-                # Display collection owner's email in admin table
-                user_email = user_database.find_one({'_id': collection['userId']})['email']
-                collection['userEmail'] = user_email
-                collections_list.append(collection)
+        # Get sorting parameters
+        sort_field = request.args.get('sort')
+        sort_order = request.args.get('order', 'asc')
+        
+        if view == 'users':
+            # Get users with pagination and sorting
+            user_database = get_db_connection()
+            total_items = user_database.count_documents({})
+            
+            # Define sort parameters
+            sort_params = []
+            if sort_field == 'email':
+                sort_params.append(('email', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'id':
+                sort_params.append(('_id', 1 if sort_order == 'asc' else -1))
+            
+            # Apply sorting if specified, otherwise use default sort by email
+            if not sort_params:
+                sort_params = [('email', 1)]
                 
-            except Exception as e:
-                print(f"Debug - Error processing collection: {str(e)}")
-                continue
+            users_cursor = user_database.find().sort(sort_params).skip((page - 1) * per_page).limit(per_page)
+            items_list = list(users_cursor)
+            
+        else:
+            # Curated Lists view with sorting
+            user_database = get_db_connection()
+            total_items = curated_lists.count_documents({})
+            
+            # Define sort parameters for collections
+            sort_params = []
+            if sort_field == 'userEmail':
+                # First get all collections and then sort by user email
+                collections_cursor = curated_lists.find()
+                items_list = []
+                for collection in collections_cursor:
+                    collection['_id'] = str(collection['_id'])
+                    try:
+                        user_email = user_database.find_one({'_id': collection['userId']})['email']
+                        collection['userEmail'] = user_email
+                        items_list.append(collection)
+                    except Exception as e:
+                        print(f"Debug - Error processing collection: {str(e)}")
+                
+                # Sort the list by userEmail
+                items_list.sort(
+                    key=lambda x: x.get('userEmail', ''),
+                    reverse=(sort_order == 'desc')
+                )
+                # Apply pagination after sorting
+                start_idx = (page - 1) * per_page
+                items_list = items_list[start_idx:start_idx + per_page]
+                
+            else:
+                # For title and createdAt, we can use MongoDB's sort
+                if sort_field == 'title':
+                    sort_params.append(('title', 1 if sort_order == 'asc' else -1))
+                elif sort_field == 'createdAt':
+                    sort_params.append(('createdAt', 1 if sort_order == 'asc' else -1))
+                
+                # Apply sorting if specified, otherwise use default sort by createdAt
+                if not sort_params:
+                    sort_params = [('createdAt', -1)]  # Default sort by creation date, newest first
+                
+                collections_cursor = curated_lists.find().sort(sort_params).skip((page - 1) * per_page).limit(per_page)
+                items_list = []
+                for collection in collections_cursor:
+                    collection['_id'] = str(collection['_id'])
+                    try:
+                        user_email = user_database.find_one({'_id': collection['userId']})['email']
+                        collection['userEmail'] = user_email
+                        items_list.append(collection)
+                    except Exception as e:
+                        print(f"Debug - Error processing collection: {str(e)}")
 
         # Calculate pagination info
-        total_pages = (total_collections + per_page - 1) // per_page
+        total_pages = (total_items + per_page - 1) // per_page
         has_next = page < total_pages
         has_prev = page > 1
 
-        # Validate page number
-        if page > total_pages and total_pages > 0:
-            # If requested page is beyond total pages, redirect to last valid page
-            return redirect(url_for('account.admin', page=total_pages))
-        elif page < 1:
-            # If requested page is less than 1, redirect to first page
-            return redirect(url_for('account.admin', page=1))
-        
-        print(f"Debug - Total collections: {total_collections}")
-        print(f"Debug - Current page: {page} of {total_pages}")
-        
         return render_template(
             "account/admin.html",
             email=email,
-            collections=collections_list,
+            collections=items_list if view == 'lists' else None,
+            users=items_list if view == 'users' else None,
             page=page,
             total_pages=total_pages,
             has_next=has_next,
             has_prev=has_prev,
-            per_page=per_page
+            per_page=per_page,
+            current_view=view
         )
 
     except Exception as e:
         print(f"Debug - Error in admin route: {str(e)}")
-        flash("Error retrieving collections", "danger")
+        flash("Error retrieving data", "danger")
         return redirect(url_for("account.account"))
 
 @account_blueprint.route("/admin/purge", methods=["POST"])
@@ -488,6 +523,42 @@ def purge_collections():
         flash("Error purging collections", "danger")
     
     return redirect(url_for("account.admin"))
+
+
+@account_blueprint.route("/admin/delete-user/<user_id>", methods=["GET"])
+@block_guest
+def delete_admin_user(user_id):
+    try:
+        # Verify admin access
+        email = session.get("email")
+        admin_user = get_email(email)
+        if not admin_user or admin_user.get('access') != 'admin':
+            flash("Unauthorized access", "danger")
+            return redirect(url_for("account.account"))
+
+        # Don't allow admin to delete themselves
+        if user_id == str(admin_user['_id']):
+            flash("Cannot delete your own admin account", "danger")
+            return redirect(url_for("account.admin", view='users'))
+
+        # Delete user's collections first
+        # curated_lists.delete_many({"userId": user_id})
+
+        user_database = get_db_connection()
+        
+        # Then delete the user
+        result = user_database.delete_one({"_id": user_id})
+        
+        if result.deleted_count:
+            flash("User and their collections deleted successfully", "success")
+        else:
+            flash("User not found", "danger")
+
+    except Exception as e:
+        print(f"Debug - Error deleting user: {str(e)}")
+        flash("Error deleting user", "danger")
+    
+    return redirect(url_for("account.admin", view='users'))
 
 
 @account_blueprint.route("/logout")
@@ -672,4 +743,3 @@ def delete_account():
     else:
         return jsonify({"error":"Account deletion failed"}), 500
 
-    
