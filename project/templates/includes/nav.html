@@ -38,10 +38,10 @@
                         {% if session.get('logged_in') %}
                             {% set user = get_email(session.get('email')) %}
                             <a href="{{ url_for('account.account') }}" class="auth-link">Profile</a>
-                            <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
                             {% if user and 'access' in user and user['access'] == 'admin' %}
-                                <a href="{{ url_for('account.admin') }}" class="auth-link">Admin</a>
+                                <a href="{{ url_for('account.admin') }}" style="color:red;" class="auth-link">Admin</a>
                             {% endif %}
+                            <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
                         {% else %}
                             <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
                             <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>

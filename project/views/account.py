@@ -386,7 +386,7 @@ def delete_collection(collection_id):
         flash(f"Error deleting collection: {str(e)}", "danger")
         return redirect(url_for("account.account"))
     
-@account_blueprint.route("/admin")
+@account_blueprint.route("/database-admin")
 @block_guest
 def admin():
     try:
@@ -484,7 +484,7 @@ def admin():
         has_prev = page > 1
 
         return render_template(
-            "account/admin.html",
+            "admin.html",
             email=email,
             collections=items_list if view == 'lists' else None,
             users=items_list if view == 'users' else None,
@@ -501,7 +501,7 @@ def admin():
         flash("Error retrieving data", "danger")
         return redirect(url_for("account.account"))
 
-@account_blueprint.route("/admin/purge", methods=["POST"])
+@account_blueprint.route("/database-admin/purge", methods=["POST"])
 @block_guest
 def purge_collections():
     """Purge all collections from the database"""
@@ -525,7 +525,7 @@ def purge_collections():
     return redirect(url_for("account.admin"))
 
 
-@account_blueprint.route("/admin/delete-user/<user_id>", methods=["GET"])
+@account_blueprint.route("/database-admin/delete-user/<user_id>", methods=["GET"])
 @block_guest
 def delete_admin_user(user_id):
     try:

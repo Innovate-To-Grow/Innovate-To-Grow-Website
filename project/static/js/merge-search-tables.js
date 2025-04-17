@@ -105,19 +105,31 @@ function format(d) {
 
 // Function to generate a UUID for projects that's consistent across saves
 function generateProjectUuid(yearSemester, classCode, teamNumber, projectTitle) {
-    const seed = `${yearSemester}-${classCode}-${teamNumber}-${projectTitle}`;
+    const seedStr = `${yearSemester}-${classCode}-${teamNumber}-${projectTitle}`;
     let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-        const char = seed.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
+    for (let i = 0; i < seedStr.length; i++) {
+      hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
+      hash |= 0;
     }
-    return `proj-${Math.abs(hash).toString(16)}`;
-}
+    hash = Math.abs(hash);
 
+    let state = hash;
+    const rand = () => {
+      state = (state * 16807) % 2147483647;
+      return state / 2147483647;
+    };
+  
+    const template = "10000000-1000-4000-8000-100000000000";
+    return template.replace(/[018]/g, c =>
+      (Number(c) ^ Math.floor(rand() * 256) & (15 >> (Number(c) / 4))).toString(16)
+    );
+  }
+  
 // Generate a collection ID that uses MongoDB-compatible format
 function generateCollectionId() {
-    return `coll_${new Date().getTime()}_${Math.floor(Math.random() * 10000)}`;
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
 }
 
 // Create collection object from merged table to save to MongoDB
