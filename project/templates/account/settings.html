@@ -57,18 +57,20 @@
     <!-- Change Password Form -->
     <form method="POST" action="{{ url_for('account.update_password') }}">
         {{ form.hidden_tag() }}
-    
-        <div>
-            {{ form.password.label(class="form-label") }}
-            {{ form.password(class="form-field") }}
+        <div class="form-row">
+            <div>
+                {{ form.password.label(class="form-label") }}
+                {{ form.password(class="form-field") }}
+            </div>
+            <div>
+                {{ form.confirm_password.label(class="form-label") }}
+                {{ form.confirm_password(class="form-field") }}
+            </div>
         </div>
-    
-        <div>
-            {{ form.confirm_password.label(class="form-label") }}
-            {{ form.confirm_password(class="form-field") }}
+        <div style="margin-top: 15px;">
+            <button type="submit" class="btn-action btn-settings">Update Password</button>
         </div>
-    
-        {{ form.submit(class="form-button") }}
+        <hr>
     </form>
     
 
@@ -77,15 +79,20 @@
     <!-- Change Email Form -->
     <form method="POST" action="{{ url_for('account.update_email') }}">
         {{ email_form.hidden_tag() }}
-        <div>
-            {{ email_form.email.label(class="form-label") }}
-            {{ email_form.email(class="form-field") }}
+        <div class="form-row">
+            <div>
+                {{ email_form.email.label(class="form-label") }}
+                {{ email_form.email(class="form-field") }}
+            </div>
+            <div>
+                {{ email_form.password.label(class="form-label") }}
+                {{ email_form.password(class="form-field") }}
+            </div>
         </div>
-        <div>
-            {{ email_form.password.label(class="form-label") }}
-            {{ email_form.password(class="form-field") }}
-        </div>    
-        {{ email_form.submit(class="form-button") }}
+        <div style="margin-top: 15px;">
+            <button type="submit" class="btn-action btn-settings">Update Email</button>
+        </div>
+        <hr>
     </form>
 
     <hr>

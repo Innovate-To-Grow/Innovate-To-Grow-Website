@@ -259,6 +259,23 @@ body, html {
     background-color: #c82333;
 }
 
+.btn-settings {
+    background-color: #007bff;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 15px; /* Add spacing from the form */
+}
+
+.btn-settings:hover {
+    background-color: #0056b3;
+}
+
 .delete-label {
     color: red; 
     font-weight: bold;
@@ -266,14 +283,22 @@ body, html {
 
 /* Style the settings forms below */
 
-.form-label {
-
-}
-
+.form-label,
 .form-field {
-
+    font-weight: bold;
 }
 
 .form-button {
     
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+}
+
+.form-row > div {
+    flex: 1;
 }
