@@ -16,7 +16,7 @@ var datas = [];
 // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1:Y70?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
@@ -127,7 +127,7 @@ function passvalue(slot) {
 // the amount of tracks for CAP
 let totalTrackForCAP = 3;
 // the amount of order for CAP
-let totalOrderForCAP = 5;
+let totalOrderForCAP = 7;
 // the time start for CAP
 let timestartForCAP = "1:00";
 // time per slot for CAP
@@ -136,16 +136,16 @@ let timePerSlotForCAP = "30";
 // the amount of tracks for CEE
 let totalTrackForCEE = 1;
 // the amount of order for CEE
-let totalOrderForCEE = 4;
+let totalOrderForCEE = 7;
 // the time start for CEE
 let timestartForCEE = "1:00";
 // time per slot for CEE
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 3;
+let totalTrackForCSE = 4;
 // the amount of order for CSE
-let totalOrderForCSE = 7;
+let totalOrderForCSE = 9;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
@@ -172,7 +172,7 @@ function getTime(time, addMinute){
 $(document).ready(function () {
     if (totalTrackForCAP > 0) {
         var html = 
-            '<div class= "span12"> '+
+            '<div class= "span7"> '+
                 '<div>&nbsp;</div>'+
                 '<div style="text-align: center; color: #002856;"><strong>Engineering Capstone (CAP)</strong></div>'+
                 '<section class="center">'+
@@ -257,15 +257,14 @@ $(document).ready(function () {
     }
     if (totalTrackForCEE > 0) {
         var html = 
-            '<div class= "span2" style="margin-right:40px;"> '+
-                '<div>&nbsp;</div>'+
-                '<p style="text-align: center;"><strong>Civil &amp; Env. Eng. (CEE)</strong></p>'+
+            '<div class= "span4" style="margin-left:40px;"> '+
+                '<div style="text-align: center; color: #002856;"><strong>Civil &amp; Env. Eng. (CEE)</strong></div>'+
                 '<section class="center">'+
                     '<div class="table__wrapper">'+
                         '<table class="table" style="width: 100%;">'+
                             '<thead>'+
                                 '<tr class="roomCEE">'+
-                                    '<th scope="col" style="background-color: #efefef; color: #002856; max-width: 70px; text-align: center;">Room:</th>'+
+                                    '<th scope="col" style="background-color: #efefef; color: #002856; max-width: 20px; text-align: center;">Room:</th>'+
                                 '</tr>'+
                                 // '<tr class="zoomCEE">'+
                                 //     '<th scope="col" style="background-color: #efefef; max-width: 70px">'+
@@ -319,7 +318,7 @@ $(document).ready(function () {
 
     }
     if (totalTrackForCSE > 0) {
-        var html = '<div class= "span10" style= "margin-left: 18px; margin-top:0px; padding: unset;">'+
+        var html = '<div class= "span11" style= "margin-top:0px; padding: unset;">'+
             '<div style= "text-align: center; color: #002856;">'+
                 '<strong>Sofware Engineering Capstone (CSE)</strong>'+
             '</div>'+
@@ -355,6 +354,11 @@ $(document).ready(function () {
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
                                         '<b>Language</b>'+
+                                    '</p>'+
+                                '</td>'+
+                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
+                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                        '<b>Technology</b>'+
                                     '</p>'+
                                 '</td>'+
                             '</tr>'+
@@ -413,7 +417,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
         for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
