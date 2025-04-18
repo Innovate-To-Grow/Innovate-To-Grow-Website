@@ -46,6 +46,14 @@ def get_email(email):
     user = collection.find_one({"email": email})
     return user  # Returns None if not found
 
+def get_access(user_id):
+    collection = get_db_connection()
+    user = collection.find_one({"_id": user_id})
+    if not user:
+        return None
+    access = user.get("access", "")
+    return access
+    
 #blocks logged in user from accessing certain resources by redirecting to profile page
 def block_user(func):
     @wraps(func)  
@@ -369,22 +377,29 @@ def delete_collection(collection_id):
             flash("User not found", "danger")
             return redirect(url_for("account.login"))
 
-        # Delete the collection
-        result = curated_lists.delete_one({
-            "_id": collection_id,
-            "userId": str(user["_id"])
-        })
-
+        # Only allow admins or collection owner to delete the collection
+        # Delete collection if user is admin
+        if user.get("access") == "admin":
+            result = curated_lists.delete_one({
+                "_id": collection_id
+            })
+        # Delete collection is user is owner
+        else:
+            result = curated_lists.delete_one({
+                "_id": collection_id,
+                "userId": str(user["_id"])
+            })
+        
         if result.deleted_count:
             flash("Collection deleted successfully", "success")
         else:
             flash("Collection not found", "danger")
 
-        return redirect(url_for("account.account"))
+        return redirect(request.referrer or url_for("account.account"))
 
     except Exception as e:
-        flash(f"Error deleting collection: {str(e)}", "danger")
-        return redirect(url_for("account.account"))
+        print(f"Error deleting collection: {str(e)}")
+        return redirect(request.referrer or url_for("account.account"))
     
 @account_blueprint.route("/database-admin")
 @block_guest
@@ -440,9 +455,17 @@ def admin():
                 items_list = []
                 for collection in collections_cursor:
                     collection['_id'] = str(collection['_id'])
+                    # Correctly display collection owner when they are: Guest/DeletedUser/NoEmailUser
                     try:
-                        user_email = user_database.find_one({'_id': collection['userId']})['email']
-                        collection['userEmail'] = user_email
+                        if collection['userId'] is None:
+                            collection['userEmail'] = 'Guest'
+                        else:
+                            user_obj = user_database.find_one({'_id': collection['userId']})
+                            if user_obj:
+                                user_email = user_obj.get('email', 'No Email For Account')
+                                collection['userEmail'] = user_email
+                            else:
+                                collection['userEmail'] = 'Deleted Account'
                         items_list.append(collection)
                     except Exception as e:
                         print(f"Debug - Error processing collection: {str(e)}")
@@ -455,28 +478,99 @@ def admin():
                 # Apply pagination after sorting
                 start_idx = (page - 1) * per_page
                 items_list = items_list[start_idx:start_idx + per_page]
-                
-            else:
-                # For title and createdAt, we can use MongoDB's sort
-                if sort_field == 'title':
-                    sort_params.append(('title', 1 if sort_order == 'asc' else -1))
-                elif sort_field == 'createdAt':
-                    sort_params.append(('createdAt', 1 if sort_order == 'asc' else -1))
-                
-                # Apply sorting if specified, otherwise use default sort by createdAt
-                if not sort_params:
-                    sort_params = [('createdAt', -1)]  # Default sort by creation date, newest first
-                
-                collections_cursor = curated_lists.find().sort(sort_params).skip((page - 1) * per_page).limit(per_page)
-                items_list = []
-                for collection in collections_cursor:
+            # Update createdAt sorting logic to consider collection.history[0].createdAt
+            elif sort_field == 'createdAt':
+                sort_order_mongo = 1 if sort_order == 'asc' else -1
+                pipeline = [
+                    {
+                        "$addFields": {
+                            "effectiveCreatedAt": {
+                                "$ifNull": [
+                                    { "$arrayElemAt": [ "$history.createdAt", 0 ] },
+                                    "$createdAt"
+                                ]
+                            }
+                        }
+                    },
+                    { "$sort": { "effectiveCreatedAt": sort_order_mongo } },
+                    { "$skip": (page - 1) * per_page },
+                    { "$limit": per_page }
+                ]
+                items_list = list(curated_lists.aggregate(pipeline))
+                for collection in items_list:
                     collection['_id'] = str(collection['_id'])
+                    # Correctly display collection owner when they are: Guest/DeletedUser/NoEmailUser
                     try:
-                        user_email = user_database.find_one({'_id': collection['userId']})['email']
-                        collection['userEmail'] = user_email
-                        items_list.append(collection)
+                        if collection['userId'] is None:
+                            collection['userEmail'] = 'Guest'
+                        else:
+                            user_obj = user_database.find_one({'_id': collection['userId']})
+                            if user_obj:
+                                user_email = user_obj.get('email', 'No Email For Account')
+                                collection['userEmail'] = user_email
+                            else:
+                                collection['userEmail'] = 'Deleted Account'
                     except Exception as e:
                         print(f"Debug - Error processing collection: {str(e)}")
+
+            else:
+                sort_params = []
+                if sort_field == 'title':
+                    sort_params.append(('title', 1 if sort_order == 'asc' else -1))
+
+                if not sort_params:
+                    # Update createdAt sorting logic to consider collection.history[0].createdAt
+                    sort_order_mongo = 1 if sort_order == 'asc' else -1
+                    pipeline = [
+                        {
+                            "$addFields": {
+                                "effectiveCreatedAt": {
+                                    "$ifNull": [
+                                        { "$arrayElemAt": [ "$history.createdAt", 0 ] },
+                                        "$createdAt"
+                                    ]
+                                }
+                            }
+                        },
+                        { "$sort": { "effectiveCreatedAt": sort_order_mongo } },
+                        { "$skip": (page - 1) * per_page },
+                        { "$limit": per_page }
+                    ]
+                    items_list = list(curated_lists.aggregate(pipeline))
+                    for collection in items_list:
+                        collection['_id'] = str(collection['_id'])
+                        # Correctly display collection owner when they are: Guest/DeletedUser/NoEmailUser
+                        try:
+                            if collection['userId'] is None:
+                                collection['userEmail'] = 'Guest'
+                            else:
+                                user_obj = user_database.find_one({'_id': collection['userId']})
+                                if user_obj:
+                                    user_email = user_obj.get('email', 'No Email For Account')
+                                    collection['userEmail'] = user_email
+                                else:
+                                    collection['userEmail'] = 'Deleted Account'
+                        except Exception as e:
+                            print(f"Debug - Error processing collection: {str(e)}")
+                else:
+                    collections_cursor = curated_lists.find().sort(sort_params).skip((page - 1) * per_page).limit(per_page)
+                    items_list = []
+                    for collection in collections_cursor:
+                        collection['_id'] = str(collection['_id'])
+                        # Correctly display collection owner when they are: Guest/DeletedUser/NoEmailUser
+                        try:
+                            if collection['userId'] is None:
+                                collection['userEmail'] = 'Guest'
+                            else:
+                                user_obj = user_database.find_one({'_id': collection['userId']})
+                                if user_obj:
+                                    user_email = user_obj.get('email', 'No Email For Account')
+                                    collection['userEmail'] = user_email
+                                else:
+                                    collection['userEmail'] = 'Deleted Account'
+                            items_list.append(collection)
+                        except Exception as e:
+                            print(f"Debug - Error processing collection: {str(e)}")
 
         # Calculate pagination info
         total_pages = (total_items + per_page - 1) // per_page

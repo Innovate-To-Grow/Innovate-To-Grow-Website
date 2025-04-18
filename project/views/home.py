@@ -9,8 +9,8 @@ from datetime import datetime
 from pymongo import MongoClient
 from bson import ObjectId, json_util
 from routes import CONNECTION_STRING
-
-from project.views.account import get_email  # Add this import at the top
+import uuid
+from project.views.account import get_db_connection, get_email, get_access
 
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
 
@@ -320,16 +320,21 @@ def view_collection(collection_id):
     
     return render_template('collection.html', collection=collection, paginated_projects=paginated_projects, page=page, per_page=per_page, total_projects=total_projects)
 
-
 @home_blueprint.route('/api/save-collection', methods=['POST'])
 def save_collection():
     """API endpoint to save or update a collection in MongoDB"""
+
     collection_data = request.json
     
+    user_id = collection_data["userId"]
+    access = get_access(user_id)
+    print(user_id)
+    print(access)
+
     # Check if the collection already exists
     if "_id" in collection_data.keys():
         collection = fetch_collection(collection_data["_id"])
-        if collection:         
+        if collection:
             #Update history
             history = collection.get("history", [])
             history_element = {
@@ -339,29 +344,50 @@ def save_collection():
                 "editorContent": collection["editorContent"]
             }
             history.append(history_element)
-            # Update existing collection
-            result = curated_lists.update_one(
-                {"_id": collection_data["_id"]},
-                {"$set": {"history": history,
-                          "createdAt": collection_data["createdAt"],
-                          "title": collection_data["title"],
-                          "projects": collection_data["projects"],
-                          "editorContent": collection_data["editorContent"]
-                }}
-            )
-            if result.modified_count:
-                return jsonify({"success": True, "collection_id": str(collection_data["_id"])})
+            # Allows admins to edit main version of anyone's collection
+            # Allows collection owner (user) to edit main version of their collection
+            if access == "admin" or user_id == collection["userId"]:
+                # Update main version of existing collection
+                result = curated_lists.update_one(
+                    {"_id": collection_data["_id"]},
+                    {"$set": {"history": history,
+                            "createdAt": collection_data["createdAt"],
+                            "title": collection_data["title"],
+                            "projects": collection_data["projects"],
+                            "editorContent": collection_data["editorContent"]
+                    }}
+                )
+                if result.modified_count:
+                    return jsonify({"success": True, "collection_id": str(collection_data["_id"])})
+                else:
+                    return jsonify({"success": False, "message": "Failed to save collection."}), 500
+            # Allows other users to edit a copy of the collection that is then saved in database and tied to their account
+            # Allows guests to edit a copy of the collection that is then saved in database with null userId
             else:
-                return jsonify({"success": False, "message": "Failed to save collection."}), 500
+                # Copy existing collection and save with new userId (or null if guest) and update with the made edits
+                copy_collection_id = str(uuid.uuid4())
+                result = curated_lists.insert_one({
+                    "_id": copy_collection_id,
+                    "userId": user_id,
+                    "history": history,
+                    "createdAt": collection_data["createdAt"],
+                    "title": collection_data["title"],
+                    "projects": collection_data["projects"],
+                    "editorContent": collection_data["editorContent"]
+                })
+                redirect_url = url_for('home.past_projects') + f"?collection={copy_collection_id}"
+                return jsonify({"success": True, "redirect": redirect_url})
+                
+        # Insert new collection
         else:
-            # Insert new collection
             collection_data["history"] = []
             result = curated_lists.insert_one(collection_data)
             redirect_url = url_for('home.past_projects') + f"?collection={collection_data['_id']}"
             return jsonify({"success": True, "redirect": redirect_url})
     
     else:
-        return jsonify({"success": False, "message": "Failed to save collection."}), 400
+        return jsonify({"success": False, "message": "Missing collection ID"}), 400
+
 
 
 @home_blueprint.route('/api/get-collection/<collection_id>', methods=['GET'])

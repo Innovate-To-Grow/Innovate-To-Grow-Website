@@ -281,7 +281,8 @@
                         <tr>
                             <td>{{ collection.userEmail }}</td>
                             <td>{{ collection.title }}</td>
-                            <td>{{ collection.createdAt.split('T')[0] }}</td>
+                            <!--Creation timestamp is stored in createdAt within first history object or in createdAt if history is empty-->
+                            <td>{{ collection.history[0].createdAt.split('T')[0] if collection.history else collection.createdAt.split('T')[0] }}</td>
                             <td>
                                 <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
                                    class="btn-action btn-view">View</a>
