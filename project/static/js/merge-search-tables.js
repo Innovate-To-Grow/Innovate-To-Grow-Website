@@ -282,12 +282,72 @@ $(document).ready(function () {
             language: {
                 emptyTable: "No entries have been saved yet."
             },
+            select: {
+                style: 'multi', // Enable multi-row selection
+                info: false     // Disable the "X rows selected" info text
+            },
             buttons: [
                 {
+                    text: 'Show Details',
+                    className: 'details-toggle-btn',
+                    action: function () {
+                        const $button = $('.details-toggle-btn');
+                        const isShowing = $button.text() === 'Hide Details';
 
+                        $('#example').find('td.details-control-merge').each(function () {
+                            const tr = $(this).closest('tr');
+                            const row = merged_table.row(tr);
+
+                            if (isShowing) {
+                                if (row.child.isShown()) {
+                                    row.child.hide();
+                                    tr.removeClass('shown');
+                                    tr.css('color', 'Black').css('font-weight', 'normal');
+                                }
+                            } else {
+                                if (!row.child.isShown()) {
+                                    row.child(mergeformat(row.data())).show();
+                                    tr.addClass('shown');
+                                    tr.css('color', '#162D4F').css('font-weight', 'bold');
+                                }
+                            }
+                        });
+
+                        $button.text(isShowing ? 'Show Details' : 'Hide Details');
+                    }
+                },
+                {
+                    text: 'Share Collection',
+                    className: 'sharing',
+                    action: function () {
+                        if (!currentCollectionId) {
+                            // Generate a new collection ID if it doesn't exist
+                            currentCollectionId = generateCollectionId();
+                
+                            // Save the collection to the database
+                            const collection = createCollectionFromMergedTable();
+                            saveCollectionToDatabase(collection)
+                                .done(function () {
+                                    console.log("Collection saved successfully:", currentCollectionId);
+                                    window.open(`/collection/${currentCollectionId}`, "_blank");
+                                })
+                                .fail(function (jqXHR, textStatus, errorThrown) {
+                                    console.error("Error saving collection:", textStatus, errorThrown);
+                                    alert("An error occurred while saving the collection. Please try again.");
+                                });
+                        } else {
+                            // Open the collection URL if it already exists
+                            window.open(`/collection/${currentCollectionId}`, "_blank");
+                        }
+                    }
+                },
+                {
                     extend: 'collection',
                     text: 'Export',
                     className: 'export-dropdown',
+                    collectionLayout: 'fixed', // optional, keeps it neat
+                    collectionTitle: null,
+                    autoClose: true,
                     buttons: [
                         {
                             extend: 'csv',
@@ -324,69 +384,10 @@ $(document).ready(function () {
                             }
                         }
                     ]
-                },
-                {
-                    text: 'Share Collection',
-                    className: 'sharing',
-                    action: function () {
-                        if (!currentCollectionId) {
-                            // Generate a new collection ID if it doesn't exist
-                            currentCollectionId = generateCollectionId();
-                
-                            // Save the collection to the database
-                            const collection = createCollectionFromMergedTable();
-                            saveCollectionToDatabase(collection)
-                                .done(function () {
-                                    console.log("Collection saved successfully:", currentCollectionId);
-                                    window.open(`/collection/${currentCollectionId}`, "_blank");
-                                })
-                                .fail(function (jqXHR, textStatus, errorThrown) {
-                                    console.error("Error saving collection:", textStatus, errorThrown);
-                                    alert("An error occurred while saving the collection. Please try again.");
-                                });
-                        } else {
-                            // Open the collection URL if it already exists
-                            window.open(`/collection/${currentCollectionId}`, "_blank");
-                        }
-
-                        // if (currentCollectionId) {
-                        //     window.open(`/collection/${currentCollectionId}`, "_blank");
-                        // } else {
-                        //     alert("Please merge and save results first before sharing.");
-                        // }
-                    }
-                },
-                {
-                    text: 'Show Details',
-                    className: 'details-toggle-btn',
-                    action: function () {
-                        const $button = $('.details-toggle-btn');
-                        const isShowing = $button.text() === 'Hide Details';
-
-                        $('#example').find('td.details-control-merge').each(function () {
-                            const tr = $(this).closest('tr');
-                            const row = merged_table.row(tr);
-
-                            if (isShowing) {
-                                if (row.child.isShown()) {
-                                    row.child.hide();
-                                    tr.removeClass('shown');
-                                    tr.css('color', 'Black').css('font-weight', 'normal');
-                                }
-                            } else {
-                                if (!row.child.isShown()) {
-                                    row.child(mergeformat(row.data())).show();
-                                    tr.addClass('shown');
-                                    tr.css('color', '#162D4F').css('font-weight', 'bold');
-                                }
-                            }
-                        });
-
-                        $button.text(isShowing ? 'Show Details' : 'Hide Details');
-                    }
                 }
 
             ],
+            
             pageLength: 5,
             lengthMenu: [[5, 10, 25, 100], [5, 10, 25, 100]],
             search: {
@@ -417,6 +418,11 @@ $(document).ready(function () {
             }
         });
 
+        // Handle row selection
+        $('#example').on('click', 'tr', function () {
+            $(this).toggleClass('selected');
+        });
+
         // Handle row expansion for details
         $('#example').on('click', 'td.details-control-merge', function () {
             const tr = $(this).closest('tr');
@@ -433,10 +439,7 @@ $(document).ready(function () {
         // Add editor toggle button
         $('#example_wrapper').append(`
             <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 15px;">
-                <button id="bottom-editor-toggle" class="dt-button buttons-html5"
-                    style="background-color: #002856; color: #dbaa00;
-                    border: none; border-radius: 2px;
-                    padding: 0.5em 1em; font-size: 0.88em;">
+                <button id="bottom-editor-toggle" class="dt-Buttons">
                     Open Editor
                 </button>
             </div>
@@ -1183,14 +1186,15 @@ function openProjectEditor() {
             <h3 style="margin-bottom: 15px; color: #162D4F; text-align: center; font-size: 1.5rem; font-weight: 600;">
                 Project Curation Editor
             </h3>
-            <div style="text-align: center; margin-bottom: 15px;">
-                <button id="add-to-editor-btn" style="background-color: #002856; color: #dbaa00; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-                    Add Curation Detail to Editor
-                </button>
+            <div style="text-align: center; margin-bottom: 10px;">
+                <button id="add-to-editor-btn" class="dt-Buttons">Add Curation Detail to Editor</button>
+                <div style="font-size: 0.9rem; color: #444; margin-top: 6px; opacity: 0.85;">
+                    🛈 Select project rows above to customize. If none are selected, all will be added.
+                </div>
             </div>
             <textarea id="project-editor" style="width: 100%; min-height: 400px; padding: 15px; font-family: monospace; color: #000; background-color: #fff; border: 1px solid #aaa; border-radius: 4px; resize: none; box-sizing: border-box;"></textarea>
             <div style="margin-top: 15px; text-align: center;">
-                <button id="save-edit-btn" style="background-color: #002856; color: #dbaa00; border: none; padding: 10px 20px; border-radius: 4px;">Save Changes</button>
+                <button id="save-edit-btn" class="dt-Buttons">Save Changes</button>
             </div>
         </div>
     `;
