@@ -1004,10 +1004,41 @@ tr.selected td {
     animation: spin 2s linear infinite;
 }
 
+/* Export button container */
 .export-dropdown {
-    min-width: 120px;
     position: relative;
-    z-index: 1000;
+    display: inline-block;
+}
+
+/* Button container layout */
+.dt-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    position: relative;
+}
+
+/* Style the Export button itself */
+button.buttons-collection {
+    color: #DAA900 !important;
+    font-weight: normal !important;
+    position: relative;
+}
+
+/* Export dropdown buttons — now centered under Export */
+.dt-button-collection {
+    position: absolute !important;
+    top: 100% !important;
+    left: 40% !important;
+    transform: translateX(-50%) !important;
+    margin-top: 5px !important;
+    z-index: 1050;
+    background-color: transparent; /* use your base bg if needed */
+    border: none;
+    display: flex !important;
+    gap: 6px;
+    justify-content: center;
 }
 
 
