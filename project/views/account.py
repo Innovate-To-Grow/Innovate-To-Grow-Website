@@ -346,18 +346,43 @@ def account():
 
     user_id = str(user["_id"])
 
+    # Get pagination and sorting parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    # Query the database for collections associated with this user ID
+    sort_field = request.args.get('sort', 'createdAt')  # Default sort by creation date
+    sort_order = request.args.get('order', 'desc')  # Default to newest first
+
+    # Define the sort parameters for MongoDB
+    sort_params = []
+    if sort_field == 'title':
+        sort_params.append(('title', 1 if sort_order == 'asc' else -1))
+    elif sort_field == 'createdAt':
+        sort_params.append(('createdAt', 1 if sort_order == 'asc' else -1))
+    
+    # If no sort specified, default to creation date descending
+    if not sort_params:
+        sort_params = [('createdAt', -1)]
+
+    # Query the database with sorting
     total_collections = curated_lists.count_documents({"userId": user_id})
-    collections = curated_lists.find({"userId": user_id}).skip((page - 1) * per_page).limit(per_page)
+    collections = curated_lists.find({"userId": user_id}).sort(sort_params).skip((page - 1) * per_page).limit(per_page)
 
     # Convert ObjectId to string for rendering in the template
     collections = [
-        {**collection, "_id": str(collection["_id"])} for collection in collections
+        {**collection, "_id": str(collection["_id"])} 
+        for collection in collections
     ]
 
-    return render_template("account.html", email=email, collections=collections, page=page, per_page=per_page, total_collections=total_collections)
+    return render_template(
+        "account.html",
+        email=email,
+        collections=collections,
+        page=page,
+        per_page=per_page,
+        total_collections=total_collections,
+        sort_field=sort_field,
+        sort_order=sort_order
+    )
 
 
 @account_blueprint.route("/collection/<collection_id>/delete", methods=["GET"])
