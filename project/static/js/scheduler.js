@@ -55,6 +55,7 @@ function fnLoadDataTableInstance() {
         },
         data: datas,
         columns: [
+            { "data": "Order"},
             { "data": "Track" },
             { "data": "Year-Semester" },
             { "data": "Class" },
@@ -79,8 +80,11 @@ function fnLoadDataTableInstance() {
             }
         ],
         order: [
-            [1, 'asc']
+            [1, 'dec']
         ],
+        // track: [
+        //     [1, 'dec']
+        // ],
         fixedHeader: {
             header: true,
             footer: true
