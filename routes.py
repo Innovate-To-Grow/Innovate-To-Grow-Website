@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+import uuid
 
 CONNECTION_STRING = "mongodb+srv://***REMOVED_URL_CREDS***@i2guserdatabase.nthty.mongodb.net/"
 DEFAULT_ACCESS = "user"

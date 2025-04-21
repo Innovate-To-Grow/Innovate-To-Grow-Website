@@ -31,8 +31,44 @@
             <table class="collection-table">
                 <thead>
                     <tr>
-                        <th>Collection Name</th>
-                        <th>Last Edited</th>
+                        <th>
+                            <a href="{{ url_for('account.account', sort='title',
+                                     order='desc' if request.args.get('sort') == 'title' and request.args.get('order') != 'desc' else 'asc',
+                                     page=page, per_page=per_page) }}"
+                               style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                Collection Name
+                                <span style="display: inline-block; font-size: 0.8em;">
+                                    {% if request.args.get('sort') == 'title' %}
+                                        {% if request.args.get('order') == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% else %}
+                                        ⇅
+                                    {% endif %}
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('account.account', sort='createdAt',
+                                     order='desc' if request.args.get('sort') == 'createdAt' and request.args.get('order') != 'desc' else 'asc',
+                                     page=page, per_page=per_page) }}"
+                               style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
+                                Last Edited
+                                <span style="display: inline-block; font-size: 0.8em;">
+                                    {% if request.args.get('sort') == 'createdAt' %}
+                                        {% if request.args.get('order') == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% else %}
+                                        ⇅
+                                    {% endif %}
+                                </span>
+                            </a>
+                        </th>
                         <th>Actions</th>
                         <th>URL</th>
                         <th></th>
