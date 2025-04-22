@@ -87,8 +87,8 @@
               {{ form.submit(class="btn") }}
             </div>
             <div class="signup-link">
-              <a href="{{ url_for('account.signup') }}">Don't have an account? Sign Up</a>
-            </div>
+              <a href="{{ url_for('account.signup', collection=request.args.get('collection')) }}">Don't have an account? Sign Up</a>
+          </div>
           </div>
         </form>
         
