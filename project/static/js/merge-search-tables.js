@@ -210,8 +210,9 @@ function saveCollectionToDatabase(collection) {
         dataType: "json",
         success: function(response) {
             if (response.success) {
-                if (response.redirect) {
-                    window.location.href = response.redirect;  // Redirecting user
+                if (response.redirect && history.pushState) {
+                    history.pushState({}, '', response.redirect);
+                    console.log("URL updated to:", response.redirect);
                 } else {
                     console.log("Collection updated successfully!");
                 }
@@ -431,7 +432,14 @@ $(document).ready(function () {
         });
 
         // Handle row selection
-        $('#example').on('click', 'tr', function () {
+        $('#example').on('click', 'tr', function (e) {
+            // Prevent row selection if the clicked element is a "Details" or "Delete" button
+            if ($(e.target).hasClass('details-control-merge') || $(e.target).hasClass('editor-delete') || $(e.target).closest('.editor-delete').length > 0) {
+                e.stopPropagation();
+                return;
+            }
+
+            // Toggle row selection
             $(this).toggleClass('selected');
         });
 
@@ -508,9 +516,9 @@ $(document).ready(function () {
                 }
             }
         }).fail(function (error) {
-            console.error("Failed to load collection, fallback to empty table:", error);
-            // If collection ID in ?collection= does not exist in database redirect user to base past projects page
-            window.location.href = "/past-projects"
+            alert("The requested collection could not be loaded. Starting a new one.");
+            currentCollectionId = generateCollectionId();
+            initializeMergedTable([]);
         });
     } else {
         console.log("No collection ID in URL, initializing a new collection.");
@@ -908,7 +916,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             });
     });
 
-    $('#example').on('click', 'td.editor-delete', function () {
+    $('#example').on('click', '-td.editordelete', function () {
         // Delete row in merged_table and update deleted array
         var data = merged_table.row($(this).parents('tr')).data();
         if (deleted.length > 0) {
@@ -927,14 +935,43 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
     
         merged_table.row($(this).parents('tr')).remove().draw();
     
-        // If all rows are removed, reset the collection metadata
-        if (merged_table.rows().count() === 0) {
-            resetCurrentCollection();
-        }
-    
         // Update the database with the new state of the merged table
         const collection = createCollectionFromMergedTable();
     
+        saveCollectionToDatabase(collection)
+            .done(function () {
+                console.log("Database updated successfully after row deletion.");
+            })
+            .fail(function (jqXHR, textStatus, errorThrown) {
+                console.error("Error updating database after row deletion:", textStatus, errorThrown);
+            });
+    });
+
+    // Handle click on the trashcan icon
+    $('#example').on('click', 'td.editor-delete i', function () {
+        // Delete row in merged_table and update deleted array
+        const rowElement = $(this).closest('tr');
+        const data = merged_table.row(rowElement).data();
+
+        if (deleted.length > 0) {
+            deleted[data[10]].add({
+                "Year-Semester": data[0],
+                "Class": data[1],
+                "Team#": data[2],
+                "Team Name": data[3],
+                "Project Title": data[4],
+                "Organization": data[5],
+                "Industry": data[6],
+                "Abstract": data[8],
+                "Student Names": data[9]
+            });
+        }
+
+        merged_table.row(rowElement).remove().draw();
+
+        // Update the database with the new state of the merged table
+        const collection = createCollectionFromMergedTable();
+
         saveCollectionToDatabase(collection)
             .done(function () {
                 console.log("Database updated successfully after row deletion.");
@@ -1076,20 +1113,6 @@ function updateSelectButtonText(search_table) {
     $button.text(selectedRows > 0 ? "Deselect All" : "Select All");
 
     console.log("Updated Button text:", $button.text()); // Log for debugging
-}
-
-
-// Add this function
-function resetCurrentCollection() {
-    currentCollectionId = null;
-    currentCollectionTitle = null;
-    currentCreatedAt = null; // Reset creation timestamp
-    $('.sharing').text('Save & Share Collection');
-    
-    // Reset title input if it exists
-    if ($('#curation-title').length) {
-        $('#curation-title').val('Curated Projects - ' + new Date().toLocaleDateString());
-    }
 }
 
 // Add this function to create and manage the editable title
