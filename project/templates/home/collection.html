@@ -134,11 +134,11 @@
                                 <!-- Loop through paginated projects -->
                                 {% for project in paginated_projects %}
                                     <div class="project-card">
-                                        <div class="project-title">{{ project.project_title }}</div>
+                                        <div class="project-title">{{ project.projectTitle }}</div>
                                         <div class="project-meta">
-                                            <div class="project-meta-item">{{ project.year_semester }}</div>
+                                            <div class="project-meta-item">{{ project.yearSemester }}</div>
                                             <div class="project-meta-item">{{ project.class }}</div>
-                                            <div class="project-meta-item">Team {{ project.team_number }}: {{ project.team_name }}</div>
+                                            <div class="project-meta-item">Team {{ project.teamNumber }}: {{ project.teamName }}</div>
                                         </div>
                                         <div>
                                             <strong>Organization:</strong> {{ project.organization }}<br>
@@ -147,7 +147,7 @@
                                         <div class="project-abstract">
                                             {{ project.abstract|truncate(200) }}
                                         </div>
-                                        <a href="{{ url_for('home.project_detail', project_uuid=project.uuid) }}" class="view-project-btn">
+                                        <a href="{{ url_for('home.project_detail', project_uuid=project._id) }}" class="view-project-btn">
                                             View Project
                                         </a>
                                     </div>

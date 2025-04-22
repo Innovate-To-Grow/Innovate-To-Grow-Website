@@ -12,7 +12,7 @@
     <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
-    <title>{{ project_data.project_title }} | Innovate To Grow</title>
+    <title>{{ project_data.projectTitle }} | Innovate To Grow</title>
     {{ styles() }}
     <style>
         .project-container {
@@ -82,20 +82,20 @@
                     <div id="content-wrapper" class="content-wrapper">
                         <div id="content-head" class="row-fluid content-head">
                             <div class="project-container">
-                                <h1 class="title" id="page-title">{{ project_data.project_title }}</h1>
+                                <h1 class="title" id="page-title">{{ project_data.projectTitle }}</h1>
                                 
                                 <div class="project-meta">
                                     <div class="project-meta-item">
-                                        <strong>Year-Semester:</strong> {{ project_data.year_semester }}
+                                        <strong>Year-Semester:</strong> {{ project_data.yearSemester }}
                                     </div>
                                     <div class="project-meta-item">
                                         <strong>Class:</strong> {{ project_data.class }}
                                     </div>
                                     <div class="project-meta-item">
-                                        <strong>Team #:</strong> {{ project_data.team_number }}
+                                        <strong>Team #:</strong> {{ project_data.teamNumber }}
                                     </div>
                                     <div class="project-meta-item">
-                                        <strong>Team Name:</strong> {{ project_data.team_name }}
+                                        <strong>Team Name:</strong> {{ project_data.teamName }}
                                     </div>
                                 </div>
                                 
@@ -112,7 +112,7 @@
                                 
                                 <div class="project-section">
                                     <h3>Student Team</h3>
-                                    <p>{{ project_data.student_names }}</p>
+                                    <p>{{ project_data.studentNames }}</p>
                                 </div>
                                 
                                 <div class="project-actions">

@@ -247,55 +247,21 @@ def sponsors_2015():
     return render_template("2015-sponsors.html")
 
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
-def past_projects(uuid_string=None):
-    if request.method == "POST":
-        data = request.get_json()
-        uuid_string = str(uuid.uuid4())
-        
-        # Create a MongoDB collection entry
-        collection_data = {
-            "_id": uuid_string,
-            "userId": None,
-            "title": f"Collection {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            "projects": data,
-            "createdAt": datetime.now().isoformat(),
-        }
-        
-        # Insert directly into MongoDB
-        curated_lists.insert_one(collection_data)
-        
-        return jsonify({"uuid_string": uuid_string, "collection_id": uuid_string})
-    
-    # For GET requests, pass only the collection ID to the template
+def past_projects(uuid_string=None):    
     return render_template("past-projects.html", collection_id=uuid_string)
 
 @home_blueprint.route('/project/<project_uuid>')
 def project_detail(project_uuid):
     """View a specific project"""
     try:
-        cursor = curated_lists.find({"projects.uuid": project_uuid})
-        
-        project_data = None
-        collection = None
-        
-        for doc in cursor:
-            for project in doc.get('projects', []):
-                if project.get('uuid') == project_uuid:
-                    project_data = project
-                    collection = doc
-                    break
-            if project_data:
-                break
-        
-        if not project_data:
+        projects = dbname["projects"]
+        project = projects.find_one({"_id":project_uuid})
+
+        if not project:
             return redirect(url_for('home.past_projects'))
         
-        if collection:
-            collection['_id'] = str(collection['_id'])
-        
-        return render_template('home/project-detail.html', 
-                             project_data=project_data,
-                             collection=collection)
+        return render_template('project-detail.html', project_data=project)
+
     except Exception as e:
         print(f"Error in project_detail: {str(e)}")
         return redirect(url_for('home.past_projects'))
@@ -303,10 +269,7 @@ def project_detail(project_uuid):
 @home_blueprint.route('/collection/<collection_id>')
 def view_collection(collection_id):
     """View a specific collection"""
-    if ObjectId.is_valid(collection_id):
-        collection = curated_lists.find_one({"_id": ObjectId(collection_id)})
-    else:
-        collection = curated_lists.find_one({"_id": collection_id})
+    collection = curated_lists.find_one({"_id": collection_id})
     
     if not collection:
         return redirect(url_for('home.past_projects'))
@@ -318,7 +281,9 @@ def view_collection(collection_id):
     start_index = (page - 1) * per_page
     end_index = start_index + per_page
     paginated_projects = collection["projects"][start_index:end_index]
-    
+    # Convert project IDs to project details
+    projects = dbname["projects"]
+    paginated_projects = [proj for project_id in paginated_projects if (proj := projects.find_one({"_id": project_id}))]
     return render_template('collection.html', collection=collection, paginated_projects=paginated_projects, page=page, per_page=per_page, total_projects=total_projects)
 
 @home_blueprint.route('/api/save-collection', methods=['POST'])
@@ -329,8 +294,6 @@ def save_collection():
     
     user_id = collection_data["userId"]
     access = get_access(user_id)
-    print(user_id)
-    print(access)
 
     # Check if the collection already exists
     if "_id" in collection_data.keys():
@@ -370,7 +333,8 @@ def save_collection():
                 result = curated_lists.insert_one({
                     "_id": copy_collection_id,
                     "userId": user_id,
-                    "history": history,
+                    # Don't copy history from existing collection when copying it for another user/guest (for collection owner's privacy)
+                    "history": [],
                     "createdAt": collection_data["createdAt"],
                     "title": collection_data["title"],
                     "projects": collection_data["projects"],
@@ -394,14 +358,14 @@ def save_collection():
 @home_blueprint.route('/api/get-collection/<collection_id>', methods=['GET'])
 def get_collection(collection_id):
     """Get a collection by ID from MongoDB"""
-    if ObjectId.is_valid(collection_id):
-        collection = curated_lists.find_one({"_id": ObjectId(collection_id)})
-    else:
-        collection = curated_lists.find_one({"_id": collection_id})
+    collection = curated_lists.find_one({"_id": collection_id})
     
     if not collection:
         return jsonify({"success": False, "message": "Collection not found"}), 404
     
+    projects = dbname["projects"]
     collection['_id'] = str(collection['_id'])
+    # Get project details from the project IDs stored in collection (exclude if project details don't exist in database)
+    collection["projects"] = [proj for project_id in collection["projects"] if (proj := projects.find_one({"_id": project_id}))]
     return json_util.dumps(collection)
 

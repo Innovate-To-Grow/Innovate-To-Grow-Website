@@ -202,6 +202,8 @@ function createCollectionFromMergedTable() {
 }
 
 function saveCollectionToDatabase(collection) {
+    // Only return project IDs to the database
+    collection.projects = collection.projects.map(project => project.uuid);
     return $.ajax({
         type: "POST", 
         url: "/api/save-collection",
@@ -487,18 +489,18 @@ $(document).ready(function () {
                 currentCreatedAt = data.createdAt || new Date().toISOString();
 
                 const tableData = (data.projects || []).map(project => [
-                    project.year_semester || '',
+                    project.yearSemester || '',
                     project.class || '',
-                    project.team_number || '',
-                    project.team_name || '',
-                    project.project_title || '',
+                    project.teamNumber || '',
+                    project.teamName || '',
+                    project.projectTitle || '',
                     project.organization || '',
                     project.industry || '',
                     '', // Details
                     project.abstract || '',
-                    project.student_names || '',
+                    project.studentNames || '',
                     '', // Delete
-                    project.uuid || ''
+                    project._id || ''
                 ]);
 
                 initializeMergedTable(tableData);
@@ -1451,6 +1453,10 @@ function exportToPDF(collection) {
                 {
                     text: collection.title || 'Project Collection',
                     style: 'collectionTitle',
+                    margin: [0, 0, 0, 10]
+                },
+                {   text: 'Last Edited' + new Date(collection.createdAt).toLocaleDateString(),
+                    style: 'sectionHeader',
                     margin: [0, 0, 0, 20]
                 }
             ],
@@ -1491,7 +1497,7 @@ function exportToPDF(collection) {
                 docDefinition.content.push(
                     // Project Title
                     {
-                        text: project.project_title,
+                        text: project.projectTitle,
                         style: 'projectTitle'
                     },
                     // Project Metadata
@@ -1500,11 +1506,11 @@ function exportToPDF(collection) {
                             widths: ['*', '*'],
                             body: [
                                 [
-                                    { text: `Year-Semester: ${project.year_semester}`, style: 'normalText' },
+                                    { text: `Year-Semester: ${project.yearSemester}`, style: 'normalText' },
                                     { text: `Class: ${project.class}`, style: 'normalText' }
                                 ],
                                 [
-                                    { text: `Team: ${project.team_number} - ${project.team_name}`, colSpan: 2, style: 'normalText' }
+                                    { text: `Team: ${project.teamNumber} - ${project.teamName}`, colSpan: 2, style: 'normalText' }
                                 ],
                                 [
                                     { text: `Organization: ${project.organization}`, style: 'normalText' },
@@ -1530,7 +1536,7 @@ function exportToPDF(collection) {
                         style: 'sectionHeader'
                     },
                     {
-                        text: project.student_names,
+                        text: project.studentNames,
                         style: 'normalText',
                         margin: [0, 10, 0, 20]
                     }
@@ -1572,7 +1578,7 @@ function exportToExcel(collection) {
         const workbookData = [
             // Collection Title & Metadata
             ['Collection: ' + collection.title],
-            ['Created: ' + new Date(collection.createdAt).toLocaleDateString()],
+            ['Last Edited: ' + new Date(collection.createdAt).toLocaleDateString()],
             [''],  // Empty row for spacing
             
             // Editor content if exists
@@ -1593,15 +1599,15 @@ function exportToExcel(collection) {
         // Add each project's data
         collection.projects.forEach((project, index) => {
             workbookData.push([
-                project.year_semester,
+                project.yearSemester,
                 project.class,
-                project.team_number,
-                project.team_name,
-                project.project_title,
+                project.teamNumber,
+                project.teamName,
+                project.projectTitle,
                 project.organization,
                 project.industry,
                 project.abstract,
-                project.student_names
+                project.studentNames
             ]);
             
             // Add spacing between projects
