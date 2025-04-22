@@ -142,16 +142,16 @@ function createCollectionFromMergedTable() {
         const uuid = row[11] || generateProjectUuid(row[0], row[1], row[2], row[4]);
 
         return {
-            uuid: uuid,
-            year_semester: row[0],
+            _id: uuid,
+            yearSemester: row[0],
             class: row[1],
-            team_number: row[2],
-            team_name: row[3],
-            project_title: row[4],
+            teamNumber: row[2],
+            teamName: row[3],
+            projectTitle: row[4],
             organization: row[5],
             industry: row[6],
             abstract: row[8],
-            student_names: row[9]
+            studentNames: row[9]
         };
     });
 
@@ -1455,9 +1455,9 @@ function exportToPDF(collection) {
                     style: 'collectionTitle',
                     margin: [0, 0, 0, 10]
                 },
-                {   text: 'Last Edited' + new Date(collection.createdAt).toLocaleDateString(),
-                    style: 'sectionHeader',
-                    margin: [0, 0, 0, 20]
+                {   text: 'Last Edited: ' + new Date(collection.createdAt).toLocaleDateString(),
+                    style: 'normalText',
+                    margin: [0, 10, 0, 20]
                 }
             ],
             styles: {
