@@ -43,8 +43,13 @@
                             {% endif %}
                             <a href="{{ url_for('account.logout', r=ts) }}" class="auth-link">Log Out</a>
                         {% else %}
-                            <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
-                            <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
+                            {% if request.endpoint == 'home.past_projects' %}
+                                <a href="{{ url_for('account.signup', collection=request.args.get('collection')) }}" class="auth-link">Sign Up</a>
+                                <a href="{{ url_for('account.login', collection=request.args.get('collection')) }}" class="auth-link">Log In</a>
+                            {% else %}
+                                <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
+                                <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>

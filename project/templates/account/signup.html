@@ -91,8 +91,8 @@
               {{ form.submit(class="btn") }}
             </div>
             <div class="login-link">
-              <a href="{{ url_for('account.login') }}">Already have an account? Login</a>
-            </div>
+              <a href="{{ url_for('account.login', collection=request.args.get('collection')) }}">Already have an account? Login</a>
+          </div>
           </div>
         </form>
         
