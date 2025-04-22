@@ -57,6 +57,7 @@
       <div class="form-container">
         <form action="{{ url_for('account.login') }}" method="post">
           {{ form.csrf_token }}
+          <input type="hidden" name="collection" value="{{ request.args.get('collection') }}">
           <!-- This will capture the original page for redirection after login -->
           <input type="hidden" name="next" value="{{ next or request.referrer or url_for('home.mainpage') }}">
           <div class="input-row">

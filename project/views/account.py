@@ -105,10 +105,12 @@ def rate_limit(key, limit_seconds=10):
 @block_user
 def login():
     form = LoginForm()
-    collection_id = request.args.get('collection_id')
+    # Get collection parameter (not collection_id) from URL
+    collection = request.args.get('collection')
+    print(f"Debug - Login received collection: {collection}")
     
     if request.method == "GET":
-        return render_template("login.html", form=form)
+        return render_template("login.html", form=form, collection=collection)
 
     if form.validate_on_submit():
         email = form.email.data.lower()
@@ -118,12 +120,25 @@ def login():
             password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
             if password == user["password"]:
                 if user["verified"]:
-                    # Update collection ownership if collection_id exists
-                    if collection_id:
-                        curated_lists.update_one(
-                            {"_id": collection_id},
-                            {"$set": {"userId": str(user["_id"])}}
-                        )
+                    # If there's collection data, update its ownership
+                    collection = request.form.get('collection')
+                    if collection:
+                        try:
+                            curated_lists.update_one(
+                                {"_id": collection},
+                                {"$set": {"userId": str(user["_id"])}}
+                            )
+                            print(f"Debug - Updated collection {collection} ownership to user {user['_id']}")
+                            
+                            # Set session and redirect back to the collection
+                            session["logged_in"] = True
+                            session["email"] = email
+                            session.permanent = True
+                            flash("Log in successful", "success")
+                            # return redirect(url_for("home.past_projects", collection=collection))
+                            return redirect(url_for("account.account"))
+                        except Exception as e:
+                            print(f"Debug - Error updating collection ownership: {str(e)}")
                     
                     session["logged_in"] = True
                     session["email"] = email
@@ -161,12 +176,12 @@ def login():
 def signup():
     form = SignupForm()
     # Get collection_id from URL query parameter
-    collection_id = request.args.get('collection_id')
-    print(f"Debug - Received collection_id: {collection_id}")
+    collection = request.args.get('collection')
+    print(f"Debug - Received collection_id: {collection}")
 
     if request.method == "GET":
         # Pass collection_id to the template
-        return render_template("signup.html", form=form, collection_id=collection_id)
+        return render_template("signup.html", form=form, collection=collection)
 
     #POST
     if form.validate_on_submit():
@@ -196,12 +211,12 @@ def signup():
             user_database.insert_one(user_data)
             
             # Get collection_id from form data
-            collection_id = request.form.get('collection_id')
+            collection = request.form.get('collection')
             
             # Update collection ownership if collection_id exists
-            if collection_id:
+            if collection:
                 curated_lists.update_one(
-                    {"_id": collection_id},
+                    {"_id": collection},
                     {"$set": {"userId": user_id}}
                 )
             
