@@ -203,7 +203,7 @@ function createCollectionFromMergedTable() {
 
 function saveCollectionToDatabase(collection) {
     // Only return project IDs to the database
-    collection.projects = collection.projects.map(project => project.uuid);
+    collection.projects = collection.projects.map(project => project._id);
     return $.ajax({
         type: "POST", 
         url: "/api/save-collection",
