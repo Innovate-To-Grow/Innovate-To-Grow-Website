@@ -1041,6 +1041,22 @@ button.buttons-collection {
     justify-content: center;
 }
 
+/* Restrict the clickable area to the icon */
+td.editor-delete {
+    text-align: center; /* Center the icon */
+    padding: 0; /* Remove padding around the icon */
+    cursor: pointer; /* Show pointer cursor on hover */
+}
+
+td.editor-delete i {
+    display: inline-block;
+    width: 24px; /* Adjust width to match the icon size */
+    height: 24px; /* Adjust height to match the icon size */
+    line-height: 24px;
+    cursor: pointer;
+}
+
+
 
 @keyframes spin {
     0% {
