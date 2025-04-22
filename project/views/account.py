@@ -17,6 +17,7 @@ from functools import wraps
 from routes import add_user_direct
 from routes import CONNECTION_STRING
 from pymongo import MongoClient
+import uuid
 
 # Initialize MongoDB client and curated_lists collection
 client = MongoClient(CONNECTION_STRING)
@@ -104,59 +105,47 @@ def rate_limit(key, limit_seconds=10):
 @block_user
 def login():
     form = LoginForm()
-    # Get next parameter or use referrer as fallback
-    next_page = request.args.get('next') or request.referrer or url_for('home.mainpage')
+    collection_id = request.args.get('collection_id')
     
-    # Don't redirect back to login/signup/account pages
-    if next_page and ('login' in next_page or 'signup' in next_page or 'account' in next_page or 'logout' in next_page):
-        next_page = url_for('home.mainpage')
-
     if request.method == "GET":
-        return render_template("login.html", form=form, next=next_page)
+        return render_template("login.html", form=form)
 
-    #POST
     if form.validate_on_submit():
         email = form.email.data.lower()
-        #verify email exists
-        selected_row = get_email(email)
+        user = get_email(email)
 
-        if selected_row:
+        if user:
             password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
-            if password == selected_row["password"]:
-                if selected_row["verified"]:
-                    #set cookie
+            if password == user["password"]:
+                if user["verified"]:
+                    # Update collection ownership if collection_id exists
+                    if collection_id:
+                        curated_lists.update_one(
+                            {"_id": collection_id},
+                            {"$set": {"userId": str(user["_id"])}}
+                        )
+                    
                     session["logged_in"] = True
                     session["email"] = email
-                    session.permanent = True  # Make session last longer
+                    session.permanent = True
                     flash("Log in successful", "success")
-                    
-                    # Use the next parameter from the form and perform a direct redirect
-                    redirect_url = request.form.get('next') or next_page
-                    
-                    # Use 302 status code for proper redirect without intermediate page
-                    return redirect(redirect_url, code=302)
-                
+                    return redirect(url_for("account.account"))
+
                 # Check rate limiting (10 seconds between requests)
                 if not rate_limit("verify_email", 10):
                     flash("Please wait a moment before requesting another verification email", "danger")
                     return render_template("login.html", form=form), 429
 
-                user = get_email(email)
-                if user:
-                    token = generate_token(email)
-                    if update_user_token(email, token):
-                        url = url_for("account.verify_email", token=token, _external=True)
-                        email_template = render_template("account_verification_email.html", url=url)
-                        send_email(email, "Verify Your Email", email_template)
-                        flash("Unverified account. A new verification has been sent to "+email, "danger")
-                        return render_template("login.html", form=form), 403
-                    else:
-                        flash("Error processing request", "danger")
-                        return render_template("login.html", form=form), 500
-
-                flash("No account found with this email address", "danger")
-                return render_template("login.html", form=form), 404
-
+                token = generate_token(email)
+                if update_user_token(email, token):
+                    url = url_for("account.verify_email", token=token, _external=True)
+                    email_template = render_template("account_verification_email.html", url=url)
+                    send_email(email, "Verify Your Email", email_template)
+                    flash("Unverified account. A new verification has been sent to "+email, "danger")
+                    return render_template("login.html", form=form), 403
+                else:
+                    flash("Error processing request", "danger")
+                    return render_template("login.html", form=form), 500
 
             flash("Incorrect password", "danger")
             return render_template("login.html", form=form), 401
@@ -164,17 +153,20 @@ def login():
         flash("Account with this email doesn't exist", "danger")
         return render_template("login.html", form=form), 404
 
-    else:
-        return render_template("login.html", form=form), 400
+    return render_template("login.html", form=form), 400
     
 
 @account_blueprint.route("/signup", methods=["GET","POST"])
 @block_user
 def signup():
     form = SignupForm()
+    # Get collection_id from URL query parameter
+    collection_id = request.args.get('collection_id')
+    print(f"Debug - Received collection_id: {collection_id}")
 
     if request.method == "GET":
-        return render_template("signup.html", form=form)
+        # Pass collection_id to the template
+        return render_template("signup.html", form=form, collection_id=collection_id)
 
     #POST
     if form.validate_on_submit():
@@ -187,34 +179,47 @@ def signup():
         #hash password and prepare user data
         password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
         timestamp = str(time.time())
+        user_id = str(uuid.uuid4())  # Generate user ID
         
-        # Add user to MongoDB
-        success = asyncio.run(add_user_direct(email, password, timestamp, False))
-        
-        if not success:
-            flash("Error creating account", "danger")
-            return render_template("signup.html", form=form), 500
-
-        # Verify email exists
-        user = get_email(email)
-        if user:
+        user_database = get_db_connection()
+        try:
+            # Insert the user
+            user_data = {
+                "_id": user_id,
+                "email": email,
+                "password": password,
+                "timestamp": timestamp,
+                "verified": False,
+                "access": "user",
+                "token": None
+            }
+            user_database.insert_one(user_data)
+            
+            # Get collection_id from form data
+            collection_id = request.form.get('collection_id')
+            
+            # Update collection ownership if collection_id exists
+            if collection_id:
+                curated_lists.update_one(
+                    {"_id": collection_id},
+                    {"$set": {"userId": user_id}}
+                )
+            
+            # Generate verification token and complete signup
             token = generate_token(email)
             if update_user_token(email, token):
-                #send verification email after signup
                 url = url_for("account.verify_email", token=token, _external=True)
                 email_template = render_template("account_verification_email.html", url=url)
                 send_email(email, "Verify Your Email", email_template)
                 flash("Sign up successful. A verification email has been sent to "+email, "success")
                 return redirect(url_for("account.login"))
-            else:
-                flash("Error processing request", "danger")
-                return render_template("signup.html", form=form), 500
-        
-        flash("No account found with this email address", "danger")
-        return render_template("signup.html", form=form), 404
+            
+        except Exception as e:
+            print(f"Error in signup: {str(e)}")
+            flash("Error creating account", "danger")
+            return render_template("signup.html", form=form), 500
 
-    else:
-        return render_template("signup.html", form=form), 400
+    return render_template("signup.html", form=form), 400
 
 
 @account_blueprint.route("/forgot-password", methods=["GET","POST"])

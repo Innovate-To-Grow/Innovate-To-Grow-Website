@@ -255,6 +255,7 @@ def past_projects(uuid_string=None):
         # Create a MongoDB collection entry
         collection_data = {
             "_id": uuid_string,
+            "userId": None,
             "title": f"Collection {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "projects": data,
             "createdAt": datetime.now().isoformat(),
