@@ -516,9 +516,9 @@ $(document).ready(function () {
                 }
             }
         }).fail(function (error) {
-            alert("The requested collection could not be loaded. Starting a new one.");
-            currentCollectionId = generateCollectionId();
-            initializeMergedTable([]);
+            console.error("Failed to load collection, fallback to empty table:", error);
+            // If collection ID in ?collection= does not exist in database redirect user to base past projects page
+            window.location.href = "/past-projects"
         });
     } else {
         console.log("No collection ID in URL, initializing a new collection.");
