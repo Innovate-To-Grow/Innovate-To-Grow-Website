@@ -55,6 +55,7 @@ function fnLoadDataTableInstance() {
         },
         data: datas,
         columns: [
+            { "data": "Order"},
             { "data": "Track" },
             { "data": "Year-Semester" },
             { "data": "Class" },
@@ -79,8 +80,11 @@ function fnLoadDataTableInstance() {
             }
         ],
         order: [
-            [1, 'asc']
+            [1, 'dec']
         ],
+        // track: [
+        //     [1, 'dec']
+        // ],
         fixedHeader: {
             header: true,
             footer: true
@@ -145,7 +149,7 @@ let timePerSlotForCEE = "30";
 // the amount of tracks for CSE
 let totalTrackForCSE = 4;
 // the amount of order for CSE
-let totalOrderForCSE = 9;
+let totalOrderForCSE = 10;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
@@ -207,7 +211,7 @@ $(document).ready(function () {
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Precision</b>'+
+                                    '<b>Lab</b>'+
                                 '</p>'+
                             '</td>'+
                             // '<td data-header="Track 4" style="color: #002856;">'+
@@ -343,22 +347,22 @@ $(document).ready(function () {
                                 '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                                 '<td data-header="Track 1" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Food</b>'+
+                                        '<b>Alan Turing</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 2" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Data</b>'+
+                                        '<b>Ada Lovelace</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Language</b>'+
+                                        '<b>John von Neumann</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Technology</b>'+
+                                        '<b>Joan Clarke</b>'+
                                     '</p>'+
                                 '</td>'+
                             '</tr>'+
