@@ -1146,6 +1146,7 @@ function initializeCurationTitle() {
         // Create title container and place it within the Saved Merged Results section
         const titleHtml = `
             <div id="curation-title-container" style="margin-top: 15px; text-align: center;">
+                <p style="font-size: 2rem; font-weight: bold; color: #162D4F; margin-bottom: 5px;">Collection Title</p>
                 <h3 id="curation-title" 
                     contenteditable="true" 
                     style="display: inline-block; font-size: 1.5rem; font-weight: 600; color: #162D4F; margin: 0; padding: 5px 10px; border: 1px solid transparent; border-radius: 4px; background-color: #f9f9f9; transition: border-color 0.2s ease; cursor: pointer;">
