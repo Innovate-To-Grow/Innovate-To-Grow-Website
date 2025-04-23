@@ -38,8 +38,6 @@ def update_user_token(email: str, token: str | None):
     return bool(result.modified_count)
 
 def get_db_connection():
-    client = MongoClient(CONNECTION_STRING)
-    dbname = client['I2GUserDatabase']
     return dbname["users"]
 
 def get_email(email):
@@ -467,27 +465,9 @@ def admin():
         # Get sorting parameters
         sort_field = request.args.get('sort')
         sort_order = request.args.get('order', 'asc')
-        
-        if view == 'users':
-            # Get users with pagination and sorting
-            user_database = get_db_connection()
-            total_items = user_database.count_documents({})
-            
-            # Define sort parameters
-            sort_params = []
-            if sort_field == 'email':
-                sort_params.append(('email', 1 if sort_order == 'asc' else -1))
-            elif sort_field == 'id':
-                sort_params.append(('_id', 1 if sort_order == 'asc' else -1))
-            
-            # Apply sorting if specified, otherwise use default sort by email
-            if not sort_params:
-                sort_params = [('email', 1)]
-                
-            users_cursor = user_database.find().sort(sort_params).skip((page - 1) * per_page).limit(per_page)
-            items_list = list(users_cursor)
-            
-        else:
+        total_items = 0
+
+        if view == 'lists':
             # Curated Lists view with sorting
             user_database = get_db_connection()
             total_items = curated_lists.count_documents({})
@@ -617,6 +597,55 @@ def admin():
                         except Exception as e:
                             print(f"Debug - Error processing collection: {str(e)}")
 
+
+        elif view == 'projects':
+            projects_database = dbname["projects"]
+            total_items = projects_database.count_documents({})
+
+            sort_params = []
+            if sort_field == '_id':
+                sort_params.append(('_id', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'yearSemester':
+                sort_params.append(('yearSemester', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'class':
+                sort_params.append(('class', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'teamNumber':
+                sort_params.append(('teamNumber', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'teamName':
+                sort_params.append(('teamName', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'projectTitle':
+                sort_params.append(('projectTitle', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'organization':
+                sort_params.append(('organization', 1 if sort_order == 'asc' else -1))
+
+            # Default sort same as /past-projects search table 
+            if not sort_params:
+                sort_params = [('yearSemester', -1), ('class', 1), ('teamNumber', 1)]
+
+            projects_cursor = projects_database.find().sort(sort_params).skip((page-1)*per_page).limit(per_page)
+            items_list = list(projects_cursor)
+
+        else:
+            # Get users with pagination and sorting
+            user_database = get_db_connection()
+            total_items = user_database.count_documents({})
+            
+            # Define sort parameters
+            sort_params = []
+            if sort_field == 'email':
+                sort_params.append(('email', 1 if sort_order == 'asc' else -1))
+            elif sort_field == 'id':
+                sort_params.append(('_id', 1 if sort_order == 'asc' else -1))
+            
+            # Apply sorting if specified, otherwise use default sort by email
+            if not sort_params:
+                sort_params = [('email', 1)]
+                
+            users_cursor = user_database.find().sort(sort_params).skip((page - 1) * per_page).limit(per_page)
+            items_list = list(users_cursor)
+            
+        
+
         # Calculate pagination info
         total_pages = (total_items + per_page - 1) // per_page
         has_next = page < total_pages
@@ -627,18 +656,50 @@ def admin():
             email=email,
             collections=items_list if view == 'lists' else None,
             users=items_list if view == 'users' else None,
+            projects=items_list if view == 'projects' else None,
             page=page,
             total_pages=total_pages,
             has_next=has_next,
             has_prev=has_prev,
             per_page=per_page,
-            current_view=view
+            current_view=view,
+            count=total_items
         )
 
     except Exception as e:
         print(f"Debug - Error in admin route: {str(e)}")
         flash("Error retrieving data", "danger")
         return redirect(url_for("account.account"))
+
+
+@account_blueprint.route("/database-admin/rebuild-projects", methods=["POST"])
+@block_guest
+def rebuild_projects_database():
+    try:
+        email = session.get("email")
+        if not email:
+            return jsonify({"success": False, "message": "Not authenticated", "redirect": url_for("account.login")}), 401
+        user = get_email(email)
+        if not user:
+            return jsonify({"sucess": False, "message": "User not found", "redirect": url_for("account.login")}), 500
+        if user.get("access") != "admin":
+            return jsonify({"success": False, "message": "Forbidden resource", "redirect": url_for("account.account")}), 403
+        json_data = request.get_json()
+        if not json_data:
+            return jsonify({"success": False, "message": "Invalid data"}), 400
+        projects_database = dbname["projects"]
+        result = projects_database.delete_many({})
+        if result.deleted_count == 0:
+            return jsonify({"success": False, "message": "Database deletion failed"}), 500
+        result = projects_database.insert_many(json_data)
+        if not result.inserted_ids:
+            return jsonify({"success": False, "message": "Database insertion failed"}), 500
+        return jsonify({"success": True, "message": "Projects database rebuilt", "redirect": url_for("account.admin", view="projects")})
+    except Exception as e:
+        return jsonify({"success": False, "message": "Exception: "+str(e)}), 500
+        
+
+
 
 @account_blueprint.route("/database-admin/purge", methods=["POST"])
 @block_guest
@@ -650,6 +711,13 @@ def purge_collections():
         if not email:
             flash("Not authenticated", "danger")
             return redirect(url_for("account.login"))
+        user = get_email(email)
+        if not user:
+            flash("User not found", "danger")
+            return redirect(url_for("account.login"))
+        if user.get("access") != admin:
+            flash("Forbidden resource", "danger")
+            return redirect(url_for("account.account"))
 
         # Delete all collections
         result = curated_lists.delete_many({})
