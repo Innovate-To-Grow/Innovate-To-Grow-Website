@@ -211,7 +211,7 @@ $(document).ready(function () {
                             '</td>'+
                             '<td data-header="Track 3" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Precision</b>'+
+                                    '<b>Lab</b>'+
                                 '</p>'+
                             '</td>'+
                             // '<td data-header="Track 4" style="color: #002856;">'+
@@ -347,22 +347,22 @@ $(document).ready(function () {
                                 '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                                 '<td data-header="Track 1" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Food</b>'+
+                                        '<b>Alan Turing</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 2" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Data</b>'+
+                                        '<b>Ada Lovelace</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Language</b>'+
+                                        '<b>John von Neumann</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 3" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Technology</b>'+
+                                        '<b>Joan Clarke</b>'+
                                     '</p>'+
                                 '</td>'+
                             '</tr>'+
