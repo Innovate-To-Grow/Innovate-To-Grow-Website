@@ -537,8 +537,13 @@ $(document).ready(function () {
 
 // Merge Table specific functions END
 
-//Function to check if user is not logged, sents warning about data lost. 
+//Function to check if user is not logged, sends warning about data loss
 $(document).on('click', 'a', function (e) {
+    // Exclude DataTables pagination links
+    if ($(this).closest('.dataTables_paginate').length > 0 || $(this).attr('data-dt-idx') !== undefined) {
+        return;
+    }
+
     // Fetch userId if not already set
     if (!userId) {
         $.ajax({
@@ -557,14 +562,14 @@ $(document).on('click', 'a', function (e) {
             }
         });
     }
-if (!userId) {
-    const confirmLeave = confirm("If you leave this page without being logged in, you won’t be able to access or edit your curation later.");
-    if (!confirmLeave) {
-        e.preventDefault(); // Prevent navigation
-    }
-}
-});
 
+    if (!userId) {
+        const confirmLeave = confirm("If you leave this page without being logged in, you won’t be able to access or edit your curation later.");
+        if (!confirmLeave) {
+            e.preventDefault(); // Prevent navigation
+        }
+    }
+});
 
 // Handler for adding new search tables
 $(document).on('click', '.addtable', function () { // adds a new search table and appends it to the .tableManage html
@@ -839,22 +844,62 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
     });
 
     // Handler for merging selected items into the merged table
-    $('#merge').click(function () {
+    $('#merge').off('click').on('click', function () {
         // Assign a new collection ID if it doesn't already exist
         if (!currentCollectionId) {
             currentCollectionId = generateCollectionId();
             console.log("Assigned new collection ID:", currentCollectionId);
         }
-
+    
         // Get the existing rows in the merged table
         const existingData = merged_table.rows().data().toArray();
-
-        // Get the new rows to be merged from the search table
-        const newData = search_table.rows({ filter: 'applied' }).data().toArray();
-
-        if (existingData.length === 0) {
-            // If the merged table is empty, append all rows
-            newData.forEach(row => {
+    
+        // Gather selected rows across all search tables
+        const selectedData = [];
+        for (let i = 1; i <= search_counter; i++) {
+            const table = $('#example' + i).DataTable();
+            const selected = table.rows('.selected').data().toArray();
+            if (selected.length > 0) {
+                selectedData.push(...selected);
+            }
+        }
+    
+        let newData;
+    
+        if (selectedData.length > 0) {
+            // Use only selected rows if any are selected
+            newData = selectedData;
+        } else {
+            // Fallback: Use all rows from each search table
+            newData = [];
+            for (let i = 1; i <= search_counter; i++) {
+                const table = $('#example' + i).DataTable();
+                newData.push(...table.rows().data().toArray());
+            }
+        }
+    
+        if (newData.length === 0) {
+            alert("No data to merge.");
+            return;
+        }
+    
+        // Append only non-duplicate rows to the merged table
+        newData.forEach(row => {
+            const isDuplicate = existingData.some(existingRow => {
+                return (
+                    existingRow[0] === row["Year-Semester"] &&
+                    existingRow[1] === row["Class"] &&
+                    existingRow[2] === row["Team#"] &&
+                    existingRow[3] === row["Team Name"] &&
+                    existingRow[4] === row["Project Title"] &&
+                    existingRow[5] === row["Organization"] &&
+                    existingRow[6] === row["Industry"] &&
+                    existingRow[8] === row["Abstract"] &&
+                    existingRow[9] === row["Student Names"]
+                );
+            });
+    
+            if (!isDuplicate) {
                 merged_table.row.add([
                     row["Year-Semester"],
                     row["Class"],
@@ -868,51 +913,18 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     row["Student Names"],
                     generateProjectUuid(row["Year-Semester"], row["Class"], row["Team#"], row["Project Title"])
                 ]).draw();
-            });
-        } else {
-            // If the merged table has content, append only non-duplicate rows
-            newData.forEach(row => {
-                const isDuplicate = existingData.some(existingRow => {
-                    return (
-                        existingRow[0] === row["Year-Semester"] &&
-                        existingRow[1] === row["Class"] &&
-                        existingRow[2] === row["Team#"] &&
-                        existingRow[3] === row["Team Name"] &&
-                        existingRow[4] === row["Project Title"] &&
-                        existingRow[5] === row["Organization"] &&
-                        existingRow[6] === row["Industry"] &&
-                        existingRow[8] === row["Abstract"] &&
-                        existingRow[9] === row["Student Names"]
-                    );
-                });
-
-                if (!isDuplicate) {
-                    merged_table.row.add([
-                        row["Year-Semester"],
-                        row["Class"],
-                        row["Team#"],
-                        row["Team Name"],
-                        row["Project Title"],
-                        row["Organization"],
-                        row["Industry"],
-                        row["null"],
-                        row["Abstract"],
-                        row["Student Names"],
-                        generateProjectUuid(row["Year-Semester"], row["Class"], row["Team#"], row["Project Title"])
-                    ]).draw();
-                }
-            });
-        }
-
+            }
+        });
+    
         // Clear and remove all search tables after merging
         for (let i = search_counter; i > 0; i--) {
-            $('#example' + i).DataTable().destroy(); // Destroy the DataTable instance
-            $('#example' + i).remove(); // Remove the table element from the DOM
+            $('#example' + i).DataTable().destroy();
+            $('#example' + i).remove();
         }
-
+    
         // Update the database with the new state of the merged table
         const collection = createCollectionFromMergedTable();
-
+    
         saveCollectionToDatabase(collection)
             .done(function () {
                 console.log("Database updated successfully after merging rows.");
@@ -921,6 +933,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                 console.error("Error updating database after merging rows:", textStatus, errorThrown);
             });
     });
+    
 
     $('#example').on('click', '-td.editordelete', function () {
         // Delete row in merged_table and update deleted array
