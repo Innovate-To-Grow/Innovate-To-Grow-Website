@@ -164,7 +164,11 @@ function createCollectionFromMergedTable() {
     : (currentCollectionTitle || 'Curated Projects - ' + new Date().toLocaleDateString());
 
     // Timestamps for collection tracking
-    const now = new Date().toISOString();
+    const now = new Date().toLocaleString(undefined, {
+        timeZoneName: 'short',
+        hour12: false
+    });
+    
 
     // Handle editor content properly
     let editorContent = currentEditorContent;
