@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acc.css') }}">
+    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
     {{ styles() }}
     <style>
         .pagination {
@@ -100,6 +101,12 @@
         }
         .collection-link:hover::after {
             transform: scaleX(1);
+        }
+        .btn-action {
+            color: #fff !important; /* Ensure white text for all action buttons */
+        }
+        .page-btn {
+            color: #fff !important; /* Ensure white text for pagination buttons */
         }
     </style>
 </head>
