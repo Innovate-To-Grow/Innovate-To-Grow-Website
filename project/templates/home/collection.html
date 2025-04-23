@@ -24,6 +24,12 @@
             background-color: #f5f5f5;
             border-left: 4px solid #162D4F;
         }
+        .editor-content-preview {
+            margin-bottom: 10px;
+        }
+        .editor-content-full {
+            margin-bottom: 10px;
+        }
         .collection-meta {
             font-size: 14px;
             color: #777;
@@ -95,19 +101,34 @@
                                 <div class="collection-header">
                                     <h1 class="title" id="page-title">{{ collection.title }}</h1>
                                     <div class="collection-meta">
-                                        <span>Created: {{ collection.history[0].createdAt.split('T')[0] if collection.history else collection.createdAt.split('T')[0] }}</span>
-                                        <span> | </span>
-                                        <span>Last Updated: {{ collection.createdAt.split('T')[0] }}</span>
+                                        <div class="collection-meta">
+                                            <span id="created-date" data-timestamp="{{ collection.history[0].createdAt if collection.history else collection.createdAt }}">
+                                                Created: ...
+                                            </span>
+                                            <span> | </span>
+                                            <span id="updated-date" data-timestamp="{{ collection.createdAt }}">
+                                                Last Updated: ...
+                                            </span>
+                                        </div>
+                                        
                                     </div>
                                     
                                     {% if collection.editorContent %}
                                     <div class="collection-editor-content">
-                                        {% if collection.editorContent.startswith('<') %}
-                                            {{ collection.editorContent|safe }}
-                                        {% else %}
-                                            {% for paragraph in collection.editorContent.split('\n\nx') %}
-                                                <p>{{ paragraph|replace('\n', '<br>')|safe }}</p>
-                                            {% endfor %}
+                                        <div id="editor-content-preview" class="editor-content-preview">
+                                            {{ collection.editorContent[:300]|safe }}{% if collection.editorContent|length > 300 %}...{% endif %}
+                                        </div>
+                                        <div id="editor-content-full" class="editor-content-full" style="display: none;">
+                                            {% if collection.editorContent.startswith('<') %}
+                                                {{ collection.editorContent|safe }}
+                                            {% else %}
+                                                {% for paragraph in collection.editorContent.split('\n\nx') %}
+                                                    <p>{{ paragraph|replace('\n', '<br>')|safe }}</p>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                        {% if collection.editorContent|length > 300 %}
+                                        <button id="toggle-editor-content" class="btn-action">Show More</button>
                                         {% endif %}
                                     </div>
                                     {% endif %}
@@ -180,6 +201,52 @@
                 this.innerHTML = '<i class="fa fa-copy"></i> Copy Collection URL';
             }, 2000);
         });
+        function formatLocalDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        });
+    }
+
+    const createdEl = document.getElementById('created-date');
+    const updatedEl = document.getElementById('updated-date');
+
+    if (createdEl && createdEl.dataset.timestamp) {
+        createdEl.textContent = "Created: " + formatLocalDate(createdEl.dataset.timestamp);
+    }
+
+    if (updatedEl && updatedEl.dataset.timestamp) {
+        updatedEl.textContent = "Last Updated: " + formatLocalDate(updatedEl.dataset.timestamp);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleButton = document.getElementById('toggle-editor-content');
+        const previewContent = document.getElementById('editor-content-preview');
+        const fullContent = document.getElementById('editor-content-full');
+
+        if (toggleButton) {
+            toggleButton.addEventListener('click', function () {
+                const isExpanded = fullContent.style.display === 'block';
+
+                if (isExpanded) {
+                    // Collapse to preview
+                    fullContent.style.display = 'none';
+                    previewContent.style.display = 'block';
+                    toggleButton.textContent = 'Show More';
+                } else {
+                    // Expand to full content
+                    fullContent.style.display = 'block';
+                    previewContent.style.display = 'none';
+                    toggleButton.textContent = 'Show Less';
+                }
+            });
+        }
+    });
     </script>
 </body>
 </html>

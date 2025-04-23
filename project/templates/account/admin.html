@@ -318,8 +318,7 @@
                                     {{ collection.title }}
                                 </a>
                             </td>
-                            <!--Creation timestamp is stored in createdAt within first history object or in createdAt if history is empty-->
-                            <td>{{ collection.history[0].createdAt.split('T')[0] if collection.history else collection.createdAt.split('T')[0] }}</td>
+                            <td id="collection-created-{{ collection._id }}" data-timestamp="{{ collection.history[0].createdAt if collection.history else collection.createdAt }}"></td>
                             <td>
                                 <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
                                    class="btn-action btn-view">View</a>
@@ -382,6 +381,26 @@
             }
         }
     }
+    function formatLocalDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[id^="collection-created-"]').forEach(el => {
+            const timestamp = el.dataset.timestamp;
+            if (timestamp) {
+                el.textContent = formatLocalDate(timestamp);
+            }
+        });
+    });
 </script>
 </body>
 </html>
