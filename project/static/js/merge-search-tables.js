@@ -58,6 +58,7 @@ $(document).ready(function () {
     document.getElementById("rowkeep").disabled = true;
     $("#rowkeep").addClass('gray');
     $("#rowdelete").addClass('gray');
+    $("#merge").addClass('gray');
     $(".mergeTable").hide();
 
     setTimeout(function () {
@@ -210,7 +211,7 @@ function saveCollectionToDatabase(collection) {
     collection.projects = collection.projects.map(project => project._id);
     return $.ajax({
         type: "POST", 
-        url: "{{ url_for('home.save_collection') }}",
+        url: "api/save-collection",
         data: JSON.stringify(collection),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -822,6 +823,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         document.getElementById("rowkeep").disabled = true;
         $("#rowkeep").addClass('gray');
         $("#rowdelete").addClass('gray');
+        $("#merge").addClass('gray');
         $('.toggle-select-btn').text("Select All");
     });
 
@@ -840,6 +842,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
         document.getElementById("rowkeep").disabled = true;
         $("#rowkeep").addClass('gray');
         $("#rowdelete").addClass('gray');
+        $("#merge").removeClass('gray');
         $('.toggle-select-btn').text("Select All");
     });
 
@@ -932,6 +935,8 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
             .fail(function (jqXHR, textStatus, errorThrown) {
                 console.error("Error updating database after merging rows:", textStatus, errorThrown);
             });
+        
+        $("#merge").addClass('gray');
     });
     
 
@@ -1077,6 +1082,7 @@ $(document).ready(function () {
                 document.getElementById("rowkeep").disabled = true;
                 $("#rowkeep").addClass('gray');
                 $("#rowdelete").addClass('gray');
+                $("#merge").addClass('gray');
                 select_count2 = 0;
                 document.getElementById("tabledelete").checked = false;
                 delete_status = "false";
