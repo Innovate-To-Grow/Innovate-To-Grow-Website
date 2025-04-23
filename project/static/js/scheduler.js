@@ -149,7 +149,7 @@ let timePerSlotForCEE = "30";
 // the amount of tracks for CSE
 let totalTrackForCSE = 4;
 // the amount of order for CSE
-let totalOrderForCSE = 11;
+let totalOrderForCSE = 10;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
