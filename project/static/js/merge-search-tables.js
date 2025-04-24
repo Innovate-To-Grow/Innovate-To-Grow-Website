@@ -216,22 +216,31 @@ function saveCollectionToDatabase(collection) {
         dataType: "json",
         success: function(response) {
             if (response.success) {
-                if (response.redirect && history.pushState) {
-                    history.pushState({}, '', response.redirect);
-                    console.log("URL updated to:", response.redirect);
-                } else {
-                    console.log("Collection updated successfully!");
+                // Update the URL with the collection ID
+                if (!window.location.search.includes('collection=')) {
+                    const newUrl = window.location.pathname + '?collection=' + collection._id;
+                    window.history.pushState({ path: newUrl }, '', newUrl);
+
+                    // Update the "Sign Up" and "Login" button URLs
+                    const signupButton = document.getElementById('signup-button');
+                    const loginButton = document.getElementById('login-button');
+
+                    if (signupButton) {
+                        let signupUrl = new URL(signupButton.href);
+                        signupUrl.searchParams.set('collection', collection._id);
+                        signupButton.href = signupUrl.toString();
+                    }
+
+                    if (loginButton) {
+                        let loginUrl = new URL(loginButton.href);
+                        loginUrl.searchParams.set('collection', collection._id);
+                        loginButton.href = loginUrl.toString();
+                    }
                 }
-            } else {
-                console.error("Failed to save collection:", response.message);
             }
-        },
-        error: function(xhr, status, error) {
-            console.error("Error occurred while saving:", error);
         }
     });
 }
-
 
 // Function to display all fields with edit functionality in the Merged Table
 function mergeformat(d) {
@@ -292,6 +301,28 @@ function initializeShareButtons() {
 $(document).ready(function () {
     const urlParams = new URLSearchParams(window.location.search);
     const collectionParam = urlParams.get('collection');
+
+    if (collectionParam) {
+        console.log("Collection ID from URL:", collectionParam);
+        currentCollectionId = collectionParam;
+
+        // Dynamically update the "Sign Up" and "Login" button URLs
+        const signupButton = document.getElementById('signup-button');
+        const loginButton = document.getElementById('login-button');
+
+        if (signupButton) {
+            let signupUrl = new URL(signupButton.href);
+            signupUrl.searchParams.set('collection', collectionParam);
+            signupButton.href = signupUrl.toString();
+        }
+
+        if (loginButton) {
+            let loginUrl = new URL(loginButton.href);
+            loginUrl.searchParams.set('collection', collectionParam);
+            loginButton.href = loginUrl.toString();
+        }
+    }
+
     const tableElement = $('.display');
 
     function initializeMergedTable(tableData = []) {
