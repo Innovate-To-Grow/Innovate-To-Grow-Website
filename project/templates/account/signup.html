@@ -8,7 +8,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
@@ -56,7 +56,7 @@
       <div class="form-container">
         <form action="{{ url_for('account.signup') }}" method="post">
           {{ form.csrf_token }}
-          <input type="hidden" name="collection" value="{{ request.args.get('collection') }}">
+          <input type="hidden" name="collection" value="{{ collection }}">
           <div class="input-row">
             <h1>Sign Up</h1>
             <div>
@@ -91,8 +91,8 @@
               {{ form.submit(class="btn") }}
             </div>
             <div class="login-link">
-              <a href="{{ url_for('account.login', collection=request.args.get('collection')) }}">Already have an account? Login</a>
-          </div>
+              <a href="{{ url_for('account.login', collection=collection) }}">Already have an account? Login</a>
+            </div>
           </div>
         </form>
         

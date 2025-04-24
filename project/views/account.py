@@ -40,6 +40,11 @@ def update_user_token(email: str, token: str | None):
 def get_db_connection():
     return dbname["users"]
 
+def get_db_connection_curated_lists():
+    client = MongoClient(CONNECTION_STRING)
+    dbname = client['I2GUserDatabase']
+    return dbname["curated_lists"]
+
 def get_email(email):
     collection = get_db_connection()
     user = collection.find_one({"email": email})
@@ -99,15 +104,16 @@ def rate_limit(key, limit_seconds=10):
     return True
 
 
-@account_blueprint.route("/login", methods=["GET","POST"])
+@account_blueprint.route("/login", methods=["GET", "POST"])
 @block_user
 def login():
     form = LoginForm()
-    # Get collection parameter (not collection_id) from URL
+    # Get collection parameter from URL
     collection = request.args.get('collection')
     print(f"Debug - Login received collection: {collection}")
-    
+
     if request.method == "GET":
+        # Pass collection to the template
         return render_template("login.html", form=form, collection=collection)
 
     if form.validate_on_submit():
@@ -115,85 +121,71 @@ def login():
         user = get_email(email)
 
         if user:
-            password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
+            password = hashlib.sha256((email[::-1] + form.password.data).encode("utf-8")).hexdigest()
             if password == user["password"]:
                 if user["verified"]:
-                    # If there's collection data, update its ownership
+                    # Update collection ownership if collection exists
+                    # print(f"Debug - User {user['_id']} logged in with email {email}")
                     collection = request.form.get('collection')
+                    # print(f"Debug - Attempting to update {collection}")
                     if collection:
                         try:
-                            curated_lists.update_one(
+                            print(f"Debug - Attempting to update collection {collection} with user ID {user['_id']}")
+                            result = curated_lists.update_one(
                                 {"_id": collection},
                                 {"$set": {"userId": str(user["_id"])}}
                             )
-                            print(f"Debug - Updated collection {collection} ownership to user {user['_id']}")
-                            
-                            # Set session and redirect back to the collection
-                            session["logged_in"] = True
-                            session["email"] = email
-                            session.permanent = True
-                            flash("Log in successful", "success")
-                            # return redirect(url_for("home.past_projects", collection=collection))
-                            return redirect(url_for("account.account"))
+                            if result.modified_count > 0:
+                                print(f"Debug - Successfully updated collection {collection} ownership to user {user['_id']}")
+                            else:
+                                print(f"Debug - Collection {collection} not found or not updated")
                         except Exception as e:
                             print(f"Debug - Error updating collection ownership: {str(e)}")
-                    
+
+                    # Set session and redirect back to the collection
                     session["logged_in"] = True
                     session["email"] = email
                     session.permanent = True
                     flash("Log in successful", "success")
-                    return redirect(url_for("account.account"))
+                    return redirect(url_for("home.past_projects", collection=collection))
 
-                # Check rate limiting (10 seconds between requests)
-                if not rate_limit("verify_email", 10):
-                    flash("Please wait a moment before requesting another verification email", "danger")
-                    return render_template("login.html", form=form), 429
-
-                token = generate_token(email)
-                if update_user_token(email, token):
-                    url = url_for("account.verify_email", token=token, _external=True)
-                    email_template = render_template("account_verification_email.html", url=url)
-                    send_email(email, "Verify Your Email", email_template)
-                    flash("Unverified account. A new verification has been sent to "+email, "danger")
-                    return render_template("login.html", form=form), 403
-                else:
-                    flash("Error processing request", "danger")
-                    return render_template("login.html", form=form), 500
+                # Handle unverified account
+                flash("Account not verified. Please verify your email.", "danger")
+                return render_template("login.html", form=form, collection=collection), 403
 
             flash("Incorrect password", "danger")
-            return render_template("login.html", form=form), 401
+            return render_template("login.html", form=form, collection=collection), 401
 
         flash("Account with this email doesn't exist", "danger")
-        return render_template("login.html", form=form), 404
+        return render_template("login.html", form=form, collection=collection), 404
 
-    return render_template("login.html", form=form), 400
+    return render_template("login.html", form=form, collection=collection), 400
     
 
-@account_blueprint.route("/signup", methods=["GET","POST"])
+@account_blueprint.route("/signup", methods=["GET", "POST"])
 @block_user
 def signup():
     form = SignupForm()
-    # Get collection_id from URL query parameter
+    # Get collection parameter from URL
     collection = request.args.get('collection')
-    print(f"Debug - Received collection_id: {collection}")
+    print(f"Debug - Received collection: {collection}")
 
     if request.method == "GET":
-        # Pass collection_id to the template
+        # Pass collection to the template
         return render_template("signup.html", form=form, collection=collection)
 
-    #POST
     if form.validate_on_submit():
         email = form.email.data.lower()
-        #verify email doesnt exist
+        # Verify email doesn't already exist
         if get_email(email):
             flash("Account with this email already exists", "danger")
-            return render_template("signup.html", form=form), 409
+            return render_template("signup.html", form=form, collection=collection), 409
 
-        #hash password and prepare user data
-        password = hashlib.sha256((email[::-1]+form.password.data).encode("utf-8")).hexdigest()
+        # Hash password and prepare user data
+        password = hashlib.sha256((email[::-1] + form.password.data).encode("utf-8")).hexdigest()
         timestamp = str(time.time())
         user_id = str(uuid.uuid4())  # Generate user ID
-        
+
         user_database = get_db_connection()
         try:
             # Insert the user
@@ -207,32 +199,33 @@ def signup():
                 "token": None
             }
             user_database.insert_one(user_data)
-            
-            # Get collection_id from form data
+
+            # collection = request.args.get('collection')
             collection = request.form.get('collection')
-            
-            # Update collection ownership if collection_id exists
+
+            # Update collection ownership if collection exists
             if collection:
                 curated_lists.update_one(
                     {"_id": collection},
                     {"$set": {"userId": user_id}}
                 )
-            
-            # Generate verification token and complete signup
+                print(f"Debug - Updated collection {collection} ownership to user {user_id}")
+
+            # Generate verification token and send email
             token = generate_token(email)
             if update_user_token(email, token):
                 url = url_for("account.verify_email", token=token, _external=True)
                 email_template = render_template("account_verification_email.html", url=url)
                 send_email(email, "Verify Your Email", email_template)
-                flash("Sign up successful. A verification email has been sent to "+email, "success")
+                flash("Sign up successful. A verification email has been sent to " + email, "success")
                 return redirect(url_for("account.login"))
-            
+
         except Exception as e:
             print(f"Error in signup: {str(e)}")
             flash("Error creating account", "danger")
-            return render_template("signup.html", form=form), 500
+            return render_template("signup.html", form=form, collection=collection), 500
 
-    return render_template("signup.html", form=form), 400
+    return render_template("signup.html", form=form, collection=collection), 400
 
 
 @account_blueprint.route("/forgot-password", methods=["GET","POST"])

@@ -57,7 +57,7 @@
       <div class="form-container">
         <form action="{{ url_for('account.login') }}" method="post">
           {{ form.csrf_token }}
-          <input type="hidden" name="collection" value="{{ request.args.get('collection') }}">
+          <input type="hidden" name="collection" value="{{ collection }}">
           <!-- This will capture the original page for redirection after login -->
           <input type="hidden" name="next" value="{{ next or request.referrer or url_for('home.mainpage') }}">
           <div class="input-row">
@@ -87,8 +87,8 @@
               {{ form.submit(class="btn") }}
             </div>
             <div class="signup-link">
-              <a href="{{ url_for('account.signup', collection=request.args.get('collection')) }}">Don't have an account? Sign Up</a>
-          </div>
+              <a href="{{ url_for('account.signup', collection=collection) }}">Don't have an account? Sign Up</a>
+            </div>
           </div>
         </form>
         

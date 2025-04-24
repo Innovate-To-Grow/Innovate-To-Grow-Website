@@ -47,12 +47,12 @@
                                 <div class="save-prompt" style="background-color: #f8f9fa; border: 1px solid #162D4F; border-radius: 4px; padding: 15px; margin: 20px 0; text-align: center;">
                                     <span style="color: #162D4F;">
                                         💡 Want to save your curated list? 
-                                        <a href="{{ url_for('account.signup', collection=request.args.get('collection')) }}" 
+                                        <a id="signup-button" href="{{ url_for('account.signup', collection=request.args.get('collection')) }}" 
                                            style="display: inline-block; background-color: #162D4F; color: #dbaa00; padding: 8px 16px; border-radius: 4px; text-decoration: none; margin-left: 10px; transition: background-color 0.2s;">
                                             Sign Up
                                         </a>
                                         <span style="margin: 0 10px; color: #666;">or</span>
-                                        <a href="{{ url_for('account.login', collection=request.args.get('collection')) }}" 
+                                        <a id="login-button" href="{{ url_for('account.login', collection=request.args.get('collection')) }}" 
                                            style="display: inline-block; background-color: #162D4F; color: #dbaa00; padding: 8px 16px; border-radius: 4px; text-decoration: none; transition: background-color 0.2s;">
                                             Login
                                         </a>
