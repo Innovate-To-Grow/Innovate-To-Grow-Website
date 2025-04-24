@@ -47,12 +47,12 @@
 
 <!-- Put settings button on top so not buried under collections list-->
 <br>
-<div class="settings-shortcut">
+<!-- <div class="settings-shortcut">
     <a href="{{ url_for('account.settings') }}" class="btn-action btn-settings">Go to Settings</a>
-</div>
+</div> -->
 
 <div class="collection-container">
-    <h1 class="profile-title">{{ email }}'s Collections ({{collections | length}})</h1>
+    <h1 class="profile-title">{{ email }}'s Curations ({{collections | length}})</h1>
 
     {% if collections %}
         <div class="table-responsive">
@@ -64,7 +64,7 @@
                                      order='desc' if request.args.get('sort') == 'title' and request.args.get('order') != 'desc' else 'asc',
                                      page=page, per_page=per_page) }}"
                                style="color: inherit; text-decoration: none; display: flex; align-items: center; justify-content: start; gap: 5px;">
-                                Collection Name
+                                Curation Name
                                 <span style="display: inline-block; font-size: 0.8em;">
                                     {% if request.args.get('sort') == 'title' %}
                                         {% if request.args.get('order') == 'asc' %}
@@ -106,15 +106,15 @@
                     {% for collection in collections %}
                         <tr>
                             <td>
-                                <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
+                                <a href="{{ url_for('home.view_curation', collection_id=collection._id) }}" 
                                    class="collection-link">
                                     {{ collection.title }}
                                 </a>
                             </td>
                             <td id="collection-updated-{{ collection._id }}" data-timestamp="{{ collection.lastUpdated if collection.lastUpdated else collection.createdAt }}"></td>
                             <td>
-                                <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
-                                   class="btn-action btn-view">View</a>
+                                <!-- <a href="{{ url_for('home.view_curation', collection_id=collection._id) }}" 
+                                   class="btn-action btn-view">View</a> -->
                                 <a href="{{ url_for('home.past_projects') }}?collection={{ collection._id }}" 
                                    class="btn-action btn-edit edit-collection-btn" 
                                    data-collection-id="{{ collection._id }}">
@@ -124,7 +124,7 @@
                             <td>
                                 <a href="#" 
                                    class="btn-action btn-copy-url" 
-                                   data-url="{{ url_for('home.view_collection', collection_id=collection._id, _external=True) }}">
+                                   data-url="{{ url_for('home.view_curation', collection_id=collection._id, _external=True) }}">
                                    Copy URL
                                 </a>
                             </td>

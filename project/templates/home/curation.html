@@ -177,10 +177,10 @@
                                 <!-- Pagination Controls -->
                                 <div class="pagination">
                                     {% if page > 1 %}
-                                        <a href="{{ url_for('home.view_collection', collection_id=collection['_id'], page=page-1, per_page=per_page) }}">Previous</a>
+                                        <a href="{{ url_for('home.view_curation', collection_id=collection['_id'], page=page-1, per_page=per_page) }}">Previous</a>
                                     {% endif %}
                                     {% if (page * per_page) < total_projects %}
-                                        <a href="{{ url_for('home.view_collection', collection_id=collection['_id'], page=page+1, per_page=per_page) }}">Next</a>
+                                        <a href="{{ url_for('home.view_curation', collection_id=collection['_id'], page=page+1, per_page=per_page) }}">Next</a>
                                     {% endif %}
                                 </div>
                                 
