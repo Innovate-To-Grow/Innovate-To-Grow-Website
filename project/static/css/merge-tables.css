@@ -980,6 +980,10 @@ tr.selected td {
 }
 
 .dt-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: start;
+    gap: 10px;
     margin-left: 325px !important;
 }
 
@@ -999,6 +1003,60 @@ tr.selected td {
     height: 120px;
     animation: spin 2s linear infinite;
 }
+
+/* Export button container */
+.export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Button container layout */
+.dt-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    position: relative;
+}
+
+/* Style the Export button itself */
+button.buttons-collection {
+    color: #DAA900 !important;
+    font-weight: normal !important;
+    position: relative;
+}
+
+/* Export dropdown buttons — now centered under Export */
+.dt-button-collection {
+    position: absolute !important;
+    top: 100% !important;
+    left: 40% !important;
+    transform: translateX(-50%) !important;
+    margin-top: 5px !important;
+    z-index: 1050;
+    background-color: transparent; /* use your base bg if needed */
+    border: none;
+    display: flex !important;
+    gap: 6px;
+    justify-content: center;
+}
+
+/* Restrict the clickable area to the icon */
+td.editor-delete {
+    text-align: center; /* Center the icon */
+    padding: 0; /* Remove padding around the icon */
+    cursor: pointer; /* Show pointer cursor on hover */
+}
+
+td.editor-delete i {
+    display: inline-block;
+    width: 24px; /* Adjust width to match the icon size */
+    height: 24px; /* Adjust height to match the icon size */
+    line-height: 24px;
+    cursor: pointer;
+}
+
+
 
 @keyframes spin {
     0% {
