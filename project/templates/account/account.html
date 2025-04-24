@@ -59,6 +59,7 @@
             <table class="collection-table">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>
                             <a href="{{ url_for('account.account', sort='title',
                                      order='desc' if request.args.get('sort') == 'title' and request.args.get('order') != 'desc' else 'asc',
@@ -105,6 +106,7 @@
                 <tbody>
                     {% for collection in collections %}
                         <tr>
+                            <td>{{ loop.index }}</td>
                             <td>
                                 <a href="{{ url_for('home.view_curation', collection_id=collection._id) }}" 
                                    class="collection-link">

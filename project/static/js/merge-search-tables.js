@@ -380,7 +380,7 @@ $(document).ready(function () {
                             saveCollectionToDatabase(collection)
                                 .done(function () {
                                     console.log("Collection saved successfully:", currentCollectionId);
-                                    window.open(`/collection/${currentCollectionId}`, "_blank");
+                                    window.open(`/curation/${currentCollectionId}`, "_blank");
                                 })
                                 .fail(function (jqXHR, textStatus, errorThrown) {
                                     console.error("Error saving collection:", textStatus, errorThrown);
@@ -388,7 +388,7 @@ $(document).ready(function () {
                                 });
                         } else {
                             // Open the collection URL if it already exists
-                            window.open(`/collection/${currentCollectionId}`, "_blank");
+                            window.open(`/curation/${currentCollectionId}`, "_blank");
                         }
                     }
                 },
@@ -498,7 +498,7 @@ $(document).ready(function () {
         $('#example_wrapper').append(`
             <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 15px;">
                 <button id="bottom-editor-toggle" class="dt-Buttons">
-                    Open Curator Editor
+                    Open Curation Editor
                 </button>
             </div>
         `);
