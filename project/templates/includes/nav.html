@@ -33,7 +33,7 @@
                         <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener">Apply</a>
                         <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
                         
-                        <!-- Auth links -->
+                        <!-- Auth links
                         {% set ts = (now() if now is defined else range(1, 999999) | random) %}
                         {% if session.get('logged_in') %}
                             {% set user = get_email(session.get('email')) %}
@@ -50,7 +50,7 @@
                                 <a href="{{ url_for('account.signup', r=ts) }}" class="auth-link">Sign Up</a>
                                 <a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}" class="auth-link">Log In</a>
                             {% endif %}
-                        {% endif %}
+                        {% endif %} -->
                     </div>
                 </div>
             </div>
@@ -257,6 +257,28 @@
                                             <a href="{{ url_for('home.contact_us') }}" title=""
                                                 class="sf-depth-1 ">Contact Us</a>
                                         </li> -->
+                                        {% set ts = (now() if now is defined else range(1, 999999) | random) %}
+                                        {% if session.get('logged_in') %}
+                                            {% set user = get_email(session.get('email')) %}
+                                            <li><a href="{{ url_for('account.account') }}">View Curation</a></li>
+                                            {% if user and 'access' in user and user['access'] == 'admin' %}
+                                                <li><a href="{{ url_for('account.admin') }}" style="color:red;">Admin</a></li>
+                                            {% endif %}
+                                            <li>
+                                                <a href="{{ url_for('account.settings') }}">
+                                                    <i class="fa fa-cog" aria-hidden="true"></i>
+                                                </a>
+                                            </li>
+                                            <li><a href="{{ url_for('account.logout', r=ts) }}">Log Out</a></li>
+                                        {% else %}
+                                            {% if request.endpoint == 'home.past_projects' %}
+                                                <li><a href="{{ url_for('account.signup', collection=request.args.get('collection')) }}">Sign Up</a></li>
+                                                <li><a href="{{ url_for('account.login', collection=request.args.get('collection')) }}">Log In</a></li>
+                                            {% else %}
+                                                <li><a href="{{ url_for('account.signup', r=ts) }}">Sign Up</a></li>
+                                                <li><a href="{{ url_for('account.login', next=request.path|urlencode, r=ts) }}">Log In</a></li>
+                                            {% endif %}
+                                        {% endif %}
                                     </ul>
                                 </div>
                             </div>

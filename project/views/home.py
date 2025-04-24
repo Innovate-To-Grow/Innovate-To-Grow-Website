@@ -266,9 +266,9 @@ def project_detail(project_uuid):
         print(f"Error in project_detail: {str(e)}")
         return redirect(url_for('home.past_projects'))
 
-@home_blueprint.route('/collection/<collection_id>')
-def view_collection(collection_id):
-    """View a specific collection"""
+@home_blueprint.route('/curation/<collection_id>')
+def view_curation(collection_id):
+    """View a specific curation"""
     collection = curated_lists.find_one({"_id": collection_id})
     
     if not collection:
@@ -284,7 +284,7 @@ def view_collection(collection_id):
     # Convert project IDs to project details
     projects = dbname["projects"]
     paginated_projects = [proj for project_id in paginated_projects if (proj := projects.find_one({"_id": project_id}))]
-    return render_template('collection.html', collection=collection, paginated_projects=paginated_projects, page=page, per_page=per_page, total_projects=total_projects)
+    return render_template('curation.html', collection=collection, paginated_projects=paginated_projects, page=page, per_page=per_page, total_projects=total_projects)
 
 @home_blueprint.route('/api/save-collection', methods=['POST'])
 def save_collection():

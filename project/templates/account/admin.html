@@ -229,14 +229,14 @@
                         <tr>
                             <td>{{ collection.userEmail }}</td>
                             <td>
-                                <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
+                                <a href="{{ url_for('home.view_curation', collection_id=collection._id) }}" 
                                    class="collection-link">
                                     {{ collection.title }}
                                 </a>
                             </td>
                             <td id="collection-created-{{ collection._id }}" data-timestamp="{{ collection.history[0].createdAt if collection.history else collection.createdAt }}"></td>
                             <td>
-                                <a href="{{ url_for('home.view_collection', collection_id=collection._id) }}" 
+                                <a href="{{ url_for('home.view_curation', collection_id=collection._id) }}" 
                                    class="btn-action btn-view">View</a>
                                 <a href="{{ url_for('account.delete_collection', collection_id=collection._id) }}" 
                                    class="btn-action btn-delete"

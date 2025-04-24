@@ -337,7 +337,7 @@ $(document).ready(function () {
                     }
                 },
                 {
-                    text: 'Share Collection',
+                    text: 'Share Curation',
                     className: 'sharing',
                     action: function () {
                         if (!currentCollectionId) {
@@ -467,7 +467,7 @@ $(document).ready(function () {
         $('#example_wrapper').append(`
             <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 15px;">
                 <button id="bottom-editor-toggle" class="dt-Buttons">
-                    Open Editor
+                    Open Curator Editor
                 </button>
             </div>
         `);

@@ -12673,7 +12673,7 @@ div#now-date-weather {
     float: right;
     position: relative;
     margin-top: -3.15em;
-    margin-right: 1em;
+    margin-right: -2em;
     text-transform: uppercase;
 }
 
