@@ -131,7 +131,3 @@ project/db/data.sqlite3
 
 # .ini files
 *.ini
-
-# Class Diagrams
-useCaseDiagram/
-
