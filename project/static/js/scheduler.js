@@ -403,10 +403,10 @@ $(document).ready(function () {
     }
 
     // Pulls the room column from "2023-08-Fall-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/2025-I2G1-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
         // Pull the class column from "2023-08-Fall-I2G-MASTER" spreadsheet. 
         for (let i = 1; i <= totalRooms; i++) {
-            $(".roomt" + i).prepend(data.values[i + 1][1]);
+            $(".roomt" + i).prepend(data.values[i][1]); // there was a +1 here after i, but it was causing the room to be off by one
         }
         // Pulls the zoom column from "2023-08-Fall-I2G-MASTER" spreadsheet. 
         // It will add href to make zoom button active if there is a link present in zoom spreadsheet column
