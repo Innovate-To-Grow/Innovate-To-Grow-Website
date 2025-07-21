@@ -2,10 +2,15 @@ from bs4 import BeautifulSoup
 
 from project.utils.token import generate_token
 from project.models import edit_form, event
+from project import wks
 
 def test_email_form(client):
     email = "avashraj328@gmail.com"
     token = generate_token(email)
+
+    # make sure we are on the testing sheet
+    worksheet_title = wks.title
+    assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
 
     csrf_token = ""
 
@@ -60,7 +65,7 @@ def test_email_form(client):
         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
 
         soup = BeautifulSoup(response.data, "html.parser")
-        print(soup.prettify())
+
         # Check if the receipt page was rendered by looking for its heading.
         heading = soup.find("h1", string="I2G Membership Completed")
         input = soup.find("input", {"name": "first_name"})
