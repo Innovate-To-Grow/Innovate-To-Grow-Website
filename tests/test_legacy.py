@@ -1,8 +1,9 @@
+import time
 from bs4 import BeautifulSoup
 
 from project.utils.token import generate_token
 from project.models import edit_form, event
-from project import wks
+from project import wks, get_wks_records, sh
 
 def test_email_form(client):
     email = "avashraj328@gmail.com"
@@ -50,9 +51,11 @@ def test_email_form(client):
             else: # For StringField, TextAreaField, etc.
                 form_data[field.label] = f"Test data for {field.label}"
 
+    event_name = ""
     # add event fields to form data
     with client.application.app_context():
         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+        event_name = event_obj.name
         ticket_types = event_obj.tickets.split("\n")
         form_data["event_tickets"] = ticket_types[0]
 
@@ -71,3 +74,20 @@ def test_email_form(client):
         input = soup.find("input", {"name": "first_name"})
         assert not input, "The form has been rerendered"
         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
+
+        time.sleep(5)
+        records = get_wks_records(wks)
+        row = records[0]
+        assert row["First Name"] == "AVASH_TEST", "first name wrong in members sheet"
+        assert row["Last Name"] == "ADHIKARI_TEST", "last name wrong in members sheet"
+        assert row["Primary Email"] == email, "prim email wrong in members sheet"
+        assert row["Secondary Email"] == "bro@bro.com", "sec email wrong in members sheet"
+
+        event_wks = sh.worksheet(event_name)
+        event_records = get_wks_records(event_wks)
+        event_row = event_records[0]
+        assert event_row["First Name"] == "AVASH_TEST", "first name wrong in event sheet"
+        assert event_row["Last Name"] == "ADHIKARI_TEST", "last name wrong in event sheet"
+        assert event_row["Membership Primary"] == email, "prim email wrong in event sheet"
+        assert event_row["Membership Secondary"] == "bro@bro.com", "sec email wrong in event sheet"
+        assert event_row["Ticket Type"] == form_data["event_tickets"]
