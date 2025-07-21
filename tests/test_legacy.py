@@ -9,7 +9,7 @@ def test_email_form(client):
 
     csrf_token = ""
 
-    # First, make a GET request to the form to get the CSRF token.
+    # get CSRF token for form
     with client as c:
         response = c.get(f"/membership/full-registration/{token}")
         soup = BeautifulSoup(response.data, "html.parser")
@@ -25,9 +25,6 @@ def test_email_form(client):
                 "secondary_email": "bro@bro.com",
                 "confirm_secondary": "bro@bro.com",
                 "register_event": "y",
-                "event_Test Question 1": "question1 answer",
-                "event_Test Question 2": "question2 answer",
-                "event_tickets": "Test ticket 2",
                 "csrf_token": csrf_token
             }
 
@@ -49,9 +46,13 @@ def test_email_form(client):
                 form_data[field.label] = f"Test data for {field.label}"
 
     # add event fields to form data
-    # with client.application.app_context():
-    #     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
-    #     fields =
+    with client.application.app_context():
+        event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+        ticket_types = event_obj.tickets.split("\n")
+        form_data["event_tickets"] = ticket_types[0]
+
+        for question in event_obj.questions.split("\n"):
+            form_data["event_" + question] = "test answer from test_registration_happy"
 
 
     # Send POST form data
