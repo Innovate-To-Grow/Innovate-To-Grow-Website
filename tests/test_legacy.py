@@ -13,6 +13,14 @@ def test_email_form(client):
     worksheet_title = wks.title
     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
 
+    wks.delete_rows(2)
+    with client.application.app_context():
+        event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+        event_name = event_obj.name
+        event_wks = sh.worksheet(event_name)
+        event_wks.delete_rows(2)
+        time.sleep(5)
+
     csrf_token = ""
 
     # get CSRF token for form
@@ -76,6 +84,7 @@ def test_email_form(client):
         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
 
         time.sleep(5)
+        # asserting members fields
         records = get_wks_records(wks)
         row = records[0]
         assert row["First Name"] == "AVASH_TEST", "first name wrong in members sheet"
@@ -83,7 +92,7 @@ def test_email_form(client):
         assert row["Primary Email"] == email, "prim email wrong in members sheet"
         assert row["Secondary Email"] == "bro@bro.com", "sec email wrong in members sheet"
 
-        event_wks = sh.worksheet(event_name)
+        # asserting event fields
         event_records = get_wks_records(event_wks)
         event_row = event_records[0]
         assert event_row["First Name"] == "AVASH_TEST", "first name wrong in event sheet"
