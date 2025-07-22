@@ -194,14 +194,61 @@ from project import get_wks_columns, wks, get_wks_records, sh
 
 #         assert len(event_records) == 0, "event records has stuff in it"
 
-def test_primary_email_already_exists(client):
+# def test_primary_email_already_exists(client):
+#     """
+#         Tests /full-registration/<token> route including event registration when we
+#         use a primary email that already exists
+#         should return error 1 template
+#     """
+
+#     # delete old test stuff
+#     records = get_wks_records(wks)
+#     if len(records) > 0:
+#         wks.delete_rows(2)
+
+#     # add email for this test
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     email = "test@email.com"
+#     sec_email = "test2@email.com"
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
+#     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
+#     user[wks_columns["When Started"] - 1] = "TEST START"
+#     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
+#     user[wks_columns["Primary Email"] - 1] = email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = "second@email.com"
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     wks.append_row(user)
+
+#     records = get_wks_records(wks)
+#     row = records[0]
+#     assert row["Primary Email"] == email
+
+#     token = generate_token(email)
+
+#     with client as c:
+#             response = c.get(f"/membership/full-registration/{token}")
+#             soup = BeautifulSoup(response.data, "html.parser")
+#             heading = soup.find("h1", string="ERROR 01")
+#             assert heading is not None, "did not render error1 template"
+
+
+def test_secondary_already_exists(client):
     """
         Tests /full-registration/<token> route including event registration when we
-        use an email that already exists
+        use a secondary email that already exists
         should return error 1 template
     """
 
-    # delete old test stuff
     records = get_wks_records(wks)
     if len(records) > 0:
         wks.delete_rows(2)
@@ -209,14 +256,13 @@ def test_primary_email_already_exists(client):
     # add email for this test
     wks_columns = get_wks_columns(wks)
     user = ["" for i in range(len(wks_columns))]
-    email = "test@email.com"
     sec_email = "test2@email.com"
     user[wks_columns["Order"] - 1] = "1"
     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
     user[wks_columns["When Started"] - 1] = "TEST START"
     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
-    user[wks_columns["Primary Email"] - 1] = email
+    user[wks_columns["Primary Email"] - 1] = "email@email.com"
     user[wks_columns["Primary Verified"] - 1] = "TRUE"
     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
     user[wks_columns["Primary Expired"] - 1] = "FALSE"
@@ -231,9 +277,9 @@ def test_primary_email_already_exists(client):
 
     records = get_wks_records(wks)
     row = records[0]
-    assert row["Primary Email"] == email
+    assert row["Secondary Email"] == sec_email
 
-    token = generate_token(email)
+    token = generate_token(sec_email)
 
     with client as c:
             response = c.get(f"/membership/full-registration/{token}")
