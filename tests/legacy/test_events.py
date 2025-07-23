@@ -7,6 +7,10 @@ from project.models import edit_form, event
 from project import get_wks_columns, wks, get_wks_records, sh
 
 def test_no_user_fount(client):
+    """
+        Tests if error2.html renders if "membership/event-registration/<event_name>/<token>"
+        API call is sent and there is no matching user with the email in the members sheet
+    """
 
     # --- CLEAR MEMBERS SHEET --- #
     records = get_wks_records(wks)
