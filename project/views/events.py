@@ -355,8 +355,8 @@ def event_register(event_name, token):
         global can_update
         can_update = True
 
-        prim_email = request.form["primary_email"].lower()
-        sec_email = request.form["secondary_email"].lower()
+        prim_email = form.primary_email.data.lower()
+        sec_email = form.secondary_email.data.lower()
 
 
         async def search_prim_in_prim_col():
@@ -547,17 +547,18 @@ def event_register(event_name, token):
 
             info_fields = {}
             for row in edit_form.query.all():
+                field = form[row.label]
                 if row.field_type == "Checkbox":
                     vals = []
                     choices = checkbox_get_choices(row.options)
-                    for key in request.form.getlist(row.label):
+                    for key in field.data:
                         vals.append(choices[int(key)][1])
                     info_fields[row.label] = " ".join(vals)
                 else:
                     if wks_columns[row.label] > len(user):
                         info_fields[row.label] = ""
                     else:
-                        info_fields[row.label] = request.form[row.label]
+                        info_fields[row.label] = field.data
 
             event_fields = {}
             if event_obj is not None:
@@ -910,4 +911,6 @@ def event_register(event_name, token):
                                     event_fields=event_fields)
 
     else:
+        if form.errors:
+            print(f"errors: {form.errors}")
         return render_template("event_registration.html", form=form, token=token, event=event_obj)

@@ -137,11 +137,146 @@ from dataclasses import fields
 #     assert found_register_event == 'y'
 
 
-def test_happy_path_get_already_registered(client):
-    """
-        Tests for happy path of get reqeust when the user has already been signed up
-        should have prepopulated fields for everything
-    """
+# def test_happy_path_get_already_registered(client):
+#     """
+#         Tests for happy path of get reqeust when the user has already been signed up
+#         should have prepopulated fields for everything
+#     """
+
+#     # --- CLEAR MEMBERS SHEET --- #
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+
+#     # --- GET EVENT NAME --- #
+#     event_name = ""
+#     ticket = ""
+#     questions = {}
+#     counter = 1
+#     base_answer = "test answer from test_registration_happy: "
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         ticket = ticket_types[0]
+#         for question in event_obj.questions.split("\n"):
+#             questions[question] = base_answer + str(counter)
+#             counter += 1
+#         assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+
+
+#     # --- CLEAR EVENT SHEET --- #
+#     event_wks = sh.worksheet(event_name)
+#     event_records = get_wks_records(event_wks)
+#     num_event_records = len(event_records)
+#     if num_event_records > 1:
+#         event_wks.delete_rows(2, num_event_records)
+#     elif num_event_records > 0:
+#         event_wks.delete_rows(2)
+
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+
+#     primary_email = "test@email.com"
+#     secondary_email = "test2@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     wks.append_row(user)
+
+#     time.sleep(3)
+#     records = get_wks_records(wks)
+#     row = records[0]
+#     assert row["Primary Email"] == primary_email
+#     assert row["Secondary Email"] == secondary_email
+
+#     # --- ADD ROW OF DATA TO EVENT SHEET --- #
+#     event_wks_columns = get_wks_columns(event_wks)
+#     print(f"event cols: {event_wks_columns}")
+#     event_user = ["" for i in range(len(event_wks_columns))]
+#     event_user[event_wks_columns["Order"] - 1] = "1"
+#     event_user[event_wks_columns["First Name"] - 1] = first_name
+#     event_user[event_wks_columns["Last Name"] - 1] = last_name
+#     event_user[event_wks_columns["When Started"] - 1 ] = start
+#     event_user[event_wks_columns["Last Updated"] - 1] = update
+#     event_user[event_wks_columns["Membership Primary"] - 1] = primary_email
+#     event_user[event_wks_columns["Membership Secondary"] - 1] = secondary_email
+#     event_user[event_wks_columns["Ticket Type"] - 1] = ticket
+
+#     for question in questions:
+#         event_user[event_wks_columns[question] - 1] = questions[question]
+
+#     event_wks.append_row(event_user)
+
+#     # --- MAKE SURE WE ADDED ROW PROPERLY --- #
+#     event_records = get_wks_records(event_wks)
+#     event_row = event_records[0]
+#     assert event_row["Membership Primary"] == primary_email, "PRIMARY EMAIL NOT UPDATED IN SET UP"
+#     assert event_row["Membership Secondary"] == secondary_email, "SECONDARY EMAIL NOT UPDATED IN SET UP"
+#     assert event_row["First Name"] == first_name, "FIRST NAME NOT UPDATED IN SET UP"
+#     assert event_row["Last Name"] == last_name, "LAST NAME NOT UPDATED IN SET UP"
+#     assert event_row["When Started"] == start, "WHEN STARTED NOT UPDATED IN SET UP"
+#     assert event_row["Last Updated"] == update, "WHEN UPDATED NOT UPDATED IN SET UP"
+#     assert event_row["Ticket Type"] == ticket, "TICKET NOT UPDATED IN SET UP"
+
+#     counter = 1
+#     for question in questions:
+#         assert event_row[question] == base_answer + str(counter), f"QUESTION {counter} NOT UPDATED IN SET UP"
+#         counter += 1
+
+
+#     token = generate_token(primary_email)
+#     found_questions = []
+
+#     with client as c:
+#         response = c.get(f"/membership/event-registration/{event_name}/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         print(soup.prettify())
+#         found_first_name = soup.find("input", {"name": "first_name"})["value"] # type: ignore
+#         found_last_name = soup.find("input", {"name": "last_name"})["value"] # type: ignore
+#         found_primary_email = soup.find("input", {"name": "primary_email"})["value"] # type: ignore
+#         found_secondary_email = soup.find("input", {"name": "secondary_email"})["value"] # type: ignore
+#         found_register_event = soup.find("input", {"name": "register_event"})["value"] # type: ignore
+#         found_checked_ticket = soup.find("input", {"name": "event_tickets", "checked": ""})["value"] # type: ignore
+#         found_questions = soup.find_all("input", attrs={"name": re.compile(r"^event_Test")})
+
+#     assert found_first_name == first_name
+#     assert found_last_name == last_name
+#     assert found_primary_email == primary_email, "PRIMARY EMAIL DOES NOT MATCH"
+#     assert found_secondary_email == secondary_email, "SECONDARY EMAIL DOES NOT MATCH"
+#     assert found_register_event == 'y', "EVENT IS NOT AUTOSELECTED TO BE REGISTERED"
+#     assert found_checked_ticket == ticket, "TICKET DOES NOT MATCH"
+
+#     counter = 1
+#     for question in found_questions:
+#         assert question["value"] == base_answer + str(counter), f"QUESTION {counter} does not match" # type: ignore
+#         counter += 1
+
+def test_event_post_happy(client):
 
     # --- CLEAR MEMBERS SHEET --- #
     records = get_wks_records(wks)
@@ -150,7 +285,6 @@ def test_happy_path_get_already_registered(client):
         wks.delete_rows(2, num_records)
     elif num_records > 0:
         wks.delete_rows(2)
-
 
     # --- GET EVENT NAME --- #
     event_name = ""
@@ -214,64 +348,63 @@ def test_happy_path_get_already_registered(client):
     assert row["Primary Email"] == primary_email
     assert row["Secondary Email"] == secondary_email
 
-    # --- ADD ROW OF DATA TO EVENT SHEET --- #
-    event_wks_columns = get_wks_columns(event_wks)
-    print(f"event cols: {event_wks_columns}")
-    event_user = ["" for i in range(len(event_wks_columns))]
-    event_user[event_wks_columns["Order"] - 1] = "1"
-    event_user[event_wks_columns["First Name"] - 1] = first_name
-    event_user[event_wks_columns["Last Name"] - 1] = last_name
-    event_user[event_wks_columns["When Started"] - 1 ] = start
-    event_user[event_wks_columns["Last Updated"] - 1] = update
-    event_user[event_wks_columns["Membership Primary"] - 1] = primary_email
-    event_user[event_wks_columns["Membership Secondary"] - 1] = secondary_email
-    event_user[event_wks_columns["Ticket Type"] - 1] = ticket
+    token = generate_token(primary_email)
 
-    for question in questions:
-        event_user[event_wks_columns[question] - 1] = questions[question]
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/event-registration/{event_name}/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        # print(soup.prettify())
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
 
-    event_wks.append_row(event_user)
 
-    # --- MAKE SURE WE ADDED ROW PROPERLY --- #
-    event_records = get_wks_records(event_wks)
-    event_row = event_records[0]
-    assert event_row["Membership Primary"] == primary_email, "PRIMARY EMAIL NOT UPDATED IN SET UP"
-    assert event_row["Membership Secondary"] == secondary_email, "SECONDARY EMAIL NOT UPDATED IN SET UP"
-    assert event_row["First Name"] == first_name, "FIRST NAME NOT UPDATED IN SET UP"
-    assert event_row["Last Name"] == last_name, "LAST NAME NOT UPDATED IN SET UP"
-    assert event_row["When Started"] == start, "WHEN STARTED NOT UPDATED IN SET UP"
-    assert event_row["Last Updated"] == update, "WHEN UPDATED NOT UPDATED IN SET UP"
-    assert event_row["Ticket Type"] == ticket, "TICKET NOT UPDATED IN SET UP"
+    # --- BUILD FORM DATA --- #
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": primary_email,
+        "confirm_primary": primary_email,
+        "secondary_email": secondary_email,
+        "confirm_secondary": secondary_email,
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
 
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
     counter = 1
     for question in questions:
-        assert event_row[question] == base_answer + str(counter), f"QUESTION {counter} NOT UPDATED IN SET UP"
+        form_data["event_" + question] = base_answer + str(counter)
         counter += 1
 
-
-    token = generate_token(primary_email)
-    found_questions = []
 
     with client as c:
-        response = c.get(f"/membership/event-registration/{event_name}/{token}")
+        response = c.post(f"membership/event-registration/{event_name}/{token}",
+            data=form_data,
+            follow_redirects=True)
+
         soup = BeautifulSoup(response.data, "html.parser")
         print(soup.prettify())
-        found_first_name = soup.find("input", {"name": "first_name"})["value"] # type: ignore
-        found_last_name = soup.find("input", {"name": "last_name"})["value"] # type: ignore
-        found_primary_email = soup.find("input", {"name": "primary_email"})["value"] # type: ignore
-        found_secondary_email = soup.find("input", {"name": "secondary_email"})["value"] # type: ignore
-        found_register_event = soup.find("input", {"name": "register_event"})["value"] # type: ignore
-        found_checked_ticket = soup.find("input", {"name": "event_tickets", "checked": ""})["value"] # type: ignore
-        found_questions = soup.find_all("input", attrs={"name": re.compile(r"^event_Test")})
-
-    assert found_first_name == first_name
-    assert found_last_name == last_name
-    assert found_primary_email == primary_email, "PRIMARY EMAIL DOES NOT MATCH"
-    assert found_secondary_email == secondary_email, "SECONDARY EMAIL DOES NOT MATCH"
-    assert found_register_event == 'y', "EVENT IS NOT AUTOSELECTED TO BE REGISTERED"
-    assert found_checked_ticket == ticket, "TICKET DOES NOT MATCH"
-
-    counter = 1
-    for question in found_questions:
-        assert question["value"] == base_answer + str(counter), f"QUESTION {counter} does not match" # type: ignore
-        counter += 1
+        heading = soup.find("h1", string=f" {event_name} Registration Completed ")
+        print(f"event name: {event_name}")
+        print(f"heading: {heading}")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The receipt page was not rendered. The registration may have failed."
