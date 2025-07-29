@@ -55,7 +55,7 @@ def enter_email(event_name):
         Thread(target=log_email).start()
 
         wks_records = get_wks_records(wks)
-        
+
         email = request.form["email"].lower()
 
         async def query_prim_col():
@@ -78,7 +78,7 @@ def enter_email(event_name):
             send_email(email, subject, html)
 
             return render_template("instructions_sent.html")
-        
+
 
         @copy_current_request_context
         def send_instructions():
@@ -220,7 +220,7 @@ def event_register(event_name, token):
         user = user[0][0] if user[0] else user[1][0] if user[1] else None
         if user is None:
             return render_template("error2.html")
-        
+
     if user is None:
         return redirect(url_for("events.enter_email", event_name=event_obj.name.replace(" ", "-"), _external=True))
 
@@ -361,11 +361,12 @@ def event_register(event_name, token):
 
         async def search_prim_in_prim_col():
             user_prim1 = [row for row in wks_records if row["Primary Email"] == prim_email]
+
             if user_prim1:
                 user_prim1 = user_prim1[0]
                 row_prim1 = user_prim1["Row"]
             else:
-                return 
+                return
 
             if user_prim1 and row_prim1 != row_find:
                 if user_prim1["Primary Expired"] == "FALSE":
@@ -503,7 +504,7 @@ def event_register(event_name, token):
 
         else:
             swap = False
-            
+
             primary_verified = user["Primary Verified"]
             if form.primary_subscribe.data:
                 primary_subscribed = "TRUE"
@@ -573,7 +574,7 @@ def event_register(event_name, token):
                             event_fields[question] = form["event_" + question].data
                     else:
                         event_fields[question] = form["event_" + question].data
-                    
+
             @copy_current_request_context
             def can_update(user):
                 swap = False
@@ -766,11 +767,11 @@ def event_register(event_name, token):
                     if row.field_type == "Checkbox":
                         vals = []
                         choices = checkbox_get_choices(row.options)
-                        for key in request.form.getlist(row.label):
+                        for key in field.data:
                             vals.append(choices[int(key)][1])
                         cells.append(Cell(row_find, wks_columns[row.label], "\n".join(vals)))
                     else:
-                        cells.append(Cell(row_find, wks_columns[row.label], request.form[row.label]))
+                        cells.append(Cell(row_find, wks_columns[row.label], field.data))
 
                 if len(cells) > 0:
                     wks.update_cells(cells)
@@ -873,7 +874,7 @@ def event_register(event_name, token):
 
                 subject = event_obj.name + " Registration Completed"
                 html = render_template("event_receipt_email.html",
-                                    event_url=event_url, 
+                                    event_url=event_url,
                                     update_url=update_url,
                                     first=user["First Name"],
                                     last=user["Last Name"],
@@ -894,7 +895,7 @@ def event_register(event_name, token):
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()
-          
+
             return render_template("successfully_registered.html",
                                     event_url=event_url,
                                     update_url=update_url,
