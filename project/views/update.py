@@ -205,7 +205,7 @@ def update_info(token):
         user = user[0][0] if user[0] else user[1][0] if user[1] else None
         if user is None:
             return render_template("error2.html")
-        
+
     else:
         return render_template("error2.html")
 
@@ -339,8 +339,8 @@ def update_info(token):
         global can_update
         can_update = True
 
-        prim_email = request.form["primary_email"].lower()
-        sec_email = request.form["secondary_email"].lower()
+        prim_email = form.primary_email.data.lower()
+        sec_email = form.secondary_email.data.lower()
 
 
         async def search_prim_in_prim_col():
@@ -349,7 +349,7 @@ def update_info(token):
                 user_prim1 = user_prim1[0]
                 row_prim1 = user_prim1["Row"]
             else:
-                return 
+                return
 
             if user_prim1 and row_prim1 != row_find:
                 if user_prim1["Primary Expired"] == "FALSE":
@@ -531,17 +531,18 @@ def update_info(token):
 
             info_fields = {}
             for row in edit_form.query.all():
+                field = form[row.label]
                 if row.field_type == "Checkbox":
                     vals = []
                     choices = checkbox_get_choices(row.options)
-                    for key in request.form.getlist(row.label):
+                    for key in field.data:
                         vals.append(choices[int(key)][1])
                     info_fields[row.label] = " ".join(vals)
                 else:
                     if wks_columns[row.label] > len(user):
                         info_fields[row.label] = ""
                     else:
-                        info_fields[row.label] = request.form[row.label]
+                        info_fields[row.label] = field.data
 
             event_fields = {}
             if event_obj is not None:
@@ -557,7 +558,7 @@ def update_info(token):
                                 event_fields[question] = form["event_" + question].data
                         else:
                             event_fields[question] = form["event_" + question].data
-                    
+
                 else:
                     if event_user is not None:
                         # event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
@@ -761,11 +762,11 @@ def update_info(token):
                     if row.field_type == "Checkbox":
                         vals = []
                         choices = checkbox_get_choices(row.options)
-                        for key in request.form.getlist(row.label):
+                        for key in field.data:
                             vals.append(choices[int(key)][1])
                         cells.append(Cell(row_find, wks_columns[row.label], "\n".join(vals)))
                     else:
-                        cells.append(Cell(row_find, wks_columns[row.label], request.form[row.label]))
+                        cells.append(Cell(row_find, wks_columns[row.label], field.data))
 
                 if len(cells) > 0:
                     wks.update_cells(cells)
@@ -869,7 +870,7 @@ def update_info(token):
 
                 subject = "I2G Membership Updated"
                 html = render_template("update_receipt_email.html",
-                                    event_url=event_url, 
+                                    event_url=event_url,
                                     update_url=update_url,
                                     first=user["First Name"],
                                     last=user["Last Name"],
@@ -882,7 +883,7 @@ def update_info(token):
                                     info_fields=info_fields,
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)
-                                        
+
                 if user["Primary Verified"] == "TRUE":
                     send_email(user["Primary Email"], subject, html)
                 if user["Secondary Verified"] == "TRUE":
@@ -890,7 +891,7 @@ def update_info(token):
 
             thread = Thread(target=can_update, args=(user,))
             thread.start()
-          
+
             return render_template("thanks_update.html",
                                     event_url=event_url,
                                     update_url=update_url,
