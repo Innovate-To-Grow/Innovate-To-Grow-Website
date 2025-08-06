@@ -33,7 +33,7 @@ def register():
         def log_registration():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
-                order, "/register", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data, "Last Name: " + 
+                order, "/register", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data, "Last Name: " +
                 form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
             ]
             logs.append_row(row)
@@ -61,7 +61,7 @@ def register():
                 row_prim1 = user_prim1["Row"]
             else:
                 return
-            
+
             if (user_prim1 is not None and user_prim1["Primary Expired"] == "TRUE"):
                 cells.append(Cell(row_prim1, wks_columns["Primary Email"], ""))
 
@@ -104,7 +104,7 @@ def register():
                 row_prim2 = user_prim2["Row"]
             else:
                 return
-            
+
             if (user_prim2 is not None and user_prim2["Secondary Expired"] == "TRUE"):
                 cells.append(Cell(row_prim2, wks_columns["Secondary Email"], ""))
 
@@ -181,7 +181,7 @@ def register():
                                     args=(user_sec1["Primary Email"], app.config["UPDATE_SUBJECT"],
                                           update_html))
                     thread.start()
-                    
+
 
         async def search_sec_in_sec_col():
             user_sec2 = [row for row in wks_records if row["Secondary Email"] == sec_email]
@@ -263,7 +263,7 @@ def register():
                 user[wks_columns["Secondary Expired"] - 1] = "FALSE"
                 user[wks_columns["Secondary Bounced"] - 1] = ""
                 user[wks_columns["Info Completed"] - 1] = "FALSE"
-                
+
                 wks.append_row(user)
 
                 p_token = generate_token(prim_email)
@@ -437,18 +437,18 @@ def confirm(token):
             html = render_template("info_receipt_email.html",
                                    event_url=event_url,
                                    update_url=update_url,
-                                   first=user["First Name"], 
+                                   first=user["First Name"],
                                    last=user["Last Name"],
                                    primary_verified=primary_verified,
                                    secondary_verified=secondary_verified,
                                    primary_subscribed=primary_subscribed,
                                    secondary_subscribed=secondary_subscribed,
-                                   info_fields=info_fields, 
-                                   event_fields=event_fields, 
+                                   info_fields=info_fields,
+                                   event_fields=event_fields,
                                    event_name=event_obj.name if event_obj is not None else None)
             send_email(email, subject, html)
-            
-            return render_template("thanks_confirming.html", 
+
+            return render_template("thanks_confirming.html",
                                    event_url=event_url,
                                    update_url=update_url,
                                    first=user["First Name"],
@@ -546,7 +546,7 @@ def info(token):
         user = user[0][0] if user[0] else user[1][0] if user[1] else None
         if user is None:
             return render_template("error2.html")
-        
+
     else:
         return render_template("error2.html")
 
@@ -640,7 +640,7 @@ def info(token):
                             event_fields[question] = form["event_" + question].data
                     else:
                         event_fields[question] = form["event_" + question].data
-                
+
             else:
                 if event_user is not None:
                     # event_fields["Will you attend on Zoom or In-Person?"] = event_user["Will you attend on Zoom or In-Person?"]
@@ -713,7 +713,7 @@ def info(token):
                 event_wks.update_cells(event_cells)
 
             subject = "I2G Membership Completed"
-            html = render_template("info_receipt_email.html", 
+            html = render_template("info_receipt_email.html",
                                    event_url=event_url,
                                    update_url=update_url,
                                    first=user["First Name"],
@@ -727,7 +727,7 @@ def info(token):
                                    info_fields=info_fields,
                                    event_name=event_obj.name if event_obj is not None else None,
                                    event_fields=event_fields)
-                                   
+
             send_email(email, subject, html)
 
         thread = Thread(target=update_sheet)
@@ -780,7 +780,7 @@ def complete_registration(token):
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
         event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
-        
+
 
     async def query_prim_col():
         return [row for row in wks_records if row["Primary Email"] == email]
@@ -844,7 +844,7 @@ def complete_registration(token):
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
             row = [
                 order, "/full-registration/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
-                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data, 
+                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data,
                 "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
             ]
             logs.append_row(row)
@@ -855,11 +855,12 @@ def complete_registration(token):
         wks_columns = get_wks_columns(wks)
 
         if event_obj is not None:
+            event_wks = sh.worksheet(event_obj.name)
             event_wks_records = get_wks_records(event_wks)
             event_wks_columns = get_wks_columns(event_wks)
 
-        prim_email = request.form["primary_email"].lower()
-        sec_email = request.form["secondary_email"].lower()
+        prim_email = form.primary_email.data.lower()
+        sec_email = form.secondary_email.data.lower()
 
         async def search_sec_in_prim_col():
             user_sec1 = [row for row in wks_records if row["Primary Email"] == sec_email]
@@ -902,7 +903,7 @@ def complete_registration(token):
                                     args=(user_sec1["Primary Email"], app.config["UPDATE_SUBJECT"],
                                           update_html))
                     thread.start()
-                    
+
 
         async def search_sec_in_sec_col():
             user_sec2 = [row for row in wks_records if row["Secondary Email"] == sec_email]
@@ -963,14 +964,15 @@ def complete_registration(token):
         else:
             info_fields = {}
             for row in edit_form.query.all():
+                field = form[row.label]
                 if row.field_type == "Checkbox":
                     vals = []
                     choices = checkbox_get_choices(row.options)
-                    for key in request.form.getlist(row.label):
+                    for key in field.data:
                         vals.append(choices[int(key)][1])
                     info_fields[row.label] = " ".join(vals)
                 else:
-                    info_fields[row.label] = request.form[row.label]
+                    info_fields[row.label] = field.data
 
             event_fields = {}
             if event_obj is not None:
@@ -1007,11 +1009,11 @@ def complete_registration(token):
                     if row.field_type == "Checkbox":
                         vals = []
                         choices = checkbox_get_choices(row.options)
-                        for key in request.form.getlist(row.label):
+                        for key in field.data:
                             vals.append(choices[int(key)][1])
                         user[wks_columns[row.label] - 1] = "\n".join(vals)
                     else:
-                        user[wks_columns[row.label] - 1] = request.form[row.label]
+                        user[wks_columns[row.label] - 1] = field.data
 
                 wks.append_row(user)
 
@@ -1044,7 +1046,7 @@ def complete_registration(token):
                         event_row = ["" for i in range(len(event_wks_columns))]
 
                         event_row[event_wks_columns["Order"] - 1] = int(
-                            event_wks.col_values(event_wks_columns["Order"])[-1]) + 1 if event_wks.col_values(
+                            event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(
                                 event_wks_columns["Order"])[-1].isdigit() else 1
                         event_row[event_wks_columns["First Name"] - 1] = form.first_name.data
                         event_row[event_wks_columns["Last Name"] - 1] = form.last_name.data
@@ -1064,7 +1066,7 @@ def complete_registration(token):
 
                 subject = "I2G Membership Completed"
                 html = render_template("info_receipt_email.html",
-                                    event_url=event_url, 
+                                    event_url=event_url,
                                     update_url=update_url,
                                     first=user[wks_columns["First Name"] - 1],
                                     last=user[wks_columns["Last Name"] - 1],
@@ -1077,7 +1079,7 @@ def complete_registration(token):
                                     info_fields=info_fields,
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)
-                                    
+
                 send_email(email, subject, html)
 
             thread = Thread(target=can_register)
@@ -1099,4 +1101,8 @@ def complete_registration(token):
                                     event_fields=event_fields)
 
     else:
+        print("Validation errors:")
+        for field_name, error_messages in form.errors.items():
+            for error in error_messages:
+                print(f"{field_name}: {error}")
         return render_template("complete_registration.html", form=form, token=token)
