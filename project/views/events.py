@@ -1,11 +1,13 @@
 import asyncio, time
 from datetime import datetime
 from threading import Thread
+
 from gspread.cell import Cell
 from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context, abort
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired
+
 from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
 from project.models import event, edit_form
 from project.utils.email import send_email
@@ -13,16 +15,20 @@ from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
 from project.forms.registration_forms import NotEqualTo
 from project.forms.update_forms import EmailForm
+from project.services.logging_service import Logger
+
 
 events_blueprint = Blueprint("events",
                              __name__,
                              template_folder="../templates/membership/events",
                              url_prefix=app.config["URL_PREFIX"])
 
+logger = Logger()
+
 
 @events_blueprint.route("/events", methods=["GET", "POST"])
 def event_redirect():
-    event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+    event_obj: event | None = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
     if event_obj is None:
         return render_template("no_live_event.html")
@@ -34,7 +40,7 @@ def event_redirect():
 def enter_email(event_name):
     form = EmailForm()
 
-    event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+    event_obj: event | None = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
     if event_obj is None:
         return render_template("no_live_event.html")
@@ -45,18 +51,13 @@ def enter_email(event_name):
         abort(404)
 
     if request.method == "POST" and form.validate_on_submit():
-        def log_email():
-            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-            row = [
-                order, "/events/<event_name>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "Email: " + form.email.data
-            ]
-            logs.append_row(row)
-
-        Thread(target=log_email).start()
 
         wks_records = get_wks_records(wks)
 
         email = request.form["email"].lower()
+        path = f"/events/{event_name}"
+
+        Thread(target=logger.log, args=(path, email)).start()
 
         async def query_prim_col():
             return [row for row in wks_records if row["Primary Email"] == email]

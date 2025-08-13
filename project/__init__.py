@@ -116,10 +116,19 @@ if "Logs" not in worksheets:
     ]
     sh.worksheet("Logs").append_row(row)
 
+if "Dev_Logs" not in worksheets:
+    sh.add_worksheet("Dev_Logs", 1, 100)
+    row = [
+        "Order", "Transaction", "DateTime"
+    ]
+    sh.worksheet("Dev_Logs").append_row(row)
+
+
 # --- CHANGING THE WKS TO MAKE IT WITH THE TESTING SHEET --- #
 # wks = sh.worksheet("Members")
 wks = sh.worksheet("MEMBERS_FOR_TESTING")
 logs = sh.worksheet("Logs")
+dev_logs = sh.worksheet("Dev_Logs")
 
 
 def get_wks_records(wks):
