@@ -1,5 +1,6 @@
 # import pytest
 # from project.utils.event_utils import make_sure
+# from project.utils.event_utils import analyze_email_changes, EmailChangeDecision
 
 
 # @pytest.fixture
@@ -174,3 +175,246 @@
 #         assert isinstance(can_update, bool)
 #         assert isinstance(cells, list)
 #         assert isinstance(emails, list)
+
+
+# class TestAnalyzeEmailChanges:
+#     """Test suite for the analyze_email_changes pure function"""
+
+#     def test_no_email_changes(self):
+#         """When both emails stay the same - no changes needed"""
+#         current_user = {
+#             "Primary Email": "user@test.com",
+#             "Secondary Email": "user2@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "user@test.com", "user2@test.com")
+
+#         assert result.change_type == "no_change"
+#         assert result.emails_needing_verification == []
+#         assert result.verification_status_updates == {"primary": False, "secondary": False}
+#         assert result.subscription_updates == {"primary": None, "secondary": None}
+
+#     def test_complete_email_swap(self):
+#         """When user swaps primary and secondary emails completely"""
+#         current_user = {
+#             "Primary Email": "primary@test.com",
+#             "Secondary Email": "secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "secondary@test.com", "primary@test.com")
+
+#         assert result.change_type == "swap_complete"
+#         assert result.emails_needing_verification == []
+#         assert result.verification_status_updates == {"primary": False, "secondary": False}
+#         assert result.subscription_updates == {"primary": None, "secondary": None}
+
+#     def test_partial_swap_primary_becomes_secondary(self):
+#         """When current primary becomes new secondary, new primary is completely new"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "old_primary@test.com")
+
+#         assert result.change_type == "swap_partial"
+#         assert result.emails_needing_verification == ["new_primary@test.com"]
+#         assert result.verification_status_updates == {"primary": True, "secondary": False}
+#         assert result.subscription_updates == {"primary": False, "secondary": None}
+
+#     def test_partial_swap_secondary_becomes_primary(self):
+#         """When current secondary becomes new primary, new secondary is completely new"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "old_secondary@test.com", "new_secondary@test.com")
+
+#         assert result.change_type == "swap_partial"
+#         assert result.emails_needing_verification == ["new_secondary@test.com"]
+#         assert result.verification_status_updates == {"primary": False, "secondary": True}
+#         assert result.subscription_updates == {"primary": None, "secondary": False}
+
+#     def test_both_emails_completely_new(self):
+#         """When both primary and secondary are brand new emails"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "new_secondary@test.com")
+
+#         assert result.change_type == "new_emails"
+#         assert set(result.emails_needing_verification) == {"new_primary@test.com", "new_secondary@test.com"}
+#         assert result.verification_status_updates == {"primary": True, "secondary": True}
+#         assert result.subscription_updates == {"primary": False, "secondary": False}
+
+#     def test_only_primary_email_new(self):
+#         """When only primary email changes, secondary stays same"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "keep_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "keep_secondary@test.com")
+
+#         assert result.change_type == "new_emails"
+#         assert result.emails_needing_verification == ["new_primary@test.com"]
+#         assert result.verification_status_updates == {"primary": True, "secondary": False}
+#         assert result.subscription_updates == {"primary": False, "secondary": None}
+
+#     def test_only_secondary_email_new(self):
+#         """When only secondary email changes, primary stays same"""
+#         current_user = {
+#             "Primary Email": "keep_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "keep_primary@test.com", "new_secondary@test.com")
+
+#         assert result.change_type == "new_emails"
+#         assert result.emails_needing_verification == ["new_secondary@test.com"]
+#         assert result.verification_status_updates == {"primary": False, "secondary": True}
+#         assert result.subscription_updates == {"primary": None, "secondary": False}
+
+#     def test_empty_current_emails(self):
+#         """Handle case where current user has empty email fields"""
+#         current_user = {
+#             "Primary Email": "",
+#             "Secondary Email": ""
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "new_secondary@test.com")
+
+#         assert result.change_type == "new_emails"
+#         assert set(result.emails_needing_verification) == {"new_primary@test.com", "new_secondary@test.com"}
+#         assert result.verification_status_updates == {"primary": True, "secondary": True}
+#         assert result.subscription_updates == {"primary": False, "secondary": False}
+
+#     def test_empty_new_emails(self):
+#         """Handle case where new emails are empty strings"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "", "")
+
+#         assert result.change_type == "new_emails"
+#         assert set(result.emails_needing_verification) == {"", ""}
+#         assert result.verification_status_updates == {"primary": True, "secondary": True}
+#         assert result.subscription_updates == {"primary": False, "secondary": False}
+
+#     def test_case_sensitivity(self):
+#         """Email comparison should be case sensitive"""
+#         current_user = {
+#             "Primary Email": "user@test.com",
+#             "Secondary Email": "user2@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "USER@TEST.COM", "user2@test.com")
+
+#         assert result.change_type == "new_emails"
+#         assert result.emails_needing_verification == ["USER@TEST.COM"]
+#         assert result.verification_status_updates == {"primary": True, "secondary": False}
+
+#     def test_whitespace_handling(self):
+#         """Emails with whitespace should be treated as different"""
+#         current_user = {
+#             "Primary Email": "user@test.com",
+#             "Secondary Email": "user2@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, " user@test.com ", "user2@test.com")
+
+#         assert result.change_type == "new_emails"
+#         assert result.emails_needing_verification == [" user@test.com "]
+#         assert result.verification_status_updates == {"primary": True, "secondary": False}
+
+#     def test_return_type_structure(self):
+#         """Verify the function returns proper EmailChangeDecision structure"""
+#         current_user = {
+#             "Primary Email": "test@test.com",
+#             "Secondary Email": "test2@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new@test.com", "test2@test.com")
+
+#         # Check it's the right type
+#         assert isinstance(result, EmailChangeDecision)
+
+#         # Check all required fields exist
+#         assert hasattr(result, 'change_type')
+#         assert hasattr(result, 'emails_needing_verification')
+#         assert hasattr(result, 'verification_status_updates')
+#         assert hasattr(result, 'subscription_updates')
+
+#         # Check field types
+#         assert isinstance(result.change_type, str)
+#         assert isinstance(result.emails_needing_verification, list)
+#         assert isinstance(result.verification_status_updates, dict)
+#         assert isinstance(result.subscription_updates, dict)
+
+#     def test_emails_needing_verification_are_new_emails(self):
+#         """Any email in emails_needing_verification should not be in current user's emails"""
+#         current_user = {
+#             "Primary Email": "current_primary@test.com",
+#             "Secondary Email": "current_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "current_secondary@test.com")
+
+#         current_emails = {current_user["Primary Email"], current_user["Secondary Email"]}
+#         for email in result.emails_needing_verification:
+#             assert email not in current_emails
+
+#     def test_verification_updates_consistency(self):
+#         """If verification_updates[email_type] = True, then new email should need verification"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "old_secondary@test.com")
+
+#         if result.verification_status_updates["primary"]:
+#             assert "new_primary@test.com" in result.emails_needing_verification
+#         if result.verification_status_updates["secondary"]:
+#             assert "old_secondary@test.com" in result.emails_needing_verification or result.change_type == "swap_partial"
+
+#     def test_subscription_verification_relationship(self):
+#         """If verification_updates[email_type] = True, then subscription_updates[email_type] = False"""
+#         current_user = {
+#             "Primary Email": "old_primary@test.com",
+#             "Secondary Email": "old_secondary@test.com"
+#         }
+
+#         result = analyze_email_changes(current_user, "new_primary@test.com", "new_secondary@test.com")
+
+#         for email_type in ["primary", "secondary"]:
+#             if result.verification_status_updates[email_type]:
+#                 assert result.subscription_updates[email_type] == False
+
+#     @pytest.mark.parametrize("current_primary,current_secondary,new_primary,new_secondary,expected_type", [
+#         # No changes
+#         ("a@test.com", "b@test.com", "a@test.com", "b@test.com", "no_change"),
+#         # Complete swaps
+#         ("a@test.com", "b@test.com", "b@test.com", "a@test.com", "swap_complete"),
+#         # Partial swaps
+#         ("a@test.com", "b@test.com", "c@test.com", "a@test.com", "swap_partial"),
+#         ("a@test.com", "b@test.com", "b@test.com", "c@test.com", "swap_partial"),
+#         # New emails
+#         ("a@test.com", "b@test.com", "c@test.com", "d@test.com", "new_emails"),
+#         ("a@test.com", "b@test.com", "c@test.com", "b@test.com", "new_emails"),
+#         ("a@test.com", "b@test.com", "a@test.com", "c@test.com", "new_emails"),
+#     ])
+#     def test_change_type_matrix(self, current_primary, current_secondary, new_primary, new_secondary, expected_type):
+#         """Test various combinations to ensure correct change type detection"""
+#         current_user = {
+#             "Primary Email": current_primary,
+#             "Secondary Email": current_secondary
+#         }
+
+#         result = analyze_email_changes(current_user, new_primary, new_secondary)
+#         assert result.change_type == expected_type
