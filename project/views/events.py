@@ -13,6 +13,7 @@ from project.models import event, edit_form
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
+from project.utils.event_utils import make_sure
 from project.forms.registration_forms import NotEqualTo
 from project.forms.update_forms import EmailForm
 from project.services.logging_service import Logger
@@ -54,10 +55,10 @@ def enter_email(event_name):
 
         wks_records = get_wks_records(wks)
 
-        email = request.form["email"].lower()
+        email = form.email.data.lower()
         path = f"/events/{event_name}"
 
-        Thread(target=logger.log, args=(path, email)).start()
+        Thread(target=logger.log_email_submission, args=(path, email)).start()
 
         async def query_prim_col():
             return [row for row in wks_records if row["Primary Email"] == email]
@@ -165,17 +166,6 @@ def enter_email(event_name):
                         event_url=event_url,
                     )
                     send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
-
-                # if user[arr_idx["Secondary Email"]] != "":
-                #     token = generate_token(user[arr_idx["Secondary Email"]])
-                #     event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
-                #     html = render_template(
-                #         "event_email.html",
-                #         first=user[arr_idx["First Name"]],
-                #         last=user[arr_idx["Last Name"]],
-                #         event_url=event_url,
-                #     )
-                #     send_email(user[arr_idx["Secondary Email"]], "I2G Membership - Event Registration", html)
 
         Thread(target=send_instructions).start()
 
@@ -328,15 +318,14 @@ def event_register(event_name, token):
 
 
     if request.method == "POST" and form.validate_on_submit():
-        def log_update():
-            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-            row = [
-                order, "/event-registration/<event_name>/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
-                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
-            ]
-            logs.append_row(row)
 
-        Thread(target=log_update).start()
+        # LOG STUFF #
+        path = f"/event-registration/{event_name}/{token}"
+        first_name = form.first_name.data
+        last_name = form.last_name.data
+        primary_email = form.primary_email.data
+        secondary_email = form.secondary_email.data
+        Thread(target=logger.log_event_register, args=(path, first_name, last_name, primary_email, secondary_email)).start()
 
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)
@@ -353,154 +342,63 @@ def event_register(event_name, token):
 
         cells = []
 
-        global can_update
-        can_update = True
+        update_allowed = True
 
         prim_email = form.primary_email.data.lower()
         sec_email = form.secondary_email.data.lower()
 
 
-        async def search_prim_in_prim_col():
-            user_prim1 = [row for row in wks_records if row["Primary Email"] == prim_email]
+        # Use the refactored validation function
+        update_allowed, cells_to_update, emails_to_send = make_sure(
+            update_allowed, wks_records, row_find, prim_email, sec_email
+        )
 
-            if user_prim1:
-                user_prim1 = user_prim1[0]
-                row_prim1 = user_prim1["Row"]
-            else:
-                return
+        # Convert cells_to_update to Cell objects and add to cells list
+        for cell_update in cells_to_update:
+            cells.append(Cell(cell_update["row"], wks_columns[cell_update["column"]], cell_update["value"]))
 
-            if user_prim1 and row_prim1 != row_find:
-                if user_prim1["Primary Expired"] == "FALSE":
-                    global can_update
-                    can_update = False
-                elif user_prim1["Primary Expired"] == "TRUE":
-                    cells.append(Cell(row_prim1, wks_columns["Primary Email"], ""))
+            # Handle event worksheet updates for cleared emails
+            if event_obj is not None:
+                # Find which email is being cleared from the worksheet
+                cleared_email = None
+                for record in wks_records:
+                    if record["Row"] == cell_update["row"]:
+                        cleared_email = record[cell_update["column"]]
+                        break
 
-                    if event_obj is not None:
-                        event_user = [row for row in event_wks_records if row["Membership Primary"] == prim_email]
-                        if event_user:
-                            event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Primary"], ""))
+                if cleared_email:
+                    if cell_update["column"] == "Primary Email":
+                        event_user = [row for row in event_wks_records if row["Membership Primary"] == cleared_email]
+                        column_name = "Membership Primary"
+                    else:  # Secondary Email
+                        event_user = [row for row in event_wks_records if row["Membership Secondary"] == cleared_email]
+                        column_name = "Membership Secondary"
 
-                    if user_prim1["Secondary Email"] != "" and user_prim1["Secondary Verified"] == "TRUE":
-                        html = render_template("deleting_email.html",
-                                               first=user_prim1["First Name"],
-                                               last=user_prim1["Last Name"],
-                                               email=user_prim1["Primary Email"])
-                        thread = Thread(
-                            target=send_email,
-                            args=[user_prim1["Secondary Email"], app.config["REMOVE_SUBJECT"], html])
-                        thread.start()
+                    if event_user:
+                        event_cells.append(Cell(event_user[0]["Row"], event_wks_columns[column_name], ""))
 
+        # Send notification emails
+        for email_to_send in emails_to_send:
+            if email_to_send["type"] == "deletion_notice":
+                html = render_template("deleting_email.html",
+                                       first=email_to_send["user_first_name"],
+                                       last=email_to_send["user_last_name"],
+                                       email=email_to_send["deleted_email"])
+                thread = Thread(
+                    target=send_email,
+                    args=[email_to_send["to"], app.config["REMOVE_SUBJECT"], html])
+                thread.start()
 
-        async def search_prim_in_sec_col():
-            user_prim2 = [row for row in wks_records if row["Secondary Email"] == prim_email]
-            if user_prim2:
-                user_prim2 = user_prim2[0]
-                row_prim2 = user_prim2["Row"]
-            else:
-                return
-
-            if user_prim2 and row_prim2 != row_find:
-                if user_prim2["Secondary Expired"] == "FALSE":
-                    global can_update
-                    can_update = False
-                elif user_prim2["Secondary Expired"] == "TRUE":
-                    cells.append(Cell(row_prim2, wks_columns["Secondary Email"], ""))
-
-                    if event_obj is not None:
-                        event_user = [row for row in event_wks_records if row["Membership Secondary"] == prim_email]
-                        if event_user:
-                            event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Secondary"], ""))
-
-                    if user_prim2["Primary Email"] != "" and user_prim2["Primary Verified"] == "TRUE":
-                        html = render_template("deleting_email.html",
-                                               first=user_prim2["First Name"],
-                                               last=user_prim2["Last Name"],
-                                               email=user_prim2["Secondary Email"])
-                        thread = Thread(
-                            target=send_email,
-                            args=[user_prim2["Primary Email"], app.config["REMOVE_SUBJECT"], html])
-                        thread.start()
-
-
-        async def search_sec_in_prim_col():
-            user_sec1 = [row for row in wks_records if row["Primary Email"] == sec_email]
-            if user_sec1:
-                user_sec1 = user_sec1[0]
-                row_sec1 = user_sec1["Row"]
-            else:
-                return
-
-            if user_sec1 and row_sec1 != row_find:
-                if user_sec1["Primary Expired"] == "FALSE":
-                    global can_update
-                    can_update = False
-                elif user_sec1["Primary Expired"] == "TRUE":
-                    cells.append(Cell(row_sec1, wks_columns["Primary Email"], ""))
-
-                    if event_obj is not None:
-                        event_user = [row for row in event_wks_records if row["Membership Primary"] == sec_email]
-                        if event_user:
-                            event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Primary"], ""))
-
-                    if user_sec1["Secondary Email"] != "" and user_sec1["Secondary Verified"] == "TRUE":
-                        html = render_template("deleting_email.html",
-                                               first=user_sec1["First Name"],
-                                               last=user_sec1["Last Name"],
-                                               email=user_sec1["Primary Email"])
-                        thread = Thread(
-                            target=send_email,
-                            args=[user_sec1["Secondary Email"], app.config["REMOVE_SUBJECT"], html])
-                        thread.start()
-
-
-        async def search_sec_in_sec_col():
-            user_sec2 = [row for row in wks_records if row["Secondary Email"] == sec_email]
-            if user_sec2:
-                user_sec2 = user_sec2[0]
-                row_sec2 = user_sec2["Row"]
-            else:
-                return
-
-            if user_sec2 and row_sec2 != row_find:
-                if user_sec2["Secondary Expired"] == "FALSE":
-                    global can_update
-                    can_update = False
-                elif user_sec2["Secondary Expired"] == "TRUE":
-                    cells.append(Cell(row_sec2, wks_columns["Secondary Email"], ""))
-
-                    if event_obj is not None:
-                        event_user = [row for row in event_wks_records if row["Membership Secondary"] == sec_email]
-                        if event_user:
-                            event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Secondary"], ""))
-
-                    if user_sec2["Primary Email"] != "" and user_sec2["Primary Verified"] == "TRUE":
-                        html = render_template("deleting_email.html",
-                                               first=user_sec2["First Name"],
-                                               last=user_sec2["Last Name"],
-                                               email=user_sec2["Secondary Email"])
-                        thread = Thread(
-                            target=send_email,
-                            args=[user_sec2["Primary Email"], app.config["REMOVE_SUBJECT"], html])
-                        thread.start()
-
-        async def update_sheet():
-            if len(cells) > 0:
-                wks.update_cells(cells)
-
-            if len(event_cells) > 0:
-                event_wks.update_cells(event_cells)
-
-        async def main():
-            await asyncio.gather(search_prim_in_prim_col(), search_prim_in_sec_col(), search_sec_in_prim_col(),
-                                 search_sec_in_sec_col(), update_sheet())
-
-        asyncio.run(main())
+        # Update worksheets
+        if len(cells) > 0:
+            wks.update_cells(cells)
+        if len(event_cells) > 0:
+            event_wks.update_cells(event_cells)
 
         cells.clear()
         event_cells.clear()
 
-        if not can_update:
+        if not update_allowed:
             return render_template("error4.html")
 
         else:
@@ -913,6 +811,6 @@ def event_register(event_name, token):
                                     event_fields=event_fields)
 
     else:
-        if form.errors:
-            print(f"errors: {form.errors}")
+        # if form.errors:
+        #     print(f"errors: {form.errors}")
         return render_template("event_registration.html", form=form, token=token, event=event_obj)
