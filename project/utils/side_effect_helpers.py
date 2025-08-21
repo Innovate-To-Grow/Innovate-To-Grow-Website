@@ -354,3 +354,94 @@ def send_event_confirmation_emails(
             "event_receipt_email.html",
             template_data
         )
+
+
+def create_complete_user_registration(
+    user_data: Dict[str, Any],
+    custom_fields: List[Dict[str, Any]] = None
+) -> int:
+    """
+    Create a new user record for complete registration and return the row number.
+    
+    This function creates a complete user registration where:
+    - Primary email is immediately verified and subscribed
+    - Secondary email is unverified and unsubscribed
+    - Info is marked as completed immediately
+    - All custom fields are populated from user_data
+    
+    Args:
+        user_data: Dictionary with all user data mapped to column names
+        custom_fields: List of custom field definitions (optional, for validation)
+        
+    Returns:
+        int: Row number of the created user record
+    """
+    wks_columns = get_wks_columns(wks)
+    
+    # Create new row array with correct length
+    user_row = ["" for _ in range(len(wks.row_values(1)))]
+    
+    # Map user_data to correct column positions
+    for column_name, value in user_data.items():
+        if column_name in wks_columns:
+            user_row[wks_columns[column_name] - 1] = value
+    
+    # Append the new user row
+    wks.append_row(user_row)
+    
+    # Get the row number of the newly created user
+    # The new row will be at the end, so get current row count
+    new_row_number = len(wks.get_all_values())
+    
+    return new_row_number
+
+
+def send_complete_registration_confirmation_email(
+    primary_email: str,
+    user_data: Dict[str, Any],
+    info_fields: Dict[str, Any],
+    event_fields: Dict[str, Any],
+    event_url: Optional[str],
+    update_url: str,
+    event_name: Optional[str] = None
+) -> None:
+    """
+    Send confirmation email for complete registration.
+    
+    This function sends the confirmation email specifically for complete registration,
+    which includes both membership and optional event registration information.
+    
+    Args:
+        primary_email: Email address to send confirmation to (primary email)
+        user_data: Complete user data including verification status
+        info_fields: User's profile information fields
+        event_fields: Event-specific registration data (if applicable)
+        event_url: URL to event registration page (if applicable)
+        update_url: URL to update user information
+        event_name: Name of the event (if applicable)
+    """
+    subject = "I2G Membership Completed"
+    
+    template_data = {
+        "event_url": event_url,
+        "update_url": update_url,
+        "first": user_data.get("First Name", ""),
+        "last": user_data.get("Last Name", ""),
+        "primary_email": user_data.get("Primary Email", ""),
+        "primary_verified": user_data.get("Primary Verified", "FALSE"),
+        "primary_subscribed": user_data.get("Primary Subscribed", "FALSE"),
+        "secondary_email": user_data.get("Secondary Email", ""),
+        "secondary_verified": user_data.get("Secondary Verified", "FALSE"),
+        "secondary_subscribed": user_data.get("Secondary Subscribed", "FALSE"),
+        "info_fields": info_fields,
+        "event_name": event_name,
+        "event_fields": event_fields
+    }
+    
+    # Send confirmation email using the complete registration template
+    send_confirmation_email(
+        primary_email,
+        subject,
+        "info_receipt_email.html",
+        template_data
+    )
