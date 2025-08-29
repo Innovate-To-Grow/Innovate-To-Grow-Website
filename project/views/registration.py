@@ -2,10 +2,10 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context
+from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context, session
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
-from wtforms.validators import EqualTo, Email, InputRequired, Optional
+from wtforms.validators import Optional
 from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
@@ -14,7 +14,11 @@ from project.utils.token import generate_token, confirm_token
 from project.utils.registration_utils import (
     analyze_complete_registration_conflicts,
     calculate_new_user_creation,
-    calculate_event_registration_from_complete
+    calculate_event_registration_from_complete,
+    analyze_phone_number_conflicts,
+    calculate_registration_method,
+    should_trigger_phone_verification,
+    calculate_phone_registration_data
 )
 from project.utils.side_effect_helpers import (
     execute_cell_updates,
@@ -22,9 +26,12 @@ from project.utils.side_effect_helpers import (
     send_deletion_notice_email,
     create_complete_user_registration,
     create_event_registration,
-    send_complete_registration_confirmation_email
+    send_complete_registration_confirmation_email,
+    start_phone_verification_process,
+    setup_otp_verification_session
 )
 from project.forms.registration_forms import NotEqualTo, RegistrationForm
+from project.forms.complete_registration_forms import CompleteRegistrationForm
 
 registration_blueprint = Blueprint("registration",
                                    __name__,
@@ -794,22 +801,7 @@ def complete_registration(token):
     if user is not None:
         return render_template("error1.html")
 
-    # Build dynamic form
-    class CompleteRegistrationForm(FlaskForm):
-        first_name = StringField("First Name", validators=[InputRequired()])
-        last_name = StringField("Last Name", validators=[InputRequired()])
-        primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
-        confirm_primary = StringField(
-            'Confirm Primary Email',
-            [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
-        secondary_email = StringField(
-            'Secondary Email Address',
-            [InputRequired(' '),
-             Email(), NotEqualTo('primary_email', message='Can not be the same email')])
-        confirm_secondary = StringField(
-            'Confirm Secondary Email',
-            [InputRequired(' '), EqualTo('secondary_email', message='Must match secondary email')])
-        submit = SubmitField('Submit')
+    # Build dynamic form by adding custom fields to the base formin 
 
     # Add custom fields
     for row in edit_form.query.all():
@@ -834,30 +826,54 @@ def complete_registration(token):
     form.confirm_primary.render_kw = {"readonly": True}
 
     if request.method == "POST" and form.validate_on_submit():
+        # Extract form data first for logging
+        prim_email = form.primary_email.data.lower()
+        sec_email = form.secondary_email.data.lower()
+        
+        # Extract phone number for logging
+        phone_number = ""
+        if form.country_code.data and form.phone_number.data:
+            phone_number = form.country_code.data + form.phone_number.data
+        
         # Log the registration attempt
         def log_registration():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+            phone_info = f"Phone: {phone_number}" if phone_number else "No Phone"
             row = [
                 order, "/full-registration/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
                 "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data,
-                "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
+                phone_info, "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
             ]
             logs.append_row(row)
 
         Thread(target=log_registration).start()
 
-        # Extract form data
-        prim_email = form.primary_email.data.lower()
-        sec_email = form.secondary_email.data.lower()
-
         # PHASE 1: ANALYZE CONFLICTS (Pure Logic) - Do this BEFORE background thread
         wks_records = get_wks_records(wks)
+        
+        # 1.1: Email conflict analysis
         conflict_decision = analyze_complete_registration_conflicts(
             wks_records, prim_email, sec_email
         )
 
         if not conflict_decision.can_proceed:
             return render_template("error1.html")
+        
+        # 1.2: Phone number validation and conflict analysis
+        # Check for phone number conflicts
+        phone_conflict = analyze_phone_number_conflicts(wks_records, phone_number)
+        if not phone_conflict["can_proceed"]:
+            return render_template("error3.html")  # Phone already exists
+        
+        # 1.3: Calculate registration method and determine verification needs
+        registration_method = calculate_registration_method(
+            has_secondary_email=bool(sec_email.strip()),
+            has_phone_number=bool(phone_number.strip())
+        )
+        
+        needs_phone_verification = should_trigger_phone_verification(
+            registration_method, phone_number
+        )
 
         @copy_current_request_context
         def execute_complete_registration():
@@ -887,6 +903,16 @@ def complete_registration(token):
                     form_data[row.label] = vals
                 else:
                     form_data[row.label] = field.data
+            
+            # Add phone data if provided
+            if phone_number:
+                phone_form_data = {
+                    "country_code": form.country_code.data,
+                    "phone_number": form.phone_number.data,
+                    "phone_subscribe": form.phone_subscribe.data
+                }
+                phone_data = calculate_phone_registration_data(phone_form_data)
+                form_data["phone_data"] = phone_data
 
             # Generate order number and timestamp
             wks_columns = get_wks_columns(wks)
@@ -922,8 +948,9 @@ def complete_registration(token):
             # 3.2: Create new user record
             user_row = create_complete_user_registration(user_data, custom_fields)
 
-            # 3.3: Send verification email for secondary email
-            send_verification_email(sec_email, form.first_name.data, form.last_name.data)
+            # 3.3: Send verification email for secondary email (if provided)
+            if sec_email and sec_email.strip():
+                send_verification_email(sec_email, form.first_name.data, form.last_name.data)
 
             # 3.4: Create event registration if requested
             if event_data and register_for_event:
@@ -973,6 +1000,64 @@ def complete_registration(token):
         # Execute the complete registration logic
         thread = Thread(target=execute_complete_registration)
         thread.start()
+
+        # Check if phone verification is needed
+        if needs_phone_verification:
+            # Prepare data for OTP session
+            user_data = {
+                "first_name": form.first_name.data,
+                "last_name": form.last_name.data,
+                "primary_email": prim_email,
+                "primary_verified": "TRUE",
+                "primary_subscribed": "TRUE",
+                "secondary_email": sec_email,
+                "secondary_verified": "FALSE",
+                "secondary_subscribed": "FALSE",
+                "update_url": url_for("update.update_info", token=token, _external=True)
+            }
+            
+            event_data = None
+            if event_obj is not None and form.register_event.data:
+                event_data = {
+                    "event_url": url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True),
+                    "event_reg": "yes",
+                    "event_name": event_obj.name,
+                    "event_fields": {
+                        "Ticket Type": form.event_tickets.data
+                    }
+                }
+                # Add event question answers
+                for question in event_obj.questions.split("\n"):
+                    event_data["event_fields"][question] = form[f"event_{question}"].data
+            
+            phone_data = {
+                "phone_number": phone_number,
+                "phone_subscribe": "TRUE" if form.phone_subscribe.data else "FALSE"
+            }
+            
+            # Prepare info fields for session
+            info_fields = {}
+            for row in edit_form.query.all():
+                field = form[row.label]
+                if row.field_type == "Checkbox":
+                    vals = []
+                    choices = checkbox_get_choices(row.options)
+                    for key in field.data:
+                        vals.append(choices[int(key)][1])
+                    info_fields[row.label] = " ".join(vals)
+                else:
+                    info_fields[row.label] = field.data
+            
+            user_data["info_fields"] = info_fields
+            
+            # Setup OTP verification session
+            setup_otp_verification_session(session, user_data, event_data, phone_data)
+            
+            # Start phone verification process
+            start_phone_verification_process(phone_number)
+            
+            # Redirect to OTP verification page
+            return redirect(url_for("confirm.otp"))
 
         # Prepare data for response template
         info_fields = {}

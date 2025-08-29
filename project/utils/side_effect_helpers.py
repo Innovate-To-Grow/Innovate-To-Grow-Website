@@ -445,3 +445,144 @@ def send_complete_registration_confirmation_email(
         "info_receipt_email.html",
         template_data
     )
+
+
+def start_phone_verification_process(
+    phone_number: str
+) -> str:
+    """
+    Starts the Twilio OTP verification process for a phone number.
+    
+    Args:
+        phone_number: Full international phone number (e.g., "+15551234567")
+    
+    Returns:
+        Verification status from Twilio
+    """
+    from project.utils.twilio import client, verify_sid, start_verification_process
+    
+    if not phone_number or phone_number.strip() == "":
+        raise ValueError("Phone number is required for verification")
+    
+    try:
+        status = start_verification_process(client, phone_number, verify_sid)
+        return status
+    except Exception as e:
+        # Log the error but don't crash the registration
+        print(f"Error starting phone verification: {e}")
+        raise
+
+
+def setup_otp_verification_session(
+    session: Any,
+    user_data: Dict[str, Any],
+    event_data: Optional[Dict[str, Any]] = None,
+    phone_data: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Sets up Flask session data for OTP verification flow.
+    
+    Args:
+        session: Flask session object
+        user_data: User registration data
+        event_data: Event registration data (optional)
+        phone_data: Phone-specific data (optional)
+    """
+    # Clear any existing session data for OTP
+    otp_keys = [
+        'phone_number', 'first', 'last', 'primary_email', 'primary_verified',
+        'primary_subscribed', 'secondary_email', 'secondary_verified', 
+        'secondary_subscribed', 'phone_subscribe', 'info_fields', 'update',
+        'update_url', 'event_url', 'event_fields', 'event_reg', 'event_name'
+    ]
+    
+    for key in otp_keys:
+        session.pop(key, None)
+    
+    # Set up session data for OTP verification
+    session.update({
+        'phone_number': phone_data.get('phone_number', '') if phone_data else '',
+        'first': user_data.get('first_name', ''),
+        'last': user_data.get('last_name', ''),
+        'primary_email': user_data.get('primary_email', ''),
+        'primary_verified': user_data.get('primary_verified', 'TRUE'),
+        'primary_subscribed': user_data.get('primary_subscribed', 'TRUE'),
+        'secondary_email': user_data.get('secondary_email', ''),
+        'secondary_verified': user_data.get('secondary_verified', 'FALSE'),
+        'secondary_subscribed': user_data.get('secondary_subscribed', 'FALSE'),
+        'phone_subscribe': phone_data.get('phone_subscribe', 'FALSE') if phone_data else 'FALSE',
+        'info_fields': user_data.get('info_fields', {}),
+        'update': 'FALSE',  # This is a new registration, not an update
+        'update_url': user_data.get('update_url', ''),
+        'event_url': event_data.get('event_url', '') if event_data else '',
+        'event_fields': event_data.get('event_fields', {}) if event_data else {},
+        'event_reg': event_data.get('event_reg', 'no') if event_data else 'no',
+        'event_name': event_data.get('event_name', None) if event_data else None
+    })
+
+
+def send_phone_confirmation_sms(
+    phone_number: str,
+    event_name: str,
+    phone_subscribed: bool = True
+) -> None:
+    """
+    Sends a confirmation SMS message after successful registration.
+    
+    Args:
+        phone_number: Full international phone number
+        event_name: Name of the event the user registered for
+        phone_subscribed: Whether the user is subscribed to SMS notifications
+    """
+    if not phone_subscribed or not phone_number:
+        return
+    
+    from project.utils.twilio import client, send_message
+    
+    try:
+        message_body = f"You have signed up for {event_name}"
+        send_message(message_body, phone_number, client)
+    except Exception as e:
+        # Log the error but don't crash the registration
+        print(f"Error sending confirmation SMS: {e}")
+
+
+def update_phone_verification_status(
+    phone_number: str,
+    verified: bool = True
+) -> None:
+    """
+    Updates the phone verification status in the membership worksheet.
+    
+    Args:
+        phone_number: Full international phone number to update
+        verified: Whether the phone is now verified (default: True)
+    """
+    from project import wks, get_wks_records, get_wks_columns
+    from project.utils.registration_utils import analyze_user_existence_check
+    from datetime import datetime
+    from project import tz
+    from gspread.cell import Cell
+    
+    # Find the user with this phone number
+    wks_records = get_wks_records(wks)
+    wks_columns = get_wks_columns(wks)
+    
+    matching_users = [row for row in wks_records if row.get("Phone Number", "").strip() == phone_number.strip()]
+    
+    if not matching_users:
+        print(f"Warning: No user found with phone number {phone_number}")
+        return
+    
+    user = matching_users[0]
+    row_number = user["Row"]
+    
+    # Prepare cell updates
+    cells = []
+    cells.append(Cell(row_number, wks_columns["Phone number verified"], "TRUE" if verified else "FALSE"))
+    cells.append(Cell(row_number, wks_columns["Last Updated"], 
+                      str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
+    
+    # Execute the update
+    if cells:
+        wks.update_cells(cells)

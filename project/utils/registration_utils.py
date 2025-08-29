@@ -229,6 +229,10 @@ def calculate_new_user_creation(
         "Info Completed": "TRUE"         # Key difference: immediately completed
     }
 
+    # Add phone fields if provided
+    if "phone_data" in form_data:
+        user_data.update(form_data["phone_data"])
+
     # Add custom fields
     for field in custom_fields:
         field_name = field["label"]
@@ -389,4 +393,190 @@ def analyze_user_existence_check(
         "secondary_email_matches": secondary_matches,
         "should_use_complete_registration": not user_exists,
         "should_redirect_to_update": user_exists
+    }
+
+
+def analyze_phone_number_conflicts(
+    wks_records: List[Dict[str, Any]], 
+    phone_number: str
+) -> Dict[str, Any]:
+    """
+    Analyzes potential conflicts for a phone number in complete registration.
+    
+    Args:
+        wks_records: List of existing user records from membership worksheet
+        phone_number: Full international phone number (e.g., "+15551234567")
+    
+    Returns:
+        Dictionary with conflict analysis results
+    """
+    if not phone_number or phone_number.strip() == "":
+        return {
+            "has_conflict": False,
+            "conflicting_user": None,
+            "can_proceed": True,
+            "conflict_details": None
+        }
+    
+    # Find users with this phone number
+    phone_number_clean = phone_number.strip()
+    matching_users = [row for row in wks_records 
+                     if row.get("Phone Number") is not None 
+                     and str(row.get("Phone Number", "")).strip() == phone_number_clean]
+    
+    if not matching_users:
+        return {
+            "has_conflict": False,
+            "conflicting_user": None,
+            "can_proceed": True,
+            "conflict_details": None
+        }
+    
+    # Phone number conflict found
+    conflicting_user = matching_users[0]  # Take first match
+    
+    # Handle malformed records gracefully
+    user_row = conflicting_user.get("Row", "Unknown")
+    first_name = conflicting_user.get("First Name", "Unknown")
+    last_name = conflicting_user.get("Last Name", "User")
+    
+    conflict_details = {
+        "existing_user_row": user_row,
+        "existing_user_name": f"{first_name} {last_name}",
+        "phone_number": phone_number_clean,
+        "existing_user": conflicting_user
+    }
+    
+    return {
+        "has_conflict": True,
+        "conflicting_user": conflicting_user,
+        "can_proceed": False,  # Phone numbers must be unique
+        "conflict_details": conflict_details
+    }
+
+
+def calculate_registration_method(
+    has_secondary_email: bool, 
+    has_phone_number: bool
+) -> str:
+    """
+    Determines the registration method based on provided contact methods.
+    
+    Args:
+        has_secondary_email: Whether a secondary email was provided
+        has_phone_number: Whether a phone number was provided
+    
+    Returns:
+        String representing registration method:
+        - "1": Primary + Secondary emails only
+        - "2": Primary email + Phone number only  
+        - "3": All three methods (Primary email + Secondary email + Phone)
+    """
+    if has_secondary_email and has_phone_number:
+        return "3"  # All three methods
+    elif has_secondary_email:
+        return "1"  # Two emails only
+    elif has_phone_number:
+        return "2"  # Email + phone only
+    else:
+        # This shouldn't happen due to form validation, but default to emails only
+        return "1"
+
+
+def should_trigger_phone_verification(
+    registration_method: str,
+    phone_number: str
+) -> bool:
+    """
+    Determines if phone verification (OTP) should be triggered.
+    
+    Args:
+        registration_method: Registration method ("1", "2", or "3")
+        phone_number: Full international phone number
+    
+    Returns:
+        Boolean indicating if phone verification is needed
+    """
+    # Phone verification is required for methods 2 and 3 (when phone is provided)
+    has_phone = bool(phone_number and phone_number.strip())
+    needs_verification = registration_method in ["2", "3"]
+    
+    return has_phone and needs_verification
+
+
+def validate_and_format_phone_number(
+    country_code: str,
+    phone_number: str
+) -> Dict[str, Any]:
+    """
+    Validates and formats a phone number for storage.
+    
+    Args:
+        country_code: Country code (e.g., "+1")
+        phone_number: National phone number (e.g., "5551234567")
+    
+    Returns:
+        Dictionary with validation results and formatted phone number
+    """
+    if not phone_number or phone_number.strip() == "":
+        return {
+            "is_valid": True,
+            "formatted_number": "",
+            "error_message": None
+        }
+    
+    if not country_code or country_code.strip() == "":
+        return {
+            "is_valid": False,
+            "formatted_number": "",
+            "error_message": "Country code is required when phone number is provided"
+        }
+    
+    # Basic validation - ensure phone number contains only digits, spaces, hyphens, parentheses
+    import re
+    phone_clean = re.sub(r'[^\d]', '', phone_number.strip())
+    
+    if not phone_clean:
+        return {
+            "is_valid": False,
+            "formatted_number": "",
+            "error_message": "Invalid phone number format"
+        }
+    
+    # Format as international number
+    formatted_number = country_code.strip() + phone_clean
+    
+    return {
+        "is_valid": True,
+        "formatted_number": formatted_number,
+        "error_message": None
+    }
+
+
+def calculate_phone_registration_data(
+    form_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Calculates phone-related data for user registration.
+    
+    Args:
+        form_data: Form data containing phone information
+    
+    Returns:
+        Dictionary with phone data for user record
+    """
+    phone_validation = validate_and_format_phone_number(
+        form_data.get("country_code", ""),
+        form_data.get("phone_number", "")
+    )
+    
+    if not phone_validation["is_valid"]:
+        raise ValueError(f"Phone validation failed: {phone_validation['error_message']}")
+    
+    phone_subscribe = "TRUE" if form_data.get("phone_subscribe", False) else "FALSE"
+    
+    return {
+        "Phone Number": phone_validation["formatted_number"],
+        "Phone number subscribed": phone_subscribe,
+        "Phone number verified": "FALSE"  # Will be set to TRUE after OTP verification
     }
