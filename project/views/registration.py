@@ -26,6 +26,7 @@ from project.utils.side_effect_helpers import (
     send_deletion_notice_email,
     create_complete_user_registration,
     create_event_registration,
+    create_event_registration_with_phone,
     send_complete_registration_confirmation_email,
     start_phone_verification_process,
     setup_otp_verification_session
@@ -913,6 +914,14 @@ def complete_registration(token):
                 }
                 phone_data = calculate_phone_registration_data(phone_form_data)
                 form_data["phone_data"] = phone_data
+                
+                # Also create phone data in the format expected by event registration
+                form_data["event_phone_data"] = {
+                    "country_code": form.country_code.data,
+                    "phone_number": form.phone_number.data,
+                    "phone_subscribe": form.phone_subscribe.data,
+                    "full_phone_number": phone_number  # Use the already-calculated full number
+                }
 
             # Generate order number and timestamp
             wks_columns = get_wks_columns(wks)
@@ -960,7 +969,12 @@ def complete_registration(token):
                     "primary_email": prim_email,
                     "secondary_email": sec_email
                 }
-                create_event_registration(event_obj.name, user_data_for_event, event_data)
+                
+                # Extract phone data in the format expected by event registration
+                phone_data_for_event = form_data.get("event_phone_data")
+                
+                # Use phone-aware event registration function
+                create_event_registration_with_phone(event_obj.name, user_data_for_event, event_data, phone_data_for_event)
 
             # 3.5: Prepare data for templates
             info_fields = {}

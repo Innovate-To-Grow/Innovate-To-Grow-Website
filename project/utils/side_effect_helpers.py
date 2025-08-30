@@ -333,6 +333,9 @@ def send_event_confirmation_emails(
         "secondary_email": user["Secondary Email"],
         "secondary_verified": user["Secondary Verified"],
         "secondary_subscribed": user["Secondary Subscribed"],
+        "phone_number": user.get("Phone Number", ""),
+        "phone_number_verified": user.get("Phone number verified", "FALSE"),
+        "phone_subscribed": user.get("Phone number subscribed", "FALSE"),
         "info_fields": info_fields,
         "event_name": event_name,
         "event_fields": event_fields
@@ -586,3 +589,193 @@ def update_phone_verification_status(
     # Execute the update
     if cells:
         wks.update_cells(cells)
+
+
+def setup_event_phone_verification_session(
+    session: Any,
+    user_data: Dict[str, Any],
+    event_data: Dict[str, Any],
+    phone_data: Dict[str, Any]
+) -> None:
+    """
+    Sets up Flask session data for event phone verification flow.
+    
+    This is specific to event registration phone verification, where the user
+    is updating their profile during event registration.
+    
+    Args:
+        session: Flask session object
+        user_data: User information data
+        event_data: Event registration data
+        phone_data: Phone-specific data
+    """
+    # Clear any existing session data for OTP
+    otp_keys = [
+        'phone_number', 'first', 'last', 'primary_email', 'primary_verified',
+        'primary_subscribed', 'secondary_email', 'secondary_verified', 
+        'secondary_subscribed', 'phone_subscribe', 'info_fields', 'update',
+        'update_url', 'event_url', 'event_fields', 'event_reg', 'event_name'
+    ]
+    
+    for key in otp_keys:
+        session.pop(key, None)
+    
+    # Set up session data for event phone verification
+    session.update({
+        'phone_number': phone_data.get('full_phone_number', ''),
+        'first': user_data.get('first_name', ''),
+        'last': user_data.get('last_name', ''),
+        'primary_email': user_data.get('primary_email', ''),
+        'primary_verified': user_data.get('primary_verified', 'TRUE'),
+        'primary_subscribed': user_data.get('primary_subscribed', 'TRUE'),
+        'secondary_email': user_data.get('secondary_email', ''),
+        'secondary_verified': user_data.get('secondary_verified', 'TRUE'),
+        'secondary_subscribed': user_data.get('secondary_subscribed', 'TRUE'),
+        'phone_subscribe': 'TRUE' if phone_data.get('phone_subscribe', False) else 'FALSE',
+        'info_fields': user_data.get('info_fields', {}),
+        'update': 'FALSE',  # This is an event registration update
+        'update_url': event_data.get('update_url', ''),
+        'event_url': event_data.get('event_url', ''),
+        'event_fields': event_data.get('event_fields', {}),
+        'event_reg': 'yes',  # User is registering for event
+        'event_name': event_data.get('event_name', None)
+    })
+
+
+def start_event_phone_verification_process(
+    phone_number: str
+) -> str:
+    """
+    Starts Twilio OTP verification specifically for event registration.
+    
+    This is a wrapper around the general phone verification that includes
+    event-specific error handling and logging.
+    
+    Args:
+        phone_number: Full international phone number (e.g., "+15551234567")
+    
+    Returns:
+        Verification status from Twilio
+    """
+    try:
+        return start_phone_verification_process(phone_number)
+    except Exception as e:
+        # Log the error with event context
+        print(f"Error starting event phone verification for {phone_number}: {e}")
+        raise
+
+
+def send_event_sms_confirmation(
+    phone_number: str,
+    event_name: str
+) -> None:
+    """
+    Sends SMS confirmation for event registration (no OTP needed).
+    
+    This is used when the user's phone is already verified and they're
+    registering for an event.
+    
+    Args:
+        phone_number: Full international phone number
+        event_name: Name of the event
+    """
+    if not phone_number or not event_name:
+        return
+    
+    try:
+        send_phone_confirmation_sms(phone_number, event_name, phone_subscribed=True)
+    except Exception as e:
+        # Log the error but don't crash the registration
+        print(f"Error sending event SMS confirmation: {e}")
+
+
+def extract_phone_data_from_event_form(form) -> Dict[str, Any]:
+    """
+    Extract and structure phone data from event registration form.
+
+    This is a side effect function that safely extracts phone data from
+    the event form object and formats it for processing.
+
+    Args:
+        form: Event registration form object
+
+    Returns:
+        Dict with structured phone data
+    """
+    try:
+        country_code = getattr(form, "country_code", None).data if hasattr(form, "country_code") else ""
+        phone_number = getattr(form, "phone_number", None).data if hasattr(form, "phone_number") else ""
+        phone_subscribe = getattr(form, "phone_subscribe", None).data if hasattr(form, "phone_subscribe") else False
+        
+        # Clean and format the data
+        country_code = country_code.strip() if country_code else ""
+        phone_number = phone_number.strip() if phone_number else ""
+        
+        full_phone = country_code + phone_number if country_code and phone_number else ""
+        
+        return {
+            "country_code": country_code,
+            "phone_number": phone_number,
+            "phone_subscribe": phone_subscribe,
+            "full_phone_number": full_phone
+        }
+    except Exception as e:
+        # Log error and return safe defaults
+        print(f"Error extracting phone data from form: {e}")
+        return {
+            "country_code": "",
+            "phone_number": "",
+            "phone_subscribe": False,
+            "full_phone_number": ""
+        }
+
+
+def create_event_registration_with_phone(
+    event_worksheet_name: str,
+    user_data: Dict[str, Any],
+    event_data: Dict[str, Any],
+    phone_data: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Create a new event registration row with phone information.
+
+    Enhanced version of create_event_registration that includes phone data.
+
+    Args:
+        event_worksheet_name: Name of the event worksheet
+        user_data: User information (name, emails, etc.)
+        event_data: Event-specific data (ticket type, answers, etc.)
+        phone_data: Phone-related data (optional)
+    """
+    event_wks = sh.worksheet(event_worksheet_name)
+    event_wks_columns = get_wks_columns(event_wks)
+
+    # Create new row with all required data
+    row = ["" for i in range(len(event_wks.row_values(1)))]
+
+    # Generate order number
+    last_order = event_wks.col_values(1)[-1] if event_wks.col_values(1) else "0"
+    order = int(last_order) + 1 if last_order.isdigit() else 1
+
+    # Set basic fields
+    current_time = datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")
+
+    row[event_wks_columns["Order"] - 1] = order
+    row[event_wks_columns["First Name"] - 1] = user_data["first_name"]
+    row[event_wks_columns["Last Name"] - 1] = user_data["last_name"]
+    row[event_wks_columns["When Started"] - 1] = current_time
+    row[event_wks_columns["Last Updated"] - 1] = current_time
+    row[event_wks_columns["Membership Primary"] - 1] = user_data["primary_email"]
+    row[event_wks_columns["Membership Secondary"] - 1] = user_data["secondary_email"]
+    
+    # Add phone data if provided and column exists
+    if phone_data and "Phone Number" in event_wks_columns:
+        row[event_wks_columns["Phone Number"] - 1] = phone_data.get("full_phone_number", "")
+
+    # Set event-specific fields
+    for field_name, value in event_data.items():
+        if field_name in event_wks_columns:
+            row[event_wks_columns[field_name] - 1] = value
+
+    # Append the new row
+    event_wks.append_row(row)

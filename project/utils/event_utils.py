@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 @dataclass
@@ -17,6 +17,25 @@ class EmailChangeDecision:
     emails_needing_verification: List[str]
     verification_status_updates: Dict[str, bool]  # {"primary": False, "secondary": True}
     subscription_updates: Dict[str, bool]  # {"primary": False, "secondary": True}
+
+
+@dataclass
+class PhoneChangeDecision:
+    """
+    Represents the analysis of phone number changes for a user update.
+
+    Attributes:
+        verify: Whether phone verification (OTP) is needed
+        clear: Whether phone data should be cleared
+        error: Whether there's a conflict with existing phone numbers
+        changed: Whether the phone number was modified from current
+        needs_formatting: Whether the phone number needs formatting
+    """
+    verify: bool = False
+    clear: bool = False
+    error: bool = False
+    changed: bool = False
+    needs_formatting: bool = False
 
 
 def analyze_email_changes(
@@ -300,3 +319,189 @@ def make_sure(
                 })
 
     return can_update, cells_to_update, emails_to_send
+
+
+def analyze_phone_number_changes(
+    current_phone: Optional[str],
+    new_country_code: Optional[str],
+    new_phone_number: Optional[str],
+    wks_records: List[Dict[str, Any]]
+) -> PhoneChangeDecision:
+    """
+    Analyzes phone number changes and determines what actions are needed.
+
+    This is a pure function that contains all the business logic for phone changes
+    without any side effects (no database updates, no SMS sending).
+
+    Args:
+        current_phone: Current phone number from user record (e.g., "+18005551234")
+        new_country_code: New country code from form (e.g., "+1")
+        new_phone_number: New phone number from form (e.g., "8005551234")
+        wks_records: List of worksheet records to check for conflicts
+
+    Returns:
+        PhoneChangeDecision with analysis of what needs to happen
+    """
+    # Handle empty/None inputs
+    current_phone = current_phone or ""
+    new_country_code = new_country_code or ""
+    new_phone_number = new_phone_number or ""
+    
+    # If no phone provided, determine if we should clear existing phone
+    if not new_country_code and not new_phone_number:
+        if current_phone:
+            return PhoneChangeDecision(clear=True, changed=True)
+        else:
+            return PhoneChangeDecision()  # No change needed
+    
+    # If only partial phone data provided, that's an error state
+    # (This should be caught by form validation, but double-check here)
+    if bool(new_country_code) != bool(new_phone_number):
+        return PhoneChangeDecision(error=True)
+    
+    # Construct the new full phone number
+    new_full_phone = new_country_code + new_phone_number
+    
+    # Compare with current phone
+    if current_phone == new_full_phone:
+        return PhoneChangeDecision()  # No change
+    
+    # Phone number has changed - check for conflicts
+    phone_conflicts = [
+        row for row in wks_records 
+        if row.get("Phone Number") == new_full_phone
+    ]
+    
+    if phone_conflicts:
+        return PhoneChangeDecision(error=True, changed=True)
+    
+    # Phone changed and no conflicts - need verification
+    return PhoneChangeDecision(verify=True, changed=True)
+
+
+def calculate_phone_verification_decision(
+    user: Dict[str, Any], 
+    phone_decision: PhoneChangeDecision
+) -> bool:
+    """
+    Determine if phone verification is needed based on phone change analysis.
+
+    Pure function that decides if OTP verification should be triggered.
+
+    Args:
+        user: Current user record
+        phone_decision: Result from analyze_phone_number_changes
+
+    Returns:
+        bool: True if phone verification (OTP) is needed
+    """
+    # Only need verification if phone changed and verification flag is set
+    return phone_decision.verify and phone_decision.changed
+
+
+def should_send_event_sms_confirmation(
+    phone_verified: str,
+    phone_subscribed: bool,
+    has_phone_number: bool,
+    event_name: Optional[str] = None
+) -> bool:
+    """
+    Decide if we should send SMS confirmation for event registration.
+
+    This determines when to send a direct SMS confirmation vs OTP verification.
+
+    Args:
+        phone_verified: User's phone verification status ("TRUE"/"FALSE")
+        phone_subscribed: Whether user wants SMS notifications
+        has_phone_number: Whether user has a phone number
+        event_name: Name of the event (optional, for validation)
+
+    Returns:
+        bool: True if SMS confirmation should be sent
+    """
+    return (
+        has_phone_number and
+        phone_verified == "TRUE" and
+        phone_subscribed and
+        event_name is not None
+    )
+
+
+def calculate_phone_updates(
+    user: Dict[str, Any],
+    form_data: Dict[str, Any],
+    phone_decision: PhoneChangeDecision,
+    row_number: int
+) -> List[Dict[str, Any]]:
+    """
+    Calculates phone-related cell updates for the worksheet.
+
+    Pure function that determines what phone updates are needed.
+
+    Args:
+        user: Current user record
+        form_data: Form data with new phone information
+        phone_decision: Result from analyze_phone_number_changes
+        row_number: Row number in worksheet for this user
+
+    Returns:
+        List of cell update dictionaries with row, column, value
+    """
+    updates = []
+    
+    if phone_decision.clear:
+        # Clear all phone-related fields
+        updates.extend([
+            {"row": row_number, "column": "Phone Number", "value": ""},
+            {"row": row_number, "column": "Phone number subscribed", "value": ""},
+            {"row": row_number, "column": "Phone number verified", "value": ""},
+        ])
+        
+    elif phone_decision.changed:
+        # Update phone number
+        country_code = form_data.get("country_code", "")
+        phone_number = form_data.get("phone_number", "")
+        full_phone = country_code + phone_number if country_code and phone_number else ""
+        
+        updates.append({"row": row_number, "column": "Phone Number", "value": full_phone})
+        
+        # Set verification status based on whether verification is needed
+        if phone_decision.verify:
+            # When verification is needed, we'll set both verified=FALSE and subscription after OTP completion
+            updates.append({"row": row_number, "column": "Phone number verified", "value": "FALSE"})
+            # Don't set subscription here - it will be set after OTP verification
+        else:
+            # Phone changed but no verification needed (shouldn't happen, but handle gracefully)
+            phone_subscribe = "TRUE" if form_data.get("phone_subscribe", False) else "FALSE"
+            updates.append({"row": row_number, "column": "Phone number subscribed", "value": phone_subscribe})
+            # Keep existing verification status
+    
+    else:
+        # Phone number didn't change, but subscription preference might have
+        phone_subscribe = "TRUE" if form_data.get("phone_subscribe", False) else "FALSE"
+        updates.append({"row": row_number, "column": "Phone number subscribed", "value": phone_subscribe})
+    
+    return updates
+
+
+def extract_phone_data_from_form(form) -> Dict[str, Any]:
+    """
+    Extract and structure phone data from event form.
+
+    Pure function that extracts phone-related data from form object.
+
+    Args:
+        form: Form object with phone fields
+
+    Returns:
+        Dict with structured phone data
+    """
+    return {
+        "country_code": getattr(form, "country_code", None).data if hasattr(form, "country_code") else "",
+        "phone_number": getattr(form, "phone_number", None).data if hasattr(form, "phone_number") else "",
+        "phone_subscribe": getattr(form, "phone_subscribe", None).data if hasattr(form, "phone_subscribe") else False,
+        "full_phone_number": (
+            (getattr(form, "country_code", None).data or "") + 
+            (getattr(form, "phone_number", None).data or "")
+        ) if hasattr(form, "country_code") and hasattr(form, "phone_number") else ""
+    }

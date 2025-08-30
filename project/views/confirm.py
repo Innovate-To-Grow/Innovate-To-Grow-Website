@@ -76,9 +76,10 @@ def otp():
                 user = user[0]
                 row_find = user["Row"]
 
-                # Update the phone verification status
+                # Update the phone verification status and subscription
                 cells = []
                 cells.append(Cell(row_find, wks_columns["Phone number verified"], "TRUE"))
+                cells.append(Cell(row_find, wks_columns["Phone number subscribed"], phone_subscribe))
                 cells.append(Cell(row_find, wks_columns["Last Updated"],
                                 str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
 

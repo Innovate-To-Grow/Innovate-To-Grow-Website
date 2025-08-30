@@ -64,7 +64,17 @@ def analyze_complete_registration_conflicts(
     can_proceed = True
     
     # Convert emails to lowercase for case-insensitive comparison
-    secondary_email_lower = secondary_email.lower()
+    secondary_email_lower = secondary_email.lower().strip()
+    
+    # Skip conflict checking entirely if secondary email is empty
+    # (Empty emails should not trigger conflicts with other empty emails)
+    if not secondary_email_lower:
+        return CompleteRegistrationDecision(
+            can_proceed=True,
+            emails_to_clear=[],
+            notification_emails=[],
+            conflict_details={"secondary_conflicts": []}
+        )
     
     # Check secondary email against both primary and secondary columns
     secondary_validations = [
@@ -359,22 +369,23 @@ def analyze_user_existence_check(
     secondary_matches = []
 
     # Convert emails to lowercase for case-insensitive comparison
-    primary_email_lower = primary_email.lower()
-    secondary_email_lower = secondary_email.lower()
+    primary_email_lower = primary_email.lower().strip()
+    secondary_email_lower = secondary_email.lower().strip()
 
     # Check primary email against both columns
     for row in wks_records:
-        if row["Primary Email"].lower() == primary_email_lower:
+        if row["Primary Email"].lower().strip() == primary_email_lower:
             primary_matches.append({"row": row, "found_in": "Primary Email"})
-        elif row["Secondary Email"].lower() == primary_email_lower:
+        elif row["Secondary Email"].lower().strip() == primary_email_lower:
             primary_matches.append({"row": row, "found_in": "Secondary Email"})
 
-    # Check secondary email against both columns  
-    for row in wks_records:
-        if row["Primary Email"].lower() == secondary_email_lower:
-            secondary_matches.append({"row": row, "found_in": "Primary Email"})
-        elif row["Secondary Email"].lower() == secondary_email_lower:
-            secondary_matches.append({"row": row, "found_in": "Secondary Email"})
+    # Check secondary email against both columns (skip empty emails)
+    if secondary_email_lower:  # Only check if secondary email is not empty
+        for row in wks_records:
+            if row["Primary Email"].lower().strip() == secondary_email_lower:
+                secondary_matches.append({"row": row, "found_in": "Primary Email"})
+            elif row["Secondary Email"].lower().strip() == secondary_email_lower:
+                secondary_matches.append({"row": row, "found_in": "Secondary Email"})
 
     # Determine if user exists
     user_exists = len(primary_matches) > 0 or len(secondary_matches) > 0
