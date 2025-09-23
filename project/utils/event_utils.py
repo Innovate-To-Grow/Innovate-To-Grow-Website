@@ -91,11 +91,13 @@ def analyze_email_changes(
 
         # Check which emails actually changed
         if current_primary != new_primary_email:
-            emails_needing_verification.append(new_primary_email)
+            if new_primary_email:  # Only add non-empty emails for verification
+                emails_needing_verification.append(new_primary_email)
             verification_updates["primary"] = True
 
         if current_secondary != new_secondary_email:
-            emails_needing_verification.append(new_secondary_email)
+            if new_secondary_email:  # Only add non-empty emails for verification
+                emails_needing_verification.append(new_secondary_email)
             verification_updates["secondary"] = True
 
     # Calculate subscription updates based on verification rules
@@ -119,7 +121,9 @@ def analyze_email_changes(
 def calculate_verification_cell_updates(
     current_user: Dict[str, Any],
     decision: EmailChangeDecision,
-    row_number: int
+    row_number: int,
+    new_primary_email: str = None,
+    new_secondary_email: str = None
 ) -> List[Dict[str, Any]]:
     """
     Calculates what cell updates are needed for email verification status changes.
@@ -178,11 +182,13 @@ def calculate_verification_cell_updates(
                 {"row": row_number, "column": "Primary Bounced", "value": ""},
             ])
         if decision.verification_status_updates["secondary"]:
-            updates.extend([
-                {"row": row_number, "column": "Secondary Verified", "value": "FALSE"},
-                {"row": row_number, "column": "Secondary Expired", "value": "FALSE"},
-                {"row": row_number, "column": "Secondary Bounced", "value": ""},
-            ])
+            # Don't set secondary verification fields if secondary email is being cleared
+            if new_secondary_email:  # Only set if secondary email is not empty
+                updates.extend([
+                    {"row": row_number, "column": "Secondary Verified", "value": "FALSE"},
+                    {"row": row_number, "column": "Secondary Expired", "value": "FALSE"},
+                    {"row": row_number, "column": "Secondary Bounced", "value": ""},
+                ])
 
     return updates
 
@@ -211,6 +217,18 @@ def calculate_basic_user_updates(
         {"row": row_number, "column": "Primary Email", "value": form_data["primary_email"]},
         {"row": row_number, "column": "Secondary Email", "value": form_data["secondary_email"]},
     ]
+    
+    # If secondary email is being cleared, also clear all secondary email related fields
+    if not form_data["secondary_email"]:  # Empty string means clearing secondary email
+        secondary_fields = [
+            "Secondary Verified",
+            "Secondary Subscribed", 
+            "Secondary Expired",
+            "Secondary Bounced"
+        ]
+        for field in secondary_fields:
+            updates.append({"row": row_number, "column": field, "value": ""})
+    
 
     # Add custom fields if provided
     if custom_fields:
@@ -325,7 +343,8 @@ def analyze_phone_number_changes(
     current_phone: Optional[str],
     new_country_code: Optional[str],
     new_phone_number: Optional[str],
-    wks_records: List[Dict[str, Any]]
+    wks_records: List[Dict[str, Any]],
+    current_user_row: Optional[int] = None
 ) -> PhoneChangeDecision:
     """
     Analyzes phone number changes and determines what actions are needed.
@@ -338,10 +357,12 @@ def analyze_phone_number_changes(
         new_country_code: New country code from form (e.g., "+1")
         new_phone_number: New phone number from form (e.g., "8005551234")
         wks_records: List of worksheet records to check for conflicts
+        current_user_row: Row number of current user to exclude from conflict checking
 
     Returns:
         PhoneChangeDecision with analysis of what needs to happen
     """
+
     # Handle empty/None inputs
     current_phone = current_phone or ""
     new_country_code = new_country_code or ""
@@ -362,14 +383,42 @@ def analyze_phone_number_changes(
     # Construct the new full phone number
     new_full_phone = new_country_code + new_phone_number
     
-    # Compare with current phone
-    if current_phone == new_full_phone:
+    # Normalize both phone numbers for comparison
+    # This handles cases where phonenumbers library formats numbers differently
+    def normalize_phone(phone_str):
+        if not phone_str:
+            return ""
+        
+        # Convert to string if it's an integer (from Google Sheets)
+        phone_str = str(phone_str)
+        
+        try:
+            import phonenumbers
+            # Parse and reformat to ensure consistent format
+            if not phone_str.startswith("+"):
+                phone_str = "+" + phone_str
+            parsed = phonenumbers.parse(phone_str)
+            return f"+{parsed.country_code}{parsed.national_number}"
+        except:
+            # If parsing fails, try to add + prefix and return
+            if not phone_str.startswith("+"):
+                return "+" + phone_str
+            return phone_str
+    
+    normalized_current = normalize_phone(current_phone)
+    normalized_new = normalize_phone(new_full_phone)
+    
+    
+    # Compare normalized phone numbers
+    if normalized_current == normalized_new:
         return PhoneChangeDecision()  # No change
     
     # Phone number has changed - check for conflicts
+    # Exclude current user from conflict checking
     phone_conflicts = [
         row for row in wks_records 
-        if row.get("Phone Number") == new_full_phone
+        if normalize_phone(row.get("Phone Number")) == normalized_new and 
+           (current_user_row is None or row.get("Row") != current_user_row)
     ]
     
     if phone_conflicts:
@@ -403,23 +452,27 @@ def should_send_event_sms_confirmation(
     phone_verified: str,
     phone_subscribed: bool,
     has_phone_number: bool,
-    event_name: Optional[str] = None
+    event_name: Optional[str] = None,
+    is_new_registration: bool = True
 ) -> bool:
     """
     Decide if we should send SMS confirmation for event registration.
 
     This determines when to send a direct SMS confirmation vs OTP verification.
+    Only sends SMS for NEW event registrations, not updates to existing registrations.
 
     Args:
         phone_verified: User's phone verification status ("TRUE"/"FALSE")
         phone_subscribed: Whether user wants SMS notifications
         has_phone_number: Whether user has a phone number
         event_name: Name of the event (optional, for validation)
+        is_new_registration: Whether this is a new event registration (True) or update (False)
 
     Returns:
         bool: True if SMS confirmation should be sent
     """
     return (
+        is_new_registration and  # Only send SMS for new registrations, not updates
         has_phone_number and
         phone_verified == "TRUE" and
         phone_subscribed and
@@ -447,6 +500,7 @@ def calculate_phone_updates(
     Returns:
         List of cell update dictionaries with row, column, value
     """
+    
     updates = []
     
     if phone_decision.clear:

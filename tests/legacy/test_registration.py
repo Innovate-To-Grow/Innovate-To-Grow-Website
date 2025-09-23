@@ -1,21 +1,21 @@
-# import time
-# from bs4 import BeautifulSoup
+import time
+from bs4 import BeautifulSoup
 
-# from project.utils.token import generate_token
-# from project.models import edit_form, event
-# from project import get_wks_columns, wks, get_wks_records, sh
+from project.utils.token import generate_token
+from project.models import edit_form, event
+from project import get_wks_columns, wks, get_wks_records, sh
 
-# def test_happy_path_with_event(client):
+# def test_post_happy_path_with_event(client):
 #     """
-#         Tests the happy path for the /full-registration/<token> route including event registration
+#         This function tests for a new full-registration including the event registration.
+#         It clears the members and event sheets, gets the csrf token, creates form data,
+#         sends a post request, and verifies that the form data that was submitted is
+#         populated in the google sheet.
 #     """
 #     email = "avashraj328@gmail.com"
 #     token = generate_token(email)
 
-#     # make sure we are on the testing sheet
-#     worksheet_title = wks.title
-#     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
-
+#     # Clear existing records in members sheet
 #     records = get_wks_records(wks)
 #     num_records = len(records)
 #     if num_records > 1:
@@ -24,10 +24,11 @@
 #         wks.delete_rows(2)
 
 
+#     # Get the event name and clear the event sheet
 #     with client.application.app_context():
 #         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 #         event_name = event_obj.name
-#         assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
 #         event_wks = sh.worksheet(event_name)
 #         event_records = get_wks_records(event_wks)
 #         if len(event_records) > 0:
@@ -116,33 +117,40 @@
 
 # def test_happy_path_without_event(client):
 #     """
-#         Tests the happy path for the /full-registration/<token> route without event registration
+#         This function tests for a new /full-registration/<token> POST request without event registration.
+#         It clears the members sehet, gets the event name, clears event sheet, gets the csrf token, builds
+#         the form, sends the POST request, verifies that the submitted info matches the google sheet and
+#         that the event sheet stays empty
 #     """
+
 #     email = "avashraj328@gmail.com"
 #     token = generate_token(email)
 
-#     # make sure we are on the testing sheet
-#     worksheet_title = wks.title
-#     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
-
+#     # Clear members sheet
 #     records = get_wks_records(wks)
 #     num_records = len(records)
 #     if num_records > 1:
 #         wks.delete_rows(2, num_records)
 #     elif num_records > 0:
 #         wks.delete_rows(2)
+
+
+#     # Get event name and clear events sheet
 #     with client.application.app_context():
 #         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 #         event_name = event_obj.name
 #         event_wks = sh.worksheet(event_name)
 #         event_records = get_wks_records(event_wks)
-#         if len(event_records) > 0:
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
 #             event_wks.delete_rows(2)
-#             time.sleep(3)
 
-#     csrf_token = ""
+
 
 #     # get CSRF token for form
+#     csrf_token = ""
 #     with client as c:
 #         response = c.get(f"/membership/full-registration/{token}")
 #         soup = BeautifulSoup(response.data, "html.parser")
@@ -150,6 +158,7 @@
 #         assert csrf_token_input, "CSRF token not found in the form."
 #         csrf_token = csrf_token_input["value"]
 
+#     # Build form data
 #     form_data = {
 #                 "first_name": "AVASH_TEST",
 #                 "last_name": "ADHIKARI_TEST",
@@ -303,11 +312,13 @@
 # def test_secondary_exists_as_expired_primary(client):
 #     """
 #         Test when a user submits a secondary email that already exists as someone elses
-#         primary but it is expired
-
-#         Should work
+#         primary but it is expired.
+#         Clears members sheet, enters row into members sheet that has an expired primary email,
+#         builds form, gets event name, clears event sheet, sends post request, makes sure that
+#         members and event sheet are updated properly
 #     """
 
+#     # clear members sheet
 #     records = get_wks_records(wks)
 #     num_records = len(records)
 #     print(f"len records: {num_records}")
@@ -351,8 +362,8 @@
 #     token = generate_token(new_prim_email)
 
 #     # make sure we are on the testing sheet
-#     worksheet_title = wks.title
-#     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
+#     # worksheet_title = wks.title
+#     # assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
 
 #     with client.application.app_context():
 #             event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
@@ -360,9 +371,11 @@
 #             assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
 #             event_wks = sh.worksheet(event_name)
 #             event_records = get_wks_records(event_wks)
-#             if len(event_records) > 0:
+#             num_event_records = len(event_records)
+#             if num_event_records > 1:
+#                 event_wks.delete_rows(2, num_event_records)
+#             elif num_event_records > 0:
 #                 event_wks.delete_rows(2)
-#                 time.sleep(3)
 
 #     csrf_token = ""
 
@@ -449,10 +462,13 @@
 #     """
 #             Test when a user submits a secondary email that already exists as someone elses
 #             secondary but it is expired
+#             Clears members sheet, insert row with expired secondary, get event name, clear
+#             event sheet, get csrf token, build form data, send POST request, make sure
+#             events and members sheets are updated properly
 
-#             Should work
 #     """
 
+#     # Clear members sheet
 #     records = get_wks_records(wks)
 #     num_records = len(records)
 #     if num_records > 1:
@@ -460,6 +476,7 @@
 #     elif num_records > 0:
 #         wks.delete_rows(2)
 
+#     # Insert row for test
 #     wks_columns = get_wks_columns(wks)
 #     user = ["" for i in range(len(wks_columns))]
 #     email = "email@email.com"
@@ -489,19 +506,18 @@
 
 #     token = generate_token(email)
 
-#     # make sure we are on the testing sheet
-#     worksheet_title = wks.title
-#     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
-
+#     # get event name
 #     with client.application.app_context():
 #             event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 #             event_name = event_obj.name
 #             assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
 #             event_wks = sh.worksheet(event_name)
 #             event_records = get_wks_records(event_wks)
-#             if len(event_records) > 0:
+#             num_event_records = len(event_records)
+#             if num_event_records > 1:
+#                 event_wks.delete_rows(2, num_event_records)
+#             elif num_event_records > 0:
 #                 event_wks.delete_rows(2)
-#                 time.sleep(3)
 
 #     csrf_token = ""
 
@@ -588,9 +604,13 @@
 #     """
 #         Test when a user submits a secondary email that already exists as someone elses
 #         primary but it is not expired
+#         Clear members sheet, insert row with non expired secondary email, get event name,
+#         clear event sheet, build form, get csrf token, send POST request, make sure
+#         error1 renders
 
-#         Shouldnt work
 #     """
+
+#     # Clear members sheet
 #     records = get_wks_records(wks)
 #     num_records = len(records)
 #     if num_records > 1:
@@ -598,6 +618,7 @@
 #     elif num_records > 0:
 #         wks.delete_rows(2)
 
+#     # Insert row for test
 #     wks_columns = get_wks_columns(wks)
 #     user = ["" for i in range(len(wks_columns))]
 #     email = "email@email.com"
@@ -626,23 +647,23 @@
 #     assert row["Primary Email"] == email, "set up for test failed"
 #     token = generate_token(new_prim_email)
 
-#     #     # make sure we are on the testing sheet
-#     worksheet_title = wks.title
-#     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
 
+#     # Get event name
 #     with client.application.app_context():
 #             event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 #             event_name = event_obj.name
 #             assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
 #             event_wks = sh.worksheet(event_name)
 #             event_records = get_wks_records(event_wks)
-#             if len(event_records) > 0:
+#             num_event_records = len(event_records)
+#             if num_event_records > 1:
+#                 event_wks.delete_rows(2, num_event_records)
+#             elif num_event_records > 0:
 #                 event_wks.delete_rows(2)
-#                 time.sleep(3)
 
 #     csrf_token = ""
 
-#     #     # get CSRF token for form
+#     # get CSRF token for form
 #     with client as c:
 #         response = c.get(f"/membership/full-registration/{token}")
 #         soup = BeautifulSoup(response.data, "html.parser")
@@ -699,6 +720,15 @@
 #         assert heading is not None, "did not render error1 template"
 
 # def test_secondary_exists_as_nonexpired_secondary(client):
+#     """
+#         Test for a secondary email existing as a non expired secondary email
+
+#         Clear members sheet, insert row with a nonexpired secondary email, get event name,
+#         clear event sheet, get csrf token, build form data, send POST request, make sure
+#         we render error1 template
+#     """
+
+#     # Clear members
 #     records = get_wks_records(wks)
 #     num_records = len(records)
 #     if num_records > 1:
@@ -706,6 +736,7 @@
 #     elif num_records > 0:
 #         wks.delete_rows(2)
 
+#     # Insert row
 #     wks_columns = get_wks_columns(wks)
 #     user = ["" for i in range(len(wks_columns))]
 #     email = "email@email.com"
@@ -734,19 +765,19 @@
 
 
 #     token = generate_token(email)
-#     worksheet_title = wks.title
-#     assert worksheet_title == "MEMBERS_FOR_TESTING", "YOU ARE ON PROD WHAT THE FUCK"
 
-
+#     # Get event name/ clear event sheet
 #     with client.application.app_context():
 #             event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 #             event_name = event_obj.name
 #             assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
 #             event_wks = sh.worksheet(event_name)
 #             event_records = get_wks_records(event_wks)
-#             if len(event_records) > 0:
+#             num_event_records = len(event_records)
+#             if num_event_records > 1:
+#                 event_wks.delete_rows(2, num_event_records)
+#             elif num_event_records > 0:
 #                 event_wks.delete_rows(2)
-#                 time.sleep(3)
 
 #     csrf_token = ""
 
@@ -769,7 +800,7 @@
 #                     "csrf_token": csrf_token
 #                 }
 
-# #     # add info fields to form data
+#     # add info fields to form data
 #     with client.application.app_context():
 #         required_fields = edit_form.query.filter_by(required=True).all()
 #         for field in required_fields:
@@ -798,10 +829,1138 @@
 #             form_data["event_" + question] = "test answer from test_registration_happy"
 
 
-# #     # Send POST form data
+#     # Send POST form data
 #     with client as c:
 #         token = generate_token(email)
 #         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
 #         soup = BeautifulSoup(response.data, "html.parser")
 #         heading = soup.find("h1", string="ERROR 01")
 #         assert heading is not None, "did not render error1 template"
+
+
+# def test_two_email_1_phone_happy_path(client):
+#     """
+#         Test for a full registration with two emails and 1 phone number.
+#         This is with the event
+#         Should render the otp form and in the google sheet we should
+
+#         Clear members sheet, get event name/clear event sheet, get csrf token,
+#         build form data, send POST request, make sure otp form gets rendered,
+#         and make sure we have the correct info in both members and event sheet
+#     """
+
+#     email = "test@test.com"
+#     token = generate_token(email)
+
+#     # Clear members sheet
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+#     # Get event name/clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+#     phone_number = "8057105809"
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "bro@bro.com",
+#                 "confirm_secondary": "bro@bro.com",
+#                 "register_event": "y",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": phone_number,
+#                 "confirm_phone_number": phone_number
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+
+#         # Ensure OTP form gets rendered
+#         search_string = "Verify Your Phone Number"
+
+#         heading = soup.find("h4", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
+
+#         # Ensure members sheet has correct info
+#         time.sleep(3)
+#         # asserting members fields
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["First Name"] == "AVASH_TEST", "first name wrong in members sheet"
+#         assert row["Last Name"] == "ADHIKARI_TEST", "last name wrong in members sheet"
+#         assert row["Primary Email"] == email, "prim email wrong in members sheet"
+#         assert row["Secondary Email"] == "bro@bro.com", "sec email wrong in members sheet"
+#         complete_number = "1" + phone_number
+#         assert row["Phone Number"] == int(complete_number)
+
+#         # asserting event fields
+#         event_records = get_wks_records(event_wks)
+#         event_row = event_records[0]
+#         assert event_row["First Name"] == "AVASH_TEST", "first name wrong in event sheet"
+#         assert event_row["Last Name"] == "ADHIKARI_TEST", "last name wrong in event sheet"
+#         assert event_row["Membership Primary"] == email, "prim email wrong in event sheet"
+#         assert event_row["Membership Secondary"] == "bro@bro.com", "secondary email wrong in event sheet"
+#         assert event_row["Phone Number"] == phone_number, "phone number wrong in event sheet"
+#         assert event_row["Ticket Type"] == form_data["event_tickets"]
+
+
+# def test_1_email_1_phone_happy(client):
+#     """
+#         This tests for when a new user attempts to sign up with a new email and new phone number.
+#         It should work, render the otp form, and have the correct info in both the members
+#         and event sheets.
+#     """
+
+#     # Clear event sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF Token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+#     # Build Form
+#     phone_number = "2092591247"
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "",
+#                 "confirm_secondary": "",
+#                 "register_event": "y",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": phone_number,
+#                 "confirm_phone_number": phone_number
+#     }
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+
+#         # Ensure OTP form gets rendered
+#         search_string = "Verify Your Phone Number"
+
+#         heading = soup.find("h4", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
+
+#         # Ensure members sheet has correct info
+#         time.sleep(3)
+#         # asserting members fields
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["First Name"] == "AVASH_TEST", "first name wrong in members sheet"
+#         assert row["Last Name"] == "ADHIKARI_TEST", "last name wrong in members sheet"
+#         assert row["Primary Email"] == email, "prim email wrong in members sheet"
+#         assert row["Secondary Email"] == "", "sec email wrong in members sheet"
+#         complete_number = "1" + phone_number
+#         assert row["Phone Number"] == int(complete_number)
+
+#         # asserting event fields
+#         event_records = get_wks_records(event_wks)
+#         event_row = event_records[0]
+#         assert event_row["First Name"] == "AVASH_TEST", "first name wrong in event sheet"
+#         assert event_row["Last Name"] == "ADHIKARI_TEST", "last name wrong in event sheet"
+#         assert event_row["Membership Primary"] == email, "prim email wrong in event sheet"
+#         assert event_row["Membership Secondary"] == "", "secondary email wrong in event sheet"
+#         complete_number = "1" + phone_number
+#         assert event_row["Phone Number"] == int(complete_number), "phone number wrong in event sheet"
+#         assert event_row["Ticket Type"] == form_data["event_tickets"]
+
+
+# def test_two_email_one_phone_no_event(client):
+#     """
+#         This tests for a new registration with two emails and one phone with no event
+#         It should return the OTP page and only update the members sheet.
+#     """
+
+#     # Clear event sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF Token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+
+#     # Build Form
+#     phone_number = "2092591247"
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "bro@bro.com",
+#                 "confirm_secondary": "bro@bro.com",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": phone_number,
+#                 "confirm_phone_number": phone_number
+#     }
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+
+#         # Ensure OTP form gets rendered
+#         search_string = "Verify Your Phone Number"
+
+#         heading = soup.find("h4", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
+
+#         # Ensure members sheet has correct info
+#         time.sleep(3)
+#         # asserting members fields
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["First Name"] == "AVASH_TEST", "first name wrong in members sheet"
+#         assert row["Last Name"] == "ADHIKARI_TEST", "last name wrong in members sheet"
+#         assert row["Primary Email"] == email, "prim email wrong in members sheet"
+#         assert row["Secondary Email"] == "bro@bro.com", "sec email wrong in members sheet"
+#         complete_number = "1" + phone_number
+#         assert row["Phone Number"] == int(complete_number)
+
+#         # asserting event fields
+#         event_records = get_wks_records(event_wks)
+#         print(event_records)
+#         assert len(event_records) == 0, "event sheet was updated"
+
+
+# def test_one_email_one_phone_no_event(client):
+#     """
+#         This tests for a new registration with one email and one phone with no event
+#         It should return the OTP page and only update the members sheet.
+#     """
+
+#     # Clear members sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+
+#     # Get CSRF Token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+
+#     # Build Form
+#     phone_number = "2092591247"
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "",
+#                 "confirm_secondary": "",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": phone_number,
+#                 "confirm_phone_number": phone_number
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+
+#         # Ensure OTP form gets rendered
+#         search_string = "Verify Your Phone Number"
+
+#         heading = soup.find("h4", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
+
+#         # Ensure members sheet has correct info
+#         time.sleep(3)
+#         # asserting members fields
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["First Name"] == "AVASH_TEST", "first name wrong in members sheet"
+#         assert row["Last Name"] == "ADHIKARI_TEST", "last name wrong in members sheet"
+#         assert row["Primary Email"] == email, "prim email wrong in members sheet"
+#         assert row["Secondary Email"] == "", "sec email wrong in members sheet"
+#         complete_number = "1" + phone_number
+#         assert row["Phone Number"] == int(complete_number)
+
+#         # asserting event fields
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "event sheet was updated"
+
+
+# def test_one_email_and_phone_with_num_in_use(client):
+#     """
+#         This tests for when a new registration with two emails and a phone number attempts to register with
+#         a phone number that is already in use.
+
+#         This should render error3.html and make no changes to event or members sheet
+#     """
+
+#     # Clear members sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+
+#     # Insert a row into members sheet with the phone number the new user will use
+#     phone_number = "2092591247"
+#     full_number = "+1" + phone_number
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
+#     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
+#     user[wks_columns["When Started"] - 1] = "TEST START"
+#     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
+#     user[wks_columns["Primary Email"] - 1] = "vro@vro.com"
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = "bro@bro.com"
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = full_number
+#     wks.append_row(user)
+#     time.sleep(2)
+
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "",
+#                 "confirm_secondary": "",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": phone_number,
+#                 "confirm_phone_number": phone_number
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         print(soup)
+
+#         # Ensure error3 template gets rendered
+#         search_string = "ERROR 03"
+
+#         heading = soup.find("h1", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The receipt page was not rendered. The registration may have failed."
+
+
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     assert num_records == 1, "members sheet has stuff"
+#     event_wks = sh.worksheet(event_name)
+#     event_records = get_wks_records(event_wks)
+#     num_event_records = len(event_records)
+#     assert num_event_records == 0, "event sheet has stuff"
+
+
+# def test_two_emails_and_phone_with_num_in_use(client):
+#     """
+#         This tests for when a new registration with one email and a phone number attempts to register with
+#         a phone number that is already in use.
+
+#         This should render error3.html and make no changes to event or members sheet
+#     """
+
+#     # Clear members sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+
+#     # Insert a row into members sheet with the phone number the new user will use
+#     phone_number = "2092591247"
+#     full_number = "+1" + phone_number
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
+#     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
+#     user[wks_columns["When Started"] - 1] = "TEST START"
+#     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
+#     user[wks_columns["Primary Email"] - 1] = "vro@vro.com"
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = "bro@bro.com"
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = full_number
+#     wks.append_row(user)
+#     time.sleep(2)
+
+
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "jo@jo.com",
+#                 "confirm_secondary": "jo@jo.com",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": phone_number,
+#                 "confirm_phone_number": phone_number
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+
+#         # Ensure error3 template gets rendered
+#         search_string = "ERROR 03"
+
+#         heading = soup.find("h1", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The registration may have failed."
+
+
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     assert num_records == 1, "members sheet has stuff"
+#     event_wks = sh.worksheet(event_name)
+#     event_records = get_wks_records(event_wks)
+#     num_event_records = len(event_records)
+#     assert num_event_records == 0, "event sheet has stuff"
+
+
+
+# def test_one_email_one_phone_email_already_in_use(client):
+#     """
+#         Test a new registration with an email and a phone number. The email is already in use
+#         but the phone number is open. This should fail and return error1.html
+#     """
+
+#     # Clear members sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+
+#     # Get CSRF token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+
+#     # Insert a row into members sheet with the phone number the new user will use
+#     phone_number = "2092591247"
+#     full_number = "+1" + phone_number
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
+#     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
+#     user[wks_columns["When Started"] - 1] = "TEST START"
+#     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
+#     user[wks_columns["Primary Email"] - 1] = email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = "bro@bro.com"
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = full_number
+#     wks.append_row(user)
+#     time.sleep(2)
+
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "",
+#                 "confirm_secondary": "",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": "8057105809",
+#                 "confirm_phone_number": "8057105809"
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         print(soup)
+
+#         # Ensure error3 template gets rendered
+#         search_string = "ERROR 01"
+
+#         heading = soup.find("h1", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The registration may have failed."
+
+
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     assert num_records == 1, "members sheet has stuff"
+#     event_wks = sh.worksheet(event_name)
+#     event_records = get_wks_records(event_wks)
+#     num_event_records = len(event_records)
+    # assert num_event_records == 0, "event sheet has stuff"
+
+
+# def test_two_email_one_email_prim_in_use(client):
+#     """
+#         This tests for a new registration with two emails and one phone but the primary
+#         email is already in use
+#     """
+
+#     # Clear members sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+#     # Insert a row into members sheet with the primary email that the new user wil use
+#     phone_number = "2092591247"
+#     full_number = "+1" + phone_number
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
+#     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
+#     user[wks_columns["When Started"] - 1] = "TEST START"
+#     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
+#     user[wks_columns["Primary Email"] - 1] = email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = "bro@bro.com"
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = full_number
+#     wks.append_row(user)
+#     time.sleep(2)
+
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "jo@jo.com",
+#                 "confirm_secondary": "jo@jo.com",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": "8057105809",
+#                 "confirm_phone_number": "8057105809"
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         print(soup)
+
+#         # Ensure error3 template gets rendered
+#         search_string = "ERROR 01"
+
+#         heading = soup.find("h1", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The registration may have failed."
+
+
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     assert num_records == 1, "members sheet has stuff"
+#     event_wks = sh.worksheet(event_name)
+#     event_records = get_wks_records(event_wks)
+#     num_event_records = len(event_records)
+#     assert num_event_records == 0, "event sheet has stuff"
+
+
+# def test_two_email_one_email_sec_in_use(client):
+#     """
+#         This tests for a new registration with two emails and one phone but the secondary
+#         email is already in use
+#     """
+
+#     # Clear members sheet
+#     email = "test@test.com"
+#     token = generate_token(email)
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     if num_records > 1:
+#         wks.delete_rows(2, num_records + 1)
+#     elif num_records > 0:
+#         wks.delete_rows(2)
+
+
+#     # Get event name and clear event sheet
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         # assert event_name == "TESTING EVENT FOR CODEBASE", "YOU ARE NOT ON THE TESTING SHEET"
+#         event_wks = sh.worksheet(event_name)
+#         event_records = get_wks_records(event_wks)
+#         num_event_records = len(event_records)
+#         if num_event_records > 1:
+#             event_wks.delete_rows(2, num_event_records)
+#         elif num_event_records > 0:
+#                 event_wks.delete_rows(2)
+
+#     # Get CSRF token
+#     csrf_token = ""
+#     with client as c:
+#         response = c.get(f"/membership/full-registration/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"]
+
+#     # Insert a row into members sheet with the primary email that the new user wil use
+#     phone_number = "2092591247"
+#     full_number = "+1" + phone_number
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = "TEST FIRST NAME"
+#     user[wks_columns["Last Name"] - 1] = "TEST LAST NAME"
+#     user[wks_columns["When Started"] - 1] = "TEST START"
+#     user[wks_columns["Last Updated"] - 1] = "TEST UPDATE"
+#     user[wks_columns["Primary Email"] - 1] = email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = "bro@bro.com"
+#     user[wks_columns["Secondary Verified"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = full_number
+#     wks.append_row(user)
+#     time.sleep(2)
+
+#     # Build form data
+#     form_data = {
+#                 "first_name": "AVASH_TEST",
+#                 "last_name": "ADHIKARI_TEST",
+#                 "primary_email": email,
+#                 "confirm_primary": email,
+#                 "secondary_email": "bro@bro.com",
+#                 "confirm_secondary": "bro@bro.com",
+#                 "csrf_token": csrf_token,
+#                 "country_code": "+1",
+#                 "phone_number": "8057105809",
+#                 "confirm_phone_number": "8057105809"
+#     }
+
+#     # add info fields to form data
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     event_name = ""
+#     # add event fields to form data
+#     with client.application.app_context():
+#         event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+#         event_name = event_obj.name
+#         ticket_types = event_obj.tickets.split("\n")
+#         form_data["event_tickets"] = ticket_types[0]
+
+#         for question in event_obj.questions.split("\n"):
+#             form_data["event_" + question] = "test answer from test_registration_happy"
+
+#     # Send POST request
+#     with client as c:
+#         response = c.post(f"/membership/full-registration/{token}", data=form_data, follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         print(soup)
+
+#         # Ensure error3 template gets rendered
+#         search_string = "ERROR 01"
+
+#         heading = soup.find("h1", string=search_string)
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The registration may have failed."
+
+
+#     records = get_wks_records(wks)
+#     num_records = len(records)
+#     assert num_records == 1, "members sheet has stuff"
+#     event_wks = sh.worksheet(event_name)
+#     event_records = get_wks_records(event_wks)
+#     num_event_records = len(event_records)
+    # assert num_event_records == 0, "event sheet has stuff"

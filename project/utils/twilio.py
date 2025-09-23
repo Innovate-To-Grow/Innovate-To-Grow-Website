@@ -31,7 +31,10 @@ def check_verification(client: Client, phone_number: str, verify_sid: str, otp_c
 
 
 def split_number(number: str):
-    parsed_number = phonenumbers.parse("+" + number)
+    # Handle numbers that already have "+" prefix
+    if not number.startswith("+"):
+        number = "+" + number
+    parsed_number = phonenumbers.parse(number)
     country_code = str(parsed_number.country_code)
     country_code = "+" + country_code
     national_number = str(parsed_number.national_number)

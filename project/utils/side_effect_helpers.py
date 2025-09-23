@@ -247,7 +247,8 @@ def update_subscription_status(
     primary_subscription: Optional[bool],
     secondary_subscription: Optional[bool],
     primary_verified: bool,
-    secondary_verified: bool
+    secondary_verified: bool,
+    secondary_email: str = None
 ) -> None:
     """
     Update subscription status based on verification status and user preferences.
@@ -258,6 +259,7 @@ def update_subscription_status(
         secondary_subscription: User's secondary email subscription preference (None = keep existing)
         primary_verified: Whether primary email is verified
         secondary_verified: Whether secondary email is verified
+        secondary_email: Current secondary email (to check if it was cleared)
     """
     wks_columns = get_wks_columns(wks)
     cells = []
@@ -271,12 +273,14 @@ def update_subscription_status(
         cells.append(Cell(user_row, wks_columns["Primary Subscribed"], "FALSE"))
 
     # Secondary subscription logic
-    if secondary_verified and secondary_subscription is not None:
-        # User preference applies only if email is verified
-        cells.append(Cell(user_row, wks_columns["Secondary Subscribed"], str(secondary_subscription).upper()))
-    elif not secondary_verified:
-        # Unverified emails cannot be subscribed
-        cells.append(Cell(user_row, wks_columns["Secondary Subscribed"], "FALSE"))
+    # Only update secondary subscription if secondary email exists
+    if secondary_email:  # Only process if secondary email is not empty
+        if secondary_verified and secondary_subscription is not None:
+            # User preference applies only if email is verified
+            cells.append(Cell(user_row, wks_columns["Secondary Subscribed"], str(secondary_subscription).upper()))
+        elif not secondary_verified:
+            # Unverified emails cannot be subscribed
+            cells.append(Cell(user_row, wks_columns["Secondary Subscribed"], "FALSE"))
 
     # Apply updates
     if cells:
@@ -333,7 +337,7 @@ def send_event_confirmation_emails(
         "secondary_email": user["Secondary Email"],
         "secondary_verified": user["Secondary Verified"],
         "secondary_subscribed": user["Secondary Subscribed"],
-        "phone_number": user.get("Phone Number", ""),
+        "phone_number": str(user.get("Phone Number", "")),
         "phone_number_verified": user.get("Phone number verified", "FALSE"),
         "phone_subscribed": user.get("Phone number subscribed", "FALSE"),
         "info_fields": info_fields,
@@ -436,6 +440,9 @@ def send_complete_registration_confirmation_email(
         "secondary_email": user_data.get("Secondary Email", ""),
         "secondary_verified": user_data.get("Secondary Verified", "FALSE"),
         "secondary_subscribed": user_data.get("Secondary Subscribed", "FALSE"),
+        "phone_number": str(user_data.get("Phone Number", "")),
+        "phone_number_verified": user_data.get("Phone number verified", "FALSE"),
+        "phone_subscribed": user_data.get("Phone number subscribed", "FALSE"),
         "info_fields": info_fields,
         "event_name": event_name,
         "event_fields": event_fields
@@ -598,15 +605,15 @@ def setup_event_phone_verification_session(
     phone_data: Dict[str, Any]
 ) -> None:
     """
-    Sets up Flask session data for event phone verification flow.
+    Sets up Flask session data for phone verification flow.
     
-    This is specific to event registration phone verification, where the user
-    is updating their profile during event registration.
+    This handles phone verification for both event registration and update flows.
+    The correct template is rendered after OTP based on event_data.update_type.
     
     Args:
         session: Flask session object
         user_data: User information data
-        event_data: Event registration data
+        event_data: Event/update context data (includes update_type for flow detection)
         phone_data: Phone-specific data
     """
     # Clear any existing session data for OTP
@@ -633,7 +640,7 @@ def setup_event_phone_verification_session(
         'secondary_subscribed': user_data.get('secondary_subscribed', 'TRUE'),
         'phone_subscribe': 'TRUE' if phone_data.get('phone_subscribe', False) else 'FALSE',
         'info_fields': user_data.get('info_fields', {}),
-        'update': 'FALSE',  # This is an event registration update
+        'update': 'TRUE' if event_data.get('update_type') == 'update' else 'FALSE',
         'update_url': event_data.get('update_url', ''),
         'event_url': event_data.get('event_url', ''),
         'event_fields': event_data.get('event_fields', {}),
@@ -712,6 +719,7 @@ def extract_phone_data_from_event_form(form) -> Dict[str, Any]:
         phone_number = phone_number.strip() if phone_number else ""
         
         full_phone = country_code + phone_number if country_code and phone_number else ""
+        
         
         return {
             "country_code": country_code,

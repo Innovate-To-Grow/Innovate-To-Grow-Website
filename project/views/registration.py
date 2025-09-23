@@ -802,7 +802,7 @@ def complete_registration(token):
     if user is not None:
         return render_template("error1.html")
 
-    # Build dynamic form by adding custom fields to the base formin 
+    # Build dynamic form by adding custom fields to the base formin
 
     # Add custom fields
     for row in edit_form.query.all():
@@ -830,12 +830,15 @@ def complete_registration(token):
         # Extract form data first for logging
         prim_email = form.primary_email.data.lower()
         sec_email = form.secondary_email.data.lower()
-        
+
         # Extract phone number for logging
         phone_number = ""
         if form.country_code.data and form.phone_number.data:
             phone_number = form.country_code.data + form.phone_number.data
-        
+            # print(f"DEBUG: Form country code: '{form.country_code.data}'")
+            # print(f"DEBUG: Form phone number: '{form.phone_number.data}'")
+            # print(f"DEBUG: Constructed phone number for conflict check: '{phone_number}'")
+
         # Log the registration attempt
         def log_registration():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
@@ -851,7 +854,7 @@ def complete_registration(token):
 
         # PHASE 1: ANALYZE CONFLICTS (Pure Logic) - Do this BEFORE background thread
         wks_records = get_wks_records(wks)
-        
+
         # 1.1: Email conflict analysis
         conflict_decision = analyze_complete_registration_conflicts(
             wks_records, prim_email, sec_email
@@ -859,19 +862,24 @@ def complete_registration(token):
 
         if not conflict_decision.can_proceed:
             return render_template("error1.html")
-        
+
         # 1.2: Phone number validation and conflict analysis
         # Check for phone number conflicts
+        # print(f"DEBUG: About to check phone conflicts with: '{phone_number}'")
         phone_conflict = analyze_phone_number_conflicts(wks_records, phone_number)
+        # print(f"DEBUG: Phone conflict result: {phone_conflict}")
         if not phone_conflict["can_proceed"]:
+            # print("DEBUG: Phone conflict detected - blocking registration")
             return render_template("error3.html")  # Phone already exists
-        
+        # else:
+            # print("DEBUG: No phone conflict - allowing registration to proceed")
+
         # 1.3: Calculate registration method and determine verification needs
         registration_method = calculate_registration_method(
             has_secondary_email=bool(sec_email.strip()),
             has_phone_number=bool(phone_number.strip())
         )
-        
+
         needs_phone_verification = should_trigger_phone_verification(
             registration_method, phone_number
         )
@@ -904,7 +912,7 @@ def complete_registration(token):
                     form_data[row.label] = vals
                 else:
                     form_data[row.label] = field.data
-            
+
             # Add phone data if provided
             if phone_number:
                 phone_form_data = {
@@ -913,8 +921,9 @@ def complete_registration(token):
                     "phone_subscribe": form.phone_subscribe.data
                 }
                 phone_data = calculate_phone_registration_data(phone_form_data)
+                # print(f"DEBUG: Calculated phone data for storage: {phone_data}")
                 form_data["phone_data"] = phone_data
-                
+
                 # Also create phone data in the format expected by event registration
                 form_data["event_phone_data"] = {
                     "country_code": form.country_code.data,
@@ -969,10 +978,10 @@ def complete_registration(token):
                     "primary_email": prim_email,
                     "secondary_email": sec_email
                 }
-                
+
                 # Extract phone data in the format expected by event registration
                 phone_data_for_event = form_data.get("event_phone_data")
-                
+
                 # Use phone-aware event registration function
                 create_event_registration_with_phone(event_obj.name, user_data_for_event, event_data, phone_data_for_event)
 
@@ -1029,7 +1038,7 @@ def complete_registration(token):
                 "secondary_subscribed": "FALSE",
                 "update_url": url_for("update.update_info", token=token, _external=True)
             }
-            
+
             event_data = None
             if event_obj is not None and form.register_event.data:
                 event_data = {
@@ -1043,12 +1052,12 @@ def complete_registration(token):
                 # Add event question answers
                 for question in event_obj.questions.split("\n"):
                     event_data["event_fields"][question] = form[f"event_{question}"].data
-            
+
             phone_data = {
                 "phone_number": phone_number,
                 "phone_subscribe": "TRUE" if form.phone_subscribe.data else "FALSE"
             }
-            
+
             # Prepare info fields for session
             info_fields = {}
             for row in edit_form.query.all():
@@ -1061,15 +1070,15 @@ def complete_registration(token):
                     info_fields[row.label] = " ".join(vals)
                 else:
                     info_fields[row.label] = field.data
-            
+
             user_data["info_fields"] = info_fields
-            
+
             # Setup OTP verification session
             setup_otp_verification_session(session, user_data, event_data, phone_data)
-            
+
             # Start phone verification process
             start_phone_verification_process(phone_number)
-            
+
             # Redirect to OTP verification page
             return redirect(url_for("confirm.otp"))
 
@@ -1106,15 +1115,13 @@ def complete_registration(token):
                                secondary_email=form.secondary_email.data,
                                secondary_verified="FALSE",
                                secondary_subscribed="FALSE",
+                               phone_number=phone_number,
+                               phone_number_verified="FALSE",
+                               phone_subscribed=form.phone_subscribe.data if phone_number else False,
                                info_fields=info_fields,
                                event_name=event_obj.name if event_obj is not None else None,
                                event_fields=event_fields)
 
     else:
         # GET request or form validation failed
-        if form.errors:
-            print("Validation errors:")
-            for field_name, error_messages in form.errors.items():
-                for error in error_messages:
-                    print(f"{field_name}: {error}")
         return render_template("complete_registration.html", form=form, token=token)

@@ -1,11 +1,12 @@
-# import time
-# import re
+import time
+import re
 
-# from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup
 
-# from project.utils.token import generate_token
-# from project.models import edit_form, event
-# from project import get_wks_columns, wks, get_wks_records, sh
+from project.utils.token import generate_token
+from project.models import edit_form, event
+from project import get_wks_columns, wks, get_wks_records, sh
+from tests.testingHelpers import clear_members_sheet, get_event_info, clear_event_sheet
 
 
 # def test_update_bad_token(client):
@@ -1366,3 +1367,3410 @@
 #         row = records[0]
 #         assert row["Primary Email"] == primary_email, "prim email wrong in members sheet"
 #         assert row["Secondary Email"] == secondary_email2, "sec email wrong in members sheet"
+
+
+# def test_update_swap_2_email_to_2_email_1_phone_otp(client):
+#     """
+#     This tests for when a user originally registered with 2 emails (no phone)
+#     and changes to 2 emails and 1 phone number. Should render OTP verification form.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     new_phone_number = "+18057105809"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = ""  # No phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = ""
+#     user[wks_columns["Phone number verified"] - 1] = ""
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User adds a phone number while keeping both emails
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": secondary_email,  # Keep same secondary email
+#         "confirm_secondary": secondary_email,
+#         "phone_number": "8057105809",  # Add new phone number
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Important: include phone_subscribe
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h4", string="Verify Your Phone Number")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The OTP verification page was not rendered. The phone verification may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == secondary_email, "secondary email changed in members sheet when it should stay the same"
+#         assert row["Phone Number"] == int(new_phone_number[1:]), "phone number not updated in members sheet"
+#         assert row["Phone number verified"] == "FALSE", "phone number verification should be FALSE for new number"
+
+
+# def test_update_swap_2_email_to_2_email_1_phone_in_use(client):
+#     """
+#     This tests for when a user originally registered with 2 emails (no phone)
+#     and tries to add a phone number that's already in use by another user.
+#     Should render ERROR 03.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to add phone) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = ""  # No phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = ""
+#     user[wks_columns["Phone number verified"] - 1] = ""
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the phone number the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     primary_email2 = "other@email.com"
+#     secondary_email2 = "othersecondary@email.com"
+#     taken_phone_number = "+18057105809"  # This is the phone number first user will try to use
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = primary_email2
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = secondary_email2
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = taken_phone_number  # This is what user 1 wants
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to add a phone number that's already in use by another user
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": secondary_email,  # Keep same secondary email
+#         "confirm_secondary": secondary_email,
+#         "phone_number": "8057105809",  # Trying to use phone number that belongs to second user
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Important: include phone_subscribe
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 03")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no phone was added)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed"
+#         assert first_user["Phone Number"] == "", "First user phone number should remain empty"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == primary_email2, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == secondary_email2, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(taken_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to phone number conflict"
+
+
+# def test_update_swap_2_email_to_1_email_1_phone_otp(client):
+#     """
+#     This tests for when a user originally registered with 2 emails (no phone)
+#     and changes to 1 email and 1 phone number. Should clear secondary email and render OTP verification form.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     new_phone_number = "+18057105809"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = ""  # No phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = ""
+#     user[wks_columns["Phone number verified"] - 1] = ""
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User removes secondary email and adds a phone number
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": "",  # Remove secondary email
+#         "confirm_secondary": "",
+#         "phone_number": "8057105809",  # Add new phone number
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Important: include phone_subscribe
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "n",  # No secondary email anymore
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h4", string="Verify Your Phone Number")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The OTP verification page was not rendered. The phone verification may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == "", "secondary email not cleared in members sheet"
+#         assert row["Secondary Verified"] == "", "secondary verified not cleared in members sheet"
+#         assert row["Secondary Subscribed"] == "", "secondary subscribed not cleared in members sheet"
+#         assert row["Secondary Expired"] == "", "secondary expired not cleared in members sheet"
+#         assert row["Secondary Bounced"] == "", "secondary bounced not cleared in members sheet"
+#         assert row["Phone Number"] == int(new_phone_number[1:]), "phone number not updated in members sheet"
+#         assert row["Phone number verified"] == "FALSE", "phone number verification should be FALSE for new number"
+
+
+# def test_update_swap_2_email_to_1_email_1_phone_in_use(client):
+#     """
+#     This tests for when a user originally registered with 2 emails (no phone)
+#     and tries to remove secondary email and add a phone number that's already in use by another user.
+#     Should render ERROR 03 and leave all previous data unchanged.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to add phone) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = ""  # No phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = ""
+#     user[wks_columns["Phone number verified"] - 1] = ""
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the phone number the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     primary_email2 = "other@email.com"
+#     secondary_email2 = "othersecondary@email.com"
+#     taken_phone_number = "+18057105809"  # This is the phone number first user will try to use
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = primary_email2
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = secondary_email2
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = taken_phone_number  # This is what user 1 wants
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to remove secondary email and add a phone number that's already in use by another user
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": "",  # Remove secondary email
+#         "confirm_secondary": "",
+#         "phone_number": "8057105809",  # Trying to use phone number that belongs to second user
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Important: include phone_subscribe
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "n",  # No secondary email anymore
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 03")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed - should remain unchanged"
+#         assert first_user["Secondary Verified"] == "TRUE", "First user secondary verified changed - should remain unchanged"
+#         assert first_user["Secondary Subscribed"] == "TRUE", "First user secondary subscribed changed - should remain unchanged"
+#         assert first_user["Secondary Expired"] == "FALSE", "First user secondary expired changed - should remain unchanged"
+#         assert first_user["Secondary Bounced"] == "", "First user secondary bounced changed - should remain unchanged"
+#         assert first_user["Phone Number"] == "", "First user phone number should remain empty"
+#         assert first_user["Phone number subscribed"] == "", "First user phone subscribed should remain empty"
+#         assert first_user["Phone number verified"] == "", "First user phone verified should remain empty"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == primary_email2, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == secondary_email2, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(taken_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to phone number conflict"
+
+
+# def test_update_swap_1_email_1_phone_to_2_email_success(client):
+#     """
+#     This tests for when a user originally registered with 1 email and 1 phone
+#     and changes to 2 emails (no phone). Should clear all phone data and show success page.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     old_phone_number = "+12345678901"
+#     new_secondary_email = "secondary@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = ""  # No secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = ""
+#     user[wks_columns["Secondary Subscribed"] - 1] = ""
+#     user[wks_columns["Secondary Expired"] - 1] = ""
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = old_phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User adds secondary email and removes phone number
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": new_secondary_email,  # Add secondary email
+#         "confirm_secondary": new_secondary_email,
+#         "phone_number": "",  # Remove phone number
+#         "confirm_phone_number": "",
+#         "country_code": "",
+#         "phone_subscribe": "n",  # No phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="I2G Membership Updated")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The success page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == new_secondary_email, "secondary email not added in members sheet"
+#         assert row["Secondary Verified"] == "FALSE", "secondary email should be unverified initially"
+#         assert row["Secondary Subscribed"] == "FALSE", "secondary email should be unsubscribed initially"
+#         assert row["Secondary Expired"] == "FALSE", "secondary expired should be FALSE"
+#         assert row["Secondary Bounced"] == "", "secondary bounced should be empty"
+#         # Verify all phone data is cleared
+#         assert row["Phone Number"] == "", "phone number not cleared in members sheet"
+#         assert row["Phone number subscribed"] == "", "phone number subscribed not cleared in members sheet"
+#         assert row["Phone number verified"] == "", "phone number verified not cleared in members sheet"
+
+
+# def test_update_swap_1_email_1_phone_to_2_email_1_phone_same_phone_success(client):
+#     """
+#     This tests for when a user originally registered with 1 email and 1 phone
+#     and changes to 2 emails and keeps the same phone number. Should show success page.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     phone_number = "+12345678901"
+#     new_secondary_email = "secondary@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = ""  # No secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = ""
+#     user[wks_columns["Secondary Subscribed"] - 1] = ""
+#     user[wks_columns["Secondary Expired"] - 1] = ""
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User adds secondary email and keeps the same phone number
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": new_secondary_email,  # Add secondary email
+#         "confirm_secondary": new_secondary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Keep phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="I2G Membership Updated")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The success page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == new_secondary_email, "secondary email not added in members sheet"
+#         assert row["Secondary Verified"] == "FALSE", "secondary email should be unverified initially"
+#         assert row["Secondary Subscribed"] == "FALSE", "secondary email should be unsubscribed initially"
+#         assert row["Secondary Expired"] == "FALSE", "secondary expired should be FALSE"
+#         assert row["Secondary Bounced"] == "", "secondary bounced should be empty"
+#         # Verify phone data remains the same
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number changed in members sheet when it should stay the same"
+#         assert row["Phone number subscribed"] == "TRUE", "phone number subscribed changed in members sheet"
+#         assert row["Phone number verified"] == "TRUE", "phone number verified changed in members sheet"
+
+
+# def test_update_swap_1_email_1_phone_to_2_email_1_phone_different_phone_otp(client):
+#     """
+#     This tests for when a user originally registered with 1 email and 1 phone
+#     and changes to 2 emails and a different phone number. Should render OTP verification form.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     old_phone_number = "+12345678901"
+#     new_phone_number = "+18057105809"
+#     new_secondary_email = "secondary@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = ""  # No secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = ""
+#     user[wks_columns["Secondary Subscribed"] - 1] = ""
+#     user[wks_columns["Secondary Expired"] - 1] = ""
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = old_phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User adds secondary email and changes to a different phone number
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": new_secondary_email,  # Add secondary email
+#         "confirm_secondary": new_secondary_email,
+#         "phone_number": "8057105809",  # Change to different phone number (without country code)
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Keep phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h4", string="Verify Your Phone Number")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The OTP verification page was not rendered. The phone verification may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == new_secondary_email, "secondary email not added in members sheet"
+#         assert row["Secondary Verified"] == "FALSE", "secondary email should be unverified initially"
+#         assert row["Secondary Subscribed"] == "FALSE", "secondary email should be unsubscribed initially"
+#         assert row["Secondary Expired"] == "FALSE", "secondary expired should be FALSE"
+#         assert row["Secondary Bounced"] == "", "secondary bounced should be empty"
+#         # Verify phone data is updated but verification is FALSE
+#         assert row["Phone Number"] == int(new_phone_number[1:]), "phone number not updated in members sheet"
+#         assert row["Phone number subscribed"] == "TRUE", "phone number subscribed changed in members sheet"
+#         assert row["Phone number verified"] == "FALSE", "phone number verification should be FALSE for new number"
+
+
+# def test_update_swap_1_email_1_phone_to_2_email_1_phone_different_phone_in_use(client):
+#     """
+#     This tests for when a user originally registered with 1 email and 1 phone
+#     and tries to add a secondary email and change to a phone number that's already in use by another user.
+#     Should render ERROR 03.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change phone) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     old_phone_number = "+12345678901"
+#     new_secondary_email = "secondary@email.com"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = ""  # No secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = ""
+#     user[wks_columns["Secondary Subscribed"] - 1] = ""
+#     user[wks_columns["Secondary Expired"] - 1] = ""
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = old_phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the phone number the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     primary_email2 = "other@email.com"
+#     secondary_email2 = "othersecondary@email.com"
+#     taken_phone_number = "+18057105809"  # This is the phone number first user will try to use
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = primary_email2
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = secondary_email2
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = taken_phone_number  # This is what user 1 wants
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to add secondary email and change to a phone number that's already in use by another user
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": new_secondary_email,  # Add secondary email
+#         "confirm_secondary": new_secondary_email,
+#         "phone_number": "8057105809",  # Trying to use phone number that belongs to second user
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Keep phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 03")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == "", "First user secondary email should remain empty"
+#         assert first_user["Secondary Verified"] == "", "First user secondary verified should remain empty"
+#         assert first_user["Secondary Subscribed"] == "", "First user secondary subscribed should remain empty"
+#         assert first_user["Secondary Expired"] == "", "First user secondary expired should remain empty"
+#         assert first_user["Secondary Bounced"] == "", "First user secondary bounced should remain empty"
+#         assert first_user["Phone Number"] == int(old_phone_number[1:]), "First user phone number should remain unchanged"
+#         assert first_user["Phone number subscribed"] == "TRUE", "First user phone subscribed should remain unchanged"
+#         assert first_user["Phone number verified"] == "TRUE", "First user phone verified should remain unchanged"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == primary_email2, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == secondary_email2, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(taken_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to phone number conflict"
+
+
+# def test_update_swap_2_email_1_phone_to_2_email_success(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and changes to 2 emails (no phone). Should clear all phone data and show success page.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     old_phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email  # Has secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = old_phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User keeps both emails and removes phone number
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": secondary_email,  # Keep same secondary email
+#         "confirm_secondary": secondary_email,
+#         "phone_number": "",  # Remove phone number
+#         "confirm_phone_number": "",
+#         "country_code": "",
+#         "phone_subscribe": "n",  # No phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="I2G Membership Updated")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The success page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == secondary_email, "secondary email changed in members sheet when it should stay the same"
+#         # Verify all phone data is cleared
+#         assert row["Phone Number"] == "", "phone number not cleared in members sheet"
+#         assert row["Phone number subscribed"] == "", "Phone number subscribe field not cleared in members sheet"
+#         assert row["Phone number verified"] == "", "Phone number verified field not cleared in members sheet"
+
+#         event_records = get_wks_records(event_wks)
+#         row = event_records[0]
+#         assert row["Membership Primary"] == primary_email, "Primary email wrong in event sheet"
+#         assert row["Membership Secondary"] == secondary_email, "Secondary email wrong in event sheet"
+#         assert row["Phone Number"] == "", "phone number not cleared in events sheet"
+
+
+# def test_update_swap_2_email_1_phone_to_1_email_1_phone_same_number_success(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and changes to 1 email and keeps the same phone number. Should clear secondary email data and show success page.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email  # Has secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User keeps primary email and phone, removes secondary email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": "",  # Remove secondary email
+#         "confirm_secondary": "",
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Keep phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "n",  # No secondary email subscription
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="I2G Membership Updated")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The success page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         # Verify all secondary email data is cleared
+#         assert row["Secondary Email"] == "", "secondary email not cleared in members sheet"
+#         assert row["Secondary Verified"] == "", "secondary verified not cleared in members sheet"
+#         assert row["Secondary Subscribed"] == "", "secondary subscribed not cleared in members sheet"
+#         assert row["Secondary Expired"] == "", "secondary expired not cleared in members sheet"
+#         assert row["Secondary Bounced"] == "", "secondary bounced not cleared in members sheet"
+#         # Verify phone data remains the same
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number changed in members sheet when it should stay the same"
+#         assert row["Phone number subscribed"] == "TRUE", "phone number subscribed changed in members sheet"
+#         assert row["Phone number verified"] == "TRUE", "phone number verified changed in members sheet"
+
+#         event_records = get_wks_records(event_wks)
+#         row = event_records[0]
+#         assert row["Membership Primary"] == primary_email, "Primary email wrong in event sheet"
+#         assert row["Membership Secondary"] == "", "Secondary email not cleared in event sheet"
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number wrong in events sheet"
+
+
+# def test_update_swap_2_email_1_phone_to_1_email_1_phone_new_number_otp(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and changes to 1 email and a new phone number. Should clear secondary email data and render OTP verification form.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     old_phone_number = "+12345678901"
+#     new_phone_number = "+18057105809"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email  # Has secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = old_phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User keeps primary email, removes secondary email, and changes to new phone number
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": "",  # Remove secondary email
+#         "confirm_secondary": "",
+#         "phone_number": "8057105809",  # Change to new phone number (without country code)
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Keep phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "n",  # No secondary email subscription
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h4", string="Verify Your Phone Number")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The OTP verification page was not rendered. The phone verification may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         # Verify all secondary email data is cleared
+#         assert row["Secondary Email"] == "", "secondary email not cleared in members sheet"
+#         assert row["Secondary Verified"] == "", "secondary verified not cleared in members sheet"
+#         assert row["Secondary Subscribed"] == "", "secondary subscribed not cleared in members sheet"
+#         assert row["Secondary Expired"] == "", "secondary expired not cleared in members sheet"
+#         assert row["Secondary Bounced"] == "", "secondary bounced not cleared in members sheet"
+#         # Verify phone data is updated but verification is FALSE
+#         assert row["Phone Number"] == int(new_phone_number[1:]), "phone number not updated in members sheet"
+#         assert row["Phone number subscribed"] == "TRUE", "phone number subscribed changed in members sheet"
+#         assert row["Phone number verified"] == "FALSE", "phone number verification should be FALSE for new number"
+
+
+# def test_update_swap_2_email_1_phone_to_1_email_1_phone_new_number_in_use(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and tries to remove secondary email and change to a phone number that's already in use by another user.
+#     Should render ERROR 03 and leave all previous data unchanged.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change phone) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     old_phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email  # Has secondary email initially
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = old_phone_number  # Has phone initially
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the phone number the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     primary_email2 = "other@email.com"
+#     secondary_email2 = "othersecondary@email.com"
+#     taken_phone_number = "+18057105809"  # This is the phone number first user will try to use
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = primary_email2
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = secondary_email2
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = taken_phone_number  # This is what user 1 wants
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to remove secondary email and change to a phone number that's already in use by another user
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": "",  # Remove secondary email
+#         "confirm_secondary": "",
+#         "phone_number": "8057105809",  # Trying to use phone number that belongs to second user
+#         "confirm_phone_number": "8057105809",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",  # Keep phone subscription
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "n",  # No secondary email subscription
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 03")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed - should remain unchanged"
+#         assert first_user["Secondary Verified"] == "TRUE", "First user secondary verified changed - should remain unchanged"
+#         assert first_user["Secondary Subscribed"] == "TRUE", "First user secondary subscribed changed - should remain unchanged"
+#         assert first_user["Secondary Expired"] == "FALSE", "First user secondary expired changed - should remain unchanged"
+#         assert first_user["Secondary Bounced"] == "", "First user secondary bounced changed - should remain unchanged"
+#         assert first_user["Phone Number"] == int(old_phone_number[1:]), "First user phone number should remain unchanged"
+#         assert first_user["Phone number subscribed"] == "TRUE", "First user phone subscribed should remain unchanged"
+#         assert first_user["Phone number verified"] == "TRUE", "First user phone verified should remain unchanged"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == primary_email2, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == secondary_email2, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(taken_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to phone number conflict"
+
+
+# def test_update_swap_2_email_1_phone_change_primary_email_success(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and changes their primary email to a new email that's not in use. Should succeed.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     old_primary_email = "test@email.com"
+#     new_primary_email = "newprimary@email.com"
+#     secondary_email = "secondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = old_primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(old_primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User changes primary email to a new email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": new_primary_email,  # Change to new primary email
+#         "confirm_primary": new_primary_email,
+#         "secondary_email": secondary_email,  # Keep same secondary email
+#         "confirm_secondary": secondary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="I2G Membership Updated")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The success page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == new_primary_email, "primary email not updated in members sheet"
+#         assert row["Secondary Email"] == secondary_email, "secondary email changed in members sheet when it should stay the same"
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number changed in members sheet when it should stay the same"
+
+#         event_records = get_wks_records(event_wks)
+#         row = event_records[0]
+#         assert row["Membership Primary"] == new_primary_email, "Primary email not updated in event sheet"
+#         assert row["Membership Secondary"] == secondary_email, "Secondary email changed in event sheet when it should stay the same"
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number changed in events sheet when it should stay the same"
+
+
+# def test_update_swap_2_email_1_phone_change_primary_email_to_existing_primary(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and tries to change their primary email to one that's already in use as another user's primary email.
+#     Should render ERROR 04.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change primary email) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     original_primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = original_primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the primary email the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     taken_primary_email = "taken@email.com"  # This is the primary email first user will try to use
+#     other_secondary_email = "othersecondary@email.com"
+#     other_phone_number = "+19876543210"
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = taken_primary_email  # This is what user 1 wants
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = other_secondary_email
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = other_phone_number
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(original_primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to change primary email to one already in use as another user's primary email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": taken_primary_email,  # Trying to use primary email that belongs to second user
+#         "confirm_primary": taken_primary_email,
+#         "secondary_email": secondary_email,  # Keep same secondary email
+#         "confirm_secondary": secondary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 04")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == original_primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed"
+#         assert first_user["Phone Number"] == int(phone_number[1:]), "First user phone number changed"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == taken_primary_email, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == other_secondary_email, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(other_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+# def test_update_swap_2_email_1_phone_change_primary_email_to_existing_secondary(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and tries to change their primary email to one that's already in use as another user's secondary email.
+#     Should render ERROR 04.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change primary email) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     original_primary_email = "test@email.com"
+#     secondary_email = "secondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = original_primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the secondary email the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     other_primary_email = "other@email.com"
+#     taken_secondary_email = "takensecondary@email.com"  # This is the secondary email first user will try to use as primary
+#     other_phone_number = "+19876543210"
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = other_primary_email
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = taken_secondary_email  # This is what user 1 wants as primary
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = other_phone_number
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(original_primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to change primary email to one already in use as another user's secondary email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": taken_secondary_email,  # Trying to use secondary email that belongs to second user
+#         "confirm_primary": taken_secondary_email,
+#         "secondary_email": secondary_email,  # Keep same secondary email
+#         "confirm_secondary": secondary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 04")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == original_primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed"
+#         assert first_user["Phone Number"] == int(phone_number[1:]), "First user phone number changed"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == other_primary_email, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == taken_secondary_email, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(other_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+# def test_update_swap_2_email_1_phone_change_secondary_email_success(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and changes their secondary email to a new email that's not in use. Should succeed.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     old_secondary_email = "secondary@email.com"
+#     new_secondary_email = "newsecondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = old_secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User changes secondary email to a new email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": new_secondary_email,  # Change to new secondary email
+#         "confirm_secondary": new_secondary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="I2G Membership Updated")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The success page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         row = records[0]
+#         assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+#         assert row["Secondary Email"] == new_secondary_email, "secondary email not updated in members sheet"
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number changed in members sheet when it should stay the same"
+
+#         event_records = get_wks_records(event_wks)
+#         row = event_records[0]
+#         assert row["Membership Primary"] == primary_email, "Primary email changed in event sheet when it should stay the same"
+#         assert row["Membership Secondary"] == new_secondary_email, "Secondary email not updated in event sheet"
+#         assert row["Phone Number"] == int(phone_number[1:]), "phone number changed in events sheet when it should stay the same"
+
+
+# def test_update_swap_2_email_1_phone_change_secondary_email_to_existing_primary(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and tries to change their secondary email to one that's already in use as another user's primary email.
+#     Should render ERROR 04.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change secondary email) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     original_secondary_email = "secondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = original_secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the primary email the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     taken_primary_email = "takenprimary@email.com"  # This is the primary email first user will try to use as secondary
+#     other_secondary_email = "othersecondary@email.com"
+#     other_phone_number = "+19876543210"
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = taken_primary_email  # This is what user 1 wants as secondary
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = other_secondary_email
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = other_phone_number
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to change secondary email to one already in use as another user's primary email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": taken_primary_email,  # Trying to use primary email that belongs to second user
+#         "confirm_secondary": taken_primary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 04")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == original_secondary_email, "First user secondary email changed"
+#         assert first_user["Phone Number"] == int(phone_number[1:]), "First user phone number changed"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == taken_primary_email, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == other_secondary_email, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(other_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+# def test_update_swap_2_email_1_phone_change_secondary_email_to_existing_secondary(client):
+#     """
+#     This tests for when a user originally registered with 2 emails and 1 phone
+#     and tries to change their secondary email to one that's already in use as another user's secondary email.
+#     Should render ERROR 04.
+#     """
+
+#     clear_members_sheet(wks)
+
+#     event_name, ticket, questions, base_answer = get_event_info(client)
+
+#     event_wks = clear_event_sheet(sh, event_name)
+
+#     # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change secondary email) --- #
+#     wks_columns = get_wks_columns(wks)
+#     user = ["" for i in range(len(wks_columns))]
+#     primary_email = "test@email.com"
+#     original_secondary_email = "secondary@email.com"
+#     phone_number = "+12345678901"
+#     first_name = "TEST FIRST NAME"
+#     last_name = "TEST LAST NAME"
+#     start = "TEST START"
+#     update = "TEST UPDATE"
+
+#     user[wks_columns["Order"] - 1] = "1"
+#     user[wks_columns["First Name"] - 1] = first_name
+#     user[wks_columns["Last Name"] - 1] = last_name
+#     user[wks_columns["When Started"] - 1] = start
+#     user[wks_columns["Last Updated"] - 1] = update
+#     user[wks_columns["Primary Email"] - 1] = primary_email
+#     user[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Primary Bounced"] - 1] = ""
+#     user[wks_columns["Secondary Email"] - 1] = original_secondary_email
+#     user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user[wks_columns["Secondary Bounced"] - 1] = ""
+#     user[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user[wks_columns["Phone Number"] - 1] = phone_number
+#     user[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user)
+
+#     # --- ADD SECOND USER TO MEMBERS SHEET (who owns the secondary email the first user wants) --- #
+#     user2 = ["" for i in range(len(wks_columns))]
+#     other_primary_email = "other@email.com"
+#     taken_secondary_email = "takensecondary@email.com"  # This is the secondary email first user will try to use
+#     other_phone_number = "+19876543210"
+#     first_name2 = "SECOND USER FIRST"
+#     last_name2 = "SECOND USER LAST"
+#     start2 = "SECOND START"
+#     update2 = "SECOND UPDATE"
+
+#     user2[wks_columns["Order"] - 1] = "2"
+#     user2[wks_columns["First Name"] - 1] = first_name2
+#     user2[wks_columns["Last Name"] - 1] = last_name2
+#     user2[wks_columns["When Started"] - 1] = start2
+#     user2[wks_columns["Last Updated"] - 1] = update2
+#     user2[wks_columns["Primary Email"] - 1] = other_primary_email
+#     user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Primary Bounced"] - 1] = ""
+#     user2[wks_columns["Secondary Email"] - 1] = taken_secondary_email  # This is what user 1 wants as secondary
+#     user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+#     user2[wks_columns["Secondary Bounced"] - 1] = ""
+#     user2[wks_columns["Info Completed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone Number"] - 1] = other_phone_number
+#     user2[wks_columns["Phone number subscribed"] - 1] = "TRUE"
+#     user2[wks_columns["Phone number verified"] - 1] = "TRUE"
+
+#     wks.append_row(user2)
+#     time.sleep(3)
+
+#     token = generate_token(primary_email)
+
+#     # --- GET CSRF TOKEN --- #
+#     with client as c:
+#         response = c.get(f"membership/update/{token}")
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         csrf_token_input = soup.find("input", {"name": "csrf_token"})
+#         assert csrf_token_input, "CSRF token not found in the form."
+#         csrf_token = csrf_token_input["value"] # type: ignore
+
+#     # --- BUILD FORM DATA --- #
+#     # User tries to change secondary email to one already in use as another user's secondary email
+#     form_data = {
+#         "first_name": first_name,
+#         "last_name": last_name,
+#         "primary_email": primary_email,  # Keep same primary email
+#         "confirm_primary": primary_email,
+#         "secondary_email": taken_secondary_email,  # Trying to use secondary email that belongs to second user
+#         "confirm_secondary": taken_secondary_email,
+#         "phone_number": "2345678901",  # Keep same phone number (without country code)
+#         "confirm_phone_number": "2345678901",
+#         "country_code": "+1",
+#         "phone_subscribe": "y",
+#         "primary_subscribe": "y",
+#         "secondary_subscribe": "y",
+#         "register_event": "y",
+#         "csrf_token": csrf_token
+#     }
+
+#     with client.application.app_context():
+#         required_fields = edit_form.query.filter_by(required=True).all()
+#         for field in required_fields:
+#             # Provide dummy data for dynamically generated required fields.
+#             if field.field_type == "Checkbox":
+#                 # For checkboxes, WTForms expects a list of values.
+#                 # We'll just select the first option by its index '0'.
+#                 form_data[field.label] = '0'
+#             elif field.field_type == "Radio":
+#                 # For radio buttons, we provide the value of the choice.
+#                 options = field.options.split('\n')
+#                 if options:
+#                     form_data[field.label] = options[0]
+#             else: # For StringField, TextAreaField, etc.
+#                 form_data[field.label] = f"Test data for {field.label}"
+
+#     form_data["event_tickets"] = ticket
+#     counter = 1
+#     for question in questions:
+#         form_data["event_" + question] = base_answer + str(counter)
+#         counter += 1
+
+#     with client as c:
+#         response = c.post(f"membership/update/{token}",
+#             data=form_data,
+#             follow_redirects=True)
+
+#         soup = BeautifulSoup(response.data, "html.parser")
+#         heading = soup.find("h1", string="ERROR 04")
+#         input = soup.find("input", {"name": "first_name"})
+#         assert not input, "The form has been rerendered"
+#         assert heading is not None, "The error page was not rendered. The update may have failed."
+
+#         time.sleep(2)
+#         records = get_wks_records(wks)
+#         assert len(records) == 2, "Number of users changed unexpectedly"
+        
+#         # Verify first user data is unchanged (no changes should have occurred)
+#         first_user = records[0]
+#         assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+#         assert first_user["Secondary Email"] == original_secondary_email, "First user secondary email changed"
+#         assert first_user["Phone Number"] == int(phone_number[1:]), "First user phone number changed"
+        
+#         # Verify second user data is unchanged
+#         second_user = records[1]
+#         assert second_user["Primary Email"] == other_primary_email, "Second user primary email changed"
+#         assert second_user["Secondary Email"] == taken_secondary_email, "Second user secondary email changed"
+#         assert second_user["Phone Number"] == int(other_phone_number[1:]), "Second user phone number changed"
+
+#         # Verify no event registration was created
+#         event_records = get_wks_records(event_wks)
+#         assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+def test_update_swap_2_email_change_primary_email_success(client):
+    """
+    This tests for when a user originally registered with 2 emails (no phone)
+    and changes their primary email to a new email that's not in use. Should succeed.
+    """
+
+    clear_members_sheet(wks)
+
+    event_name, ticket, questions, base_answer = get_event_info(client)
+
+    event_wks = clear_event_sheet(sh, event_name)
+
+    # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+    wks_columns = get_wks_columns(wks)
+    user = ["" for i in range(len(wks_columns))]
+    old_primary_email = "test@email.com"
+    new_primary_email = "newprimary@email.com"
+    secondary_email = "secondary@email.com"
+    first_name = "TEST FIRST NAME"
+    last_name = "TEST LAST NAME"
+    start = "TEST START"
+    update = "TEST UPDATE"
+
+    user[wks_columns["Order"] - 1] = "1"
+    user[wks_columns["First Name"] - 1] = first_name
+    user[wks_columns["Last Name"] - 1] = last_name
+    user[wks_columns["When Started"] - 1] = start
+    user[wks_columns["Last Updated"] - 1] = update
+    user[wks_columns["Primary Email"] - 1] = old_primary_email
+    user[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user[wks_columns["Primary Bounced"] - 1] = ""
+    user[wks_columns["Secondary Email"] - 1] = secondary_email
+    user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user[wks_columns["Secondary Bounced"] - 1] = ""
+    user[wks_columns["Info Completed"] - 1] = "TRUE"
+    user[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user[wks_columns["Phone number subscribed"] - 1] = ""
+    user[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user)
+    time.sleep(3)
+
+    token = generate_token(old_primary_email)
+
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/update/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
+
+    # --- BUILD FORM DATA --- #
+    # User changes primary email to a new email
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": new_primary_email,  # Change to new primary email
+        "confirm_primary": new_primary_email,
+        "secondary_email": secondary_email,  # Keep same secondary email
+        "confirm_secondary": secondary_email,
+        "primary_subscribe": "y",
+        "secondary_subscribe": "y",
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
+
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
+    counter = 1
+    for question in questions:
+        form_data["event_" + question] = base_answer + str(counter)
+        counter += 1
+
+    with client as c:
+        response = c.post(f"membership/update/{token}",
+            data=form_data,
+            follow_redirects=True)
+
+        soup = BeautifulSoup(response.data, "html.parser")
+        heading = soup.find("h1", string="I2G Membership Updated")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The success page was not rendered. The update may have failed."
+
+        time.sleep(2)
+        records = get_wks_records(wks)
+        row = records[0]
+        assert row["Primary Email"] == new_primary_email, "primary email not updated in members sheet"
+        assert row["Secondary Email"] == secondary_email, "secondary email changed in members sheet when it should stay the same"
+        assert row["Phone Number"] == "", "phone number field changed in members sheet when it should stay empty"
+
+        event_records = get_wks_records(event_wks)
+        row = event_records[0]
+        assert row["Membership Primary"] == new_primary_email, "Primary email not updated in event sheet"
+        assert row["Membership Secondary"] == secondary_email, "Secondary email changed in event sheet when it should stay the same"
+        assert row["Phone Number"] == "", "phone number field changed in events sheet when it should stay empty"
+
+
+def test_update_swap_2_email_change_primary_email_to_existing_primary(client):
+    """
+    This tests for when a user originally registered with 2 emails (no phone)
+    and tries to change their primary email to one that's already in use as another user's primary email.
+    Should render ERROR 04.
+    """
+
+    clear_members_sheet(wks)
+
+    event_name, ticket, questions, base_answer = get_event_info(client)
+
+    event_wks = clear_event_sheet(sh, event_name)
+
+    # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change primary email) --- #
+    wks_columns = get_wks_columns(wks)
+    user = ["" for i in range(len(wks_columns))]
+    original_primary_email = "test@email.com"
+    secondary_email = "secondary@email.com"
+    first_name = "TEST FIRST NAME"
+    last_name = "TEST LAST NAME"
+    start = "TEST START"
+    update = "TEST UPDATE"
+
+    user[wks_columns["Order"] - 1] = "1"
+    user[wks_columns["First Name"] - 1] = first_name
+    user[wks_columns["Last Name"] - 1] = last_name
+    user[wks_columns["When Started"] - 1] = start
+    user[wks_columns["Last Updated"] - 1] = update
+    user[wks_columns["Primary Email"] - 1] = original_primary_email
+    user[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user[wks_columns["Primary Bounced"] - 1] = ""
+    user[wks_columns["Secondary Email"] - 1] = secondary_email
+    user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user[wks_columns["Secondary Bounced"] - 1] = ""
+    user[wks_columns["Info Completed"] - 1] = "TRUE"
+    user[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user[wks_columns["Phone number subscribed"] - 1] = ""
+    user[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user)
+
+    # --- ADD SECOND USER TO MEMBERS SHEET (who owns the primary email the first user wants) --- #
+    user2 = ["" for i in range(len(wks_columns))]
+    taken_primary_email = "taken@email.com"  # This is the primary email first user will try to use
+    other_secondary_email = "othersecondary@email.com"
+    first_name2 = "SECOND USER FIRST"
+    last_name2 = "SECOND USER LAST"
+    start2 = "SECOND START"
+    update2 = "SECOND UPDATE"
+
+    user2[wks_columns["Order"] - 1] = "2"
+    user2[wks_columns["First Name"] - 1] = first_name2
+    user2[wks_columns["Last Name"] - 1] = last_name2
+    user2[wks_columns["When Started"] - 1] = start2
+    user2[wks_columns["Last Updated"] - 1] = update2
+    user2[wks_columns["Primary Email"] - 1] = taken_primary_email  # This is what user 1 wants
+    user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Primary Bounced"] - 1] = ""
+    user2[wks_columns["Secondary Email"] - 1] = other_secondary_email
+    user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Secondary Bounced"] - 1] = ""
+    user2[wks_columns["Info Completed"] - 1] = "TRUE"
+    user2[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user2[wks_columns["Phone number subscribed"] - 1] = ""
+    user2[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user2)
+    time.sleep(3)
+
+    token = generate_token(original_primary_email)
+
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/update/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
+
+    # --- BUILD FORM DATA --- #
+    # User tries to change primary email to one already in use as another user's primary email
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": taken_primary_email,  # Trying to use primary email that belongs to second user
+        "confirm_primary": taken_primary_email,
+        "secondary_email": secondary_email,  # Keep same secondary email
+        "confirm_secondary": secondary_email,
+        "primary_subscribe": "y",
+        "secondary_subscribe": "y",
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
+
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
+    counter = 1
+    for question in questions:
+        form_data["event_" + question] = base_answer + str(counter)
+        counter += 1
+
+    with client as c:
+        response = c.post(f"membership/update/{token}",
+            data=form_data,
+            follow_redirects=True)
+
+        soup = BeautifulSoup(response.data, "html.parser")
+        heading = soup.find("h1", string="ERROR 04")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The error page was not rendered. The update may have failed."
+
+        time.sleep(2)
+        records = get_wks_records(wks)
+        assert len(records) == 2, "Number of users changed unexpectedly"
+        
+        # Verify first user data is unchanged (no changes should have occurred)
+        first_user = records[0]
+        assert first_user["Primary Email"] == original_primary_email, "First user primary email changed"
+        assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed"
+        assert first_user["Phone Number"] == "", "First user phone number changed"
+        
+        # Verify second user data is unchanged
+        second_user = records[1]
+        assert second_user["Primary Email"] == taken_primary_email, "Second user primary email changed"
+        assert second_user["Secondary Email"] == other_secondary_email, "Second user secondary email changed"
+        assert second_user["Phone Number"] == "", "Second user phone number changed"
+
+        # Verify no event registration was created
+        event_records = get_wks_records(event_wks)
+        assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+def test_update_swap_2_email_change_primary_email_to_existing_secondary(client):
+    """
+    This tests for when a user originally registered with 2 emails (no phone)
+    and tries to change their primary email to one that's already in use as another user's secondary email.
+    Should render ERROR 04.
+    """
+
+    clear_members_sheet(wks)
+
+    event_name, ticket, questions, base_answer = get_event_info(client)
+
+    event_wks = clear_event_sheet(sh, event_name)
+
+    # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change primary email) --- #
+    wks_columns = get_wks_columns(wks)
+    user = ["" for i in range(len(wks_columns))]
+    original_primary_email = "test@email.com"
+    secondary_email = "secondary@email.com"
+    first_name = "TEST FIRST NAME"
+    last_name = "TEST LAST NAME"
+    start = "TEST START"
+    update = "TEST UPDATE"
+
+    user[wks_columns["Order"] - 1] = "1"
+    user[wks_columns["First Name"] - 1] = first_name
+    user[wks_columns["Last Name"] - 1] = last_name
+    user[wks_columns["When Started"] - 1] = start
+    user[wks_columns["Last Updated"] - 1] = update
+    user[wks_columns["Primary Email"] - 1] = original_primary_email
+    user[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user[wks_columns["Primary Bounced"] - 1] = ""
+    user[wks_columns["Secondary Email"] - 1] = secondary_email
+    user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user[wks_columns["Secondary Bounced"] - 1] = ""
+    user[wks_columns["Info Completed"] - 1] = "TRUE"
+    user[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user[wks_columns["Phone number subscribed"] - 1] = ""
+    user[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user)
+
+    # --- ADD SECOND USER TO MEMBERS SHEET (who owns the secondary email the first user wants) --- #
+    user2 = ["" for i in range(len(wks_columns))]
+    other_primary_email = "other@email.com"
+    taken_secondary_email = "takensecondary@email.com"  # This is the secondary email first user will try to use as primary
+    first_name2 = "SECOND USER FIRST"
+    last_name2 = "SECOND USER LAST"
+    start2 = "SECOND START"
+    update2 = "SECOND UPDATE"
+
+    user2[wks_columns["Order"] - 1] = "2"
+    user2[wks_columns["First Name"] - 1] = first_name2
+    user2[wks_columns["Last Name"] - 1] = last_name2
+    user2[wks_columns["When Started"] - 1] = start2
+    user2[wks_columns["Last Updated"] - 1] = update2
+    user2[wks_columns["Primary Email"] - 1] = other_primary_email
+    user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Primary Bounced"] - 1] = ""
+    user2[wks_columns["Secondary Email"] - 1] = taken_secondary_email  # This is what user 1 wants as primary
+    user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Secondary Bounced"] - 1] = ""
+    user2[wks_columns["Info Completed"] - 1] = "TRUE"
+    user2[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user2[wks_columns["Phone number subscribed"] - 1] = ""
+    user2[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user2)
+    time.sleep(3)
+
+    token = generate_token(original_primary_email)
+
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/update/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
+
+    # --- BUILD FORM DATA --- #
+    # User tries to change primary email to one already in use as another user's secondary email
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": taken_secondary_email,  # Trying to use secondary email that belongs to second user
+        "confirm_primary": taken_secondary_email,
+        "secondary_email": secondary_email,  # Keep same secondary email
+        "confirm_secondary": secondary_email,
+        "primary_subscribe": "y",
+        "secondary_subscribe": "y",
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
+
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
+    counter = 1
+    for question in questions:
+        form_data["event_" + question] = base_answer + str(counter)
+        counter += 1
+
+    with client as c:
+        response = c.post(f"membership/update/{token}",
+            data=form_data,
+            follow_redirects=True)
+
+        soup = BeautifulSoup(response.data, "html.parser")
+        heading = soup.find("h1", string="ERROR 04")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The error page was not rendered. The update may have failed."
+
+        time.sleep(2)
+        records = get_wks_records(wks)
+        assert len(records) == 2, "Number of users changed unexpectedly"
+        
+        # Verify first user data is unchanged (no changes should have occurred)
+        first_user = records[0]
+        assert first_user["Primary Email"] == original_primary_email, "First user primary email changed"
+        assert first_user["Secondary Email"] == secondary_email, "First user secondary email changed"
+        assert first_user["Phone Number"] == "", "First user phone number changed"
+        
+        # Verify second user data is unchanged
+        second_user = records[1]
+        assert second_user["Primary Email"] == other_primary_email, "Second user primary email changed"
+        assert second_user["Secondary Email"] == taken_secondary_email, "Second user secondary email changed"
+        assert second_user["Phone Number"] == "", "Second user phone number changed"
+
+        # Verify no event registration was created
+        event_records = get_wks_records(event_wks)
+        assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+def test_update_swap_2_email_change_secondary_email_success(client):
+    """
+    This tests for when a user originally registered with 2 emails (no phone)
+    and changes their secondary email to a new email that's not in use. Should succeed.
+    """
+
+    clear_members_sheet(wks)
+
+    event_name, ticket, questions, base_answer = get_event_info(client)
+
+    event_wks = clear_event_sheet(sh, event_name)
+
+    # --- ADD ROW OF DATA TO MEMBERS SHEET --- #
+    wks_columns = get_wks_columns(wks)
+    user = ["" for i in range(len(wks_columns))]
+    primary_email = "test@email.com"
+    old_secondary_email = "secondary@email.com"
+    new_secondary_email = "newsecondary@email.com"
+    first_name = "TEST FIRST NAME"
+    last_name = "TEST LAST NAME"
+    start = "TEST START"
+    update = "TEST UPDATE"
+
+    user[wks_columns["Order"] - 1] = "1"
+    user[wks_columns["First Name"] - 1] = first_name
+    user[wks_columns["Last Name"] - 1] = last_name
+    user[wks_columns["When Started"] - 1] = start
+    user[wks_columns["Last Updated"] - 1] = update
+    user[wks_columns["Primary Email"] - 1] = primary_email
+    user[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user[wks_columns["Primary Bounced"] - 1] = ""
+    user[wks_columns["Secondary Email"] - 1] = old_secondary_email
+    user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user[wks_columns["Secondary Bounced"] - 1] = ""
+    user[wks_columns["Info Completed"] - 1] = "TRUE"
+    user[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user[wks_columns["Phone number subscribed"] - 1] = ""
+    user[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user)
+    time.sleep(3)
+
+    token = generate_token(primary_email)
+
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/update/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
+
+    # --- BUILD FORM DATA --- #
+    # User changes secondary email to a new email
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": primary_email,  # Keep same primary email
+        "confirm_primary": primary_email,
+        "secondary_email": new_secondary_email,  # Change to new secondary email
+        "confirm_secondary": new_secondary_email,
+        "primary_subscribe": "y",
+        "secondary_subscribe": "y",
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
+
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
+    counter = 1
+    for question in questions:
+        form_data["event_" + question] = base_answer + str(counter)
+        counter += 1
+
+    with client as c:
+        response = c.post(f"membership/update/{token}",
+            data=form_data,
+            follow_redirects=True)
+
+        soup = BeautifulSoup(response.data, "html.parser")
+        heading = soup.find("h1", string="I2G Membership Updated")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The success page was not rendered. The update may have failed."
+
+        time.sleep(2)
+        records = get_wks_records(wks)
+        row = records[0]
+        assert row["Primary Email"] == primary_email, "primary email changed in members sheet when it should stay the same"
+        assert row["Secondary Email"] == new_secondary_email, "secondary email not updated in members sheet"
+        assert row["Phone Number"] == "", "phone number field changed in members sheet when it should stay empty"
+
+        event_records = get_wks_records(event_wks)
+        row = event_records[0]
+        assert row["Membership Primary"] == primary_email, "Primary email changed in event sheet when it should stay the same"
+        assert row["Membership Secondary"] == new_secondary_email, "Secondary email not updated in event sheet"
+        assert row["Phone Number"] == "", "phone number field changed in events sheet when it should stay empty"
+
+
+def test_update_swap_2_email_change_secondary_email_to_existing_primary(client):
+    """
+    This tests for when a user originally registered with 2 emails (no phone)
+    and tries to change their secondary email to one that's already in use as another user's primary email.
+    Should render ERROR 04.
+    """
+
+    clear_members_sheet(wks)
+
+    event_name, ticket, questions, base_answer = get_event_info(client)
+
+    event_wks = clear_event_sheet(sh, event_name)
+
+    # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change secondary email) --- #
+    wks_columns = get_wks_columns(wks)
+    user = ["" for i in range(len(wks_columns))]
+    primary_email = "test@email.com"
+    original_secondary_email = "secondary@email.com"
+    first_name = "TEST FIRST NAME"
+    last_name = "TEST LAST NAME"
+    start = "TEST START"
+    update = "TEST UPDATE"
+
+    user[wks_columns["Order"] - 1] = "1"
+    user[wks_columns["First Name"] - 1] = first_name
+    user[wks_columns["Last Name"] - 1] = last_name
+    user[wks_columns["When Started"] - 1] = start
+    user[wks_columns["Last Updated"] - 1] = update
+    user[wks_columns["Primary Email"] - 1] = primary_email
+    user[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user[wks_columns["Primary Bounced"] - 1] = ""
+    user[wks_columns["Secondary Email"] - 1] = original_secondary_email
+    user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user[wks_columns["Secondary Bounced"] - 1] = ""
+    user[wks_columns["Info Completed"] - 1] = "TRUE"
+    user[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user[wks_columns["Phone number subscribed"] - 1] = ""
+    user[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user)
+
+    # --- ADD SECOND USER TO MEMBERS SHEET (who owns the primary email the first user wants) --- #
+    user2 = ["" for i in range(len(wks_columns))]
+    taken_primary_email = "takenprimary@email.com"  # This is the primary email first user will try to use as secondary
+    other_secondary_email = "othersecondary@email.com"
+    first_name2 = "SECOND USER FIRST"
+    last_name2 = "SECOND USER LAST"
+    start2 = "SECOND START"
+    update2 = "SECOND UPDATE"
+
+    user2[wks_columns["Order"] - 1] = "2"
+    user2[wks_columns["First Name"] - 1] = first_name2
+    user2[wks_columns["Last Name"] - 1] = last_name2
+    user2[wks_columns["When Started"] - 1] = start2
+    user2[wks_columns["Last Updated"] - 1] = update2
+    user2[wks_columns["Primary Email"] - 1] = taken_primary_email  # This is what user 1 wants as secondary
+    user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Primary Bounced"] - 1] = ""
+    user2[wks_columns["Secondary Email"] - 1] = other_secondary_email
+    user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Secondary Bounced"] - 1] = ""
+    user2[wks_columns["Info Completed"] - 1] = "TRUE"
+    user2[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user2[wks_columns["Phone number subscribed"] - 1] = ""
+    user2[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user2)
+    time.sleep(3)
+
+    token = generate_token(primary_email)
+
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/update/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
+
+    # --- BUILD FORM DATA --- #
+    # User tries to change secondary email to one already in use as another user's primary email
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": primary_email,  # Keep same primary email
+        "confirm_primary": primary_email,
+        "secondary_email": taken_primary_email,  # Trying to use primary email that belongs to second user
+        "confirm_secondary": taken_primary_email,
+        "primary_subscribe": "y",
+        "secondary_subscribe": "y",
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
+
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
+    counter = 1
+    for question in questions:
+        form_data["event_" + question] = base_answer + str(counter)
+        counter += 1
+
+    with client as c:
+        response = c.post(f"membership/update/{token}",
+            data=form_data,
+            follow_redirects=True)
+
+        soup = BeautifulSoup(response.data, "html.parser")
+        heading = soup.find("h1", string="ERROR 04")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The error page was not rendered. The update may have failed."
+
+        time.sleep(2)
+        records = get_wks_records(wks)
+        assert len(records) == 2, "Number of users changed unexpectedly"
+        
+        # Verify first user data is unchanged (no changes should have occurred)
+        first_user = records[0]
+        assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+        assert first_user["Secondary Email"] == original_secondary_email, "First user secondary email changed"
+        assert first_user["Phone Number"] == "", "First user phone number changed"
+        
+        # Verify second user data is unchanged
+        second_user = records[1]
+        assert second_user["Primary Email"] == taken_primary_email, "Second user primary email changed"
+        assert second_user["Secondary Email"] == other_secondary_email, "Second user secondary email changed"
+        assert second_user["Phone Number"] == "", "Second user phone number changed"
+
+        # Verify no event registration was created
+        event_records = get_wks_records(event_wks)
+        assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+
+
+def test_update_swap_2_email_change_secondary_email_to_existing_secondary(client):
+    """
+    This tests for when a user originally registered with 2 emails (no phone)
+    and tries to change their secondary email to one that's already in use as another user's secondary email.
+    Should render ERROR 04.
+    """
+
+    clear_members_sheet(wks)
+
+    event_name, ticket, questions, base_answer = get_event_info(client)
+
+    event_wks = clear_event_sheet(sh, event_name)
+
+    # --- ADD FIRST USER TO MEMBERS SHEET (the one who will try to change secondary email) --- #
+    wks_columns = get_wks_columns(wks)
+    user = ["" for i in range(len(wks_columns))]
+    primary_email = "test@email.com"
+    original_secondary_email = "secondary@email.com"
+    first_name = "TEST FIRST NAME"
+    last_name = "TEST LAST NAME"
+    start = "TEST START"
+    update = "TEST UPDATE"
+
+    user[wks_columns["Order"] - 1] = "1"
+    user[wks_columns["First Name"] - 1] = first_name
+    user[wks_columns["Last Name"] - 1] = last_name
+    user[wks_columns["When Started"] - 1] = start
+    user[wks_columns["Last Updated"] - 1] = update
+    user[wks_columns["Primary Email"] - 1] = primary_email
+    user[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user[wks_columns["Primary Bounced"] - 1] = ""
+    user[wks_columns["Secondary Email"] - 1] = original_secondary_email
+    user[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user[wks_columns["Secondary Bounced"] - 1] = ""
+    user[wks_columns["Info Completed"] - 1] = "TRUE"
+    user[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user[wks_columns["Phone number subscribed"] - 1] = ""
+    user[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user)
+
+    # --- ADD SECOND USER TO MEMBERS SHEET (who owns the secondary email the first user wants) --- #
+    user2 = ["" for i in range(len(wks_columns))]
+    other_primary_email = "other@email.com"
+    taken_secondary_email = "takensecondary@email.com"  # This is the secondary email first user will try to use
+    first_name2 = "SECOND USER FIRST"
+    last_name2 = "SECOND USER LAST"
+    start2 = "SECOND START"
+    update2 = "SECOND UPDATE"
+
+    user2[wks_columns["Order"] - 1] = "2"
+    user2[wks_columns["First Name"] - 1] = first_name2
+    user2[wks_columns["Last Name"] - 1] = last_name2
+    user2[wks_columns["When Started"] - 1] = start2
+    user2[wks_columns["Last Updated"] - 1] = update2
+    user2[wks_columns["Primary Email"] - 1] = other_primary_email
+    user2[wks_columns["Primary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Primary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Primary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Primary Bounced"] - 1] = ""
+    user2[wks_columns["Secondary Email"] - 1] = taken_secondary_email  # This is what user 1 wants as secondary
+    user2[wks_columns["Secondary Verified"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Subscribed"] - 1] = "TRUE"
+    user2[wks_columns["Secondary Expired"] - 1] = "FALSE"
+    user2[wks_columns["Secondary Bounced"] - 1] = ""
+    user2[wks_columns["Info Completed"] - 1] = "TRUE"
+    user2[wks_columns["Phone Number"] - 1] = ""  # No phone
+    user2[wks_columns["Phone number subscribed"] - 1] = ""
+    user2[wks_columns["Phone number verified"] - 1] = ""
+
+    wks.append_row(user2)
+    time.sleep(3)
+
+    token = generate_token(primary_email)
+
+    # --- GET CSRF TOKEN --- #
+    with client as c:
+        response = c.get(f"membership/update/{token}")
+        soup = BeautifulSoup(response.data, "html.parser")
+        csrf_token_input = soup.find("input", {"name": "csrf_token"})
+        assert csrf_token_input, "CSRF token not found in the form."
+        csrf_token = csrf_token_input["value"] # type: ignore
+
+    # --- BUILD FORM DATA --- #
+    # User tries to change secondary email to one already in use as another user's secondary email
+    form_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "primary_email": primary_email,  # Keep same primary email
+        "confirm_primary": primary_email,
+        "secondary_email": taken_secondary_email,  # Trying to use secondary email that belongs to second user
+        "confirm_secondary": taken_secondary_email,
+        "primary_subscribe": "y",
+        "secondary_subscribe": "y",
+        "register_event": "y",
+        "csrf_token": csrf_token
+    }
+
+    with client.application.app_context():
+        required_fields = edit_form.query.filter_by(required=True).all()
+        for field in required_fields:
+            # Provide dummy data for dynamically generated required fields.
+            if field.field_type == "Checkbox":
+                # For checkboxes, WTForms expects a list of values.
+                # We'll just select the first option by its index '0'.
+                form_data[field.label] = '0'
+            elif field.field_type == "Radio":
+                # For radio buttons, we provide the value of the choice.
+                options = field.options.split('\n')
+                if options:
+                    form_data[field.label] = options[0]
+            else: # For StringField, TextAreaField, etc.
+                form_data[field.label] = f"Test data for {field.label}"
+
+    form_data["event_tickets"] = ticket
+    counter = 1
+    for question in questions:
+        form_data["event_" + question] = base_answer + str(counter)
+        counter += 1
+
+    with client as c:
+        response = c.post(f"membership/update/{token}",
+            data=form_data,
+            follow_redirects=True)
+
+        soup = BeautifulSoup(response.data, "html.parser")
+        heading = soup.find("h1", string="ERROR 04")
+        input = soup.find("input", {"name": "first_name"})
+        assert not input, "The form has been rerendered"
+        assert heading is not None, "The error page was not rendered. The update may have failed."
+
+        time.sleep(2)
+        records = get_wks_records(wks)
+        assert len(records) == 2, "Number of users changed unexpectedly"
+        
+        # Verify first user data is unchanged (no changes should have occurred)
+        first_user = records[0]
+        assert first_user["Primary Email"] == primary_email, "First user primary email changed"
+        assert first_user["Secondary Email"] == original_secondary_email, "First user secondary email changed"
+        assert first_user["Phone Number"] == "", "First user phone number changed"
+        
+        # Verify second user data is unchanged
+        second_user = records[1]
+        assert second_user["Primary Email"] == other_primary_email, "Second user primary email changed"
+        assert second_user["Secondary Email"] == taken_secondary_email, "Second user secondary email changed"
+        assert second_user["Phone Number"] == "", "Second user phone number changed"
+
+        # Verify no event registration was created
+        event_records = get_wks_records(event_wks)
+        assert len(event_records) == 0, "Event registration should not have been created due to email conflict"
+

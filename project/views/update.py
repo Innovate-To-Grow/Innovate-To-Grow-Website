@@ -2,7 +2,7 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, url_for, request, copy_current_request_context
+from flask import Blueprint, render_template, url_for, request, copy_current_request_context, session, redirect
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
@@ -11,14 +11,22 @@ from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
-from project.utils.event_utils import make_sure, analyze_email_changes, calculate_verification_cell_updates, calculate_basic_user_updates
+from project.utils.event_utils import (
+    make_sure, analyze_email_changes, calculate_verification_cell_updates, calculate_basic_user_updates,
+    analyze_phone_number_changes, calculate_phone_verification_decision,
+    should_send_event_sms_confirmation, calculate_phone_updates
+)
 from project.utils.side_effect_helpers import (
     execute_cell_updates, send_verification_email, refresh_user_data,
     create_event_registration, update_subscription_status, update_completion_status,
-    send_confirmation_email
+    send_confirmation_email, setup_event_phone_verification_session,
+    start_event_phone_verification_process, send_event_sms_confirmation,
+    extract_phone_data_from_event_form, create_event_registration_with_phone
 )
 from project.forms.registration_forms import NotEqualTo
 from project.forms.update_forms import EmailForm
+from project.forms.complete_registration_forms import CompleteRegistrationForm
+from project.utils.twilio import split_number
 
 update_blueprint = Blueprint("update",
                              __name__,
@@ -215,23 +223,9 @@ def update_info(token):
     else:
         return render_template("error2.html")
 
-    class UpdateForm(FlaskForm):
-        first_name = StringField("First Name", [InputRequired(" ")])
-        last_name = StringField("Last Name", [InputRequired(" ")])
-        primary_email = StringField("Primary Email Address", [InputRequired(" "), Email()])
-        confirm_primary = StringField(
-            "Confirm Primary Email",
-            [InputRequired(" "), EqualTo("primary_email", message="Must match primary email")])
-        primary_subscribe = BooleanField("Enable Email Notifications")
-        secondary_email = StringField(
-            "Secondary Email Address",
-            [InputRequired(" "),
-             Email(), NotEqualTo("primary_email", message="Can not be the same email")])
-        confirm_secondary = StringField(
-            "Confirm Secondary Email",
-            [InputRequired(" "), EqualTo("secondary_email", message="Must match secondary email")])
-        secondary_subscribe = BooleanField("Enable Email Notifications")
-        submit = SubmitField("Submit")
+    # Use the unified form that supports phone numbers
+    class UpdateForm(CompleteRegistrationForm):
+        pass
 
     for row in edit_form.query.all():
         setattr(UpdateForm, row.label, get_field(row))
@@ -244,6 +238,19 @@ def update_info(token):
     if user["Secondary Subscribed"] == "TRUE":
         secondary_temp = True
 
+    # Phone data pre-population
+    phone_temp = False
+    if user.get("Phone number subscribed") == "TRUE":
+        phone_temp = True
+    
+    country_code, number = "", ""
+    if user.get("Phone Number"):
+        try:
+            country_code, number = split_number(str(user["Phone Number"]))
+        except:
+            # Handle malformed phone numbers gracefully
+            country_code, number = "", ""
+
     person = {
         "first_name": user["First Name"],
         "last_name": user["Last Name"],
@@ -253,6 +260,10 @@ def update_info(token):
         "confirm_secondary": user["Secondary Email"],
         "primary_subscribe": primary_temp,
         "secondary_subscribe": secondary_temp,
+        "country_code": country_code,
+        "phone_number": number,
+        "confirm_phone_number": number,
+        "phone_subscribe": phone_temp,
     }
 
     for row in edit_form.query.all():
@@ -346,8 +357,15 @@ def update_info(token):
         can_update = True
 
         prim_email = form.primary_email.data.lower()
-        sec_email = form.secondary_email.data.lower()
+        # Check if secondary_email was actually submitted in the form data
+        # If not submitted, treat as empty (user wants to clear it)
+        if 'secondary_email' in request.form:
+            sec_email = form.secondary_email.data.lower() if form.secondary_email.data else ""
+        else:
+            sec_email = ""
 
+        # Extract phone data for use throughout the function
+        phone_data = extract_phone_data_from_event_form(form)
 
         # Use the refactored validation function
         can_update, cells_to_update, emails_to_send = make_sure(
@@ -491,20 +509,43 @@ def update_info(token):
             def execute_user_update():
                 """Refactored function using separated logic and side effects"""
 
-                # PHASE 1: ANALYZE EMAIL CHANGES (Pure Logic)
+                # PHASE 1: ANALYZE EMAIL AND PHONE CHANGES (Pure Logic)
                 decision = analyze_email_changes(user, prim_email, sec_email)
+                
+                # Get fresh user data for phone analysis (after email updates)
+                fresh_user_for_phone = refresh_user_data(prim_email, sec_email)
+                current_user_for_phone = fresh_user_for_phone if fresh_user_for_phone else user
+                
+                # Analyze phone data (phone_data already extracted outside function)
+                phone_decision = analyze_phone_number_changes(
+                    current_user_for_phone.get("Phone Number", ""),
+                    phone_data.get("country_code", ""),
+                    phone_data.get("phone_number", ""),
+                    wks_records,
+                    row_find
+                )
+                
+                # Check for phone conflicts
+                if phone_decision.error:
+                    return "phone_error"
+                
+                # Determine if phone verification is needed
+                needs_phone_verification = calculate_phone_verification_decision(current_user_for_phone, phone_decision)
 
                 # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                 # Get custom fields for form processing
                 custom_fields = [{"label": row.label, "field_type": row.field_type}
                                for row in edit_form.query.all()]
 
-                # Prepare form data for processing
+                # Prepare form data for processing (including phone data)
                 form_data = {
                     "first_name": form.first_name.data,
                     "last_name": form.last_name.data,
                     "primary_email": prim_email,
                     "secondary_email": sec_email,
+                    "country_code": phone_data.get("country_code", ""),
+                    "phone_number": phone_data.get("phone_number", ""),
+                    "phone_subscribe": phone_data.get("phone_subscribe", False),
                 }
 
                 # Add custom field data
@@ -521,11 +562,12 @@ def update_info(token):
 
                 # Calculate all required cell updates
                 basic_updates = calculate_basic_user_updates(form_data, row_find, custom_fields)
-                verification_updates = calculate_verification_cell_updates(user, decision, row_find)
+                verification_updates = calculate_verification_cell_updates(user, decision, row_find, prim_email, sec_email)
+                phone_updates = calculate_phone_updates(current_user_for_phone, form_data, phone_decision, row_find)
 
                 # PHASE 3: EXECUTE SIDE EFFECTS
                 # 3.1: Execute database updates
-                all_updates = basic_updates + verification_updates
+                all_updates = basic_updates + verification_updates + phone_updates
                 execute_cell_updates(all_updates, "membership")
 
                 # 3.2: Send verification emails for new emails
@@ -541,6 +583,7 @@ def update_info(token):
                             {"row": event_user["Row"], "column": "Last Name", "value": form.last_name.data},
                             {"row": event_user["Row"], "column": "Membership Primary", "value": prim_email},
                             {"row": event_user["Row"], "column": "Membership Secondary", "value": sec_email},
+                            {"row": event_user["Row"], "column": "Phone Number", "value": phone_data.get('full_phone_number', '')},
                             {"row": event_user["Row"], "column": "Last Updated",
                              "value": str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))},
                             {"row": event_user["Row"], "column": "Ticket Type", "value": form.event_tickets.data}
@@ -566,13 +609,13 @@ def update_info(token):
                             event_data[question] = form["event_" + question].data
 
                         user_data = {
-                            "first_name": user["First Name"],
-                            "last_name": user["Last Name"],
-                            "primary_email": user["Primary Email"],
-                            "secondary_email": user["Secondary Email"]
+                            "first_name": form.first_name.data,
+                            "last_name": form.last_name.data,
+                            "primary_email": prim_email,
+                            "secondary_email": sec_email
                         }
 
-                        create_event_registration(event_obj.name, user_data, event_data)
+                        create_event_registration_with_phone(event_obj.name, user_data, event_data, phone_data)
 
                 # PHASE 4: HANDLE SUBSCRIPTION STATUS (requires fresh data)
                 updated_user = refresh_user_data(prim_email, sec_email)
@@ -586,13 +629,33 @@ def update_info(token):
                         primary_subscription,
                         secondary_subscription,
                         updated_user["Primary Verified"] == "TRUE",
-                        updated_user["Secondary Verified"] == "TRUE"
+                        updated_user["Secondary Verified"] == "TRUE",
+                        updated_user["Secondary Email"]
                     )
 
                 # PHASE 5: MARK COMPLETION
                 update_completion_status(row_find)
 
-                # PHASE 6: SEND CONFIRMATION EMAILS (Update-specific)
+                # PHASE 6: SEND SMS CONFIRMATION (only if phone verification is NOT needed)
+                # Use fresh user data to get current verification status
+                fresh_user = refresh_user_data(prim_email, sec_email)
+                current_phone_verified = fresh_user.get("Phone number verified", "FALSE") if fresh_user else "FALSE"
+                
+                # Only send SMS for new event registrations, not updates
+                is_new_event_registration = event_user is None
+                if not needs_phone_verification and should_send_event_sms_confirmation(
+                    current_phone_verified,
+                    phone_data.get("phone_subscribe", False),
+                    bool(phone_data.get("full_phone_number", "")),
+                    event_obj.name if event_obj else None,
+                    is_new_event_registration
+                ):
+                    send_event_sms_confirmation(
+                        phone_data.get("full_phone_number", ""),
+                        event_obj.name
+                    )
+
+                # PHASE 7: SEND CONFIRMATION EMAILS (Update-specific)
                 final_user = refresh_user_data(prim_email, sec_email)
                 if final_user:
                     subject = "I2G Membership Updated"
@@ -629,8 +692,45 @@ def update_info(token):
                             template_data
                         )
 
-            thread = Thread(target=execute_user_update)
-            thread.start()
+                # PHASE 8: HANDLE PHONE VERIFICATION (after all other processing is complete)
+                if needs_phone_verification:
+                    # Set up session data for phone verification
+                    user_data = {
+                        "first_name": form.first_name.data,
+                        "last_name": form.last_name.data,
+                        "primary_email": prim_email,
+                        "secondary_email": sec_email,
+                        "primary_verified": primary_verified,
+                        "primary_subscribed": primary_subscribed,
+                        "secondary_verified": secondary_verified,
+                        "secondary_subscribed": secondary_subscribed,
+                        "info_fields": info_fields,
+                    }
+                    
+                    event_data = {
+                        "event_url": event_url,
+                        "update_url": update_url,
+                        "event_fields": event_fields,
+                        "event_name": event_obj.name if event_obj else None,
+                        "update_type": "update"  # Distinguish from event registration
+                    }
+                    
+                    # Start phone verification process
+                    setup_event_phone_verification_session(session, user_data, event_data, phone_data)
+                    start_event_phone_verification_process(phone_data.get('full_phone_number', ''))
+                    
+                    return "phone_verification_needed"
+
+            # Execute user update and handle phone verification/errors
+            result = execute_user_update()
+            
+            # Handle phone verification redirect
+            if result == "phone_verification_needed":
+                return redirect(url_for("confirm.otp"))
+            
+            # Handle phone error 
+            if result == "phone_error":
+                return render_template("error3.html")  # Phone conflict error
 
             return render_template("thanks_update.html",
                                     event_url=event_url,
@@ -643,6 +743,9 @@ def update_info(token):
                                     secondary_email=form.secondary_email.data,
                                     secondary_verified=secondary_verified,
                                     secondary_subscribed=secondary_subscribed,
+                                    phone_number=phone_data.get('full_phone_number', ''),
+                                    phone_number_verified=user.get("Phone number verified", "FALSE"),
+                                    phone_subscribed=phone_data.get('phone_subscribe', False),
                                     info_fields=info_fields,
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)

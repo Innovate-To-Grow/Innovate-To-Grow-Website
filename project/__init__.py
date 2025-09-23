@@ -141,7 +141,6 @@ if "Dev_Logs" not in worksheets:
 
 # --- CHANGING THE WKS TO MAKE IT WITH THE TESTING SHEET --- #
 # wks = sh.worksheet("Members")
-# wks = sh.worksheet("MEMBERS_FOR_TESTING")
 wks = sh.worksheet("MembersTesting")
 logs = sh.worksheet("Logs")
 dev_logs = sh.worksheet("Dev_Logs")

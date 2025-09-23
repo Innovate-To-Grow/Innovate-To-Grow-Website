@@ -62,10 +62,10 @@ def analyze_complete_registration_conflicts(
     notification_emails = []
     conflict_details = {"secondary_conflicts": []}
     can_proceed = True
-    
+
     # Convert emails to lowercase for case-insensitive comparison
     secondary_email_lower = secondary_email.lower().strip()
-    
+
     # Skip conflict checking entirely if secondary email is empty
     # (Empty emails should not trigger conflicts with other empty emails)
     if not secondary_email_lower:
@@ -75,27 +75,27 @@ def analyze_complete_registration_conflicts(
             notification_emails=[],
             conflict_details={"secondary_conflicts": []}
         )
-    
+
     # Check secondary email against both primary and secondary columns
     secondary_validations = [
         (secondary_email_lower, "Primary Email"),
         (secondary_email_lower, "Secondary Email")
     ]
-    
+
     # First pass: collect all conflicts and determine if any are blocking
     all_conflicts = []
     has_active_conflict = False
-    
+
     for email_to_check, column_to_search in secondary_validations:
         # Find existing users with this email in this column (case-insensitive)
         matching_users = [row for row in wks_records if row[column_to_search].lower() == email_to_check]
-        
+
         if not matching_users:
             continue  # No conflict
-            
+
         existing_user = matching_users[0]  # Take first match
         existing_user_row = existing_user["Row"]
-        
+
         # Determine the relevant fields based on column
         if column_to_search == "Primary Email":
             expired_field = "Primary Expired"
@@ -109,12 +109,12 @@ def analyze_complete_registration_conflicts(
             other_email_field = "Primary Email"
             other_verified_field = "Primary Verified"
             email_being_cleared = existing_user["Secondary Email"]
-        
+
         # Check if this conflict is active (blocking)
         is_active = existing_user[expired_field] == "FALSE"
         if is_active:
             has_active_conflict = True
-        
+
         # Record conflict details
         conflict_info = {
             "existing_user_row": existing_user_row,
@@ -131,7 +131,7 @@ def analyze_complete_registration_conflicts(
             "is_active": is_active
         }
         all_conflicts.append(conflict_info)
-    
+
     # Second pass: determine actions based on whether any conflict is active
     if has_active_conflict:
         # If ANY conflict is active, block the entire registration
@@ -161,14 +161,14 @@ def analyze_complete_registration_conflicts(
                 "verified_status": conflict_info["verified_status"],
                 "action": "cleared"
             })
-            
+
             # Add cell update to clear the expired email
             emails_to_clear.append({
                 "row": conflict_info["existing_user_row"],
                 "column": conflict_info["column"],
                 "value": ""  # Clear the email
             })
-            
+
             # Send notification email if the user has another verified email
             existing_user = conflict_info["existing_user"]
             other_email = existing_user[conflict_info["other_email_field"]]
@@ -408,16 +408,16 @@ def analyze_user_existence_check(
 
 
 def analyze_phone_number_conflicts(
-    wks_records: List[Dict[str, Any]], 
+    wks_records: List[Dict[str, Any]],
     phone_number: str
 ) -> Dict[str, Any]:
     """
     Analyzes potential conflicts for a phone number in complete registration.
-    
+
     Args:
         wks_records: List of existing user records from membership worksheet
         phone_number: Full international phone number (e.g., "+15551234567")
-    
+
     Returns:
         Dictionary with conflict analysis results
     """
@@ -428,13 +428,43 @@ def analyze_phone_number_conflicts(
             "can_proceed": True,
             "conflict_details": None
         }
-    
-    # Find users with this phone number
+
+    # DEBUG: Print what we're looking for
     phone_number_clean = phone_number.strip()
-    matching_users = [row for row in wks_records 
-                     if row.get("Phone Number") is not None 
-                     and str(row.get("Phone Number", "")).strip() == phone_number_clean]
-    
+    # print(f"DEBUG: Looking for phone number: '{phone_number_clean}'")
+    # print(f"DEBUG: Total records to check: {len(wks_records)}")
+
+    # DEBUG: Print all phone numbers in the sheet
+    for i, row in enumerate(wks_records):
+        sheet_phone = row.get("Phone Number", "")
+        # print(f"DEBUG: Record {i+1} phone: '{sheet_phone}' (type: {type(sheet_phone)})")
+        # if sheet_phone:
+            # print(f"DEBUG: Record {i+1} phone stripped: '{str(sheet_phone).strip()}'")
+
+    # Find users with this phone number
+    # Handle type mismatch: Google Sheets may store phone numbers as integers
+    # but we search with string format (with + prefix)
+    matching_users = []
+    for row in wks_records:
+        sheet_phone = row.get("Phone Number")
+        if sheet_phone is not None:
+            # Convert to string and normalize both for comparison
+            sheet_phone_str = str(sheet_phone).strip()
+
+            # Add + prefix if missing from sheet data
+            if sheet_phone_str and not sheet_phone_str.startswith("+"):
+                sheet_phone_normalized = "+" + sheet_phone_str
+            else:
+                sheet_phone_normalized = sheet_phone_str
+
+            # print(f"DEBUG: Comparing '{phone_number_clean}' with normalized '{sheet_phone_normalized}'")
+
+            if sheet_phone_normalized == phone_number_clean:
+                matching_users.append(row)
+                break  # Found a match, no need to continue
+
+    # print(f"DEBUG: Matching users found: {len(matching_users)}")
+
     if not matching_users:
         return {
             "has_conflict": False,
@@ -442,22 +472,22 @@ def analyze_phone_number_conflicts(
             "can_proceed": True,
             "conflict_details": None
         }
-    
+
     # Phone number conflict found
     conflicting_user = matching_users[0]  # Take first match
-    
+
     # Handle malformed records gracefully
     user_row = conflicting_user.get("Row", "Unknown")
     first_name = conflicting_user.get("First Name", "Unknown")
     last_name = conflicting_user.get("Last Name", "User")
-    
+
     conflict_details = {
         "existing_user_row": user_row,
         "existing_user_name": f"{first_name} {last_name}",
         "phone_number": phone_number_clean,
         "existing_user": conflicting_user
     }
-    
+
     return {
         "has_conflict": True,
         "conflicting_user": conflicting_user,
@@ -467,20 +497,20 @@ def analyze_phone_number_conflicts(
 
 
 def calculate_registration_method(
-    has_secondary_email: bool, 
+    has_secondary_email: bool,
     has_phone_number: bool
 ) -> str:
     """
     Determines the registration method based on provided contact methods.
-    
+
     Args:
         has_secondary_email: Whether a secondary email was provided
         has_phone_number: Whether a phone number was provided
-    
+
     Returns:
         String representing registration method:
         - "1": Primary + Secondary emails only
-        - "2": Primary email + Phone number only  
+        - "2": Primary email + Phone number only
         - "3": All three methods (Primary email + Secondary email + Phone)
     """
     if has_secondary_email and has_phone_number:
@@ -500,18 +530,18 @@ def should_trigger_phone_verification(
 ) -> bool:
     """
     Determines if phone verification (OTP) should be triggered.
-    
+
     Args:
         registration_method: Registration method ("1", "2", or "3")
         phone_number: Full international phone number
-    
+
     Returns:
         Boolean indicating if phone verification is needed
     """
     # Phone verification is required for methods 2 and 3 (when phone is provided)
     has_phone = bool(phone_number and phone_number.strip())
     needs_verification = registration_method in ["2", "3"]
-    
+
     return has_phone and needs_verification
 
 
@@ -521,11 +551,11 @@ def validate_and_format_phone_number(
 ) -> Dict[str, Any]:
     """
     Validates and formats a phone number for storage.
-    
+
     Args:
         country_code: Country code (e.g., "+1")
         phone_number: National phone number (e.g., "5551234567")
-    
+
     Returns:
         Dictionary with validation results and formatted phone number
     """
@@ -535,28 +565,28 @@ def validate_and_format_phone_number(
             "formatted_number": "",
             "error_message": None
         }
-    
+
     if not country_code or country_code.strip() == "":
         return {
             "is_valid": False,
             "formatted_number": "",
             "error_message": "Country code is required when phone number is provided"
         }
-    
+
     # Basic validation - ensure phone number contains only digits, spaces, hyphens, parentheses
     import re
     phone_clean = re.sub(r'[^\d]', '', phone_number.strip())
-    
+
     if not phone_clean:
         return {
             "is_valid": False,
             "formatted_number": "",
             "error_message": "Invalid phone number format"
         }
-    
+
     # Format as international number
     formatted_number = country_code.strip() + phone_clean
-    
+
     return {
         "is_valid": True,
         "formatted_number": formatted_number,
@@ -569,10 +599,10 @@ def calculate_phone_registration_data(
 ) -> Dict[str, Any]:
     """
     Calculates phone-related data for user registration.
-    
+
     Args:
         form_data: Form data containing phone information
-    
+
     Returns:
         Dictionary with phone data for user record
     """
@@ -580,12 +610,12 @@ def calculate_phone_registration_data(
         form_data.get("country_code", ""),
         form_data.get("phone_number", "")
     )
-    
+
     if not phone_validation["is_valid"]:
         raise ValueError(f"Phone validation failed: {phone_validation['error_message']}")
-    
+
     phone_subscribe = "TRUE" if form_data.get("phone_subscribe", False) else "FALSE"
-    
+
     return {
         "Phone Number": phone_validation["formatted_number"],
         "Phone number subscribed": phone_subscribe,

@@ -86,8 +86,11 @@ def otp():
                 # Update the worksheet
                 wks.update_cells(cells)
 
-            # Send confirmation SMS if user is subscribed to events
+            # Send confirmation SMS if appropriate
             if event_reg == "yes" and phone_subscribe == "TRUE" and event_name is not None:
+                send_message(f"You have signed up for {event_name}", phone_number, client)
+            elif update == "TRUE" and phone_subscribe == "TRUE" and event_name is not None:
+                # Update flow with event registration - send confirmation
                 send_message(f"You have signed up for {event_name}", phone_number, client)
 
             print(f"Update flag: {update}")
