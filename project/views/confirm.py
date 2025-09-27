@@ -53,6 +53,7 @@ def otp():
         phone_subscribe = session.get('phone_subscribe')
         event_name = session.get('event_name')
         update = session.get('update')
+        origin = session.get('origin')
 
         # Default phone subscription to FALSE if not set
         if phone_subscribe != "TRUE":
@@ -136,6 +137,9 @@ def otp():
                                            event_name=event_name,
                                            event_fields=event_fields)
                 else:
+                    # Branch based on origin: new signup should return instructions_sent
+                    if origin == "signup":
+                        return render_template("instructions_sent.html")
                     # Regular registration completion, show receipt page
                     return render_template("receipt.html",
                                            event_url=event_url,
