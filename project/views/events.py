@@ -92,7 +92,7 @@ def enter_email(event_name):
             html = render_template("complete_email.html", email=email, url=url, live_event=True if event_obj else False)
             send_email(email, subject, html)
 
-            return render_template("instructions_sent.html")
+            return render_template("event_instructions_sent.html")
 
 
         @copy_current_request_context
