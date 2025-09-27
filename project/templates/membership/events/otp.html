@@ -6,11 +6,11 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div>
+                <div>
                     <h4 class="mb-0">Verify Your Phone Number</h4>
                 </div>
-                <div class="card-body">
+                <div>
                     <p class="text-muted">
                         We've sent a 6-digit verification code to your phone number. 
                         Please enter it below to complete your registration.
@@ -37,20 +37,17 @@
                     <form method="POST">
                         {{ form.hidden_tag() }}
                         
-                        <div class="form-group mb-3">
+                        <div class="form-group mb-4">
                             {{ form.otp.label(class="form-label") }}
                             {{ form.otp(class="form-control form-control-lg text-center", style="letter-spacing: 0.5rem; font-size: 1.5rem;") }}
-                            {% if form.otp.description %}
-                                <small class="form-text text-muted">{{ form.otp.description }}</small>
-                            {% endif %}
                         </div>
                         
-                        <div class="d-grid gap-2">
+                        <div class="form-group mb-1 text-center">
                             {{ form.submit(class="btn btn-primary btn-lg") }}
                         </div>
                     </form>
                     
-                    <div class="text-center mt-3">
+                    <div class="text-center mt-1">
                         <small class="text-muted">
                             Didn't receive a code? Check your phone or contact support.
                         </small>
@@ -80,6 +77,46 @@
     /* Style for OTP input */
     input[name="otp"] {
         font-family: 'Courier New', monospace;
+    }
+    
+    /* Ensure vertical layout for OTP form */
+    .form-group {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .form-group input,
+    .form-group button {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+    }
+    
+    /* OTP Input Field Styling */
+    input[name="otp"] {
+        font-family: 'Courier New', monospace !important;
+        font-size: 1.5rem !important;
+        letter-spacing: 0.5rem !important;
+        text-align: center !important;
+        padding: 10px !important;
+        border: 2px solid #002856 !important;
+        border-radius: 10px !important;
+        background-color: #ffffff !important;
+        width: 100% !important;
+        max-width: 300px !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+    
+    input[name="otp"]:focus {
+        border-color: #ff8c00 !important;
+        outline: none !important;
+    }
+    
+    input[name="otp"]::placeholder {
+        color: #999 !important;
+        font-size: 1.2rem !important;
     }
 </style>
 {% endblock %}

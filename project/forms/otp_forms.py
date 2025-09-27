@@ -17,13 +17,12 @@ class OTPForm(FlaskForm):
     and validates the format before submission.
     """
     otp = StringField(
-        'One-Time Password',
+        '',
         validators=[
             InputRequired(message="Please enter the verification code"),
             Length(min=6, max=6, message="Verification code must be 6 digits"),
             Regexp(regex="^[0-9]{6}$", message="Verification code must contain only numbers")
         ],
-        description="Enter the 6-digit code sent to your phone",
         render_kw={
             "placeholder": "123456",
             "class": "form-control",
