@@ -12,30 +12,31 @@ from wtforms.validators import InputRequired, Length, Regexp
 class OTPForm(FlaskForm):
     """
     Form used to receive the user's one-time password from Twilio.
-    
+
     This form captures the 6-digit OTP code that users receive via SMS
     and validates the format before submission.
     """
+
     otp = StringField(
-        '',
+        "",
         validators=[
             InputRequired(message="Please enter the verification code"),
             Length(min=6, max=6, message="Verification code must be 6 digits"),
-            Regexp(regex="^[0-9]{6}$", message="Verification code must contain only numbers")
+            Regexp(
+                regex="^[0-9]{6}$",
+                message="Verification code must contain only numbers",
+            ),
         ],
         render_kw={
-            "placeholder": "123456",
+            "placeholder": "______",
             "class": "form-control",
             "maxlength": "6",
             "pattern": "[0-9]{6}",
             "autocomplete": "one-time-code",
-            "inputmode": "numeric"
-        }
+            "inputmode": "numeric",
+        },
     )
 
     submit = SubmitField(
-        'Verify Phone Number',
-        render_kw={
-            "class": "btn btn-primary btn-block"
-        }
+        "Verify Phone Number", render_kw={"class": "btn btn-primary btn-block"}
     )

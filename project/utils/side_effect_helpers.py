@@ -326,6 +326,14 @@ def send_event_confirmation_emails(
     """
     subject = f"{event_name} Registration Completed"
 
+    # Format phone number with + prefix for display
+    phone_num = user.get("Phone Number", "")
+    if phone_num:
+        phone_num_str = str(phone_num)
+        phone_display = f"+{phone_num_str}" if not phone_num_str.startswith("+") else phone_num_str
+    else:
+        phone_display = ""
+    
     template_data = {
         "event_url": event_url,
         "update_url": update_url,
@@ -337,7 +345,7 @@ def send_event_confirmation_emails(
         "secondary_email": user["Secondary Email"],
         "secondary_verified": user["Secondary Verified"],
         "secondary_subscribed": user["Secondary Subscribed"],
-        "phone_number": str(user.get("Phone Number", "")),
+        "phone_number": phone_display,
         "phone_number_verified": user.get("Phone number verified", "FALSE"),
         "phone_subscribed": user.get("Phone number subscribed", "FALSE"),
         "info_fields": info_fields,
@@ -755,35 +763,48 @@ def create_event_registration_with_phone(
         event_data: Event-specific data (ticket type, answers, etc.)
         phone_data: Phone-related data (optional)
     """
-    event_wks = sh.worksheet(event_worksheet_name)
-    event_wks_columns = get_wks_columns(event_wks)
+    try:
+        print(f"DEBUG: Creating event registration for {event_worksheet_name}")
+        print(f"DEBUG: user_data = {user_data}")
+        print(f"DEBUG: event_data = {event_data}")
+        print(f"DEBUG: phone_data = {phone_data}")
+        
+        event_wks = sh.worksheet(event_worksheet_name)
+        event_wks_columns = get_wks_columns(event_wks)
 
-    # Create new row with all required data
-    row = ["" for i in range(len(event_wks.row_values(1)))]
+        # Create new row with all required data
+        row = ["" for i in range(len(event_wks.row_values(1)))]
 
-    # Generate order number
-    last_order = event_wks.col_values(1)[-1] if event_wks.col_values(1) else "0"
-    order = int(last_order) + 1 if last_order.isdigit() else 1
+        # Generate order number
+        last_order = event_wks.col_values(1)[-1] if event_wks.col_values(1) else "0"
+        order = int(last_order) + 1 if last_order.isdigit() else 1
 
-    # Set basic fields
-    current_time = datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")
+        # Set basic fields
+        current_time = datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")
 
-    row[event_wks_columns["Order"] - 1] = order
-    row[event_wks_columns["First Name"] - 1] = user_data["first_name"]
-    row[event_wks_columns["Last Name"] - 1] = user_data["last_name"]
-    row[event_wks_columns["When Started"] - 1] = current_time
-    row[event_wks_columns["Last Updated"] - 1] = current_time
-    row[event_wks_columns["Membership Primary"] - 1] = user_data["primary_email"]
-    row[event_wks_columns["Membership Secondary"] - 1] = user_data["secondary_email"]
-    
-    # Add phone data if provided and column exists
-    if phone_data and "Phone Number" in event_wks_columns:
-        row[event_wks_columns["Phone Number"] - 1] = phone_data.get("full_phone_number", "")
+        row[event_wks_columns["Order"] - 1] = order
+        row[event_wks_columns["First Name"] - 1] = user_data["first_name"]
+        row[event_wks_columns["Last Name"] - 1] = user_data["last_name"]
+        row[event_wks_columns["When Started"] - 1] = current_time
+        row[event_wks_columns["Last Updated"] - 1] = current_time
+        row[event_wks_columns["Membership Primary"] - 1] = user_data["primary_email"]
+        row[event_wks_columns["Membership Secondary"] - 1] = user_data["secondary_email"]
+        
+        # Add phone data if provided and column exists
+        if phone_data and "Phone Number" in event_wks_columns:
+            row[event_wks_columns["Phone Number"] - 1] = phone_data.get("full_phone_number", "")
 
-    # Set event-specific fields
-    for field_name, value in event_data.items():
-        if field_name in event_wks_columns:
-            row[event_wks_columns[field_name] - 1] = value
+        # Set event-specific fields
+        for field_name, value in event_data.items():
+            if field_name in event_wks_columns:
+                row[event_wks_columns[field_name] - 1] = value
 
-    # Append the new row
-    event_wks.append_row(row)
+        print(f"DEBUG: About to append row to event worksheet")
+        # Append the new row
+        event_wks.append_row(row)
+        print(f"DEBUG: Successfully appended row to event worksheet")
+    except Exception as e:
+        print(f"ERROR: Failed to create event registration: {e}")
+        print(f"ERROR: Exception type: {type(e)}")
+        import traceback
+        traceback.print_exc()

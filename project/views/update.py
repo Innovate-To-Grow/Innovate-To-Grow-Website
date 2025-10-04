@@ -659,6 +659,15 @@ def update_info(token):
                 final_user = refresh_user_data(prim_email, sec_email)
                 if final_user:
                     subject = "I2G Membership Updated"
+                    
+                    # Format phone number with + prefix for display
+                    phone_num = final_user.get("Phone Number", "")
+                    if phone_num:
+                        phone_num_str = str(phone_num)
+                        phone_display = f"+{phone_num_str}" if not phone_num_str.startswith("+") else phone_num_str
+                    else:
+                        phone_display = ""
+                    
                     template_data = {
                         "event_url": event_url,
                         "update_url": update_url,
@@ -670,6 +679,9 @@ def update_info(token):
                         "secondary_email": final_user["Secondary Email"],
                         "secondary_verified": final_user["Secondary Verified"],
                         "secondary_subscribed": final_user["Secondary Subscribed"],
+                        "phone_number": phone_display,
+                        "phone_number_verified": final_user.get("Phone number verified", "FALSE"),
+                        "phone_subscribed": final_user.get("Phone number subscribed", "FALSE"),
                         "info_fields": info_fields,
                         "event_name": event_obj.name if event_obj is not None else None,
                         "event_fields": event_fields
@@ -732,6 +744,15 @@ def update_info(token):
             if result == "phone_error":
                 return render_template("error3.html")  # Phone conflict error
 
+            # Get fresh user data after all updates to show current state
+            fresh_user = refresh_user_data(prim_email, sec_email)
+            if fresh_user:
+                phone_number_verified = fresh_user.get("Phone number verified", "FALSE")
+                phone_subscribed = fresh_user.get("Phone number subscribed", "FALSE")
+            else:
+                phone_number_verified = user.get("Phone number verified", "FALSE")
+                phone_subscribed = phone_data.get('phone_subscribe', False)
+            
             return render_template("thanks_update.html",
                                     event_url=event_url,
                                     update_url=update_url,
@@ -744,8 +765,8 @@ def update_info(token):
                                     secondary_verified=secondary_verified,
                                     secondary_subscribed=secondary_subscribed,
                                     phone_number=phone_data.get('full_phone_number', ''),
-                                    phone_number_verified=user.get("Phone number verified", "FALSE"),
-                                    phone_subscribed=phone_data.get('phone_subscribe', False),
+                                    phone_number_verified=phone_number_verified,
+                                    phone_subscribed=phone_subscribed,
                                     info_fields=info_fields,
                                     event_name=event_obj.name if event_obj is not None else None,
                                     event_fields=event_fields)

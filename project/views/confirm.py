@@ -61,9 +61,12 @@ def otp():
 
         # Get OTP code from form
         otp = form.otp.data
-        print(f"OTP entered: {otp}")
-        print(f"Session data: {session}")
-        print(f"Phone number: {phone_number}")
+        
+        # Debug: Print session data
+        print(f"DEBUG: Session data at start of OTP verification:")
+        print(f"  - phone_subscribe: {phone_subscribe}")
+        print(f"  - update: {update}")
+        print(f"  - phone_number: {phone_number}")
 
         # Verify OTP with Twilio
         if check_verification(client, phone_number, verify_sid, otp) == "approved":
@@ -84,8 +87,24 @@ def otp():
                 cells.append(Cell(row_find, wks_columns["Last Updated"],
                                 str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
 
+                # Debug: Print what we're updating
+                print(f"DEBUG: Updating phone verification status:")
+                print(f"  - Phone number verified: TRUE")
+                print(f"  - Phone number subscribed: {phone_subscribe}")
+                print(f"  - Row: {row_find}")
+                print(f"  - Column for Phone number subscribed: {wks_columns['Phone number subscribed']}")
+
                 # Update the worksheet
                 wks.update_cells(cells)
+                
+                # Debug: Verify the update was successful
+                print(f"DEBUG: After update, checking cell value:")
+                updated_cell = wks.cell(row_find, wks_columns["Phone number subscribed"])
+                print(f"  - Cell value: '{updated_cell.value}'")
+                
+                # Add a small delay to ensure database update is committed
+                import time
+                time.sleep(1)
 
             # Send confirmation SMS if appropriate
             if event_reg == "yes" and phone_subscribe == "TRUE" and event_name is not None:
@@ -100,6 +119,10 @@ def otp():
             # Route to appropriate success page based on context
             if update == "TRUE":
                 # This was an update flow, redirect to update success page
+                # Since OTP was successfully verified, phone is now verified
+                phone_number_verified = "TRUE"
+                # phone_subscribe is already set from session data above (as "TRUE" or "FALSE" string)
+                
                 return render_template("thanks_update.html",
                                        event_url=event_url,
                                        update_url=update_url,
@@ -112,7 +135,8 @@ def otp():
                                        secondary_verified=secondary_verified,
                                        secondary_subscribed=secondary_subscribed,
                                        phone_number=phone_number,
-                                       phone_subscribe=phone_subscribe,
+                                       phone_number_verified=phone_number_verified,
+                                       phone_subscribed=phone_subscribe,
                                        info_fields=info_fields,
                                        event_name=event_name,
                                        event_fields=event_fields)
@@ -120,6 +144,10 @@ def otp():
                 # This was a new registration flow
                 if event_reg == "yes":
                     # User registered for an event, show event success page
+                    # Since OTP was successfully verified, phone is now verified
+                    phone_number_verified = "TRUE"
+                    # phone_subscribe is already set from session data above (as "TRUE" or "FALSE" string)
+                    
                     return render_template("successfully_registered.html",
                                            event_url=event_url,
                                            update_url=update_url,
@@ -132,7 +160,8 @@ def otp():
                                            secondary_verified=secondary_verified,
                                            secondary_subscribed=secondary_subscribed,
                                            phone_number=phone_number,
-                                           phone_subscribe=phone_subscribe,
+                                           phone_number_verified=phone_number_verified,
+                                           phone_subscribed=phone_subscribe,
                                            info_fields=info_fields,
                                            event_name=event_name,
                                            event_fields=event_fields)
@@ -141,6 +170,10 @@ def otp():
                     if origin == "signup":
                         return render_template("instructions_sent.html")
                     # Regular registration completion, show receipt page
+                    # Since OTP was successfully verified, phone is now verified
+                    phone_number_verified = "TRUE"
+                    # phone_subscribe is already set from session data above
+                    
                     return render_template("receipt.html",
                                            event_url=event_url,
                                            update_url=update_url,
@@ -153,6 +186,7 @@ def otp():
                                            secondary_verified=secondary_verified,
                                            secondary_subscribed=secondary_subscribed,
                                            phone_number=phone_number,
+                                           phone_number_verified=phone_number_verified,
                                            phone_subscribe=phone_subscribe,
                                            info_fields=info_fields,
                                            event_name=event_name,
