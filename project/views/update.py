@@ -2,7 +2,7 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, url_for, request, copy_current_request_context, session, redirect
+from flask import Blueprint, render_template, url_for, request, copy_current_request_context, session, redirect, flash, get_flashed_messages
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
@@ -532,6 +532,15 @@ def update_info(token):
                 # Determine if phone verification is needed
                 needs_phone_verification = calculate_phone_verification_decision(current_user_for_phone, phone_decision)
 
+                # PHASE 1.5: VALIDATE PHONE NUMBER (Before any database updates!)
+                if needs_phone_verification:
+                    try:
+                        start_event_phone_verification_process(phone_data.get('full_phone_number', ''))
+                    except ValueError as e:
+                        # Phone number validation failed - stop before updating anything
+                        flash(f"Invalid phone number: {str(e)}", "error")
+                        return "phone_error"
+
                 # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                 # Get custom fields for form processing
                 custom_fields = [{"label": row.label, "field_type": row.field_type}
@@ -704,7 +713,7 @@ def update_info(token):
                             template_data
                         )
 
-                # PHASE 8: HANDLE PHONE VERIFICATION (after all other processing is complete)
+                # PHASE 8: SETUP SESSION FOR PHONE VERIFICATION (validation already happened in Phase 1.5)
                 if needs_phone_verification:
                     # Set up session data for phone verification
                     user_data = {
@@ -727,9 +736,8 @@ def update_info(token):
                         "update_type": "update"  # Distinguish from event registration
                     }
                     
-                    # Start phone verification process
+                    # Setup session for OTP verification
                     setup_event_phone_verification_session(session, user_data, event_data, phone_data)
-                    start_event_phone_verification_process(phone_data.get('full_phone_number', ''))
                     
                     return "phone_verification_needed"
 
@@ -772,4 +780,6 @@ def update_info(token):
                                     event_fields=event_fields)
 
     else:
+        # GET request - clear any stale flash messages from previous sessions
+        get_flashed_messages()  # Consume and discard any existing flash messages
         return render_template("update_form.html", form=form, token=token)

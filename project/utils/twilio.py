@@ -30,6 +30,103 @@ def check_verification(client: Client, phone_number: str, verify_sid: str, otp_c
     return verification_check.status
 
 
+def validate_phone_number_exists(phone_number: str) -> dict:
+    """
+    Uses Twilio Lookup API to validate if a phone number actually exists and can receive SMS.
+    
+    Args:
+        phone_number: Full international phone number (e.g., "+15551234567")
+    
+    Returns:
+        Dictionary with validation results:
+        {
+            "valid": bool,
+            "phone_number": str,  # E.164 formatted number
+            "carrier": dict,       # Carrier info (if requested)
+            "error": str or None
+        }
+    """
+    # Basic sanity check for obviously fake numbers
+    if phone_number:
+        # Remove the + sign for pattern checking
+        digits_only = phone_number.replace("+", "").replace(" ", "").replace("-", "")
+        
+        # Check for patterns like all same digit (1111111111, 0000000000, etc.)
+        if len(set(digits_only)) == 1:
+            return {
+                "valid": False,
+                "phone_number": phone_number,
+                "national_format": None,
+                "country_code": None,
+                "error": "Invalid phone number pattern - appears to be a test number"
+            }
+        
+        # Check for sequential patterns (1234567890, 0123456789)
+        if digits_only in ["1234567890", "0123456789", "9876543210"]:
+            return {
+                "valid": False,
+                "phone_number": phone_number,
+                "national_format": None,
+                "country_code": None,
+                "error": "Invalid phone number pattern - appears to be a test number"
+            }
+    
+    try:
+        # Twilio Lookup API validates the number exists and returns carrier info
+        # Using line_type_intelligence to check if number can receive SMS
+        phone_info = client.lookups.v2.phone_numbers(phone_number).fetch(
+            fields='line_type_intelligence'
+        )
+        
+        # Check if the phone number is valid and can receive SMS
+        valid = phone_info.valid
+        
+        # Additional validation: check if line type intelligence indicates it's a valid mobile/landline
+        # that can receive SMS
+        error_message = None
+        if not valid:
+            error_message = "Phone number is not valid or cannot be reached"
+        
+        # Check line type if available
+        if hasattr(phone_info, 'line_type_intelligence') and phone_info.line_type_intelligence:
+            line_info = phone_info.line_type_intelligence
+            # If the number type indicates it cannot receive SMS, mark as invalid
+            if hasattr(line_info, 'type') and line_info.type in ['voip', 'nonFixedVoip']:
+                # VOIP numbers might not receive SMS reliably, but we'll allow them
+                pass
+            if hasattr(line_info, 'error_code') and line_info.error_code:
+                valid = False
+                error_message = f"Phone validation error: {line_info.error_code}"
+        
+        return {
+            "valid": valid,
+            "phone_number": phone_info.phone_number,
+            "national_format": phone_info.national_format,
+            "country_code": phone_info.country_code,
+            "error": error_message
+        }
+    except Exception as e:
+        error_message = str(e)
+        
+        # Parse common Twilio errors
+        if "20404" in error_message:
+            error_message = "Phone number not found or invalid"
+        elif "21211" in error_message:
+            error_message = "Invalid phone number format"
+        elif "21608" in error_message:
+            error_message = "This phone number cannot receive SMS messages"
+        elif "60200" in error_message:
+            error_message = "Invalid phone number - cannot create verification"
+        
+        return {
+            "valid": False,
+            "phone_number": phone_number,
+            "national_format": None,
+            "country_code": None,
+            "error": error_message
+        }
+
+
 def split_number(number: str):
     # Handle numbers that already have "+" prefix
     if not number.startswith("+"):

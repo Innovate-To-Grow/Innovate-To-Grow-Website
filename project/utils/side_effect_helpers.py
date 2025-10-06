@@ -470,20 +470,37 @@ def start_phone_verification_process(
 ) -> str:
     """
     Starts the Twilio OTP verification process for a phone number.
+    First validates that the phone number exists using Twilio Lookup API.
     
     Args:
         phone_number: Full international phone number (e.g., "+15551234567")
     
     Returns:
         Verification status from Twilio
+    
+    Raises:
+        ValueError: If phone number is invalid or doesn't exist
     """
-    from project.utils.twilio import client, verify_sid, start_verification_process
+    from project.utils.twilio import (
+        client, verify_sid, start_verification_process, 
+        validate_phone_number_exists
+    )
     
     if not phone_number or phone_number.strip() == "":
         raise ValueError("Phone number is required for verification")
     
+    # First, validate that the phone number actually exists
+    validation_result = validate_phone_number_exists(phone_number)
+    
+    if not validation_result["valid"]:
+        error_msg = validation_result.get("error", "Invalid phone number")
+        raise ValueError(f"Phone number validation failed: {error_msg}")
+    
+    # Use the validated E.164 formatted number from Twilio
+    validated_phone = validation_result["phone_number"]
+    
     try:
-        status = start_verification_process(client, phone_number, verify_sid)
+        status = start_verification_process(client, validated_phone, verify_sid)
         return status
     except Exception as e:
         # Log the error but don't crash the registration

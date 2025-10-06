@@ -3,7 +3,7 @@ from datetime import datetime
 from threading import Thread
 
 from gspread.cell import Cell
-from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context, abort, session
+from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context, abort, session, flash, get_flashed_messages
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired
@@ -534,6 +534,15 @@ def event_register(event_name, token):
                 # Determine if phone verification is needed
                 needs_phone_verification = calculate_phone_verification_decision(user, phone_decision)
 
+                # PHASE 1.5: VALIDATE PHONE NUMBER (Before any database updates!)
+                if needs_phone_verification:
+                    try:
+                        start_event_phone_verification_process(phone_data.get('full_phone_number', ''))
+                    except ValueError as e:
+                        # Phone number validation failed - stop before updating anything
+                        flash(f"Invalid phone number: {str(e)}", "error")
+                        return "phone_error"
+
                 # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                 # Get custom fields for form processing
                 custom_fields = [{"label": row.label, "field_type": row.field_type}
@@ -673,7 +682,7 @@ def event_register(event_name, token):
                         event_fields
                     )
 
-                # PHASE 8: HANDLE PHONE VERIFICATION (after all other processing is complete)
+                # PHASE 8: SETUP SESSION FOR PHONE VERIFICATION (validation already happened in Phase 1.5)
                 if needs_phone_verification:
                     # Set up session data for phone verification
                     user_data = {
@@ -695,9 +704,8 @@ def event_register(event_name, token):
                         "event_name": event_obj.name if event_obj else None,
                     }
                     
-                    # Start phone verification process
+                    # Setup session for OTP verification
                     setup_event_phone_verification_session(session, user_data, event_data, phone_data)
-                    start_event_phone_verification_process(phone_data.get('full_phone_number', ''))
                     
                     return "phone_verification_needed"
 
@@ -740,6 +748,8 @@ def event_register(event_name, token):
                                     event_fields=event_fields)
 
     else:
+        # GET request - clear any stale flash messages from previous sessions
+        get_flashed_messages()  # Consume and discard any existing flash messages
         # if form.errors:
         #     print(f"errors: {form.errors}")
         return render_template("event_registration.html", form=form, token=token, event=event_obj)

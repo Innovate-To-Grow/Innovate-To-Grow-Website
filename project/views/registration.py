@@ -2,7 +2,7 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context, session
+from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context, session, flash, get_flashed_messages
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import Optional
@@ -373,12 +373,17 @@ def register():
                 )
                 needs_phone_verification = should_trigger_phone_verification(registration_method, phone_number)
 
-            # Append row in background as before
-            thread = Thread(target=can_register)
-            thread.start()
-
-            # If OTP needed, set up session and redirect
+            # If OTP needed, validate phone BEFORE creating user
             if phone_number and needs_phone_verification:
+                # Validate phone number FIRST
+                try:
+                    start_phone_verification_process(phone_number)
+                except ValueError as e:
+                    # Phone number validation failed - show error to user
+                    flash(f"Phone number validation failed: {str(e)}", "error")
+                    return render_template("register_form.html", form=form)
+                
+                # Phone validation passed - prepare session data
                 user_data = {
                     "first_name": form.first_name.data,
                     "last_name": form.last_name.data,
@@ -405,12 +410,20 @@ def register():
                 session["origin"] = "signup"
 
                 setup_otp_verification_session(session, user_data, event_data, phone_data)
-                start_phone_verification_process(phone_number)
+
+            # Append row in background (AFTER phone validation if needed)
+            thread = Thread(target=can_register)
+            thread.start()
+
+            # If phone verification was needed, redirect to OTP
+            if phone_number and needs_phone_verification:
                 return redirect(url_for("confirm.otp"))
 
             return render_template("instructions_sent.html")
 
     else:
+        # GET request - clear any stale flash messages from previous sessions
+        get_flashed_messages()  # Consume and discard any existing flash messages
         return render_template("register_form.html", form=form)
 
 
@@ -1148,13 +1161,22 @@ def complete_registration(token):
 
             return "success"
 
-        # Execute the complete registration logic
-        thread = Thread(target=execute_complete_registration)
-        thread.start()
-
-        # Check if phone verification is needed
+        # Check if phone verification is needed and validate BEFORE creating user
         if needs_phone_verification:
-            # Prepare data for OTP session
+            # Validate phone number FIRST before doing anything else
+            try:
+                start_phone_verification_process(phone_number)
+            except ValueError as e:
+                # Phone number validation failed - show error to user
+                flash(f"Phone number validation failed: {str(e)}", "error")
+                # Return user to the form with their data
+                return render_template(
+                    "complete_registration.html",
+                    form=form,
+                    token=token
+                )
+            
+            # Phone validation passed - prepare data for OTP session
             user_data = {
                 "first_name": form.first_name.data,
                 "last_name": form.last_name.data,
@@ -1200,14 +1222,16 @@ def complete_registration(token):
                     info_fields[row.label] = field.data
 
             user_data["info_fields"] = info_fields
-
+            
             # Setup OTP verification session
             setup_otp_verification_session(session, user_data, event_data, phone_data)
+        
+        # Execute the complete registration logic (AFTER phone validation if needed)
+        thread = Thread(target=execute_complete_registration)
+        thread.start()
 
-            # Start phone verification process
-            start_phone_verification_process(phone_number)
-
-            # Redirect to OTP verification page
+        # If phone verification was needed, redirect to OTP page
+        if needs_phone_verification:
             return redirect(url_for("confirm.otp"))
 
         # Prepare data for response template
@@ -1251,5 +1275,7 @@ def complete_registration(token):
                                event_fields=event_fields)
 
     else:
-        # GET request or form validation failed
+        # GET request - clear any stale flash messages from previous sessions
+        if request.method == "GET":
+            get_flashed_messages()  # Consume and discard any existing flash messages
         return render_template("complete_registration.html", form=form, token=token)
