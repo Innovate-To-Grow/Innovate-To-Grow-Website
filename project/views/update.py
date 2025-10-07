@@ -539,7 +539,7 @@ def update_info(token):
                     except ValueError as e:
                         # Phone number validation failed - stop before updating anything
                         flash(f"Invalid phone number: {str(e)}", "error")
-                        return "phone_error"
+                        return "phone_validation_error"
 
                 # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                 # Get custom fields for form processing
@@ -748,7 +748,11 @@ def update_info(token):
             if result == "phone_verification_needed":
                 return redirect(url_for("confirm.otp"))
             
-            # Handle phone error 
+            # Handle phone validation error - return to form with flash message
+            if result == "phone_validation_error":
+                return render_template("update_form.html", form=form, token=token)
+            
+            # Handle phone conflict error - number already in database
             if result == "phone_error":
                 return render_template("error3.html")  # Phone conflict error
 
