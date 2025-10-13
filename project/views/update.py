@@ -512,13 +512,11 @@ def update_info(token):
                 # PHASE 1: ANALYZE EMAIL AND PHONE CHANGES (Pure Logic)
                 decision = analyze_email_changes(user, prim_email, sec_email)
                 
-                # Get fresh user data for phone analysis (after email updates)
-                fresh_user_for_phone = refresh_user_data(prim_email, sec_email)
-                current_user_for_phone = fresh_user_for_phone if fresh_user_for_phone else user
+                # Use existing user data - no email updates have been executed yet
                 
                 # Analyze phone data (phone_data already extracted outside function)
                 phone_decision = analyze_phone_number_changes(
-                    current_user_for_phone.get("Phone Number", ""),
+                    user.get("Phone Number", ""),
                     phone_data.get("country_code", ""),
                     phone_data.get("phone_number", ""),
                     wks_records,
@@ -527,10 +525,14 @@ def update_info(token):
                 
                 # Check for phone conflicts
                 if phone_decision.error:
-                    return "phone_error"
+                    return {"status": "phone_error"}
                 
                 # Determine if phone verification is needed
-                needs_phone_verification = calculate_phone_verification_decision(current_user_for_phone, phone_decision)
+                needs_phone_verification = calculate_phone_verification_decision(
+                    user, 
+                    phone_decision,
+                    phone_data.get("phone_subscribe", False)
+                )
 
                 # PHASE 1.5: VALIDATE PHONE NUMBER (Before any database updates!)
                 if needs_phone_verification:
@@ -539,7 +541,7 @@ def update_info(token):
                     except ValueError as e:
                         # Phone number validation failed - stop before updating anything
                         flash(f"Invalid phone number: {str(e)}", "error")
-                        return "phone_validation_error"
+                        return {"status": "phone_validation_error"}
 
                 # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                 # Get custom fields for form processing
@@ -572,7 +574,7 @@ def update_info(token):
                 # Calculate all required cell updates
                 basic_updates = calculate_basic_user_updates(form_data, row_find, custom_fields)
                 verification_updates = calculate_verification_cell_updates(user, decision, row_find, prim_email, sec_email)
-                phone_updates = calculate_phone_updates(current_user_for_phone, form_data, phone_decision, row_find)
+                phone_updates = calculate_phone_updates(user, form_data, phone_decision, row_find)
 
                 # PHASE 3: EXECUTE SIDE EFFECTS
                 # 3.1: Execute database updates
@@ -626,29 +628,36 @@ def update_info(token):
 
                         create_event_registration_with_phone(event_obj.name, user_data, event_data, phone_data)
 
-                # PHASE 4: HANDLE SUBSCRIPTION STATUS (requires fresh data)
-                updated_user = refresh_user_data(prim_email, sec_email)
-                if updated_user:
-                    # Determine subscription preferences
-                    primary_subscription = form.primary_subscribe.data if updated_user["Primary Verified"] == "TRUE" else None
-                    secondary_subscription = form.secondary_subscribe.data if updated_user["Secondary Verified"] == "TRUE" else None
+                # PHASE 4: HANDLE SUBSCRIPTION STATUS (calculate from local state)
+                # Calculate final verification status from email decision
+                final_primary_verified = not decision.verification_status_updates.get("primary", False)
+                final_secondary_verified = not decision.verification_status_updates.get("secondary", False)
 
-                    update_subscription_status(
-                        row_find,
-                        primary_subscription,
-                        secondary_subscription,
-                        updated_user["Primary Verified"] == "TRUE",
-                        updated_user["Secondary Verified"] == "TRUE",
-                        updated_user["Secondary Email"]
-                    )
+                # Determine subscription preferences
+                primary_subscription = form.primary_subscribe.data if final_primary_verified else None
+                secondary_subscription = form.secondary_subscribe.data if final_secondary_verified else None
+
+                update_subscription_status(
+                    row_find,
+                    primary_subscription,
+                    secondary_subscription,
+                    final_primary_verified,
+                    final_secondary_verified,
+                    sec_email
+                )
 
                 # PHASE 5: MARK COMPLETION
                 update_completion_status(row_find)
 
                 # PHASE 6: SEND SMS CONFIRMATION (only if phone verification is NOT needed)
-                # Use fresh user data to get current verification status
-                fresh_user = refresh_user_data(prim_email, sec_email)
-                current_phone_verified = fresh_user.get("Phone number verified", "FALSE") if fresh_user else "FALSE"
+                # Calculate current phone verification status from local state
+                if phone_decision.clear:
+                    current_phone_verified = "FALSE"
+                elif phone_decision.changed and needs_phone_verification:
+                    current_phone_verified = "FALSE"
+                else:
+                    # Phone didn't change or changed without needing verification - keep existing status
+                    current_phone_verified = user.get("Phone number verified", "FALSE")
                 
                 # Only send SMS for new event registrations, not updates
                 is_new_event_registration = event_user is None
@@ -665,53 +674,65 @@ def update_info(token):
                     )
 
                 # PHASE 7: SEND CONFIRMATION EMAILS (Update-specific)
-                final_user = refresh_user_data(prim_email, sec_email)
-                if final_user:
-                    subject = "I2G Membership Updated"
-                    
-                    # Format phone number with + prefix for display
-                    phone_num = final_user.get("Phone Number", "")
-                    if phone_num:
-                        phone_num_str = str(phone_num)
-                        phone_display = f"+{phone_num_str}" if not phone_num_str.startswith("+") else phone_num_str
-                    else:
-                        phone_display = ""
-                    
-                    template_data = {
-                        "event_url": event_url,
-                        "update_url": update_url,
-                        "first": final_user["First Name"],
-                        "last": final_user["Last Name"],
-                        "primary_email": final_user["Primary Email"],
-                        "primary_verified": final_user["Primary Verified"],
-                        "primary_subscribed": final_user["Primary Subscribed"],
-                        "secondary_email": final_user["Secondary Email"],
-                        "secondary_verified": final_user["Secondary Verified"],
-                        "secondary_subscribed": final_user["Secondary Subscribed"],
-                        "phone_number": phone_display,
-                        "phone_number_verified": final_user.get("Phone number verified", "FALSE"),
-                        "phone_subscribed": final_user.get("Phone number subscribed", "FALSE"),
-                        "info_fields": info_fields,
-                        "event_name": event_obj.name if event_obj is not None else None,
-                        "event_fields": event_fields
-                    }
+                subject = "I2G Membership Updated"
 
-                    # Send to verified emails only
-                    if final_user["Primary Verified"] == "TRUE":
-                        send_confirmation_email(
-                            final_user["Primary Email"],
-                            subject,
-                            "update_receipt_email.html",
-                            template_data
-                        )
+                # Format phone number with + prefix for display
+                phone_num = phone_data.get('full_phone_number', '')
+                if phone_num:
+                    phone_num_str = str(phone_num)
+                    phone_display = f"+{phone_num_str}" if not phone_num_str.startswith("+") else phone_num_str
+                else:
+                    phone_display = ""
 
-                    if final_user["Secondary Verified"] == "TRUE":
-                        send_confirmation_email(
-                            final_user["Secondary Email"],
-                            subject,
-                            "update_receipt_email.html",
-                            template_data
-                        )
+                # Calculate final phone verified status
+                if phone_decision.clear:
+                    final_phone_verified = "FALSE"
+                elif phone_decision.changed and needs_phone_verification:
+                    final_phone_verified = "FALSE"
+                else:
+                    final_phone_verified = user.get("Phone number verified", "FALSE")
+
+                # Calculate final phone subscribed status
+                if phone_decision.clear:
+                    final_phone_subscribed = "FALSE"
+                else:
+                    final_phone_subscribed = "TRUE" if phone_data.get("phone_subscribe", False) else "FALSE"
+
+                template_data = {
+                    "event_url": event_url,
+                    "update_url": update_url,
+                    "first": form.first_name.data,
+                    "last": form.last_name.data,
+                    "primary_email": prim_email,
+                    "primary_verified": "TRUE" if final_primary_verified else "FALSE",
+                    "primary_subscribed": "TRUE" if primary_subscription else "FALSE",
+                    "secondary_email": sec_email,
+                    "secondary_verified": "TRUE" if final_secondary_verified else "FALSE",
+                    "secondary_subscribed": "TRUE" if secondary_subscription else "FALSE",
+                    "phone_number": phone_display,
+                    "phone_number_verified": final_phone_verified,
+                    "phone_subscribed": final_phone_subscribed,
+                    "info_fields": info_fields,
+                    "event_name": event_obj.name if event_obj is not None else None,
+                    "event_fields": event_fields
+                }
+
+                # Send to verified emails only
+                if final_primary_verified:
+                    send_confirmation_email(
+                        prim_email,
+                        subject,
+                        "update_receipt_email.html",
+                        template_data
+                    )
+
+                if final_secondary_verified and sec_email:
+                    send_confirmation_email(
+                        sec_email,
+                        subject,
+                        "update_receipt_email.html",
+                        template_data
+                    )
 
                 # PHASE 8: SETUP SESSION FOR PHONE VERIFICATION (validation already happened in Phase 1.5)
                 if needs_phone_verification:
@@ -739,31 +760,35 @@ def update_info(token):
                     # Setup session for OTP verification
                     setup_event_phone_verification_session(session, user_data, event_data, phone_data)
                     
-                    return "phone_verification_needed"
+                    return {"status": "phone_verification_needed"}
+
+                # Return calculated final state
+                return {
+                    "status": "success",
+                    "primary_verified": final_primary_verified,
+                    "secondary_verified": final_secondary_verified,
+                    "phone_verified": final_phone_verified if not needs_phone_verification else "FALSE",
+                    "phone_subscribed": final_phone_subscribed if not needs_phone_verification else "FALSE"
+                }
 
             # Execute user update and handle phone verification/errors
             result = execute_user_update()
             
             # Handle phone verification redirect
-            if result == "phone_verification_needed":
+            if result.get("status") == "phone_verification_needed":
                 return redirect(url_for("confirm.otp"))
             
             # Handle phone validation error - return to form with flash message
-            if result == "phone_validation_error":
+            if result.get("status") == "phone_validation_error":
                 return render_template("update_form.html", form=form, token=token)
             
             # Handle phone conflict error - number already in database
-            if result == "phone_error":
+            if result.get("status") == "phone_error":
                 return render_template("error3.html")  # Phone conflict error
 
-            # Get fresh user data after all updates to show current state
-            fresh_user = refresh_user_data(prim_email, sec_email)
-            if fresh_user:
-                phone_number_verified = fresh_user.get("Phone number verified", "FALSE")
-                phone_subscribed = fresh_user.get("Phone number subscribed", "FALSE")
-            else:
-                phone_number_verified = user.get("Phone number verified", "FALSE")
-                phone_subscribed = phone_data.get('phone_subscribe', False)
+            # Use calculated final state from result
+            phone_number_verified = result.get("phone_verified", user.get("Phone number verified", "FALSE"))
+            phone_subscribed = result.get("phone_subscribed", "FALSE")
             
             return render_template("thanks_update.html",
                                     event_url=event_url,

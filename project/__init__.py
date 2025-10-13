@@ -122,6 +122,20 @@ if "MembersTesting" not in worksheets:
             if row.label not in sh.worksheet("MembersTesting").row_values(1):
                 sh.worksheet("MembersTesting").update_cell(1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label)
 
+if "MembersTesting2" not in worksheets:
+    sh.add_worksheet("MembersTesting2", 1, 100)
+    row = [
+        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone number subscribed", "Phone number verified",
+        "Info Completed"]
+
+    sh.worksheet("MembersTesting2").append_row(row)
+
+    with app.app_context():
+        for row in edit_form.query.all():
+            if row.label not in sh.worksheet("MembersTesting2").row_values(1):
+                sh.worksheet("MembersTesting2").update_cell(1, len(sh.worksheet("MembersTesting2").row_values(1)) + 1, row.label)
 
 
 if "Logs" not in worksheets:
@@ -142,6 +156,7 @@ if "Dev_Logs" not in worksheets:
 # --- CHANGING THE WKS TO MAKE IT WITH THE TESTING SHEET --- #
 # wks = sh.worksheet("Members")
 wks = sh.worksheet("MembersTesting")
+# wks = sh.worksheet("MembersTesting2")
 logs = sh.worksheet("Logs")
 dev_logs = sh.worksheet("Dev_Logs")
 

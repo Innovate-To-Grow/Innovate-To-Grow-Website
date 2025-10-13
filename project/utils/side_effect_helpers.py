@@ -354,7 +354,7 @@ def send_event_confirmation_emails(
     }
 
     # Send to verified emails only
-    if user["Primary Verified"] == "TRUE":
+    if user["Primary Verified"] == "TRUE" and user["Primary Email"]:
         send_confirmation_email(
             user["Primary Email"],
             subject,
@@ -362,7 +362,7 @@ def send_event_confirmation_emails(
             template_data
         )
 
-    if user["Secondary Verified"] == "TRUE":
+    if user["Secondary Verified"] == "TRUE" and user["Secondary Email"]:
         send_confirmation_email(
             user["Secondary Email"],
             subject,

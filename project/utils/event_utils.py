@@ -430,22 +430,41 @@ def analyze_phone_number_changes(
 
 def calculate_phone_verification_decision(
     user: Dict[str, Any], 
-    phone_decision: PhoneChangeDecision
+    phone_decision: PhoneChangeDecision,
+    phone_subscribe: bool = False
 ) -> bool:
     """
     Determine if phone verification is needed based on phone change analysis.
+    
+    Verification is needed when:
+    1. Phone number changed (phone_decision.verify and phone_decision.changed), OR
+    2. Phone is unverified AND user wants to subscribe for phone notifications
 
     Pure function that decides if OTP verification should be triggered.
 
     Args:
         user: Current user record
         phone_decision: Result from analyze_phone_number_changes
+        phone_subscribe: Whether user wants to subscribe for phone notifications
 
     Returns:
         bool: True if phone verification (OTP) is needed
     """
-    # Only need verification if phone changed and verification flag is set
-    return phone_decision.verify and phone_decision.changed
+    # Case 1: Phone changed - need verification
+    if phone_decision.verify and phone_decision.changed:
+        return True
+    
+    # Case 2: Phone unverified but user wants to subscribe - need verification
+    phone_verified = user.get("Phone number verified", "FALSE")
+    phone_number = user.get("Phone Number", "")
+    # Convert to string in case it's an integer from Google Sheets
+    phone_number = str(phone_number) if phone_number else ""
+    has_phone = bool(phone_number.strip())
+    
+    if has_phone and phone_verified == "FALSE" and phone_subscribe:
+        return True
+    
+    return False
 
 
 def should_send_event_sms_confirmation(
