@@ -46,30 +46,76 @@ def validate_phone_number_exists(phone_number: str) -> dict:
             "error": str or None
         }
     """
-    # Basic sanity check for obviously fake numbers
-    if phone_number:
-        # Remove the + sign for pattern checking
-        digits_only = phone_number.replace("+", "").replace(" ", "").replace("-", "")
-        
-        # Check for patterns like all same digit (1111111111, 0000000000, etc.)
-        if len(set(digits_only)) == 1:
+    # Basic sanity check - ensure phone number is provided
+    if not phone_number or phone_number.strip() == "":
+        return {
+            "valid": False,
+            "phone_number": phone_number,
+            "national_format": None,
+            "country_code": None,
+            "error": "Phone number is required"
+        }
+    
+    # Parse the phone number to extract national number portion
+    # This allows us to check patterns independently of the country code
+    try:
+        # Ensure the number has a + prefix for parsing
+        number_to_parse = phone_number if phone_number.startswith("+") else "+" + phone_number
+        parsed = phonenumbers.parse(number_to_parse, None)
+        national_number = str(parsed.national_number)
+        country_code = parsed.country_code
+    except Exception as e:
+        # If parsing fails, fall back to basic digit extraction
+        national_number = phone_number.replace("+", "").replace(" ", "").replace("-", "")
+        # Remove the first 1-3 digits (country code) if the number is long enough
+        if len(national_number) > 10:
+            national_number = national_number[-10:]  # Take last 10 digits for US numbers
+        country_code = None
+    
+    # Validate US phone numbers have exactly 10 digits
+    if country_code == 1:  # US/Canada country code
+        if len(national_number) != 10:
             return {
                 "valid": False,
                 "phone_number": phone_number,
                 "national_format": None,
                 "country_code": None,
-                "error": "Invalid phone number pattern - appears to be a test number"
+                "error": f"US phone numbers must be exactly 10 digits (got {len(national_number)} digits)"
             }
-        
-        # Check for sequential patterns (1234567890, 0123456789)
-        if digits_only in ["1234567890", "0123456789", "9876543210"]:
-            return {
-                "valid": False,
-                "phone_number": phone_number,
-                "national_format": None,
-                "country_code": None,
-                "error": "Invalid phone number pattern - appears to be a test number"
-            }
+    
+    # Pattern validation on the NATIONAL NUMBER only (excluding country code)
+    # This prevents patterns like +18888888888 from slipping through
+    
+    # Check for all same digit (0000000000, 1111111111, 8888888888, etc.)
+    if len(national_number) >= 10 and len(set(national_number)) == 1:
+        return {
+            "valid": False,
+            "phone_number": phone_number,
+            "national_format": None,
+            "country_code": None,
+            "error": "Invalid phone number pattern - appears to be a test number"
+        }
+    
+    # Check for sequential patterns (1234567890, 0123456789, 9876543210)
+    if national_number in ["1234567890", "0123456789", "9876543210"]:
+        return {
+            "valid": False,
+            "phone_number": phone_number,
+            "national_format": None,
+            "country_code": None,
+            "error": "Invalid phone number pattern - appears to be a test number"
+        }
+    
+    # Check for alternating/repetitive patterns (too few unique digits)
+    # This catches patterns like 1212121212, 1231231231, etc.
+    if len(national_number) >= 10 and len(set(national_number)) <= 2:
+        return {
+            "valid": False,
+            "phone_number": phone_number,
+            "national_format": None,
+            "country_code": None,
+            "error": "Invalid phone number pattern - appears to be a test number"
+        }
     
     try:
         # Twilio Lookup API validates the number exists and returns carrier info
