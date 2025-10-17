@@ -23,7 +23,7 @@ class CompleteRegistrationForm(FlaskForm):
     confirm_primary = StringField(
         'Confirm Primary Email',
         [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
-    primary_subscribe = BooleanField("Enable Email Notifications")
+    primary_subscribe = BooleanField("Subscribe to Email Notifications")
     secondary_email = StringField(
         'Secondary Email Address',
         [
@@ -37,7 +37,7 @@ class CompleteRegistrationForm(FlaskForm):
             ConditionalRequiredIfFieldProvided('secondary_email', 'Please confirm your secondary email'),
             EqualTo('secondary_email', message='Must match secondary email')
         ])
-    secondary_subscribe = BooleanField("Enable Email Notifications")
+    secondary_subscribe = BooleanField("Subscribe to Email Notifications")
     
     # Phone number fields
     country_code = SelectField('Country Code', choices=[
