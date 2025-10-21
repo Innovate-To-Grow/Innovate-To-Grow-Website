@@ -248,8 +248,8 @@ class EventModelView(ModelView):
         if model.name not in worksheets:
             sh.add_worksheet(model.name, 1, 30)
             columns = [
-                "Order", "First Name", "Last Name", "When Started", "Last Updated", "Membership Primary",
-                "Membership Secondary", "Ticket Type", "Will you attend on Zoom or In-Person?"
+                 "Order", "First Name", "Last Name", "When Started", "Last Updated", "Membership Primary",
+                "Membership Secondary", "Phone Number", "Ticket Type", "Will you attend on Zoom or In-Person?"
             ]
             sh.worksheet(model.name).append_row(columns)
 

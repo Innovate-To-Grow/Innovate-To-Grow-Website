@@ -2,16 +2,38 @@ import asyncio, time
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context
+from flask import Blueprint, render_template, url_for, request, redirect, copy_current_request_context, session, flash, get_flashed_messages
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
-from wtforms.validators import EqualTo, Email, InputRequired, Optional
+from wtforms.validators import Optional
 from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
+from project.utils.registration_utils import (
+    analyze_complete_registration_conflicts,
+    calculate_new_user_creation,
+    calculate_event_registration_from_complete,
+    analyze_phone_number_conflicts,
+    calculate_registration_method,
+    should_trigger_phone_verification,
+    calculate_phone_registration_data
+)
+from project.utils.side_effect_helpers import (
+    execute_cell_updates,
+    send_verification_email,
+    send_deletion_notice_email,
+    create_complete_user_registration,
+    create_event_registration,
+    create_event_registration_with_phone,
+    send_complete_registration_confirmation_email,
+    start_phone_verification_process,
+    setup_otp_verification_session,
+    send_event_sms_confirmation
+)
 from project.forms.registration_forms import NotEqualTo, RegistrationForm
+from project.forms.complete_registration_forms import CompleteRegistrationForm
 
 registration_blueprint = Blueprint("registration",
                                    __name__,
@@ -21,7 +43,8 @@ registration_blueprint = Blueprint("registration",
 
 @registration_blueprint.route("/signup", methods=["GET", "POST"])
 def register():
-    form = RegistrationForm()
+    # Use the unified form that includes phone fields
+    form = CompleteRegistrationForm()
 
     cells = []
     event_cells = []
@@ -53,6 +76,21 @@ def register():
         prim_email = request.form["primary_email"].lower()
         sec_email = request.form["secondary_email"].lower()
 
+        # Extract phone number data (optional)
+        phone_number = ""
+        phone_subscribe_flag = False
+        if hasattr(form, "country_code") and hasattr(form, "phone_number") and form.country_code.data and form.phone_number.data:
+            country_code_input = str(form.country_code.data).strip()
+            number_input = str(form.phone_number.data).strip().replace(" ", "").replace("-", "")
+            # Ensure country code starts with + for proper formatting
+            if country_code_input and not country_code_input.startswith("+"):
+                country_code_input = "+" + country_code_input
+            # Combine and ensure + is at the very start
+            phone_number = country_code_input + number_input
+            if phone_number and not phone_number.startswith("+"):
+                phone_number = "+" + phone_number
+            phone_subscribe_flag = bool(getattr(form, "phone_subscribe", None) and form.phone_subscribe.data)
+
 
         async def search_prim_in_prim_col():
             user_prim1 = [row for row in wks_records if row["Primary Email"] == prim_email]
@@ -70,7 +108,7 @@ def register():
                     if event_user:
                         event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Primary"], ""))
 
-                if user_prim1["Secondary Email"] != "" and user_prim1["Secondary Verified"] == "TRUE":
+                if user_prim1["Secondary Email"] and user_prim1["Secondary Email"].strip() != "" and user_prim1["Secondary Verified"] == "TRUE":
                     html = render_template("deleting_email.html",
                                            first=user_prim1["First Name"],
                                            last=user_prim1["Last Name"],
@@ -113,7 +151,7 @@ def register():
                     if event_user:
                         event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Secondary"], ""))
 
-                if user_prim2["Primary Email"] != "" and user_prim2["Primary Verified"] == "TRUE":
+                if user_prim2["Primary Email"] and user_prim2["Primary Email"].strip() != "" and user_prim2["Primary Verified"] == "TRUE":
                     html = render_template("deleting_email.html",
                                            first=user_prim2["First Name"],
                                            last=user_prim2["Last Name"],
@@ -141,6 +179,9 @@ def register():
 
 
         async def search_sec_in_prim_col():
+            # Only search if secondary email is not empty
+            if not sec_email or sec_email.strip() == "":
+                return
             user_sec1 = [row for row in wks_records if row["Primary Email"] == sec_email]
             if user_sec1:
                 user_sec1 = user_sec1[0]
@@ -156,7 +197,7 @@ def register():
                     if event_user:
                         event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Primary"], ""))
 
-                if user_sec1["Secondary Email"] != "" and user_sec1["Secondary Verified"] == "TRUE":
+                if user_sec1["Secondary Email"] and user_sec1["Secondary Email"].strip() != "" and user_sec1["Secondary Verified"] == "TRUE":
                     html = render_template("deleting_email.html",
                                            first=user_sec1["First Name"],
                                            last=user_sec1["Last Name"],
@@ -184,6 +225,9 @@ def register():
 
 
         async def search_sec_in_sec_col():
+            # Only search if secondary email is not empty
+            if not sec_email or sec_email.strip() == "":
+                return
             user_sec2 = [row for row in wks_records if row["Secondary Email"] == sec_email]
             if user_sec2:
                 user_sec2 = user_sec2[0]
@@ -199,7 +243,7 @@ def register():
                     if event_user:
                         event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Secondary"], ""))
 
-                if user_sec2["Primary Email"] != "" and user_sec2["Primary Verified"] == "TRUE":
+                if user_sec2["Primary Email"] and user_sec2["Primary Email"].strip() != "" and user_sec2["Primary Verified"] == "TRUE":
                     html = render_template("deleting_email.html",
                                            first=user_sec2["First Name"],
                                            last=user_sec2["Last Name"],
@@ -262,6 +306,15 @@ def register():
                 user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
                 user[wks_columns["Secondary Expired"] - 1] = "FALSE"
                 user[wks_columns["Secondary Bounced"] - 1] = ""
+                # Write phone data if provided
+                try:
+                    if phone_number:
+                        user[wks_columns["Phone Number"] - 1] = phone_number
+                        user[wks_columns["Phone number verified"] - 1] = "FALSE"
+                        user[wks_columns["Phone number subscribed"] - 1] = "TRUE" if phone_subscribe_flag else "FALSE"
+                except Exception:
+                    # If phone columns are missing, skip without failing signup
+                    pass
                 user[wks_columns["Info Completed"] - 1] = "FALSE"
 
                 wks.append_row(user)
@@ -285,7 +338,8 @@ def register():
                 )
 
                 send_email(prim_email, app.config["VERIF_SUBJECT"], p_html)
-                send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
+                if sec_email and sec_email.strip() != "":
+                    send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
 
                 def expiry_timer():
                     time.sleep(app.config["EXPIRY_TIMER"])
@@ -302,12 +356,74 @@ def register():
                 thread = Thread(target=expiry_timer)
                 thread.start()
 
+            # Before creating the row, if phone present: check conflicts and decide OTP
+            needs_phone_verification = False
+            if phone_number:
+                # Re-fetch records for the latest data
+                wks_records_conf = get_wks_records(wks)
+                # Phone conflict check
+                phone_conflict = analyze_phone_number_conflicts(wks_records_conf, phone_number)
+                if not phone_conflict["can_proceed"]:
+                    return render_template("error3.html")
+
+                # Decide verification need
+                registration_method = calculate_registration_method(
+                    has_secondary_email=bool(sec_email.strip()),
+                    has_phone_number=True
+                )
+                needs_phone_verification = should_trigger_phone_verification(registration_method, phone_number)
+
+            # If OTP needed, validate phone BEFORE creating user
+            if phone_number and needs_phone_verification:
+                # Validate phone number FIRST
+                try:
+                    start_phone_verification_process(phone_number)
+                except ValueError as e:
+                    # Phone number validation failed - show error to user
+                    flash(f"Phone number validation failed: {str(e)}", "error")
+                    return render_template("register_form.html", form=form)
+                
+                # Phone validation passed - prepare session data
+                user_data = {
+                    "first_name": form.first_name.data,
+                    "last_name": form.last_name.data,
+                    "primary_email": prim_email,
+                    "primary_verified": "FALSE",
+                    "primary_subscribed": "FALSE",
+                    "secondary_email": sec_email,
+                    "secondary_verified": "FALSE",
+                    "secondary_subscribed": "FALSE",
+                    "update_url": url_for("update.update_info", token=generate_token(prim_email), _external=True),
+                    "info_fields": {}
+                }
+
+                event_data = None
+
+                phone_data = {
+                    "phone_number": phone_number,
+                    "phone_subscribe": "TRUE" if phone_subscribe_flag else "FALSE"
+                }
+
+                # Stash origin markers for OTP routing
+                session["update"] = "FALSE"
+                session["event_reg"] = "no"
+                session["origin"] = "signup"
+
+                setup_otp_verification_session(session, user_data, event_data, phone_data)
+
+            # Append row in background (AFTER phone validation if needed)
             thread = Thread(target=can_register)
             thread.start()
+
+            # If phone verification was needed, redirect to OTP
+            if phone_number and needs_phone_verification:
+                return redirect(url_for("confirm.otp"))
 
             return render_template("instructions_sent.html")
 
     else:
+        # GET request - clear any stale flash messages from previous sessions
+        get_flashed_messages()  # Consume and discard any existing flash messages
         return render_template("register_form.html", form=form)
 
 
@@ -558,18 +674,19 @@ def info(token):
     for row in edit_form.query.all():
         setattr(InformationForm, row.label, get_field(row))
 
-    if event_obj is not None:
-        async def query_event_prim_col():
-            return [row for row in event_wks_records if row["Membership Primary"] == email]
+        if event_obj is not None:
+            async def query_event_prim_col():
+                return [row for row in event_wks_records if row["Membership Primary"] == email]
 
-        async def query_event_sec_col():
-            return [row for row in event_wks_records if row["Membership Secondary"] == email]
+            async def query_event_sec_col():
+                return [row for row in event_wks_records if row["Membership Secondary"] == email]
 
-        async def main():
-            return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
+            async def main():
+                return await asyncio.gather(query_event_prim_col(), query_event_sec_col())
 
-        event_user = asyncio.run(main())
-        event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
+            event_user = asyncio.run(main())
+            event_user = event_user[0][0] if event_user[0] else event_user[1][0] if event_user[1] else None
+            is_new_event_registration = event_user is None
 
         if event_user is not None:
             register_event_label = "Update " + event_obj.name + " registration?"
@@ -673,38 +790,52 @@ def info(token):
 
             cells.append(Cell(row_find, wks_columns["Info Completed"], "TRUE"))
 
-            if event_obj is not None:
-                if form.register_event.data:
-                    if event_user is not None:
+        if event_obj is not None:
+            if form.register_event.data:
+                if event_user is not None:
+                    event_cells.append(
+                        Cell(event_user["Row"], event_wks_columns["Last Updated"],
+                             str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
+                    # event_cells.append(
+                    #     Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
+                    event_cells.append(Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
+
+                    # Add phone number to existing event registration if user has one
+                    if "Phone Number" in event_wks_columns and user.get("Phone Number"):
+                        phone_value = str(user["Phone Number"])
+                        if phone_value and not phone_value.startswith("+"):
+                            phone_value = "+" + phone_value
+                        event_cells.append(Cell(event_user["Row"], event_wks_columns["Phone Number"], phone_value))
+
+                    for question in event_obj.questions.split("\n"):
                         event_cells.append(
-                            Cell(event_user["Row"], event_wks_columns["Last Updated"],
-                                 str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
-                        # event_cells.append(
-                        #     Cell(event_user["Row"], event_wks_columns["Will you attend on Zoom or In-Person?"], form.event_zoom_or_not.data))
-                        event_cells.append(Cell(event_user["Row"], event_wks_columns["Ticket Type"], form.event_tickets.data))
+                            Cell(event_user["Row"], event_wks_columns[question], form["event_" + question].data))
 
-                        for question in event_obj.questions.split("\n"):
-                            event_cells.append(
-                                Cell(event_user["Row"], event_wks_columns[question], form["event_" + question].data))
+                else:
+                    row = ["" for i in range(len(event_wks.row_values(1)))]
 
-                    else:
-                        row = ["" for i in range(len(event_wks.row_values(1)))]
+                    row[event_wks_columns["Order"] - 1] = int(
+                        event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
+                    row[event_wks_columns["First Name"] - 1] = user["First Name"]
+                    row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
+                    row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                    row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                    row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
+                    row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
+                    row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
+                    # row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
 
-                        row[event_wks_columns["Order"] - 1] = int(
-                            event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(1)[-1].isdigit() else 1
-                        row[event_wks_columns["First Name"] - 1] = user["First Name"]
-                        row[event_wks_columns["Last Name"] - 1] = user["Last Name"]
-                        row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
-                        row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
-                        row[event_wks_columns["Membership Primary"] - 1] = user["Primary Email"]
-                        row[event_wks_columns["Membership Secondary"] - 1] = user["Secondary Email"]
-                        row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                        # row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+                    # Add phone number to new event registration if user has one
+                    if "Phone Number" in event_wks_columns and user.get("Phone Number"):
+                        phone_value = str(user["Phone Number"])
+                        if phone_value and not phone_value.startswith("+"):
+                            phone_value = "+" + phone_value
+                        row[event_wks_columns["Phone Number"] - 1] = phone_value
 
-                        for question in event_obj.questions.split("\n"):
-                            row[event_wks_columns[question] - 1] = form["event_" + question].data
+                    for question in event_obj.questions.split("\n"):
+                        row[event_wks_columns[question] - 1] = form["event_" + question].data
 
-                        event_wks.append_row(row)
+                    event_wks.append_row(row)
 
             if len(cells) > 0:
                 wks.update_cells(cells)
@@ -712,12 +843,40 @@ def info(token):
             if len(event_cells) > 0:
                 event_wks.update_cells(event_cells)
 
+            # If a new event registration just happened and phone is verified+subscribed, send SMS
+            try:
+                if event_obj is not None and is_new_event_registration:
+                    # Get the current user's data by finding the user who just completed the info form
+                    # Use the email from the token to find the correct user
+                    current_user_email = email  # This is the email from the token
+                    fresh_user_records = get_wks_records(wks)
+                    
+                    # Find the user by the email that was used to access this info form
+                    current_user = None
+                    for row in fresh_user_records:
+                        if row["Primary Email"] == current_user_email or row["Secondary Email"] == current_user_email:
+                            current_user = row
+                            break
+                    
+                    if current_user:
+                        current_phone = str(current_user.get("Phone Number", "") or "")
+                        current_phone_verified = current_user.get("Phone number verified", "FALSE")
+                        current_phone_subscribed = current_user.get("Phone number subscribed", "FALSE") == "TRUE"
+
+                        if current_phone and current_phone_verified == "TRUE" and current_phone_subscribed:
+                            send_event_sms_confirmation(current_phone, event_obj.name)
+            except Exception as e:
+                print(f"Error sending event SMS after info form: {e}")
+
             subject = "I2G Membership Completed"
             html = render_template("info_receipt_email.html",
                                    event_url=event_url,
                                    update_url=update_url,
                                    first=user["First Name"],
                                    last=user["Last Name"],
+                                   phone_number=str(user.get("Phone Number", "") or ""),
+                                   phone_number_verified=user.get("Phone number verified", "FALSE"),
+                                   phone_subscribed=True if user.get("Phone number subscribed", "FALSE") == "TRUE" else False,
                                    primary_email=user["Primary Email"],
                                    primary_verified=user["Primary Verified"],
                                    primary_subscribed=user["Primary Subscribed"],
@@ -744,6 +903,9 @@ def info(token):
                                secondary_email=user["Secondary Email"],
                                secondary_verified=user["Secondary Verified"],
                                secondary_subscribed=user["Secondary Subscribed"],
+                               phone_number=str(user.get("Phone Number", "") or ""),
+                               phone_number_verified=user.get("Phone number verified", "FALSE"),
+                               phone_subscribed=True if user.get("Phone number subscribed", "FALSE") == "TRUE" else False,
                                info_fields=info_fields,
                                event_name=event_obj.name if event_obj is not None else None,
                                event_fields=event_fields)
@@ -761,27 +923,11 @@ def complete_registration(token):
 
     email = email.lower()
 
-    cells = []
-
-    global can_register
-    can_register = True
-
+    # Get initial data
     wks_records = get_wks_records(wks)
-    wks_columns = get_wks_columns(wks)
-
-    event_cells = []
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
-    event_url = None
-    update_url = url_for("update.update_info", token=token, _external=True)
-
-    if event_obj is not None:
-        event_wks = sh.worksheet(event_obj.name)
-        event_wks_records = get_wks_records(event_wks)
-        event_wks_columns = get_wks_columns(event_wks)
-        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
-
-
+    # Check if user already exists (should not for complete registration)
     async def query_prim_col():
         return [row for row in wks_records if row["Primary Email"] == email]
 
@@ -797,33 +943,15 @@ def complete_registration(token):
     if user is not None:
         return render_template("error1.html")
 
+    # Build dynamic form by adding custom fields to the base formin
 
-    class CompleteRegistrationForm(FlaskForm):
-        first_name = StringField("First Name", validators=[InputRequired()])
-        last_name = StringField("Last Name", validators=[InputRequired()])
-        primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
-        confirm_primary = StringField(
-            'Confirm Primary Email',
-            [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
-        secondary_email = StringField(
-            'Secondary Email Address',
-            [InputRequired(' '),
-             Email(), NotEqualTo('primary_email', message='Can not be the same email')])
-        confirm_secondary = StringField(
-            'Confirm Secondary Email',
-            [InputRequired(' '), EqualTo('secondary_email', message='Must match secondary email')])
-        submit = SubmitField('Submit')
-
+    # Add custom fields
     for row in edit_form.query.all():
         setattr(CompleteRegistrationForm, row.label, get_field(row))
 
+    # Add event fields if there's a live event
     if event_obj is not None:
         setattr(CompleteRegistrationForm, "register_event", BooleanField("Also register for " + event_obj.name + "?", default=True))
-        # setattr(
-        #     CompleteRegistrationForm, "event_zoom_or_not",
-        #     RadioField("Will you attend on Zoom or In-Person?",
-        #                choices=[("Zoom", "Zoom"), ("In-Person", "In-Person"), ("Both", "Both")],
-        #                validators=[Optional()]))
         setattr(
             CompleteRegistrationForm, "event_tickets",
             RadioField("Ticket Type",
@@ -833,135 +961,172 @@ def complete_registration(token):
         for question in event_obj.questions.split("\n"):
             setattr(CompleteRegistrationForm, "event_" + question, StringField(question))
 
+    # Pre-populate form with primary email from token
     person = {"primary_email": email, "confirm_primary": email}
-
     form = CompleteRegistrationForm(data=person)
     form.primary_email.render_kw = {"readonly": True}
     form.confirm_primary.render_kw = {"readonly": True}
 
     if request.method == "POST" and form.validate_on_submit():
+        # Extract form data first for logging
+        prim_email = form.primary_email.data.lower()
+        sec_email = form.secondary_email.data.lower()
+
+        # Extract phone number for logging
+        phone_number = ""
+        if form.country_code.data and form.phone_number.data:
+            phone_number = form.country_code.data + form.phone_number.data
+            # print(f"DEBUG: Form country code: '{form.country_code.data}'")
+            # print(f"DEBUG: Form phone number: '{form.phone_number.data}'")
+            # print(f"DEBUG: Constructed phone number for conflict check: '{phone_number}'")
+
+        # Log the registration attempt
         def log_registration():
             order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+            phone_info = f"Phone: {phone_number}" if phone_number else "No Phone"
             row = [
                 order, "/full-registration/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
                 "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data,
-                "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
+                phone_info, "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
             ]
             logs.append_row(row)
 
         Thread(target=log_registration).start()
 
+        # PHASE 1: ANALYZE CONFLICTS (Pure Logic) - Do this BEFORE background thread
         wks_records = get_wks_records(wks)
-        wks_columns = get_wks_columns(wks)
 
-        if event_obj is not None:
-            event_wks = sh.worksheet(event_obj.name)
-            event_wks_records = get_wks_records(event_wks)
-            event_wks_columns = get_wks_columns(event_wks)
+        # 1.1: Email conflict analysis
+        conflict_decision = analyze_complete_registration_conflicts(
+            wks_records, prim_email, sec_email
+        )
 
-        prim_email = form.primary_email.data.lower()
-        sec_email = form.secondary_email.data.lower()
-
-        async def search_sec_in_prim_col():
-            user_sec1 = [row for row in wks_records if row["Primary Email"] == sec_email]
-            if user_sec1:
-                user_sec1 = user_sec1[0]
-                row_sec1 = user_sec1["Row"]
-            else:
-                return
-
-            if (user_sec1 is not None and user_sec1["Primary Expired"] == "TRUE"):
-                cells.append(Cell(row_sec1, wks_columns["Primary Email"], ""))
-
-                if event_obj is not None:
-                    event_user = [row for row in event_wks_records if row["Membership Primary"] == sec_email]
-                    if event_user:
-                        event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Primary"], ""))
-
-                if user_sec1["Secondary Email"] != "" and user_sec1["Secondary Verified"] == "TRUE":
-                    html = render_template("deleting_email.html",
-                                           first=user_sec1["First Name"],
-                                           last=user_sec1["Last Name"],
-                                           email=user_sec1["Primary Email"])
-                    thread = Thread(target=send_email,
-                                    args=(user_sec1["Secondary Email"], app.config["REMOVE_SUBJECT"], html))
-                    thread.start()
-
-            elif (user_sec1 is not None and user_sec1["Primary Expired"] == "FALSE"):
-                global can_register
-                can_register = False
-                if user_sec1["Primary Verified"] == "TRUE":
-                    token = generate_token(user_sec1["Primary Email"])
-                    update_url = url_for("update.update_info", token=token, _external=True)
-                    update_html = render_template(
-                        "update_email.html",
-                        first=user_sec1["First Name"],
-                        last=user_sec1["Last Name"],
-                        update_url=update_url,
-                    )
-                    thread = Thread(target=send_email,
-                                    args=(user_sec1["Primary Email"], app.config["UPDATE_SUBJECT"],
-                                          update_html))
-                    thread.start()
-
-
-        async def search_sec_in_sec_col():
-            user_sec2 = [row for row in wks_records if row["Secondary Email"] == sec_email]
-            if user_sec2:
-                user_sec2 = user_sec2[0]
-                row_sec2 = user_sec2["Row"]
-            else:
-                return
-
-            if (user_sec2 is not None and user_sec2["Secondary Expired"] == "TRUE"):
-                cells.append(Cell(row_sec2, wks_columns["Secondary Email"], ""))
-
-                if event_obj is not None:
-                    event_user = [row for row in event_wks_records if row["Membership Secondary"] == sec_email]
-                    if event_user:
-                        event_cells.append(Cell(event_user[0]["Row"], event_wks_columns["Membership Secondary"], ""))
-
-                if user_sec2["Primary Email"] != "" and user_sec2["Primary Verified"] == "TRUE":
-                    html = render_template("deleting_email.html",
-                                           first=user_sec2["First Name"],
-                                           last=user_sec2["Last Name"],
-                                           email=user_sec2["Secondary Email"])
-                    thread = Thread(target=send_email,
-                                    args=(user_sec2["Primary Email"], app.config["REMOVE_SUBJECT"], html))
-                    thread.start()
-
-            elif (user_sec2 is not None and user_sec2["Secondary Expired"] == "FALSE"):
-                global can_register
-                can_register = False
-                if user_sec2["Secondary Verified"] == "TRUE":
-                    token = generate_token(user_sec2["Secondary Email"])
-                    update_url = url_for("update.update_info", token=token, _external=True)
-                    update_html = render_template(
-                        "update_email.html",
-                        first=user_sec2["First Name"],
-                        last=user_sec2["Last Name"],
-                        update_url=update_url,
-                    )
-                    thread = Thread(target=send_email,
-                                    args=(user_sec2["Secondary Email"], app.config["UPDATE_SUBJECT"],
-                                          update_html))
-                    thread.start()
-
-        async def update_sheet():
-            if len(cells) > 0:
-                wks.update_cells(cells)
-
-            if len(event_cells) > 0:
-                event_wks.update_cells(event_cells)
-
-        async def main():
-            await asyncio.gather(search_sec_in_prim_col(), search_sec_in_sec_col(), update_sheet())
-
-        asyncio.run(main())
-
-        if not can_register:
+        if not conflict_decision.can_proceed:
             return render_template("error1.html")
-        else:
+
+        # 1.2: Phone number validation and conflict analysis
+        # Check for phone number conflicts
+        # print(f"DEBUG: About to check phone conflicts with: '{phone_number}'")
+        phone_conflict = analyze_phone_number_conflicts(wks_records, phone_number)
+        # print(f"DEBUG: Phone conflict result: {phone_conflict}")
+        if not phone_conflict["can_proceed"]:
+            # print("DEBUG: Phone conflict detected - blocking registration")
+            return render_template("error3.html")  # Phone already exists
+        # else:
+            # print("DEBUG: No phone conflict - allowing registration to proceed")
+
+        # 1.3: Calculate registration method and determine verification needs
+        registration_method = calculate_registration_method(
+            has_secondary_email=bool(sec_email.strip()),
+            has_phone_number=bool(phone_number.strip())
+        )
+
+        needs_phone_verification = should_trigger_phone_verification(
+            registration_method, phone_number
+        )
+
+        @copy_current_request_context
+        def execute_complete_registration():
+            """Refactored function using separated logic and side effects"""
+
+            # PHASE 2: CALCULATE USER DATA (Pure Logic)
+            # Get custom fields for form processing
+            custom_fields = [{"label": row.label, "field_type": row.field_type}
+                           for row in edit_form.query.all()]
+
+            # Prepare form data for processing
+            form_data = {
+                "first_name": form.first_name.data,
+                "last_name": form.last_name.data,
+                "primary_email": prim_email,
+                "secondary_email": sec_email,
+            }
+
+            # Add custom field data
+            for row in edit_form.query.all():
+                field = form[row.label]
+                if row.field_type == "Checkbox":
+                    vals = []
+                    choices = checkbox_get_choices(row.options)
+                    for key in field.data:
+                        vals.append(choices[int(key)][1])
+                    form_data[row.label] = vals
+                else:
+                    form_data[row.label] = field.data
+
+            # Add phone data if provided
+            if phone_number:
+                phone_form_data = {
+                    "country_code": form.country_code.data,
+                    "phone_number": form.phone_number.data,
+                    "phone_subscribe": form.phone_subscribe.data
+                }
+                phone_data = calculate_phone_registration_data(phone_form_data)
+                # print(f"DEBUG: Calculated phone data for storage: {phone_data}")
+                form_data["phone_data"] = phone_data
+
+                # Also create phone data in the format expected by event registration
+                form_data["event_phone_data"] = {
+                    "country_code": form.country_code.data,
+                    "phone_number": form.phone_number.data,
+                    "phone_subscribe": form.phone_subscribe.data,
+                    "full_phone_number": phone_number  # Use the already-calculated full number
+                }
+
+            # Generate order number and timestamp
+            wks_columns = get_wks_columns(wks)
+            next_order = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(wks_columns["Order"])[-1].isdigit() else 1
+            current_timestamp = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+
+            # Calculate user data for creation
+            user_data = calculate_new_user_creation(form_data, custom_fields, next_order, current_timestamp)
+
+            # Calculate event data if user opted to register
+            event_data = None
+            register_for_event = event_obj is not None and form.register_event.data
+            if register_for_event:
+                event_questions = event_obj.questions.split("\n")
+                form_data["event_tickets"] = form.event_tickets.data
+                for question in event_questions:
+                    form_data[f"event_{question}"] = form[f"event_{question}"].data
+                event_data = calculate_event_registration_from_complete(form_data, event_questions, register_for_event)
+
+            # PHASE 3: EXECUTE SIDE EFFECTS
+            # 3.1: Clear conflicting emails and send notifications (use the already-computed conflict_decision)
+            if conflict_decision.emails_to_clear:
+                execute_cell_updates(conflict_decision.emails_to_clear, "membership")
+
+            for notification in conflict_decision.notification_emails:
+                send_deletion_notice_email(
+                    notification["to"],
+                    notification["user_first_name"],
+                    notification["user_last_name"],
+                    notification["deleted_email"]
+                )
+
+            # 3.2: Create new user record
+            user_row = create_complete_user_registration(user_data, custom_fields)
+
+            # 3.3: Send verification email for secondary email (if provided)
+            if sec_email and sec_email.strip():
+                send_verification_email(sec_email, form.first_name.data, form.last_name.data)
+
+            # 3.4: Create event registration if requested
+            if event_data and register_for_event:
+                user_data_for_event = {
+                    "first_name": form.first_name.data,
+                    "last_name": form.last_name.data,
+                    "primary_email": prim_email,
+                    "secondary_email": sec_email
+                }
+
+                # Extract phone data in the format expected by event registration
+                phone_data_for_event = form_data.get("event_phone_data")
+
+                # Use phone-aware event registration function
+                create_event_registration_with_phone(event_obj.name, user_data_for_event, event_data, phone_data_for_event)
+
+            # 3.5: Prepare data for templates
             info_fields = {}
             for row in edit_form.query.all():
                 field = form[row.label]
@@ -975,134 +1140,142 @@ def complete_registration(token):
                     info_fields[row.label] = field.data
 
             event_fields = {}
-            if event_obj is not None:
-                if form.register_event.data:
-                    # event_fields["Will you attend on Zoom or In-Person?"] = form.event_zoom_or_not.data
-                    event_fields["Ticket Type"] = form.event_tickets.data
+            if event_obj is not None and register_for_event:
+                event_fields["Ticket Type"] = form.event_tickets.data
+                for question in event_obj.questions.split("\n"):
+                    event_fields[question] = form[f"event_{question}"].data
 
-                    for question in event_obj.questions.split("\n"):
-                        event_fields[question] = form["event_" + question].data
+            # 3.6: Send confirmation email
+            event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True) if event_obj else None
+            update_url = url_for("update.update_info", token=token, _external=True)
 
-            @copy_current_request_context
-            def can_register():
-                user = ["" for i in range(len(wks_columns))]
+            send_complete_registration_confirmation_email(
+                prim_email,
+                user_data,
+                info_fields,
+                event_fields,
+                event_url,
+                update_url,
+                event_obj.name if event_obj is not None else None
+            )
 
-                user[wks_columns["Order"] - 1] = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(
-                    wks_columns["Order"])[-1].isdigit() else 1
-                user[wks_columns["First Name"] - 1] = form.first_name.data
-                user[wks_columns["Last Name"] - 1] = form.last_name.data
-                user[wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
-                user[wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
-                user[wks_columns["Primary Email"] - 1] = prim_email
-                user[wks_columns["Primary Verified"] - 1] = "TRUE"
-                user[wks_columns["Primary Subscribed"] - 1] = "TRUE"
-                user[wks_columns["Primary Expired"] - 1] = "FALSE"
-                user[wks_columns["Primary Bounced"] - 1] = ""
-                user[wks_columns["Secondary Email"] - 1] = sec_email
-                user[wks_columns["Secondary Verified"] - 1] = "FALSE"
-                user[wks_columns["Secondary Subscribed"] - 1] = "FALSE"
-                user[wks_columns["Secondary Expired"] - 1] = "FALSE"
-                user[wks_columns["Secondary Bounced"] - 1] = ""
-                user[wks_columns["Info Completed"] - 1] = "TRUE"
+            return "success"
 
-                for row in edit_form.query.all():
-                    if row.field_type == "Checkbox":
-                        vals = []
-                        choices = checkbox_get_choices(row.options)
-                        for key in field.data:
-                            vals.append(choices[int(key)][1])
-                        user[wks_columns[row.label] - 1] = "\n".join(vals)
-                    else:
-                        user[wks_columns[row.label] - 1] = field.data
-
-                wks.append_row(user)
-
-                s_token = generate_token(sec_email)
-                s_confirm_url = url_for("registration.confirm", token=s_token, _external=True)
-                s_html = render_template(
-                    "verify_email.html",
-                    first=form.first_name.data,
-                    last=form.last_name.data,
-                    confirm_url=s_confirm_url,
+        # Check if phone verification is needed and validate BEFORE creating user
+        if needs_phone_verification:
+            # Validate phone number FIRST before doing anything else
+            try:
+                start_phone_verification_process(phone_number)
+            except ValueError as e:
+                # Phone number validation failed - show error to user
+                flash(f"Phone number validation failed: {str(e)}", "error")
+                # Return user to the form with their data
+                return render_template(
+                    "complete_registration.html",
+                    form=form,
+                    token=token
                 )
+            
+            # Phone validation passed - prepare data for OTP session
+            user_data = {
+                "first_name": form.first_name.data,
+                "last_name": form.last_name.data,
+                "primary_email": prim_email,
+                "primary_verified": "TRUE",
+                "primary_subscribed": "TRUE",
+                "secondary_email": sec_email,
+                "secondary_verified": "FALSE",
+                "secondary_subscribed": "FALSE",
+                "update_url": url_for("update.update_info", token=token, _external=True)
+            }
 
-                send_email(sec_email, app.config["VERIF_SUBJECT"], s_html)
+            event_data = None
+            if event_obj is not None and form.register_event.data:
+                event_data = {
+                    "event_url": url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True),
+                    "event_reg": "yes",
+                    "event_name": event_obj.name,
+                    "event_fields": {
+                        "Ticket Type": form.event_tickets.data
+                    }
+                }
+                # Add event question answers
+                for question in event_obj.questions.split("\n"):
+                    event_data["event_fields"][question] = form[f"event_{question}"].data
 
-                def sec_expiry_timer():
-                    time.sleep(app.config["EXPIRY_TIMER"])
-                    wks_records = get_wks_records(wks)
-                    wks_columns = get_wks_columns(wks)
-                    row = [row for row in wks_records if row["Secondary Email"] == sec_email]
-                    if row:
-                        row = row[0]
-                        if row["Secondary Verified"] == "FALSE":
-                            wks.update_cell(row["Row"], wks_columns["Secondary Expired"], "TRUE")
+            phone_data = {
+                "phone_number": phone_number,
+                "phone_subscribe": "TRUE" if form.phone_subscribe.data else "FALSE"
+            }
 
-                thread = Thread(target=sec_expiry_timer)
-                thread.start()
+            # Prepare info fields for session
+            info_fields = {}
+            for row in edit_form.query.all():
+                field = form[row.label]
+                if row.field_type == "Checkbox":
+                    vals = []
+                    choices = checkbox_get_choices(row.options)
+                    for key in field.data:
+                        vals.append(choices[int(key)][1])
+                    info_fields[row.label] = " ".join(vals)
+                else:
+                    info_fields[row.label] = field.data
 
-                if event_obj is not None:
-                    if form.register_event.data:
-                        event_row = ["" for i in range(len(event_wks_columns))]
+            user_data["info_fields"] = info_fields
+            
+            # Setup OTP verification session
+            setup_otp_verification_session(session, user_data, event_data, phone_data)
+        
+        # Execute the complete registration logic (AFTER phone validation if needed)
+        thread = Thread(target=execute_complete_registration)
+        thread.start()
 
-                        event_row[event_wks_columns["Order"] - 1] = int(
-                            event_wks.col_values(1)[-1]) + 1 if event_wks.col_values(
-                                event_wks_columns["Order"])[-1].isdigit() else 1
-                        event_row[event_wks_columns["First Name"] - 1] = form.first_name.data
-                        event_row[event_wks_columns["Last Name"] - 1] = form.last_name.data
-                        event_row[event_wks_columns["When Started"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
-                        event_row[event_wks_columns["Last Updated"] - 1] = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
-                        event_row[event_wks_columns["Membership Primary"] - 1] = prim_email
-                        event_row[event_wks_columns["Membership Secondary"] - 1] = sec_email
-                        event_row[event_wks_columns["Ticket Type"] - 1] = form.event_tickets.data
-                        # event_row[event_wks_columns["Will you attend on Zoom or In-Person?"] - 1] = form.event_zoom_or_not.data
+        # If phone verification was needed, redirect to OTP page
+        if needs_phone_verification:
+            return redirect(url_for("confirm.otp"))
 
-                        for question in event_obj.questions.split("\n"):
-                            form_key = "event_" + question
-                            event_row[event_wks_columns[question] - 1] = form[form_key].data
+        # Prepare data for response template
+        info_fields = {}
+        for row in edit_form.query.all():
+            field = form[row.label]
+            if row.field_type == "Checkbox":
+                vals = []
+                choices = checkbox_get_choices(row.options)
+                for key in field.data:
+                    vals.append(choices[int(key)][1])
+                info_fields[row.label] = " ".join(vals)
+            else:
+                info_fields[row.label] = field.data
 
-                        event_wks.append_row(event_row)
+        event_fields = {}
+        if event_obj is not None and form.register_event.data:
+            event_fields["Ticket Type"] = form.event_tickets.data
+            for question in event_obj.questions.split("\n"):
+                event_fields[question] = form[f"event_{question}"].data
 
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True) if event_obj else None
+        update_url = url_for("update.update_info", token=token, _external=True)
 
-                subject = "I2G Membership Completed"
-                html = render_template("info_receipt_email.html",
-                                    event_url=event_url,
-                                    update_url=update_url,
-                                    first=user[wks_columns["First Name"] - 1],
-                                    last=user[wks_columns["Last Name"] - 1],
-                                    primary_email=user[wks_columns["Primary Email"] - 1],
-                                    primary_verified=user[wks_columns["Primary Verified"] - 1],
-                                    primary_subscribed=user[wks_columns["Primary Subscribed"] - 1],
-                                    secondary_email=user[wks_columns["Secondary Email"] - 1],
-                                    secondary_verified=user[wks_columns["Secondary Verified"] - 1],
-                                    secondary_subscribed=user[wks_columns["Secondary Subscribed"] - 1],
-                                    info_fields=info_fields,
-                                    event_name=event_obj.name if event_obj is not None else None,
-                                    event_fields=event_fields)
-
-                send_email(email, subject, html)
-
-            thread = Thread(target=can_register)
-            thread.start()
-
-            return render_template("receipt.html",
-                                    event_url=event_url,
-                                    update_url=update_url,
-                                    first=form.first_name.data,
-                                    last=form.last_name.data,
-                                    primary_email=form.primary_email.data,
-                                    primary_verified="TRUE",
-                                    primary_subscribed="TRUE",
-                                    secondary_email=form.secondary_email.data,
-                                    secondary_verified="FALSE",
-                                    secondary_subscribed="FALSE",
-                                    info_fields=info_fields,
-                                    event_name=event_obj.name if event_obj is not None else None,
-                                    event_fields=event_fields)
+        return render_template("receipt.html",
+                               event_url=event_url,
+                               update_url=update_url,
+                               first=form.first_name.data,
+                               last=form.last_name.data,
+                               primary_email=form.primary_email.data,
+                               primary_verified="TRUE",
+                               primary_subscribed="TRUE",
+                               secondary_email=form.secondary_email.data,
+                               secondary_verified="FALSE",
+                               secondary_subscribed="FALSE",
+                               phone_number=phone_number,
+                               phone_number_verified="FALSE",
+                               phone_subscribed=form.phone_subscribe.data if phone_number else False,
+                               info_fields=info_fields,
+                               event_name=event_obj.name if event_obj is not None else None,
+                               event_fields=event_fields)
 
     else:
-        print("Validation errors:")
-        for field_name, error_messages in form.errors.items():
-            for error in error_messages:
-                print(f"{field_name}: {error}")
+        # GET request - clear any stale flash messages from previous sessions
+        if request.method == "GET":
+            get_flashed_messages()  # Consume and discard any existing flash messages
         return render_template("complete_registration.html", form=form, token=token)

@@ -107,6 +107,35 @@ if "MEMBERS_FOR_TESTING" not in worksheets:
             if row.label not in sh.worksheet("MEMBERS_FOR_TESTING").row_values(1):
                 sh.worksheet("MEMBERS_FOR_TESTING").update_cell(1, len(sh.worksheet("MEMBERS_FOR_TESTING").row_values(1)) + 1, row.label)
 
+if "MembersTesting" not in worksheets:
+    sh.add_worksheet("MembersTesting", 1, 100)
+    row = [
+        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone Number Subscribed", "Phone number verified",
+        "Info Completed"]
+
+    sh.worksheet("MembersTesting").append_row(row)
+
+    with app.app_context():
+        for row in edit_form.query.all():
+            if row.label not in sh.worksheet("MembersTesting").row_values(1):
+                sh.worksheet("MembersTesting").update_cell(1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label)
+
+if "MembersTesting2" not in worksheets:
+    sh.add_worksheet("MembersTesting2", 1, 100)
+    row = [
+        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone number subscribed", "Phone number verified",
+        "Info Completed"]
+
+    sh.worksheet("MembersTesting2").append_row(row)
+
+    with app.app_context():
+        for row in edit_form.query.all():
+            if row.label not in sh.worksheet("MembersTesting2").row_values(1):
+                sh.worksheet("MembersTesting2").update_cell(1, len(sh.worksheet("MembersTesting2").row_values(1)) + 1, row.label)
 
 
 if "Logs" not in worksheets:
@@ -116,10 +145,20 @@ if "Logs" not in worksheets:
     ]
     sh.worksheet("Logs").append_row(row)
 
+if "Dev_Logs" not in worksheets:
+    sh.add_worksheet("Dev_Logs", 1, 100)
+    row = [
+        "Order", "Transaction", "DateTime"
+    ]
+    sh.worksheet("Dev_Logs").append_row(row)
+
+
 # --- CHANGING THE WKS TO MAKE IT WITH THE TESTING SHEET --- #
 # wks = sh.worksheet("Members")
-wks = sh.worksheet("MEMBERS_FOR_TESTING")
+wks = sh.worksheet("MembersTesting")
+# wks = sh.worksheet("MembersTesting2")
 logs = sh.worksheet("Logs")
+dev_logs = sh.worksheet("Dev_Logs")
 
 
 def get_wks_records(wks):
@@ -140,12 +179,14 @@ from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
 from project.views.events import events_blueprint
 from project.views.geo import geo_blueprint
+from project.views.confirm import confirm_blueprint
 
 app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
 app.register_blueprint(update_blueprint)
 app.register_blueprint(events_blueprint)
 app.register_blueprint(geo_blueprint)
+app.register_blueprint(confirm_blueprint)
 
 
 # Flask Admin
