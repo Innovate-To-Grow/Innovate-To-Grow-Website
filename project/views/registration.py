@@ -6,11 +6,12 @@ from flask import Blueprint, render_template, url_for, request, redirect, copy_c
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import Optional
-from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
+from project import app, sh, wks, tz, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
+from project.services.logging_service import Logger
 from project.utils.registration_utils import (
     analyze_complete_registration_conflicts,
     calculate_new_user_creation,
@@ -40,6 +41,8 @@ registration_blueprint = Blueprint("registration",
                                    template_folder="../templates/membership/registration",
                                    url_prefix=app.config["URL_PREFIX"])
 
+logger = Logger()
+
 
 @registration_blueprint.route("/signup", methods=["GET", "POST"])
 def register():
@@ -53,15 +56,13 @@ def register():
     can_register = True
 
     if request.method == "POST" and form.validate_on_submit():
-        def log_registration():
-            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-            row = [
-                order, "/register", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data, "Last Name: " +
-                form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
-            ]
-            logs.append_row(row)
-
-        Thread(target=log_registration).start()
+        Thread(target=logger.log_registration, args=(
+            "/signup",
+            form.first_name.data,
+            form.last_name.data,
+            form.primary_email.data,
+            form.secondary_email.data
+        )).start()
 
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)
@@ -981,17 +982,16 @@ def complete_registration(token):
             # print(f"DEBUG: Constructed phone number for conflict check: '{phone_number}'")
 
         # Log the registration attempt
-        def log_registration():
-            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-            phone_info = f"Phone: {phone_number}" if phone_number else "No Phone"
-            row = [
-                order, "/full-registration/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
-                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data,
-                phone_info, "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
-            ]
-            logs.append_row(row)
-
-        Thread(target=log_registration).start()
+        register_event_str = "Register Event: " + str(form.register_event.data) if event_obj is not None else "No Event"
+        Thread(target=logger.log_complete_registration, args=(
+            "/full-registration/<token>",
+            form.first_name.data,
+            form.last_name.data,
+            form.primary_email.data,
+            form.secondary_email.data,
+            phone_number,
+            register_event_str
+        )).start()
 
         # PHASE 1: ANALYZE CONFLICTS (Pure Logic) - Do this BEFORE background thread
         wks_records = get_wks_records(wks)

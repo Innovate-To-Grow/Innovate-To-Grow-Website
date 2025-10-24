@@ -6,11 +6,12 @@ from flask import Blueprint, render_template, url_for, request, copy_current_req
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
-from project import app, sh, wks, logs, tz, get_wks_records, get_wks_columns
+from project import app, sh, wks, tz, get_wks_records, get_wks_columns
 from project.models import edit_form, event
 from project.utils.email import send_email
 from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
+from project.services.logging_service import Logger
 from project.utils.event_utils import (
     make_sure, analyze_email_changes, calculate_verification_cell_updates, calculate_basic_user_updates,
     analyze_phone_number_changes, calculate_phone_verification_decision,
@@ -33,6 +34,8 @@ update_blueprint = Blueprint("update",
                              template_folder="../templates/membership/update",
                              url_prefix=app.config["URL_PREFIX"])
 
+logger = Logger()
+
 
 # check the database to see if the input email has a user with a registered prim. or secon. email
 @update_blueprint.route("/update", methods=["GET", "POST"])
@@ -42,14 +45,10 @@ def enter_email():
     event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
 
     if request.method == "POST" and form.validate():
-        def log_email():
-            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-            row = [
-                order, "/update", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "Email: " + form.email.data
-            ]
-            logs.append_row(row)
-
-        Thread(target=log_email).start()
+        Thread(target=logger.log_email_submission, args=(
+            "/update",
+            form.email.data
+        )).start()
 
         wks_records = get_wks_records(wks)
 
@@ -328,15 +327,13 @@ def update_info(token):
     form = UpdateForm(data=person)
 
     if request.method == "POST" and form.validate_on_submit():
-        def log_update():
-            order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-            row = [
-                order, "/update/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + form.first_name.data,
-                "Last Name: " + form.last_name.data, "Primary Email: " + form.primary_email.data, "Secondary Email: " + form.secondary_email.data
-            ]
-            logs.append_row(row)
-
-        Thread(target=log_update).start()
+        Thread(target=logger.log_update, args=(
+            "/update/<token>",
+            form.first_name.data,
+            form.last_name.data,
+            form.primary_email.data,
+            form.secondary_email.data
+        )).start()
 
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)

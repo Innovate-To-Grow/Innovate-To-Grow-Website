@@ -92,50 +92,50 @@ if "Members" not in worksheets:
                 sh.worksheet("Members").update_cell(1, len(sh.worksheet("Members").row_values(1)) + 1, row.label)
 
 # --- MAKING THE SHEET FOR CHARACTERIZATION TESTING --- #
-if "MEMBERS_FOR_TESTING" not in worksheets:
-    sh.add_worksheet("MEMBERS_FOR_TESTING", 1, 100)
-    row = [
-        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Info Completed"
-    ]
+# if "MEMBERS_FOR_TESTING" not in worksheets:
+#     sh.add_worksheet("MEMBERS_FOR_TESTING", 1, 100)
+#     row = [
+#         "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+#         "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+#         "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Info Completed"
+#     ]
 
-    sh.worksheet("MEMBERS_FOR_TESTING").append_row(row)
+#     sh.worksheet("MEMBERS_FOR_TESTING").append_row(row)
 
-    with app.app_context():
-        for row in edit_form.query.all():
-            if row.label not in sh.worksheet("MEMBERS_FOR_TESTING").row_values(1):
-                sh.worksheet("MEMBERS_FOR_TESTING").update_cell(1, len(sh.worksheet("MEMBERS_FOR_TESTING").row_values(1)) + 1, row.label)
+#     with app.app_context():
+#         for row in edit_form.query.all():
+#             if row.label not in sh.worksheet("MEMBERS_FOR_TESTING").row_values(1):
+#                 sh.worksheet("MEMBERS_FOR_TESTING").update_cell(1, len(sh.worksheet("MEMBERS_FOR_TESTING").row_values(1)) + 1, row.label)
 
-if "MembersTesting" not in worksheets:
-    sh.add_worksheet("MembersTesting", 1, 100)
-    row = [
-        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone Number Subscribed", "Phone number verified",
-        "Info Completed"]
+# if "MembersTesting" not in worksheets:
+#     sh.add_worksheet("MembersTesting", 1, 100)
+#     row = [
+#         "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+#         "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+#         "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone Number Subscribed", "Phone number verified",
+#         "Info Completed"]
 
-    sh.worksheet("MembersTesting").append_row(row)
+#     sh.worksheet("MembersTesting").append_row(row)
 
-    with app.app_context():
-        for row in edit_form.query.all():
-            if row.label not in sh.worksheet("MembersTesting").row_values(1):
-                sh.worksheet("MembersTesting").update_cell(1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label)
+#     with app.app_context():
+#         for row in edit_form.query.all():
+#             if row.label not in sh.worksheet("MembersTesting").row_values(1):
+#                 sh.worksheet("MembersTesting").update_cell(1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label)
 
-if "MembersTesting2" not in worksheets:
-    sh.add_worksheet("MembersTesting2", 1, 100)
-    row = [
-        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone number subscribed", "Phone number verified",
-        "Info Completed"]
+# if "MembersTesting2" not in worksheets:
+#     sh.add_worksheet("MembersTesting2", 1, 100)
+#     row = [
+#         "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
+#         "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
+#         "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone number subscribed", "Phone number verified",
+#         "Info Completed"]
 
-    sh.worksheet("MembersTesting2").append_row(row)
+#     sh.worksheet("MembersTesting2").append_row(row)
 
-    with app.app_context():
-        for row in edit_form.query.all():
-            if row.label not in sh.worksheet("MembersTesting2").row_values(1):
-                sh.worksheet("MembersTesting2").update_cell(1, len(sh.worksheet("MembersTesting2").row_values(1)) + 1, row.label)
+#     with app.app_context():
+#         for row in edit_form.query.all():
+#             if row.label not in sh.worksheet("MembersTesting2").row_values(1):
+#                 sh.worksheet("MembersTesting2").update_cell(1, len(sh.worksheet("MembersTesting2").row_values(1)) + 1, row.label)
 
 
 if "Logs" not in worksheets:
@@ -145,20 +145,10 @@ if "Logs" not in worksheets:
     ]
     sh.worksheet("Logs").append_row(row)
 
-if "Dev_Logs" not in worksheets:
-    sh.add_worksheet("Dev_Logs", 1, 100)
-    row = [
-        "Order", "Transaction", "DateTime"
-    ]
-    sh.worksheet("Dev_Logs").append_row(row)
-
 
 # --- CHANGING THE WKS TO MAKE IT WITH THE TESTING SHEET --- #
-# wks = sh.worksheet("Members")
-wks = sh.worksheet("MembersTesting")
-# wks = sh.worksheet("MembersTesting2")
+wks = sh.worksheet("Members")
 logs = sh.worksheet("Logs")
-dev_logs = sh.worksheet("Dev_Logs")
 
 
 def get_wks_records(wks):
