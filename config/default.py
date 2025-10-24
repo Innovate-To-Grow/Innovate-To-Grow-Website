@@ -1,5 +1,7 @@
 import os
 import re
+from dotenv import load_dotenv
+load_dotenv()
 
 # Get directory
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -7,7 +9,7 @@ APP_ROOT = re.sub('config', '', APP_ROOT) + "/project"
 
 
 class Config():
-    CURRENT_SPREADSHEET = "I2G Membership"
+    CURRENT_SPREADSHEET = os.getenv("CURRENT_SPREADSHEET", "Test I2G Membership")
 
     VERIFY_TOKEN_EXPIRATION = 600
     EVENT_TOKEN_EXPIRATION = 302400

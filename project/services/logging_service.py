@@ -1,21 +1,13 @@
 import os
 from datetime import datetime
 
-from dotenv import load_dotenv
 from gspread import Worksheet
 
-from project import dev_logs, logs, tz
-
-load_dotenv()
+from project import logs, tz
 
 class Logger():
     def __init__(self):
-        self.mode = os.getenv("MODE")
-
-        if self.mode == "DEV":
-            self.logging_sheet: Worksheet = dev_logs
-        else:
-            self.logging_sheet: Worksheet = logs
+        self.logging_sheet: Worksheet = logs
 
     def log_email_submission(self,
         path: str,
@@ -34,9 +26,38 @@ class Logger():
         primary_email: str,
         secondary_email: str
     ):
-        order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
+        order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
         row = [
-            order, "/event-registration/<event_name>/<token>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + first_name,
+            order, path, str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), "First Name: " + first_name,
             "Last Name: " + last_name, "Primary Email: " + primary_email, "Secondary Email: " + secondary_email
         ]
-        logs.append_row(row)
+        self.logging_sheet.append_row(row)
+
+    def log_registration(self, path, first_name, last_name, primary_email, secondary_email):
+        order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
+        row = [
+            order, path, str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), 
+            "First Name: " + first_name, "Last Name: " + last_name, 
+            "Primary Email: " + primary_email, "Secondary Email: " + secondary_email
+        ]
+        self.logging_sheet.append_row(row)
+
+    def log_update(self, path, first_name, last_name, primary_email, secondary_email):
+        order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
+        row = [
+            order, path, str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), 
+            "First Name: " + first_name, "Last Name: " + last_name, 
+            "Primary Email: " + primary_email, "Secondary Email: " + secondary_email
+        ]
+        self.logging_sheet.append_row(row)
+
+    def log_complete_registration(self, path, first_name, last_name, primary_email, secondary_email, phone_number="", register_event="No Event"):
+        order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
+        phone_info = f"Phone: {phone_number}" if phone_number else "No Phone"
+        row = [
+            order, path, str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), 
+            "First Name: " + first_name, "Last Name: " + last_name, 
+            "Primary Email: " + primary_email, "Secondary Email: " + secondary_email,
+            phone_info, register_event
+        ]
+        self.logging_sheet.append_row(row)
