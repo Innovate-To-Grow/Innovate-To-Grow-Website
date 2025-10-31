@@ -1025,54 +1025,62 @@ def complete_registration(token):
             registration_method, phone_number
         )
 
+        # EXTRACT ALL FORM DATA BEFORE THREAD (to avoid thread-safety issues with form object)
+        # Get custom fields for form processing
+        custom_fields = [{"label": row.label, "field_type": row.field_type}
+                       for row in edit_form.query.all()]
+
+        # Prepare form data for processing
+        form_data = {
+            "first_name": form.first_name.data,
+            "last_name": form.last_name.data,
+            "primary_email": prim_email,
+            "secondary_email": sec_email,
+        }
+
+        # Add custom field data
+        for row in edit_form.query.all():
+            field = form[row.label]
+            if row.field_type == "Checkbox":
+                vals = []
+                choices = checkbox_get_choices(row.options)
+                for key in field.data:
+                    vals.append(choices[int(key)][1])
+                form_data[row.label] = vals
+            else:
+                form_data[row.label] = field.data
+
+        # Add phone data if provided
+        if phone_number:
+            phone_form_data = {
+                "country_code": form.country_code.data,
+                "phone_number": form.phone_number.data,
+                "phone_subscribe": form.phone_subscribe.data
+            }
+            phone_data_calc = calculate_phone_registration_data(phone_form_data)
+            form_data["phone_data"] = phone_data_calc
+
+            # Also create phone data in the format expected by event registration
+            form_data["event_phone_data"] = {
+                "country_code": form.country_code.data,
+                "phone_number": form.phone_number.data,
+                "phone_subscribe": form.phone_subscribe.data,
+                "full_phone_number": phone_number  # Use the already-calculated full number
+            }
+
+        # Extract event registration data
+        register_for_event = event_obj is not None and form.register_event.data
+        if register_for_event:
+            event_questions = event_obj.questions.split("\n")
+            form_data["event_tickets"] = form.event_tickets.data
+            for question in event_questions:
+                form_data[f"event_{question}"] = form[f"event_{question}"].data
+
         @copy_current_request_context
         def execute_complete_registration():
             """Refactored function using separated logic and side effects"""
 
             # PHASE 2: CALCULATE USER DATA (Pure Logic)
-            # Get custom fields for form processing
-            custom_fields = [{"label": row.label, "field_type": row.field_type}
-                           for row in edit_form.query.all()]
-
-            # Prepare form data for processing
-            form_data = {
-                "first_name": form.first_name.data,
-                "last_name": form.last_name.data,
-                "primary_email": prim_email,
-                "secondary_email": sec_email,
-            }
-
-            # Add custom field data
-            for row in edit_form.query.all():
-                field = form[row.label]
-                if row.field_type == "Checkbox":
-                    vals = []
-                    choices = checkbox_get_choices(row.options)
-                    for key in field.data:
-                        vals.append(choices[int(key)][1])
-                    form_data[row.label] = vals
-                else:
-                    form_data[row.label] = field.data
-
-            # Add phone data if provided
-            if phone_number:
-                phone_form_data = {
-                    "country_code": form.country_code.data,
-                    "phone_number": form.phone_number.data,
-                    "phone_subscribe": form.phone_subscribe.data
-                }
-                phone_data = calculate_phone_registration_data(phone_form_data)
-                # print(f"DEBUG: Calculated phone data for storage: {phone_data}")
-                form_data["phone_data"] = phone_data
-
-                # Also create phone data in the format expected by event registration
-                form_data["event_phone_data"] = {
-                    "country_code": form.country_code.data,
-                    "phone_number": form.phone_number.data,
-                    "phone_subscribe": form.phone_subscribe.data,
-                    "full_phone_number": phone_number  # Use the already-calculated full number
-                }
-
             # Generate order number and timestamp
             wks_columns = get_wks_columns(wks)
             next_order = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(wks_columns["Order"])[-1].isdigit() else 1
@@ -1083,12 +1091,8 @@ def complete_registration(token):
 
             # Calculate event data if user opted to register
             event_data = None
-            register_for_event = event_obj is not None and form.register_event.data
             if register_for_event:
                 event_questions = event_obj.questions.split("\n")
-                form_data["event_tickets"] = form.event_tickets.data
-                for question in event_questions:
-                    form_data[f"event_{question}"] = form[f"event_{question}"].data
                 event_data = calculate_event_registration_from_complete(form_data, event_questions, register_for_event)
 
             # PHASE 3: EXECUTE SIDE EFFECTS
@@ -1109,13 +1113,13 @@ def complete_registration(token):
 
             # 3.3: Send verification email for secondary email (if provided)
             if sec_email and sec_email.strip():
-                send_verification_email(sec_email, form.first_name.data, form.last_name.data)
+                send_verification_email(sec_email, form_data["first_name"], form_data["last_name"])
 
             # 3.4: Create event registration if requested
             if event_data and register_for_event:
                 user_data_for_event = {
-                    "first_name": form.first_name.data,
-                    "last_name": form.last_name.data,
+                    "first_name": form_data["first_name"],
+                    "last_name": form_data["last_name"],
                     "primary_email": prim_email,
                     "secondary_email": sec_email
                 }
@@ -1129,21 +1133,18 @@ def complete_registration(token):
             # 3.5: Prepare data for templates
             info_fields = {}
             for row in edit_form.query.all():
-                field = form[row.label]
+                field_data = form_data.get(row.label)
                 if row.field_type == "Checkbox":
-                    vals = []
-                    choices = checkbox_get_choices(row.options)
-                    for key in field.data:
-                        vals.append(choices[int(key)][1])
-                    info_fields[row.label] = " ".join(vals)
+                    # field_data is already a list of values from extraction
+                    info_fields[row.label] = " ".join(field_data) if isinstance(field_data, list) else ""
                 else:
-                    info_fields[row.label] = field.data
+                    info_fields[row.label] = field_data
 
             event_fields = {}
             if event_obj is not None and register_for_event:
-                event_fields["Ticket Type"] = form.event_tickets.data
+                event_fields["Ticket Type"] = form_data.get("event_tickets", "")
                 for question in event_obj.questions.split("\n"):
-                    event_fields[question] = form[f"event_{question}"].data
+                    event_fields[question] = form_data.get(f"event_{question}", "")
 
             # 3.6: Send confirmation email
             event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True) if event_obj else None
