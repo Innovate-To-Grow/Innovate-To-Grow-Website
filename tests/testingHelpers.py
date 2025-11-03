@@ -3,8 +3,9 @@ from gspread import Worksheet
 from project import get_wks_records
 from project.models import edit_form, event
 
+
 def clear_members_sheet(wks: Worksheet):
-    """ Clears the testing members sheet
+    """Clears the testing members sheet
 
     Args:
         wks (Worksheet): testing members sheet
@@ -18,7 +19,7 @@ def clear_members_sheet(wks: Worksheet):
 
 
 def get_event_info(client):
-    """ Gets the name, ticket, and the question answers
+    """Gets the name, ticket, and the question answers
     for an event
 
     Args:
@@ -49,7 +50,7 @@ def get_event_info(client):
 
 
 def clear_event_sheet(sh, event_name):
-    """ Clear the event wks
+    """Clear the event wks
 
     Args:
         sh - the sheet object where we get the correct sheet
@@ -59,7 +60,7 @@ def clear_event_sheet(sh, event_name):
     event_records = get_wks_records(event_wks)
     num_event_records = len(event_records)
     if num_event_records > 1:
-        event_wks.delete_rows(2, num_event_records)
+        event_wks.delete_rows(2, num_event_records + 1)
     elif num_event_records > 0:
         event_wks.delete_rows(2)
 

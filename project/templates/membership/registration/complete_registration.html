@@ -38,13 +38,27 @@
 
 
 <script>
-    const submitBtn = document.getElementById("submit");
-    submitBtn.addEventListener("click", function() {
-        submitBtn.style.pointerEvents = "none";
-
-        setTimeout(function() {
-        submitBtn.style.pointerEvents = "auto";
-        }, 3000);
+    // Prevent double submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"], input[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            const originalText = submitBtn.textContent || submitBtn.value;
+            if (submitBtn.tagName === 'BUTTON') {
+                submitBtn.textContent = 'Processing...';
+            } else {
+                submitBtn.value = 'Processing...';
+            }
+            // Re-enable after 10 seconds as a failsafe
+            setTimeout(function() {
+                submitBtn.disabled = false;
+                if (submitBtn.tagName === 'BUTTON') {
+                    submitBtn.textContent = originalText;
+                } else {
+                    submitBtn.value = originalText;
+                }
+            }, 10000);
+        }
     });
     
     const registerCheckbox = document.querySelector('#register_event');

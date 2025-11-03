@@ -61,3 +61,22 @@ class Logger():
             phone_info, register_event
         ]
         self.logging_sheet.append_row(row)
+
+    def log_background_error(self, route: str, user_email: str, error_details: dict):
+        """Log background thread errors with full stack traces"""
+        order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
+        
+        # Format stack trace (Sheets supports multi-line text)
+        stack_trace = error_details.get('stack_trace', 'No stack trace available')
+        
+        row = [
+            order, 
+            route, 
+            str(datetime.now(tz).strftime("%Y-%m-%d %I:%M %p")),
+            "BACKGROUND_ERROR",
+            f"User: {user_email}",
+            error_details.get('error_type', 'Unknown'),
+            error_details.get('error_message', 'No message'),
+            stack_trace  # Full multi-line stack trace
+        ]
+        self.logging_sheet.append_row(row)

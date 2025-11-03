@@ -24,12 +24,14 @@ limiter = Limiter(
     app=app,
     storage_uri="memory://",
     default_limits=["15 per 30 seconds"],
-    default_limits_exempt_when=lambda: request.path.startswith("/admin")
+    default_limits_exempt_when=lambda: request.path.startswith("/admin"),
 )
+
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template("404.html"), 404
+
 
 @app.errorhandler(429)
 def too_many_requests(e):
@@ -43,27 +45,35 @@ db.init_app(app)
 
 import boto3
 
-ses = boto3.client('ses',
-                   region_name='us-west-2',
-                   aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
-                   aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"])
+ses = boto3.client(
+    "ses",
+    region_name="us-west-2",
+    aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"],
+)
 
-sqs = boto3.client('sqs',
-                   region_name='us-west-2',
-                   aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
-                   aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"])
+sqs = boto3.client(
+    "sqs",
+    region_name="us-west-2",
+    aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"],
+)
 
 
 import pytz
+
 tz = pytz.timezone("America/Los_Angeles")
 
 
 # Models
 from project.models import user, edit_form, event
 
+
 @app.context_processor
 def inject_event():
-    return dict(event=event.query.filter_by(live=True).order_by(event.id.desc()).first())
+    return dict(
+        event=event.query.filter_by(live=True).order_by(event.id.desc()).first()
+    )
 
 
 # Google Sheet
@@ -80,73 +90,78 @@ for worksheet in sh.worksheets():
 if "Members" not in worksheets:
     sh.add_worksheet("Members", 1, 100)
     row = [
-        "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-        "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-        "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Info Completed"
+        "Order",
+        "First Name",
+        "Last Name",
+        "When Started",
+        "Last Updated",
+        "Primary Email",
+        "Primary Verified",
+        "Primary Subscribed",
+        "Primary Expired",
+        "Primary Bounced",
+        "Secondary Email",
+        "Secondary Verified",
+        "Secondary Subscribed",
+        "Secondary Expired",
+        "Secondary Bounced",
+        "Phone Number",
+        "Phone number subscribed",
+        "Phone number verified",
+        "Info Completed",
     ]
     sh.worksheet("Members").append_row(row)
 
     with app.app_context():
         for row in edit_form.query.all():
             if row.label not in sh.worksheet("Members").row_values(1):
-                sh.worksheet("Members").update_cell(1, len(sh.worksheet("Members").row_values(1)) + 1, row.label)
+                sh.worksheet("Members").update_cell(
+                    1, len(sh.worksheet("Members").row_values(1)) + 1, row.label
+                )
 
 # --- MAKING THE SHEET FOR CHARACTERIZATION TESTING --- #
-# if "MEMBERS_FOR_TESTING" not in worksheets:
-#     sh.add_worksheet("MEMBERS_FOR_TESTING", 1, 100)
-#     row = [
-#         "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-#         "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-#         "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Info Completed"
-#     ]
 
-#     sh.worksheet("MEMBERS_FOR_TESTING").append_row(row)
+if "MembersTesting" not in worksheets:
+    sh.add_worksheet("MembersTesting", 1, 100)
+    row = [
+        "Order",
+        "First Name",
+        "Last Name",
+        "When Started",
+        "Last Updated",
+        "Primary Email",
+        "Primary Verified",
+        "Primary Subscribed",
+        "Primary Expired",
+        "Primary Bounced",
+        "Secondary Email",
+        "Secondary Verified",
+        "Secondary Subscribed",
+        "Secondary Expired",
+        "Secondary Bounced",
+        "Phone Number",
+        "Phone Number Subscribed",
+        "Phone number verified",
+        "Info Completed",
+    ]
 
-#     with app.app_context():
-#         for row in edit_form.query.all():
-#             if row.label not in sh.worksheet("MEMBERS_FOR_TESTING").row_values(1):
-#                 sh.worksheet("MEMBERS_FOR_TESTING").update_cell(1, len(sh.worksheet("MEMBERS_FOR_TESTING").row_values(1)) + 1, row.label)
+    sh.worksheet("MembersTesting").append_row(row)
 
-# if "MembersTesting" not in worksheets:
-#     sh.add_worksheet("MembersTesting", 1, 100)
-#     row = [
-#         "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-#         "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-#         "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone Number Subscribed", "Phone number verified",
-#         "Info Completed"]
-
-#     sh.worksheet("MembersTesting").append_row(row)
-
-#     with app.app_context():
-#         for row in edit_form.query.all():
-#             if row.label not in sh.worksheet("MembersTesting").row_values(1):
-#                 sh.worksheet("MembersTesting").update_cell(1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label)
-
-# if "MembersTesting2" not in worksheets:
-#     sh.add_worksheet("MembersTesting2", 1, 100)
-#     row = [
-#         "Order", "First Name", "Last Name", "When Started", "Last Updated", "Primary Email", "Primary Verified",
-#         "Primary Subscribed", "Primary Expired", "Primary Bounced", "Secondary Email", "Secondary Verified",
-#         "Secondary Subscribed", "Secondary Expired", "Secondary Bounced", "Phone Number", "Phone number subscribed", "Phone number verified",
-#         "Info Completed"]
-
-#     sh.worksheet("MembersTesting2").append_row(row)
-
-#     with app.app_context():
-#         for row in edit_form.query.all():
-#             if row.label not in sh.worksheet("MembersTesting2").row_values(1):
-#                 sh.worksheet("MembersTesting2").update_cell(1, len(sh.worksheet("MembersTesting2").row_values(1)) + 1, row.label)
+    with app.app_context():
+        for row in edit_form.query.all():
+            if row.label not in sh.worksheet("MembersTesting").row_values(1):
+                sh.worksheet("MembersTesting").update_cell(
+                    1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label
+                )
 
 
 if "Logs" not in worksheets:
     sh.add_worksheet("Logs", 1, 100)
-    row = [
-        "Order", "Transaction", "DateTime"
-    ]
+    row = ["Order", "Transaction", "DateTime"]
     sh.worksheet("Logs").append_row(row)
 
 
-# --- CHANGING THE WKS TO MAKE IT WITH THE TESTING SHEET --- #
+# wks = sh.worksheet("MembersTesting")
 wks = sh.worksheet("Members")
 logs = sh.worksheet("Logs")
 
@@ -154,12 +169,13 @@ logs = sh.worksheet("Logs")
 def get_wks_records(wks):
     wks_records = wks.get_all_records()
     for i, row in enumerate(wks_records, start=2):
-        row['Row'] = i
+        row["Row"] = i
     return wks_records
+
 
 def get_wks_columns(wks):
     header_row = wks.row_values(1)
-    wks_columns = {header_row[i]: i+1 for i in range(len(header_row))}
+    wks_columns = {header_row[i]: i + 1 for i in range(len(header_row))}
     return wks_columns
 
 
@@ -180,9 +196,19 @@ app.register_blueprint(confirm_blueprint)
 
 
 # Flask Admin
-from project.views.admin import IndexView, UserModelView, EditFormModelView, EventModelView, ContactView, CatchBouncesView, DocumentationView
+from project.views.admin import (
+    IndexView,
+    UserModelView,
+    EditFormModelView,
+    EventModelView,
+    ContactView,
+    CatchBouncesView,
+    DocumentationView,
+)
 
-admin_app = Admin(app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3")
+admin_app = Admin(
+    app, name="Admin Page", index_view=IndexView(), template_mode="bootstrap3"
+)
 admin_app.add_view(UserModelView(user, db.session, name="Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
 admin_app.add_view(EventModelView(event, db.session, name="Events"))
@@ -195,7 +221,16 @@ admin_app.add_view(DocumentationView(name="Documentation", endpoint="documentati
 @app.route("/tracking_pixel/<email>.png")
 def tracking_pixel(email):
     order = int(logs.col_values(1)[-1]) + 1 if logs.col_values(1)[-1].isdigit() else 1
-    row = [order, "/tracking_pixel/<email>", str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")), email]
+    row = [
+        order,
+        "/tracking_pixel/<email>",
+        str(
+            datetime.now(tz)
+            .replace(second=0, microsecond=0)
+            .strftime("%Y-%m-%d %I:%M %p")
+        ),
+        email,
+    ]
     logs.append_row(row)
 
     return send_file("static/images/tracking_pixel.png", mimetype="image/png")
@@ -217,6 +252,12 @@ if not path.exists(APP_ROOT + "/db"):
 if not path.exists(APP_ROOT + "/db/data.sqlite3"):
     with app.app_context():
         db.create_all()
-        u = user("Admin", "Admin", "admin@admin.com", generate_password_hash("admin"), "superadmin")
+        u = user(
+            "Admin",
+            "Admin",
+            "admin@admin.com",
+            generate_password_hash("admin"),
+            "superadmin",
+        )
         db.session.add(u)
         db.session.commit()

@@ -1,4 +1,4 @@
-import asyncio, time
+import asyncio, time, traceback
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
@@ -1076,172 +1076,189 @@ def complete_registration(token):
             for question in event_questions:
                 form_data[f"event_{question}"] = form[f"event_{question}"].data
 
+        # PHASE 1.3: VALIDATE PHONE NUMBER WITH TWILIO (Don't block on failure)
+        show_otp = False
+        if needs_phone_verification:
+            try:
+                start_phone_verification_process(phone_number)
+                show_otp = True  # Validation successful, show OTP page
+            except ValueError as e:
+                # Log error but don't block registration
+                print(f"Phone validation failed for {phone_number}: {str(e)}")
+                Thread(target=logger.log_background_error, args=(
+                    "/full-registration/<token>",
+                    prim_email,
+                    {
+                        "error_type": "PhoneValidationError",
+                        "error_message": f"Twilio validation failed: {str(e)}",
+                        "stack_trace": traceback.format_exc()
+                    }
+                )).start()
+                # Continue without phone verification
+
+        # PHASE 1.4: START EXPIRY TIMER FOR SECONDARY EMAIL (Main thread)
+        if sec_email and sec_email.strip():
+            from project.utils.side_effect_helpers import start_email_expiry_timer
+            start_email_expiry_timer(sec_email)
+
+        # PHASE 1.5: PREPARE DATA FOR TEMPLATE RENDERING (Before thread spawn)
+        info_fields = {}
+        for row in edit_form.query.all():
+            field_data = form_data.get(row.label)
+            if row.field_type == "Checkbox":
+                info_fields[row.label] = " ".join(field_data) if isinstance(field_data, list) else ""
+            else:
+                info_fields[row.label] = field_data
+
+        event_fields = {}
+        if event_obj is not None and register_for_event:
+            event_fields["Ticket Type"] = form_data.get("event_tickets", "")
+            for question in event_obj.questions.split("\n"):
+                event_fields[question] = form_data.get(f"event_{question}", "")
+
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True) if event_obj else None
+        update_url = url_for("update.update_info", token=token, _external=True)
+
+        # PHASE 1.6: SETUP SESSION FOR PHONE VERIFICATION (if validation succeeded)
+        if show_otp:
+            session_user_data = {
+                "first_name": form_data["first_name"],
+                "last_name": form_data["last_name"],
+                "primary_email": prim_email,
+                "primary_verified": "TRUE",
+                "primary_subscribed": "TRUE",
+                "secondary_email": sec_email,
+                "secondary_verified": "FALSE",
+                "secondary_subscribed": "FALSE",
+                "update_url": update_url,
+                "info_fields": info_fields
+            }
+            
+            session_event_data = None
+            if event_obj is not None and register_for_event:
+                session_event_data = {
+                    "event_url": event_url,
+                    "event_reg": "yes",
+                    "event_name": event_obj.name,
+                    "event_fields": event_fields
+                }
+            
+            session_phone_data = {
+                "phone_number": phone_number,
+                "phone_subscribe": "TRUE" if form_data.get("phone_data", {}).get("phone_subscribe", False) else "FALSE"
+            }
+            
+            setup_otp_verification_session(session, session_user_data, session_event_data, session_phone_data)
+
         @copy_current_request_context
         def execute_complete_registration():
             """Refactored function using separated logic and side effects"""
+            try:
+                # PHASE 1: Phone validation now in main thread (removed)
 
-            # PHASE 1: VALIDATE PHONE NUMBER (Before any database updates!)
-            if needs_phone_verification:
-                try:
-                    start_phone_verification_process(phone_number)
-                except ValueError as e:
-                    # Phone number validation failed - stop before updating anything
-                    flash(f"Phone number validation failed: {str(e)}", "error")
-                    return {"status": "phone_validation_error"}
+                # PHASE 2: CALCULATE USER DATA (Pure Logic)
+                # Generate order number and timestamp
+                wks_columns = get_wks_columns(wks)
+                next_order = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(wks_columns["Order"])[-1].isdigit() else 1
+                current_timestamp = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
 
-            # PHASE 2: CALCULATE USER DATA (Pure Logic)
-            # Generate order number and timestamp
-            wks_columns = get_wks_columns(wks)
-            next_order = int(wks.col_values(wks_columns["Order"])[-1]) + 1 if wks.col_values(wks_columns["Order"])[-1].isdigit() else 1
-            current_timestamp = str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))
+                # Calculate user data for creation
+                user_data = calculate_new_user_creation(form_data, custom_fields, next_order, current_timestamp)
 
-            # Calculate user data for creation
-            user_data = calculate_new_user_creation(form_data, custom_fields, next_order, current_timestamp)
+                # Calculate event data if user opted to register
+                event_data = None
+                if register_for_event:
+                    event_questions = event_obj.questions.split("\n")
+                    event_data = calculate_event_registration_from_complete(form_data, event_questions, register_for_event)
 
-            # Calculate event data if user opted to register
-            event_data = None
-            if register_for_event:
-                event_questions = event_obj.questions.split("\n")
-                event_data = calculate_event_registration_from_complete(form_data, event_questions, register_for_event)
+                # PHASE 3: EXECUTE SIDE EFFECTS
+                # 3.1: Clear conflicting emails and send notifications (use the already-computed conflict_decision)
+                if conflict_decision.emails_to_clear:
+                    execute_cell_updates(conflict_decision.emails_to_clear, "membership")
 
-            # PHASE 3: EXECUTE SIDE EFFECTS
-            # 3.1: Clear conflicting emails and send notifications (use the already-computed conflict_decision)
-            if conflict_decision.emails_to_clear:
-                execute_cell_updates(conflict_decision.emails_to_clear, "membership")
+                for notification in conflict_decision.notification_emails:
+                    send_deletion_notice_email(
+                        notification["to"],
+                        notification["user_first_name"],
+                        notification["user_last_name"],
+                        notification["deleted_email"]
+                    )
 
-            for notification in conflict_decision.notification_emails:
-                send_deletion_notice_email(
-                    notification["to"],
-                    notification["user_first_name"],
-                    notification["user_last_name"],
-                    notification["deleted_email"]
-                )
+                # 3.2: Create new user record
+                user_row = create_complete_user_registration(user_data, custom_fields)
 
-            # 3.2: Create new user record
-            user_row = create_complete_user_registration(user_data, custom_fields)
+                # 3.3: Send verification email for secondary email (if provided)
+                if sec_email and sec_email.strip():
+                    send_verification_email(sec_email, form_data["first_name"], form_data["last_name"], start_expiry_timer=False)
 
-            # 3.3: Send verification email for secondary email (if provided)
-            if sec_email and sec_email.strip():
-                send_verification_email(sec_email, form_data["first_name"], form_data["last_name"])
-
-            # 3.4: Create event registration if requested
-            if event_data and register_for_event:
-                user_data_for_event = {
-                    "first_name": form_data["first_name"],
-                    "last_name": form_data["last_name"],
-                    "primary_email": prim_email,
-                    "secondary_email": sec_email
-                }
-
-                # Extract phone data in the format expected by event registration
-                phone_data_for_event = form_data.get("event_phone_data")
-
-                # Use phone-aware event registration function
-                create_event_registration_with_phone(event_obj.name, user_data_for_event, event_data, phone_data_for_event)
-
-            # 3.5: Prepare data for templates
-            info_fields = {}
-            for row in edit_form.query.all():
-                field_data = form_data.get(row.label)
-                if row.field_type == "Checkbox":
-                    # field_data is already a list of values from extraction
-                    info_fields[row.label] = " ".join(field_data) if isinstance(field_data, list) else ""
-                else:
-                    info_fields[row.label] = field_data
-
-            event_fields = {}
-            if event_obj is not None and register_for_event:
-                event_fields["Ticket Type"] = form_data.get("event_tickets", "")
-                for question in event_obj.questions.split("\n"):
-                    event_fields[question] = form_data.get(f"event_{question}", "")
-
-            # 3.6: Send confirmation email
-            event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True) if event_obj else None
-            update_url = url_for("update.update_info", token=token, _external=True)
-
-            send_complete_registration_confirmation_email(
-                prim_email,
-                user_data,
-                info_fields,
-                event_fields,
-                event_url,
-                update_url,
-                event_obj.name if event_obj is not None else None
-            )
-
-            # PHASE 7: SETUP SESSION FOR PHONE VERIFICATION (if needed)
-            if needs_phone_verification:
-                # Phone validation passed - prepare data for OTP session
-                session_user_data = {
-                    "first_name": form_data["first_name"],
-                    "last_name": form_data["last_name"],
-                    "primary_email": prim_email,
-                    "primary_verified": "TRUE",
-                    "primary_subscribed": "TRUE",
-                    "secondary_email": sec_email,
-                    "secondary_verified": "FALSE",
-                    "secondary_subscribed": "FALSE",
-                    "update_url": update_url,
-                    "info_fields": info_fields
-                }
-
-                session_event_data = None
-                if event_obj is not None and register_for_event:
-                    session_event_data = {
-                        "event_url": event_url,
-                        "event_reg": "yes",
-                        "event_name": event_obj.name,
-                        "event_fields": event_fields
+                # 3.4: Create event registration if requested
+                if event_data and register_for_event:
+                    user_data_for_event = {
+                        "first_name": form_data["first_name"],
+                        "last_name": form_data["last_name"],
+                        "primary_email": prim_email,
+                        "secondary_email": sec_email
                     }
 
-                session_phone_data = {
-                    "phone_number": phone_number,
-                    "phone_subscribe": "TRUE" if form_data.get("phone_data", {}).get("phone_subscribe", False) else "FALSE"
-                }
+                    # Extract phone data in the format expected by event registration
+                    phone_data_for_event = form_data.get("event_phone_data")
 
-                # Setup OTP verification session
-                setup_otp_verification_session(session, session_user_data, session_event_data, session_phone_data)
+                    # Use phone-aware event registration function
+                    create_event_registration_with_phone(event_obj.name, user_data_for_event, event_data, phone_data_for_event)
+
+                # 3.5: Send confirmation email (using pre-calculated data from main thread)
+                send_complete_registration_confirmation_email(
+                    prim_email,
+                    user_data,
+                    info_fields,
+                    event_fields,
+                    event_url,
+                    update_url,
+                    event_obj.name if event_obj is not None else None
+                )
+
+                # Return success
+                return {"status": "success"}
                 
-                return {"status": "phone_verification_needed"}
+            except Exception as e:
+                # Log comprehensive error details
+                logger.log_background_error(
+                    "/full-registration/<token>",
+                    prim_email,
+                    {
+                        "error_type": type(e).__name__,
+                        "error_message": str(e),
+                        "stack_trace": traceback.format_exc()
+                    }
+                )
+                return {"status": "error", "message": str(e)}
 
-            # Return success with data for template rendering
-            return {
-                "status": "success",
-                "info_fields": info_fields,
-                "event_fields": event_fields,
-                "event_url": event_url,
-                "update_url": update_url
-            }
+        # Execute the complete registration logic in BACKGROUND THREAD
+        thread = Thread(target=execute_complete_registration)
+        thread.start()
 
-        # Execute the complete registration logic SYNCHRONOUSLY (like events.py)
-        result = execute_complete_registration()
-
-        # Handle phone validation error - return to form with flash message
-        if result.get("status") == "phone_validation_error":
-            return render_template("complete_registration.html", form=form, token=token)
-
-        # Handle phone verification redirect
-        if result.get("status") == "phone_verification_needed":
+        # Return immediately based on phone validation result
+        if show_otp:
             return redirect(url_for("confirm.otp"))
-
-        # Use data from result for template rendering (no need to recalculate)
-        return render_template("receipt.html",
-                               event_url=result.get("event_url"),
-                               update_url=result.get("update_url"),
-                               first=form.first_name.data,
-                               last=form.last_name.data,
-                               primary_email=form.primary_email.data,
-                               primary_verified="TRUE",
-                               primary_subscribed="TRUE",
-                               secondary_email=form.secondary_email.data,
-                               secondary_verified="FALSE",
-                               secondary_subscribed="FALSE",
-                               phone_number=phone_number,
-                               phone_number_verified="FALSE",
-                               phone_subscribed=form.phone_subscribe.data if phone_number else False,
-                               info_fields=result.get("info_fields", {}),
-                               event_name=event_obj.name if event_obj is not None else None,
-                               event_fields=result.get("event_fields", {}))
+        else:
+            # Render success page immediately (don't wait for thread)
+            return render_template("receipt.html",
+                                   event_url=event_url,
+                                   update_url=update_url,
+                                   first=form.first_name.data,
+                                   last=form.last_name.data,
+                                   primary_email=form.primary_email.data,
+                                   primary_verified="TRUE",
+                                   primary_subscribed="TRUE",
+                                   secondary_email=form.secondary_email.data,
+                                   secondary_verified="FALSE",
+                                   secondary_subscribed="FALSE",
+                                   phone_number=phone_number if phone_number else "",
+                                   phone_number_verified="FALSE",
+                                   phone_subscribed=form.phone_subscribe.data if phone_number else False,
+                                   info_fields=info_fields,
+                                   event_name=event_obj.name if event_obj is not None else None,
+                                   event_fields=event_fields)
 
     else:
         # GET request - clear any stale flash messages from previous sessions
