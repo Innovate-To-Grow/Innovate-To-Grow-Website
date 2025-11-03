@@ -9,7 +9,7 @@ with phone numbers.
 from flask import Blueprint, request, render_template, session, flash, redirect, url_for
 from datetime import datetime
 from project.utils.utils import query_primary_column
-import asyncio
+import asyncio, time
 from project import app, wks, tz, get_wks_records, get_wks_columns
 from gspread.cell import Cell
 from project.forms.otp_forms import OTPForm
@@ -70,14 +70,31 @@ def otp():
 
         # Verify OTP with Twilio
         if check_verification(client, phone_number, verify_sid, otp) == "approved":
-            # Get worksheet records and columns
-            wks_records = get_wks_records(wks)
-            wks_columns = get_wks_columns(wks)
+            # Retry logic to handle race condition (background thread might still be creating record)
+            user = None
+            for attempt in range(3):
+                # Get worksheet records and columns
+                wks_records = get_wks_records(wks)
+                wks_columns = get_wks_columns(wks)
 
-            # Find user by primary email
-            user = asyncio.run(query_primary_column(primary_email, wks_records))
+                # Find user by primary email
+                user = asyncio.run(query_primary_column(primary_email, wks_records))
+                
+                if user:
+                    # Record found, proceed with verification
+                    user = user[0]
+                    break
+                elif attempt < 2:
+                    # Wait and retry
+                    print(f"DEBUG: User record not found yet, retrying (attempt {attempt + 1}/3)")
+                    time.sleep(1)
+                else:
+                    # Final attempt failed
+                    flash("Registration still processing. Please try again in a moment.", "warning")
+                    return render_template("otp.html", form=form)
+            
+            # User found, update phone verification
             if user:
-                user = user[0]
                 row_find = user["Row"]
 
                 # Update the phone verification status and subscription
@@ -103,7 +120,6 @@ def otp():
                 print(f"  - Cell value: '{updated_cell.value}'")
                 
                 # Add a small delay to ensure database update is committed
-                import time
                 time.sleep(1)
 
             # Send confirmation SMS if appropriate
