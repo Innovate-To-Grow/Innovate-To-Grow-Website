@@ -199,13 +199,13 @@ def calculate_new_user_creation(
     Calculates all the data needed to create a new user record for complete registration.
 
     For complete registration, the user record has special characteristics:
-    - Primary email is immediately verified and subscribed
-    - Secondary email is unverified and unsubscribed
+    - Primary email is immediately verified and subscription based on form choice
+    - Secondary email is unverified and subscription based on form choice
     - Info is marked as completed immediately
     - All custom fields are filled from the form
 
     Args:
-        form_data: Form data containing all user information
+        form_data: Form data containing all user information (including primary_subscribe and secondary_subscribe)
         custom_fields: List of custom field definitions with labels and types
         next_order_number: The next order number for this user
         current_timestamp: Current timestamp string for creation tracking
@@ -224,14 +224,14 @@ def calculate_new_user_creation(
         # Primary email (immediately verified in complete registration)
         "Primary Email": form_data["primary_email"],
         "Primary Verified": "TRUE",      # Key difference: immediately verified
-        "Primary Subscribed": "TRUE",    # Key difference: auto-subscribed
+        "Primary Subscribed": "TRUE" if form_data.get("primary_subscribe", True) else "FALSE",
         "Primary Expired": "FALSE",
         "Primary Bounced": "",
 
         # Secondary email (needs verification)
         "Secondary Email": form_data["secondary_email"],
         "Secondary Verified": "FALSE",   # Will be verified later
-        "Secondary Subscribed": "FALSE", # Cannot subscribe unverified email
+        "Secondary Subscribed": "TRUE" if form_data.get("secondary_subscribe", False) else "FALSE",
         "Secondary Expired": "FALSE",
         "Secondary Bounced": "",
 
