@@ -16,11 +16,15 @@ var datas = [];
 // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1o9xGjsaaS3BBOB4qLKVfRXWP0W-YDLa20TxPCEnRSik/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
             const subArray = data.values[i];
+            // Only include rows with Year-Semester = "2025-2 Fall"
+            if (subArray[2] !== "2025-2 Fall") {
+                continue;
+            }
             subdata = {
                 "Track": subArray[0],
                 "Order": subArray[1],
