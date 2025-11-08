@@ -90,95 +90,120 @@ def enter_email(event_name):
             token = generate_token(email)
             url = url_for("registration.complete_registration", token=token, _external=True)
             html = render_template("complete_email.html", email=email, url=url, live_event=True if event_obj else False)
-            send_email(email, subject, html)
+            
+            try:
+                send_email(email, subject, html)
+            except Exception as e:
+                Thread(target=logger.log_background_error, args=(
+                    path,
+                    email,
+                    {
+                        "error_type": type(e).__name__,
+                        "error_message": str(e),
+                        "stack_trace": traceback.format_exc()
+                    }
+                )).start()
 
             return render_template("event_instructions_sent.html")
 
 
         @copy_current_request_context
         def send_instructions():
-            if (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "TRUE"):
-                if user["Primary Email"] != "":
-                    token = generate_token(user["Primary Email"])
-                    confirm_url = url_for("registration.confirm", token=token, _external=True)
-                    html = render_template(
-                        "verify_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        confirm_url=confirm_url,
-                    )
-                    send_email(user["Primary Email"], app.config["VERIF_SUBJECT"], html)
+            try:
+                if (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "TRUE"):
+                    if user["Primary Email"] != "":
+                        token = generate_token(user["Primary Email"])
+                        confirm_url = url_for("registration.confirm", token=token, _external=True)
+                        html = render_template(
+                            "verify_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            confirm_url=confirm_url,
+                        )
+                        send_email(user["Primary Email"], app.config["VERIF_SUBJECT"], html)
 
-                if user["Secondary Email"] != "":
-                    token = generate_token(user["Secondary Email"])
-                    event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
-                    html = render_template(
-                        "event_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        event_url=event_url,
-                    )
-                    send_email(user["Secondary Email"], "I2G Membership - Event Registration", html)
-
-
-            elif (user["Primary Verified"] == "TRUE" and user["Secondary Verified"] == "FALSE"):
-                if user["Primary Email"] != "":
-                    token = generate_token(user["Primary Email"])
-                    event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
-                    html = render_template(
-                        "event_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        event_url=event_url,
-                    )
-                    send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
-
-                if user["Secondary Email"] != "":
-                    token = generate_token(user["Secondary Email"])
-                    confirm_url = url_for("registration.confirm", token=token, _external=True)
-                    html = render_template(
-                        "verify_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        confirm_url=confirm_url,
-                    )
-                    send_email(user["Secondary Email"], app.config["VERIF_SUBJECT"], html)
+                    if user["Secondary Email"] != "":
+                        token = generate_token(user["Secondary Email"])
+                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                        html = render_template(
+                            "event_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            event_url=event_url,
+                        )
+                        send_email(user["Secondary Email"], "I2G Membership - Event Registration", html)
 
 
-            elif (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "FALSE"):
-                if user["Primary Email"] != "":
-                    token = generate_token(user["Primary Email"])
-                    confirm_url = url_for("registration.confirm", token=token, _external=True)
-                    html = render_template(
-                        "verify_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        confirm_url=confirm_url,
-                    )
-                    send_email(user["Primary Email"], app.config["VERIF_SUBJECT"], html)
+                elif (user["Primary Verified"] == "TRUE" and user["Secondary Verified"] == "FALSE"):
+                    if user["Primary Email"] != "":
+                        token = generate_token(user["Primary Email"])
+                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                        html = render_template(
+                            "event_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            event_url=event_url,
+                        )
+                        send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
 
-                    token = generate_token(user["Secondary Email"])
-                    confirm_url = url_for("registration.confirm", token=token, _external=True)
-                    html = render_template(
-                        "verify_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        confirm_url=confirm_url,
-                    )
-                    send_email(user["Secondary Email"], app.config["VERIF_SUBJECT"], html)
+                    if user["Secondary Email"] != "":
+                        token = generate_token(user["Secondary Email"])
+                        confirm_url = url_for("registration.confirm", token=token, _external=True)
+                        html = render_template(
+                            "verify_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            confirm_url=confirm_url,
+                        )
+                        send_email(user["Secondary Email"], app.config["VERIF_SUBJECT"], html)
 
 
-            else:
-                if user["Primary Email"] != "":
-                    token = generate_token(user["Primary Email"])
-                    event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
-                    html = render_template(
-                        "event_email.html",
-                        first=user["First Name"],
-                        last=user["Last Name"],
-                        event_url=event_url,
-                    )
-                    send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
+                elif (user["Primary Verified"] == "FALSE" and user["Secondary Verified"] == "FALSE"):
+                    if user["Primary Email"] != "":
+                        token = generate_token(user["Primary Email"])
+                        confirm_url = url_for("registration.confirm", token=token, _external=True)
+                        html = render_template(
+                            "verify_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            confirm_url=confirm_url,
+                        )
+                        send_email(user["Primary Email"], app.config["VERIF_SUBJECT"], html)
+
+                        token = generate_token(user["Secondary Email"])
+                        confirm_url = url_for("registration.confirm", token=token, _external=True)
+                        html = render_template(
+                            "verify_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            confirm_url=confirm_url,
+                        )
+                        send_email(user["Secondary Email"], app.config["VERIF_SUBJECT"], html)
+
+
+                else:
+                    if user["Primary Email"] != "":
+                        token = generate_token(user["Primary Email"])
+                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                        html = render_template(
+                            "event_email.html",
+                            first=user["First Name"],
+                            last=user["Last Name"],
+                            event_url=event_url,
+                        )
+                        send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
+                        
+            except Exception as e:
+                # Log comprehensive error details
+                logger.log_background_error(
+                    path,
+                    email,
+                    {
+                        "error_type": type(e).__name__,
+                        "error_message": str(e),
+                        "stack_trace": traceback.format_exc()
+                    }
+                )
 
         Thread(target=send_instructions).start()
 
