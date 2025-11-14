@@ -1,16 +1,17 @@
 import os
-from os import path
 from datetime import datetime
+from os import path
+
 from flask import Flask, render_template, request, send_file
+from flask_admin import Admin
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
-from flask_admin import Admin
-from config.default import Config, APP_ROOT
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash
 
+from config.default import APP_ROOT, Config
 
 # Flask
 app = Flask(__name__)
@@ -66,7 +67,7 @@ tz = pytz.timezone("America/Los_Angeles")
 
 
 # Models
-from project.models import user, edit_form, event
+from project.models import edit_form, event, user
 
 
 @app.context_processor
@@ -119,41 +120,6 @@ if "Members" not in worksheets:
                     1, len(sh.worksheet("Members").row_values(1)) + 1, row.label
                 )
 
-# --- MAKING THE SHEET FOR CHARACTERIZATION TESTING --- #
-
-if "MembersTesting" not in worksheets:
-    sh.add_worksheet("MembersTesting", 1, 100)
-    row = [
-        "Order",
-        "First Name",
-        "Last Name",
-        "When Started",
-        "Last Updated",
-        "Primary Email",
-        "Primary Verified",
-        "Primary Subscribed",
-        "Primary Expired",
-        "Primary Bounced",
-        "Secondary Email",
-        "Secondary Verified",
-        "Secondary Subscribed",
-        "Secondary Expired",
-        "Secondary Bounced",
-        "Phone Number",
-        "Phone Number Subscribed",
-        "Phone number verified",
-        "Info Completed",
-    ]
-
-    sh.worksheet("MembersTesting").append_row(row)
-
-    with app.app_context():
-        for row in edit_form.query.all():
-            if row.label not in sh.worksheet("MembersTesting").row_values(1):
-                sh.worksheet("MembersTesting").update_cell(
-                    1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label
-                )
-
 
 if "Logs" not in worksheets:
     sh.add_worksheet("Logs", 1, 100)
@@ -161,7 +127,34 @@ if "Logs" not in worksheets:
     sh.worksheet("Logs").append_row(row)
 
 
-# wks = sh.worksheet("MembersTesting")
+if "Prospects" not in worksheets:
+    sh.add_worksheet("Prospects", 1, 100)
+    row = [
+        "First Name (optional)",
+        "Last Name (optional)",
+        "Email",
+        "When Input?",
+        "When signed up as member?",
+        "When last checked?",
+        "Bounced (when)?",
+        "Collision?",
+        "Secondary Email (optional)",
+        "Secondary Bounced (when)?",
+        "Phone Number (optional)",
+        "Phone Bounced (when)?",
+        "Phone Collision",
+        "Notes",
+    ]
+    sh.worksheet("Prospects").append_row(row)
+
+    with app.app_context():
+        for row in edit_form.query.all():
+            if row.label not in sh.worksheet("Prospects").row_values(1):
+                sh.worksheet("Prospects").update_cell(
+                    1, len(sh.worksheet("Prospects").row_values(1)) + 1, row.label
+                )
+
+
 wks = sh.worksheet("Members")
 logs = sh.worksheet("Logs")
 
@@ -180,12 +173,12 @@ def get_wks_columns(wks):
 
 
 # Flask Blueprints
+from project.views.confirm import confirm_blueprint
+from project.views.events import events_blueprint
+from project.views.geo import geo_blueprint
 from project.views.home import home_blueprint
 from project.views.registration import registration_blueprint
 from project.views.update import update_blueprint
-from project.views.events import events_blueprint
-from project.views.geo import geo_blueprint
-from project.views.confirm import confirm_blueprint
 
 app.register_blueprint(home_blueprint)
 app.register_blueprint(registration_blueprint)
@@ -197,13 +190,13 @@ app.register_blueprint(confirm_blueprint)
 
 # Flask Admin
 from project.views.admin import (
-    IndexView,
-    UserModelView,
+    CatchBouncesView,
+    ContactView,
+    DocumentationView,
     EditFormModelView,
     EventModelView,
-    ContactView,
-    CatchBouncesView,
-    DocumentationView,
+    IndexView,
+    UserModelView,
 )
 
 admin_app = Admin(
