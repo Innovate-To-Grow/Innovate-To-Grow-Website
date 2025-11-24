@@ -1,7 +1,6 @@
 import json
 import re
 import time
-from enum import member
 from threading import Thread, enumerate
 
 import imap_tools
