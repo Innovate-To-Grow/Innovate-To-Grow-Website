@@ -24,8 +24,8 @@ class CompleteRegistrationForm(FlaskForm):
         'Confirm Primary Email',
         [InputRequired(' '), EqualTo('primary_email', message='Must match primary email')])
 
-    primary_subscribe = BooleanField("Subscribe to Email Notifications", default=True)
 
+    primary_subscribe = BooleanField("Subscribe to Email News \n(You can opt out anytime)", default=True)
     secondary_email = StringField(
         'Secondary Email Address',
         [
@@ -40,9 +40,7 @@ class CompleteRegistrationForm(FlaskForm):
             EqualTo('secondary_email', message='Must match secondary email')
         ])
 
-    secondary_subscribe = BooleanField("Subscribe to Email Notifications", default=True)
-
-
+    secondary_subscribe = BooleanField("Subscribe to Email News \n(You can opt out anytime)", default=True)
     
     # Phone number fields
     country_code = SelectField('Country Code', choices=[
