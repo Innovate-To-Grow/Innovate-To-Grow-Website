@@ -34,6 +34,7 @@ from project import app, db, get_wks_columns, get_wks_records, prospects, sh, sq
 from project.forms.admin_forms import (
     EmailForm,
     LoginForm,
+    ManualEmailForm,
     NewAdmin,
     ProspectForm,
     RegisterAdmin,
@@ -715,6 +716,59 @@ class DocumentationView(BaseView):
     @expose("/documentation", methods=["GET"])
     def documentation(self):
         return self.render("admin/documentation.html")
+
+
+class ManualEmailView(BaseView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for("admin.login", next=request.url))
+
+    @expose("/", methods=["GET", "POST"])
+    def manual_email(self):
+        form = ManualEmailForm()
+        if request.method == "POST" and form.validate_on_submit():
+            subject = form.subject.data
+            emails_data = form.emails.data
+            # Split by comma, newline, or space
+            emails = [e.strip() for e in re.split(r'[,\n\s]+', emails_data) if e.strip()]
+
+            if not emails:
+                flash("No valid emails provided.")
+                return self.render("admin/manual_email.html", form=form)
+
+            html_from_email = None
+
+            try:
+                with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(
+                    app.config["MAIL_USERNAME"],
+                    app.config["MAIL_PASSWORD"],
+                    "Email Blasts",
+                ) as mailbox:
+                    for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
+                        html_from_email = msg.html
+            except Exception as e:
+                flash(f"Error fetching email template: {str(e)}")
+                return self.render("admin/manual_email.html", form=form)
+
+            if html_from_email is None:
+                flash("There is no email template to send.")
+            else:
+                @copy_current_request_context
+                def send_blast_manual(recipient_list, email_subject, email_html):
+                    for email_addr in recipient_list:
+                        try:
+                            final_html = render_template_string(email_html)
+                            send_email(email_addr, email_subject, final_html)
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(f"Failed to send to {email_addr}: {e}")
+
+                Thread(target=send_blast_manual, args=(emails, subject, html_from_email)).start()
+                flash(f"Sending emails to {len(emails)} recipients.")
+
+        return self.render("admin/manual_email.html", form=form)
 
 
 class ProspectsView(BaseView):

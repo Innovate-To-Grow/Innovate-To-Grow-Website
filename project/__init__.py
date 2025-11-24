@@ -199,6 +199,7 @@ from project.views.admin import (
     EditFormModelView,
     EventModelView,
     IndexView,
+    ManualEmailView,
     ProspectsView,
     UserModelView,
 )
@@ -210,6 +211,7 @@ admin_app.add_view(UserModelView(user, db.session, name="Administrators"))
 admin_app.add_view(EditFormModelView(edit_form, db.session, name="Edit Form"))
 admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
+admin_app.add_view(ManualEmailView(name="Manual Email", endpoint="manual_email"))
 admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounces"))
 admin_app.add_view(DocumentationView(name="Documentation", endpoint="documentation"))
 admin_app.add_view(ProspectsView(name="Prospects", endpoint="prospects"))

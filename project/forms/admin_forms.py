@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, RadioField, StringField, SubmitField
+from wtforms import PasswordField, RadioField, StringField, SubmitField, TextAreaField
 from wtforms.validators import Email, EqualTo, InputRequired
 
 
@@ -28,6 +28,12 @@ class EmailForm(FlaskForm):
         default="Primary",
     )
 
+    submit = SubmitField("Send")
+
+
+class ManualEmailForm(FlaskForm):
+    subject = StringField("Subject", [InputRequired(" ")])
+    emails = TextAreaField("Emails (separated by comma or new line)", [InputRequired(" ")])
     submit = SubmitField("Send")
 
 
