@@ -140,6 +140,7 @@ if "Prospects" not in worksheets:
         "Collision?",
         "Secondary Email (optional)",
         "Secondary Bounced (when)?",
+        "Secondary Collision",
         "Phone Number (optional)",
         "Phone Bounced (when)?",
         "Phone Collision",
@@ -156,6 +157,7 @@ if "Prospects" not in worksheets:
 
 
 wks = sh.worksheet("Members")
+prospects = sh.worksheet("Prospects")
 logs = sh.worksheet("Logs")
 
 
@@ -168,6 +170,7 @@ def get_wks_records(wks):
 
 def get_wks_columns(wks):
     header_row = wks.row_values(1)
+    print(f"IN GET WKS COLUMNS FUNCTION: {type(header_row)}")
     wks_columns = {header_row[i]: i + 1 for i in range(len(header_row))}
     return wks_columns
 
@@ -196,6 +199,7 @@ from project.views.admin import (
     EditFormModelView,
     EventModelView,
     IndexView,
+    ProspectsView,
     UserModelView,
 )
 
@@ -208,6 +212,7 @@ admin_app.add_view(EventModelView(event, db.session, name="Events"))
 admin_app.add_view(ContactView(name="Contact", endpoint="contact"))
 admin_app.add_view(CatchBouncesView(name="Catch Bounces", endpoint="catch_bounces"))
 admin_app.add_view(DocumentationView(name="Documentation", endpoint="documentation"))
+admin_app.add_view(ProspectsView(name="Prospects", endpoint="prospects"))
 
 
 # Email Pixel Tracking

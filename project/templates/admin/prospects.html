@@ -1,0 +1,6 @@
+{% extends 'admin/master.html' %} {% block body %}
+<link rel="stylesheet" href="../../static/admin/selections.css" />
+<form action="{{ url_for('prospects.prospects') }}" method="post">
+    {{ form.check(class="form-group", class="btn btn-info") }}
+</form>
+{% endblock body %}
