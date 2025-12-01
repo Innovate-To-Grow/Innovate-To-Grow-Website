@@ -15,7 +15,7 @@ from project.utils.dynamic_fields import get_field, checkbox_get_choices
 from project.utils.token import generate_token, confirm_token
 from project.utils.event_utils import (
     make_sure, analyze_email_changes, calculate_verification_cell_updates, calculate_basic_user_updates,
-    analyze_phone_number_changes, calculate_phone_verification_decision, 
+    analyze_phone_number_changes, calculate_phone_verification_decision,
     should_send_event_sms_confirmation, calculate_phone_updates
 )
 from project.utils.side_effect_helpers import (
@@ -90,7 +90,7 @@ def enter_email(event_name):
             token = generate_token(email)
             url = url_for("registration.complete_registration", token=token, _external=True)
             html = render_template("complete_email.html", email=email, url=url, live_event=True if event_obj else False)
-            
+
             try:
                 send_email(email, subject, html)
             except Exception as e:
@@ -192,7 +192,7 @@ def enter_email(event_name):
                             event_url=event_url,
                         )
                         send_email(user["Primary Email"], "I2G Membership - Event Registration", html)
-                        
+
             except Exception as e:
                 # Log comprehensive error details
                 logger.log_background_error(
@@ -273,7 +273,7 @@ def event_register(event_name, token):
     phone_temp = False
     if user.get("Phone number subscribed") == "TRUE":
         phone_temp = True
-    
+
     country_code, number = "", ""
     if user.get("Phone Number"):
         try:
@@ -551,7 +551,7 @@ def event_register(event_name, token):
                 return render_template("error3.html")
 
             needs_phone_verification = calculate_phone_verification_decision(
-                user, 
+                user,
                 phone_decision,
                 phone_data.get("phone_subscribe", False)
             )
@@ -593,14 +593,14 @@ def event_register(event_name, token):
                     "secondary_subscribed": user["Secondary Subscribed"],
                     "info_fields": info_fields,
                 }
-                
+
                 event_data = {
                     "event_url": event_url,
                     "update_url": update_url,
                     "event_fields": event_fields,
                     "event_name": event_obj.name if event_obj else None,
                 }
-                
+
                 setup_event_phone_verification_session(session, user_data, event_data, phone_data)
 
             @copy_current_request_context
@@ -643,7 +643,7 @@ def event_register(event_name, token):
                     phone_updates = calculate_phone_updates(user, form_data, phone_decision, row_find)
 
                     # PHASE 3: EXECUTE SIDE EFFECTS
-                    
+
                     # 3.1: Execute membership database updates first
                     all_updates = basic_updates + verification_updates + phone_updates
                     execute_cell_updates(all_updates, "membership")
@@ -660,7 +660,7 @@ def event_register(event_name, token):
                                 event_phone_value = ""
                             else:
                                 event_phone_value = phone_data.get('full_phone_number', '')
-                            
+
                             # Update existing event registration
                             event_updates = [
                                 {"row": event_user["Row"], "column": "First Name", "value": form.first_name.data},
@@ -725,18 +725,18 @@ def event_register(event_name, token):
 
                     # PHASE 6: SEND SMS CONFIRMATION (if applicable)
                     # Only send SMS for new event registrations, not updates
-                    is_new_event_registration = event_user is None
-                    if should_send_event_sms_confirmation(
-                        user.get("Phone number verified", "FALSE"),
-                        phone_data.get("phone_subscribe", False),
-                        bool(phone_data.get("full_phone_number", "")),
-                        event_obj.name if event_obj else None,
-                        is_new_event_registration
-                    ):
-                        send_event_sms_confirmation(
-                            phone_data.get("full_phone_number", ""),
-                            event_obj.name
-                        )
+                    # is_new_event_registration = event_user is None
+                    # if should_send_event_sms_confirmation(
+                    #     user.get("Phone number verified", "FALSE"),
+                    #     phone_data.get("phone_subscribe", False),
+                    #     bool(phone_data.get("full_phone_number", "")),
+                    #     event_obj.name if event_obj else None,
+                    #     is_new_event_registration
+                    # ):
+                    #     send_event_sms_confirmation(
+                    #         phone_data.get("full_phone_number", ""),
+                    #         event_obj.name
+                    #     )
 
                     # PHASE 7: SEND CONFIRMATION EMAILS
                     # Build template data locally without fetching from sheets
@@ -779,7 +779,7 @@ def event_register(event_name, token):
 
                     # Return success
                     return {"status": "success"}
-                    
+
                 except Exception as e:
                     # Log comprehensive error details
                     logger.log_background_error(
@@ -804,7 +804,7 @@ def event_register(event_name, token):
                 # Calculate final state for template (from main thread decisions)
                 final_primary_verified = not email_decision.verification_status_updates.get("primary", False)
                 final_secondary_verified = not email_decision.verification_status_updates.get("secondary", False)
-                
+
                 # Calculate phone status
                 if phone_decision.clear:
                     final_phone_verified = "FALSE"
@@ -812,7 +812,7 @@ def event_register(event_name, token):
                 else:
                     final_phone_verified = user.get("Phone number verified", "FALSE")
                     final_phone_subscribed = "TRUE" if phone_data.get("phone_subscribe", False) else "FALSE"
-                
+
                 return render_template("successfully_registered.html",
                                       event_url=event_url,
                                       update_url=update_url,

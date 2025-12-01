@@ -217,18 +217,18 @@ def calculate_basic_user_updates(
         {"row": row_number, "column": "Primary Email", "value": form_data["primary_email"]},
         {"row": row_number, "column": "Secondary Email", "value": form_data["secondary_email"]},
     ]
-    
+
     # If secondary email is being cleared, also clear all secondary email related fields
     if not form_data["secondary_email"]:  # Empty string means clearing secondary email
         secondary_fields = [
             "Secondary Verified",
-            "Secondary Subscribed", 
+            "Secondary Subscribed",
             "Secondary Expired",
             "Secondary Bounced"
         ]
         for field in secondary_fields:
             updates.append({"row": row_number, "column": field, "value": ""})
-    
+
 
     # Add custom fields if provided
     if custom_fields:
@@ -367,31 +367,31 @@ def analyze_phone_number_changes(
     current_phone = current_phone or ""
     new_country_code = new_country_code or ""
     new_phone_number = new_phone_number or ""
-    
+
     # If no phone provided, determine if we should clear existing phone
     if not new_country_code and not new_phone_number:
         if current_phone:
             return PhoneChangeDecision(clear=True, changed=True)
         else:
             return PhoneChangeDecision()  # No change needed
-    
+
     # If only partial phone data provided, that's an error state
     # (This should be caught by form validation, but double-check here)
     if bool(new_country_code) != bool(new_phone_number):
         return PhoneChangeDecision(error=True)
-    
+
     # Construct the new full phone number
     new_full_phone = new_country_code + new_phone_number
-    
+
     # Normalize both phone numbers for comparison
     # This handles cases where phonenumbers library formats numbers differently
     def normalize_phone(phone_str):
         if not phone_str:
             return ""
-        
+
         # Convert to string if it's an integer (from Google Sheets)
         phone_str = str(phone_str)
-        
+
         try:
             import phonenumbers
             # Parse and reformat to ensure consistent format
@@ -404,38 +404,38 @@ def analyze_phone_number_changes(
             if not phone_str.startswith("+"):
                 return "+" + phone_str
             return phone_str
-    
+
     normalized_current = normalize_phone(current_phone)
     normalized_new = normalize_phone(new_full_phone)
-    
-    
+
+
     # Compare normalized phone numbers
     if normalized_current == normalized_new:
         return PhoneChangeDecision()  # No change
-    
+
     # Phone number has changed - check for conflicts
     # Exclude current user from conflict checking
     phone_conflicts = [
-        row for row in wks_records 
-        if normalize_phone(row.get("Phone Number")) == normalized_new and 
+        row for row in wks_records
+        if normalize_phone(row.get("Phone Number")) == normalized_new and
            (current_user_row is None or row.get("Row") != current_user_row)
     ]
-    
+
     if phone_conflicts:
         return PhoneChangeDecision(error=True, changed=True)
-    
+
     # Phone changed and no conflicts - need verification
     return PhoneChangeDecision(verify=True, changed=True)
 
 
 def calculate_phone_verification_decision(
-    user: Dict[str, Any], 
+    user: Dict[str, Any],
     phone_decision: PhoneChangeDecision,
     phone_subscribe: bool = False
 ) -> bool:
     """
     Determine if phone verification is needed based on phone change analysis.
-    
+
     Verification is needed when:
     1. Phone number changed (phone_decision.verify and phone_decision.changed), OR
     2. Phone is unverified AND user wants to subscribe for phone notifications
@@ -453,17 +453,17 @@ def calculate_phone_verification_decision(
     # Case 1: Phone changed - need verification
     if phone_decision.verify and phone_decision.changed:
         return True
-    
+
     # Case 2: Phone unverified but user wants to subscribe - need verification
     phone_verified = user.get("Phone number verified", "FALSE")
     phone_number = user.get("Phone Number", "")
     # Convert to string in case it's an integer from Google Sheets
     phone_number = str(phone_number) if phone_number else ""
     has_phone = bool(phone_number.strip())
-    
-    if has_phone and phone_verified == "FALSE" and phone_subscribe:
+
+    if has_phone and phone_verified == "FALSE":
         return True
-    
+
     return False
 
 
@@ -519,9 +519,9 @@ def calculate_phone_updates(
     Returns:
         List of cell update dictionaries with row, column, value
     """
-    
+
     updates = []
-    
+
     if phone_decision.clear:
         # Clear all phone-related fields
         updates.extend([
@@ -529,15 +529,15 @@ def calculate_phone_updates(
             {"row": row_number, "column": "Phone number subscribed", "value": ""},
             {"row": row_number, "column": "Phone number verified", "value": ""},
         ])
-        
+
     elif phone_decision.changed:
         # Update phone number
         country_code = form_data.get("country_code", "")
         phone_number = form_data.get("phone_number", "")
         full_phone = country_code + phone_number if country_code and phone_number else ""
-        
+
         updates.append({"row": row_number, "column": "Phone Number", "value": full_phone})
-        
+
         # Set verification status based on whether verification is needed
         if phone_decision.verify:
             # When verification is needed, we'll set both verified=FALSE and subscription after OTP completion
@@ -548,12 +548,12 @@ def calculate_phone_updates(
             phone_subscribe = "TRUE" if form_data.get("phone_subscribe", False) else "FALSE"
             updates.append({"row": row_number, "column": "Phone number subscribed", "value": phone_subscribe})
             # Keep existing verification status
-    
+
     else:
         # Phone number didn't change, but subscription preference might have
         phone_subscribe = "TRUE" if form_data.get("phone_subscribe", False) else "FALSE"
         updates.append({"row": row_number, "column": "Phone number subscribed", "value": phone_subscribe})
-    
+
     return updates
 
 
@@ -574,7 +574,7 @@ def extract_phone_data_from_form(form) -> Dict[str, Any]:
         "phone_number": getattr(form, "phone_number", None).data if hasattr(form, "phone_number") else "",
         "phone_subscribe": getattr(form, "phone_subscribe", None).data if hasattr(form, "phone_subscribe") else False,
         "full_phone_number": (
-            (getattr(form, "country_code", None).data or "") + 
+            (getattr(form, "country_code", None).data or "") +
             (getattr(form, "phone_number", None).data or "")
         ) if hasattr(form, "country_code") and hasattr(form, "phone_number") else ""
     }
