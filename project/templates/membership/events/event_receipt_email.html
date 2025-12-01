@@ -1,5 +1,5 @@
 <style>
-    p { 
+    p {
         margin: 10px;
     }
 
@@ -28,7 +28,7 @@
 {% endif %}
 {% if phone_number and phone_number.strip() %}
 <div>
-    <p> Phone Number: {{ phone_number }} {% if phone_number_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} {% if phone_subscribed == "TRUE" %}(Subscribed){% else %}(Unsubscribed){% endif %}</p>
+    <p> Phone Number: {{ phone_number }} {% if phone_number_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} </p>
 </div>
 {% endif %}
 <br>
