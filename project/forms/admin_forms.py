@@ -14,6 +14,7 @@ class EmailForm(FlaskForm):
             ("Subscribed", "Subscribed Users"),
             ("Non-Event Subscribed", "Non-Event Subscribed Users"),
             ("Verified", "Verified Users"),
+            ("Prospects", "Prospects")
         ],
         default="Admin",
     )
