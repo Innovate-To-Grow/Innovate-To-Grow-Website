@@ -241,7 +241,7 @@ def update_info(token):
     phone_temp = False
     if user.get("Phone number subscribed") == "TRUE":
         phone_temp = True
-    
+
     country_code, number = "", ""
     if user.get("Phone Number"):
         try:
@@ -504,7 +504,7 @@ def update_info(token):
 
             # PHASE 1: ANALYZE EMAIL AND PHONE CHANGES (Before background thread)
             decision = analyze_email_changes(user, prim_email, sec_email)
-            
+
             phone_decision = analyze_phone_number_changes(
                 user.get("Phone Number", ""),
                 phone_data.get("country_code", ""),
@@ -512,12 +512,12 @@ def update_info(token):
                 wks_records,
                 row_find
             )
-            
+
             if phone_decision.error:
                 return render_template("error3.html")
-            
+
             needs_phone_verification = calculate_phone_verification_decision(
-                user, 
+                user,
                 phone_decision,
                 phone_data.get("phone_subscribe", False)
             )
@@ -559,7 +559,7 @@ def update_info(token):
                     "secondary_subscribed": secondary_subscribed,
                     "info_fields": info_fields,
                 }
-                
+
                 event_data = {
                     "event_url": event_url,
                     "update_url": update_url,
@@ -567,7 +567,7 @@ def update_info(token):
                     "event_name": event_obj.name if event_obj else None,
                     "update_type": "update"  # Distinguish from event registration
                 }
-                
+
                 # Setup session for OTP verification
                 setup_event_phone_verification_session(session, user_data, event_data, phone_data)
 
@@ -692,20 +692,20 @@ def update_info(token):
                     else:
                         # Phone didn't change or changed without needing verification - keep existing status
                         current_phone_verified = user.get("Phone number verified", "FALSE")
-                    
+
                     # Only send SMS for new event registrations, not updates
-                    is_new_event_registration = event_user is None
-                    if not needs_phone_verification and should_send_event_sms_confirmation(
-                        current_phone_verified,
-                        phone_data.get("phone_subscribe", False),
-                        bool(phone_data.get("full_phone_number", "")),
-                        event_obj.name if event_obj else None,
-                        is_new_event_registration
-                    ):
-                        send_event_sms_confirmation(
-                            phone_data.get("full_phone_number", ""),
-                            event_obj.name
-                        )
+                    # is_new_event_registration = event_user is None
+                    # if not needs_phone_verification and should_send_event_sms_confirmation(
+                    #     current_phone_verified,
+                    #     phone_data.get("phone_subscribe", False),
+                    #     bool(phone_data.get("full_phone_number", "")),
+                    #     event_obj.name if event_obj else None,
+                    #     is_new_event_registration
+                    # ):
+                    #     send_event_sms_confirmation(
+                    #         phone_data.get("full_phone_number", ""),
+                    #         event_obj.name
+                    #     )
 
                     # PHASE 7: SEND CONFIRMATION EMAILS (Update-specific)
                     subject = "I2G Membership Updated"
@@ -770,7 +770,7 @@ def update_info(token):
 
                     # Return success
                     return {"status": "success"}
-                    
+
                 except Exception as e:
                     # Log comprehensive error details
                     logger.log_background_error(
@@ -795,7 +795,7 @@ def update_info(token):
                 # Calculate final state for template (from main thread decisions)
                 final_primary_verified = not decision.verification_status_updates.get("primary", False)
                 final_secondary_verified = not decision.verification_status_updates.get("secondary", False)
-                
+
                 # Calculate phone status
                 if phone_decision.clear:
                     final_phone_verified = "FALSE"
@@ -803,7 +803,7 @@ def update_info(token):
                 else:
                     final_phone_verified = user.get("Phone number verified", "FALSE")
                     final_phone_subscribed = "TRUE" if phone_data.get("phone_subscribe", False) else "FALSE"
-                
+
                 return render_template("thanks_update.html",
                                       event_url=event_url,
                                       update_url=update_url,

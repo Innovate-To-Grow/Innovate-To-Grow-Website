@@ -1158,22 +1158,22 @@ def info(token):
                             current_user = row
                             break
 
-                    if current_user:
-                        current_phone = str(current_user.get("Phone Number", "") or "")
-                        current_phone_verified = current_user.get(
-                            "Phone number verified", "FALSE"
-                        )
-                        current_phone_subscribed = (
-                            current_user.get("Phone number subscribed", "FALSE")
-                            == "TRUE"
-                        )
+                    # if current_user:
+                    #     current_phone = str(current_user.get("Phone Number", "") or "")
+                    #     current_phone_verified = current_user.get(
+                    #         "Phone number verified", "FALSE"
+                    #     )
+                    #     current_phone_subscribed = (
+                    #         current_user.get("Phone number subscribed", "FALSE")
+                    #         == "TRUE"
+                    #     )
 
-                        if (
-                            current_phone
-                            and current_phone_verified == "TRUE"
-                            and current_phone_subscribed
-                        ):
-                            send_event_sms_confirmation(current_phone, event_obj.name)
+                    #     if (
+                    #         current_phone
+                    #         and current_phone_verified == "TRUE"
+                    #         and current_phone_subscribed
+                    #     ):
+                    #         send_event_sms_confirmation(current_phone, event_obj.name)
             except Exception as e:
                 print(f"Error sending event SMS after info form: {e}")
 
