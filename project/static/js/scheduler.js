@@ -148,9 +148,9 @@ let timestartForCEE = "1:00";
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 3;
+let totalTrackForCSE = 2;
 // the amount of order for CSE
-let totalOrderForCSE = 6;
+let totalOrderForCSE = 9;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
@@ -340,11 +340,11 @@ $(document).ready(function () {
                                         '<b>Ada Lovelace</b>'+
                                     '</p>'+
                                 '</td>'+
-                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
-                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>John von Neumann</b>'+
-                                    '</p>'+
-                                '</td>'+
+                                // '<td data-header="Track 3" style="color: #FFBF3C;">'+
+                                //     '<p style="color:#FFBF3C; font-weight: bolder;">'+
+                                //         '<b>John von Neumann</b>'+
+                                //     '</p>'+
+                                // '</td>'+
                             '</tr>'+
                         '</tbody>'+
                     '</table>'+
@@ -383,7 +383,7 @@ $(document).ready(function () {
     }
 
     // Pulls the room column from "2023-08-Fall-I2G-MASTER" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/2025-I2G1-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1o9xGjsaaS3BBOB4qLKVfRXWP0W-YDLa20TxPCEnRSik/values/2025-I2G2-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
         // Pull the class column from "2023-08-Fall-I2G-MASTER" spreadsheet.
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i][1]); // there was a +1 here after i, but it was causing the room to be off by one
