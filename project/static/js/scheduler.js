@@ -18,7 +18,6 @@ var datas = [];
 $(document).ready(function () {
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1o9xGjsaaS3BBOB4qLKVfRXWP0W-YDLa20TxPCEnRSik/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
-        console.log(length);
         for (var i = 1; i < length; i++) {
             const subArray = data.values[i];
             // Only include rows with Year-Semester = "2025-2 Fall"
@@ -42,7 +41,6 @@ $(document).ready(function () {
             JSON.stringify(subdata);
             datas.push(subdata);
         }
-        console.log("first");
         fnLoadDataTableInstance()
     });
 
@@ -50,7 +48,6 @@ $(document).ready(function () {
 // to load the datatables
 function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
-    console.log("second");
     var table = $('#example').DataTable({
         // dom: 'Bfrltip',
         pageLength: 10,
@@ -127,15 +124,15 @@ function passvalue(slot) {
 
 // the layout of the table is as follows:
 //            _ _ _ _ # of Track
-// # of order|  
+// # of order|
 //           |
 //           |
 //           |
 
 // the amount of tracks for CAP
-let totalTrackForCAP = 3;
+let totalTrackForCAP = 2;
 // the amount of order for CAP
-let totalOrderForCAP = 7;
+let totalOrderForCAP = 6;
 // the time start for CAP
 let timestartForCAP = "1:00";
 // time per slot for CAP
@@ -144,16 +141,16 @@ let timePerSlotForCAP = "30";
 // the amount of tracks for CEE
 let totalTrackForCEE = 1;
 // the amount of order for CEE
-let totalOrderForCEE = 7;
+let totalOrderForCEE = 4;
 // the time start for CEE
 let timestartForCEE = "1:00";
 // time per slot for CEE
 let timePerSlotForCEE = "30";
 
 // the amount of tracks for CSE
-let totalTrackForCSE = 4;
+let totalTrackForCSE = 3;
 // the amount of order for CSE
-let totalOrderForCSE = 10;
+let totalOrderForCSE = 6;
 // the time start for CSE
 let timestartForCSE = "1:00";
 // time per slot for CSE
@@ -179,7 +176,7 @@ function getTime(time, addMinute){
 
 $(document).ready(function () {
     if (totalTrackForCAP > 0) {
-        var html = 
+        var html =
             '<div class= "span7"> '+
                 '<div>&nbsp;</div>'+
                 '<div style="text-align: center; color: #002856;"><strong>Engineering Capstone (CAP)</strong></div>'+
@@ -200,7 +197,7 @@ $(document).ready(function () {
                                     '<th scope="col" style="background-color: #efefef;">&nbsp;</th>'+
                                 '</tr>'+
                             '</tbody>'+
-                            '<tbody class="classCAP">'+ 
+                            '<tbody class="classCAP">'+
                             '<tr>'+
                             '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                             '<td data-header="Track 1" style="color: #002856;">'+
@@ -213,21 +210,6 @@ $(document).ready(function () {
                                     '<b>AgTech</b>'+
                                 '</p>'+
                             '</td>'+
-                            '<td data-header="Track 3" style="color: #002856;">'+
-                                '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>Lab</b>'+
-                                '</p>'+
-                            '</td>'+
-                            // '<td data-header="Track 4" style="color: #002856;">'+
-                            //     '<p style="color:#002856; font-weight: bolder;">'+
-                            //         '<b>Lab</b>'+
-                            //     '</p>'+
-                            // '</td>'+
-                            // '<td data-header="Track 5" style="color: #002856;">'+
-                            //     '<p style="color:#002856; font-weight: bolder;">'+
-                            //         '<b>FoodTech</b>'+
-                            //     '</p>'+
-                            // '</td>'+
                         '</tr>'+
                             '</tbody>'+
                         '</table>'+
@@ -248,7 +230,7 @@ $(document).ready(function () {
         }
         let CAPhtml = "";
         for(let i = 0; i < totalOrderForCAP; i++){
-            CAPhtml += '<tr>' + 
+            CAPhtml += '<tr>' +
                 '<th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">'+
                     timestartForCAP +
                 '</th>';
@@ -264,7 +246,7 @@ $(document).ready(function () {
         $(".classCAP").append(CAPhtml);
     }
     if (totalTrackForCEE > 0) {
-        var html = 
+        var html =
             '<div class= "span4" style="margin-left:40px;"> '+
                 '<div style="text-align: center; color: #002856;"><strong>Civil &amp; Env. Eng. (CEE)</strong></div>'+
                 '<section class="center">'+
@@ -309,12 +291,12 @@ $(document).ready(function () {
         }
         let CEEhtml = "";
         for(let i = 0; i < totalOrderForCEE; i++){
-            CEEhtml += '<tr>' + 
+            CEEhtml += '<tr>' +
                 '<th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">'+
                     timestartForCEE +
                 '</th>';
             for(let j = (0 + totalTrackForCAP); j < (totalTrackForCEE + totalTrackForCAP); j++){
-                
+
                 CEEhtml += '<td data-header="Track ' + (j+1) + '" id="hover' + (i+1) + (j+1) + '"><button class="ceer' + (i+1) + 't' + (j+1) + '" id="slot' + (i+1) + (j+1) + '" onclick="passvalue(\'slot' + (i+1) + (j+1) + '\')" style="color: #002856;"></button>'+
                 '<p class="ceeorgr' + (i+1) + 't' + (j+1) + ' companyName">&nbsp;</p>'+
                 '</td>';
@@ -323,7 +305,6 @@ $(document).ready(function () {
             timestartForCEE = getTime(timestartForCEE, timePerSlotForCEE);
         }
         $(".classCEE").append(CEEhtml);
-
     }
     if (totalTrackForCSE > 0) {
         var html = '<div class= "span11" style= "margin-top:0px; padding: unset;">'+
@@ -364,11 +345,6 @@ $(document).ready(function () {
                                         '<b>John von Neumann</b>'+
                                     '</p>'+
                                 '</td>'+
-                                '<td data-header="Track 3" style="color: #FFBF3C;">'+
-                                    '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Joan Clarke</b>'+
-                                    '</p>'+
-                                '</td>'+
                             '</tr>'+
                         '</tbody>'+
                     '</table>'+
@@ -389,12 +365,12 @@ $(document).ready(function () {
         }
         let CSEhtml = "";
         for(let i = 0; i < totalOrderForCSE; i++){
-            CSEhtml += '<tr>' + 
+            CSEhtml += '<tr>' +
                 '<th class="borderLess" scope="row" style="background-color: #efefef; color: #002856;">'+
                     timestartForCSE +
                 '</th>';
             for(let j = (0 + totalTrackForCAP + totalTrackForCEE); j < (totalTrackForCSE + totalTrackForCAP + totalTrackForCEE); j++){
-                
+
                 CSEhtml += '<td data-header="Track ' + (j+1) + '" id="hover' + (i+1) + (j+1) + '"><button class="cser' + (i+1) + 't' + (j+1) + '" id="slot' + (i+1) + (j+1) + '" onclick="passvalue(\'slot' + (i+1) + (j+1) + '\')" style="color: #FFBF3C;"></button>'+
                 '<p class="cseorgr' + (i+1) + 't' + (j+1) + ' companyNameC">&nbsp;</p>'+
                 '</td>';
@@ -408,11 +384,11 @@ $(document).ready(function () {
 
     // Pulls the room column from "2023-08-Fall-I2G-MASTER" spreadsheet.
     $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/2025-I2G1-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
-        // Pull the class column from "2023-08-Fall-I2G-MASTER" spreadsheet. 
+        // Pull the class column from "2023-08-Fall-I2G-MASTER" spreadsheet.
         for (let i = 1; i <= totalRooms; i++) {
             $(".roomt" + i).prepend(data.values[i][1]); // there was a +1 here after i, but it was causing the room to be off by one
         }
-        // Pulls the zoom column from "2023-08-Fall-I2G-MASTER" spreadsheet. 
+        // Pulls the zoom column from "2023-08-Fall-I2G-MASTER" spreadsheet.
         // It will add href to make zoom button active if there is a link present in zoom spreadsheet column
         for (let i = 1; i <= totalRooms; i++) {
             if (data.values[i + 1][2] != "") {
@@ -424,10 +400,12 @@ $(document).ready(function () {
 
 $(document).ready(function () {
 
-    // Pulls data from "2023-08-Fall-I2G-WEB" spreadsheet.
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    // Pulls data from "2025-I2G2-WEB" spreadsheet.
+    // This populates the schedule of CAP, CSE, and CEE
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1o9xGjsaaS3BBOB4qLKVfRXWP0W-YDLa20TxPCEnRSik/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
 
-        for (let i = 1; i < data.values.length; i++) {
+
+      for (let i = 1; i < data.values.length; i++) {
             if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
                 let track = data.values[i][0];
                 let order = data.values[i][1];
@@ -472,4 +450,4 @@ $(document).ready(function () {
             }
         }
     });
-});   
+});
