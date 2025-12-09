@@ -119,41 +119,6 @@ if "Members" not in worksheets:
                     1, len(sh.worksheet("Members").row_values(1)) + 1, row.label
                 )
 
-# --- MAKING THE SHEET FOR CHARACTERIZATION TESTING --- #
-
-if "MembersTesting" not in worksheets:
-    sh.add_worksheet("MembersTesting", 1, 100)
-    row = [
-        "Order",
-        "First Name",
-        "Last Name",
-        "When Started",
-        "Last Updated",
-        "Primary Email",
-        "Primary Verified",
-        "Primary Subscribed",
-        "Primary Expired",
-        "Primary Bounced",
-        "Secondary Email",
-        "Secondary Verified",
-        "Secondary Subscribed",
-        "Secondary Expired",
-        "Secondary Bounced",
-        "Phone Number",
-        "Phone Number Subscribed",
-        "Phone number verified",
-        "Info Completed",
-    ]
-
-    sh.worksheet("MembersTesting").append_row(row)
-
-    with app.app_context():
-        for row in edit_form.query.all():
-            if row.label not in sh.worksheet("MembersTesting").row_values(1):
-                sh.worksheet("MembersTesting").update_cell(
-                    1, len(sh.worksheet("MembersTesting").row_values(1)) + 1, row.label
-                )
-
 
 if "Logs" not in worksheets:
     sh.add_worksheet("Logs", 1, 100)
@@ -161,7 +126,6 @@ if "Logs" not in worksheets:
     sh.worksheet("Logs").append_row(row)
 
 
-# wks = sh.worksheet("MembersTesting")
 wks = sh.worksheet("Members")
 logs = sh.worksheet("Logs")
 
