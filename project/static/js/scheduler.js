@@ -207,7 +207,7 @@ $(document).ready(function () {
                             '</td>'+
                             '<td data-header="Track 2" style="color: #002856;">'+
                                 '<p style="color:#002856; font-weight: bolder;">'+
-                                    '<b>AgTech</b>'+
+                                    '<b>Precision</b>'+
                                 '</p>'+
                             '</td>'+
                         '</tr>'+
@@ -332,12 +332,12 @@ $(document).ready(function () {
                                 '<th class="borderLess" style="background-color: #efefef;">&nbsp;</th>'+
                                 '<td data-header="Track 1" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Alan Turing</b>'+
+                                        '<b>Tim Berners-Lee</b>'+
                                     '</p>'+
                                 '</td>'+
                                 '<td data-header="Track 2" style="color: #FFBF3C;">'+
                                     '<p style="color:#FFBF3C; font-weight: bolder;">'+
-                                        '<b>Ada Lovelace</b>'+
+                                        '<b>Grace Hopper</b>'+
                                     '</p>'+
                                 '</td>'+
                                 // '<td data-header="Track 3" style="color: #FFBF3C;">'+

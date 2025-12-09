@@ -176,6 +176,11 @@ def home_during_event():
 def home_post_event():
     return render_template("home-post-event.html")
 
+@home_blueprint.route("/2025-spring-event", methods=["GET", "POST"])
+@cache.cached()
+def spring_event_2025():
+    return render_template("2025-spring-event.html")
+
 @home_blueprint.route("/2024-fall-event", methods=["GET", "POST"])
 @cache.cached()
 def fall_event_2024():
@@ -190,7 +195,7 @@ def fall_event_2023():
 @cache.cached()
 def spring_event_2023():
     return render_template("2023-spring-event.html")
-    
+
 @home_blueprint.route("/2024-spring-event", methods=["GET", "POST"])
 @cache.cached()
 def spring_event_2024():
@@ -238,7 +243,7 @@ def past_projects(uuid_string=None):
     if request.method == "POST":
         data = request.get_json()
         uuid_string = str(uuid.uuid4())
-        
+
         def update_sheet():
             team_name = ""
             team_number = ""
@@ -248,15 +253,15 @@ def past_projects(uuid_string=None):
                 team_number += d["Team#"] + " ; "
 
             if len(data) > 0:
-                team_name += data[-1]["Team Name"] 
-                team_number += data[-1]["Team#"] 
-            
+                team_name += data[-1]["Team Name"]
+                team_number += data[-1]["Team#"]
+
             wks.append_row(values=[uuid_string, team_name, team_number])
 
         Thread(target=update_sheet).start()
-        
+
         return jsonify({"uuid_string": uuid_string})
-       
+
     team_names = []
     team_numbers = []
 
@@ -267,5 +272,5 @@ def past_projects(uuid_string=None):
             if len(query) == 3:
                 team_names = query[1].split(" ; ")
                 team_numbers = query[2].split(" ; ")
-    
+
     return render_template("past-projects.html", team_names=team_names, team_numbers=team_numbers)
