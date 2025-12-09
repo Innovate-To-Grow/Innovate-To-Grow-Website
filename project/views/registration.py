@@ -112,9 +112,9 @@ def register():
             phone_number = country_code_input + number_input
             if phone_number and not phone_number.startswith("+"):
                 phone_number = "+" + phone_number
-            phone_subscribe_flag = bool(
-                getattr(form, "phone_subscribe", None) and form.phone_subscribe.data
-            )
+            # phone_subscribe_flag = bool(
+            #     getattr(form, "phone_subscribe", None) and form.phone_subscribe.data
+            # )
 
         async def search_prim_in_prim_col():
             user_prim1 = [
@@ -772,6 +772,9 @@ def confirm(token):
                 secondary_verified=secondary_verified,
                 primary_subscribed=primary_subscribed,
                 secondary_subscribed=secondary_subscribed,
+                phone_number=str(user.get("Phone Number", "") or ""),
+                phone_number_verified=user.get("Phone number verified", "FALSE"),
+                phone_subscribed=True if user.get("Phone number subscribed", "FALSE") == "TRUE" else False,
                 info_fields=info_fields,
                 event_fields=event_fields,
                 event_name=event_obj.name if event_obj is not None else None,
@@ -788,6 +791,9 @@ def confirm(token):
                 secondary_verified=secondary_verified,
                 primary_subscribed=primary_subscribed,
                 secondary_subscribed=secondary_subscribed,
+                phone_number=str(user.get("Phone Number", "") or ""),
+                phone_number_verified=user.get("Phone number verified", "FALSE"),
+                phone_subscribed=True if user.get("Phone number subscribed", "FALSE") == "TRUE" else False,
                 info_fields=info_fields,
                 event_name=event_obj.name if event_obj is not None else None,
                 event_fields=event_fields,
@@ -1152,22 +1158,22 @@ def info(token):
                             current_user = row
                             break
 
-                    if current_user:
-                        current_phone = str(current_user.get("Phone Number", "") or "")
-                        current_phone_verified = current_user.get(
-                            "Phone number verified", "FALSE"
-                        )
-                        current_phone_subscribed = (
-                            current_user.get("Phone number subscribed", "FALSE")
-                            == "TRUE"
-                        )
+                    # if current_user:
+                    #     current_phone = str(current_user.get("Phone Number", "") or "")
+                    #     current_phone_verified = current_user.get(
+                    #         "Phone number verified", "FALSE"
+                    #     )
+                    #     current_phone_subscribed = (
+                    #         current_user.get("Phone number subscribed", "FALSE")
+                    #         == "TRUE"
+                    #     )
 
-                        if (
-                            current_phone
-                            and current_phone_verified == "TRUE"
-                            and current_phone_subscribed
-                        ):
-                            send_event_sms_confirmation(current_phone, event_obj.name)
+                    #     if (
+                    #         current_phone
+                    #         and current_phone_verified == "TRUE"
+                    #         and current_phone_subscribed
+                    #     ):
+                    #         send_event_sms_confirmation(current_phone, event_obj.name)
             except Exception as e:
                 print(f"Error sending event SMS after info form: {e}")
 
@@ -1378,7 +1384,6 @@ def complete_registration(token):
             phone_form_data = {
                 "country_code": form.country_code.data,
                 "phone_number": form.phone_number.data,
-                "phone_subscribe": form.phone_subscribe.data,
             }
             phone_data_calc = calculate_phone_registration_data(phone_form_data)
             form_data["phone_data"] = phone_data_calc
@@ -1387,7 +1392,6 @@ def complete_registration(token):
             form_data["event_phone_data"] = {
                 "country_code": form.country_code.data,
                 "phone_number": form.phone_number.data,
-                "phone_subscribe": form.phone_subscribe.data,
                 "full_phone_number": phone_number,  # Use the already-calculated full number
             }
 
@@ -1620,7 +1624,6 @@ def complete_registration(token):
                 secondary_subscribed="TRUE" if form.secondary_subscribe.data else "FALSE",
                 phone_number=phone_number if phone_number else "",
                 phone_number_verified="FALSE",
-                phone_subscribed=form.phone_subscribe.data if phone_number else False,
                 info_fields=info_fields,
                 event_name=event_obj.name if event_obj is not None else None,
                 event_fields=event_fields,

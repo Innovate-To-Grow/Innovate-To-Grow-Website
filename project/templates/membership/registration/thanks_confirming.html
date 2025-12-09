@@ -27,6 +27,11 @@
 <div>
     <p> Secondary Email: {{ secondary_email }} {% if secondary_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} {% if secondary_subscribed == "TRUE" %}(Subscribed){% else %}(Unsubscribed){% endif %}</p>
 </div>
+{% if phone_number and phone_number.strip() %}
+<div>
+    <p> Phone Number: {{ phone_number }} {% if phone_number_verified == "TRUE" %}(Verified){% else %}(Unverified){% endif %} </p>
+</div>
+{% endif %}
 <br>
 <br>
 
