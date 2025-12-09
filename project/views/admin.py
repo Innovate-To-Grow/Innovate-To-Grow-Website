@@ -1,25 +1,53 @@
-import re, time, json, imap_tools
-from gspread.cell import Cell
-from flask import request, flash, render_template, render_template_string, redirect, url_for, copy_current_request_context
-from flask_login import current_user, login_user, login_required, logout_user
-from flask_admin import BaseView, AdminIndexView, expose
-from flask_admin.contrib.sqla import ModelView
-from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, BooleanField, FieldList, TextAreaField, SubmitField
-from wtforms.validators import EqualTo, Email, InputRequired
-from project import app, db, sh, wks, sqs, get_wks_records, get_wks_columns
-from project.models import edit_form, event, user
-from project.utils.email import send_email
-from project.utils.dynamic_fields import get_field
-from project.utils.token import generate_token, confirm_token
-from project.forms.admin_forms import EmailForm, LoginForm, NewAdmin, RegisterAdmin
-from project.forms.registration_forms import NotEqualTo
-from werkzeug.security import generate_password_hash
+import json
+import re
+import time
 from threading import Thread, enumerate
+
+import imap_tools
+from flask import (
+    copy_current_request_context,
+    flash,
+    redirect,
+    render_template,
+    render_template_string,
+    request,
+    url_for,
+)
+from flask_admin import AdminIndexView, BaseView, expose
+from flask_admin.contrib.sqla import ModelView
+from flask_login import current_user, login_required, login_user, logout_user
+from flask_wtf import FlaskForm
+from gspread.cell import Cell
+from werkzeug.security import generate_password_hash
+from wtforms import (
+    BooleanField,
+    FieldList,
+    SelectField,
+    StringField,
+    SubmitField,
+    TextAreaField,
+)
+from wtforms.validators import Email, EqualTo, InputRequired
+
+from project import app, db, get_wks_columns, get_wks_records, prospects, sh, sqs, wks, prospects
+from project.forms.admin_forms import (
+    EmailForm,
+    LoginForm,
+    ManualEmailForm,
+    NewAdmin,
+    ProspectForm,
+    RegisterAdmin,
+)
+from project.forms.registration_forms import NotEqualTo
+from project.models import edit_form, event, user
+from project.utils.admin_helpers import check_prospects
+from project.utils.dynamic_fields import get_field
+from project.utils.email import send_email
+from project.utils.token import confirm_token, generate_token
+from project.utils.utils import clean_phone_number
 
 
 class IndexView(AdminIndexView):
-
     @expose("/")
     def index(self):
         if not current_user.is_authenticated:
@@ -66,8 +94,13 @@ class IndexView(AdminIndexView):
                     flash("Administrator already registered")
                     return redirect(url_for("admin.index"))
                 else:
-                    u = user(request.form["first_name"], request.form["last_name"],
-                              email, generate_password_hash(request.form["password"]), role_str)
+                    u = user(
+                        request.form["first_name"],
+                        request.form["last_name"],
+                        email,
+                        generate_password_hash(request.form["password"]),
+                        role_str,
+                    )
                     db.session.add(u)
                     db.session.commit()
                     login_user(u)
@@ -76,7 +109,9 @@ class IndexView(AdminIndexView):
             else:
                 flash("Passwords do not match")
 
-        return self.render("admin/register_admin_form.html", form=form, role=role, token=token)
+        return self.render(
+            "admin/register_admin_form.html", form=form, role=role, token=token
+        )
 
 
 class UserModelView(ModelView):
@@ -114,11 +149,21 @@ class UserModelView(ModelView):
                 subject = "I2G - New Admin Registration"
 
                 admin_url = url_for("admin.index", _external=True)
-                register_url = url_for("admin.register_admin", role=role, token=token, _external=True)
-                html = render_template("admin/new_admin_email.html", admin_url=admin_url, register_url=register_url)
+                register_url = url_for(
+                    "admin.register_admin", role=role, token=token, _external=True
+                )
+                html = render_template(
+                    "admin/new_admin_email.html",
+                    admin_url=admin_url,
+                    register_url=register_url,
+                )
 
                 send_email(request.form["email"], subject, html)
-                flash("Instructions to register as a new admin have been sent to {}".format(request.form["email"]))
+                flash(
+                    "Instructions to register as a new admin have been sent to {}".format(
+                        request.form["email"]
+                    )
+                )
 
         return self.render("admin/new_admin_form.html", form=form)
 
@@ -140,7 +185,7 @@ class EditFormModelView(ModelView):
             if request.form.get("Preview Info Form"):
 
                 class InformationForm(FlaskForm):
-                    submit = SubmitField('Submit')
+                    submit = SubmitField("Submit")
 
                 for row in edit_form.query.all():
                     setattr(InformationForm, row.label, get_field(row))
@@ -149,25 +194,42 @@ class EditFormModelView(ModelView):
             if request.form.get("Preview Update Form"):
 
                 class UpdateForm(FlaskForm):
-                    first_name = StringField('First Name', [InputRequired(' ')])
-                    last_name = StringField('Last Name', [InputRequired(' ')])
-                    primary_email = StringField('Primary Email Address', [InputRequired(' '), Email()])
+                    first_name = StringField("First Name", [InputRequired(" ")])
+                    last_name = StringField("Last Name", [InputRequired(" ")])
+                    primary_email = StringField(
+                        "Primary Email Address", [InputRequired(" "), Email()]
+                    )
                     confirm_primary = StringField(
-                        'Confirm Primary Email',
-                        [InputRequired(' '),
-                         EqualTo('primary_email', message='Must match primary email')])
-                    primary_subscribe = BooleanField('Enable Email Notifications')
+                        "Confirm Primary Email",
+                        [
+                            InputRequired(" "),
+                            EqualTo(
+                                "primary_email", message="Must match primary email"
+                            ),
+                        ],
+                    )
+                    primary_subscribe = BooleanField("Enable Email Notifications")
                     secondary_email = StringField(
-                        'Secondary Email Address',
-                        [InputRequired(' '),
-                         Email(),
-                         NotEqualTo('primary_email', message='Can not be the same email')])
+                        "Secondary Email Address",
+                        [
+                            InputRequired(" "),
+                            Email(),
+                            NotEqualTo(
+                                "primary_email", message="Can not be the same email"
+                            ),
+                        ],
+                    )
                     confirm_secondary = StringField(
-                        'Confirm Secondary Email',
-                        [InputRequired(' '),
-                         EqualTo('secondary_email', message='Must match secondary email')])
-                    secondary_subscribe = BooleanField('Enable Email Notifications')
-                    submit = SubmitField('Submit')
+                        "Confirm Secondary Email",
+                        [
+                            InputRequired(" "),
+                            EqualTo(
+                                "secondary_email", message="Must match secondary email"
+                            ),
+                        ],
+                    )
+                    secondary_subscribe = BooleanField("Enable Email Notifications")
+                    submit = SubmitField("Submit")
 
                 for row in edit_form.query.all():
                     setattr(UpdateForm, row.label, get_field(row))
@@ -179,7 +241,9 @@ class EditFormModelView(ModelView):
         form = super(EditFormModelView, self).scaffold_form()
         form.label = StringField("Label", [InputRequired(" ")])
         form.required = BooleanField("Required?")
-        form.field_type = SelectField("Field Type", choices=["Text", "Dropdown", "Checkbox"])
+        form.field_type = SelectField(
+            "Field Type", choices=["Text", "Dropdown", "Checkbox"]
+        )
         form.options = FieldList(StringField())
         return form
 
@@ -199,7 +263,12 @@ class EditFormModelView(ModelView):
     def on_form_prefill(self, form, id):
         model = self.get_one(id)
         options = model.options.split("\n")
-        data = {"label": model.label, "required": model.required, "field_type": model.field_type, "options": options}
+        data = {
+            "label": model.label,
+            "required": model.required,
+            "field_type": model.field_type,
+            "options": options,
+        }
         form.process(data=data)
 
 
@@ -248,14 +317,24 @@ class EventModelView(ModelView):
         if model.name not in worksheets:
             sh.add_worksheet(model.name, 1, 30)
             columns = [
-                 "Order", "First Name", "Last Name", "When Started", "Last Updated", "Membership Primary",
-                "Membership Secondary", "Phone Number", "Ticket Type", "Will you attend on Zoom or In-Person?"
+                "Order",
+                "First Name",
+                "Last Name",
+                "When Started",
+                "Last Updated",
+                "Membership Primary",
+                "Membership Secondary",
+                "Phone Number",
+                "Ticket Type",
+                "Will you attend on Zoom or In-Person?",
             ]
             sh.worksheet(model.name).append_row(columns)
 
         for question in model.questions.split("\n"):
             if question not in sh.worksheet(model.name).row_values(1):
-                sh.worksheet(model.name).update_cell(1, len(sh.worksheet(model.name).row_values(1)) + 1, question)
+                sh.worksheet(model.name).update_cell(
+                    1, len(sh.worksheet(model.name).row_values(1)) + 1, question
+                )
 
     def on_form_prefill(self, form, id):
         model = self.get_one(id)
@@ -269,13 +348,12 @@ class EventModelView(ModelView):
             "description": model.description,
             "live": model.live,
             "tickets": tickets,
-            "questions": questions
+            "questions": questions,
         }
         form.process(data=data)
 
 
 class ContactView(BaseView):
-
     def is_accessible(self):
         return current_user.is_authenticated
 
@@ -292,18 +370,26 @@ class ContactView(BaseView):
 
             wks_records = get_wks_records(wks)
 
-            event_obj = event.query.filter_by(live=True).order_by(event.id.desc()).first()
+            event_obj = (
+                event.query.filter_by(live=True).order_by(event.id.desc()).first()
+            )
             if event_obj is not None:
                 event_records = get_wks_records(sh.worksheet(event_obj.name))
 
-            if event_obj is None and (recip_selection == "Event" or recip_selection == "Non-Event Subscribed"):
+            if event_obj is None and (
+                recip_selection == "Event" or recip_selection == "Non-Event Subscribed"
+            ):
                 flash("There is no live event right now")
-            
+
             else:
                 subject = request.form.get("subject")
                 html_from_email = None
 
-                with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(app.config["MAIL_USERNAME"], app.config["MAIL_PASSWORD"], "Email Blasts") as mailbox:
+                with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(
+                    app.config["MAIL_USERNAME"],
+                    app.config["MAIL_PASSWORD"],
+                    "Email Blasts",
+                ) as mailbox:
                     for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
                         html_from_email = msg.html
 
@@ -312,11 +398,11 @@ class ContactView(BaseView):
                         #     img_url = re.search(r'<img src="[^"]+#([^"]+)"[^>]+>', img)
                         #     html_from_email = html_from_email.replace(proxy_url.group(1), img_url.group(1))
 
-
                 if html_from_email is None:
                     flash("There is no email template to send.")
 
                 else:
+
                     @copy_current_request_context
                     def send_blast():
                         if recip_selection == "Admin":
@@ -326,47 +412,106 @@ class ContactView(BaseView):
 
                         elif recip_selection == "Event":
                             for attendee in event_records:
-                                member = [row for row in wks_records if row["Primary Email"] == attendee["Membership Primary"] and row["Secondary Email"] == attendee["Membership Secondary"]]
+                                member = [
+                                    row
+                                    for row in wks_records
+                                    if row["Primary Email"] == attendee["Membership Primary"]
+                                    and (row["Secondary Email"]  == attendee["Membership Secondary"]
+                                        or row["Phone Number"] == attendee["Phone Number"])
+                                ]
                                 if member:
                                     member = member[0]
                                     html = render_template_string(html_from_email)
-                                    
-                                    if email_selection == "Primary" or email_selection == "Both":
-                                        if member["Primary Email"] != "" and member["Primary Verified"] == "TRUE":
-                                            send_email(member["Primary Email"], subject, html)
-                                    
-                                    if email_selection == "Secondary" or email_selection == "Both":
-                                        if member["Secondary Email"] != "" and member["Secondary Verified"] == "TRUE":
-                                            send_email(member["Secondary Email"], subject, html)
+
+                                    if (
+                                        email_selection == "Primary"
+                                        or email_selection == "Both"
+                                    ):
+                                        if (
+                                            member["Primary Email"] != ""
+                                            and member["Primary Verified"] == "TRUE"
+                                        ):
+                                            send_email(
+                                                member["Primary Email"], subject, html
+                                            )
+
+                                    if (
+                                        email_selection == "Secondary"
+                                        or email_selection == "Both"
+                                    ):
+                                        if (
+                                            member["Secondary Email"] != ""
+                                            and member["Secondary Verified"] == "TRUE"
+                                        ):
+                                            send_email(
+                                                member["Secondary Email"], subject, html
+                                            )
 
                                     time.sleep(0.5)
-                                        
+
                         elif recip_selection == "Subscribed":
                             for member in wks_records:
                                 html = render_template_string(html_from_email)
 
-                                if email_selection == "Primary" or email_selection == "Both":
-                                    if member["Primary Email"] != "" and member["Primary Subscribed"] == "TRUE":
-                                        send_email(member["Primary Email"], subject, html)
+                                if (
+                                    email_selection == "Primary"
+                                    or email_selection == "Both"
+                                ):
+                                    if (
+                                        member["Primary Email"] != ""
+                                        and member["Primary Subscribed"] == "TRUE"
+                                    ):
+                                        send_email(
+                                            member["Primary Email"], subject, html
+                                        )
 
-                                if email_selection == "Secondary" or email_selection == "Both":
-                                    if member["Secondary Email"] != "" and member["Secondary Subscribed"] == "TRUE":
-                                        send_email(member["Secondary Email"], subject, html)
+                                if (
+                                    email_selection == "Secondary"
+                                    or email_selection == "Both"
+                                ):
+                                    if (
+                                        member["Secondary Email"] != ""
+                                        and member["Secondary Subscribed"] == "TRUE"
+                                    ):
+                                        send_email(
+                                            member["Secondary Email"], subject, html
+                                        )
 
                                 time.sleep(0.5)
 
                         elif recip_selection == "Non-Event Subscribed":
                             for member in wks_records:
-                                if not any(member["Primary Email"] == attendee["Membership Primary"] and member["Secondary Email"] == attendee["Membership Secondary"] for attendee in event_records):
+                                if not any(
+                                    member["Primary Email"] == attendee["Membership Primary"]
+                                    and (member["Secondary Email"] == attendee["Membership Secondary"]
+                                        or member["Phone Number"] == attendee["Phone Number"])
+                                    for attendee in event_records
+                                ):
                                     html = render_template_string(html_from_email)
 
-                                    if email_selection == "Primary" or email_selection == "Both":
-                                        if member["Primary Email"] != "" and member["Primary Subscribed"] == "TRUE":
-                                            send_email(member["Primary Email"], subject, html)
+                                    if (
+                                        email_selection == "Primary"
+                                        or email_selection == "Both"
+                                    ):
+                                        if (
+                                            member["Primary Email"] != ""
+                                            and member["Primary Subscribed"] == "TRUE"
+                                        ):
+                                            send_email(
+                                                member["Primary Email"], subject, html
+                                            )
 
-                                    if email_selection == "Secondary" or email_selection == "Both":
-                                        if member["Secondary Email"] != "" and member["Secondary Subscribed"] == "TRUE":
-                                            send_email(member["Secondary Email"], subject, html)
+                                    if (
+                                        email_selection == "Secondary"
+                                        or email_selection == "Both"
+                                    ):
+                                        if (
+                                            member["Secondary Email"] != ""
+                                            and member["Secondary Subscribed"] == "TRUE"
+                                        ):
+                                            send_email(
+                                                member["Secondary Email"], subject, html
+                                            )
 
                                     time.sleep(0.5)
 
@@ -374,32 +519,71 @@ class ContactView(BaseView):
                             for member in wks_records:
                                 html = render_template_string(html_from_email)
 
-                                if email_selection == "Primary" or email_selection == "Both":
-                                    if member["Primary Email"] != "" and member["Primary Verified"] == "TRUE":
-                                        send_email(member["Primary Email"], subject, html)
+                                if (
+                                    email_selection == "Primary"
+                                    or email_selection == "Both"
+                                ):
+                                    if (
+                                        member["Primary Email"] != ""
+                                        and member["Primary Verified"] == "TRUE"
+                                    ):
+                                        send_email(
+                                            member["Primary Email"], subject, html
+                                        )
 
-                                if email_selection == "Secondary" or email_selection == "Both":
-                                    if member["Secondary Email"] != "" and member["Secondary Verified"] == "TRUE":
-                                        send_email(member["Secondary Email"], subject, html)
+                                if (
+                                    email_selection == "Secondary"
+                                    or email_selection == "Both"
+                                ):
+                                    if (
+                                        member["Secondary Email"] != ""
+                                        and member["Secondary Verified"] == "TRUE"
+                                    ):
+                                        send_email(
+                                            member["Secondary Email"], subject, html
+                                        )
 
                                 time.sleep(0.5)
+                        elif recip_selection == "Prospects":
+                            check_prospects()
+                            time.sleep(3)
+                            html = render_template_string(html_from_email)
 
+                            when_signed_as_member = "When signed up as member?"
+                            secondary_email = "Secondary Email (optional)"
+
+                            prospect_records = get_wks_records(prospects)
+                            for row in prospect_records:
+                                if (row[when_signed_as_member] == ""
+                                    and row["Email"] != ""
+                                    and (email_selection == "Primary"
+                                        or email_selection == "Both")):
+                                            send_email(row["Email"], subject,html)
+
+                                if (row[when_signed_as_member] == ""
+                                    and row[secondary_email] != ""
+                                    and (email_selection == "Secondary"
+                                        or email_selection == "Both")):
+                                            send_email(row[secondary_email], subject, html)
 
                     Thread(target=send_blast).start()
-                    
-                    flash("Emails sent successfully to " + str(recip_selection) + " users.")
+
+                    flash(
+                        "Emails sent successfully to "
+                        + str(recip_selection)
+                        + " users."
+                    )
 
         return self.render("admin/contact.html", form=form)
-    
+
 
 class CatchBouncesView(BaseView):
-
     def is_accessible(self):
         return current_user.is_authenticated
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
-    
+
     @expose("/", methods=["GET"])
     def catch_bounces(self):
         if not any(thread.name == "Bounce Detection" for thread in enumerate()):
@@ -408,11 +592,11 @@ class CatchBouncesView(BaseView):
             label = "Automated bounce detection process is currently running"
 
         return self.render("admin/catch_bounces.html", label=label)
-    
+
     @expose("/start", methods=["POST"])
     def start(self):
-        queue_name = 'BounceNotificationsQueue'
-        queue_url = sqs.get_queue_url(QueueName=queue_name)['QueueUrl']
+        queue_name = "BounceNotificationsQueue"
+        queue_url = sqs.get_queue_url(QueueName=queue_name)["QueueUrl"]
 
         @copy_current_request_context
         def detect_bounces():
@@ -421,59 +605,103 @@ class CatchBouncesView(BaseView):
                 wks_columns = get_wks_columns(wks)
 
                 response = sqs.receive_message(
-                    QueueUrl=queue_url,
-                    MaxNumberOfMessages=10
+                    QueueUrl=queue_url, MaxNumberOfMessages=10
                 )
 
-                if 'Messages' in response:
+                if "Messages" in response:
                     cells = []
-                    messages = response['Messages']
-                    
+                    messages = response["Messages"]
+
                     for message in messages:
-                        notification = json.loads(message['Body'])
-                        bounce = json.loads(notification['Message'])
-                        email = bounce['bounce']['bouncedRecipients'][0]['emailAddress']
+                        notification = json.loads(message["Body"])
+                        bounce = json.loads(notification["Message"])
+                        email = bounce["bounce"]["bouncedRecipients"][0]["emailAddress"]
 
                         try:
-                            reason = bounce['bounce']['bouncedRecipients'][0]['diagnosticCode']
+                            reason = bounce["bounce"]["bouncedRecipients"][0][
+                                "diagnosticCode"
+                            ]
                         except (KeyError, IndexError):
-                            reason = json.dumps(bounce['bounce'])
+                            reason = json.dumps(bounce["bounce"])
 
                         for row in wks_records:
                             subject = "I2G Membership - Bounce Notification"
 
-                            if row['Primary Email'] == email:
-                                cells.append(Cell(row['Row'], wks_columns['Primary Bounced'], reason))
-                                cells.append(Cell(row['Row'], wks_columns['Primary Subscribed'], "FALSE"))
+                            if row["Primary Email"] == email:
+                                cells.append(
+                                    Cell(
+                                        row["Row"],
+                                        wks_columns["Primary Bounced"],
+                                        reason,
+                                    )
+                                )
+                                cells.append(
+                                    Cell(
+                                        row["Row"],
+                                        wks_columns["Primary Subscribed"],
+                                        "FALSE",
+                                    )
+                                )
 
-                                if row['Secondary Email'] != "" and row["Secondary Verified"] == "TRUE" and row["Secondary Bounced"] == "":
-                                    token = generate_token(row['Secondary Email'])
-                                    update_url = url_for("update.update_info", token=token, _external=True)
-                                    html = render_template("admin/bounce_email.html", 
-                                                        first=row['First Name'],
-                                                        last=row['Last Name'],
-                                                        email=row['Primary Email'],
-                                                        update_url=update_url)
-                                    send_email(row['Secondary Email'], subject, html)
-                                
-                            elif row['Secondary Email'] == email:
-                                cells.append(Cell(row['Row'], wks_columns['Secondary Bounced'], reason))
-                                cells.append(Cell(row['Row'], wks_columns['Secondary Subscribed'], "FALSE"))
+                                if (
+                                    row["Secondary Email"] != ""
+                                    and row["Secondary Verified"] == "TRUE"
+                                    and row["Secondary Bounced"] == ""
+                                ):
+                                    token = generate_token(row["Secondary Email"])
+                                    update_url = url_for(
+                                        "update.update_info",
+                                        token=token,
+                                        _external=True,
+                                    )
+                                    html = render_template(
+                                        "admin/bounce_email.html",
+                                        first=row["First Name"],
+                                        last=row["Last Name"],
+                                        email=row["Primary Email"],
+                                        update_url=update_url,
+                                    )
+                                    send_email(row["Secondary Email"], subject, html)
 
-                                if row['Primary Email'] != "" and row["Primary Verified"] == "TRUE" and row["Primary Bounced"] == "":
-                                    token = generate_token(row['Primary Email'])
-                                    update_url = url_for("update.update_info", token=token, _external=True)
-                                    html = render_template("admin/bounce_email.html", 
-                                                        first=row['First Name'],
-                                                        last=row['Last Name'],
-                                                        email=row['Secondary Email'],
-                                                        update_url=update_url)
-                                    send_email(row['Primary Email'], subject, html)
+                            elif row["Secondary Email"] == email:
+                                cells.append(
+                                    Cell(
+                                        row["Row"],
+                                        wks_columns["Secondary Bounced"],
+                                        reason,
+                                    )
+                                )
+                                cells.append(
+                                    Cell(
+                                        row["Row"],
+                                        wks_columns["Secondary Subscribed"],
+                                        "FALSE",
+                                    )
+                                )
 
-                        receipt_handle = message['ReceiptHandle']
+                                if (
+                                    row["Primary Email"] != ""
+                                    and row["Primary Verified"] == "TRUE"
+                                    and row["Primary Bounced"] == ""
+                                ):
+                                    token = generate_token(row["Primary Email"])
+                                    update_url = url_for(
+                                        "update.update_info",
+                                        token=token,
+                                        _external=True,
+                                    )
+                                    html = render_template(
+                                        "admin/bounce_email.html",
+                                        first=row["First Name"],
+                                        last=row["Last Name"],
+                                        email=row["Secondary Email"],
+                                        update_url=update_url,
+                                    )
+                                    send_email(row["Primary Email"], subject, html)
+
+                        receipt_handle = message["ReceiptHandle"]
                         sqs.delete_message(
-                            QueueUrl=queue_url,
-                            ReceiptHandle=receipt_handle
+                            QueueUrl=queue_url, ReceiptHandle=receipt_handle
                         )
 
                     if len(cells) > 0:
@@ -483,10 +711,11 @@ class CatchBouncesView(BaseView):
 
         if not any(thread.name == "Bounce Detection" for thread in enumerate()):
             Thread(target=detect_bounces, daemon=True, name="Bounce Detection").start()
-            flash("Documented bounces will be added to the database, and emails will be sent to the user to update their information.")
+            flash(
+                "Documented bounces will be added to the database, and emails will be sent to the user to update their information."
+            )
         else:
             flash("Automated bounce detection thread is already running.")
-        
 
         return redirect(url_for("catch_bounces.catch_bounces"))
 
@@ -498,10 +727,84 @@ class DocumentationView(BaseView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for("admin.login", next=request.url))
 
-    @expose("/")  
+    @expose("/")
     def index(self):
-        return redirect(url_for('.documentation'))
+        return redirect(url_for(".documentation"))
 
     @expose("/documentation", methods=["GET"])
     def documentation(self):
         return self.render("admin/documentation.html")
+
+
+class ManualEmailView(BaseView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for("admin.login", next=request.url))
+
+    @expose("/", methods=["GET", "POST"])
+    def manual_email(self):
+        form = ManualEmailForm()
+        if request.method == "POST" and form.validate_on_submit():
+            subject = form.subject.data
+            emails_data = form.emails.data
+            # Split by comma, newline, or space
+            emails = [e.strip() for e in re.split(r'[,\n\s]+', emails_data) if e.strip()]
+
+            if not emails:
+                flash("No valid emails provided.")
+                return self.render("admin/manual_email.html", form=form)
+
+            html_from_email = None
+
+            try:
+                with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(
+                    app.config["MAIL_USERNAME"],
+                    app.config["MAIL_PASSWORD"],
+                    "Email Blasts",
+                ) as mailbox:
+                    for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
+                        html_from_email = msg.html
+            except Exception as e:
+                flash(f"Error fetching email template: {str(e)}")
+                return self.render("admin/manual_email.html", form=form)
+
+            if html_from_email is None:
+                flash("There is no email template to send.")
+            else:
+                @copy_current_request_context
+                def send_blast_manual(recipient_list, email_subject, email_html):
+                    for email_addr in recipient_list:
+                        try:
+                            final_html = render_template_string(email_html)
+                            send_email(email_addr, email_subject, final_html)
+                            time.sleep(0.5)
+                        except Exception as e:
+                            print(f"Failed to send to {email_addr}: {e}")
+
+                Thread(target=send_blast_manual, args=(emails, subject, html_from_email)).start()
+                flash(f"Sending emails to {len(emails)} recipients.")
+
+        return self.render("admin/manual_email.html", form=form)
+
+
+class ProspectsView(BaseView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for("admin.login", next=request.url))
+
+    @expose("/")
+    def index(self):
+        return redirect(url_for(".prospects"))
+
+    @expose("/prospects", methods=["GET", "POST"])
+    def prospects(self):
+        form = ProspectForm()
+
+        if request.method == "POST":
+            check_prospects()
+
+        return self.render("admin/prospects.html", form=form)

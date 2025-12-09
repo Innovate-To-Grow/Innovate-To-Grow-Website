@@ -5,9 +5,7 @@ from project import app
 # Set testing mode BEFORE importing wks so __init__.py uses the test sheet
 app.testing = True
 
-from project import wks
-
-
+from project import sh
 @pytest.fixture
 def fake_app():
     return app
@@ -21,5 +19,5 @@ def client(fake_app):
 
 @pytest.hookimpl
 def pytest_sessionstart(session):
-    if wks.title != "MembersTesting":
-        pytest.exit("NOT ON TESTING SHEET - Must use 'memberstest' worksheet")
+    if sh.title != "Test I2G Membership":
+        pytest.exit("NOT ON TESTING SHEET - Must use 'Test I2G Membership' worksheet")
