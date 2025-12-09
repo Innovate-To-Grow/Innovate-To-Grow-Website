@@ -26,7 +26,7 @@
                 <div id="content" class="mc-content span12">
                     <div id="content-wrapper" class="content-wrapper">
                         <div id="content-head" class="row-fluid content-head">
-                            <h1 class="title" id="page-title"> Past Events </h1> 
+                            <h1 class="title" id="page-title"> Past Events </h1>
                             <h3>Innovate to Grow - Projects and Teams database</h3>
 
 <p><a href="{{ url_for('home.past_projects') }}">Past Projects</a>: &nbsp; searchable database of final summaries of Innovate to Grow projects since 2012, including industry partner.</p>
@@ -36,6 +36,7 @@
 <h3>Innovate to Grow - Event Pages (from 2020 on)</h3>
 
 <ul>
+    <li><a href="{{ url_for('home.spring_event_2025') }}" target="_blank">Spring 2025&nbsp;Event Page</a></li>
     <li><a href="{{ url_for('home.fall_event_2024') }}" target="_blank">Fall 2024&nbsp;Event Page</a></li>
     <li><a href="{{ url_for('home.spring_event_2024') }}" target="_blank">Spring 2024&nbsp;Event Page</a></li>
     <li><a href="{{ url_for('home.fall_event_2023') }}" target="_blank">Fall 2023&nbsp;Event Page</a></li>
@@ -93,7 +94,7 @@
                     </div>
                 </div>
             </div>
-        </div>        
+        </div>
         {{ footer() }}
         {{ scripts() }}
 </body>

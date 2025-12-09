@@ -1,3 +1,4 @@
+
 {% from "includes/nav.html" import nav %}
 {% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
@@ -12,7 +13,7 @@
     <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
-    <title> Fall 2024 - Event | Innovate To Grow </title>
+    <title> Spring 2025 - Event | Innovate To Grow </title>
     {{ styles() }}
 </head>
 
@@ -1299,7 +1300,7 @@ var datas = [];
 // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
 // This data is for the datatables
 $(document).ready(function () {
-    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188bqgcadaysxpn7vkvdcfelhoi4zbwdvwdemccqqb4/values/a1:y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
+    $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
         var length = data.values.length;
         console.log(length);
         for (var i = 1; i < length; i++) {
