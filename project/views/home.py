@@ -176,6 +176,11 @@ def home_during_event():
 def home_post_event():
     return render_template("home-post-event.html")
 
+@home_blueprint.route("/2025-fall-event", methods=["GET", "POST"])
+@cache.cached()
+def fall_event_2025():
+    return render_template("2025-fall-event.html")
+
 @home_blueprint.route("/2025-spring-event", methods=["GET", "POST"])
 @cache.cached()
 def spring_event_2025():
