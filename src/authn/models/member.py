@@ -28,7 +28,6 @@ class Member(AbstractUser):
     )
 
     # member account
-    contect_email = models.ForeignKey('authn.ContactEmail', on_delete=models.CASCADE, null=True, blank=True')
 
     # user status
     is_active_member = models.BooleanField(
