@@ -1,0 +1,401 @@
+/**
+ * Preview Layout CSS
+ * Contains Header (MainMenu) and Footer styles matching the frontend
+ * This file mirrors the styles from:
+ * - pages/src/components/MainMenu/MainMenu.css
+ * - pages/public/static/css/custom.css (footer related)
+ */
+
+/* ============================================
+   Main Menu Shell - matches frontend
+   ============================================ */
+.menu-shell {
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  position: relative;
+  z-index: 900;
+}
+
+.menu-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 40px;
+}
+
+.menu-left {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  flex: 1;
+  height: 100%;
+}
+
+.menu-logo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.menu-logo img {
+  height: 38px;
+  width: 38px;
+  border-radius: 50%;
+  display: block;
+  object-fit: cover;
+}
+
+.menu-list {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.menu-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.menu-item:hover::after {
+  background: #f8bd38; /* Gold underline on hover */
+}
+
+.menu-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px;
+  font-weight: 700;
+  color: #0f2d52;
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.menu-link:hover {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.menu-date {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f2d52;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* First-level submenu styles */
+.menu-sub-wrapper {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: #f2f2f2;
+  border-bottom: 5px solid #f8bd38;
+  display: none;
+  z-index: 1000;
+  padding: 15px 0;
+}
+
+.menu-item:hover .menu-sub-wrapper {
+  display: block;
+}
+
+.menu-sub {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-sub-item {
+  position: relative;
+}
+
+.menu-sub-item > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  color: #0f2d52;
+  text-decoration: none;
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 700;
+  gap: 10px;
+}
+
+.menu-sub-item > a:hover {
+  background: rgba(0,0,0,0.05);
+  color: #0f2d52;
+}
+
+.menu-arrow {
+  font-size: 12px;
+  color: #999;
+  margin-left: auto;
+}
+
+/* Nested submenu (second level and deeper) */
+.menu-sub-nested-wrapper {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  min-width: 200px;
+  background: #f2f2f2;
+  border-bottom: 5px solid #f8bd38;
+  display: none;
+  z-index: 1001;
+  padding: 15px 0;
+}
+
+.menu-sub-item.has-children:hover > .menu-sub-nested-wrapper {
+  display: block;
+}
+
+.menu-sub-nested {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-sub-nested .menu-sub-item > a {
+  padding: 8px 16px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* ============================================
+   Footer Styles - matches frontend theme
+   ============================================ */
+.site-footer {
+  background: #0f2d52;
+  color: #fff;
+  padding: 0;
+  margin-top: auto;
+}
+
+.final-foot {
+  padding: 40px 0;
+}
+
+.final-foot .container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.fColumn {
+  flex: 1;
+  min-width: 180px;
+}
+
+.fColumn h2 {
+  color: #f8bd38;
+  font-size: 14px;
+  margin: 0 0 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fColumn ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fColumn li {
+  margin: 8px 0;
+}
+
+.fColumn a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.fColumn a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.fAddress {
+  margin-top: 0 !important;
+}
+
+/* Social icons */
+.socialIcons ul,
+.socialIcons ul.fa-ul,
+.socialIcons ul.fa-ul.inline {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 15px 0 0 0 !important;
+  margin-left: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.socialIcons ul li,
+.socialIcons ul.fa-ul li,
+.socialIcons ul.fa-ul li.fa-li,
+.socialIcons li.fa-li {
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  left: auto !important;
+  width: auto !important;
+}
+
+.socialIcons a {
+  color: #fff;
+  font-size: 18px;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.socialIcons a:hover {
+  opacity: 1;
+}
+
+/* Copyright section */
+.copyright {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px 0;
+  text-align: center;
+}
+
+.copyright ul {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  max-width: 1000px;
+  flex-wrap: wrap;
+}
+
+.copyright li {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.copyright a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.copyright a:hover {
+  color: #fff;
+}
+
+/* ============================================
+   CTA Buttons Row (if present)
+   ============================================ */
+.home-cta-row {
+  padding: 20px 0;
+  text-align: center;
+  justify-content: center;
+  background: #f2f2f2;
+}
+
+.sb-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.hb__buttons-gold a,
+.hb__buttons-blue a {
+  display: inline-block;
+  padding: 12px 30px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.hb__buttons-gold a {
+  background: #f8bd38;
+  color: #0f2d52;
+}
+
+.hb__buttons-gold a:hover {
+  background: #e5ac2d;
+}
+
+.hb__buttons-blue a {
+  background: #0f2d52;
+  color: #fff;
+}
+
+.hb__buttons-blue a:hover {
+  background: #0a1f3a;
+}
+
+/* ============================================
+   Responsive adjustments
+   ============================================ */
+@media (max-width: 992px) {
+  .menu-date {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer-links {
+    flex-direction: column;
+    gap: 30px;
+  }
+  
+  .fColumn {
+    min-width: 100%;
+  }
+  
+  .copyright ul {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+

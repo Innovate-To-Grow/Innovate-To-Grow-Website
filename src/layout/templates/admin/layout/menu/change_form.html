@@ -1,0 +1,49 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'layout/css/visual-editor.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+{% endblock %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+  
+  <!-- Visual Editor -->
+  <div class="visual-editor-wrapper">
+    <div class="visual-editor-header">
+      <h3>Menu Items Editor</h3>
+    </div>
+    
+    <div class="visual-editor-content">
+      <div id="menu-items-container" class="menu-items-container"></div>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" id="btn-add-home" class="btn-add" onclick="addMenuItem('home')">+ Add Home</button>
+        <button type="button" class="btn-add" onclick="addMenuItem('page')">+ Add Page Link</button>
+        <button type="button" class="btn-add" onclick="addMenuItem('external')">+ Add External Link</button>
+      </div>
+      
+      <!-- JSON Toggle -->
+      <div class="json-toggle">
+        <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+        <div id="json-raw-view" class="json-raw-view">
+          <textarea id="json-editor" readonly></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block after_related_objects %}
+  {{ block.super }}
+  
+  <!-- Preview -->
+  <div class="preview-wrapper menu-preview-wrapper">
+    <p class="preview-title">Menu Preview (Real-time)</p>
+    <iframe id="menu-preview-iframe" class="preview-iframe menu-preview-iframe" sandbox="allow-same-origin"></iframe>
+  </div>
+
+  <script src="{% static 'layout/js/menu-editor.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'layout/css/visual-editor.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+{% endblock %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+  
+  <!-- Visual Editor -->
+  <div class="visual-editor-wrapper">
+    <div class="visual-editor-header">
+      <h3>Footer Content Editor</h3>
+      <div class="visual-editor-tabs">
+        <button type="button" class="tab-btn active" data-tab="cta">CTA Buttons</button>
+        <button type="button" class="tab-btn" data-tab="columns">Columns</button>
+        <button type="button" class="tab-btn" data-tab="social">Social Links</button>
+        <button type="button" class="tab-btn" data-tab="footer">Footer Links</button>
+      </div>
+    </div>
+    
+    <div class="visual-editor-content">
+      <!-- CTA Buttons Section -->
+      <div id="section-cta" class="editor-section active">
+        <h4 class="section-title">CTA Buttons</h4>
+        <div id="cta-list" class="item-list"></div>
+        <button type="button" class="btn-add" onclick="addCtaButton()">+ Add Button</button>
+        
+        <h4 class="section-title" style="margin-top: 20px;">Contact Info</h4>
+        <div class="item-field">
+          <label>Contact HTML</label>
+          <textarea id="contact-html-input" rows="3" placeholder="<p>For questions, email: <a href='mailto:...'>...</a></p>"></textarea>
+        </div>
+      </div>
+      
+      <!-- Columns Section -->
+      <div id="section-columns" class="editor-section">
+        <h4 class="section-title">Footer Columns</h4>
+        <div id="columns-list" class="item-list"></div>
+        <button type="button" class="btn-add" onclick="addColumn()">+ Add Column</button>
+      </div>
+      
+      <!-- Social Links Section -->
+      <div id="section-social" class="editor-section">
+        <h4 class="section-title">Social Media Links</h4>
+        <div id="social-list" class="item-list"></div>
+        <button type="button" class="btn-add" onclick="addSocialLink()">+ Add Social Link</button>
+      </div>
+      
+      <!-- Footer Links Section -->
+      <div id="section-footer" class="editor-section">
+        <h4 class="section-title">Copyright</h4>
+        <div class="item-field" style="margin-bottom: 16px;">
+          <label>Copyright Text</label>
+          <input type="text" id="copyright-input" placeholder="© 2025">
+        </div>
+        
+        <h4 class="section-title">Footer Links (Bottom Bar)</h4>
+        <div id="footer-links-list" class="item-list"></div>
+        <button type="button" class="btn-add" onclick="addFooterLink()">+ Add Footer Link</button>
+      </div>
+      
+      <!-- JSON Toggle -->
+      <div class="json-toggle">
+        <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+        <div id="json-raw-view" class="json-raw-view">
+          <textarea id="json-editor" readonly></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block after_related_objects %}
+  {{ block.super }}
+  
+  <!-- Preview -->
+  <div class="preview-wrapper footer-preview-wrapper">
+    <p class="preview-title">Footer Preview</p>
+    <div id="footer-preview-error" class="preview-error"></div>
+    <iframe id="footer-preview-iframe" class="preview-iframe footer-preview-iframe" sandbox="allow-same-origin"></iframe>
+  </div>
+
+  <script src="{% static 'layout/js/footer-editor.js' %}"></script>
+{% endblock %}

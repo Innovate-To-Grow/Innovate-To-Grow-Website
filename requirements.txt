@@ -1,0 +1,21 @@
+# Django Backend Dependencies
+
+# Core Framework
+Django>=4.2,<5.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Rich Text Editor
+django-ckeditor>=6.7.0
+django-tinymce>=5.0.0
+Pillow>=10.0.0
+
+# Production Dependencies (uncomment when needed)
+# gunicorn>=21.0.0
+# psycopg2-binary>=2.9.0  # PostgreSQL adapter
+# django-redis>=5.4.0  # Redis cache backend
+
+# Development Dependencies
+# django-debug-toolbar>=4.0.0
+

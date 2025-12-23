@@ -1,0 +1,18 @@
+.app-layout {
+  min-height: 50vh;
+  padding: 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    padding: 8px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-layout {
+    padding: 5px 0;
+  }
+}

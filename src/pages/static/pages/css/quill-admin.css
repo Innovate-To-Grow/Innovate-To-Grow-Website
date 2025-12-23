@@ -1,0 +1,252 @@
+/**
+ * Quill Editor Admin Styles
+ * Custom styling for Quill editor in Django Admin
+ */
+
+/* ============================================
+   Make Admin Page Wider for Editor
+   ============================================ */
+
+/* Override Django admin default width */
+#content-main {
+    max-width: none !important;
+}
+
+/* Make the form fields wider */
+.module.aligned .form-row > div {
+    max-width: none !important;
+}
+
+/* Specific field-body width */
+.field-body {
+    max-width: none !important;
+}
+
+.field-body > div {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+/* ============================================
+   Editor Container
+   ============================================ */
+
+.quill-editor-wrapper {
+    margin-top: 5px;
+    width: 100%;
+}
+
+#quill-editor {
+    min-height: 500px;
+    max-height: 70vh;
+    background: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    width: 100%;
+}
+
+/* Make the editor area taller */
+#quill-editor .ql-editor {
+    min-height: 450px;
+    padding: 20px;
+}
+
+/* Toolbar styling */
+#quill-editor .ql-toolbar {
+    background: #f5f5f5;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+}
+
+#quill-editor .ql-container {
+    border: 1px solid #ccc;
+    border-radius: 0 0 4px 4px;
+}
+
+/* Focus state */
+#quill-editor .ql-container:focus-within {
+    border-color: #417690;
+    box-shadow: 0 0 0 2px rgba(65, 118, 144, 0.2);
+}
+
+/* ============================================
+   Popup Preview Link
+   ============================================ */
+
+.preview-link-wrapper {
+    margin-bottom: 10px;
+}
+
+.popup-preview-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.popup-preview-link:hover {
+    background: linear-gradient(135deg, #1e7e34 0%, #155724 100%) !important;
+    color: #fff !important;
+}
+
+/* ============================================
+   Editor Content Styling (in editor)
+   ============================================ */
+
+#quill-editor .ql-editor h1 {
+    font-size: 2em;
+    font-weight: 700;
+    margin: 0.5em 0;
+}
+
+#quill-editor .ql-editor h2 {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin: 0.5em 0;
+}
+
+#quill-editor .ql-editor h3 {
+    font-size: 1.25em;
+    font-weight: 600;
+    margin: 0.5em 0;
+}
+
+#quill-editor .ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Image selected state */
+#quill-editor .ql-editor img.selected {
+    outline: 3px solid #417690;
+    outline-offset: 2px;
+}
+
+/* ============================================
+   Image Alignment Styles
+   ============================================ */
+
+/* Image align left - text wraps on right */
+#quill-editor .ql-editor img.align-left {
+    float: left;
+    margin-right: 15px;
+    margin-bottom: 10px;
+    margin-top: 5px;
+}
+
+/* Image align right - text wraps on left */
+#quill-editor .ql-editor img.align-right {
+    float: right;
+    margin-left: 15px;
+    margin-bottom: 10px;
+    margin-top: 5px;
+}
+
+/* Image align center */
+#quill-editor .ql-editor img.align-center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    float: none;
+}
+
+/* Clear floats after paragraphs */
+#quill-editor .ql-editor p::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* ============================================
+   Image Alignment Toolbar Buttons
+   ============================================ */
+
+.ql-toolbar .ql-image-left,
+.ql-toolbar .ql-image-center,
+.ql-toolbar .ql-image-right {
+    width: 28px !important;
+    height: 24px !important;
+    padding: 3px 5px !important;
+}
+
+.ql-toolbar .ql-image-left svg,
+.ql-toolbar .ql-image-center svg,
+.ql-toolbar .ql-image-right svg {
+    width: 18px;
+    height: 18px;
+    stroke: #444;
+    stroke-width: 1;
+}
+
+.ql-toolbar .ql-image-left:hover,
+.ql-toolbar .ql-image-center:hover,
+.ql-toolbar .ql-image-right:hover {
+    color: #06c !important;
+}
+
+.ql-toolbar .ql-image-left:hover svg,
+.ql-toolbar .ql-image-center:hover svg,
+.ql-toolbar .ql-image-right:hover svg {
+    stroke: #06c;
+}
+
+/* Image resize handles */
+.image-resize-container {
+    position: relative;
+    display: inline-block;
+}
+
+.image-resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #417690;
+    border: 1px solid #fff;
+    border-radius: 2px;
+    cursor: nwse-resize;
+}
+
+.image-resize-handle.se {
+    bottom: -5px;
+    right: -5px;
+}
+
+#quill-editor .ql-editor blockquote {
+    border-left: 4px solid #417690;
+    padding-left: 1em;
+    margin: 1em 0;
+    color: #555;
+    font-style: italic;
+    background: #f9f9f9;
+    padding: 0.5em 1em;
+}
+
+#quill-editor .ql-editor pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 1em;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+#quill-editor .ql-editor code {
+    background: #f4f4f4;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: 'Fira Code', 'Monaco', monospace;
+}
+
+#quill-editor .ql-editor a {
+    color: #417690;
+    text-decoration: underline;
+}
+

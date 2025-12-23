@@ -1,0 +1,79 @@
+[
+  {
+    "model": "pages.footercontent",
+    "pk": 1,
+    "fields": {
+      "name": "Default Footer",
+      "slug": "default",
+      "content": {
+        "cta_buttons": [
+          { "label": "About Us", "href": "/pages/about", "style": "blue" },
+          { "label": "Past Projects", "href": "/pages/past-projects", "style": "gold" },
+          { "label": "Event Registration", "href": "/pages/registration", "style": "blue" },
+          { "label": "Submit a Project", "href": "/pages/project-submission", "style": "gold" },
+          { "label": "Signup for News", "href": "/pages/registration", "style": "blue" },
+          { "label": "Update Membership", "href": "/pages/update-membership", "style": "gold" }
+        ],
+        "contact_html": "<p>For any questions or comments, please send an email to: <a href=\\\"mailto:i2g@ucmerced.edu\\\">i2g@ucmerced.edu</a></p>",
+        "columns": [
+          {
+            "title": "Additional Links",
+            "links": [
+              { "label": "UC Merced", "href": "https://www.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Newsroom", "href": "https://news.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Executive Leadership", "href": "https://www.ucmerced.edu/executive-leadership", "target": "_blank", "rel": "noopener" },
+              { "label": "University Library", "href": "https://library.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Office of Information Technology", "href": "https://it.ucmerced.edu", "target": "_blank", "rel": "noopener" }
+            ]
+          },
+          {
+            "title": "Academics",
+            "links": [
+              { "label": "School of Engineering", "href": "https://engineering.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "School of Natural Sciences", "href": "https://naturalsciences.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "School of Social Sciences, Humanities & Arts", "href": "https://ssha.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Ernest & Julio Gallo Management Program", "href": "https://gallo.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Division of Graduate Education", "href": "https://graduatedivision.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Division of Undergraduate Education", "href": "https://ue.ucmerced.edu", "target": "_blank", "rel": "noopener" }
+            ]
+          },
+          {
+            "title": "Administration",
+            "links": [
+              { "label": "Office of the Chancellor", "href": "https://chancellor.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Office of Executive Vice Chancellor and Provost", "href": "https://provostevc.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Equity, Justice and Inclusive Excellence", "href": "https://diversity.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "External Relations", "href": "https://externalrelations.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Finance & Administration", "href": "https://dfa.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Physical Operations, Planning and Development", "href": "https://popd.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Student Affairs", "href": "https://studentaffairs.ucmerced.edu", "target": "_blank", "rel": "noopener" },
+              { "label": "Research and Economic Development", "href": "https://research.ucmerced.edu", "target": "_blank", "rel": "noopener" }
+            ]
+          },
+          {
+            "title": "Contact",
+            "body_html": "<p><strong>University of California, Merced</strong><br>5200 North Lake Rd.<br>Merced, CA 95343<br>Telephone: (209) 228-4400</p>"
+          }
+        ],
+        "social_links": [
+          { "href": "https://www.facebook.com/ucmerced/", "icon_class": "fa fa-facebook", "aria_label": "Facebook", "target": "_blank", "rel": "noopener" },
+          { "href": "https://twitter.com/ucmerced", "icon_class": "fa fa-twitter", "aria_label": "Twitter", "target": "_blank", "rel": "noopener" },
+          { "href": "https://www.linkedin.com/company/22066", "icon_class": "fa fa-linkedin", "aria_label": "Linkedin", "target": "_blank", "rel": "noopener" }
+        ],
+        "copyright": "© 2025",
+        "footer_links": [
+          { "label": "About UC Merced", "href": "https://www.ucmerced.edu/about", "target": "_blank", "rel": "noopener" },
+          { "label": "Directions", "href": "https://www.ucmerced.edu/maps-and-directions", "target": "_blank", "rel": "noopener" },
+          { "label": "Directory", "href": "https://directory.ucmerced.edu/", "target": "_blank" },
+          { "label": "Privacy/Legal", "href": "https://www.ucmerced.edu/privacy-statement", "target": "_blank", "rel": "noopener" },
+          { "label": "Site Feedback", "href": "/contact-us" },
+          { "label": "UC Regents", "href": "https://regents.universityofcalifornia.edu/", "target": "_blank", "rel": "noopener" },
+          { "label": "Site List", "href": "https://www.ucmerced.edu/Site-List-A-F", "target": "_blank", "rel": "noopener" }
+        ]
+      },
+      "is_active": true,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  }
+]

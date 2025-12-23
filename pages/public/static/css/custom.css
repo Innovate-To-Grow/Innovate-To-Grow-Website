@@ -1,0 +1,246 @@
+/* Custom styles extracted from index.html */
+
+/* ===== Footer Fixes ===== */
+
+/* Fix Contact column to align with other columns */
+.fAddress {
+  margin-top: 0 !important;
+}
+
+/* Fix social icons spacing - override Font Awesome fa-ul/fa-li defaults */
+.socialIcons ul,
+.socialIcons ul.fa-ul,
+.socialIcons ul.fa-ul.inline {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 15px 0 0 0 !important;
+  margin-left: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.socialIcons ul li,
+.socialIcons ul.fa-ul li,
+.socialIcons ul.fa-ul li.fa-li,
+.socialIcons li.fa-li {
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  left: auto !important;
+  width: auto !important;
+}
+
+/* Social icon buttons */
+.socialIcons [class*="fa fa-"],
+.socialIcons i[class*="fa-"] {
+  margin: 0 !important;
+}
+
+.site-logo__link {
+  border: none;
+}
+
+.logo-link {
+  display: block;
+  width: 200px;
+  max-width: 80%;
+  margin-left: 24%;
+  text-align: left;
+}
+
+.logo-link img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .logo-link {
+    margin-left: -10% !important;
+    margin-right: auto !important;
+    text-align: left !important;
+  }
+}
+
+.menu-logo-item {
+  width: 5%;
+  margin-top: -3px;
+  border-bottom: 0;
+}
+
+.home-cta-row {
+  padding-top: 0;
+  text-align: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.footer__bg {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: #f2f2f2;
+  overflow-y: hidden;
+}
+
+.content-wrapper {
+  margin: 0 auto;
+  max-width: 87.5rem;
+}
+
+.content-margin {
+  margin: 0 auto;
+  max-width: 95%;
+}
+
+.parent__content-box--has-flex-col {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25em 0;
+}
+
+.child-parent__primary-col {
+  display: flex;
+  flex-direction: column;
+  margin: 3.75em 0;
+}
+
+div.child__primary-row-items {
+  align-self: center;
+}
+
+div.child__primary-row-items a {
+  margin: 0 3.125em;
+  display: inline-block;
+}
+
+div.child__primary-row-items a i {
+  font-size: 3.125rem;
+  color: #fafafa;
+}
+
+div.child__primary-row-items a span {
+  display: none;
+}
+
+div.child__primary-row-items a:hover {
+  opacity: 0.8;
+}
+
+div.child__primary-row-items a:active {
+  opacity: 0.95;
+}
+
+.child-parent__secondary-col--has-flex-row {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px ridge rgba(204, 204, 204, 0.4);
+  border-bottom: 1px ridge rgba(204, 204, 204, 0.4);
+  padding: 1.25em 0;
+}
+
+ul.child__primary-row-items {
+  display: flex;
+}
+
+ul.child__primary-row-items li:not(:last-child)::after {
+  position: absolute;
+  top: 0;
+  right: 12.8%;
+  bottom: 0;
+  font-weight: 900;
+  color: #0f2d52;
+  content: "-";
+}
+
+ul.child__primary-row-items li {
+  position: relative;
+  padding-right: 1.563em;
+}
+
+ul.child__primary-row-items li a {
+  font: 1rem "Verdana";
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+ul.child__primary-row-items li a:hover {
+  opacity: 0.8;
+}
+
+ul.child__primary-row-items li a:active {
+  opacity: 0.95;
+}
+
+.child__copyright {
+  font: 1rem "Verdana";
+  color: #0f2d52;
+  opacity: 0.75;
+}
+
+@media screen and (max-width: 48em) {
+  .child-parent__primary-col {
+    margin: 3.125em 0;
+  }
+
+  div.child__primary-row-items a {
+    margin: 0 clamp(1.563em, 6.9vw, 3.125em);
+  }
+
+  .child-parent__secondary-col--has-flex-row {
+    justify-content: center;
+    border-bottom: unset;
+    padding-bottom: unset;
+  }
+
+  ul.child__primary-row-items li a:active {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+}
+
+@media screen and (max-width: 30em) {
+  div.child__primary-row-items {
+    display: flex;
+    flex-direction: column;
+  }
+
+  div.child__primary-row-items a {
+    display: flex;
+    align-items: center;
+    margin: 0 0 0.9375em;
+    text-decoration: none;
+  }
+
+  div.child__primary-row-items a i {
+    margin-right: 0.46875em;
+    font-size: 2rem;
+  }
+
+  div.child__primary-row-items a span {
+    display: inline;
+    font: 1rem "Verdana";
+    color: #0f2d52;
+  }
+
+  div.child__primary-row-items a:last-child {
+    margin-bottom: 0;
+  }
+
+  div.child__primary-row-items a:active span {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  .child-parent__secondary-col--has-flex-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .child__copyright {
+    margin-top: 0.625em;
+    font-size: 0.906rem;
+  }
+}

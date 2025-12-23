@@ -1,0 +1,125 @@
+.home-container {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.home-state {
+  text-align: center;
+  font-size: 1.125rem;
+  color: #0f2d52;
+}
+
+.home-error {
+  color: #b30000;
+}
+
+.home-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.home-title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #0f2d52;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.home-body p {
+  line-height: 1.6;
+}
+
+.home-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Image alignment - left (text wraps on right) */
+.home-body img.align-left,
+.home-body img[style*="float: left"] {
+  float: left;
+  margin-right: 15px;
+  margin-bottom: 10px;
+  margin-top: 5px;
+  display: inline;
+}
+
+/* Image alignment - right (text wraps on left) */
+.home-body img.align-right,
+.home-body img[style*="float: right"] {
+  float: right;
+  margin-left: 15px;
+  margin-bottom: 10px;
+  margin-top: 5px;
+  display: inline;
+}
+
+/* Image alignment - center */
+.home-body img.align-center,
+.home-body img[style*="margin-left: auto"][style*="margin-right: auto"] {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  float: none;
+}
+
+/* Clear floats after paragraphs */
+.home-body p::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Responsive styles for mobile */
+@media (max-width: 768px) {
+  .home-container {
+    padding: 15px 0;
+  }
+
+  .home-content {
+    padding: 15px;
+  }
+
+  .home-title {
+    font-size: 1.5rem;
+  }
+  
+  .home-body img {
+    max-width: 100%;
+    max-height: 300px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-container {
+    padding: 10px 0;
+  }
+
+  .home-content {
+    padding: 12px;
+  }
+
+  .home-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .home-body p {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  
+  /* Limit large images on mobile */
+  .home-body img {
+    max-width: 100%;
+    max-height: 250px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin: 10px auto;
+  }
+}
