@@ -20,26 +20,38 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from pages.views import PreviewPopupView
+from .views import HealthCheckView
+
+# Customize Django Admin
+admin.site.site_header = "Innovate To Grow Admin"
+admin.site.site_title = "I2G Admin"
+admin.site.index_title = "Welcome to I2G Admin"
 
 urlpatterns = [
 
-    # admin preview popup for live editing (must be before admin.site.urls)
+    # health check endpoint
+    path("health/", HealthCheckView.as_view(), name="health-check"),
+
+    # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
 
     # admin site
     path("admin/", admin.site.urls),
 
     # pages
-    path("api/", include("pages.urls")),
+    path("pages/", include("pages.urls")),
 
     # layout (menus, footer)
-    path("api/", include("layout.urls")),
+    path("layout/", include("layout.urls")),
 
     # notify (verification + notifications)
-    path("api/notify/", include("notify.urls")),
+    path("notify/", include("notify.urls")),
 
-    # ckeditor
-    path('ckeditor/', include('ckeditor_uploader.urls')),
+    # ckeditor 5
+    path('ckeditor5/', include('django_ckeditor_5.urls')),
+
+    # authn
+    path("authn/", include("authn.urls")),
 ]
 
 if settings.DEBUG:

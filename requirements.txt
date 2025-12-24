@@ -8,9 +8,14 @@ djangorestframework == 3.15.2
 python-dotenv>=1.0.0
 
 # Rich Text Editor
-django-ckeditor>=6.7.0
-django-tinymce>=5.0.0
+django-ckeditor-5>=0.2.13
 Pillow>=10.0.0
+
+# Excel Import/Export
+openpyxl>=3.1.0
+
+# Cryptography (RSA key generation)
+cryptography>=41.0.0
 
 # Production Dependencies (uncomment when needed)
 # gunicorn>=21.0.0

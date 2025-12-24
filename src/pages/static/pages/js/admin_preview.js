@@ -48,19 +48,32 @@
             updateTitle();
         }
 
-        // Sync CKEditor Body
-        if (typeof CKEDITOR !== 'undefined') {
-            CKEDITOR.on('instanceReady', function(evt) {
-                if (evt.editor.name === 'id_body') {
-                    const updateBody = () => {
-                        const previewBody = doc.getElementById('preview-body');
-                        if (previewBody) previewBody.innerHTML = evt.editor.getData();
-                    };
-                    evt.editor.on('change', updateBody);
-                    // Initial update
-                    setTimeout(updateBody, 500);
+        // Sync CKEditor 5 Body
+        const bodyField = document.querySelector('[data-ck-editor-id="id_body"]');
+        if (bodyField) {
+            // CKEditor 5 uses a different API - watch for changes in the editable area
+            const observer = new MutationObserver(() => {
+                const previewBody = doc.getElementById('preview-body');
+                const editableArea = bodyField.querySelector('.ck-editor__editable');
+                if (previewBody && editableArea) {
+                    previewBody.innerHTML = editableArea.innerHTML;
                 }
             });
+
+            // Wait for CKEditor 5 to initialize, then observe changes
+            const initObserver = () => {
+                const editableArea = bodyField.querySelector('.ck-editor__editable');
+                if (editableArea) {
+                    observer.observe(editableArea, { childList: true, subtree: true, characterData: true });
+                    // Initial update
+                    const previewBody = doc.getElementById('preview-body');
+                    if (previewBody) previewBody.innerHTML = editableArea.innerHTML;
+                } else {
+                    // Retry if CKEditor 5 not ready yet
+                    setTimeout(initObserver, 500);
+                }
+            };
+            setTimeout(initObserver, 500);
         }
     }
 

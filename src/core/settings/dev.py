@@ -14,8 +14,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-# Static files - include frontend static files for preview
+# Static files - include frontend static files for preview and custom admin styles
 STATICFILES_DIRS = [
+    BASE_DIR / "core" / "static",
     BASE_DIR.parent / "pages" / "public" / "static",
 ]
 

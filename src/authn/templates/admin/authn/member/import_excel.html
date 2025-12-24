@@ -1,0 +1,327 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Import Members - {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .import-container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    
+    .import-form {
+        background: var(--body-bg, #fff);
+        border: 1px solid var(--hairline-color, #e8e8e8);
+        border-radius: 8px;
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+    
+    .form-row {
+        margin-bottom: 16px;
+    }
+    
+    .form-row label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 6px;
+        color: var(--body-fg, #333);
+    }
+    
+    .form-row .help {
+        display: block;
+        font-size: 0.85em;
+        color: var(--body-quiet-color, #666);
+        margin-top: 4px;
+    }
+    
+    .form-row input[type="file"],
+    .form-row input[type="password"] {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--hairline-color, #ccc);
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .form-row input[type="checkbox"] {
+        margin-right: 8px;
+    }
+    
+    .submit-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--hairline-color, #e8e8e8);
+    }
+    
+    .submit-row input[type="submit"] {
+        background: var(--primary, #417690);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .submit-row input[type="submit"]:hover {
+        background: var(--primary-fg, #205067);
+    }
+    
+    .submit-row .cancel-link {
+        padding: 10px 24px;
+        color: var(--body-fg, #666);
+        text-decoration: none;
+    }
+    
+    .template-download {
+        background: var(--darkened-bg, #f8f8f8);
+        border: 1px dashed var(--hairline-color, #ccc);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .template-download a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--primary, #417690);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .template-download a:hover {
+        background: var(--primary-fg, #205067);
+    }
+    
+    .template-download p {
+        margin-top: 12px;
+        color: var(--body-quiet-color, #666);
+        font-size: 0.9em;
+    }
+    
+    .import-results {
+        background: var(--body-bg, #fff);
+        border: 1px solid var(--hairline-color, #e8e8e8);
+        border-radius: 8px;
+        padding: 24px;
+    }
+    
+    .import-results h3 {
+        margin-top: 0;
+        color: var(--body-fg, #333);
+    }
+    
+    .results-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    
+    .result-card {
+        background: var(--darkened-bg, #f8f8f8);
+        padding: 16px;
+        border-radius: 6px;
+        text-align: center;
+    }
+    
+    .result-card .count {
+        font-size: 2em;
+        font-weight: bold;
+        color: var(--primary, #417690);
+    }
+    
+    .result-card.created .count { color: #28a745; }
+    .result-card.updated .count { color: #17a2b8; }
+    .result-card.skipped .count { color: #ffc107; }
+    .result-card.errors .count { color: #dc3545; }
+    
+    .result-card .label {
+        font-size: 0.9em;
+        color: var(--body-quiet-color, #666);
+        margin-top: 4px;
+    }
+    
+    .error-list {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 6px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+    
+    .error-list h4 {
+        margin: 0 0 12px 0;
+        color: #856404;
+    }
+    
+    .error-list ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #856404;
+    }
+    
+    .instructions {
+        background: var(--darkened-bg, #f8f8f8);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .instructions h4 {
+        margin-top: 0;
+        color: var(--body-fg, #333);
+    }
+    
+    .instructions ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    
+    .instructions li {
+        margin-bottom: 8px;
+        color: var(--body-quiet-color, #666);
+    }
+    
+    .instructions code {
+        background: var(--body-bg, #fff);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='authn' %}">Authn</a>
+    &rsaquo; <a href="{% url 'admin:authn_member_changelist' %}">Members</a>
+    &rsaquo; Import Members
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="import-container">
+    <h1>Import Members from Excel</h1>
+    
+    <!-- Template Download Section -->
+    <div class="template-download">
+        <a href="{% url 'admin:authn_member_import_template' %}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7,10 12,15 17,10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Import Template
+        </a>
+        <p>Download the Excel template, fill in member information, then upload</p>
+    </div>
+    
+    <!-- Instructions -->
+    <div class="instructions">
+        <h4>Import Instructions</h4>
+        <ul>
+            <li><strong>Required fields:</strong> <code>username</code> or <code>email</code></li>
+            <li><strong>Optional fields:</strong> <code>first_name</code>, <code>last_name</code>, <code>middle_name</code>, <code>organization</code>, <code>groups</code></li>
+            <li><strong>Groups:</strong> Separate multiple groups with commas</li>
+            <li><strong>Boolean values:</strong> Use <code>TRUE</code> / <code>FALSE</code> or <code>yes</code> / <code>no</code></li>
+            <li>If username already exists, that row will be skipped</li>
+        </ul>
+    </div>
+    
+    {% if result %}
+    <!-- Import Results -->
+    <div class="import-results">
+        <h3>Import Results</h3>
+        
+        <div class="results-summary">
+            <div class="result-card created">
+                <div class="count">{{ result.created_count }}</div>
+                <div class="label">Created</div>
+            </div>
+            <div class="result-card updated">
+                <div class="count">{{ result.updated_count }}</div>
+                <div class="label">Updated</div>
+            </div>
+            <div class="result-card skipped">
+                <div class="count">{{ result.skipped_count }}</div>
+                <div class="label">Skipped</div>
+            </div>
+            {% if result.errors %}
+            <div class="result-card errors">
+                <div class="count">{{ result.errors|length }}</div>
+                <div class="label">Errors</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if result.errors %}
+        <div class="error-list">
+            <h4>Error Details</h4>
+            <ul>
+                {% for error in result.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Import Form -->
+    <form method="post" enctype="multipart/form-data" class="import-form">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <label for="id_excel_file">{{ form.excel_file.label }}</label>
+            {{ form.excel_file }}
+            {% if form.excel_file.help_text %}
+            <span class="help">{{ form.excel_file.help_text }}</span>
+            {% endif %}
+            {% if form.excel_file.errors %}
+            <ul class="errorlist">
+                {% for error in form.excel_file.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        
+        <div class="form-row">
+            <label for="id_set_password">{{ form.set_password.label }}</label>
+            {{ form.set_password }}
+            {% if form.set_password.help_text %}
+            <span class="help">{{ form.set_password.help_text }}</span>
+            {% endif %}
+        </div>
+        
+        <div class="form-row">
+            <label>
+                {{ form.send_welcome_email }}
+                {{ form.send_welcome_email.label }}
+            </label>
+            {% if form.send_welcome_email.help_text %}
+            <span class="help">{{ form.send_welcome_email.help_text }}</span>
+            {% endif %}
+        </div>
+        
+        <div class="submit-row">
+            <input type="submit" value="Start Import" />
+            <a href="{% url 'admin:authn_member_changelist' %}" class="cancel-link">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

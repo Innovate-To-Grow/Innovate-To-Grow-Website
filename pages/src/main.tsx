@@ -5,11 +5,14 @@ import './index.css';
 import { router } from './router';
 import { Footer } from './components/Footer/Footer';
 import { MainMenu } from './components/MainMenu/MainMenu';
+import { HealthCheckProvider } from './components/HealthCheck/HealthCheckProvider';
 
-// Mount main app to #root
+// Mount main app to #root with health check
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <HealthCheckProvider pollingInterval={10000}>
+      <RouterProvider router={router} />
+    </HealthCheckProvider>
   </StrictMode>,
 );
 

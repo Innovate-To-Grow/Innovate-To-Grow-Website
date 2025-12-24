@@ -30,6 +30,15 @@ class Member(AbstractUser):
     # member account
     contect_email = models.ForeignKey('authn.ContactEmail', on_delete=models.CASCADE, null=True, blank=True)
 
+    # organization
+    organization = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Organization or company the member belongs to",
+        verbose_name="Organization"
+    )
+
     # user status
     is_active_member = models.BooleanField(
         default=True,

@@ -32,8 +32,7 @@ INSTALLED_APPS = [
 
     # third party application
     "rest_framework",
-    "ckeditor",
-    "ckeditor_uploader",
+    "django_ckeditor_5",
 ]
 
 MIDDLEWARE = [
@@ -51,7 +50,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "core" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -104,6 +103,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "static"
 
+STATICFILES_DIRS = [
+    BASE_DIR / "core" / "static",
+]
+
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -115,14 +118,53 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Custom User Model
 AUTH_USER_MODEL = "authn.Member"
 
-# CKEditor Configuration
-CKEDITOR_UPLOAD_PATH = "uploads/"
-CKEDITOR_IMAGE_BACKEND = "pillow"
-CKEDITOR_CONFIGS = {
+# CKEditor 5 Configuration
+CKEDITOR_5_CONFIGS = {
     'default': {
-        'toolbar': 'full',
-        'height': 300,
-        'width': '100%',
+        'toolbar': [
+            'heading', '|',
+            'bold', 'italic', 'underline', 'strikethrough', '|',
+            'link', 'blockQuote', 'code', 'codeBlock', '|',
+            'bulletedList', 'numberedList', 'todoList', '|',
+            'outdent', 'indent', '|',
+            'imageUpload', 'insertTable', 'mediaEmbed', '|',
+            'undo', 'redo', '|',
+            'sourceEditing',
+        ],
+    },
+    'extends': {
+        'toolbar': [
+            'heading', '|',
+            'bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript', '|',
+            'link', 'blockQuote', 'code', 'codeBlock', '|',
+            'bulletedList', 'numberedList', 'todoList', '|',
+            'outdent', 'indent', 'alignment', '|',
+            'imageUpload', 'insertTable', 'mediaEmbed', '|',
+            'fontColor', 'fontBackgroundColor', 'removeFormat', '|',
+            'undo', 'redo', '|',
+            'sourceEditing',
+        ],
+        'image': {
+            'toolbar': [
+                'imageTextAlternative', '|',
+                'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
+            ],
+        },
+        'table': {
+            'contentToolbar': ['tableColumn', 'tableRow', 'mergeTableCells'],
+        },
+        'heading': {
+            'options': [
+                {'model': 'paragraph', 'title': 'Paragraph', 'class': 'ck-heading_paragraph'},
+                {'model': 'heading1', 'view': 'h1', 'title': 'Heading 1', 'class': 'ck-heading_heading1'},
+                {'model': 'heading2', 'view': 'h2', 'title': 'Heading 2', 'class': 'ck-heading_heading2'},
+                {'model': 'heading3', 'view': 'h3', 'title': 'Heading 3', 'class': 'ck-heading_heading3'},
+            ],
+        },
     },
 }
+
+# CKEditor 5 file upload settings
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
+CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "ck_editor_5_upload_file"
 

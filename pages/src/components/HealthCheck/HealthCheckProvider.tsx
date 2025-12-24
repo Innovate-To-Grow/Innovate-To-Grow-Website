@@ -1,0 +1,121 @@
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { checkHealth } from '../../services/api';
+import { MaintenanceMode } from '../MaintenanceMode/MaintenanceMode';
+
+interface HealthCheckContextType {
+  isHealthy: boolean;
+  isLoading: boolean;
+  checkNow: () => Promise<void>;
+}
+
+const HealthCheckContext = createContext<HealthCheckContextType>({
+  isHealthy: true,
+  isLoading: true,
+  checkNow: async () => {},
+});
+
+export const useHealthCheck = () => useContext(HealthCheckContext);
+
+interface HealthCheckProviderProps {
+  children: ReactNode;
+  /** Polling interval in milliseconds when service is down (default: 10000ms) */
+  pollingInterval?: number;
+  /** Initial check delay in milliseconds (default: 0ms) */
+  initialDelay?: number;
+}
+
+export const HealthCheckProvider = ({
+  children,
+  pollingInterval = 10000,
+  initialDelay = 0,
+}: HealthCheckProviderProps) => {
+  const [isHealthy, setIsHealthy] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  const performHealthCheck = useCallback(async () => {
+    const healthy = await checkHealth();
+    setIsHealthy(healthy);
+    setIsLoading(false);
+    return healthy;
+  }, []);
+
+  // Initial health check
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      await performHealthCheck();
+      setHasInitialized(true);
+    }, initialDelay);
+
+    return () => clearTimeout(timeoutId);
+  }, [performHealthCheck, initialDelay]);
+
+  // Polling when service is down
+  useEffect(() => {
+    if (!hasInitialized) return;
+    if (isHealthy) return;
+
+    const intervalId = setInterval(async () => {
+      await performHealthCheck();
+    }, pollingInterval);
+
+    return () => clearInterval(intervalId);
+  }, [isHealthy, hasInitialized, pollingInterval, performHealthCheck]);
+
+  const checkNow = useCallback(async () => {
+    setIsLoading(true);
+    await performHealthCheck();
+  }, [performHealthCheck]);
+
+  const contextValue: HealthCheckContextType = {
+    isHealthy,
+    isLoading,
+    checkNow,
+  };
+
+  // Wait for initial health check before rendering anything
+  if (!hasInitialized) {
+    return (
+      <HealthCheckContext.Provider value={contextValue}>
+        <div className="health-check-loading" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          backgroundColor: '#f9f9f9',
+        }}>
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              border: '3px solid #e0e0e0',
+              borderTopColor: '#1a365d',
+              borderRadius: '50%',
+              margin: '0 auto 1rem',
+              animation: 'spin 1s linear infinite',
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </HealthCheckContext.Provider>
+    );
+  }
+
+  // Show maintenance mode when service is down
+  if (!isHealthy) {
+    return (
+      <HealthCheckContext.Provider value={contextValue}>
+        <MaintenanceMode />
+      </HealthCheckContext.Provider>
+    );
+  }
+
+  // Service is healthy, render children
+  return (
+    <HealthCheckContext.Provider value={contextValue}>
+      {children}
+    </HealthCheckContext.Provider>
+  );
+};
+

@@ -2,14 +2,14 @@
 Page model for content management.
 
 Supports:
-- Rich text pages (images, tables, formatting, embedded YouTube links via CKEditor).
+- Rich text pages (images, tables, formatting, embedded YouTube links via CKEditor 5).
 - External URL redirect pages.
 """
 
 import uuid
 
 from django.db import models
-from ckeditor_uploader.fields import RichTextUploadingField
+from django_ckeditor_5.fields import CKEditor5Field
 from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
 from .validators import validate_nested_slug
 
@@ -21,7 +21,7 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, models.M
     Content page model.
 
     Supports:
-    - Rich text (images, tables, formatting, embedded YouTube links via CKEditor).
+    - Rich text (images, tables, formatting, embedded YouTube links via CKEditor 5).
     - External URL redirect pages.
     """
 
@@ -56,10 +56,11 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, models.M
         help_text="Page behavior type."
     )
 
-    # Rich text page body (CKEditor with upload, can embed images / videos / code)
-    page_body = RichTextUploadingField(
+    # Rich text page body (CKEditor 5 with upload, can embed images / videos / code)
+    page_body = CKEditor5Field(
         blank=True,
         null=True,
+        config_name='extends',
         help_text="Rich text content for 'page' type."
     )
 

@@ -27,7 +27,7 @@ export interface MenuResponse {
 
 export const fetchMenus = async (): Promise<Menu[]> => {
   try {
-    const response = await api.get<MenuResponse>('/api/menus/');
+    const response = await api.get<MenuResponse>('/layout/menus/');
     return response.data.menus;
   } catch (error) {
     console.error('Error fetching menus:', error);

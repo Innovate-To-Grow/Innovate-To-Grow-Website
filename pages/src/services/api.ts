@@ -33,7 +33,7 @@ export interface PageContent {
 }
 
 export const fetchPageContent = async (slug: string): Promise<PageContent> => {
-  const response = await api.get<PageContent>(`/api/pages/${slug}/`);
+  const response = await api.get<PageContent>(`/pages/${slug}/`);
   return response.data;
 };
 
@@ -49,7 +49,7 @@ export interface HomeContent {
 }
 
 export const fetchHomeContent = async (): Promise<HomeContent> => {
-  const response = await api.get<HomeContent>('/api/home/');
+  const response = await api.get<HomeContent>('/pages/home/');
   return response.data;
 };
 
@@ -102,8 +102,26 @@ export interface FooterContentResponse {
 }
 
 export const fetchFooterContent = async (): Promise<FooterContentResponse> => {
-  const response = await api.get<FooterContentResponse>('/api/footer/');
+  const response = await api.get<FooterContentResponse>('/layout/footer/');
   return response.data;
+};
+
+// ======================== Health Check ========================
+
+export interface HealthCheckResponse {
+  status: 'ok' | 'error';
+  database: string;
+}
+
+export const checkHealth = async (): Promise<boolean> => {
+  try {
+    const response = await api.get<HealthCheckResponse>('/health/', {
+      timeout: 5000, // 5 second timeout
+    });
+    return response.data.status === 'ok';
+  } catch {
+    return false;
+  }
 };
 
 export default api;
