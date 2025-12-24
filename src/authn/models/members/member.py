@@ -6,7 +6,7 @@ from django.contrib.auth.models import (
 )
 from django.db import models
 
-from .contact_info import MemberContactInfo
+from ..contact.contact_info import MemberContactInfo
 from .user_group import MemberGroup
 
 
@@ -28,6 +28,7 @@ class Member(AbstractUser):
     )
 
     # member account
+    contect_email = models.ForeignKey('authn.ContactEmail', on_delete=models.CASCADE, null=True, blank=True)
 
     # user status
     is_active_member = models.BooleanField(
@@ -163,3 +164,4 @@ class MemberProfile(models.Model):
         For now, returns the base64 string or None.
         """
         return self.profile_image if self.profile_image else None
+

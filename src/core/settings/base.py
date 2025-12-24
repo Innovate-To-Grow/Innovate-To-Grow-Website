@@ -28,8 +28,10 @@ INSTALLED_APPS = [
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
     "layout.apps.LayoutConfig",
+    "notify.apps.NotifyConfig",
 
     # third party application
+    "rest_framework",
     "ckeditor",
     "ckeditor_uploader",
 ]

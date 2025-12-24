@@ -19,3 +19,4 @@ Pillow>=10.0.0
 
 # Development Dependencies
 # django-debug-toolbar>=4.0.0
+

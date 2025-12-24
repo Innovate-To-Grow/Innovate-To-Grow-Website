@@ -35,6 +35,9 @@ urlpatterns = [
     # layout (menus, footer)
     path("api/", include("layout.urls")),
 
+    # notify (verification + notifications)
+    path("api/notify/", include("notify.urls")),
+
     # ckeditor
     path('ckeditor/', include('ckeditor_uploader.urls')),
 ]

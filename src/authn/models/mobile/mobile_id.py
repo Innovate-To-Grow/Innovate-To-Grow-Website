@@ -77,7 +77,7 @@ class MobileID(models.Model):
     model_user = models.ForeignKey('authn.Member', on_delete=models.CASCADE)
 
     # user barcode set
-    user_barcode = models.ForeignKey('Barcode', on_delete=models.CASCADE)
+    user_barcode = models.ForeignKey('authn.Barcode', on_delete=models.CASCADE)
 
     # user mobile id server
     user_mobile_id_server = models.CharField(
@@ -100,7 +100,7 @@ class Transaction(models.Model):
     model_user = models.ForeignKey('authn.Member', on_delete=models.CASCADE)
 
     # usage details
-    barcode_used = models.ForeignKey('Barcode', on_delete=models.CASCADE)
+    barcode_used = models.ForeignKey('authn.Barcode', on_delete=models.CASCADE)
 
     # time used
     time_used = models.DateTimeField(
@@ -114,4 +114,4 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.model_user.username} used {self.barcode_used} @ {self.time_used}"
-    
+
