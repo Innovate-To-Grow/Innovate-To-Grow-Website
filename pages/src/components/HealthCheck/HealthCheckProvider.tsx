@@ -35,10 +35,19 @@ export const HealthCheckProvider = ({
 
   const performHealthCheck = useCallback(async () => {
     const healthy = await checkHealth();
+    
+    // If we transition from unhealthy to healthy, reload the page.
+    // This ensures all independent React roots (MainMenu, Footer) 
+    // and the main app state are properly re-initialized.
+    if (hasInitialized && !isHealthy && healthy) {
+      window.location.reload();
+      return healthy;
+    }
+
     setIsHealthy(healthy);
     setIsLoading(false);
     return healthy;
-  }, []);
+  }, [isHealthy, hasInitialized]);
 
   // Initial health check
   useEffect(() => {

@@ -177,3 +177,4 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         updated = queryset.update(attempts=0, status=VerificationRequest.STATUS_PENDING)
         self.message_user(request, f"{updated} verification(s) had attempts reset.")
 
+

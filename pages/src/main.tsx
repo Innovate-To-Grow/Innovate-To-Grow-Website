@@ -3,8 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { router } from './router';
-import { Footer } from './components/Footer/Footer';
-import { MainMenu } from './components/MainMenu/MainMenu';
+import { Footer, MainMenu, LayoutProvider } from './components/Layout';
 import { HealthCheckProvider } from './components/HealthCheck/HealthCheckProvider';
 
 // Mount main app to #root with health check
@@ -16,22 +15,26 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Mount MainMenu to #menu-root
+// Mount MainMenu to #menu-root with LayoutProvider
 const menuRoot = document.getElementById('menu-root');
 if (menuRoot) {
   createRoot(menuRoot).render(
     <StrictMode>
-      <MainMenu />
+      <LayoutProvider>
+        <MainMenu />
+      </LayoutProvider>
     </StrictMode>,
   );
 }
 
-// Mount footer to #footer-root
+// Mount footer to #footer-root with LayoutProvider
 const footerRoot = document.getElementById('footer-root');
 if (footerRoot) {
   createRoot(footerRoot).render(
     <StrictMode>
-      <Footer />
+      <LayoutProvider>
+        <Footer />
+      </LayoutProvider>
     </StrictMode>,
   );
 }

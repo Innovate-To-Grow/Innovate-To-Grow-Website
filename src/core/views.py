@@ -34,3 +34,4 @@ class HealthCheckView(View):
         
         return JsonResponse(health_status, status=200)
 
+

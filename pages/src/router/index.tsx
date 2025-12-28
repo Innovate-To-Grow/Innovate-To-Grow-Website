@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
-import { Layout } from '../components/Layout/Layout';
+import { Layout } from '../components/Layout';
 import { Home } from '../pages/Home';
 import { PageContent } from '../components/PageContent/PageContent';
 
@@ -9,7 +9,8 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'pages/:slug', element: <PageContent /> },
+      // Catch-all route for CMS-driven pages (e.g., /about, /about/team)
+      { path: '*', element: <PageContent /> },
     ],
   },
 ]);

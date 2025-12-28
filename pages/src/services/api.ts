@@ -2,7 +2,9 @@ import axios from 'axios';
 
 // In development, Vite proxy will handle this
 // In production, you may need to set this to your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+// Default to /api so local dev can proxy backend requests without colliding
+// with client-side routes like /pages/*
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -101,9 +103,55 @@ export interface FooterContentResponse {
   updated_at: string;
 }
 
-export const fetchFooterContent = async (): Promise<FooterContentResponse> => {
-  const response = await api.get<FooterContentResponse>('/layout/footer/');
-  return response.data;
+// ======================== Menu Types ========================
+
+export interface MenuItem {
+  type: 'home' | 'page' | 'external';
+  title: string;
+  url: string;
+  page_slug?: string;
+  page_type?: string;
+  icon?: string | null;
+  open_in_new_tab: boolean;
+  children: MenuItem[];
+}
+
+export interface Menu {
+  id: number;
+  name: string;
+  display_name: string;
+  description: string;
+  items: MenuItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ======================== Layout ========================
+
+export interface LayoutData {
+  menus: Menu[];
+  footer: FooterContentResponse | null;
+}
+
+let layoutCache: Promise<LayoutData> | null = null;
+
+export const fetchLayoutData = async (): Promise<LayoutData> => {
+  if (layoutCache) {
+    return layoutCache;
+  }
+
+  layoutCache = api.get<LayoutData>('/layout/').then(
+    response => response.data,
+    error => {
+      layoutCache = null;
+      throw error;
+    }
+  );
+  return layoutCache;
+};
+
+export const clearLayoutCache = () => {
+  layoutCache = null;
 };
 
 // ======================== Health Check ========================

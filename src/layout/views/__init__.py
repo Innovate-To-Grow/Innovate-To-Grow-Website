@@ -1,6 +1,5 @@
-from .views import MenuAPIView, FooterContentAPIView
+from .views import LayoutAPIView
 
 __all__ = [
-    "MenuAPIView",
-    "FooterContentAPIView",
+    "LayoutAPIView",
 ]

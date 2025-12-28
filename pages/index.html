@@ -8,60 +8,9 @@
     
     <!-- Template Styles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link type="text/css" rel="stylesheet" href="/static/css/theme.css" media="all">
-    <link type="text/css" rel="stylesheet" href="/static/css/custom.css" media="all">
   </head>
   <body class="html front not-logged-in no-sidebars page-node">
     <!-- NAVBAR -->
-    <div id="header" class="clearfix header" role="banner">
-        <div class="container">
-            <div class="row-fluid">
-                <div class="header-section row-fluid span12">
-                    <!-- /#logo -->
-                    <div id="stickyHeader">
-                        <div class="site-logo">
-                            <a class="site-logo__link" href="https://www.ucmerced.edu" title="Home" rel="home"> <img
-                                    src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png"
-                                    alt="UC Merced logo" role="presentation"> </a>
-                                    
-                        </div>
-    
-                            <a href="/"
-                               class="logo-link">
-                                <img src="/static/images/I2G-fullname-low.png"
-                                     alt="I2G Logo">
-                            </a>
-    
-                        <div class="quick-links" id="quickLinksNavigation">
-                            <a href="https://directory.ucmerced.edu/?_gl=1*12bbiew*_ga*MzM3MTQxMzQ2LjE2ODA3MzU0MDM.*_ga_TSE2LSBDQZ*MTY4MDczODY2My4yLjEuMTY4MDczODY2My42MC4wLjA." target="_blank"
-                                rel="noopener">Directory</a>
-                            <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank"
-                                rel="noopener">Apply</a>
-                            <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener">Give</a>
-    
-                        </div>
-    
-                    </div>
-                </div>
-                <!-- /#header-content -->
-            </div>
-            <!-- /#site-login -->
-            <!-- /#site-login -->
-        </div>
-    </div>
-    <div id="siteName">
-        <div class="container">
-            <div class="row-fluid">
-                <div class="name-slogan span12">
-                    <div id="site-name" class="site-name"><a href="/" title="Home"
-                            rel="home">Innovate
-                            To Grow</a></div>
-                    <!-- <div id="site-slogan" class="site-slogan">School of Engineering</div> -->
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Dynamic Menu (rendered by React) -->
     <div id="menu-root"></div>
     <!-- END NAVBAR -->
 
@@ -98,18 +47,13 @@
     <!-- jQuery (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2ez3bL+FFUe7yN9Bs9V3HsVZq3g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     
-    <!-- jQuery UI (CDN) - 用于 datepicker 等组件 -->
+    <!-- jQuery UI (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js" integrity="sha512-57oZ/vW8ANMjR/KQ6Be9v/+/h6bq9/l3f0Oc7vn6qMqyhvPd1cvKBRWWpzu0QoneImqr2SkmO4MSqU+RpHom3Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/base/jquery-ui.min.css" integrity="sha512-ELV+xyi8IhEApPS/pSj66+Jiw+sOT1Mqkzlh8ExXihe4zfqbWkxPRi8wptXIO9g73FSlhmquFlUOuMSoXz5IRw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
-    <!-- Colorbox (CDN) - 图片灯箱 -->
+    <!-- Colorbox (CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/jquery.colorbox-min.js" integrity="sha512-DALsyw7aVitN/vqWlqZncXHAD/akeVtJBRRPW9Qj5mRXzoHx/A8ZGRBrNvMSMEqXOPqJLPmGoq0+GJdEuLLhvg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/colorbox.min.css" integrity="sha512-jG1KD24gSYvz/xNX+/h7yIinCpf2f8/bxNz/+sK94+qwR4j3pxr5WRdNgV+A7QwQYr8aSDRHNyBMTYMI04Gohw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <!-- Google reCAPTCHA -->
-    <script async defer>
-      (function(){var w=window,C='___grecaptcha_cfg',cfg=w[C]=w[C]||{},N='grecaptcha';var gr=w[N]=w[N]||{};gr.ready=gr.ready||function(f){(cfg['fns']=cfg['fns']||[]).push(f);};w['__recaptcha_api']='https://www.recaptcha.net/recaptcha/api2/';(cfg['render']=cfg['render']||[]).push('onload');w['__google_recaptcha_client']=true;var d=document,po=d.createElement('script');po.type='text/javascript';po.async=true;po.src='https://www.gstatic.com/recaptcha/releases/pn3ro1xnhf4yB8qmnrhh9iD2/recaptcha__en.js';po.crossOrigin='anonymous';po.integrity='sha384-mz5PKseXoDoO0hDb9yl4mtNAEY/e5d3s3YQZnco+LGfqxVet0xzlfmHed9av6OIq';var e=d.querySelector('script[nonce]'),n=e&&(e['nonce']||e.getAttribute('nonce'));if(n){po.setAttribute('nonce',n);}var s=d.getElementsByTagName('script')[0];s.parentNode.insertBefore(po, s);})();
-    </script>
     
     <!-- React App Entry -->
     <script type="module" src="/src/main.tsx"></script>

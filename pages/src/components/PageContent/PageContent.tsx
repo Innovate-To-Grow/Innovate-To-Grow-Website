@@ -1,18 +1,32 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { fetchPageContent, type PageContent as PageContentType } from '../../services/api';
 import './PageContent.css';
 
+type PageRouteParams = {
+  slug?: string;
+  '*': string | undefined;
+};
+
+const normalizeSlug = (value?: string) => {
+  if (!value) return undefined;
+  return value.replace(/^\/+|\/+$/g, '');
+};
+
 export const PageContent = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams<PageRouteParams>();
+  const slug = normalizeSlug(params['*'] ?? params.slug);
   const [page, setPage] = useState<PageContentType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const loadPage = async (pageSlug: string) => {
       setLoading(true);
       setError(null);
+      setNotFound(false);
       try {
         const pageData = await fetchPageContent(pageSlug);
         setPage(pageData);
@@ -22,16 +36,27 @@ export const PageContent = () => {
           window.location.href = pageData.external_url;
         }
       } catch (err) {
-        setError('Failed to load page content');
-        console.error(err);
+        if (isAxiosError(err) && err.response?.status === 404) {
+          setPage(null);
+          setNotFound(true);
+        } else {
+          setError('Failed to load page content');
+          console.error(err);
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (slug) {
-      loadPage(slug);
+    if (!slug) {
+      setPage(null);
+      setError(null);
+      setNotFound(true);
+      setLoading(false);
+      return;
     }
+
+    loadPage(slug);
   }, [slug]);
 
   if (loading) {
@@ -46,6 +71,20 @@ export const PageContent = () => {
     return (
       <div className="page-content-container">
         <div className="error">{error}</div>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="page-content-container">
+        <div className="page-content not-found">
+          <h1>404 - Page Not Found</h1>
+          <p>The page you are looking for doesn&apos;t exist or may have been moved.</p>
+          <div className="not-found-actions">
+            <Link to="/">Return to the homepage</Link>
+          </div>
+        </div>
       </div>
     );
   }

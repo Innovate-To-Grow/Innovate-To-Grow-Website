@@ -2,12 +2,15 @@ import random
 import string
 import uuid
 from datetime import timedelta
-from typing import Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
-from ..models import NotificationLog, VerificationRequest
+from authn.models.contact.contact_info import ContactEmail, ContactPhone
+
+from ..models import BroadcastMessage, NotificationLog, Unsubscribe, VerificationRequest
 from ..providers import send_email, send_sms
 
 
@@ -230,4 +233,107 @@ def send_notification(
             log.save(update_fields=["status", "error_message", "provider"])
 
         return log
+
+
+def _get_unsubscribed_targets(channel: str, scope: str) -> set[str]:
+    scope_filter = Q(scope=scope) | Q(scope="general")
+    return set(
+        Unsubscribe.objects.filter(channel=channel)
+        .filter(scope_filter)
+        .values_list("target", flat=True)
+    )
+
+
+def _iter_subscribers(channel: str) -> Iterable[str]:
+    if channel == VerificationRequest.CHANNEL_EMAIL:
+        queryset = ContactEmail.objects.filter(subscribe=True).order_by("id")
+        for contact in queryset.iterator():
+            yield contact.email_address
+    else:
+        queryset = ContactPhone.objects.filter(subscribe=True).order_by("id")
+        for contact in queryset.iterator():
+            yield contact.get_formatted_number()
+
+
+def send_broadcast_message(broadcast: BroadcastMessage) -> BroadcastMessage:
+    """
+    Deliver the broadcast content to all subscribed contacts for the given channel.
+    """
+
+    if not broadcast.is_sendable:
+        return broadcast
+
+    broadcast.status = BroadcastMessage.STATUS_SENDING
+    broadcast.total_recipients = 0
+    broadcast.sent_count = 0
+    broadcast.failed_count = 0
+    broadcast.last_error = ""
+    broadcast.sent_at = None
+    broadcast.save(
+        update_fields=[
+            "status",
+            "total_recipients",
+            "sent_count",
+            "failed_count",
+            "last_error",
+            "sent_at",
+            "updated_at",
+        ]
+    )
+
+    unsubscribed = _get_unsubscribed_targets(broadcast.channel, broadcast.scope)
+
+    for target in _iter_subscribers(broadcast.channel):
+        if target in unsubscribed:
+            continue
+
+        broadcast.total_recipients += 1
+        try:
+            log = send_notification(
+                channel=broadcast.channel,
+                target=target,
+                subject=broadcast.subject or broadcast.name,
+                message=broadcast.message,
+            )
+            if log.status == NotificationLog.STATUS_SENT:
+                broadcast.sent_count += 1
+            else:
+                broadcast.failed_count += 1
+        except Exception as exc:  # pragma: no cover - defensive
+            broadcast.failed_count += 1
+            broadcast.last_error = str(exc)
+
+    if broadcast.total_recipients == 0:
+        broadcast.status = BroadcastMessage.STATUS_FAILED
+        broadcast.last_error = "No subscribed recipients available for this broadcast."
+        broadcast.save(
+            update_fields=[
+                "status",
+                "last_error",
+                "updated_at",
+            ]
+        )
+        raise ValueError(broadcast.last_error)
+
+    if broadcast.failed_count and broadcast.sent_count:
+        broadcast.status = BroadcastMessage.STATUS_PARTIAL
+    elif broadcast.failed_count and not broadcast.sent_count:
+        broadcast.status = BroadcastMessage.STATUS_FAILED
+    else:
+        broadcast.status = BroadcastMessage.STATUS_SENT
+
+    broadcast.sent_at = timezone.now()
+    broadcast.save(
+        update_fields=[
+            "status",
+            "total_recipients",
+            "sent_count",
+            "failed_count",
+            "last_error",
+            "sent_at",
+            "updated_at",
+        ]
+    )
+
+    return broadcast
 

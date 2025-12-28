@@ -1,10 +1,11 @@
 import { Outlet } from 'react-router-dom';
-import './Layout.css';
+import './Container.css';
 
-export const Layout = () => {
+export const Container = () => {
   return (
     <div className="app-layout container">
       <Outlet />
     </div>
   );
 };
+

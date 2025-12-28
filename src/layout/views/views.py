@@ -1,4 +1,3 @@
-from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -8,39 +7,25 @@ from ..models import Menu, FooterContent
 from ..serializers import MenuSerializer, FooterContentSerializer
 
 
-class MenuAPIView(ListAPIView):
+class LayoutAPIView(APIView):
     """
-    Retrieve menu structure.
-    Returns Menu objects with their linked Pages.
-    """
-    serializer_class = MenuSerializer
-    permission_classes = [AllowAny]
-    
-    def get_queryset(self):
-        """Return all menus."""
-        return Menu.objects.all().order_by('display_name')
-    
-    def list(self, request, *args, **kwargs):
-        """Override to return custom response format."""
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'menus': serializer.data
-        })
-
-
-class FooterContentAPIView(APIView):
-    """
-    Retrieve the currently active footer content.
+    Unified endpoint for layout data (menus and footer).
     """
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        # 1. Get menus
+        menus = Menu.objects.all().order_by('display_name')
+        menu_serializer = MenuSerializer(menus, many=True)
+        
+        # 2. Get active footer
         footer = FooterContent.get_active()
-        if not footer:
-            return Response(
-                {"detail": "No active footer content found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        serializer = FooterContentSerializer(footer)
-        return Response(serializer.data)
+        footer_data = None
+        if footer:
+            footer_serializer = FooterContentSerializer(footer)
+            footer_data = footer_serializer.data
+            
+        return Response({
+            'menus': menu_serializer.data,
+            'footer': footer_data
+        })
