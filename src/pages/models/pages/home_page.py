@@ -2,15 +2,11 @@ from django.db import models
 
 
 class HomePage(models.Model):
-    """Home page model supporting multiple versions with one active at a time."""
+    """Home page model composed of ordered PageComponents (one version active)."""
 
     name = models.CharField(
         max_length=200,
         help_text="Internal name to identify this home page version"
-    )
-    body = models.TextField(
-        blank=True,
-        help_text="Rich text content (HTML)"
     )
     is_active = models.BooleanField(
         default=False,
@@ -39,4 +35,9 @@ class HomePage(models.Model):
     def get_active(cls):
         """Get the currently active home page."""
         return cls.objects.filter(is_active=True).first()
+
+    @property
+    def ordered_components(self):
+        """Return components ordered for rendering."""
+        return self.components.order_by("order", "id")
 

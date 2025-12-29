@@ -1,20 +1,21 @@
 from django.test import TestCase
-from ..models import Page, Menu, MenuPageLink, HomePage
+from ..models import Page, PageComponent, Menu, MenuPageLink, HomePage
 from ..serializers import (
-    PageSerializer, MenuSerializer, 
-    MenuPageLinkSerializer, HomePageSerializer
+    PageSerializer, MenuSerializer, HomePageSerializer
 )
 
 
 class PageSerializerTest(TestCase):
     def test_serialize_page(self):
-        page = Page.objects.create(title="Test", slug="test", page_body="<p>Body</p>")
+        page = Page.objects.create(title="Test", slug="test")
+        PageComponent.objects.create(page=page, component_type="html", order=1, html_content="<p>Body</p>")
+
         serializer = PageSerializer(page)
         data = serializer.data
         self.assertEqual(data['title'], "Test")
         self.assertEqual(data['slug'], "test")
-        self.assertEqual(data['page_body'], "<p>Body</p>")
-        self.assertEqual(data['page_type'], "page")
+        self.assertEqual(len(data['components']), 1)
+        self.assertEqual(data['components'][0]['html_content'], "<p>Body</p>")
 
 
 class MenuSerializerTest(TestCase):
@@ -33,9 +34,11 @@ class MenuSerializerTest(TestCase):
 
 class HomePageSerializerTest(TestCase):
     def test_serialize_homepage(self):
-        hp = HomePage.objects.create(name="Home V1", body="<h1>Welcome</h1>", is_active=True)
+        hp = HomePage.objects.create(name="Home V1", is_active=True)
+        PageComponent.objects.create(home_page=hp, component_type="html", order=1, html_content="<h1>Welcome</h1>")
+
         serializer = HomePageSerializer(hp)
         data = serializer.data
         self.assertEqual(data['name'], "Home V1")
-        self.assertEqual(data['body'], "<h1>Welcome</h1>")
         self.assertTrue(data['is_active'])
+        self.assertEqual(len(data['components']), 1)

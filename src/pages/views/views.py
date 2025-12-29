@@ -52,7 +52,7 @@ class PageListAPIView(ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         # Return simplified list for menu editor
-        pages = [{'slug': p.slug, 'title': p.title, 'page_type': p.page_type} for p in queryset]
+        pages = [{'slug': p.slug, 'title': p.title} for p in queryset]
         return Response({'pages': pages})
 
 

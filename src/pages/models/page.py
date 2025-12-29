@@ -8,6 +8,7 @@ simply re-exports them so migrations continue to work without modification.
 """
 
 from .pages.page import Page  # noqa: F401
+from .pages.page_component import PageComponent  # noqa: F401
 from .pages.validators import validate_nested_slug  # noqa: F401
 
-__all__ = ["Page", "validate_nested_slug"]
+__all__ = ["Page", "PageComponent", "validate_nested_slug"]

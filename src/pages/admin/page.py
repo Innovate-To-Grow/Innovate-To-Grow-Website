@@ -1,20 +1,34 @@
 from django.contrib import admin
-from ..models import Page
+from .page_component import PageComponentForm
+from ..models import Page, PageComponent
+
+
+class PageComponentInline(admin.StackedInline):
+    model = PageComponent
+    fk_name = "page"
+    extra = 0
+    form = PageComponentForm
+    fields = ("component_type", "order", "html_content", "config", "css_file", "css_code", "created_at", "updated_at")
+    readonly_fields = ("created_at", "updated_at", "css_file")
+    ordering = ("order", "id")
+    show_change_link = True
+
 
 @admin.register(Page)
 class PageAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'page_type', 'published', 'view_count', 'updated_at')
-    list_filter = ('published', 'page_type', 'created_at')
-    search_fields = ('title', 'slug', 'page_body')
+    inlines = [PageComponentInline]
+    list_display = ('title', 'slug', 'published', 'view_count', 'updated_at')
+    list_filter = ('published', 'created_at')
+    search_fields = ('title', 'slug')
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('page_uuid', 'slug_depth', 'view_count', 'last_viewed_at', 'created_at', 'updated_at')
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'slug', 'page_type', 'page_uuid')
+            'fields': ('title', 'slug', 'page_uuid')
         }),
-        ('Content', {
-            'fields': ('page_body', 'external_url', 'template_name'),
+        ('Rendering', {
+            'fields': ('template_name',),
             'classes': ('extrapretty',)
         }),
         ('SEO & Metadata', {

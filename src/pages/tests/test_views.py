@@ -11,7 +11,7 @@ class HomePageAPIViewTest(TestCase):
         self.url = reverse('pages:home-page')
 
     def test_get_active_home_page(self):
-        HomePage.objects.create(name="Active", body="Content", is_active=True)
+        HomePage.objects.create(name="Active", is_active=True)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], "Active")

@@ -168,8 +168,6 @@ class MenuPageLink(models.Model):
 
     def get_url(self) -> str:
         """Return the URL for this menu link."""
-        if self.page.page_type == 'external' and self.page.external_url:
-            return self.page.external_url
         return self.page.get_absolute_url()
 
     def __str__(self) -> str:

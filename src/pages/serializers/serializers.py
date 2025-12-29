@@ -1,18 +1,35 @@
 from rest_framework import serializers
-from django.utils import timezone
-from ..models import Page, HomePage, UniformForm, FormSubmission
+from layout.serializers import MenuSerializer as LayoutMenuSerializer
+from layout.models import MenuPageLink
+from ..models import Page, HomePage, PageComponent, UniformForm, FormSubmission
+
+
+class PageComponentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PageComponent
+        fields = [
+            "id",
+            "component_type",
+            "order",
+            "html_content",
+            "css_file",
+            "css_code",
+            "config",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class PageSerializer(serializers.ModelSerializer):
+    components = PageComponentSerializer(many=True, read_only=True)
+
     class Meta:
         model = Page
         fields = [
             "id",
             "title",
             "slug",
-            "page_type",
-            "page_body",
-            "external_url",
             "meta_title",
             "meta_description",
             "meta_keywords",
@@ -21,6 +38,7 @@ class PageSerializer(serializers.ModelSerializer):
             "meta_robots",
             "template_name",
             "published",
+            "components",
             "created_at",
             "updated_at",
         ]
@@ -28,9 +46,11 @@ class PageSerializer(serializers.ModelSerializer):
 
 
 class HomePageSerializer(serializers.ModelSerializer):
+    components = PageComponentSerializer(many=True, read_only=True)
+
     class Meta:
         model = HomePage
-        fields = ["id", "name", "body", "is_active", "created_at", "updated_at"]
+        fields = ["id", "name", "is_active", "components", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
@@ -126,3 +146,27 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
     def get_user_display(self, obj):
         """Return username or 'Anonymous'."""
         return obj.user.username if obj.user else 'Anonymous'
+
+
+# Re-export MenuSerializer to keep existing import paths working
+MenuSerializer = LayoutMenuSerializer
+
+
+class MenuPageLinkSerializer(serializers.ModelSerializer):
+    """Serializer for the legacy Menu-Page link objects."""
+
+    class Meta:
+        model = MenuPageLink
+        fields = [
+            "id",
+            "menu",
+            "page",
+            "order",
+            "custom_title",
+            "css_classes",
+            "icon",
+            "open_in_new_tab",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

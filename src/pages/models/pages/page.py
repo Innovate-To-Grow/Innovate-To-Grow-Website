@@ -1,15 +1,14 @@
 """
 Page model for content management.
 
-Supports:
-- Rich text pages (images, tables, formatting, embedded YouTube links via CKEditor 5).
-- External URL redirect pages.
+Stores display content via ordered PageComponent blocks instead of a single
+body field or external URL flag.
 """
 
 import uuid
 
 from django.db import models
-from django_ckeditor_5.fields import CKEditor5Field
+
 from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
 from .validators import validate_nested_slug
 
@@ -17,22 +16,10 @@ from .validators import validate_nested_slug
 # ============================== Page Model ==============================
 
 class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, models.Model):
-    """
-    Content page model.
-
-    Supports:
-    - Rich text (images, tables, formatting, embedded YouTube links via CKEditor 5).
-    - External URL redirect pages.
-    """
+    """Content page model composed of ordered PageComponents."""
 
     # Technical identifier (not primary key, just an extra UUID)
     page_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
-
-    # Page type choices
-    PAGE_TYPE_CHOICES = [
-        ('page', 'Rich Text Page'),
-        ('external', 'External URL'),
-    ]
 
     # ------------------------------ Basic Fields ------------------------------
 
@@ -49,28 +36,6 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, models.M
             "Do NOT include leading or trailing '/'."
         ),
     )
-    page_type = models.CharField(
-        max_length=20,
-        choices=PAGE_TYPE_CHOICES,
-        default='page',
-        help_text="Page behavior type."
-    )
-
-    # Rich text page body (CKEditor 5 with upload, can embed images / videos / code)
-    page_body = CKEditor5Field(
-        blank=True,
-        null=True,
-        config_name='extends',
-        help_text="Rich text content for 'page' type."
-    )
-
-    # External URL page fields
-    external_url = models.URLField(
-        blank=True,
-        null=True,
-        help_text="Target URL for 'external' type page."
-    )
-
     # -------------------------- Utility Methods ----------------------------
 
     def save(self, *args, **kwargs):
@@ -94,11 +59,9 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, models.M
         return f'/pages/{self.slug}'
 
     @property
-    def page_type_label(self) -> str:
-        """
-        Human readable page type label, using Django's built-in display helper.
-        """
-        return self.get_page_type_display()
+    def ordered_components(self):
+        """Return components ordered for rendering."""
+        return self.components.order_by("order", "id")
 
     @property
     def effective_meta_title(self) -> str:

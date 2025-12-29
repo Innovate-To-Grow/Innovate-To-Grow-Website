@@ -296,7 +296,6 @@ export const MainMenu = () => {
             rel="noopener noreferrer"
             className="header-mobile-action"
           >
-            <i className="fa fa-search" />
             Directory
           </a>
           <a 
@@ -305,7 +304,6 @@ export const MainMenu = () => {
             rel="noopener noreferrer"
             className="header-mobile-action primary"
           >
-            <i className="fa fa-edit" />
             Apply Now
           </a>
           <a 
@@ -314,7 +312,6 @@ export const MainMenu = () => {
             rel="noopener noreferrer"
             className="header-mobile-action"
           >
-            <i className="fa fa-heart" />
             Give
           </a>
         </div>

@@ -1,7 +1,6 @@
 from django.test import TestCase
 from django.core.exceptions import ValidationError
-from django.utils import timezone
-from ..models import Page, Menu, MenuPageLink, HomePage, validate_nested_slug
+from ..models import Page, PageComponent, Menu, MenuPageLink, HomePage, validate_nested_slug
 
 class PageModelTest(TestCase):
     def test_create_page(self):
@@ -10,6 +9,7 @@ class PageModelTest(TestCase):
         self.assertEqual(page.slug, "test-page")
         self.assertEqual(page.slug_depth, 0)
         self.assertEqual(page.effective_meta_title, "Test Page")
+        self.assertEqual(list(page.ordered_components), [])
 
     def test_nested_slug_validation(self):
         # Valid slugs
@@ -44,6 +44,26 @@ class PageModelTest(TestCase):
     def test_get_absolute_url(self):
         page = Page.objects.create(title="Test", slug="test")
         self.assertEqual(page.get_absolute_url(), "/pages/test")
+
+
+class PageComponentTest(TestCase):
+    def test_requires_single_parent(self):
+        page = Page.objects.create(title="P", slug="p")
+        comp = PageComponent(component_type="html", html_content="<p>Hi</p>")
+
+        with self.assertRaises(ValidationError):
+            comp.full_clean()
+
+        comp.page = page
+        comp.full_clean()  # no error once a parent is set
+
+    def test_ordering(self):
+        page = Page.objects.create(title="Ordered", slug="ordered")
+        c2 = PageComponent.objects.create(page=page, component_type="html", order=2)
+        c1 = PageComponent.objects.create(page=page, component_type="html", order=1)
+
+        ordered = list(page.ordered_components)
+        self.assertEqual(ordered, [c1, c2])
 
 
 class MenuModelTest(TestCase):
@@ -82,16 +102,6 @@ class MenuPageLinkTest(TestCase):
     def test_get_url_internal(self):
         link = MenuPageLink.objects.create(menu=self.menu, page=self.page)
         self.assertEqual(link.get_url(), "/pages/page-1")
-
-    def test_get_url_external(self):
-        ext_page = Page.objects.create(
-            title="Ext", 
-            slug="ext", 
-            page_type="external", 
-            external_url="https://google.com"
-        )
-        link = MenuPageLink.objects.create(menu=self.menu, page=ext_page)
-        self.assertEqual(link.get_url(), "https://google.com")
 
 
 class HomePageTest(TestCase):
