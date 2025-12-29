@@ -3,7 +3,7 @@ import {
   type FooterLink,
   type FooterSocialLink,
 } from '../../../services/api';
-import { useFooter } from '../LayoutProvider/LayoutProvider';
+import { useFooter } from '../LayoutProvider/context';
 import './Footer.css';
 
 const buttonColor = (style?: FooterCTAButton['style']) => (style === 'gold' ? 'gold' : 'blue');

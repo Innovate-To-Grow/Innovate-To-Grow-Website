@@ -146,7 +146,8 @@
 }
 
 .home-cta-row {
-  background: #f2f2f2;
+  /* Remove the colored band behind the CTA area */
+  background: transparent;
   padding: 24px 0;
 }
 
@@ -168,7 +169,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  /* Square corners */
+  border-radius: 0;
   border: 2px solid currentColor;
   padding: 10px 26px;
   font-size: 13px;

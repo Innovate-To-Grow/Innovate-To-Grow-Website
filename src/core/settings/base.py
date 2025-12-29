@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # custom application
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
+    "mobileid.apps.MobileIDConfig",
     "layout.apps.LayoutConfig",
     "notify.apps.NotifyConfig",
 

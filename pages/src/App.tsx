@@ -1,6 +1,6 @@
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
-import { HealthCheckProvider } from './components/HealthCheck/HealthCheckProvider';
+import { HealthCheckProvider } from './components/MaintenanceMode';
 import './App.css';
 
 export const App = () => {

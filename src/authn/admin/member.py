@@ -14,9 +14,8 @@ from ..models import (
     MemberProfile,
     MemberContactInfo,
     I2GMemberGroup,
-    Barcode,
-    MobileID,
 )
+from mobileid.models import Barcode, MobileID
 from .forms import MemberImportForm
 
 

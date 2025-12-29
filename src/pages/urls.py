@@ -1,5 +1,12 @@
 from django.urls import path
-from .views import PageRetrieveAPIView, PageListAPIView, HomePageAPIView
+from .views import (
+    PageRetrieveAPIView,
+    PageListAPIView,
+    HomePageAPIView,
+    UniformFormRetrieveAPIView,
+    FormSubmissionCreateAPIView,
+    FormSubmissionListAPIView
+)
 
 app_name = "pages"
 
@@ -10,6 +17,11 @@ urlpatterns = [
 
     # home page
     path("home/", HomePageAPIView.as_view(), name="home-page"),
+
+    # forms
+    path("forms/<slug:slug>/", UniformFormRetrieveAPIView.as_view(), name="form-detail"),
+    path("forms/<slug:slug>/submit/", FormSubmissionCreateAPIView.as_view(), name="form-submit"),
+    path("forms/<slug:form_slug>/submissions/", FormSubmissionListAPIView.as_view(), name="form-submissions"),
 
     # page detail
     path("<slug:slug>/", PageRetrieveAPIView.as_view(), name="page-retrieve"),

@@ -7,4 +7,5 @@ export { Container } from './Container/Container';
 export { Container as Layout } from './Container/Container';
 
 // Layout context provider and hooks
-export { LayoutProvider, useLayout, useMenu, useFooter } from './LayoutProvider/LayoutProvider';
+export { LayoutProvider } from './LayoutProvider/LayoutProvider';
+export { useLayout, useMenu, useFooter } from './LayoutProvider/context';

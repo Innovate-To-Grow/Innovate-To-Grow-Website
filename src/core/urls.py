@@ -47,6 +47,9 @@ urlpatterns = [
     # notify (verification + notifications)
     path("notify/", include("notify.urls")),
 
+    # mobile id domain
+    path("api/mobileid/", include("mobileid.urls")),
+
     # ckeditor 5
     path('ckeditor5/', include('django_ckeditor_5.urls')),
 

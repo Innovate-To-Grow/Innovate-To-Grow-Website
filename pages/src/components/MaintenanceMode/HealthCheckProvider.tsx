@@ -1,20 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { checkHealth } from '../../services/api';
-import { MaintenanceMode } from '../MaintenanceMode/MaintenanceMode';
-
-interface HealthCheckContextType {
-  isHealthy: boolean;
-  isLoading: boolean;
-  checkNow: () => Promise<void>;
-}
-
-const HealthCheckContext = createContext<HealthCheckContextType>({
-  isHealthy: true,
-  isLoading: true,
-  checkNow: async () => {},
-});
-
-export const useHealthCheck = () => useContext(HealthCheckContext);
+import { MaintenanceMode } from './MaintenanceMode';
+import { HealthCheckContext, type HealthCheckContextType } from './context';
 
 interface HealthCheckProviderProps {
   children: ReactNode;
@@ -24,6 +16,10 @@ interface HealthCheckProviderProps {
   initialDelay?: number;
 }
 
+/**
+ * Health check gate for the app.
+ * When backend is unavailable, it renders <MaintenanceMode />.
+ */
 export const HealthCheckProvider = ({
   children,
   pollingInterval = 10000,
@@ -35,9 +31,9 @@ export const HealthCheckProvider = ({
 
   const performHealthCheck = useCallback(async () => {
     const healthy = await checkHealth();
-    
+
     // If we transition from unhealthy to healthy, reload the page.
-    // This ensures all independent React roots (MainMenu, Footer) 
+    // This ensures all independent React roots (MainMenu, Footer)
     // and the main app state are properly re-initialized.
     if (hasInitialized && !isHealthy && healthy) {
       window.location.reload();
@@ -86,23 +82,28 @@ export const HealthCheckProvider = ({
   if (!hasInitialized) {
     return (
       <HealthCheckContext.Provider value={contextValue}>
-        <div className="health-check-loading" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          backgroundColor: '#f9f9f9',
-        }}>
+        <div
+          className="health-check-loading"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            backgroundColor: '#f9f9f9',
+          }}
+        >
           <div style={{ textAlign: 'center', color: '#666' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              border: '3px solid #e0e0e0',
-              borderTopColor: '#1a365d',
-              borderRadius: '50%',
-              margin: '0 auto 1rem',
-              animation: 'spin 1s linear infinite',
-            }} />
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                border: '3px solid #e0e0e0',
+                borderTopColor: '#1a365d',
+                borderRadius: '50%',
+                margin: '0 auto 1rem',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             <p>Loading...</p>
           </div>
@@ -127,4 +128,5 @@ export const HealthCheckProvider = ({
     </HealthCheckContext.Provider>
   );
 };
+
 

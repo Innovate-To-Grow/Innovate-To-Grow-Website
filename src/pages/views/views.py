@@ -1,11 +1,18 @@
 from django.views.generic import TemplateView
-from rest_framework.generics import RetrieveAPIView, ListAPIView
+from rest_framework.generics import RetrieveAPIView, ListAPIView, CreateAPIView
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import Page, HomePage
-from ..serializers import PageSerializer, HomePageSerializer
+from rest_framework.exceptions import ValidationError, PermissionDenied
+from ..models import Page, HomePage, UniformForm, FormSubmission
+from ..serializers import (
+    PageSerializer,
+    HomePageSerializer,
+    UniformFormSerializer,
+    FormSubmissionCreateSerializer,
+    FormSubmissionListSerializer
+)
 
 
 class PreviewPopupView(TemplateView):
@@ -58,3 +65,68 @@ class PageRetrieveAPIView(RetrieveAPIView):
     lookup_field = "slug"
     lookup_url_kwarg = "slug"
     permission_classes = [AllowAny]
+
+
+class UniformFormRetrieveAPIView(RetrieveAPIView):
+    """
+    Retrieve a form by slug for rendering.
+
+    Returns form configuration including fields, settings, and display options.
+    Only returns active and published forms.
+    """
+    queryset = UniformForm.objects.filter(is_active=True, published=True)
+    serializer_class = UniformFormSerializer
+    lookup_field = "slug"
+    permission_classes = [AllowAny]
+
+
+class FormSubmissionCreateAPIView(CreateAPIView):
+    """
+    Create a form submission.
+
+    Validates submission data against form field definitions and stores
+    the submission with metadata (IP address, user agent, etc.).
+    """
+    serializer_class = FormSubmissionCreateSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        """Additional validation and submission limit checking."""
+        form = serializer.validated_data['form']
+
+        # Check if form is active and published
+        if not form.is_active or not form.published:
+            raise ValidationError("This form is not accepting submissions.")
+
+        # Check login requirement
+        if form.login_required and not self.request.user.is_authenticated:
+            raise PermissionDenied("You must be logged in to submit this form.")
+
+        # Check submission limits for authenticated users
+        if self.request.user.is_authenticated and form.max_submissions_per_user > 0:
+            user_submission_count = FormSubmission.objects.filter(
+                form=form,
+                user=self.request.user
+            ).count()
+
+            if user_submission_count >= form.max_submissions_per_user:
+                raise ValidationError(
+                    f"You have reached the maximum number of submissions ({form.max_submissions_per_user}) for this form."
+                )
+
+        # Create the submission
+        serializer.save()
+
+
+class FormSubmissionListAPIView(ListAPIView):
+    """
+    List submissions for a specific form (admin only).
+
+    Returns all submissions for the specified form, ordered by submission date.
+    """
+    serializer_class = FormSubmissionListSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        form_slug = self.kwargs['form_slug']
+        return FormSubmission.objects.filter(form__slug=form_slug)

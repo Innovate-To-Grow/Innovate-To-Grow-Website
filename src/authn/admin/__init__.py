@@ -7,13 +7,11 @@ Organized into modules by functionality:
 - group: I2GMemberGroup admin
 - contact: ContactEmail, ContactPhone, MemberContactInfo admin
 - security: RSAKeypair admin
-- mobile: Barcode, MobileID, Transaction admin
 """
 from .member import MemberAdmin, MemberProfileAdmin
 from .group import I2GMemberGroupAdmin
 from .contact import ContactEmailAdmin, ContactPhoneAdmin, MemberContactInfoAdmin
 from .security import RSAKeypairAdmin
-from .mobile import BarcodeAdmin, MobileIDAdmin, TransactionAdmin
 
 __all__ = [
     # Member
@@ -27,8 +25,4 @@ __all__ = [
     'MemberContactInfoAdmin',
     # Security
     'RSAKeypairAdmin',
-    # Mobile
-    'BarcodeAdmin',
-    'MobileIDAdmin',
-    'TransactionAdmin',
 ]

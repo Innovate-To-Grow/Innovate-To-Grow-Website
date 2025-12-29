@@ -1,6 +1,6 @@
-import { useEffect, useState, type MouseEvent, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
 import { type MenuItem } from '../../../services/api';
-import { useMenu } from '../LayoutProvider/LayoutProvider';
+import { useMenu } from '../LayoutProvider/context';
 import './MainMenu.css';
 
 const buildHref = (item: MenuItem) => {
@@ -20,6 +20,12 @@ export const MainMenu = () => {
   const { menu, state } = useMenu();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const currentDate = useMemo(() => {
+    const date = new Date();
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  }, []);
 
   useEffect(() => {
     const handleToggle = () => {
@@ -82,7 +88,7 @@ export const MainMenu = () => {
   const renderMenuItems = (items: MenuItem[], level: number = 0): ReactElement => {
     if (level === 0) {
       return (
-        <ul className="header-nav-list">
+        <ul className="menu-bar-list">
           {items.map((item, index) => {
             const hasChildren = item.children && item.children.length > 0;
             const isOpen = openItemIndex === index;
@@ -92,20 +98,19 @@ export const MainMenu = () => {
             const accessibilityProps = hasChildren
               ? {
                   'aria-haspopup': 'menu' as const,
-                  'aria-expanded': isOpen ? ('true' as const) : ('false' as const),
                 }
               : {};
 
             return (
               <li
                 key={index}
-                className={`header-nav-item${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
+                className={`menu-bar-item${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
                 onMouseEnter={() => handleMouseEnter(index, hasChildren)}
                 onMouseLeave={handleMouseLeave}
               >
                 <a
                   href={href}
-                  className="header-nav-link"
+                  className="menu-bar-link"
                   {...accessibilityProps}
                   target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
                   rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
@@ -113,11 +118,11 @@ export const MainMenu = () => {
                 >
                   {item.icon && <i className={`fa ${item.icon}`}></i>}
                   <span>{item.title}</span>
-                  {hasChildren && <i className="fa fa-angle-down header-nav-arrow" />}
+                  {hasChildren && <i className="fa fa-angle-down menu-bar-arrow" />}
                 </a>
 
                 {hasChildren && (
-                  <div className={`header-dropdown${isOpen ? ' is-open' : ''}`}>
+                  <div className={`menu-dropdown${isOpen ? ' is-open' : ''}`}>
                     {renderMenuItems(item.children, 1)}
                   </div>
                 )}
@@ -128,26 +133,26 @@ export const MainMenu = () => {
       );
     } else {
       return (
-        <ul className={`header-dropdown-list${level > 1 ? ' nested' : ''}`}>
+        <ul className={`menu-dropdown-list${level > 1 ? ' nested' : ''}`}>
           {items.map((item, index) => {
             const hasChildren = item.children && item.children.length > 0;
             const href = buildHref(item);
             const isExternal = item.type === 'external';
 
             return (
-              <li key={index} className={`header-dropdown-item${hasChildren ? ' has-children' : ''}`}>
+              <li key={index} className={`menu-dropdown-item${hasChildren ? ' has-children' : ''}`}>
                 <a
                   href={href}
-                  className="header-dropdown-link"
+                  className="menu-dropdown-link"
                   target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
                   rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
                 >
                   {item.icon && <i className={`fa ${item.icon}`}></i>}
                   <span>{item.title}</span>
-                  {hasChildren && <i className="fa fa-angle-right header-dropdown-arrow" />}
+                  {hasChildren && <i className="fa fa-angle-right menu-dropdown-arrow" />}
                 </a>
                 {hasChildren && (
-                  <div className="header-dropdown-nested">
+                  <div className="menu-dropdown-nested">
                     {renderMenuItems(item.children, level + 1)}
                   </div>
                 )}
@@ -161,83 +166,95 @@ export const MainMenu = () => {
 
   return (
     <header className="site-header" role="banner">
-      <div className="header-inner">
-        {/* Logo & Branding */}
-        <a href="/" className="header-brand">
-          <img 
-            src="/static/images/i2glogo.png" 
-            alt="" 
-            className="header-logo"
-          />
-          <div className="header-titles">
-            <span className="header-title">Innovate To Grow</span>
-            <span className="header-subtitle">UC Merced · School of Engineering</span>
+      {/* Top blue bar */}
+      <div className="site-header-top">
+        <div className="site-header-container site-header-top-inner">
+          {/* Mobile Menu Toggle (shown on small screens) */}
+          <button
+            type="button"
+            className={`site-header-mobile-toggle ${isMobileOpen ? 'is-active' : ''}`}
+            aria-label="Toggle menu"
+            aria-controls="mobile-menu"
+            onClick={toggleMobileMenu}
+          >
+            <span className="site-header-mobile-toggle-bar" />
+            <span className="site-header-mobile-toggle-bar" />
+            <span className="site-header-mobile-toggle-bar" />
+          </button>
+
+          <a
+            className="ucm-wordmark"
+            href="https://www.ucmerced.edu"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="UC Merced"
+          >
+            <img src="/static/images/ucmlogo.png" alt="UC Merced" />
+          </a>
+
+          <a className="site-header-top-logo" href="/" aria-label="Innovate To Grow">
+            <img
+              className="site-header-top-logo-full"
+              src="/static/images/I2G-fullname-low.png"
+              alt="Innovate To Grow"
+            />
+          </a>
+
+          <div className="site-header-top-links" aria-label="Quick links">
+            <a href="https://directory.ucmerced.edu/" target="_blank" rel="noopener noreferrer">
+              Directory
+            </a>
+            <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener noreferrer">
+              Apply
+            </a>
+            <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener noreferrer">
+              Give
+            </a>
           </div>
-        </a>
-
-        {/* Desktop Navigation */}
-        <nav className="header-nav" aria-label="Main menu">
-          {state === 'loading' && (
-            <ul className="header-nav-list">
-              <li className="header-nav-item is-muted">
-                <span className="header-nav-link">Loading...</span>
-              </li>
-            </ul>
-          )}
-
-          {state === 'error' && (
-            <ul className="header-nav-list">
-              <li className="header-nav-item is-error">
-                <span className="header-nav-link">Menu unavailable</span>
-              </li>
-            </ul>
-          )}
-
-          {state === 'ready' && menu && menu.items && menu.items.length > 0 && renderMenuItems(menu.items)}
-
-          {state === 'ready' && (!menu || !menu.items || menu.items.length === 0) && (
-            <ul className="header-nav-list">
-              <li className="header-nav-item is-muted">
-                <span className="header-nav-link">No menu items</span>
-              </li>
-            </ul>
-          )}
-        </nav>
-
-        {/* Quick Links */}
-        <div className="header-actions">
-          <a 
-            href="https://directory.ucmerced.edu/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="header-action-link"
-          >
-            <i className="fa fa-search" />
-            <span>Directory</span>
-          </a>
-          <a 
-            href="https://admissions.ucmerced.edu/first-year/apply?button" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="header-action-btn"
-          >
-            Apply
-          </a>
         </div>
+      </div>
 
-        {/* Mobile Menu Toggle */}
-        <button
-          type="button"
-          className={`header-menu-toggle ${isMobileOpen ? 'is-active' : ''}`}
-          aria-label="Toggle menu"
-          aria-controls="mobile-menu"
-          aria-expanded={isMobileOpen || undefined}
-          onClick={toggleMobileMenu}
-        >
-          <span className="header-menu-toggle-bar" />
-          <span className="header-menu-toggle-bar" />
-          <span className="header-menu-toggle-bar" />
-        </button>
+      {/* White menu bar */}
+      <div className="site-header-bottom">
+        <div className="site-header-container site-header-bottom-inner">
+          <div className="site-header-bottom-left">
+            <a className="site-header-badge" href="/" aria-label="Home">
+              <img src="/static/images/i2glogo.png" alt="Innovate To Grow" />
+            </a>
+
+            <nav className="site-header-nav" aria-label="Main menu">
+              {state === 'loading' && (
+                <ul className="menu-bar-list">
+                  <li className="menu-bar-item is-muted">
+                    <span className="menu-bar-link">Loading...</span>
+                  </li>
+                </ul>
+              )}
+
+              {state === 'error' && (
+                <ul className="menu-bar-list">
+                  <li className="menu-bar-item is-error">
+                    <span className="menu-bar-link">Menu unavailable</span>
+                  </li>
+                </ul>
+              )}
+
+              {state === 'ready' && menu && menu.items && menu.items.length > 0 && renderMenuItems(menu.items)}
+
+              {state === 'ready' && (!menu || !menu.items || menu.items.length === 0) && (
+                <ul className="menu-bar-list">
+                  <li className="menu-bar-item is-muted">
+                    <span className="menu-bar-link">No menu items</span>
+                  </li>
+                </ul>
+              )}
+            </nav>
+          </div>
+
+          <div className="site-header-date" aria-label="Current date">
+            {currentDate}
+          </div>
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -305,7 +322,7 @@ export const MainMenu = () => {
         <div className="header-mobile-footer">
           <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">
             <img 
-              src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png" 
+              src="/static/images/ucmlogo.png"
               alt="UC Merced" 
             />
           </a>

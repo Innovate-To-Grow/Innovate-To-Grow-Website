@@ -4,7 +4,7 @@ import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { router } from './router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
-import { HealthCheckProvider } from './components/HealthCheck/HealthCheckProvider';
+import { HealthCheckProvider } from './components/MaintenanceMode';
 
 // Mount main app to #root with health check
 createRoot(document.getElementById('root')!).render(
