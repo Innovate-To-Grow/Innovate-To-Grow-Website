@@ -4,6 +4,7 @@ Django base settings for core project.
 This file contains settings that are common to all environments.
 """
 
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -30,6 +31,7 @@ INSTALLED_APPS = [
     "mobileid.apps.MobileIDConfig",
     "layout.apps.LayoutConfig",
     "notify.apps.NotifyConfig",
+    "events.apps.EventsConfig",
 
     # third party application
     "rest_framework",
@@ -168,4 +170,7 @@ CKEDITOR_5_CONFIGS = {
 # CKEditor 5 file upload settings
 CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
 CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "ck_editor_5_upload_file"
+
+# Events API Key for Google Sheets sync
+EVENTS_API_KEY = os.getenv('EVENTS_API_KEY', '')
 
