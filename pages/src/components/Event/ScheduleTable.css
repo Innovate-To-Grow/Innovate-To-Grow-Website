@@ -2,7 +2,7 @@
 :root {
   --color-cap-gold: #D4A843;
   --color-cee-teal: #A8D5D8;
-  --color-cse-navy: #1B365D;
+  --color-cse-navy: #000080;
   --color-heading-teal: #2E8B8B;
   --color-award-gold: #D4A843;
   --color-light-grey: #E8E8E8;
@@ -123,23 +123,18 @@
 }
 
 /* Program-specific cell colors */
-.program-cap .presentation-cell:not(.break-cell) {
+.program-cap .presentation-cell {
   background: var(--color-cap-gold);
   color: var(--color-white);
 }
 
-.program-cee .presentation-cell:not(.break-cell) {
+.program-cee .presentation-cell {
   background: var(--color-cee-teal);
   color: var(--color-white);
 }
 
-.program-cse .presentation-cell:not(.break-cell) {
+.program-cse .presentation-cell {
   background: var(--color-cse-navy);
-  color: var(--color-white);
-}
-
-.break-cell {
-  background: var(--color-white);
   color: var(--color-white);
 }
 
@@ -164,6 +159,7 @@
   text-align: center;
   color: var(--color-white);
   font-weight: 500;
+  font-size: 1rem;
 }
 
 /* Responsive Design */
