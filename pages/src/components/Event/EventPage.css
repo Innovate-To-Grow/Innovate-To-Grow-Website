@@ -2,6 +2,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+  padding-top: 1rem;
 }
 
 .event-state {
@@ -15,39 +16,154 @@
   color: #d32f2f;
 }
 
-.event-header {
-  text-align: center;
-  margin-bottom: 3rem;
-  padding-bottom: 2rem;
-  border-bottom: 3px solid #0066cc;
-}
-
-.event-name {
+/* Main Event Title */
+.event-main-title {
   font-size: 3rem;
+  text-align: left;
+  margin-top: 0;
   margin-bottom: 1rem;
   color: #333;
   font-weight: 700;
 }
 
-.event-datetime {
+/* Top Section - 2x2 Grid Layout */
+.event-top-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 2rem;
+  margin-top: 0.5rem;
+  margin-bottom: 3rem;
+}
+
+.event-section {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  font-size: 1.25rem;
-  color: #666;
+  flex-direction: column;
 }
 
-.event-date {
+.event-section-title {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #333;
   font-weight: 600;
-  color: #0066cc;
 }
 
-.event-time {
+.event-bullets-inline {
+  margin-bottom: 1rem;
+}
+
+.event-bullets-inline ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.event-bullets-inline li {
+  padding: 0.25rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #444;
+}
+
+.event-bullets-inline li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #0066cc;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.event-bullets-inline li strong {
+  color: #0066cc;
+  font-weight: 600;
+}
+
+.event-bullets-inline li em {
+  font-style: italic;
   color: #555;
 }
 
+.event-bullets-inline li u {
+  text-decoration: underline;
+}
+
+/* Buttons */
+.btn-register-now {
+  background-color: #FFC107;
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-top: 1rem;
+  align-self: flex-start;
+  transition: background-color 0.2s;
+}
+
+.btn-register-now:hover {
+  background-color: #FFB300;
+}
+
+.event-buttons-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-for-attendees {
+  background-color: #FFC107;
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.btn-for-attendees:hover {
+  background-color: #FFB300;
+}
+
+.btn-for-judges {
+  background-color: #FFFFFF;
+  color: #333;
+  border: 2px solid #333;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.btn-for-judges:hover {
+  background-color: #f5f5f5;
+}
+
+/* Map Placeholder */
+.map-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  background-color: #f0f0f0;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+/* Legacy styles for backward compatibility (if needed elsewhere) */
 .event-bullets {
   margin: 2rem 0;
   padding: 1.5rem;
@@ -101,18 +217,33 @@
   text-decoration: underline;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
   .event-container {
     padding: 1rem;
   }
 
-  .event-name {
+  .event-top-section {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 1.5rem;
+  }
+
+  .event-main-title {
     font-size: 2rem;
   }
 
-  .event-datetime {
+  .event-section-title {
+    font-size: 1.25rem;
+  }
+
+  .event-buttons-group {
     flex-direction: column;
-    gap: 0.5rem;
+  }
+
+  .btn-for-attendees,
+  .btn-for-judges {
+    width: 100%;
   }
 }
 

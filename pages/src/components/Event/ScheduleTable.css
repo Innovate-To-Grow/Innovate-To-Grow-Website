@@ -1,155 +1,188 @@
+/* Color Scheme Variables */
+:root {
+  --color-cap-gold: #D4A843;
+  --color-cee-teal: #A8D5D8;
+  --color-cse-navy: #1B365D;
+  --color-heading-teal: #2E8B8B;
+  --color-award-gold: #D4A843;
+  --color-light-grey: #E8E8E8;
+  --color-white: #FFFFFF;
+}
+
 .schedule-table-container {
   margin: 2rem 0;
 }
 
-.schedule-title {
-  font-size: 2rem;
-  margin-bottom: 1.5rem;
-  color: #333;
+.program-schedule {
+  margin-bottom: 3rem;
 }
 
-.program-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.program-tab {
-  padding: 0.75rem 1.5rem;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #666;
-  transition: all 0.2s;
-}
-
-.program-tab:hover {
-  color: #333;
-  background-color: #f5f5f5;
-}
-
-.program-tab.active {
-  color: #0066cc;
-  border-bottom-color: #0066cc;
-  font-weight: 600;
-}
-
-.schedule-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  margin-top: 1rem;
-}
-
-.track-column {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.room-name {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-  color: #0066cc;
-  border-bottom: 2px solid #0066cc;
-  padding-bottom: 0.5rem;
-}
-
-.track-section {
-  margin-bottom: 2rem;
-}
-
-.track-section:last-child {
+.program-schedule:last-child {
   margin-bottom: 0;
 }
 
-.track-name {
-  font-size: 1.25rem;
+.presentations-title {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: #333;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.program-title {
+  font-size: 1.5rem;
   margin-bottom: 1rem;
   color: #333;
+  text-align: left;
   font-weight: 600;
 }
 
-.presentations-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: var(--color-white);
 }
 
-.presentation-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 1rem;
-  display: flex;
-  gap: 1rem;
-  transition: box-shadow 0.2s;
+/* Header Rows */
+.schedule-header-row {
+  background: var(--color-light-grey);
 }
 
-.presentation-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.presentation-order {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #0066cc;
-  min-width: 3rem;
-  display: flex;
-  align-items: flex-start;
-}
-
-.presentation-content {
-  flex: 1;
-}
-
-.presentation-team {
+.time-header {
+  background: var(--color-light-grey);
+  padding: 0.75rem 1rem;
+  text-align: left;
   font-weight: 600;
-  font-size: 1.1rem;
   color: #333;
-  margin-bottom: 0.25rem;
+  border: 1px solid #ddd;
 }
 
-.presentation-title {
+.room-header {
+  background: var(--color-white);
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.track-header {
+  background: var(--color-light-grey);
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.category-header {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-weight: bold;
+  color: var(--color-white);
+  border: 1px solid #ddd;
+}
+
+/* Program-specific colors */
+.program-cap .category-header {
+  background: var(--color-cap-gold);
+}
+
+.program-cee .category-header {
+  background: var(--color-cee-teal);
+}
+
+.program-cse .category-header {
+  background: var(--color-cse-navy);
+}
+
+/* Body Rows */
+.schedule-row {
+  border-bottom: 1px solid #ddd;
+}
+
+.time-cell {
+  background: var(--color-light-grey);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 500;
+  color: #333;
+  border: 1px solid #ddd;
+  vertical-align: top;
+}
+
+.presentation-cell {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  border: 1px solid #ddd;
+  vertical-align: top;
+  min-height: 60px;
+}
+
+/* Program-specific cell colors */
+.program-cap .presentation-cell:not(.break-cell) {
+  background: var(--color-cap-gold);
+  color: var(--color-white);
+}
+
+.program-cee .presentation-cell:not(.break-cell) {
+  background: var(--color-cee-teal);
+  color: var(--color-white);
+}
+
+.program-cse .presentation-cell:not(.break-cell) {
+  background: var(--color-cse-navy);
+  color: var(--color-white);
+}
+
+.break-cell {
+  background: var(--color-white);
+  color: var(--color-white);
+}
+
+.presentation-team-id {
+  font-weight: bold;
+  text-decoration: underline;
+  margin-bottom: 0.25rem;
   font-size: 1rem;
-  color: #555;
-  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+
+.presentation-team-id:hover {
+  opacity: 0.8;
 }
 
 .presentation-org {
   font-size: 0.9rem;
-  color: #777;
-  font-style: italic;
-  margin-bottom: 0.25rem;
+  line-height: 1.4;
 }
 
-.presentation-id {
-  font-size: 0.85rem;
-  color: #999;
+.presentation-break-content {
+  text-align: center;
+  color: var(--color-white);
+  font-weight: 500;
 }
 
-.presentation-break {
-  background: #fff8e1;
-  border-color: #ffc107;
-}
-
-.presentation-break-label {
-  font-weight: 600;
-  color: #f57c00;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
+/* Responsive Design */
 @media (max-width: 768px) {
-  .schedule-grid {
-    grid-template-columns: 1fr;
+  .schedule-table {
+    font-size: 0.85rem;
   }
 
-  .program-tabs {
-    flex-wrap: wrap;
+  .time-header,
+  .room-header,
+  .track-header,
+  .category-header,
+  .time-cell,
+  .presentation-cell {
+    padding: 0.5rem;
+  }
+
+  .schedule-title {
+    font-size: 1.5rem;
   }
 }
 

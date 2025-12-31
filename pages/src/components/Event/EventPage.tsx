@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchEvent, type EventData } from '../../services/api';
 import { ScheduleTable } from './ScheduleTable';
-import { WinnersSection } from './WinnersSection';
 import { renderMarkdown } from './markdown';
 import './EventPage.css';
 
@@ -64,54 +63,76 @@ export const EventPage = () => {
 
   return (
     <div className="event-container">
-      {/* Basic Info Section */}
-      <div className="event-header">
-        <h1 className="event-name">{eventData.event_name}</h1>
-        <div className="event-datetime">
-          <span className="event-date">{eventDate}</span>
-          <span className="event-time">{eventTime}</span>
+      {/* Main Event Title */}
+      <h1 className="event-main-title">{eventData.event_name}: {eventDate}</h1>
+
+      {/* Top Section - 2x2 Grid */}
+      <div className="event-top-section">
+        {/* Top Left Section */}
+        <div className="event-section event-section-top-left">
+          <h2 className="event-section-title">
+            {eventData.event_name}: {eventDate}
+          </h2>
+          {eventData.upper_bullet_points && eventData.upper_bullet_points.length > 0 && (
+            <div className="event-bullets-inline">
+              <ul>
+                {eventData.upper_bullet_points.map((bullet, index) => (
+                  <li
+                    key={`upper-${index}`}
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(bullet) }}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+          <button className="btn-register-now">REGISTER NOW!</button>
+        </div>
+
+        {/* Top Right Section */}
+        <div className="event-section event-section-top-right">
+          <h2 className="event-section-title">Preparing for the Event</h2>
+          <div className="event-bullets-inline">
+            <ul>
+              <li>Register ASAP to attend in person (no zoom this edition)</li>
+              <li>Review schedule, projects, and teams (below): check for updates!</li>
+              <li>You may click on a team (e.g. CSE-314) to open that team info.</li>
+              <li>Then, you may click the open/close icon to view project details.</li>
+            </ul>
+          </div>
+          <div className="event-buttons-group">
+            <button className="btn-for-attendees">FOR ATTENDEES</button>
+            <button className="btn-for-judges">FOR JUDGES</button>
+          </div>
+        </div>
+
+        {/* Bottom Left Section */}
+        <div className="event-section event-section-bottom-left">
+          <h2 className="event-section-title">Attend in Person: (EVENT MAP)</h2>
+          {eventData.lower_bullet_points && eventData.lower_bullet_points.length > 0 && (
+            <div className="event-bullets-inline">
+              <ul>
+                {eventData.lower_bullet_points.map((bullet, index) => (
+                  <li
+                    key={`lower-${index}`}
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(bullet) }}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Right Section - Map Placeholder */}
+        <div className="event-section event-section-bottom-right">
+          <div className="map-placeholder">
+            {/* Map image will go here */}
+          </div>
         </div>
       </div>
-
-      {/* Upper Bullet Points */}
-      {eventData.upper_bullet_points && eventData.upper_bullet_points.length > 0 && (
-        <div className="event-bullets event-bullets-upper">
-          <ul>
-            {eventData.upper_bullet_points.map((bullet, index) => (
-              <li
-                key={`upper-${index}`}
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(bullet) }}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* Schedule Section */}
       {eventData.programs && eventData.programs.length > 0 && (
         <ScheduleTable programs={eventData.programs} />
-      )}
-
-      {/* Lower Bullet Points */}
-      {eventData.lower_bullet_points && eventData.lower_bullet_points.length > 0 && (
-        <div className="event-bullets event-bullets-lower">
-          <ul>
-            {eventData.lower_bullet_points.map((bullet, index) => (
-              <li
-                key={`lower-${index}`}
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(bullet) }}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Winners Section */}
-      {(eventData.track_winners.length > 0 || eventData.special_awards.length > 0) && (
-        <WinnersSection
-          trackWinners={eventData.track_winners}
-          specialAwards={eventData.special_awards}
-        />
       )}
     </div>
   );
