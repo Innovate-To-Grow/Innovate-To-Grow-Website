@@ -44,6 +44,18 @@ class Event(models.Model):
         help_text="Lower bullet points in Markdown format (array of strings)."
     )
 
+    # Expo and Reception tables (stored as JSON arrays)
+    expo_table = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Expo table rows: [{time, room, description}]"
+    )
+    reception_table = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Reception table rows: [{time, room, description}]"
+    )
+
     # Publishing
     is_published = models.BooleanField(
         default=False,
@@ -108,6 +120,11 @@ class Track(models.Model):
     room = models.CharField(
         max_length=255,
         help_text="Room assignment for this track."
+    )
+    start_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Start time for presentations in this track."
     )
     order = models.PositiveIntegerField(
         default=0,

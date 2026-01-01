@@ -4,6 +4,8 @@ Views for Event Management System.
 Includes sync endpoint (POST) for Google Sheets and read endpoint (GET) for frontend.
 """
 
+import re
+from datetime import datetime
 from django.db import transaction
 from rest_framework import status
 from rest_framework.views import APIView
@@ -83,6 +85,124 @@ class EventSyncAPIView(APIView):
                         event.is_published = True
                         event.save()
 
+                # Process expo_table if provided
+                if 'expo_table' in validated_data:
+                    expo_data = validated_data['expo_table']
+                    # Extract room from header row (time="Room:")
+                    room = None
+                    valid_rows = []
+                    for row in expo_data:
+                        # Check if this is a header row (time="Room:")
+                        if row.get('time') == 'Room:':
+                            room = row.get('description', '')
+                        # Only include rows with both time and description (skip header rows)
+                        elif row.get('time') and row.get('time') != 'Room:' and row.get('description'):
+                            # Format time if it's a date string
+                            time_str = row.get('time', '')
+                            # If time is a date string, extract just the time portion with AM/PM
+                            if 'GMT' in time_str or ('T' in time_str and len(time_str) > 10):
+                                try:
+                                    # Try to parse various date formats
+                                    time_str_clean = time_str.replace(' GMT', '').split(' (')[0]
+                                    date_obj = datetime.fromisoformat(time_str_clean.replace('Z', '+00:00'))
+                                    # Format as "H:MM AM/PM" (12-hour format)
+                                    hour = date_obj.hour
+                                    minute = date_obj.minute
+                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    hour_12 = hour if hour <= 12 else hour - 12
+                                    if hour_12 == 0:
+                                        hour_12 = 12
+                                    time_str = f"{hour_12}:{minute:02d} {am_pm}"
+                                except Exception:
+                                    # If parsing fails, try to extract time from string and add AM/PM
+                                    time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                                    if time_match:
+                                        hour = int(time_match.group(1))
+                                        minute = int(time_match.group(2))
+                                        am_pm = 'AM' if hour < 12 else 'PM'
+                                        hour_12 = hour if hour <= 12 else hour - 12
+                                        if hour_12 == 0:
+                                            hour_12 = 12
+                                        time_str = f"{hour_12}:{minute:02d} {am_pm}"
+                            # If time doesn't have AM/PM, add it
+                            elif time_str and not re.search(r'\s*(AM|PM|am|pm)', time_str):
+                                time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                                if time_match:
+                                    hour = int(time_match.group(1))
+                                    minute = int(time_match.group(2))
+                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    hour_12 = hour if hour <= 12 else hour - 12
+                                    if hour_12 == 0:
+                                        hour_12 = 12
+                                    time_str = f"{hour_12}:{minute:02d} {am_pm}"
+                            
+                            valid_rows.append({
+                                'time': time_str,
+                                'room': room or '',
+                                'description': row.get('description', '')
+                            })
+                    event.expo_table = valid_rows
+                    event.save()
+
+                # Process reception_table if provided
+                if 'reception_table' in validated_data:
+                    reception_data = validated_data['reception_table']
+                    # Extract room from header row (time="Room:")
+                    room = None
+                    valid_rows = []
+                    for row in reception_data:
+                        # Check if this is a header row (time="Room:")
+                        if row.get('time') == 'Room:':
+                            room = row.get('description', '')
+                        # Only include rows with both time and description (skip header rows)
+                        elif row.get('time') and row.get('time') != 'Room:' and row.get('description'):
+                            # Format time if it's a date string
+                            time_str = row.get('time', '')
+                            # If time is a date string, extract just the time portion with AM/PM
+                            if 'GMT' in time_str or ('T' in time_str and len(time_str) > 10):
+                                try:
+                                    # Try to parse various date formats
+                                    time_str_clean = time_str.replace(' GMT', '').split(' (')[0]
+                                    date_obj = datetime.fromisoformat(time_str_clean.replace('Z', '+00:00'))
+                                    # Format as "H:MM AM/PM" (12-hour format)
+                                    hour = date_obj.hour
+                                    minute = date_obj.minute
+                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    hour_12 = hour if hour <= 12 else hour - 12
+                                    if hour_12 == 0:
+                                        hour_12 = 12
+                                    time_str = f"{hour_12}:{minute:02d} {am_pm}"
+                                except Exception:
+                                    # If parsing fails, try to extract time from string and add AM/PM
+                                    time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                                    if time_match:
+                                        hour = int(time_match.group(1))
+                                        minute = int(time_match.group(2))
+                                        am_pm = 'AM' if hour < 12 else 'PM'
+                                        hour_12 = hour if hour <= 12 else hour - 12
+                                        if hour_12 == 0:
+                                            hour_12 = 12
+                                        time_str = f"{hour_12}:{minute:02d} {am_pm}"
+                            # If time doesn't have AM/PM, add it
+                            elif time_str and not re.search(r'\s*(AM|PM|am|pm)', time_str):
+                                time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                                if time_match:
+                                    hour = int(time_match.group(1))
+                                    minute = int(time_match.group(2))
+                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    hour_12 = hour if hour <= 12 else hour - 12
+                                    if hour_12 == 0:
+                                        hour_12 = 12
+                                    time_str = f"{hour_12}:{minute:02d} {am_pm}"
+                            
+                            valid_rows.append({
+                                'time': time_str,
+                                'room': room or '',
+                                'description': row.get('description', '')
+                            })
+                    event.reception_table = valid_rows
+                    event.save()
+
                 # Process schedule (full replace)
                 if 'schedule' in validated_data:
                     # Delete all existing programs (cascades to tracks and presentations)
@@ -101,6 +221,7 @@ class EventSyncAPIView(APIView):
                                 program=program,
                                 track_name=track_data['track_name'],
                                 room=track_data['room'],
+                                start_time=track_data.get('start_time'),
                                 order=0,  # Could be enhanced to include order from payload
                             )
 

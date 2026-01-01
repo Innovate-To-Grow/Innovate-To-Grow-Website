@@ -185,6 +185,7 @@ export interface Presentation {
 export interface Track {
   track_name: string;
   room: string;
+  start_time: string | null;
   presentations: Presentation[];
 }
 
@@ -203,6 +204,18 @@ export interface SpecialAward {
   award_winner: string;
 }
 
+export interface ExpoRow {
+  time: string;
+  room: string;
+  description: string;
+}
+
+export interface ReceptionRow {
+  time: string;
+  room: string;
+  description: string;
+}
+
 export interface EventData {
   event_uuid: string;
   event_name: string;
@@ -210,6 +223,8 @@ export interface EventData {
   event_time: string; // ISO time string
   upper_bullet_points: string[]; // Markdown strings
   lower_bullet_points: string[]; // Markdown strings
+  expo_table: ExpoRow[];
+  reception_table: ReceptionRow[];
   is_published: boolean;
   programs: Program[];
   track_winners: TrackWinner[];

@@ -6,9 +6,25 @@ interface ScheduleTableProps {
 }
 
 // Time calculation utility - returns 12-hour format with AM/PM
-const calculateTime = (order: number, programName: string, baseHour = 13): string => {
+// Uses track start_time if available, otherwise falls back to calculated time
+const calculateTime = (order: number, track: Track, programName: string, baseHour = 13): string => {
   // CSE uses 20-minute intervals, others use 30-minute intervals
   const intervalMinutes = programName.includes('Software') || programName.includes('CSE') ? 20 : 30;
+  
+  // If track has a start_time, use it as the base
+  if (track.start_time) {
+    // Parse the start_time (format: "HH:mm:ss" or "HH:mm")
+    const [hours, minutes] = track.start_time.split(':').map(Number);
+    const baseMinutes = hours * 60 + minutes;
+    const totalMinutes = baseMinutes + (order - 1) * intervalMinutes;
+    const hour24 = Math.floor(totalMinutes / 60) % 24;
+    const mins = totalMinutes % 60;
+    const hour12 = hour24 > 12 ? hour24 - 12 : (hour24 === 0 ? 12 : hour24);
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${mins.toString().padStart(2, '0')} ${ampm}`;
+  }
+  
+  // Fallback to old calculation if no start_time
   const totalMinutes = (order - 1) * intervalMinutes;
   const hour24 = baseHour + Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -114,7 +130,10 @@ export const ScheduleTable = ({ programs }: ScheduleTableProps) => {
               
               <tbody>
                 {timeSlots.map((order) => {
-                  const timeString = calculateTime(order, program.program_name);
+                  // Use the first track's time calculation for the row header
+                  // In practice, all tracks in a program should have the same start_time
+                  const firstTrack = allTracks[0];
+                  const timeString = calculateTime(order, firstTrack, program.program_name);
                   return (
                     <tr key={order} className="schedule-row">
                       <td className="time-cell">{timeString}</td>

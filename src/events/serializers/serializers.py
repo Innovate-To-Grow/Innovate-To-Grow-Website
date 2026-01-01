@@ -35,6 +35,7 @@ class TrackSerializer(serializers.ModelSerializer):
         fields = [
             'track_name',
             'room',
+            'start_time',
             'presentations',
         ]
         read_only_fields = ['id']
@@ -96,6 +97,8 @@ class EventReadSerializer(serializers.ModelSerializer):
             'event_time',
             'upper_bullet_points',
             'lower_bullet_points',
+            'expo_table',
+            'reception_table',
             'is_published',
             'programs',
             'track_winners',
@@ -155,6 +158,7 @@ class TrackSyncSerializer(serializers.Serializer):
 
     track_name = serializers.CharField(max_length=255)
     room = serializers.CharField(max_length=255)
+    start_time = serializers.TimeField(required=False, allow_null=True)
     presentations = PresentationSyncSerializer(many=True)
 
 
@@ -177,6 +181,48 @@ class SpecialAwardSyncSerializer(serializers.Serializer):
 
     program_name = serializers.CharField(max_length=255)
     award_winner = serializers.CharField(max_length=255)
+
+
+class ExpoRowSerializer(serializers.Serializer):
+    """Serializer for expo table row from Google Sheets."""
+
+    time = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    room = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        """Validate that at least time and description are provided (room can be in header row)."""
+        # Skip rows that are completely empty
+        if not any(attrs.values()):
+            return attrs
+        # If any field is provided, ensure time and description are present
+        if attrs.get('time') or attrs.get('description'):
+            if not attrs.get('time'):
+                raise serializers.ValidationError({'time': 'Time is required when description is provided.'})
+            if not attrs.get('description'):
+                raise serializers.ValidationError({'description': 'Description is required when time is provided.'})
+        return attrs
+
+
+class ReceptionRowSerializer(serializers.Serializer):
+    """Serializer for reception table row from Google Sheets."""
+
+    time = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    room = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    description = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        """Validate that at least time and description are provided (room can be in header row)."""
+        # Skip rows that are completely empty
+        if not any(attrs.values()):
+            return attrs
+        # If any field is provided, ensure time and description are present
+        if attrs.get('time') or attrs.get('description'):
+            if not attrs.get('time'):
+                raise serializers.ValidationError({'time': 'Time is required when description is provided.'})
+            if not attrs.get('description'):
+                raise serializers.ValidationError({'description': 'Description is required when time is provided.'})
+        return attrs
 
 
 class BasicInfoSerializer(serializers.Serializer):
@@ -212,19 +258,23 @@ class EventSyncSerializer(serializers.Serializer):
     {
         "basic_info": {...},
         "schedule": [...],
+        "expo_table": [...],
+        "reception_table": [...],
         "winners": {...}
     }
     """
 
     basic_info = BasicInfoSerializer(required=False)
     schedule = ProgramSyncSerializer(many=True, required=False)
+    expo_table = ExpoRowSerializer(many=True, required=False)
+    reception_table = ReceptionRowSerializer(many=True, required=False)
     winners = WinnersSerializer(required=False)
 
     def validate(self, attrs):
         """Ensure at least one section is provided."""
-        if not any(key in attrs for key in ['basic_info', 'schedule', 'winners']):
+        if not any(key in attrs for key in ['basic_info', 'schedule', 'expo_table', 'reception_table', 'winners']):
             raise serializers.ValidationError(
-                "At least one of 'basic_info', 'schedule', or 'winners' must be provided."
+                "At least one of 'basic_info', 'schedule', 'expo_table', 'reception_table', or 'winners' must be provided."
             )
         return attrs
 

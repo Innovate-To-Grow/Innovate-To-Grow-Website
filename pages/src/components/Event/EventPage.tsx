@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { fetchEvent, type EventData } from '../../services/api';
 import { ScheduleTable } from './ScheduleTable';
+import { DataTable } from './DataTable';
+import { SimpleTable } from './SimpleTable';
 import { renderMarkdown } from './markdown';
 import './EventPage.css';
 
@@ -47,18 +49,12 @@ export const EventPage = () => {
     return null;
   }
 
-  // Format date and time
+  // Format date
   const eventDate = new Date(eventData.event_date).toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  });
-
-  const eventTime = new Date(`2000-01-01T${eventData.event_time}`).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
   });
 
   return (
@@ -130,9 +126,24 @@ export const EventPage = () => {
         </div>
       </div>
 
+      {/* Expo Table Section */}
+      {eventData.expo_table && eventData.expo_table.length > 0 && (
+        <SimpleTable title="EXPO: POSTERS AND DEMOS" rows={eventData.expo_table} />
+      )}
+
       {/* Schedule Section */}
       {eventData.programs && eventData.programs.length > 0 && (
         <ScheduleTable programs={eventData.programs} />
+      )}
+
+      {/* Reception Table Section */}
+      {eventData.reception_table && eventData.reception_table.length > 0 && (
+        <SimpleTable title="AWARDS & RECEPTION" rows={eventData.reception_table} />
+      )}
+
+      {/* Data Table Section */}
+      {eventData.programs && eventData.programs.length > 0 && (
+        <DataTable programs={eventData.programs} />
       )}
     </div>
   );
