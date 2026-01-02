@@ -9,13 +9,14 @@ import uuid
 
 from django.db import models
 
+from core.models.base import AuthoredModel, SoftDeleteModel, TimeStampedModel
 from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
 from .validators import validate_nested_slug
 
 
 # ============================== Page Model ==============================
 
-class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, models.Model):
+class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDeleteModel, AuthoredModel, TimeStampedModel):
     """Content page model composed of ordered PageComponents."""
 
     # Technical identifier (not primary key, just an extra UUID)

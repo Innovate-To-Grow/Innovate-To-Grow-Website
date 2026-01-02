@@ -1,7 +1,9 @@
 from django.db import models
 
+from core.models.base import TimeStampedModel
 
-class VerificationRequest(models.Model):
+
+class VerificationRequest(TimeStampedModel):
     """
     Verification challenge for email/SMS using either code or link.
     """
@@ -85,14 +87,6 @@ class VerificationRequest(models.Model):
         null=True,
         help_text="Timestamp when verification succeeded.",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this verification was created.",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When this verification was last updated.",
-    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -110,7 +104,7 @@ class VerificationRequest(models.Model):
         return f"{self.channel}:{self.method}:{self.target} ({self.purpose})"
 
 
-class NotificationLog(models.Model):
+class NotificationLog(TimeStampedModel):
     """
     Delivery log for outgoing notifications (email/SMS).
     """
@@ -164,14 +158,6 @@ class NotificationLog(models.Model):
         blank=True,
         null=True,
         help_text="When the notification was sent.",
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When the notification log was created.",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When the notification log was last updated.",
     )
 
     class Meta:

@@ -1,6 +1,8 @@
 from django.core.cache import cache
 from django.db import models
 
+from core.models.base import TimeStampedModel
+
 
 def default_footer_content():
     """
@@ -22,7 +24,7 @@ FOOTER_CACHE_KEY = "layout.footer_content.active"
 FOOTER_CACHE_TIMEOUT = 300  # seconds
 
 
-class FooterContent(models.Model):
+class FooterContent(TimeStampedModel):
     """
     Stores the entire footer layout as JSON so it can be edited in admin.
 
@@ -47,9 +49,6 @@ class FooterContent(models.Model):
         default=False,
         help_text="Only one footer can be active at a time",
     )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "pages_footercontent"

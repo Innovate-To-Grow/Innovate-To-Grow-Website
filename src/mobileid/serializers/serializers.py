@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Barcode, MobileID, Transaction
+from ..models import Barcode, MobileID, Transaction
 
 
 class BarcodeSerializer(serializers.ModelSerializer):

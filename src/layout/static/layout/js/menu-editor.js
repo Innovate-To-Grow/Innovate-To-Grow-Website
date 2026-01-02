@@ -5,7 +5,6 @@
 (function() {
   // CSS paths - use the same CSS as frontend
   const MENU_CSS = '/static/layout/css/main-menu.css';
-  const FRONTEND_CSS = ['/static/css/theme.css', '/static/css/custom.css'];
   const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
   
   // Get the hidden JSON input
@@ -372,7 +371,7 @@
       if (item.type === 'home') {
         href = '/';
       } else if (item.type === 'page' && item.page_slug) {
-        href = `/pages/${item.page_slug}`;
+        href = `/${item.page_slug}`;
       } else if (item.type === 'external' && item.url) {
         href = item.url;
         if (item.open_in_new_tab) {
@@ -384,44 +383,41 @@
       const hasChildren = item.children && item.children.length > 0;
       
       if (level === 0) {
-        // Top-level items
+        // Top-level items - use new menu-bar classes
         let childrenHtml = '';
         if (hasChildren) {
           childrenHtml = `
-            <div class="menu-sub-wrapper">
-              <ul class="menu-sub">
-                ${renderMenuItemsHtml(item.children, 1)}
-              </ul>
+            <div class="menu-dropdown is-open">
+              ${renderMenuItemsHtml(item.children, 1)}
             </div>
           `;
         }
         
         return `
-          <li class="menu-item${hasChildren ? ' has-children' : ''}">
-            <a href="${escapeAttr(href)}" class="menu-link"${targetAttr} onclick="return false;">
-              ${icon}${escapeHtml(item.title)}
+          <li class="menu-bar-item${hasChildren ? ' has-children is-open' : ''}">
+            <a href="${escapeAttr(href)}" class="menu-bar-link"${targetAttr} onclick="return false;">
+              ${icon}<span>${escapeHtml(item.title)}</span>
+              ${hasChildren ? '<i class="fa fa-angle-down menu-bar-arrow"></i>' : ''}
             </a>
             ${childrenHtml}
           </li>
         `;
       } else {
-        // Submenu items
+        // Submenu items - use new dropdown classes
         let childrenHtml = '';
         if (hasChildren) {
           childrenHtml = `
-            <div class="menu-sub-nested-wrapper">
-              <ul class="menu-sub menu-sub-nested">
-                ${renderMenuItemsHtml(item.children, level + 1)}
-              </ul>
+            <div class="menu-dropdown-nested">
+              ${renderMenuItemsHtml(item.children, level + 1)}
             </div>
           `;
         }
         
         return `
-          <li class="menu-sub-item${hasChildren ? ' has-children' : ''}">
-            <a href="${escapeAttr(href)}"${targetAttr} onclick="return false;">
-              ${icon}${escapeHtml(item.title)}
-              ${hasChildren ? '<span class="menu-arrow">›</span>' : ''}
+          <li class="menu-dropdown-item${hasChildren ? ' has-children' : ''}">
+            <a href="${escapeAttr(href)}" class="menu-dropdown-link"${targetAttr} onclick="return false;">
+              ${icon}<span>${escapeHtml(item.title)}</span>
+              ${hasChildren ? '<i class="fa fa-angle-right menu-dropdown-arrow"></i>' : ''}
             </a>
             ${childrenHtml}
           </li>
@@ -435,21 +431,54 @@
       return '<div style="color:#666;font-style:italic;padding:20px;text-align:center;">No menu items</div>';
     }
     
+    // Get current date for display
+    const date = new Date();
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    const currentDate = `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    
     return `
-      <nav class="menu-shell" aria-label="Main menu">
-        <div class="menu-inner">
-          <div class="menu-left">
-            <div class="menu-logo">
-              <a href="/" aria-label="Innovate to Grow">
-                <img src="/static/images/i2glogo.png" alt="Logo" onerror="this.style.display='none'">
-              </a>
+      <header class="site-header" role="banner">
+        <!-- Top blue bar -->
+        <div class="site-header-top">
+          <div class="site-header-container site-header-top-inner">
+            <a class="ucm-wordmark" href="#" onclick="return false;" aria-label="UC Merced">
+              <img src="/static/images/ucmlogo.png" alt="UC Merced" onerror="this.parentElement.style.display='none'">
+            </a>
+            
+            <a class="site-header-top-logo" href="#" onclick="return false;" aria-label="Innovate To Grow">
+              <img class="site-header-top-logo-full" src="/static/images/I2G-fullname-low.png" alt="Innovate To Grow" onerror="this.style.display='none'">
+            </a>
+            
+            <div class="site-header-top-links" aria-label="Quick links">
+              <a href="#" onclick="return false;">Directory</a>
+              <a href="#" onclick="return false;">Apply</a>
+              <a href="#" onclick="return false;">Give</a>
             </div>
-            <ul class="menu-list">
-              ${renderMenuItemsHtml(items, 0)}
-            </ul>
           </div>
         </div>
-      </nav>
+        
+        <!-- White menu bar -->
+        <div class="site-header-bottom">
+          <div class="site-header-container site-header-bottom-inner">
+            <div class="site-header-bottom-left">
+              <a class="site-header-badge" href="#" onclick="return false;" aria-label="Home">
+                <img src="/static/images/i2glogo.png" alt="Innovate To Grow" onerror="this.style.display='none'">
+              </a>
+              
+              <nav class="site-header-nav" aria-label="Main menu">
+                <ul class="menu-bar-list">
+                  ${renderMenuItemsHtml(items, 0)}
+                </ul>
+              </nav>
+            </div>
+            
+            <div class="site-header-date" aria-label="Current date">
+              ${currentDate}
+            </div>
+          </div>
+        </div>
+      </header>
     `;
   }
   
@@ -459,26 +488,62 @@
     try {
       const menuHtml = renderMenuHtml(menuItems);
       
-      // Load the exact same CSS files as frontend
-      const cssLinks = [
-        ...FRONTEND_CSS.map(href => `<link rel="stylesheet" href="${href}">`),
-        `<link rel="stylesheet" href="${MENU_CSS}">`
-      ].join('\n');
-      
-      // Only minimal overrides for preview context
-      const previewOverrides = `
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      // Inline CSS to ensure it works in the iframe
+      const inlineCSS = `
+        :root {
+          --header-navy: #003366;
+          --header-navy-dark: #0b1f3f;
+          --header-gold: #daa520;
+          --header-text: #003366;
+          --header-bg: #ffffff;
+          --dropdown-bg: #f5f5f5;
+          --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
-        /* Show submenus on hover in preview */
-        .menu-item:hover > .menu-sub-wrapper {
-          display: block;
-        }
-        .menu-sub-item.has-children:hover > .menu-sub-nested-wrapper {
-          display: block;
-        }
+        
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; }
+        
+        .site-header { position: relative; z-index: 1000; }
+        .site-header-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        
+        /* Top bar */
+        .site-header-top { background: var(--header-navy-dark); border-bottom: 4px solid var(--header-gold); }
+        .site-header-top-inner { height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+        .ucm-wordmark { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
+        .ucm-wordmark img { height: 32px; width: auto; display: block; }
+        .site-header-top-logo { display: flex; align-items: center; justify-content: center; text-decoration: none; flex: 1; }
+        .site-header-top-logo img { height: 36px; width: auto; display: block; }
+        .site-header-top-links { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
+        .site-header-top-links a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; }
+        .site-header-top-links a:hover { text-decoration: underline; }
+        
+        /* Bottom menu bar */
+        .site-header-bottom { background: var(--header-bg); border-bottom: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+        .site-header-bottom-inner { height: 47px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+        .site-header-bottom-left { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1; }
+        .site-header-badge { display: flex; align-items: center; justify-content: center; text-decoration: none; flex: 0 0 auto; }
+        .site-header-badge img { width: 38px; height: 38px; border-radius: 50%; display: block; object-fit: cover; border: 2px solid var(--header-gold); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+        .site-header-nav { flex: 1; display: flex; justify-content: flex-start; min-width: 0; }
+        .site-header-date { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: var(--header-text); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; opacity: 0.7; }
+        
+        /* Menu items */
+        .menu-bar-list { display: flex; align-items: center; list-style: none; margin: 0; padding: 0; gap: 28px; }
+        .menu-bar-item { position: relative; }
+        .menu-bar-link { display: inline-flex; align-items: center; gap: 5px; padding: 8px 0; color: var(--header-text); text-decoration: none; font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: 0.2px; white-space: nowrap; position: relative; }
+        .menu-bar-link::after { content: ''; position: absolute; bottom: 4px; left: 0; right: 0; height: 2px; background: var(--header-gold); transform: scaleX(0); transition: transform 0.25s ease; }
+        .menu-bar-link:hover::after, .menu-bar-item.is-open > .menu-bar-link::after { transform: scaleX(1); }
+        .menu-bar-arrow { font-size: 11px; opacity: 0.6; margin-left: 2px; }
+        
+        /* Dropdowns */
+        .menu-dropdown { position: absolute; top: 100%; left: 0; min-width: 220px; background: var(--dropdown-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 12px 0; margin-top: 8px; z-index: 1100; }
+        .menu-dropdown.is-open { display: block; }
+        .menu-dropdown-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+        .menu-dropdown-item { position: relative; }
+        .menu-dropdown-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--header-text); text-decoration: none; font-size: 14px; font-weight: 700; font-style: italic; white-space: nowrap; }
+        .menu-dropdown-link:hover { background: rgba(0, 51, 102, 0.06); padding-left: 24px; }
+        .menu-dropdown-arrow { margin-left: auto; color: #888; font-size: 11px; }
+        .menu-dropdown-nested { position: absolute; top: 0; left: 100%; min-width: 200px; background: var(--header-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 8px 0; z-index: 1101; display: none; }
+        .menu-dropdown-item.has-children:hover > .menu-dropdown-nested { display: block; }
       `;
       
       const fullHtml = `<!DOCTYPE html>
@@ -486,9 +551,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  ${cssLinks}
   <link rel="stylesheet" href="${FONT_AWESOME_CSS}">
-  <style>${previewOverrides}</style>
+  <style>${inlineCSS}</style>
 </head>
 <body>
   ${menuHtml}
@@ -499,6 +563,14 @@
       doc.open();
       doc.write(fullHtml);
       doc.close();
+      
+      // Adjust iframe height
+      setTimeout(() => {
+        try {
+          const height = Math.max(doc.body.scrollHeight, doc.body.offsetHeight, doc.documentElement.scrollHeight);
+          iframe.style.height = Math.max(height + 20, 200) + 'px';
+        } catch (e) {}
+      }, 150);
       
     } catch (err) {
       console.error('Preview error:', err);

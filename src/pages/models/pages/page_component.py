@@ -1,13 +1,15 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from core.models.base import OrderedModel, TimeStampedModel
+
 
 def default_config():
     """Return a mutable default config dict."""
     return {}
 
 
-class PageComponent(models.Model):
+class PageComponent(TimeStampedModel, OrderedModel):
     """
     Reusable, ordered content block that can belong to a Page or HomePage.
 
@@ -55,10 +57,6 @@ class PageComponent(models.Model):
         default=COMPONENT_TYPE_HTML,
         help_text="Type of component to render.",
     )
-    order = models.PositiveIntegerField(
-        default=0,
-        help_text="Display order (lower numbers render first).",
-    )
     html_content = models.TextField(
         blank=True,
         default="",
@@ -81,10 +79,6 @@ class PageComponent(models.Model):
         null=True,
         help_text="Structured config for non-HTML component types.",
     )
-
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     # ------------------------------ Validation ------------------------------
 

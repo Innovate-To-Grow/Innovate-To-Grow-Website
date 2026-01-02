@@ -3,12 +3,13 @@ import uuid
 from django.db import models
 from django.utils import timezone
 
+from core.models.base import TimeStampedModel
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 
 
-class RSAKeypair(models.Model):
+class RSAKeypair(TimeStampedModel):
     """
     Stores an RSA keypair for the site (PEM formatted).
     """
@@ -75,7 +76,6 @@ class RSAKeypair(models.Model):
         help_text="Whether this keypair is currently active.",
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
     rotated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

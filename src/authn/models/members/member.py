@@ -6,11 +6,12 @@ from django.contrib.auth.models import (
 )
 from django.db import models
 
+from core.models.base import TimeStampedModel
 from ..contact.contact_info import MemberContactInfo
 from .user_group import MemberGroup
 
 
-class Member(AbstractUser):
+class Member(AbstractUser, TimeStampedModel):
     # member uuid
     member_uuid = models.UUIDField(
         default=uuid.uuid4,
@@ -120,7 +121,7 @@ class Member(AbstractUser):
         return contact_info
 
 
-class MemberProfile(models.Model):
+class MemberProfile(TimeStampedModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 
@@ -143,9 +144,6 @@ class MemberProfile(models.Model):
         ),
         verbose_name="Profile Image (Base64 Encoded PNG)"
     )
-
-    # time snap
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.model_user.username} - User Profile"

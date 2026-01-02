@@ -6,6 +6,7 @@ import uuid
 
 from django.db import models
 
+from core.models.base import TimeStampedModel
 from .verification import VerificationRequest
 
 
@@ -17,7 +18,7 @@ def default_metadata() -> dict:
     return {}
 
 
-class Unsubscribe(models.Model):
+class Unsubscribe(TimeStampedModel):
     """
     Stores unsubscribe requests for email/SMS channels.
     """
@@ -52,17 +53,9 @@ class Unsubscribe(models.Model):
         editable=False,
         help_text="Token that can be used to confirm or revert the unsubscribe.",
     )
-    unsubscribed_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="Timestamp when the unsubscribe was recorded.",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="Timestamp when this record was last updated.",
-    )
 
     class Meta:
-        ordering = ["-unsubscribed_at"]
+        ordering = ["-created_at"]
         indexes = [
             models.Index(
                 fields=["channel", "target"],
