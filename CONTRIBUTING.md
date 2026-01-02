@@ -82,10 +82,46 @@ Follow these steps after cloning the repository:
 
 ---
 
+## Code Style & Linting
+
+This project uses automated code style checks in CI/CD. All pull requests must pass these checks before merging.
+
+### Automated CI/CD Checks
+On every push and pull request, GitHub Actions runs:
+- **Python (Backend):** Ruff linter and formatter check
+- **TypeScript (Frontend):** ESLint and TypeScript type check
+
+### Local Linting Setup
+
+**Option 1: Pre-commit hooks (recommended)**
+```bash
+pip install pre-commit
+pre-commit install
+# Now linting runs automatically before each commit
+```
+
+**Option 2: Manual linting**
+```bash
+# Backend (from project root)
+pip install ruff
+cd src
+ruff check .           # Check for issues
+ruff check . --fix     # Auto-fix issues
+ruff format .          # Format code
+
+# Frontend
+cd pages
+npm run lint           # Run ESLint
+npx tsc --noEmit       # Type check
+```
+
+---
+
 ## Coding Guidelines
 
 ### Backend (Django REST Framework)
 - Follow PEP 8 style and leverage type hints where possible.
+- Run `ruff check .` and `ruff format .` before committing.
 - Keep business logic in `services/` modules when it does not belong directly in a model or serializer.
 - Favor Django REST Framework serializers and viewsets/CBVs over ad-hoc responses.
 - When touching authentication, remember the custom `authn.Member` model (UUIDs, custom fields).
@@ -142,7 +178,8 @@ Please add or update automated tests when you:
 ## Pull Request Checklist
 - [ ] PR references related issue(s) and describes the change, motivation, and testing.
 - [ ] Code follows the guidelines above and is scoped to a single concern.
-- [ ] Backend: migrations added (if models changed) and `python manage.py test` passes.
+- [ ] **CI checks pass:** All GitHub Actions workflows (linting, type checks) succeed.
+- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test` passes.
 - [ ] Frontend: `npm run lint` and `npm run build` succeed locally.
 - [ ] API contracts updated in both backend serializers and frontend TypeScript types.
 - [ ] Screenshots or GIFs attached when UI changes are visible.

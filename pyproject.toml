@@ -1,0 +1,51 @@
+[tool.ruff]
+# Target Python version
+target-version = "py311"
+
+# Line length
+line-length = 120
+
+# Exclude directories
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "migrations",
+    "node_modules",
+    "dist",
+    "build",
+]
+
+[tool.ruff.lint]
+# Enable pycodestyle (E), pyflakes (F), isort (I), and more
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "DJ",     # flake8-django
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults (needed for Django)
+    "B904",   # Within an except clause, raise exceptions with raise ... from err
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "authn", "pages", "layout", "notify", "events", "mobileid", "sheets"]
+
+[tool.ruff.format]
+# Use double quotes
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
+
+# Unix-style line endings
+line-ending = "lf"
+
