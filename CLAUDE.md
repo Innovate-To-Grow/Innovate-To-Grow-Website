@@ -133,6 +133,28 @@ npm run build  # Includes tsc -b
 npm run preview
 ```
 
+### Code Style & Linting
+
+**CI/CD runs automated checks on every push/PR:**
+- Python: Ruff linter and formatter
+- TypeScript: ESLint and type checking
+
+```bash
+# Python linting (from project root or src/)
+ruff check src/           # Check for issues
+ruff check src/ --fix     # Auto-fix issues
+ruff format src/          # Format code
+
+# Frontend linting
+cd pages
+npm run lint              # ESLint
+npx tsc --noEmit          # Type check only
+
+# Pre-commit hooks (recommended)
+pip install pre-commit
+pre-commit install        # Auto-lint before commits
+```
+
 ## API URL Structure
 
 **Django URLs (core/urls.py):**

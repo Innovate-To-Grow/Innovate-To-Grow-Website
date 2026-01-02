@@ -10,6 +10,8 @@ A Menu contains a JSON structure of navigation items that can be:
 
 from django.db import models
 
+from core.models.base import OrderedModel, SoftDeleteModel, TimeStampedModel
+
 
 def default_menu_items():
     """
@@ -35,7 +37,7 @@ def default_menu_items():
     ]
 
 
-class Menu(models.Model):
+class Menu(TimeStampedModel, SoftDeleteModel):
     """
     Menu container model.
 
@@ -78,11 +80,6 @@ class Menu(models.Model):
         help_text="Legacy: Pages included in this menu."
     )
 
-    # ------------------------------ Timestamps ------------------------------
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     # ------------------------------ Methods ------------------------------
 
     def get_pages(self):
@@ -107,7 +104,7 @@ class Menu(models.Model):
         verbose_name_plural = "Menus"
 
 
-class MenuPageLink(models.Model):
+class MenuPageLink(TimeStampedModel, OrderedModel):
     """
     Through model for Menu-Page relationship.
 
@@ -123,10 +120,6 @@ class MenuPageLink(models.Model):
         'pages.Page',
         on_delete=models.CASCADE,
         help_text="The page being linked."
-    )
-    order = models.IntegerField(
-        default=0,
-        help_text="Display order (lower numbers appear first)."
     )
 
     # ------------------------------ Display Options ------------------------------
@@ -153,11 +146,6 @@ class MenuPageLink(models.Model):
         default=False,
         help_text="Whether to open the link in a new browser tab."
     )
-
-    # ------------------------------ Timestamps ------------------------------
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     # ------------------------------ Methods ------------------------------
 

@@ -25,12 +25,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # custom application
+    # applications
+    "core.apps.CoreConfig",
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
     "mobileid.apps.MobileIDConfig",
     "layout.apps.LayoutConfig",
-    "notify.apps.NotifyConfig",
+    "notify.apps.NotificationsConfig",
     "events.apps.EventsConfig",
 
     # third party application
@@ -93,7 +94,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/Los_Angeles"
 
 USE_I18N = True
 
@@ -120,57 +121,3 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom User Model
 AUTH_USER_MODEL = "authn.Member"
-
-# CKEditor 5 Configuration
-CKEDITOR_5_CONFIGS = {
-    'default': {
-        'toolbar': [
-            'heading', '|',
-            'bold', 'italic', 'underline', 'strikethrough', '|',
-            'link', 'blockQuote', 'code', 'codeBlock', '|',
-            'bulletedList', 'numberedList', 'todoList', '|',
-            'outdent', 'indent', '|',
-            'imageUpload', 'insertTable', 'mediaEmbed', '|',
-            'undo', 'redo', '|',
-            'sourceEditing',
-        ],
-    },
-    'extends': {
-        'toolbar': [
-            'heading', '|',
-            'bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript', '|',
-            'link', 'blockQuote', 'code', 'codeBlock', '|',
-            'bulletedList', 'numberedList', 'todoList', '|',
-            'outdent', 'indent', 'alignment', '|',
-            'imageUpload', 'insertTable', 'mediaEmbed', '|',
-            'fontColor', 'fontBackgroundColor', 'removeFormat', '|',
-            'undo', 'redo', '|',
-            'sourceEditing',
-        ],
-        'image': {
-            'toolbar': [
-                'imageTextAlternative', '|',
-                'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
-            ],
-        },
-        'table': {
-            'contentToolbar': ['tableColumn', 'tableRow', 'mergeTableCells'],
-        },
-        'heading': {
-            'options': [
-                {'model': 'paragraph', 'title': 'Paragraph', 'class': 'ck-heading_paragraph'},
-                {'model': 'heading1', 'view': 'h1', 'title': 'Heading 1', 'class': 'ck-heading_heading1'},
-                {'model': 'heading2', 'view': 'h2', 'title': 'Heading 2', 'class': 'ck-heading_heading2'},
-                {'model': 'heading3', 'view': 'h3', 'title': 'Heading 3', 'class': 'ck-heading_heading3'},
-            ],
-        },
-    },
-}
-
-# CKEditor 5 file upload settings
-CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
-CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "ck_editor_5_upload_file"
-
-# Events API Key for Google Sheets sync
-EVENTS_API_KEY = os.getenv('EVENTS_API_KEY', '')
-

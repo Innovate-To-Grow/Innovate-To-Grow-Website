@@ -4,10 +4,11 @@ Broadcast message model for pushing notifications to subscribers.
 
 from django.db import models
 
+from core.models.base import AuthoredModel, TimeStampedModel
 from .verification import VerificationRequest
 
 
-class BroadcastMessage(models.Model):
+class BroadcastMessage(TimeStampedModel, AuthoredModel):
     """
     Stores email/SMS campaign content that can be sent to subscribed contacts.
     """
@@ -74,14 +75,6 @@ class BroadcastMessage(models.Model):
         blank=True,
         null=True,
         help_text="Timestamp when sending completed.",
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this broadcast was created.",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When this broadcast was last updated.",
     )
 
     class Meta:

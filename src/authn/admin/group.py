@@ -31,3 +31,4 @@ class I2GMemberGroupAdmin(admin.ModelAdmin):
         self.message_user(request, 'Default I2G groups have been created.')
 
 
+

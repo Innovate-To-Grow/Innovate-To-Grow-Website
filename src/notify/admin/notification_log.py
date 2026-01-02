@@ -144,3 +144,4 @@ class NotificationLogAdmin(admin.ModelAdmin):
         self.message_user(request, f"Retried sending {count} notification(s).")
 
 
+

@@ -3,8 +3,7 @@
  * Handles the visual editing of footer content in Django admin
  */
 (function() {
-  // Frontend CSS paths
-  const FRONTEND_CSS = ['/static/css/theme.css', '/static/css/custom.css'];
+  // CSS paths
   const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
   
   // Get the hidden JSON input
@@ -319,39 +318,83 @@
       return '<div style="color:#666;font-style:italic;padding:40px;text-align:center;">No content</div>';
     }
 
+    // CTA buttons section
     const cta = (content.cta_buttons || []).map(btn => {
       const color = btn.style === 'gold' ? 'gold' : 'blue';
       return `<div class="sb-col hb__buttons-${color}"><a class="btn--invert-${color} hb__play" href="${escapeAttr(btn.href)}" onclick="return false;">${escapeHtml(btn.label)}</a></div>`;
     }).join('');
 
     const contact = content.contact_html ? `<div class="i2gHome">${content.contact_html}</div>` : '';
-    const ctaBlock = (cta || contact) ? `<div class="home-bottom-cta"><div class="container"><div class="sb-row home-cta-row">${cta}</div>${contact}</div></div>` : '';
+    const ctaBlock = (cta || contact) ? `<div class="sb-row home-cta-row">${cta}${contact}</div>` : '';
 
+    // Footer columns - using new structure matching Footer.tsx
     const columns = (content.columns || []).map((col, idx, arr) => {
-      const links = (col.links || []).map(link => `<li><a href="${escapeAttr(link.href)}" target="${escapeAttr(link.target || '_blank')}" rel="${escapeAttr(link.rel || 'noopener')}" onclick="return false;">${escapeHtml(link.label)}</a></li>`).join('');
-      const linkList = links ? `<ul>${links}</ul>` : '';
-      const body = col.body_html ? `<div>${col.body_html}</div>` : '';
+      const isAddressColumn = idx === arr.length - 1;
       
-      const social = (idx === arr.length - 1 && (content.social_links || []).length) ? `
+      // Links
+      const links = (col.links || []).map(link => 
+        `<li><a href="${escapeAttr(link.href)}" target="${escapeAttr(link.target || '_blank')}" rel="${escapeAttr(link.rel || 'noopener')}" onclick="return false;">${escapeHtml(link.label)}</a></li>`
+      ).join('');
+      const linkList = links ? `<ul>${links}</ul>` : '';
+      
+      // Body HTML
+      const body = col.body_html ? `<div class="footer-column__body">${col.body_html}</div>` : '';
+      
+      // Social icons (only in last column)
+      const social = (isAddressColumn && (content.social_links || []).length) ? `
         <div class="socialIcons">
-          <ul>
-            ${(content.social_links || []).map(s => `<li><a href="${escapeAttr(s.href)}" target="${escapeAttr(s.target || '_blank')}" rel="${escapeAttr(s.rel || 'noopener')}" aria-label="${escapeAttr(s.aria_label)}" onclick="return false;"><i class="${escapeAttr(s.icon_class)}"></i></a></li>`).join('')}
+          <ul class="fa-ul inline">
+            ${(content.social_links || []).map(s => 
+              `<li class="fa-li"><a href="${escapeAttr(s.href)}" target="${escapeAttr(s.target || '_blank')}" rel="${escapeAttr(s.rel || 'noopener')}" aria-label="${escapeAttr(s.aria_label)}" onclick="return false;"><i class="${escapeAttr(s.icon_class)}"></i></a></li>`
+            ).join('')}
           </ul>
         </div>
       ` : '';
       
       const title = col.title ? `<h2>${escapeHtml(col.title)}</h2>` : '';
-      const isLast = idx === arr.length - 1;
-      return `<div class="fColumn${isLast ? ' fAddress' : ''}">${title}${linkList}${body}${social}</div>`;
+      const columnClass = `footer-column${isAddressColumn ? ' footer-column--address' : ''}`;
+      
+      return `<div class="${columnClass}">${title}${linkList}${body}${social}</div>`;
     }).join('');
 
-    const columnBlock = columns ? `<div class="final-foot"><div class="container"><div class="footer-links">${columns}</div></div></div>` : '';
+    // Footer main section
+    const columnsBlock = columns ? `
+      <div class="footer-main">
+        <div class="footer-container">
+          <div class="footer-columns">
+            ${columns}
+          </div>
+        </div>
+      </div>
+    ` : '';
 
-    const footerLinks = (content.footer_links || []).map(l => `<li><a href="${escapeAttr(l.href)}" target="${escapeAttr(l.target || '_blank')}" rel="${escapeAttr(l.rel || 'noopener')}" onclick="return false;">${escapeHtml(l.label)}</a></li>`).join('');
+    // Footer bottom bar
+    const footerLinks = (content.footer_links || []).map(l => 
+      `<li><a href="${escapeAttr(l.href)}" target="${escapeAttr(l.target || '_blank')}" rel="${escapeAttr(l.rel || 'noopener')}" onclick="return false;">${escapeHtml(l.label)}</a></li>`
+    ).join('');
     const copyright = content.copyright ? `<li>${escapeHtml(content.copyright)}</li>` : '';
-    const copyBlock = (copyright || footerLinks) ? `<div class="copyright"><div class="container"><ul>${copyright}${footerLinks}</ul></div></div>` : '';
+    
+    const hasFooterLinks = (content.footer_links || []).length > 0;
+    const hasCopyright = Boolean(content.copyright);
+    const shouldShowFooterBottom = hasFooterLinks || hasCopyright;
+    
+    const footerBottomBlock = shouldShowFooterBottom ? `
+      <div class="footer-bottom">
+        <div class="footer-container">
+          <ul class="footer-meta">
+            ${copyright}${footerLinks}
+          </ul>
+        </div>
+      </div>
+    ` : '';
 
-    return `${ctaBlock}<div id="footer" class="clearfix site-footer" role="contentinfo">${columnBlock}${copyBlock}</div>`;
+    return `
+      ${ctaBlock}
+      <footer id="footer" class="site-footer" role="contentinfo">
+        ${columnsBlock}
+        ${footerBottomBlock}
+      </footer>
+    `;
   }
   
   function updatePreview() {
@@ -359,10 +402,45 @@
     
     try {
       const footerHtml = renderFooterHtml(footerData);
-      const cssLinks = FRONTEND_CSS.map(href => `<link rel="stylesheet" href="${href}">`).join('\n');
       
-      const previewStyles = `
-        body { margin: 0; padding: 0; background: #fff; }
+      // Inline CSS to ensure it works in the iframe
+      const inlineCSS = `
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #fff; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+        
+        .site-footer { background: #e5e6ea; color: #0b2653; width: 100%; margin-top: auto; }
+        .footer-main { padding: 48px 0 60px; }
+        .footer-container { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+        .footer-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px 56px; }
+        .footer-column h2 { font-size: 16px; margin: 0 0 18px; text-transform: uppercase; letter-spacing: 0.8px; color: #0b2653; }
+        .footer-column ul { list-style: none; padding: 0; margin: 0; }
+        .footer-column li + li { margin-top: 10px; }
+        .footer-column a { font-size: 14px; text-decoration: none; color: #0b2653; transition: color 0.2s ease; }
+        .footer-column a:hover { color: #04122d; text-decoration: underline; }
+        .footer-column__body { color: #0b2653; font-size: 14px; line-height: 1.6; }
+        .footer-column--address p { margin: 4px 0; color: #0b2653; }
+        
+        .socialIcons { margin-top: 20px; }
+        .socialIcons .fa-ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
+        .socialIcons .fa-li { position: static; margin: 0; padding: 0; }
+        .socialIcons a { width: 40px; height: 40px; border-radius: 50%; background: #0b2653; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; text-decoration: none; transition: transform 0.2s ease, background 0.2s ease; }
+        .socialIcons a:hover { background: #061432; transform: translateY(-2px); }
+        
+        .footer-bottom { background: #0b1f3f; border-top: 6px solid #d3a437; padding: 18px 0; }
+        .footer-meta { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 28px; color: #fff; }
+        .footer-meta li { font-size: 13px; color: #fff; }
+        .footer-meta a { color: inherit; text-decoration: none; font-weight: 500; }
+        .footer-meta a:hover { opacity: 0.75; }
+        
+        .home-cta-row { background: transparent; padding: 24px 0; }
+        .sb-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; width: 100%; max-width: 960px; margin: 0 auto; padding: 0 20px; }
+        .sb-col { display: flex; justify-content: center; }
+        .hb__play { display: inline-flex; align-items: center; justify-content: center; border-radius: 0; border: 2px solid currentColor; padding: 10px 26px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; transition: background 0.2s ease, color 0.2s ease; }
+        .btn--invert-gold { color: #936200; border-color: #d3a437; background: transparent; }
+        .btn--invert-gold:hover { background: #d3a437; color: #0b1f3f; }
+        .btn--invert-blue { color: #0b2653; border-color: #0b2653; background: transparent; }
+        .btn--invert-blue:hover { background: #0b2653; color: #fff; }
+        .i2gHome { font-size: 14px; line-height: 1.6; color: #0b2653; }
       `;
       
       const fullHtml = `<!DOCTYPE html>
@@ -370,11 +448,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  ${cssLinks}
   <link rel="stylesheet" href="${FONT_AWESOME_CSS}">
-  <style>${previewStyles}</style>
+  <style>${inlineCSS}</style>
 </head>
-<body class="html front not-logged-in no-sidebars page-node">
+<body>
   ${footerHtml}
 </body>
 </html>`;

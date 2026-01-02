@@ -1,7 +1,9 @@
 from django.db import models
 
+from core.models.base import TimeStampedModel
 
-class SEOFieldsMixin(models.Model):
+
+class SEOFieldsMixin(TimeStampedModel):
     """Reusable SEO and Open Graph fields."""
 
     meta_title = models.CharField(
@@ -48,7 +50,7 @@ class SEOFieldsMixin(models.Model):
         abstract = True
 
 
-class AnalyticsFieldsMixin(models.Model):
+class AnalyticsFieldsMixin(TimeStampedModel):
     """Reusable analytics and rendering metadata."""
 
     slug_depth = models.PositiveIntegerField(
@@ -74,15 +76,13 @@ class AnalyticsFieldsMixin(models.Model):
         abstract = True
 
 
-class PublishingFieldsMixin(models.Model):
+class PublishingFieldsMixin(TimeStampedModel):
     """Common publishing flags and timestamps."""
 
     published = models.BooleanField(
         default=False,
         help_text="Whether this page is visible to the public."
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True

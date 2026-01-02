@@ -1,7 +1,9 @@
 from django.db import models
 import uuid
 
-class Version(models.Model):
+from core.models.base import TimeStampedModel
+
+class Version(TimeStampedModel):
 
     pass
 

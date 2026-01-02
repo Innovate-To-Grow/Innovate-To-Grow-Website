@@ -1,7 +1,9 @@
 from django.db import models
 
+from core.models.base import SoftDeleteModel, TimeStampedModel
 
-class HomePage(models.Model):
+
+class HomePage(TimeStampedModel, SoftDeleteModel):
     """Home page model composed of ordered PageComponents (one version active)."""
 
     name = models.CharField(
@@ -12,9 +14,6 @@ class HomePage(models.Model):
         default=False,
         help_text="Only one home page can be active at a time"
     )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]

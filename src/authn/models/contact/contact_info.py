@@ -1,10 +1,10 @@
 from django.db import models
-from django.utils import timezone
 
-from ..phone_regions import PHONE_REGION_CHOICES
+from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
+from core.models.base import TimeStampedModel
 
 
-class ContactEmail(models.Model):
+class ContactEmail(TimeStampedModel):
     # contact email
     email_address = models.EmailField(
         unique=True,
@@ -42,18 +42,6 @@ class ContactEmail(models.Model):
         verbose_name="Verified"
     )
 
-    # time stamps
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this email was added",
-        verbose_name="Created At"
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When this email was last updated",
-        verbose_name="Updated At"
-    )
-
     class Meta:
         verbose_name = "Contact Email"
         verbose_name_plural = "Contact Emails"
@@ -79,7 +67,7 @@ class ContactEmail(models.Model):
         return str_contact_email
 
 
-class ContactPhone(models.Model):
+class ContactPhone(TimeStampedModel):
     # contact phone number
     phone_number = models.CharField(
         max_length=20,
@@ -99,18 +87,6 @@ class ContactPhone(models.Model):
         default=False,
         help_text="Whether the phone number is subscribed to communications",
         verbose_name="Subscribed"
-    )
-
-    # time stamps
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this phone number was added",
-        verbose_name="Created At"
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When this phone number was last updated",
-        verbose_name="Updated At"
     )
 
     class Meta:
@@ -153,7 +129,7 @@ class ContactPhone(models.Model):
         return region_dict.get(self.region, self.region)
 
 
-class MemberContactInfo(models.Model):
+class MemberContactInfo(TimeStampedModel):
     # foreign key link to user
     model_user = models.ForeignKey(
         'authn.Member',
@@ -179,18 +155,6 @@ class MemberContactInfo(models.Model):
         related_name='member_contact_infos',
         help_text="Contact phone number",
         verbose_name="Contact Phone"
-    )
-
-    # time stamps
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this contact information was created",
-        verbose_name="Created At"
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When this contact information was last updated",
-        verbose_name="Updated At"
     )
 
     class Meta:

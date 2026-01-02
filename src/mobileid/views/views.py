@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions
 
-from .models import Barcode, MobileID, Transaction
-from .serializers import BarcodeSerializer, MobileIDSerializer, TransactionSerializer
+from ..models import Barcode, MobileID, Transaction
+from ..serializers import BarcodeSerializer, MobileIDSerializer, TransactionSerializer
 
 
 class BarcodeViewSet(viewsets.ModelViewSet):
