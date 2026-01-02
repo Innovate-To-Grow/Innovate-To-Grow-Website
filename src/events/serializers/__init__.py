@@ -10,6 +10,13 @@ from .serializers import (
     SpecialAwardSerializer,
     EventReadSerializer,
     EventSyncSerializer,
+    PresentationSyncSerializer,
+    TrackSyncSerializer,
+    ProgramSyncSerializer,
+    ExpoRowSerializer,
+    ReceptionRowSerializer,
+    BasicInfoSerializer,
+    WinnersSerializer,
 )
 
 __all__ = [
@@ -20,6 +27,13 @@ __all__ = [
     "SpecialAwardSerializer",
     "EventReadSerializer",
     "EventSyncSerializer",
+    "PresentationSyncSerializer",
+    "TrackSyncSerializer",
+    "ProgramSyncSerializer",
+    "ExpoRowSerializer",
+    "ReceptionRowSerializer",
+    "BasicInfoSerializer",
+    "WinnersSerializer",
 ]
 
 

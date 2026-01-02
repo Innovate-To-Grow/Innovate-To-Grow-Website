@@ -138,7 +138,7 @@ class EventSyncAPIView(APIView):
                             
                             valid_rows.append({
                                 'time': time_str,
-                                'room': room or '',
+                                'room': room or row.get('room', ''),
                                 'description': row.get('description', '')
                             })
                     event.expo_table = valid_rows
@@ -197,7 +197,7 @@ class EventSyncAPIView(APIView):
                             
                             valid_rows.append({
                                 'time': time_str,
-                                'room': room or '',
+                                'room': room or row.get('room', ''),
                                 'description': row.get('description', '')
                             })
                     event.reception_table = valid_rows
