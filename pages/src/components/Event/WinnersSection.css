@@ -1,0 +1,149 @@
+/* Color Scheme Variables (matching ScheduleTable) */
+:root {
+  --color-cap-gold: #D4A843;
+  --color-cee-teal: #A8D5D8;
+  --color-cse-navy: #000080;
+  --color-heading-teal: #2E8B8B;
+  --color-award-gold: #D4A843;
+  --color-light-grey: #E8E8E8;
+  --color-white: #FFFFFF;
+}
+
+.winners-section {
+  margin: 2rem 0;
+  padding: 2rem;
+}
+
+.winners-title {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: var(--color-heading-teal);
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Special Awards Section */
+.special-awards-section {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.special-award {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.special-award.award-engineering {
+  color: var(--color-award-gold);
+}
+
+.special-award.award-software {
+  color: var(--color-cse-navy);
+}
+
+/* Track Winners Section */
+.track-winners-section {
+  margin-top: 2rem;
+}
+
+.program-winners {
+  margin-bottom: 2.5rem;
+}
+
+.program-winners:last-child {
+  margin-bottom: 0;
+}
+
+.program-winners-title {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #333;
+  background: var(--color-light-grey);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+}
+
+.winners-table-container {
+  margin-top: 0.5rem;
+}
+
+.winners-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.winners-table thead th {
+  background: var(--color-light-grey);
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.track-header-cell {
+  background: var(--color-light-grey);
+}
+
+.track-header-cell-cee {
+  background: var(--color-light-grey);
+}
+
+.winners-table tbody td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.winner-category-cell {
+  font-weight: bold;
+  color: var(--color-white);
+}
+
+.winner-name-cell {
+  font-weight: 500;
+  color: var(--color-white);
+}
+
+/* Program-specific colors */
+.program-cap .winner-category-cell.winner-cell-cap,
+.program-cap .winner-name-cell.winner-cell-cap {
+  background: var(--color-cap-gold);
+}
+
+.program-cee .winner-category-cell.winner-cell-cee,
+.program-cee .winner-name-cell.winner-cell-cee,
+.program-cap .winner-category-cell.winner-cell-cee,
+.program-cap .winner-name-cell.winner-cell-cee {
+  background: var(--color-cee-teal);
+}
+
+.program-cse .winner-category-cell.winner-cell-cse,
+.program-cse .winner-name-cell.winner-cell-cse {
+  background: var(--color-cse-navy);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .winners-title {
+    font-size: 2rem;
+  }
+
+  .winners-table {
+    font-size: 0.9rem;
+  }
+
+  .winners-table thead th,
+  .winner-cell {
+    padding: 0.5rem;
+  }
+
+  .special-award {
+    font-size: 1.1rem;
+  }
+}
+
+

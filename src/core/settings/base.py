@@ -4,6 +4,7 @@ Django base settings for core project.
 This file contains settings that are common to all environments.
 """
 
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
     "mobileid.apps.MobileIDConfig",
     "layout.apps.LayoutConfig",
     "notify.apps.NotificationsConfig",
+    "events.apps.EventsConfig",
 
     # third party application
     "rest_framework",
