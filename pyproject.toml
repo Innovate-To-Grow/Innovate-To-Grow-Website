@@ -34,7 +34,19 @@ ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults (needed for Django)
     "B904",   # Within an except clause, raise exceptions with raise ... from err
+    "DJ001",  # Avoid null=True on string fields - existing codebase pattern
+    "DJ012",  # Model ordering style - keep existing code style
+    "DJ007",  # Do not use __all__ with ModelForm - keep existing pattern
+    "F403",   # Star imports - used in Django settings (from .base import *)
+    "F405",   # Names from star imports - used in Django settings
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow unused imports in __init__.py for Django admin autodiscovery
+"__init__.py" = ["F401"]
+# Allow unused variables in tests (test fixtures)
+"test_*.py" = ["F841"]
+"tests.py" = ["F841"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["core", "authn", "pages", "layout", "notify", "events", "mobileid", "sheets"]

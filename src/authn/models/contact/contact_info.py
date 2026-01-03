@@ -6,50 +6,42 @@ from core.models.base import TimeStampedModel
 
 class ContactEmail(TimeStampedModel):
     # contact email
-    email_address = models.EmailField(
-        unique=True,
-        help_text="Email address for contact",
-        verbose_name="Email Address"
-    )
+    email_address = models.EmailField(unique=True, help_text="Email address for contact", verbose_name="Email Address")
 
     # contact email type
     EMAIL_TYPE_CHOICES = [
-        ('primary', 'Primary'),
-        ('secondary', 'Secondary'),
-        ('other', 'Other'),
+        ("primary", "Primary"),
+        ("secondary", "Secondary"),
+        ("other", "Other"),
     ]
 
     # contact email type
     email_type = models.CharField(
         max_length=255,
         choices=EMAIL_TYPE_CHOICES,
-        default='primary',
+        default="primary",
         help_text="Type of email address",
-        verbose_name="Email Type"
+        verbose_name="Email Type",
     )
 
     # subscribe
     subscribe = models.BooleanField(
-        default=False,
-        help_text="Whether the email is subscribed to communications",
-        verbose_name="Subscribed"
+        default=False, help_text="Whether the email is subscribed to communications", verbose_name="Subscribed"
     )
 
     # verified
     verified = models.BooleanField(
-        default=False,
-        help_text="Whether the email address has been verified",
-        verbose_name="Verified"
+        default=False, help_text="Whether the email address has been verified", verbose_name="Verified"
     )
 
     class Meta:
         verbose_name = "Contact Email"
         verbose_name_plural = "Contact Emails"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['email_address']),
-            models.Index(fields=['email_type']),
-            models.Index(fields=['verified']),
+            models.Index(fields=["email_address"]),
+            models.Index(fields=["email_type"]),
+            models.Index(fields=["verified"]),
         ]
 
     def __str__(self):
@@ -69,34 +61,24 @@ class ContactEmail(TimeStampedModel):
 
 class ContactPhone(TimeStampedModel):
     # contact phone number
-    phone_number = models.CharField(
-        max_length=20,
-        unique=True,
-        help_text="Contact Phone Number (e.g. +1234567890)"
-    )
+    phone_number = models.CharField(max_length=20, unique=True, help_text="Contact Phone Number (e.g. +1234567890)")
 
     # contact phone region
-    region = models.CharField(
-        max_length=20,
-        choices=PHONE_REGION_CHOICES,
-        help_text="Region of the phone number"
-    )
+    region = models.CharField(max_length=20, choices=PHONE_REGION_CHOICES, help_text="Region of the phone number")
 
     # subscribe
     subscribe = models.BooleanField(
-        default=False,
-        help_text="Whether the phone number is subscribed to communications",
-        verbose_name="Subscribed"
+        default=False, help_text="Whether the phone number is subscribed to communications", verbose_name="Subscribed"
     )
 
     class Meta:
         verbose_name = "Contact Phone"
         verbose_name_plural = "Contact Phones"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['phone_number']),
-            models.Index(fields=['region']),
-            models.Index(fields=['subscribe']),
+            models.Index(fields=["phone_number"]),
+            models.Index(fields=["region"]),
+            models.Index(fields=["subscribe"]),
         ]
 
     def __str__(self):
@@ -117,7 +99,7 @@ class ContactPhone(TimeStampedModel):
         Extracts the numeric country code from region (handles '1-US', '1-CA' format).
         """
         # Extract numeric country code (handle '1-US', '1-CA' format)
-        country_code = self.region.split('-')[0] if '-' in self.region else self.region
+        country_code = self.region.split("-")[0] if "-" in self.region else self.region
         return f"+{country_code}{self.phone_number}"
 
     # get region display name
@@ -132,41 +114,41 @@ class ContactPhone(TimeStampedModel):
 class MemberContactInfo(TimeStampedModel):
     # foreign key link to user
     model_user = models.ForeignKey(
-        'authn.Member',
+        "authn.Member",
         on_delete=models.CASCADE,
-        related_name='contact_infos',
+        related_name="contact_infos",
         help_text="Member this contact information belongs to",
-        verbose_name="Member"
+        verbose_name="Member",
     )
 
     # contact email
     contact_email = models.ForeignKey(
         ContactEmail,
         on_delete=models.CASCADE,
-        related_name='member_contact_infos',
+        related_name="member_contact_infos",
         help_text="Contact email address",
-        verbose_name="Contact Email"
+        verbose_name="Contact Email",
     )
 
     # contact phone
     contact_phone = models.ForeignKey(
         ContactPhone,
         on_delete=models.CASCADE,
-        related_name='member_contact_infos',
+        related_name="member_contact_infos",
         help_text="Contact phone number",
-        verbose_name="Contact Phone"
+        verbose_name="Contact Phone",
     )
 
     class Meta:
         verbose_name = "Member Contact Info"
         verbose_name_plural = "Member Contact Infos"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         # Ensure one member can have multiple contact info entries
         # but prevent exact duplicates
-        unique_together = [['model_user', 'contact_email', 'contact_phone']]
+        unique_together = [["model_user", "contact_email", "contact_phone"]]
         indexes = [
-            models.Index(fields=['model_user']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=["model_user"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
@@ -196,4 +178,3 @@ class MemberContactInfo(TimeStampedModel):
         Check if the email address is verified.
         """
         return self.contact_email.verified
-

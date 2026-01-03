@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +9,7 @@ def send_email(
     subject: str,
     body: str,
     provider: str | None = None,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Send an email via the configured provider.
 
@@ -33,7 +32,7 @@ def send_sms(
     to_number: str,
     message: str,
     provider: str | None = None,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Send an SMS via the configured provider.
 
@@ -49,4 +48,3 @@ def send_sms(
     # Placeholder for real provider integration
     logger.info("[sms][%s] to=%s message=%s (stub)", provider_name, to_number, message)
     return True, provider_name
-

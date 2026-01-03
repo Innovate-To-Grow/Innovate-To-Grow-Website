@@ -172,4 +172,3 @@ class NotificationLog(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.channel}:{self.target} [{self.status}]"
-

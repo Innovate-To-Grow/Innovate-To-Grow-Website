@@ -3,7 +3,8 @@ Admin interface for Event models with inline editors.
 """
 
 from django.contrib import admin
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
+
+from ..models import Event, Presentation, Program, SpecialAward, Track, TrackWinner
 
 
 class PresentationInline(admin.TabularInline):
@@ -11,8 +12,8 @@ class PresentationInline(admin.TabularInline):
 
     model = Presentation
     extra = 0
-    fields = ('order', 'team_id', 'team_name', 'project_title', 'organization')
-    ordering = ('order', 'id')
+    fields = ("order", "team_id", "team_name", "project_title", "organization")
+    ordering = ("order", "id")
 
 
 class TrackInline(admin.TabularInline):
@@ -20,8 +21,8 @@ class TrackInline(admin.TabularInline):
 
     model = Track
     extra = 0
-    fields = ('track_name', 'room', 'order')
-    ordering = ('order', 'id')
+    fields = ("track_name", "room", "order")
+    ordering = ("order", "id")
     show_change_link = True
 
 
@@ -30,8 +31,8 @@ class ProgramInline(admin.StackedInline):
 
     model = Program
     extra = 0
-    fields = ('program_name', 'order')
-    ordering = ('order', 'id')
+    fields = ("program_name", "order")
+    ordering = ("order", "id")
     show_change_link = True
 
 
@@ -40,7 +41,7 @@ class TrackWinnerInline(admin.TabularInline):
 
     model = TrackWinner
     extra = 0
-    fields = ('track_name', 'winner_name')
+    fields = ("track_name", "winner_name")
 
 
 class SpecialAwardInline(admin.TabularInline):
@@ -48,7 +49,7 @@ class SpecialAwardInline(admin.TabularInline):
 
     model = SpecialAward
     extra = 0
-    fields = ('program_name', 'award_winner')
+    fields = ("program_name", "award_winner")
 
 
 @admin.register(Event)
@@ -61,21 +62,25 @@ class EventAdmin(admin.ModelAdmin):
         SpecialAwardInline,
     ]
 
-    list_display = ('event_name', 'event_date', 'event_time', 'is_published', 'updated_at')
-    list_filter = ('is_published', 'event_date', 'created_at')
-    search_fields = ('event_name',)
-    readonly_fields = ('event_uuid', 'created_at', 'updated_at')
+    list_display = ("event_name", "event_date", "event_time", "is_published", "updated_at")
+    list_filter = ("is_published", "event_date", "created_at")
+    search_fields = ("event_name",)
+    readonly_fields = ("event_uuid", "created_at", "updated_at")
 
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('event_uuid', 'event_name', 'event_date', 'event_time')
-        }),
-        ('Content', {
-            'fields': ('upper_bullet_points', 'lower_bullet_points'),
-        }),
-        ('Publishing', {
-            'fields': ('is_published', 'created_at', 'updated_at'),
-        }),
+        ("Basic Information", {"fields": ("event_uuid", "event_name", "event_date", "event_time")}),
+        (
+            "Content",
+            {
+                "fields": ("upper_bullet_points", "lower_bullet_points"),
+            },
+        ),
+        (
+            "Publishing",
+            {
+                "fields": ("is_published", "created_at", "updated_at"),
+            },
+        ),
     )
 
 
@@ -85,10 +90,10 @@ class TrackAdmin(admin.ModelAdmin):
 
     inlines = [PresentationInline]
 
-    list_display = ('track_name', 'program', 'room', 'order')
-    list_filter = ('program__event', 'program')
-    search_fields = ('track_name', 'room', 'program__program_name')
-    ordering = ('program__order', 'order', 'id')
+    list_display = ("track_name", "program", "room", "order")
+    list_filter = ("program__event", "program")
+    search_fields = ("track_name", "room", "program__program_name")
+    ordering = ("program__order", "order", "id")
 
 
 @admin.register(Program)
@@ -97,9 +102,7 @@ class ProgramAdmin(admin.ModelAdmin):
 
     inlines = [TrackInline]
 
-    list_display = ('program_name', 'event', 'order')
-    list_filter = ('event',)
-    search_fields = ('program_name', 'event__event_name')
-    ordering = ('event', 'order', 'id')
-
-
+    list_display = ("program_name", "event", "order")
+    list_filter = ("event",)
+    search_fields = ("program_name", "event__event_name")
+    ordering = ("event", "order", "id")

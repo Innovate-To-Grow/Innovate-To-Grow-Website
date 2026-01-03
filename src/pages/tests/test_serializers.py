@@ -1,8 +1,7 @@
 from django.test import TestCase
-from ..models import Page, PageComponent, Menu, MenuPageLink, HomePage
-from ..serializers import (
-    PageSerializer, MenuSerializer, HomePageSerializer
-)
+
+from ..models import HomePage, Menu, MenuPageLink, Page, PageComponent
+from ..serializers import HomePageSerializer, MenuSerializer, PageSerializer
 
 
 class PageSerializerTest(TestCase):
@@ -12,10 +11,10 @@ class PageSerializerTest(TestCase):
 
         serializer = PageSerializer(page)
         data = serializer.data
-        self.assertEqual(data['title'], "Test")
-        self.assertEqual(data['slug'], "test")
-        self.assertEqual(len(data['components']), 1)
-        self.assertEqual(data['components'][0]['html_content'], "<p>Body</p>")
+        self.assertEqual(data["title"], "Test")
+        self.assertEqual(data["slug"], "test")
+        self.assertEqual(len(data["components"]), 1)
+        self.assertEqual(data["components"][0]["html_content"], "<p>Body</p>")
 
 
 class MenuSerializerTest(TestCase):
@@ -23,13 +22,13 @@ class MenuSerializerTest(TestCase):
         menu = Menu.objects.create(name="main", display_name="Main")
         page = Page.objects.create(title="Home", slug="home")
         MenuPageLink.objects.create(menu=menu, page=page, order=1)
-        
+
         serializer = MenuSerializer(menu)
         data = serializer.data
-        self.assertEqual(data['name'], "main")
-        self.assertEqual(len(data['items']), 1)
-        self.assertEqual(data['items'][0]['title'], "Home")
-        self.assertEqual(data['items'][0]['url'], "/pages/home")
+        self.assertEqual(data["name"], "main")
+        self.assertEqual(len(data["items"]), 1)
+        self.assertEqual(data["items"][0]["title"], "Home")
+        self.assertEqual(data["items"][0]["url"], "/pages/home")
 
 
 class HomePageSerializerTest(TestCase):
@@ -39,6 +38,6 @@ class HomePageSerializerTest(TestCase):
 
         serializer = HomePageSerializer(hp)
         data = serializer.data
-        self.assertEqual(data['name'], "Home V1")
-        self.assertTrue(data['is_active'])
-        self.assertEqual(len(data['components']), 1)
+        self.assertEqual(data["name"], "Home V1")
+        self.assertTrue(data["is_active"])
+        self.assertEqual(len(data["components"]), 1)

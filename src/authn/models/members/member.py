@@ -7,29 +7,20 @@ from django.contrib.auth.models import (
 from django.db import models
 
 from core.models.base import TimeStampedModel
+
 from ..contact.contact_info import MemberContactInfo
 from .user_group import MemberGroup
 
 
 class Member(AbstractUser, TimeStampedModel):
     # member uuid
-    member_uuid = models.UUIDField(
-        default=uuid.uuid4,
-        editable=False,
-        unique=True,
-        help_text="Member UUID"
-    )
+    member_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, help_text="Member UUID")
 
     # add field for user models
-    middle_name = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="Middle Name"
-    )
+    middle_name = models.CharField(max_length=255, null=True, blank=True, help_text="Middle Name")
 
     # member account
-    contect_email = models.ForeignKey('authn.ContactEmail', on_delete=models.CASCADE, null=True, blank=True)
+    contect_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)
 
     # organization
     organization = models.CharField(
@@ -37,18 +28,14 @@ class Member(AbstractUser, TimeStampedModel):
         null=True,
         blank=True,
         help_text="Organization or company the member belongs to",
-        verbose_name="Organization"
+        verbose_name="Organization",
     )
 
     # user status
-    is_active_member = models.BooleanField(
-        default=True,
-        help_text="Designates whether this user is an active member."
-    )
+    is_active_member = models.BooleanField(default=True, help_text="Designates whether this user is an active member.")
 
     # assign to a group
     def assign_group(self, group_name: str):
-
         # handle group not found
         if group_name not in MemberGroup.GROUP_CHOICES:
             raise ValueError(f"Group '{group_name}' not found")
@@ -61,7 +48,6 @@ class Member(AbstractUser, TimeStampedModel):
 
     # remove user from a group
     def remove_from_group(self, group_name: str):
-
         # get group
         group = Group.objects.filter(name=group_name).first()
 
@@ -95,7 +81,7 @@ class Member(AbstractUser, TimeStampedModel):
         """
         Return a list of all group names the user belongs to.
         """
-        return list(self.groups.values_list('name', flat=True))
+        return list(self.groups.values_list("name", flat=True))
 
     # check if user has a specific role
     def has_role(self, role_name: str) -> bool:
@@ -126,23 +112,14 @@ class MemberProfile(TimeStampedModel):
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 
     # user display name
-    display_name = models.TextField(
-        null=True,
-        blank=True,
-        help_text=(
-            "User Display Name"
-        ),
-        verbose_name="Display Name"
-    )
+    display_name = models.TextField(null=True, blank=True, help_text=("User Display Name"), verbose_name="Display Name")
 
     # user profile image (base64 encoded png 128*128)
     profile_image = models.TextField(
         null=True,
         blank=True,
-        help_text=(
-            "User Profile Image, Base64 Encoded PNG 128*128"
-        ),
-        verbose_name="Profile Image (Base64 Encoded PNG)"
+        help_text=("User Profile Image, Base64 Encoded PNG 128*128"),
+        verbose_name="Profile Image (Base64 Encoded PNG)",
     )
 
     def __str__(self):
@@ -171,4 +148,3 @@ class MemberProfile(TimeStampedModel):
         For now, returns the base64 string or None.
         """
         return self.profile_image if self.profile_image else None
-

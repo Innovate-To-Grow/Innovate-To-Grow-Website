@@ -10,13 +10,16 @@ import uuid
 from django.db import models
 
 from core.models.base import AuthoredModel, SoftDeleteModel, TimeStampedModel
+
 from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
 from .validators import validate_nested_slug
 
-
 # ============================== Page Model ==============================
 
-class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDeleteModel, AuthoredModel, TimeStampedModel):
+
+class Page(
+    SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDeleteModel, AuthoredModel, TimeStampedModel
+):
     """Content page model composed of ordered PageComponents."""
 
     # Technical identifier (not primary key, just an extra UUID)
@@ -24,17 +27,13 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDele
 
     # ------------------------------ Basic Fields ------------------------------
 
-    title = models.CharField(
-        max_length=200,
-        help_text="Human readable title of the page."
-    )
+    title = models.CharField(max_length=200, help_text="Human readable title of the page.")
     slug = models.CharField(
         max_length=255,
         unique=True,
         validators=[validate_nested_slug],
         help_text=(
-            "User-defined slug. Supports nested paths, e.g. 'about/team'. "
-            "Do NOT include leading or trailing '/'."
+            "User-defined slug. Supports nested paths, e.g. 'about/team'. " "Do NOT include leading or trailing '/'."
         ),
     )
     # -------------------------- Utility Methods ----------------------------
@@ -44,7 +43,7 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDele
         Override save to automatically maintain some redundant fields.
         """
         # Keep slug_depth updated from slug (number of '/' characters)
-        self.slug_depth = self.slug.count('/')
+        self.slug_depth = self.slug.count("/")
 
         # Ensure meta_title has a default value
         if not self.meta_title:
@@ -57,7 +56,7 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDele
         Return the absolute URL path for this page.
         Returns a frontend-friendly path for Vue Router.
         """
-        return f'/pages/{self.slug}'
+        return f"/pages/{self.slug}"
 
     @property
     def ordered_components(self):
@@ -75,6 +74,6 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDele
         return f"{self.slug} - {self.title}"
 
     class Meta:
-        ordering = ['slug']
+        ordering = ["slug"]
         verbose_name = "Page"
         verbose_name_plural = "Pages"

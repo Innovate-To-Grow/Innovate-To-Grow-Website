@@ -106,8 +106,8 @@ class FormSubmissionCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Validate submission data against form field definitions."""
-        form = attrs['form']
-        data = attrs['data']
+        form = attrs["form"]
+        data = attrs["data"]
 
         # Use the form's built-in validation method
         errors = form.validate_submission_data(data)
@@ -118,23 +118,23 @@ class FormSubmissionCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create submission with metadata from request."""
-        request = self.context.get('request')
+        request = self.context.get("request")
 
         # Extract client IP
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip_address = x_forwarded_for.split(',')[0].strip()
+            ip_address = x_forwarded_for.split(",")[0].strip()
         else:
-            ip_address = request.META.get('REMOTE_ADDR')
+            ip_address = request.META.get("REMOTE_ADDR")
 
         # Create the submission
         submission = FormSubmission.objects.create(
-            form=validated_data['form'],
+            form=validated_data["form"],
             user=request.user if request.user.is_authenticated else None,
-            data=validated_data['data'],
+            data=validated_data["data"],
             ip_address=ip_address,
-            user_agent=request.META.get('HTTP_USER_AGENT', ''),
-            referrer=request.META.get('HTTP_REFERER', ''),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            referrer=request.META.get("HTTP_REFERER", ""),
         )
 
         # Increment form submission count
@@ -149,7 +149,7 @@ class FormSubmissionCreateSerializer(serializers.ModelSerializer):
 class FormSubmissionListSerializer(serializers.ModelSerializer):
     """Serializer for listing submissions (admin only)."""
 
-    form_name = serializers.CharField(source='form.name', read_only=True)
+    form_name = serializers.CharField(source="form.name", read_only=True)
     user_display = serializers.SerializerMethodField()
 
     class Meta:
@@ -165,7 +165,7 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
 
     def get_user_display(self, obj):
         """Return username or 'Anonymous'."""
-        return obj.user.username if obj.user else 'Anonymous'
+        return obj.user.username if obj.user else "Anonymous"
 
 
 # Re-export MenuSerializer to keep existing import paths working

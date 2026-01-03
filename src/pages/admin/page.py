@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .page_component import PageComponentForm
+
 from ..models import Page, PageComponent
+from .page_component import PageComponentForm
 
 
 class PageComponentInline(admin.StackedInline):
@@ -17,30 +18,34 @@ class PageComponentInline(admin.StackedInline):
 @admin.register(Page)
 class PageAdmin(admin.ModelAdmin):
     inlines = [PageComponentInline]
-    list_display = ('title', 'slug', 'published', 'view_count', 'updated_at')
-    list_filter = ('published', 'created_at')
-    search_fields = ('title', 'slug')
-    prepopulated_fields = {'slug': ('title',)}
-    readonly_fields = ('page_uuid', 'slug_depth', 'view_count', 'last_viewed_at', 'created_at', 'updated_at')
-    
+    list_display = ("title", "slug", "published", "view_count", "updated_at")
+    list_filter = ("published", "created_at")
+    search_fields = ("title", "slug")
+    prepopulated_fields = {"slug": ("title",)}
+    readonly_fields = ("page_uuid", "slug_depth", "view_count", "last_viewed_at", "created_at", "updated_at")
+
     fieldsets = (
-        ('Basic Information', {
-            'fields': ('title', 'slug', 'page_uuid')
-        }),
-        ('Rendering', {
-            'fields': ('template_name',),
-            'classes': ('extrapretty',)
-        }),
-        ('SEO & Metadata', {
-            'fields': ('meta_title', 'meta_description', 'meta_keywords', 
-                      'og_image', 'canonical_url', 'meta_robots'),
-            'classes': ('collapse',)
-        }),
-        ('Publishing', {
-            'fields': ('published', 'created_at', 'updated_at'),
-        }),
-        ('Statistics', {
-            'fields': ('view_count', 'last_viewed_at', 'slug_depth'),
-            'classes': ('collapse',)
-        }),
+        ("Basic Information", {"fields": ("title", "slug", "page_uuid")}),
+        ("Rendering", {"fields": ("template_name",), "classes": ("extrapretty",)}),
+        (
+            "SEO & Metadata",
+            {
+                "fields": (
+                    "meta_title",
+                    "meta_description",
+                    "meta_keywords",
+                    "og_image",
+                    "canonical_url",
+                    "meta_robots",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Publishing",
+            {
+                "fields": ("published", "created_at", "updated_at"),
+            },
+        ),
+        ("Statistics", {"fields": ("view_count", "last_viewed_at", "slug_depth"), "classes": ("collapse",)}),
     )

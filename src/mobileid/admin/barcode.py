@@ -23,4 +23,3 @@ class BarcodeAdmin(admin.ModelAdmin):
     @admin.display(description="Has Profile", boolean=True)
     def has_profile(self, obj):
         return obj.has_profile
-

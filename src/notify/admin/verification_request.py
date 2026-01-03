@@ -82,8 +82,7 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         colors = {"email": "#3498db", "sms": "#27ae60"}
         color = colors.get(obj.channel, "#7f8c8d")
         return format_html(
-            '<span style="background:{}; color:#fff; padding:2px 8px; '
-            'border-radius:4px; font-size:11px;">{}</span>',
+            '<span style="background:{}; color:#fff; padding:2px 8px; ' 'border-radius:4px; font-size:11px;">{}</span>',
             color,
             obj.get_channel_display(),
         )
@@ -93,8 +92,7 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         colors = {"code": "#9b59b6", "link": "#e67e22"}
         color = colors.get(obj.method, "#7f8c8d")
         return format_html(
-            '<span style="background:{}; color:#fff; padding:2px 8px; '
-            'border-radius:4px; font-size:11px;">{}</span>',
+            '<span style="background:{}; color:#fff; padding:2px 8px; ' 'border-radius:4px; font-size:11px;">{}</span>',
             color,
             obj.get_method_display(),
         )
@@ -109,8 +107,7 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         }
         color = colors.get(obj.status, "#7f8c8d")
         return format_html(
-            '<span style="background:{}; color:#fff; padding:2px 8px; '
-            'border-radius:4px; font-size:11px;">{}</span>',
+            '<span style="background:{}; color:#fff; padding:2px 8px; ' 'border-radius:4px; font-size:11px;">{}</span>',
             color,
             obj.get_status_display(),
         )
@@ -135,9 +132,7 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         delta = obj.expires_at - now
         minutes = int(delta.total_seconds() // 60)
         if minutes < 60:
-            return format_html(
-                '<span style="color:#27ae60;">{} min</span>', minutes
-            )
+            return format_html('<span style="color:#27ae60;">{} min</span>', minutes)
         hours = minutes // 60
         return format_html('<span style="color:#f39c12;">{} hr</span>', hours)
 
@@ -176,6 +171,3 @@ class VerificationRequestAdmin(admin.ModelAdmin):
     def reset_attempts(self, request, queryset):
         updated = queryset.update(attempts=0, status=VerificationRequest.STATUS_PENDING)
         self.message_user(request, f"{updated} verification(s) had attempts reset.")
-
-
-

@@ -103,4 +103,3 @@ class BroadcastMessageAdmin(admin.ModelAdmin):
                 _("No broadcasts were sent."),
                 level=messages.INFO,
             )
-

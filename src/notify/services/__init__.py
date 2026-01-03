@@ -23,4 +23,3 @@ __all__ = [
     "verify_code",
     "verify_link",
 ]
-

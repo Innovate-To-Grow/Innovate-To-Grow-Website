@@ -8,10 +8,7 @@ import re
 
 from django.core.exceptions import ValidationError
 
-
-_NESTED_SLUG_REGEX = re.compile(
-    r"^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?(?:/[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?)*$"
-)
+_NESTED_SLUG_REGEX = re.compile(r"^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?(?:/[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?)*$")
 
 
 def validate_nested_slug(value: str):
@@ -33,8 +30,6 @@ def validate_nested_slug(value: str):
         raise ValidationError("Slug cannot contain empty segments ('//').")
 
     if not _NESTED_SLUG_REGEX.match(value):
-        raise ValidationError(
-            "Slug may only contain lowercase letters, numbers, hyphens, and '/'."
-        )
+        raise ValidationError("Slug may only contain lowercase letters, numbers, hyphens, and '/'.")
 
     return value

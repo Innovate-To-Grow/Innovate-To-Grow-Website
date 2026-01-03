@@ -1,12 +1,12 @@
 import uuid
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from django.db import models
 from django.utils import timezone
 
 from core.models.base import TimeStampedModel
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend
 
 
 class RSAKeypair(TimeStampedModel):
@@ -28,15 +28,9 @@ class RSAKeypair(TimeStampedModel):
         help_text="label for this keypair.",
     )
 
-    public_key_pem = models.TextField(
-        blank=True,
-        help_text="Public key in PEM format."
-    )
+    public_key_pem = models.TextField(blank=True, help_text="Public key in PEM format.")
 
-    private_key_pem = models.TextField(
-        blank=True,
-        help_text="Private key in PEM format."
-    )
+    private_key_pem = models.TextField(blank=True, help_text="Private key in PEM format.")
 
     @classmethod
     def generate_keypair(cls, key_size: int = 2048):
@@ -48,18 +42,22 @@ class RSAKeypair(TimeStampedModel):
             key_size=key_size,
             backend=default_backend(),
         )
-        
+
         private_pem = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption(),
-        ).decode('utf-8')
-        
-        public_pem = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        ).decode('utf-8')
-        
+        ).decode("utf-8")
+
+        public_pem = (
+            private_key.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+            .decode("utf-8")
+        )
+
         return public_pem, private_pem
 
     def save(self, *args, **kwargs):
@@ -107,4 +105,3 @@ class RSAKeypair(TimeStampedModel):
         """
         self.is_active = False
         self.save(update_fields=["is_active"])
-

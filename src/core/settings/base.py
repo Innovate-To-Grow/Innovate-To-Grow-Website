@@ -4,15 +4,15 @@ Django base settings for core project.
 This file contains settings that are common to all environments.
 """
 
-import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load environment variables from .env file
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / ".env")
 
 
 # Application definition
@@ -24,7 +24,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # applications
     "core.apps.CoreConfig",
     "pages.apps.PagesConfig",
@@ -33,7 +32,6 @@ INSTALLED_APPS = [
     "layout.apps.LayoutConfig",
     "notify.apps.NotificationsConfig",
     "events.apps.EventsConfig",
-
     # third party application
     "rest_framework",
     "django_ckeditor_5",

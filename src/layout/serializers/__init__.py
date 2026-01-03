@@ -1,4 +1,4 @@
-from .serializers import MenuSerializer, FooterContentSerializer
+from .serializers import FooterContentSerializer, MenuSerializer
 
 __all__ = [
     "MenuSerializer",

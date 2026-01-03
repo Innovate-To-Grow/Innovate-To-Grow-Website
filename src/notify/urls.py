@@ -17,4 +17,3 @@ urlpatterns = [
     path("verify-link/<str:token>/", VerifyLinkAPIView.as_view(), name="verify-link"),
     path("send/", SendNotificationAPIView.as_view(), name="send-notification"),
 ]
-

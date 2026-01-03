@@ -61,6 +61,7 @@ export const DataTable = ({ programs }: DataTableProps) => {
 
   // Reset to page 1 when search term or entries per page changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [searchTerm, entriesPerPage]);
 

@@ -5,10 +5,11 @@ Includes both sync serializer (for Google Sheets POST) and read serializer (for 
 """
 
 from rest_framework import serializers
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
 
+from ..models import Event, Presentation, Program, SpecialAward, Track, TrackWinner
 
 # ==================== Nested Serializers (for read) ====================
+
 
 class PresentationSerializer(serializers.ModelSerializer):
     """Serializer for Presentation model."""
@@ -16,13 +17,13 @@ class PresentationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Presentation
         fields = [
-            'order',
-            'team_id',
-            'team_name',
-            'project_title',
-            'organization',
+            "order",
+            "team_id",
+            "team_name",
+            "project_title",
+            "organization",
         ]
-        read_only_fields = ['id']
+        read_only_fields = ["id"]
 
 
 class TrackSerializer(serializers.ModelSerializer):
@@ -33,12 +34,12 @@ class TrackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Track
         fields = [
-            'track_name',
-            'room',
-            'start_time',
-            'presentations',
+            "track_name",
+            "room",
+            "start_time",
+            "presentations",
         ]
-        read_only_fields = ['id']
+        read_only_fields = ["id"]
 
 
 class ProgramSerializer(serializers.ModelSerializer):
@@ -49,10 +50,10 @@ class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
         fields = [
-            'program_name',
-            'tracks',
+            "program_name",
+            "tracks",
         ]
-        read_only_fields = ['id']
+        read_only_fields = ["id"]
 
 
 class TrackWinnerSerializer(serializers.ModelSerializer):
@@ -61,10 +62,10 @@ class TrackWinnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrackWinner
         fields = [
-            'track_name',
-            'winner_name',
+            "track_name",
+            "winner_name",
         ]
-        read_only_fields = ['id']
+        read_only_fields = ["id"]
 
 
 class SpecialAwardSerializer(serializers.ModelSerializer):
@@ -73,13 +74,14 @@ class SpecialAwardSerializer(serializers.ModelSerializer):
     class Meta:
         model = SpecialAward
         fields = [
-            'program_name',
-            'award_winner',
+            "program_name",
+            "award_winner",
         ]
-        read_only_fields = ['id']
+        read_only_fields = ["id"]
 
 
 # ==================== Event Serializers ====================
+
 
 class EventReadSerializer(serializers.ModelSerializer):
     """Read-only serializer for frontend consumption."""
@@ -91,32 +93,33 @@ class EventReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'event_uuid',
-            'event_name',
-            'event_date',
-            'event_time',
-            'upper_bullet_points',
-            'lower_bullet_points',
-            'expo_table',
-            'reception_table',
-            'is_published',
-            'programs',
-            'track_winners',
-            'special_awards',
-            'created_at',
-            'updated_at',
+            "event_uuid",
+            "event_name",
+            "event_date",
+            "event_time",
+            "upper_bullet_points",
+            "lower_bullet_points",
+            "expo_table",
+            "reception_table",
+            "is_published",
+            "programs",
+            "track_winners",
+            "special_awards",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['event_uuid', 'created_at', 'updated_at']
+        read_only_fields = ["event_uuid", "created_at", "updated_at"]
 
 
 # ==================== Sync Serializers (for Google Sheets POST) ====================
 
+
 class PresentationSyncSerializer(serializers.Serializer):
     """
     Serializer for presentation data from Google Sheets.
-    
+
     Handles both regular presentations and 'Break' entries.
-    For Breaks (identified by project_title containing 'Break'), 
+    For Breaks (identified by project_title containing 'Break'),
     team_id and team_name are optional.
     """
 
@@ -132,24 +135,22 @@ class PresentationSyncSerializer(serializers.Serializer):
         For 'Break' entries, relax requirements for team_id and team_name.
         For regular presentations, ensure team_name is provided.
         """
-        project_title = attrs.get('project_title', '').strip().lower()
-        is_break = 'break' in project_title or (attrs.get('organization', '').strip().lower() == 'break')
-        
+        project_title = attrs.get("project_title", "").strip().lower()
+        is_break = "break" in project_title or (attrs.get("organization", "").strip().lower() == "break")
+
         # Order is always required
-        if 'order' not in attrs:
-            raise serializers.ValidationError({'order': 'This field is required.'})
-        
+        if "order" not in attrs:
+            raise serializers.ValidationError({"order": "This field is required."})
+
         # For breaks, team_name and team_id are optional
         if is_break:
             return attrs
-        
+
         # For regular presentations, team_name is required
-        team_name = attrs.get('team_name', '').strip() if attrs.get('team_name') else ''
+        team_name = attrs.get("team_name", "").strip() if attrs.get("team_name") else ""
         if not team_name:
-            raise serializers.ValidationError({
-                'team_name': 'This field is required for non-break presentations.'
-            })
-        
+            raise serializers.ValidationError({"team_name": "This field is required for non-break presentations."})
+
         return attrs
 
 
@@ -196,11 +197,11 @@ class ExpoRowSerializer(serializers.Serializer):
         if not any(attrs.values()):
             return attrs
         # If any field is provided, ensure time and description are present
-        if attrs.get('time') or attrs.get('description'):
-            if not attrs.get('time'):
-                raise serializers.ValidationError({'time': 'Time is required when description is provided.'})
-            if not attrs.get('description'):
-                raise serializers.ValidationError({'description': 'Description is required when time is provided.'})
+        if attrs.get("time") or attrs.get("description"):
+            if not attrs.get("time"):
+                raise serializers.ValidationError({"time": "Time is required when description is provided."})
+            if not attrs.get("description"):
+                raise serializers.ValidationError({"description": "Description is required when time is provided."})
         return attrs
 
 
@@ -217,11 +218,11 @@ class ReceptionRowSerializer(serializers.Serializer):
         if not any(attrs.values()):
             return attrs
         # If any field is provided, ensure time and description are present
-        if attrs.get('time') or attrs.get('description'):
-            if not attrs.get('time'):
-                raise serializers.ValidationError({'time': 'Time is required when description is provided.'})
-            if not attrs.get('description'):
-                raise serializers.ValidationError({'description': 'Description is required when time is provided.'})
+        if attrs.get("time") or attrs.get("description"):
+            if not attrs.get("time"):
+                raise serializers.ValidationError({"time": "Time is required when description is provided."})
+            if not attrs.get("description"):
+                raise serializers.ValidationError({"description": "Description is required when time is provided."})
         return attrs
 
 
@@ -231,16 +232,8 @@ class BasicInfoSerializer(serializers.Serializer):
     event_name = serializers.CharField(max_length=255)
     event_date = serializers.DateField()
     event_time = serializers.TimeField()
-    upper_bullet_points = serializers.ListField(
-        child=serializers.CharField(),
-        allow_empty=True,
-        required=False
-    )
-    lower_bullet_points = serializers.ListField(
-        child=serializers.CharField(),
-        allow_empty=True,
-        required=False
-    )
+    upper_bullet_points = serializers.ListField(child=serializers.CharField(), allow_empty=True, required=False)
+    lower_bullet_points = serializers.ListField(child=serializers.CharField(), allow_empty=True, required=False)
 
 
 class WinnersSerializer(serializers.Serializer):
@@ -272,9 +265,8 @@ class EventSyncSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         """Ensure at least one section is provided."""
-        if not any(key in attrs for key in ['basic_info', 'schedule', 'expo_table', 'reception_table', 'winners']):
+        if not any(key in attrs for key in ["basic_info", "schedule", "expo_table", "reception_table", "winners"]):
             raise serializers.ValidationError(
                 "At least one of 'basic_info', 'schedule', 'expo_table', 'reception_table', or 'winners' must be provided."
             )
         return attrs
-

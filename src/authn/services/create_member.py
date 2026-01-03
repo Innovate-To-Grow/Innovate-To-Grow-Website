@@ -1,28 +1,24 @@
-from ..models import *
 from typing import (
-    List,
-    Optional,
     Any,
-    Dict,
 )
+
 from django.db import transaction
 
-class CreateMemberService:
+from ..models import *
 
+
+class CreateMemberService:
     @staticmethod
     # database transaction decorator (disable for development)
     @transaction.atomic
     def create_member(
-            # field for user
-            username: str,
-            password: str,
-
-            first_name: str,
-            last_name: str,
-            # field for
-
-
-    ) -> Dict[str, Any]:
+        # field for user
+        username: str,
+        password: str,
+        first_name: str,
+        last_name: str,
+        # field for
+    ) -> dict[str, Any]:
         """
         create a new member
 
@@ -31,7 +27,5 @@ class CreateMemberService:
 
         :return:
         """
-
-
 
         pass

@@ -5,6 +5,7 @@ Broadcast message model for pushing notifications to subscribers.
 from django.db import models
 
 from core.models.base import AuthoredModel, TimeStampedModel
+
 from .verification import VerificationRequest
 
 
@@ -101,4 +102,3 @@ class BroadcastMessage(TimeStampedModel, AuthoredModel):
             self.STATUS_FAILED,
             self.STATUS_PARTIAL,
         }
-

@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .page_component import PageComponentForm
+
 from ..models import HomePage, PageComponent
+from .page_component import PageComponentForm
 
 
 class HomePageComponentInline(admin.StackedInline):
@@ -17,7 +18,7 @@ class HomePageComponentInline(admin.StackedInline):
 @admin.register(HomePage)
 class HomePageAdmin(admin.ModelAdmin):
     inlines = [HomePageComponentInline]
-    list_display = ('name', 'is_active', 'created_at', 'updated_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name',)
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ("name", "is_active", "created_at", "updated_at")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("name",)
+    readonly_fields = ("created_at", "updated_at")

@@ -13,4 +13,3 @@ class MobileIDAdmin(admin.ModelAdmin):
     autocomplete_fields = ["model_user", "user_barcode"]
 
     fieldsets = ((None, {"fields": ("model_user", "user_barcode", "user_mobile_id_server")}),)
-

@@ -15,11 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
-from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
+
 from pages.views import PreviewPopupView
+
 from .views import HealthCheckView
 
 # Customize Django Admin
@@ -28,34 +30,24 @@ admin.site.site_title = "I2G Admin"
 admin.site.index_title = "Welcome to I2G Admin"
 
 urlpatterns = [
-
     # health check endpoint
     path("health/", HealthCheckView.as_view(), name="health-check"),
-
     # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
-
     # admin site
     path("admin/", admin.site.urls),
-
     # pages
     path("pages/", include("pages.urls")),
-
     # layout (menus, footer)
     path("layout/", include("layout.urls")),
-
     # notify (verification + notifications)
     path("notify/", include("notify.urls")),
-
     # mobile id domain
     path("api/mobileid/", include("mobileid.urls")),
-
     # events (proxy removes /api prefix)
     path("events/", include("events.urls")),
-
     # ckeditor 5
-    path('ckeditor5/', include('django_ckeditor_5.urls')),
-
+    path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn
     path("authn/", include("authn.urls")),
 ]

@@ -47,9 +47,7 @@ class OAuthCredential(TimeStampedModel):
     picture_url = models.URLField(blank=True, default="")
 
     # Scopes granted by the user (store normalized space-separated string or JSON)
-    scopes = models.TextField(
-        help_text="Granted scopes (space-separated or JSON)."
-    )
+    scopes = models.TextField(help_text="Granted scopes (space-separated or JSON).")
 
     # Token endpoint (Google default), keep for portability
     token_uri = models.URLField(

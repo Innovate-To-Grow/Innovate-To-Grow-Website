@@ -2,11 +2,9 @@
 Events app views export.
 """
 
-from .views import EventSyncAPIView, EventRetrieveAPIView
+from .views import EventRetrieveAPIView, EventSyncAPIView
 
 __all__ = [
     "EventSyncAPIView",
     "EventRetrieveAPIView",
 ]
-
-

@@ -1,8 +1,8 @@
 import random
 import string
 import uuid
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable, Optional, Tuple
 
 from django.db import transaction
 from django.db.models import Q
@@ -80,8 +80,8 @@ def issue_link(
     expires_in_minutes: int = 60,
     max_attempts: int = 5,
     rate_limit_per_hour: int = 5,
-    base_url: Optional[str] = None,
-) -> Tuple[VerificationRequest, str]:
+    base_url: str | None = None,
+) -> tuple[VerificationRequest, str]:
     """
     Create and send a verification link token. Returns the verification record and the URL.
     """
@@ -217,7 +217,9 @@ def send_notification(
         error_message = ""
 
         if channel == VerificationRequest.CHANNEL_EMAIL:
-            success, provider_name = send_email(target, subject=subject or "Notification", body=message, provider=provider)
+            success, provider_name = send_email(
+                target, subject=subject or "Notification", body=message, provider=provider
+            )
         else:
             success, provider_name = send_sms(target, message=message, provider=provider)
 
@@ -237,11 +239,7 @@ def send_notification(
 
 def _get_unsubscribed_targets(channel: str, scope: str) -> set[str]:
     scope_filter = Q(scope=scope) | Q(scope="general")
-    return set(
-        Unsubscribe.objects.filter(channel=channel)
-        .filter(scope_filter)
-        .values_list("target", flat=True)
-    )
+    return set(Unsubscribe.objects.filter(channel=channel).filter(scope_filter).values_list("target", flat=True))
 
 
 def _iter_subscribers(channel: str) -> Iterable[str]:
@@ -336,4 +334,3 @@ def send_broadcast_message(broadcast: BroadcastMessage) -> BroadcastMessage:
     )
 
     return broadcast
-

@@ -1,7 +1,7 @@
 from io import StringIO
-from django.core.management import call_command, CommandError
+
+from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
-from django.db import connections
 
 
 class ResetDBCommandTest(TestCase):
@@ -50,7 +50,6 @@ class ResetDBCommandTest(TestCase):
         # In a real scenario, we might mock the _reset_* methods.
         pass
 
-    # TODO: Add integration tests that use a separate test database to verify 
+    # TODO: Add integration tests that use a separate test database to verify
     # the actual SQL execution for each vendor (PostgreSQL, MySQL, SQLite).
     # This would require configuring these databases in the test environment.
-

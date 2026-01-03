@@ -1,8 +1,7 @@
-from django.db import models
 from django.contrib.auth.models import Group
 
-class MemberGroup:
 
+class MemberGroup:
     # define all roles
     PROJECT_CLIENT = "I2G Project Client - Mentor"
     JUDGE = "Judge"
@@ -20,8 +19,8 @@ class MemberGroup:
         FACULTY_STAFF,
     ]
 
-class I2GMemberGroup(Group):
 
+class I2GMemberGroup(Group):
     # meta
     class Meta:
         proxy = True
@@ -68,4 +67,3 @@ class I2GMemberGroup(Group):
         Remove a member from this group.
         """
         member.groups.remove(self)
-

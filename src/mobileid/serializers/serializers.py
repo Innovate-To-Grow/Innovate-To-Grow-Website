@@ -49,4 +49,3 @@ class TransactionSerializer(serializers.ModelSerializer):
             "time_used",
         ]
         read_only_fields = ["id", "time_used", "model_user_username", "barcode_value"]
-

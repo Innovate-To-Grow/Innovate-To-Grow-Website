@@ -16,7 +16,7 @@ from core.models.base import OrderedModel, SoftDeleteModel, TimeStampedModel
 def default_menu_items():
     """
     Default menu items structure.
-    
+
     Each item has:
     - type: 'home' | 'page' | 'external'
     - title: Display title
@@ -26,15 +26,7 @@ def default_menu_items():
     - open_in_new_tab: Boolean
     - children: Nested items (for submenus)
     """
-    return [
-        {
-            "type": "home",
-            "title": "Home",
-            "icon": "",
-            "open_in_new_tab": False,
-            "children": []
-        }
-    ]
+    return [{"type": "home", "title": "Home", "icon": "", "open_in_new_tab": False, "children": []}]
 
 
 class Menu(TimeStampedModel, SoftDeleteModel):
@@ -47,37 +39,24 @@ class Menu(TimeStampedModel, SoftDeleteModel):
 
     # ------------------------------ Identification ------------------------------
 
-    name = models.SlugField(
-        max_length=100,
-        unique=True,
-        help_text="Machine-readable name (e.g. 'main_nav', 'footer')."
-    )
-    display_name = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Auto-generated from name if not provided."
-    )
-    description = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Optional description of this menu's purpose."
-    )
+    name = models.SlugField(max_length=100, unique=True, help_text="Machine-readable name (e.g. 'main_nav', 'footer').")
+    display_name = models.CharField(max_length=200, blank=True, help_text="Auto-generated from name if not provided.")
+    description = models.TextField(blank=True, null=True, help_text="Optional description of this menu's purpose.")
 
     # ------------------------------ Menu Items (JSON) ------------------------------
 
     items = models.JSONField(
-        default=default_menu_items,
-        help_text="JSON array of menu items. Each item can be home, page, or external link."
+        default=default_menu_items, help_text="JSON array of menu items. Each item can be home, page, or external link."
     )
 
     # ------------------------------ Legacy Fields (kept for backward compatibility) ------
 
     pages = models.ManyToManyField(
-        'pages.Page',
-        through='MenuPageLink',
-        related_name='menus',
+        "pages.Page",
+        through="MenuPageLink",
+        related_name="menus",
         blank=True,
-        help_text="Legacy: Pages included in this menu."
+        help_text="Legacy: Pages included in this menu.",
     )
 
     # ------------------------------ Methods ------------------------------
@@ -86,20 +65,20 @@ class Menu(TimeStampedModel, SoftDeleteModel):
         """
         Return all pages in order (legacy method).
         """
-        return self.pages.order_by('menupagelink__order')
+        return self.pages.order_by("menupagelink__order")
 
     def get_page_links(self):
         """
         Return all MenuPageLink objects for this menu in order (legacy method).
         """
-        return self.menupagelink_set.select_related('page').order_by('order')
+        return self.menupagelink_set.select_related("page").order_by("order")
 
     def __str__(self) -> str:
         return self.display_name
 
     class Meta:
         db_table = "pages_menu"
-        ordering = ['name']
+        ordering = ["name"]
         verbose_name = "Menu"
         verbose_name_plural = "Menus"
 
@@ -111,41 +90,21 @@ class MenuPageLink(TimeStampedModel, OrderedModel):
     Stores the order and additional display options for each page in a menu.
     """
 
-    menu = models.ForeignKey(
-        Menu,
-        on_delete=models.CASCADE,
-        help_text="The menu this link belongs to."
-    )
-    page = models.ForeignKey(
-        'pages.Page',
-        on_delete=models.CASCADE,
-        help_text="The page being linked."
-    )
+    menu = models.ForeignKey(Menu, on_delete=models.CASCADE, help_text="The menu this link belongs to.")
+    page = models.ForeignKey("pages.Page", on_delete=models.CASCADE, help_text="The page being linked.")
 
     # ------------------------------ Display Options ------------------------------
 
     custom_title = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Override the page title for this menu (optional)."
+        max_length=200, blank=True, null=True, help_text="Override the page title for this menu (optional)."
     )
     css_classes = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        help_text="Additional CSS classes for styling."
+        max_length=255, blank=True, null=True, help_text="Additional CSS classes for styling."
     )
     icon = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        help_text="Icon class name (e.g. 'fa-home' for FontAwesome)."
+        max_length=100, blank=True, null=True, help_text="Icon class name (e.g. 'fa-home' for FontAwesome)."
     )
-    open_in_new_tab = models.BooleanField(
-        default=False,
-        help_text="Whether to open the link in a new browser tab."
-    )
+    open_in_new_tab = models.BooleanField(default=False, help_text="Whether to open the link in a new browser tab.")
 
     # ------------------------------ Methods ------------------------------
 
@@ -163,10 +122,10 @@ class MenuPageLink(TimeStampedModel, OrderedModel):
 
     class Meta:
         db_table = "pages_menupagelink"
-        ordering = ['menu', 'order']
+        ordering = ["menu", "order"]
         verbose_name = "Menu Page Link"
         verbose_name_plural = "Menu Page Links"
-        unique_together = [['menu', 'page']]
+        unique_together = [["menu", "page"]]
         indexes = [
-            models.Index(fields=['menu', 'order'], name='pages_menu_menu_id_c18fe0_idx'),
+            models.Index(fields=["menu", "order"], name="pages_menu_menu_id_c18fe0_idx"),
         ]

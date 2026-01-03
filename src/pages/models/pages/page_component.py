@@ -99,9 +99,7 @@ class PageComponent(TimeStampedModel, OrderedModel):
         return self.page or self.home_page
 
     def __str__(self) -> str:
-        parent_label = (
-            self.page.slug if self.page else (self.home_page.name if self.home_page else "unassigned")
-        )
+        parent_label = self.page.slug if self.page else (self.home_page.name if self.home_page else "unassigned")
         return f"{self.component_type} component for {parent_label} (order {self.order})"
 
     class Meta:
@@ -117,4 +115,3 @@ class PageComponent(TimeStampedModel, OrderedModel):
                 name="pages_pagecomponent_single_parent",
             ),
         ]
-

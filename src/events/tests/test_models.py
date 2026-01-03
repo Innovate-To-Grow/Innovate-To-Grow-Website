@@ -2,11 +2,12 @@
 Model tests for events app.
 """
 
-from django.test import TestCase
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from datetime import date, time
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
+
+from django.db import IntegrityError
+from django.test import TestCase
+
+from ..models import Event, Presentation, Program, SpecialAward, Track, TrackWinner
 
 
 class EventModelTest(TestCase):
@@ -575,4 +576,3 @@ class HierarchyTest(TestCase):
         self.assertIn(presentation, track.presentations.all())
         self.assertIn(winner, self.event.track_winners.all())
         self.assertIn(award, self.event.special_awards.all())
-

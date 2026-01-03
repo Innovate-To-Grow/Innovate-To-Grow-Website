@@ -8,11 +8,11 @@ Usage:
 """
 
 import os
-import sys
-from django.core.management.base import BaseCommand, CommandError
-from django.core.management import call_command
-from django.db import connections, DEFAULT_DB_ALIAS, transaction
+
 from django.conf import settings
+from django.core.management import call_command
+from django.core.management.base import BaseCommand, CommandError
+from django.db import DEFAULT_DB_ALIAS, connections
 
 
 class Command(BaseCommand):
@@ -54,21 +54,13 @@ class Command(BaseCommand):
 
         # Guardrails
         if not settings.DEBUG and not allow_production:
-            raise CommandError(
-                "Command restricted to DEBUG=True. Use --allow-production to override."
-            )
+            raise CommandError("Command restricted to DEBUG=True. Use --allow-production to override.")
 
         if not force or confirm != "RESET_DB":
-            raise CommandError(
-                "Destructive command requires --force and --confirm RESET_DB."
-            )
+            raise CommandError("Destructive command requires --force and --confirm RESET_DB.")
 
         if not settings.DEBUG and allow_production:
-            self.stdout.write(
-                self.style.WARNING(
-                    "*** WARNING: RUNNING RESETDB IN PRODUCTION ENVIRONMENT ***"
-                )
-            )
+            self.stdout.write(self.style.WARNING("*** WARNING: RUNNING RESETDB IN PRODUCTION ENVIRONMENT ***"))
 
         connection = connections[db_alias]
         db_settings = connection.settings_dict
@@ -126,15 +118,15 @@ class Command(BaseCommand):
         """
         with connection.cursor() as cursor:
             cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
-            
+
             # Get all tables
             cursor.execute("SHOW TABLES;")
             tables = [row[0] for row in cursor.fetchall()]
-            
+
             for table in tables:
                 self.stdout.write(f"Dropping table: {table}")
                 cursor.execute(f"DROP TABLE IF EXISTS `{table}` CASCADE;")
-            
+
             cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
 
     def _reset_sqlite(self, connection, db_alias):
@@ -142,17 +134,17 @@ class Command(BaseCommand):
         SQLite reset: Delete the database file.
         """
         db_name = connection.settings_dict["NAME"]
-        
+
         if db_name == ":memory:":
             self.stdout.write("Memory database detected, no file to delete.")
-            # Closing the connection is enough for :memory: but call_command('migrate') 
-            # will open a new one anyway. For :memory: we might just want to 
+            # Closing the connection is enough for :memory: but call_command('migrate')
+            # will open a new one anyway. For :memory: we might just want to
             # let it be, but technically it's already "reset" if we close and reopen.
             # However, for consistency, we can drop tables if it's already open.
             with connection.cursor() as cursor:
                 cursor.execute("PRAGMA foreign_keys = OFF;")
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                tables = [row[0] for row in cursor.fetchall() if row[0] != 'sqlite_sequence']
+                tables = [row[0] for row in cursor.fetchall() if row[0] != "sqlite_sequence"]
                 for table in tables:
                     cursor.execute(f'DROP TABLE IF EXISTS "{table}";')
                 cursor.execute("PRAGMA foreign_keys = ON;")
@@ -171,7 +163,7 @@ class Command(BaseCommand):
                 with connection.cursor() as cursor:
                     cursor.execute("PRAGMA foreign_keys = OFF;")
                     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                    tables = [row[0] for row in cursor.fetchall() if row[0] != 'sqlite_sequence']
+                    tables = [row[0] for row in cursor.fetchall() if row[0] != "sqlite_sequence"]
                     for table in tables:
                         cursor.execute(f'DROP TABLE IF EXISTS "{table}";')
                     cursor.execute("PRAGMA foreign_keys = ON;")
@@ -186,4 +178,3 @@ class Command(BaseCommand):
         # TODO: Implement actual seeding logic here or call a separate command
         self.stdout.write("TODO: Implement seed_data() hook.")
         self.stdout.write(self.style.SUCCESS("Seeding completed (simulated)."))
-

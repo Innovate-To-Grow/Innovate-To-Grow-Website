@@ -8,21 +8,22 @@ Organized into modules by functionality:
 - contact: ContactEmail, ContactPhone, MemberContactInfo admin
 - security: RSAKeypair admin
 """
-from .member import MemberAdmin, MemberProfileAdmin
-from .group import I2GMemberGroupAdmin
+
 from .contact import ContactEmailAdmin, ContactPhoneAdmin, MemberContactInfoAdmin
+from .group import I2GMemberGroupAdmin
+from .member import MemberAdmin, MemberProfileAdmin
 from .security import RSAKeypairAdmin
 
 __all__ = [
     # Member
-    'MemberAdmin',
-    'MemberProfileAdmin',
+    "MemberAdmin",
+    "MemberProfileAdmin",
     # Group
-    'I2GMemberGroupAdmin',
+    "I2GMemberGroupAdmin",
     # Contact
-    'ContactEmailAdmin',
-    'ContactPhoneAdmin',
-    'MemberContactInfoAdmin',
+    "ContactEmailAdmin",
+    "ContactPhoneAdmin",
+    "MemberContactInfoAdmin",
     # Security
-    'RSAKeypairAdmin',
+    "RSAKeypairAdmin",
 ]

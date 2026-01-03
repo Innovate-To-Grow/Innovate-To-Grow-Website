@@ -1,6 +1,8 @@
-from django.test import TestCase
 from django.core.exceptions import ValidationError
-from ..models import Page, PageComponent, Menu, MenuPageLink, HomePage, validate_nested_slug
+from django.test import TestCase
+
+from ..models import HomePage, Menu, MenuPageLink, Page, PageComponent, validate_nested_slug
+
 
 class PageModelTest(TestCase):
     def test_create_page(self):
@@ -36,7 +38,7 @@ class PageModelTest(TestCase):
     def test_meta_title_fallback(self):
         page = Page.objects.create(title="My Title", slug="my-title")
         self.assertEqual(page.meta_title, "My Title")
-        
+
         page.meta_title = "SEO Title"
         page.save()
         self.assertEqual(page.effective_meta_title, "SEO Title")
@@ -81,7 +83,7 @@ class MenuModelTest(TestCase):
 
         links = self.menu.get_page_links()
         self.assertEqual(list(links), [link2, link1])
-        
+
         pages = self.menu.get_pages()
         self.assertEqual(list(pages), [self.page2, self.page1])
 
@@ -108,7 +110,7 @@ class HomePageTest(TestCase):
     def test_active_toggle(self):
         h1 = HomePage.objects.create(name="H1", is_active=True)
         h2 = HomePage.objects.create(name="H2", is_active=False)
-        
+
         self.assertTrue(HomePage.objects.get(pk=h1.pk).is_active)
         self.assertFalse(HomePage.objects.get(pk=h2.pk).is_active)
 

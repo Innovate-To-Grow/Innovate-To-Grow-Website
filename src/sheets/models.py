@@ -46,9 +46,7 @@ class Sheet(TimeStampedModel):
 class Tab(TimeStampedModel):
     """Individual tab within a sheet."""
 
-    sheet = models.ForeignKey(
-        Sheet, on_delete=models.CASCADE, related_name="tabs"
-    )
+    sheet = models.ForeignKey(Sheet, on_delete=models.CASCADE, related_name="tabs")
     name = models.CharField(max_length=255)
     position = models.PositiveIntegerField(default=0)
     is_locked = models.BooleanField(default=False)
@@ -59,17 +57,11 @@ class Tab(TimeStampedModel):
         verbose_name_plural = "Tabs"
         ordering = ["sheet", "position", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["sheet", "name"], name="sheets_tab_sheet_name_uniq"
-            ),
-            models.UniqueConstraint(
-                fields=["sheet", "position"], name="sheets_tab_sheet_pos_uniq"
-            ),
+            models.UniqueConstraint(fields=["sheet", "name"], name="sheets_tab_sheet_name_uniq"),
+            models.UniqueConstraint(fields=["sheet", "position"], name="sheets_tab_sheet_pos_uniq"),
         ]
         indexes = [
-            models.Index(
-                fields=["sheet", "position"], name="sheets_tab_sheet_pos_idx"
-            ),
+            models.Index(fields=["sheet", "position"], name="sheets_tab_sheet_pos_idx"),
         ]
 
     def __str__(self):
@@ -79,9 +71,7 @@ class Tab(TimeStampedModel):
 class Column(TimeStampedModel):
     """Column definition for a tab."""
 
-    tab = models.ForeignKey(
-        Tab, on_delete=models.CASCADE, related_name="columns"
-    )
+    tab = models.ForeignKey(Tab, on_delete=models.CASCADE, related_name="columns")
     name = models.CharField(max_length=255)
     key = models.CharField(max_length=100)
     column_type = models.CharField(max_length=50, default="text")
@@ -94,17 +84,11 @@ class Column(TimeStampedModel):
         verbose_name_plural = "Columns"
         ordering = ["tab", "position", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["tab", "key"], name="sheets_column_tab_key_uniq"
-            ),
-            models.UniqueConstraint(
-                fields=["tab", "position"], name="sheets_column_tab_pos_uniq"
-            ),
+            models.UniqueConstraint(fields=["tab", "key"], name="sheets_column_tab_key_uniq"),
+            models.UniqueConstraint(fields=["tab", "position"], name="sheets_column_tab_pos_uniq"),
         ]
         indexes = [
-            models.Index(
-                fields=["tab", "position"], name="sheets_column_tab_pos_idx"
-            ),
+            models.Index(fields=["tab", "position"], name="sheets_column_tab_pos_idx"),
         ]
 
     def __str__(self):
@@ -123,9 +107,7 @@ class Row(TimeStampedModel):
         verbose_name_plural = "Rows"
         ordering = ["tab", "position", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["tab", "position"], name="sheets_row_tab_pos_uniq"
-            ),
+            models.UniqueConstraint(fields=["tab", "position"], name="sheets_row_tab_pos_uniq"),
         ]
         indexes = [
             models.Index(fields=["tab", "position"], name="sheets_row_tab_pos_idx"),
@@ -139,18 +121,14 @@ class Cell(TimeStampedModel):
     """Cell value mapped to a row/column pair."""
 
     row = models.ForeignKey(Row, on_delete=models.CASCADE, related_name="cells")
-    column = models.ForeignKey(
-        Column, on_delete=models.CASCADE, related_name="cells"
-    )
+    column = models.ForeignKey(Column, on_delete=models.CASCADE, related_name="cells")
     value = models.JSONField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Cell"
         verbose_name_plural = "Cells"
         constraints = [
-            models.UniqueConstraint(
-                fields=["row", "column"], name="sheets_cell_row_col_uniq"
-            ),
+            models.UniqueConstraint(fields=["row", "column"], name="sheets_cell_row_col_uniq"),
         ]
         indexes = [
             models.Index(fields=["row"], name="sheets_cell_row_idx"),
@@ -173,17 +151,13 @@ class SheetMember(TimeStampedModel):
         (ROLE_VIEWER, "Viewer"),
     )
 
-    sheet = models.ForeignKey(
-        Sheet, on_delete=models.CASCADE, related_name="memberships"
-    )
+    sheet = models.ForeignKey(Sheet, on_delete=models.CASCADE, related_name="memberships")
     member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="sheet_memberships",
     )
-    role = models.CharField(
-        max_length=20, choices=ROLE_CHOICES, default=ROLE_VIEWER
-    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_VIEWER)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -191,9 +165,7 @@ class SheetMember(TimeStampedModel):
         verbose_name_plural = "Sheet Members"
         ordering = ["sheet", "member"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["sheet", "member"], name="sheets_sheetmember_sheet_member_uniq"
-            ),
+            models.UniqueConstraint(fields=["sheet", "member"], name="sheets_sheetmember_sheet_member_uniq"),
         ]
         indexes = [
             models.Index(fields=["sheet"], name="sheets_sheetmember_sheet_idx"),
@@ -202,4 +174,3 @@ class SheetMember(TimeStampedModel):
 
     def __str__(self):
         return f"{self.member} in {self.sheet} as {self.role}"
-

@@ -18,7 +18,8 @@ const getProgramFromTrack = (trackName: string): 'CAP' | 'CEE' | 'CSE' | null =>
   return null;
 };
 
-// Get program display name
+// Get program display name (reserved for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getProgramDisplayName = (program: 'CAP' | 'CEE' | 'CSE'): string => {
   switch (program) {
     case 'CAP':

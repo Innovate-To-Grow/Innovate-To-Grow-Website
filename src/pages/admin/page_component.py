@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin
+
 from ..models import PageComponent
 
 
@@ -22,20 +23,27 @@ class PageComponentAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     ordering = ("component_type", "order", "id")
     fieldsets = (
-        (None, {
-            "fields": ("component_type", "order", "page", "home_page")
-        }),
-        ("Content", {
-            "fields": ("html_content", "config"),
-            "classes": ("wide",),
-        }),
-        ("Styling", {
-            "fields": ("css_file", "css_code"),
-            "classes": ("collapse",),
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at"),
-        }),
+        (None, {"fields": ("component_type", "order", "page", "home_page")}),
+        (
+            "Content",
+            {
+                "fields": ("html_content", "config"),
+                "classes": ("wide",),
+            },
+        ),
+        (
+            "Styling",
+            {
+                "fields": ("css_file", "css_code"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
     )
 
     def parent_display(self, obj):
@@ -47,4 +55,3 @@ class PageComponentAdmin(admin.ModelAdmin):
         return "Unassigned"
 
     parent_display.short_description = "Parent"
-

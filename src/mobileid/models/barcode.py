@@ -11,16 +11,12 @@ class Barcode(TimeStampedModel):
     """
 
     model_user = models.ForeignKey("authn.Member", on_delete=models.CASCADE)
-    barcode_uuid = models.UUIDField(
-        default=uuid.uuid4, unique=True, editable=False, verbose_name="barcode uuid"
-    )
+    barcode_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, verbose_name="barcode uuid")
     BARCODE_TYPE = [
         ("CatCardBarcode", "CatCardBarcode"),
         ("Identification", "Identification"),
     ]
-    barcode_type = models.CharField(
-        max_length=255, choices=BARCODE_TYPE, verbose_name="barcode type"
-    )
+    barcode_type = models.CharField(max_length=255, choices=BARCODE_TYPE, verbose_name="barcode type")
     barcode = models.CharField(max_length=255, verbose_name="barcode")
     profile_img = models.TextField(
         null=True,
@@ -57,4 +53,3 @@ class Barcode(TimeStampedModel):
         Human-friendly label for display; fallback to UUID when not named.
         """
         return self.profile_name or str(self.barcode_uuid)
-

@@ -141,4 +141,3 @@ class SendNotificationAPIView(APIView):
             {"detail": "Notification sent.", "status": log.status, "id": log.id},
             status=status.HTTP_200_OK,
         )
-

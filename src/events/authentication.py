@@ -4,8 +4,8 @@ API Key authentication for Events sync endpoint.
 Checks X-API-Key header against EVENTS_API_KEY setting.
 """
 
-from rest_framework import authentication, exceptions, permissions
 from django.conf import settings
+from rest_framework import authentication, exceptions, permissions
 
 
 class APIKeyAuthentication(authentication.BaseAuthentication):
@@ -18,20 +18,18 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
         """Authenticate request using X-API-Key header."""
 
-        api_key = request.META.get('HTTP_X_API_KEY') or request.META.get('X-API-Key')
+        api_key = request.META.get("HTTP_X_API_KEY") or request.META.get("X-API-Key")
 
         if not api_key:
             return None
 
-        expected_key = getattr(settings, 'EVENTS_API_KEY', None)
+        expected_key = getattr(settings, "EVENTS_API_KEY", None)
 
         if not expected_key:
-            raise exceptions.AuthenticationFailed(
-                'EVENTS_API_KEY not configured on server.'
-            )
+            raise exceptions.AuthenticationFailed("EVENTS_API_KEY not configured on server.")
 
         if api_key != expected_key:
-            raise exceptions.AuthenticationFailed('Invalid API key.')
+            raise exceptions.AuthenticationFailed("Invalid API key.")
 
         # Return a tuple of (user, token) - we don't need a user, so return None
         # Return the API key as the token so permission can check request.auth
@@ -39,7 +37,7 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
 
     def authenticate_header(self, request):
         """Return a string to be used as the value of the `WWW-Authenticate` header."""
-        return 'ApiKey'
+        return "ApiKey"
 
 
 class APIKeyPermission(permissions.BasePermission):
@@ -53,4 +51,3 @@ class APIKeyPermission(permissions.BasePermission):
         """Check if request has valid API key."""
         # If authentication succeeded, request.auth will contain the API key
         return request.auth is not None
-

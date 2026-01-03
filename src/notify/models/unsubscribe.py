@@ -7,6 +7,7 @@ import uuid
 from django.db import models
 
 from core.models.base import TimeStampedModel
+
 from .verification import VerificationRequest
 
 

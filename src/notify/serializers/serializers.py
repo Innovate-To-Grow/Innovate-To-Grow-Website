@@ -34,4 +34,3 @@ class SendNotificationSerializer(serializers.Serializer):
     subject = serializers.CharField(max_length=255, required=False, allow_blank=True)
     message = serializers.CharField()
     provider = serializers.CharField(max_length=64, required=False, allow_blank=True)
-

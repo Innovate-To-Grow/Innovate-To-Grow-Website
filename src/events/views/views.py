@@ -6,14 +6,16 @@ Includes sync endpoint (POST) for Google Sheets and read endpoint (GET) for fron
 
 import re
 from datetime import datetime
+
 from django.db import transaction
 from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
-from ..serializers import EventSyncSerializer, EventReadSerializer
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from ..authentication import APIKeyAuthentication, APIKeyPermission
+from ..models import Event, Presentation, Program, SpecialAward, Track, TrackWinner
+from ..serializers import EventReadSerializer, EventSyncSerializer
 
 
 class EventSyncAPIView(APIView):
@@ -43,10 +45,7 @@ class EventSyncAPIView(APIView):
         serializer = EventSyncSerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         validated_data = serializer.validated_data
 
@@ -59,228 +58,231 @@ class EventSyncAPIView(APIView):
 
                 # If no event exists, create one (will be populated by basic_info if provided)
                 if not event:
-                    if 'basic_info' not in validated_data:
+                    if "basic_info" not in validated_data:
                         return Response(
-                            {'error': 'No event exists and basic_info not provided.'},
-                            status=status.HTTP_400_BAD_REQUEST
+                            {"error": "No event exists and basic_info not provided."},
+                            status=status.HTTP_400_BAD_REQUEST,
                         )
-                    basic_info = validated_data['basic_info']
+                    basic_info = validated_data["basic_info"]
                     event = Event.objects.create(
-                        event_name=basic_info['event_name'],
-                        event_date=basic_info['event_date'],
-                        event_time=basic_info['event_time'],
-                        upper_bullet_points=basic_info.get('upper_bullet_points', []),
-                        lower_bullet_points=basic_info.get('lower_bullet_points', []),
+                        event_name=basic_info["event_name"],
+                        event_date=basic_info["event_date"],
+                        event_time=basic_info["event_time"],
+                        upper_bullet_points=basic_info.get("upper_bullet_points", []),
+                        lower_bullet_points=basic_info.get("lower_bullet_points", []),
                         is_published=True,  # Assume published if synced
                     )
                 else:
                     # Update basic_info if provided
-                    if 'basic_info' in validated_data:
-                        basic_info = validated_data['basic_info']
-                        event.event_name = basic_info['event_name']
-                        event.event_date = basic_info['event_date']
-                        event.event_time = basic_info['event_time']
-                        event.upper_bullet_points = basic_info.get('upper_bullet_points', [])
-                        event.lower_bullet_points = basic_info.get('lower_bullet_points', [])
+                    if "basic_info" in validated_data:
+                        basic_info = validated_data["basic_info"]
+                        event.event_name = basic_info["event_name"]
+                        event.event_date = basic_info["event_date"]
+                        event.event_time = basic_info["event_time"]
+                        event.upper_bullet_points = basic_info.get("upper_bullet_points", [])
+                        event.lower_bullet_points = basic_info.get("lower_bullet_points", [])
                         event.is_published = True
                         event.save()
 
                 # Process expo_table if provided
-                if 'expo_table' in validated_data:
-                    expo_data = validated_data['expo_table']
+                if "expo_table" in validated_data:
+                    expo_data = validated_data["expo_table"]
                     # Extract room from header row (time="Room:")
                     room = None
                     valid_rows = []
                     for row in expo_data:
                         # Check if this is a header row (time="Room:")
-                        if row.get('time') == 'Room:':
-                            room = row.get('description', '')
+                        if row.get("time") == "Room:":
+                            room = row.get("description", "")
                         # Only include rows with both time and description (skip header rows)
-                        elif row.get('time') and row.get('time') != 'Room:' and row.get('description'):
+                        elif row.get("time") and row.get("time") != "Room:" and row.get("description"):
                             # Format time if it's a date string
-                            time_str = row.get('time', '')
+                            time_str = row.get("time", "")
                             # If time is a date string, extract just the time portion with AM/PM
-                            if 'GMT' in time_str or ('T' in time_str and len(time_str) > 10):
+                            if "GMT" in time_str or ("T" in time_str and len(time_str) > 10):
                                 try:
                                     # Try to parse various date formats
-                                    time_str_clean = time_str.replace(' GMT', '').split(' (')[0]
-                                    date_obj = datetime.fromisoformat(time_str_clean.replace('Z', '+00:00'))
+                                    time_str_clean = time_str.replace(" GMT", "").split(" (")[0]
+                                    date_obj = datetime.fromisoformat(time_str_clean.replace("Z", "+00:00"))
                                     # Format as "H:MM AM/PM" (12-hour format)
                                     hour = date_obj.hour
                                     minute = date_obj.minute
-                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    am_pm = "AM" if hour < 12 else "PM"
                                     hour_12 = hour if hour <= 12 else hour - 12
                                     if hour_12 == 0:
                                         hour_12 = 12
                                     time_str = f"{hour_12}:{minute:02d} {am_pm}"
                                 except Exception:
                                     # If parsing fails, try to extract time from string and add AM/PM
-                                    time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                                    time_match = re.search(r"(\d{1,2}):(\d{2})", time_str)
                                     if time_match:
                                         hour = int(time_match.group(1))
                                         minute = int(time_match.group(2))
-                                        am_pm = 'AM' if hour < 12 else 'PM'
+                                        am_pm = "AM" if hour < 12 else "PM"
                                         hour_12 = hour if hour <= 12 else hour - 12
                                         if hour_12 == 0:
                                             hour_12 = 12
                                         time_str = f"{hour_12}:{minute:02d} {am_pm}"
                             # If time doesn't have AM/PM, add it
-                            elif time_str and not re.search(r'\s*(AM|PM|am|pm)', time_str):
-                                time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                            elif time_str and not re.search(r"\s*(AM|PM|am|pm)", time_str):
+                                time_match = re.search(r"(\d{1,2}):(\d{2})", time_str)
                                 if time_match:
                                     hour = int(time_match.group(1))
                                     minute = int(time_match.group(2))
-                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    am_pm = "AM" if hour < 12 else "PM"
                                     hour_12 = hour if hour <= 12 else hour - 12
                                     if hour_12 == 0:
                                         hour_12 = 12
                                     time_str = f"{hour_12}:{minute:02d} {am_pm}"
-                            
-                            valid_rows.append({
-                                'time': time_str,
-                                'room': room or row.get('room', ''),
-                                'description': row.get('description', '')
-                            })
+
+                            valid_rows.append(
+                                {
+                                    "time": time_str,
+                                    "room": room or row.get("room", ""),
+                                    "description": row.get("description", ""),
+                                }
+                            )
                     event.expo_table = valid_rows
                     event.save()
 
                 # Process reception_table if provided
-                if 'reception_table' in validated_data:
-                    reception_data = validated_data['reception_table']
+                if "reception_table" in validated_data:
+                    reception_data = validated_data["reception_table"]
                     # Extract room from header row (time="Room:")
                     room = None
                     valid_rows = []
                     for row in reception_data:
                         # Check if this is a header row (time="Room:")
-                        if row.get('time') == 'Room:':
-                            room = row.get('description', '')
+                        if row.get("time") == "Room:":
+                            room = row.get("description", "")
                         # Only include rows with both time and description (skip header rows)
-                        elif row.get('time') and row.get('time') != 'Room:' and row.get('description'):
+                        elif row.get("time") and row.get("time") != "Room:" and row.get("description"):
                             # Format time if it's a date string
-                            time_str = row.get('time', '')
+                            time_str = row.get("time", "")
                             # If time is a date string, extract just the time portion with AM/PM
-                            if 'GMT' in time_str or ('T' in time_str and len(time_str) > 10):
+                            if "GMT" in time_str or ("T" in time_str and len(time_str) > 10):
                                 try:
                                     # Try to parse various date formats
-                                    time_str_clean = time_str.replace(' GMT', '').split(' (')[0]
-                                    date_obj = datetime.fromisoformat(time_str_clean.replace('Z', '+00:00'))
+                                    time_str_clean = time_str.replace(" GMT", "").split(" (")[0]
+                                    date_obj = datetime.fromisoformat(time_str_clean.replace("Z", "+00:00"))
                                     # Format as "H:MM AM/PM" (12-hour format)
                                     hour = date_obj.hour
                                     minute = date_obj.minute
-                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    am_pm = "AM" if hour < 12 else "PM"
                                     hour_12 = hour if hour <= 12 else hour - 12
                                     if hour_12 == 0:
                                         hour_12 = 12
                                     time_str = f"{hour_12}:{minute:02d} {am_pm}"
                                 except Exception:
                                     # If parsing fails, try to extract time from string and add AM/PM
-                                    time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                                    time_match = re.search(r"(\d{1,2}):(\d{2})", time_str)
                                     if time_match:
                                         hour = int(time_match.group(1))
                                         minute = int(time_match.group(2))
-                                        am_pm = 'AM' if hour < 12 else 'PM'
+                                        am_pm = "AM" if hour < 12 else "PM"
                                         hour_12 = hour if hour <= 12 else hour - 12
                                         if hour_12 == 0:
                                             hour_12 = 12
                                         time_str = f"{hour_12}:{minute:02d} {am_pm}"
                             # If time doesn't have AM/PM, add it
-                            elif time_str and not re.search(r'\s*(AM|PM|am|pm)', time_str):
-                                time_match = re.search(r'(\d{1,2}):(\d{2})', time_str)
+                            elif time_str and not re.search(r"\s*(AM|PM|am|pm)", time_str):
+                                time_match = re.search(r"(\d{1,2}):(\d{2})", time_str)
                                 if time_match:
                                     hour = int(time_match.group(1))
                                     minute = int(time_match.group(2))
-                                    am_pm = 'AM' if hour < 12 else 'PM'
+                                    am_pm = "AM" if hour < 12 else "PM"
                                     hour_12 = hour if hour <= 12 else hour - 12
                                     if hour_12 == 0:
                                         hour_12 = 12
                                     time_str = f"{hour_12}:{minute:02d} {am_pm}"
-                            
-                            valid_rows.append({
-                                'time': time_str,
-                                'room': room or row.get('room', ''),
-                                'description': row.get('description', '')
-                            })
+
+                            valid_rows.append(
+                                {
+                                    "time": time_str,
+                                    "room": room or row.get("room", ""),
+                                    "description": row.get("description", ""),
+                                }
+                            )
                     event.reception_table = valid_rows
                     event.save()
 
                 # Process schedule (full replace)
-                if 'schedule' in validated_data:
+                if "schedule" in validated_data:
                     # Delete all existing programs (cascades to tracks and presentations)
                     event.programs.all().delete()
 
                     # Create new schedule hierarchy
-                    for program_data in validated_data['schedule']:
+                    for program_data in validated_data["schedule"]:
                         program = Program.objects.create(
                             event=event,
-                            program_name=program_data['program_name'],
+                            program_name=program_data["program_name"],
                             order=0,  # Could be enhanced to include order from payload
                         )
 
-                        for track_data in program_data['tracks']:
+                        for track_data in program_data["tracks"]:
                             track = Track.objects.create(
                                 program=program,
-                                track_name=track_data['track_name'],
-                                room=track_data['room'],
-                                start_time=track_data.get('start_time'),
+                                track_name=track_data["track_name"],
+                                room=track_data["room"],
+                                start_time=track_data.get("start_time"),
                                 order=0,  # Could be enhanced to include order from payload
                             )
 
-                            for presentation_data in track_data['presentations']:
+                            for presentation_data in track_data["presentations"]:
                                 # Handle Break entries - allow null/empty team fields
-                                team_id = presentation_data.get('team_id', '') or None
-                                team_name = presentation_data.get('team_name', '') or None
-                                organization = presentation_data.get('organization', '') or None
-                                
+                                team_id = presentation_data.get("team_id", "") or None
+                                team_name = presentation_data.get("team_name", "") or None
+                                organization = presentation_data.get("organization", "") or None
+
                                 Presentation.objects.create(
                                     track=track,
-                                    order=presentation_data['order'],
+                                    order=presentation_data["order"],
                                     team_id=team_id if team_id else None,
                                     team_name=team_name if team_name else None,
-                                    project_title=presentation_data['project_title'],
+                                    project_title=presentation_data["project_title"],
                                     organization=organization if organization else None,
                                 )
 
                 # Process winners (full replace)
-                if 'winners' in validated_data:
-                    winners_data = validated_data['winners']
+                if "winners" in validated_data:
+                    winners_data = validated_data["winners"]
 
                     # Delete all existing winners
                     event.track_winners.all().delete()
                     event.special_awards.all().delete()
 
                     # Create track winners
-                    if 'track_winners' in winners_data:
-                        for winner_data in winners_data['track_winners']:
+                    if "track_winners" in winners_data:
+                        for winner_data in winners_data["track_winners"]:
                             TrackWinner.objects.create(
                                 event=event,
-                                track_name=winner_data['track_name'],
-                                winner_name=winner_data['winner_name'],
+                                track_name=winner_data["track_name"],
+                                winner_name=winner_data["winner_name"],
                             )
 
                     # Create special awards
-                    if 'special_awards' in winners_data:
-                        for award_data in winners_data['special_awards']:
+                    if "special_awards" in winners_data:
+                        for award_data in winners_data["special_awards"]:
                             SpecialAward.objects.create(
                                 event=event,
-                                program_name=award_data['program_name'],
-                                award_winner=award_data['award_winner'],
+                                program_name=award_data["program_name"],
+                                award_winner=award_data["award_winner"],
                             )
 
                 # Return success response
                 return Response(
                     {
-                        'status': 'success',
-                        'message': 'Event data synced successfully.',
-                        'event_uuid': str(event.event_uuid),
+                        "status": "success",
+                        "message": "Event data synced successfully.",
+                        "event_uuid": str(event.event_uuid),
                     },
-                    status=status.HTTP_200_OK
+                    status=status.HTTP_200_OK,
                 )
 
         except Exception as e:
             # Transaction will rollback automatically
             return Response(
-                {'error': f'Failed to sync event data: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": f"Failed to sync event data: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -303,11 +305,7 @@ class EventRetrieveAPIView(APIView):
             event = Event.objects.first()
 
         if not event:
-            return Response(
-                {'error': 'No event found.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "No event found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = EventReadSerializer(event)
         return Response(serializer.data, status=status.HTTP_200_OK)
-

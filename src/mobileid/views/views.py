@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions
+from rest_framework import permissions, viewsets
 
 from ..models import Barcode, MobileID, Transaction
 from ..serializers import BarcodeSerializer, MobileIDSerializer, TransactionSerializer
@@ -35,4 +35,3 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ["get", "head", "options"]
-

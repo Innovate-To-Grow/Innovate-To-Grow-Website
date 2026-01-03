@@ -19,4 +19,3 @@ class Transaction(TimeStampedModel):
 
     def __str__(self):
         return f"{self.model_user.username} used {self.barcode_used} @ {self.created_at}"
-

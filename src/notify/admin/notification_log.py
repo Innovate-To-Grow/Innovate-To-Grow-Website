@@ -72,8 +72,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
         colors = {"email": "#3498db", "sms": "#27ae60"}
         color = colors.get(obj.channel, "#7f8c8d")
         return format_html(
-            '<span style="background:{}; color:#fff; padding:2px 8px; '
-            'border-radius:4px; font-size:11px;">{}</span>',
+            '<span style="background:{}; color:#fff; padding:2px 8px; ' 'border-radius:4px; font-size:11px;">{}</span>',
             color,
             obj.get_channel_display(),
         )
@@ -87,8 +86,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
         }
         color = colors.get(obj.status, "#7f8c8d")
         return format_html(
-            '<span style="background:{}; color:#fff; padding:2px 8px; '
-            'border-radius:4px; font-size:11px;">{}</span>',
+            '<span style="background:{}; color:#fff; padding:2px 8px; ' 'border-radius:4px; font-size:11px;">{}</span>',
             color,
             obj.get_status_display(),
         )
@@ -142,6 +140,3 @@ class NotificationLogAdmin(admin.ModelAdmin):
             )
             count += 1
         self.message_user(request, f"Retried sending {count} notification(s).")
-
-
-

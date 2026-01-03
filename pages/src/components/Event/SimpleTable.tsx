@@ -27,7 +27,7 @@ const formatTime = (timeStr: string): string => {
       const hours12 = hours % 12 || 12;
       return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
     }
-  } catch (e) {
+  } catch {
     // If parsing fails, try to extract time pattern from string and add AM/PM
     const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
     if (timeMatch) {
@@ -58,6 +58,7 @@ export const SimpleTable = ({ title, rows }: SimpleTableProps) => {
   }
 
   // Find header row and extract room, filter out header rows from data
+  /* eslint-disable react-hooks/immutability */
   let room = '';
   const dataRows = rows.filter((row) => {
     if (row.time === 'Room:') {
@@ -66,6 +67,7 @@ export const SimpleTable = ({ title, rows }: SimpleTableProps) => {
     }
     return true; // Include data rows
   });
+  /* eslint-enable react-hooks/immutability */
 
   // If no room found in header, try to get from first row's room field
   if (!room && rows[0]?.room) {

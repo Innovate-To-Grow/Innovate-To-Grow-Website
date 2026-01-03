@@ -2,8 +2,8 @@
 Events app models export.
 """
 
-from .event import Event, Program, Track, Presentation
-from .winners import TrackWinner, SpecialAward
+from .event import Event, Presentation, Program, Track
+from .winners import SpecialAward, TrackWinner
 
 __all__ = [
     "Event",
@@ -13,4 +13,3 @@ __all__ = [
     "TrackWinner",
     "SpecialAward",
 ]
-
