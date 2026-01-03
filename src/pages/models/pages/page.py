@@ -33,7 +33,7 @@ class Page(
         unique=True,
         validators=[validate_nested_slug],
         help_text=(
-            "User-defined slug. Supports nested paths, e.g. 'about/team'. " "Do NOT include leading or trailing '/'."
+            "User-defined slug. Supports nested paths, e.g. 'about/team'. Do NOT include leading or trailing '/'."
         ),
     )
     # -------------------------- Utility Methods ----------------------------
