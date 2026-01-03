@@ -9,8 +9,10 @@ import uuid
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from core.models.base import OrderedModel, TimeStampedModel
 
-class Event(models.Model):
+
+class Event(TimeStampedModel):
     """Core event model containing basic info and markdown bullet points."""
 
     event_uuid = models.UUIDField(
@@ -39,10 +41,6 @@ class Event(models.Model):
     # Publishing
     is_published = models.BooleanField(default=False, help_text="Whether this event is published and visible.")
 
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self):
         return f"{self.event_name} ({self.event_date})"
 
@@ -52,16 +50,13 @@ class Event(models.Model):
         verbose_name_plural = "Events"
 
 
-class Program(models.Model):
+class Program(OrderedModel):
     """Top-level program grouping within an event."""
 
     event = models.ForeignKey(
         Event, on_delete=models.CASCADE, related_name="programs", help_text="The event this program belongs to."
     )
     program_name = models.CharField(max_length=255, help_text="Name of the program.")
-    order = models.PositiveIntegerField(
-        default=0, validators=[MinValueValidator(0)], help_text="Display order for programs."
-    )
 
     def __str__(self):
         return f"{self.event.event_name} - {self.program_name}"
@@ -73,7 +68,7 @@ class Program(models.Model):
         verbose_name_plural = "Programs"
 
 
-class Track(models.Model):
+class Track(OrderedModel):
     """Track within a program, assigned to a room."""
 
     program = models.ForeignKey(
@@ -82,9 +77,6 @@ class Track(models.Model):
     track_name = models.CharField(max_length=255, help_text="Name of the track.")
     room = models.CharField(max_length=255, help_text="Room assignment for this track.")
     start_time = models.TimeField(null=True, blank=True, help_text="Start time for presentations in this track.")
-    order = models.PositiveIntegerField(
-        default=0, validators=[MinValueValidator(0)], help_text="Display order for tracks within the program."
-    )
 
     def __str__(self):
         return f"{self.program.program_name} - {self.track_name} ({self.room})"

@@ -2,6 +2,6 @@
 Events app admin export.
 """
 
-from .event import EventAdmin
+from .event import EventAdmin, ProgramAdmin, TrackAdmin
 
-__all__ = ["EventAdmin"]
+__all__ = ["EventAdmin", "ProgramAdmin", "TrackAdmin"]

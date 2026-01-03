@@ -90,7 +90,9 @@ class TrackAdmin(admin.ModelAdmin):
 
     inlines = [PresentationInline]
 
-    list_display = ("track_name", "program", "room", "order")
+    list_display = ("track_name", "program", "room", "start_time", "order")
+    list_display_links = ("track_name",)
+    list_editable = ("order",)
     list_filter = ("program__event", "program")
     search_fields = ("track_name", "room", "program__program_name")
     ordering = ("program__order", "order", "id")
@@ -103,6 +105,8 @@ class ProgramAdmin(admin.ModelAdmin):
     inlines = [TrackInline]
 
     list_display = ("program_name", "event", "order")
+    list_display_links = ("program_name",)
+    list_editable = ("order",)
     list_filter = ("event",)
     search_fields = ("program_name", "event__event_name")
     ordering = ("event", "order", "id")

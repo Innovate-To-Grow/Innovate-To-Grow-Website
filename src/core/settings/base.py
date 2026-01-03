@@ -30,8 +30,9 @@ INSTALLED_APPS = [
     "authn.apps.AuthnConfig",
     "mobileid.apps.MobileIDConfig",
     "layout.apps.LayoutConfig",
-    "notify.apps.NotificationsConfig",
+    "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
+    "sheets.apps.SheetsConfig",
     # third party application
     "rest_framework",
     "django_ckeditor_5",

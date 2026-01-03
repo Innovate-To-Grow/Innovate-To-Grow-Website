@@ -42,24 +42,24 @@ class UniformFormAdmin(admin.ModelAdmin):
 class FormSubmissionAdmin(admin.ModelAdmin):
     """Admin interface for viewing and managing form submissions."""
 
-    list_display = ("get_form_name", "get_user_display", "status", "submitted_at", "notification_sent")
-    list_filter = ("status", "form", "notification_sent", "submitted_at")
+    list_display = ("get_form_name", "get_user_display", "status", "created_at", "notification_sent")
+    list_filter = ("status", "form", "notification_sent", "created_at")
     search_fields = ("admin_notes", "user__username", "user__email", "ip_address")
     readonly_fields = (
         "submission_uuid",
         "form",
         "user",
         "data",
-        "submitted_at",
+        "created_at",
         "ip_address",
         "user_agent",
         "referrer",
         "notification_sent_at",
     )
-    date_hierarchy = "submitted_at"
+    date_hierarchy = "created_at"
 
     fieldsets = (
-        ("Submission Information", {"fields": ("submission_uuid", "form", "user", "submitted_at")}),
+        ("Submission Information", {"fields": ("submission_uuid", "form", "user", "created_at")}),
         ("Submitted Data", {"fields": ("data",), "classes": ("extrapretty",)}),
         ("Status & Review", {"fields": ("status", "admin_notes", "reviewed_by", "reviewed_at")}),
         ("Metadata", {"fields": ("ip_address", "user_agent", "referrer"), "classes": ("collapse",)}),

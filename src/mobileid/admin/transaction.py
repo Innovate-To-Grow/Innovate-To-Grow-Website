@@ -7,11 +7,11 @@ from ..models.transaction import Transaction
 class TransactionAdmin(admin.ModelAdmin):
     """Admin for Transaction model - read-only transaction log."""
 
-    list_display = ("model_user", "barcode_used", "time_used")
-    list_filter = ("time_used", "barcode_used__barcode_type")
+    list_display = ("model_user", "barcode_used", "created_at")
+    list_filter = ("created_at", "barcode_used__barcode_type")
     search_fields = ("model_user__username", "barcode_used__barcode")
-    readonly_fields = ("model_user", "barcode_used", "time_used")
-    date_hierarchy = "time_used"
+    readonly_fields = ("model_user", "barcode_used", "created_at")
+    date_hierarchy = "created_at"
 
     # Make this admin mostly read-only for transaction logging
     def has_add_permission(self, request):

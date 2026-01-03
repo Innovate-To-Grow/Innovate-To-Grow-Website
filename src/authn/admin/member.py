@@ -54,8 +54,8 @@ class BarcodeInline(admin.TabularInline):
     extra = 0
     verbose_name = "Barcode"
     verbose_name_plural = "Barcodes"
-    fields = ("barcode_type", "barcode", "profile_name", "time_created")
-    readonly_fields = ("barcode_uuid", "time_created")
+    fields = ("barcode_type", "barcode", "profile_name", "created_at")
+    readonly_fields = ("barcode_uuid", "created_at")
 
 
 class MobileIDInline(admin.TabularInline):
