@@ -1,0 +1,16 @@
+.projects-container {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.projects-state {
+  text-align: center;
+  font-size: 1.125rem;
+  color: #0f2d52;
+  padding: 2rem;
+}
+
+.projects-error {
+  color: #b30000;
+}
+

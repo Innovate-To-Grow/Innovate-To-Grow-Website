@@ -21,15 +21,21 @@ const flattenPresentations = (programs: Program[]): TableRow[] => {
   programs.forEach(program => {
     program.tracks.forEach((track, trackIndex) => {
       track.presentations.forEach(presentation => {
-        rows.push({
-          order: presentation.order,
-          trackNumber: `Track ${trackIndex + 1}`,
-          program: program.program_name,
-          teamNumber: presentation.team_id || '',
-          teamName: presentation.team_name || '',
-          projectTitle: presentation.project_title,
-          organization: presentation.organization || '',
-        });
+        // Filter out breaks
+        const isBreak = presentation.project_title?.toLowerCase().includes('break') || 
+                       presentation.organization?.toLowerCase() === 'break';
+        
+        if (!isBreak) {
+          rows.push({
+            order: presentation.order,
+            trackNumber: `${trackIndex + 1}`,
+            program: program.program_name,
+            teamNumber: presentation.team_id || '',
+            teamName: presentation.team_name || '',
+            projectTitle: presentation.project_title,
+            organization: presentation.organization || '',
+          });
+        }
       });
     });
   });
