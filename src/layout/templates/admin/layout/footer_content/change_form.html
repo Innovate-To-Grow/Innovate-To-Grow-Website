@@ -67,7 +67,12 @@
       <div class="json-toggle">
         <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
         <div id="json-raw-view" class="json-raw-view">
-          <textarea id="json-editor" readonly></textarea>
+          <div id="json-error" class="json-error"></div>
+          <textarea id="json-editor" placeholder="Enter JSON here..."></textarea>
+          <div class="json-editor-actions">
+            <button type="button" class="btn-apply-json" onclick="applyJsonChanges()">Apply JSON Changes</button>
+            <span class="json-editor-hint">Tip: Press Ctrl+Enter to apply</span>
+          </div>
         </div>
       </div>
     </div>
@@ -81,7 +86,7 @@
   <div class="preview-wrapper footer-preview-wrapper">
     <p class="preview-title">Footer Preview</p>
     <div id="footer-preview-error" class="preview-error"></div>
-    <iframe id="footer-preview-iframe" class="preview-iframe footer-preview-iframe" sandbox="allow-same-origin"></iframe>
+    <iframe id="footer-preview-iframe" class="preview-iframe footer-preview-iframe"></iframe>
   </div>
 
   <script src="{% static 'layout/js/footer-editor.js' %}"></script>

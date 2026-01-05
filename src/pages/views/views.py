@@ -24,6 +24,14 @@ class PreviewPopupView(TemplateView):
     template_name = "pages/preview_popup.html"
 
 
+class ComponentPreviewView(TemplateView):
+    """
+    Render the component preview page for live editing PageComponents.
+    """
+
+    template_name = "pages/component_preview.html"
+
+
 class HomePageAPIView(APIView):
     """
     Retrieve the currently active home page.

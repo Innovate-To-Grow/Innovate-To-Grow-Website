@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchHomeContent, type HomeContent } from '../services/api';
+import { ComponentListRenderer } from '../components/PageContent/ComponentRenderer';
 import './Home.css';
 
 export const Home = () => {
@@ -48,10 +49,18 @@ export const Home = () => {
   return (
     <div className="home-container">
       <div className="home-content">
-        <div 
-          className="home-body" 
-          dangerouslySetInnerHTML={{ __html: homeContent.body }} 
-        />
+        {/* Render PageComponents if available */}
+        {homeContent.components && homeContent.components.length > 0 && (
+          <ComponentListRenderer components={homeContent.components} className="home-components" />
+        )}
+        
+        {/* Fallback: Render legacy body content if no components */}
+        {(!homeContent.components || homeContent.components.length === 0) && homeContent.body && (
+          <div 
+            className="home-body" 
+            dangerouslySetInnerHTML={{ __html: homeContent.body }} 
+          />
+        )}
       </div>
     </div>
   );

@@ -6,10 +6,10 @@
   // CSS paths
   const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
   
-  // Get the hidden JSON input
-  let jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
-  const iframe = document.getElementById('footer-preview-iframe');
-  const errorBox = document.getElementById('footer-preview-error');
+  // DOM elements (initialized in init())
+  let jsonInput = null;
+  let iframe = null;
+  let errorBox = null;
   
   // Current data state
   let footerData = {
@@ -23,6 +23,11 @@
   
   // Initialize
   function init() {
+    // Get DOM elements after DOM is ready
+    jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
+    iframe = document.getElementById('footer-preview-iframe');
+    errorBox = document.getElementById('footer-preview-error');
+    
     if (jsonInput) {
       try {
         const parsed = JSON.parse(jsonInput.value || '{}');
@@ -52,6 +57,9 @@
       footerData.copyright = e.target.value;
       syncToJson();
     });
+    
+    // Set up JSON editor events
+    setupJsonEditorEvents();
     
     renderAll();
     updatePreview();
@@ -301,6 +309,159 @@
     document.getElementById('json-raw-view').classList.toggle('show');
   };
   
+  // Apply JSON changes from the editor
+  window.applyJsonChanges = function() {
+    console.log('applyJsonChanges called');
+    
+    const jsonEditor = document.getElementById('json-editor');
+    const jsonErrorBox = document.getElementById('json-error');
+    
+    if (!jsonEditor) {
+      console.error('JSON editor element not found');
+      alert('Error: JSON editor element not found');
+      return;
+    }
+    
+    console.log('JSON editor value:', jsonEditor.value);
+    
+    if (!jsonEditor.value || !jsonEditor.value.trim()) {
+      if (jsonErrorBox) {
+        jsonErrorBox.textContent = 'Please enter JSON content';
+        jsonErrorBox.className = 'json-error show';
+      }
+      return;
+    }
+    
+    try {
+      let parsed = JSON.parse(jsonEditor.value);
+      
+      // Handle Django fixture format: [{"model": "...", "fields": {"content": {...}}}]
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].fields) {
+        console.log('Detected Django fixture format, extracting content');
+        if (parsed[0].fields.content) {
+          parsed = parsed[0].fields.content;
+        } else {
+          parsed = parsed[0].fields;
+        }
+      }
+      
+      // Handle wrapped format: {"content": {...}}
+      if (parsed.content && typeof parsed.content === 'object' && !parsed.cta_buttons) {
+        console.log('Detected wrapped content format, extracting');
+        parsed = parsed.content;
+      }
+      
+      // Validate structure
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('JSON must be an object');
+      }
+      
+      // Merge with default structure to ensure all fields exist
+      footerData = {
+        cta_buttons: parsed.cta_buttons || [],
+        contact_html: parsed.contact_html || '',
+        columns: parsed.columns || [],
+        social_links: parsed.social_links || [],
+        copyright: parsed.copyright || '',
+        footer_links: parsed.footer_links || []
+      };
+      
+      // Update the JSON editor to show the cleaned format
+      jsonEditor.value = JSON.stringify(footerData, null, 2);
+      
+      // Re-query jsonInput in case it wasn't found during init
+      if (!jsonInput) {
+        jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
+      }
+      
+      // Update the hidden form field
+      if (jsonInput) {
+        jsonInput.value = JSON.stringify(footerData);
+      } else {
+        console.warn('Hidden JSON input field not found, changes may not be saved');
+      }
+      
+      // Re-render all visual editor sections
+      renderAll();
+      updatePreview();
+      
+      // Clear error and show success
+      if (jsonErrorBox) {
+        jsonErrorBox.textContent = '';
+        jsonErrorBox.className = 'json-error';
+      }
+      
+      // Flash success feedback
+      jsonEditor.style.borderColor = '#28a745';
+      if (jsonErrorBox) {
+        jsonErrorBox.textContent = '✓ JSON applied successfully!';
+        jsonErrorBox.className = 'json-error show';
+        jsonErrorBox.style.background = '#d4edda';
+        jsonErrorBox.style.borderColor = '#c3e6cb';
+        jsonErrorBox.style.color = '#155724';
+      }
+      setTimeout(() => {
+        jsonEditor.style.borderColor = '';
+        if (jsonErrorBox) {
+          jsonErrorBox.textContent = '';
+          jsonErrorBox.className = 'json-error';
+          jsonErrorBox.style.background = '';
+          jsonErrorBox.style.borderColor = '';
+          jsonErrorBox.style.color = '';
+        }
+      }, 2000);
+      
+      console.log('JSON applied successfully, footerData:', footerData);
+      
+    } catch (e) {
+      console.error('JSON parse error:', e);
+      if (jsonErrorBox) {
+        jsonErrorBox.textContent = 'Invalid JSON: ' + e.message;
+        jsonErrorBox.className = 'json-error show';
+      }
+      jsonEditor.style.borderColor = '#dc3545';
+    }
+  };
+  
+  // Real-time JSON validation as user types
+  function setupJsonEditorEvents() {
+    const jsonEditor = document.getElementById('json-editor');
+    const jsonErrorBox = document.getElementById('json-error');
+    const applyBtn = document.querySelector('.btn-apply-json');
+    
+    if (jsonEditor) {
+      jsonEditor.addEventListener('input', function() {
+        try {
+          JSON.parse(this.value);
+          this.style.borderColor = '';
+          if (jsonErrorBox) {
+            jsonErrorBox.textContent = '';
+            jsonErrorBox.className = 'json-error';
+          }
+        } catch (e) {
+          // Don't show error while typing, just remove success styling
+          this.style.borderColor = '';
+        }
+      });
+      
+      // Allow Ctrl+Enter to apply changes
+      jsonEditor.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          window.applyJsonChanges();
+        }
+      });
+    }
+    
+    // Also add click event listener as backup for the Apply button
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.applyJsonChanges();
+      });
+    }
+  }
+  
   // Helper functions
   function escapeHtml(val) {
     const div = document.createElement('div');
@@ -314,8 +475,18 @@
   
   // ===== Preview =====
   function renderFooterHtml(content) {
-    if (!content || Object.keys(content).length === 0) {
-      return '<div style="color:#666;font-style:italic;padding:40px;text-align:center;">No content</div>';
+    // Check if content is effectively empty
+    const hasContent = content && (
+      (content.cta_buttons && content.cta_buttons.length > 0) ||
+      (content.contact_html && content.contact_html.trim()) ||
+      (content.columns && content.columns.length > 0) ||
+      (content.social_links && content.social_links.length > 0) ||
+      (content.copyright && content.copyright.trim()) ||
+      (content.footer_links && content.footer_links.length > 0)
+    );
+    
+    if (!hasContent) {
+      return '<div style="color:#666;font-style:italic;padding:40px;text-align:center;background:#f5f5f5;border-radius:4px;">No footer content yet. Add some content using the editor above.</div>';
     }
 
     // CTA buttons section

@@ -73,6 +73,11 @@ class PageComponent(TimeStampedModel, OrderedModel):
         default="",
         help_text="Inline CSS applied to this component (scoped by renderer).",
     )
+    js_code = models.TextField(
+        blank=True,
+        default="",
+        help_text="JavaScript code to execute within this component (runs in isolated scope).",
+    )
     config = models.JSONField(
         default=default_config,
         blank=True,

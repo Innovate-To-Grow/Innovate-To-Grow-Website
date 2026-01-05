@@ -9,7 +9,7 @@ class PageComponentInline(admin.StackedInline):
     fk_name = "page"
     extra = 0
     form = PageComponentForm
-    fields = ("component_type", "order", "html_content", "config", "css_file", "css_code", "created_at", "updated_at")
+    fields = ("component_type", "order", "html_content", "config", "css_file", "css_code", "js_code", "created_at", "updated_at")
     readonly_fields = ("created_at", "updated_at", "css_file")
     ordering = ("order", "id")
     show_change_link = True

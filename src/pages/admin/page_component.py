@@ -10,16 +10,18 @@ class PageComponentForm(forms.ModelForm):
         fields = "__all__"
         widgets = {
             "html_content": forms.Textarea(attrs={"rows": 12, "class": "vLargeTextField"}),
-            "css_code": forms.Textarea(attrs={"rows": 6, "class": "vLargeTextField"}),
+            "css_code": forms.Textarea(attrs={"rows": 8, "class": "vLargeTextField"}),
+            "js_code": forms.Textarea(attrs={"rows": 10, "class": "vLargeTextField"}),
         }
 
 
 @admin.register(PageComponent)
 class PageComponentAdmin(admin.ModelAdmin):
     form = PageComponentForm
+    change_form_template = "admin/pages/pagecomponent/change_form.html"
     list_display = ("component_type", "order", "parent_display", "css_file", "created_at", "updated_at")
     list_filter = ("component_type",)
-    search_fields = ("html_content", "css_code")
+    search_fields = ("html_content", "css_code", "js_code")
     readonly_fields = ("created_at", "updated_at")
     ordering = ("component_type", "order", "id")
     fieldsets = (
@@ -36,6 +38,14 @@ class PageComponentAdmin(admin.ModelAdmin):
             {
                 "fields": ("css_file", "css_code"),
                 "classes": ("collapse",),
+            },
+        ),
+        (
+            "JavaScript",
+            {
+                "fields": ("js_code",),
+                "classes": ("wide",),
+                "description": "JavaScript code runs in an isolated scope. Use 'root' variable to access the component container.",
             },
         ),
         (

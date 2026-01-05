@@ -34,6 +34,7 @@ class PageComponentSerializer(serializers.ModelSerializer):
             "html_content",
             "css_file",
             "css_code",
+            "js_code",
             "config",
             "created_at",
             "updated_at",

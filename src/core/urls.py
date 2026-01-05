@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from pages.views import PreviewPopupView
+from pages.views import ComponentPreviewView, PreviewPopupView
 
 from .views import HealthCheckView
 
@@ -34,6 +34,8 @@ urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health-check"),
     # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
+    # component preview popup for live editing
+    path("admin/component-preview/", ComponentPreviewView.as_view(), name="admin-component-preview"),
     # admin site
     path("admin/", admin.site.urls),
     # pages
