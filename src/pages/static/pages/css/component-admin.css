@@ -1,122 +1,480 @@
 /**
  * Component Admin Styles
- * Custom styles for PageComponent admin editing
+ * Custom styles for PageComponent admin with CodeMirror editor
  */
 
-/* JS Code field styling */
-.field-js_code textarea {
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    padding: 12px;
-    border-radius: 4px;
+/* ==========================================================================
+   Code Editor Container
+   ========================================================================== */
+
+.code-editor-container {
+    margin: 20px 0;
     border: 1px solid #3c3c3c;
-    min-height: 200px;
-    resize: vertical;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1e1e1e;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.field-js_code textarea:focus {
-    outline: none;
-    border-color: #0078d4;
-    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+/* Tab Bar */
+.code-editor-tabs {
+    display: flex;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    padding: 0;
+    margin: 0;
+    list-style: none;
 }
 
-/* CSS Code field styling */
-.field-css_code textarea {
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+.code-editor-tabs li {
+    margin: 0;
+}
+
+.code-editor-tabs button {
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    color: #969696;
+    cursor: pointer;
     font-size: 13px;
-    line-height: 1.5;
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    padding: 12px;
-    border-radius: 4px;
-    border: 1px solid #3c3c3c;
-    min-height: 150px;
-    resize: vertical;
-}
-
-.field-css_code textarea:focus {
-    outline: none;
-    border-color: #0078d4;
-    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
-}
-
-/* Field labels for code fields */
-.field-js_code .help,
-.field-css_code .help {
-    color: #666;
-    font-size: 11px;
-    margin-top: 4px;
-}
-
-/* Preview button styling */
-.popup-preview-link {
-    display: inline-flex;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    display: flex;
     align-items: center;
-    padding: 6px 12px;
-    background: linear-gradient(135deg, #0f2d52 0%, #1a4a7a 100%);
-    color: #fff !important;
+    gap: 8px;
+}
+
+.code-editor-tabs button:hover {
+    color: #fff;
+    background: #2d2d2d;
+}
+
+.code-editor-tabs button.active {
+    color: #fff;
+    background: #1e1e1e;
+    border-bottom-color: #0078d4;
+}
+
+.code-editor-tabs button .lang-icon {
+    font-size: 14px;
+}
+
+/* Editor Toolbar */
+.editor-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    gap: 8px;
+}
+
+.editor-toolbar button {
+    padding: 6px 14px;
+    border: 1px solid #4a4a4a;
+    background: #333;
+    color: #ccc;
     border-radius: 4px;
-    text-decoration: none;
+    cursor: pointer;
     font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     transition: all 0.2s ease;
 }
 
-.popup-preview-link:hover {
-    background: linear-gradient(135deg, #1a4a7a 0%, #2a5a8a 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(15, 45, 82, 0.3);
+.editor-toolbar button:hover {
+    background: #444;
+    color: #fff;
+    border-color: #0078d4;
 }
 
-.popup-preview-link svg {
-    width: 14px;
-    height: 14px;
-    margin-right: 6px;
+.editor-toolbar button svg {
+    stroke: currentColor;
 }
 
-/* Quill editor wrapper within component admin */
-.field-html_content .quill-editor-wrapper {
-    margin-top: 10px;
-}
-
-.field-html_content #quill-editor {
-    min-height: 300px;
-    background: #fff;
-    border-radius: 0 0 4px 4px;
-}
-
-/* Hide the original textarea when Quill is active */
-.field-html_content textarea.vLargeTextField {
+/* Editor Panels */
+.editor-panel {
     display: none;
+    min-height: 350px;
+    position: relative;
 }
 
-/* Fieldset improvements */
-fieldset.module h2 {
-    background: linear-gradient(135deg, #9b87f5 0%, #7c3aed 100%);
+.editor-panel.active {
+    display: block;
+}
+
+/* CodeMirror Customization */
+.cm-editor {
+    height: 350px !important;
+    font-size: 14px;
+}
+
+.cm-editor .cm-scroller {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Fira Code', monospace;
+    line-height: 1.6;
+}
+
+.cm-editor .cm-gutters {
+    background: #1e1e1e;
+    border-right: 1px solid #3c3c3c;
+}
+
+.cm-editor .cm-activeLineGutter {
+    background: #2a2a2a;
+}
+
+.cm-editor .cm-activeLine {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* ==========================================================================
+   Preview Section
+   ========================================================================== */
+
+.preview-section {
+    margin-top: 24px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 10px 15px;
+}
+
+.preview-header h3 {
     margin: 0;
     font-size: 14px;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* Code section styling */
-.field-js_code label,
-.field-css_code label {
+.preview-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.preview-actions button {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.preview-actions button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.preview-frame-container {
+    background: #fff;
+    min-height: 300px;
+}
+
+#preview-frame {
+    width: 100%;
+    height: 400px;
+    border: none;
+    background: #fff;
+}
+
+/* ==========================================================================
+   Media Library Modal
+   ========================================================================== */
+
+.media-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.media-modal.active {
+    display: flex;
+}
+
+.media-modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.media-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+}
+
+.media-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
     font-weight: 600;
     color: #333;
 }
 
-/* Section headers */
-.field-js_code::before {
-    content: "💻";
-    margin-right: 6px;
+.media-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #666;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
 }
 
-.field-css_code::before {
-    content: "🎨";
-    margin-right: 6px;
+.media-modal-close:hover {
+    background: #eee;
+    color: #333;
 }
 
+.media-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+}
+
+.media-item {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f5f5f5;
+}
+
+.media-item:hover {
+    border-color: #0078d4;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.2);
+}
+
+.media-item.selected {
+    border-color: #0078d4;
+    box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.2);
+}
+
+.media-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    background: #eee;
+}
+
+.media-item-name {
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #666;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    background: white;
+    border-top: 1px solid #eee;
+}
+
+.media-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #f8f9fa;
+}
+
+.media-modal-footer button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.media-modal-footer .btn-cancel {
+    background: white;
+    border: 1px solid #ddd;
+    color: #666;
+}
+
+.media-modal-footer .btn-cancel:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+.media-modal-footer .btn-insert {
+    background: #0078d4;
+    border: none;
+    color: white;
+}
+
+.media-modal-footer .btn-insert:hover {
+    background: #006cbd;
+}
+
+/* ==========================================================================
+   Drag and Drop
+   ========================================================================== */
+
+.editor-panel.drag-over::after {
+    content: 'Drop image to upload';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 120, 212, 0.95);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* ==========================================================================
+   Hide Original Fields
+   ========================================================================== */
+
+/* Hide the original textarea fields when using code editor */
+.field-html_content,
+.field-css_code,
+.field-js_code {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Fieldset Styling
+   ========================================================================== */
+
+fieldset.module h2 {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    color: white;
+    padding: 12px 16px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 4px 4px 0 0;
+}
+
+fieldset.module {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   Loading States
+   ========================================================================== */
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading-indicator::before {
+    content: '';
+    width: 24px;
+    height: 24px;
+    border: 3px solid #ddd;
+    border-top-color: #0078d4;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 12px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .code-editor-tabs button {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+    
+    .editor-toolbar {
+        flex-wrap: wrap;
+    }
+    
+    .media-modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .media-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+    }
+    
+    .preview-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+}

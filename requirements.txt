@@ -18,6 +18,10 @@ openpyxl>=3.1.0
 # Cryptography (RSA key generation)
 cryptography>=41.0.0
 
+# Storage Backend (S3/R2/OSS compatible)
+django-storages[s3]>=1.14.2
+boto3>=1.34.0
+
 # Production Dependencies (uncomment when needed)
 # gunicorn>=21.0.0
 psycopg2-binary>=2.9.0  # PostgreSQL adapter

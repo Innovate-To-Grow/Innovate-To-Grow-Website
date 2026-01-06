@@ -52,6 +52,34 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Cloud Storage Configuration (S3-compatible)
+# -------------------------------------------
+# Uncomment and configure for cloud storage (AWS S3, Cloudflare R2, etc.)
+#
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         "OPTIONS": {
+#             "bucket_name": os.environ.get("AWS_STORAGE_BUCKET_NAME", ""),
+#             "access_key": os.environ.get("AWS_ACCESS_KEY_ID", ""),
+#             "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+#             "region_name": os.environ.get("AWS_S3_REGION_NAME", "us-east-1"),
+#             # For Cloudflare R2:
+#             # "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL", ""),
+#             # Custom domain for CDN:
+#             # "custom_domain": os.environ.get("AWS_S3_CUSTOM_DOMAIN", ""),
+#         },
+#     },
+#     "staticfiles": {
+#         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+#     },
+# }
+# 
+# # Update MEDIA_URL for cloud storage
+# AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "")
+# if AWS_S3_CUSTOM_DOMAIN:
+#     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+
 # Email settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")

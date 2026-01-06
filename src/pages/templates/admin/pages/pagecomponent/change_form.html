@@ -3,55 +3,733 @@
 
 {% block extrahead %}
 {{ block.super }}
-<!-- Quill CSS -->
-<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<!-- CodeMirror 6 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@codemirror/view@6/dist/index.css">
 <!-- Custom styles for component editor -->
-<link rel="stylesheet" href="{% static 'pages/css/quill-admin.css' %}">
 <link rel="stylesheet" href="{% static 'pages/css/component-admin.css' %}">
+<style>
+/* Code Editor Styles */
+.code-editor-container {
+    margin: 20px 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1e1e1e;
+}
+
+.code-editor-tabs {
+    display: flex;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.code-editor-tabs li {
+    margin: 0;
+}
+
+.code-editor-tabs button {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: #969696;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+}
+
+.code-editor-tabs button:hover {
+    color: #fff;
+    background: #2d2d2d;
+}
+
+.code-editor-tabs button.active {
+    color: #fff;
+    background: #1e1e1e;
+    border-bottom-color: #0078d4;
+}
+
+.code-editor-tabs button .lang-icon {
+    margin-right: 6px;
+}
+
+.editor-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px;
+    background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    gap: 8px;
+}
+
+.editor-toolbar button {
+    padding: 6px 12px;
+    border: 1px solid #3c3c3c;
+    background: #2d2d2d;
+    color: #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.editor-toolbar button:hover {
+    background: #3c3c3c;
+    color: #fff;
+}
+
+.editor-panel {
+    display: none;
+    height: 350px;
+}
+
+.editor-panel.active {
+    display: block;
+}
+
+/* Monaco editor container needs explicit dimensions */
+#editor-html,
+#editor-css,
+#editor-js {
+    width: 100%;
+    height: 100%;
+}
+
+/* Preview Section */
+.preview-section {
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.preview-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.preview-actions button {
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.preview-actions button:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.preview-frame-container {
+    background: #fff;
+    min-height: 300px;
+}
+
+#preview-frame {
+    width: 100%;
+    height: 400px;
+    border: none;
+    background: #fff;
+}
+
+/* Media Library Modal */
+.media-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+.media-modal.active {
+    display: flex;
+}
+
+.media-modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.media-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.media-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.media-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.media-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+}
+
+.media-item {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f5f5f5;
+}
+
+.media-item:hover {
+    border-color: #0078d4;
+    transform: translateY(-2px);
+}
+
+.media-item.selected {
+    border-color: #0078d4;
+    box-shadow: 0 0 0 3px rgba(0,120,212,0.2);
+}
+
+.media-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+}
+
+.media-item-name {
+    padding: 8px;
+    font-size: 11px;
+    color: #666;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.media-modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.media-modal-footer button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.media-modal-footer .btn-cancel {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    color: #666;
+}
+
+.media-modal-footer .btn-insert {
+    background: #0078d4;
+    border: none;
+    color: white;
+}
+
+/* Drop zone indicator */
+.editor-panel.drag-over::after {
+    content: 'Drop image to upload';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,120,212,0.9);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    pointer-events: none;
+}
+
+.editor-panel {
+    position: relative;
+}
+
+/* Hide original textareas and their fieldset */
+.field-html_content,
+.field-css_code,
+.field-js_code {
+    display: none !important;
+}
+
+/* Hide the code content fieldset entirely */
+fieldset.hidden-fieldset {
+    display: none !important;
+}
+</style>
 {% endblock %}
 
 {% block object-tools-items %}
 {{ block.super }}
-<li>
-    <a href="#" id="component-preview-btn" class="popup-preview-link">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-        </svg>
-        Live Preview
-    </a>
-</li>
 {% endblock %}
 
 {% block content %}
 {{ block.super }}
 
-<!-- Quill Editor Container for html_content -->
+<!-- Code Editor Container -->
+<div class="code-editor-container" id="code-editor-container">
+    <!-- Tab Bar -->
+    <ul class="code-editor-tabs">
+        <li><button type="button" class="active" data-tab="html"><span class="lang-icon">&lt;/&gt;</span> HTML</button></li>
+        <li><button type="button" data-tab="css"><span class="lang-icon">#</span> CSS</button></li>
+        <li><button type="button" data-tab="js"><span class="lang-icon">{ }</span> JavaScript</button></li>
+    </ul>
+    
+    <!-- Toolbar -->
+    <div class="editor-toolbar">
+        <button type="button" id="btn-upload-image" title="Upload Image">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Upload Image
+        </button>
+        <button type="button" id="btn-media-library" title="Media Library">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            Media Library
+        </button>
+    </div>
+    
+    <!-- Editor Panels -->
+    <div class="editor-panel active" id="panel-html" data-lang="html">
+        <div id="editor-html"></div>
+    </div>
+    <div class="editor-panel" id="panel-css" data-lang="css">
+        <div id="editor-css"></div>
+    </div>
+    <div class="editor-panel" id="panel-js" data-lang="js">
+        <div id="editor-js"></div>
+    </div>
+</div>
+
+<!-- Live Preview Section -->
+<div class="preview-section">
+    <div class="preview-header">
+        <h3>Live Preview</h3>
+        <div class="preview-actions">
+            <button type="button" id="btn-refresh-preview">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Refresh
+            </button>
+            <button type="button" id="btn-popup-preview">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Open in New Window
+            </button>
+        </div>
+    </div>
+    <div class="preview-frame-container">
+        <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+</div>
+
+<!-- Media Library Modal -->
+<div class="media-modal" id="media-modal">
+    <div class="media-modal-content">
+        <div class="media-modal-header">
+            <h3>Media Library</h3>
+            <button type="button" class="media-modal-close">&times;</button>
+        </div>
+        <div class="media-modal-body">
+            <div class="media-grid" id="media-grid">
+                <!-- Media items loaded via JS -->
+            </div>
+        </div>
+        <div class="media-modal-footer">
+            <button type="button" class="btn-cancel">Cancel</button>
+            <button type="button" class="btn-insert">Insert Selected</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file input for upload -->
+<input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+
+<!-- Monaco Editor (VS Code's editor) -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Find the html_content field and add Quill editor after the textarea
-        const htmlContentField = document.querySelector('.field-html_content');
-        if (htmlContentField) {
-            // Create Quill container
-            const quillWrapper = document.createElement('div');
-            quillWrapper.className = 'quill-editor-wrapper';
-            quillWrapper.innerHTML = '<div id="quill-editor"></div>';
+(function() {
+    'use strict';
+    
+    // Configure Monaco loader
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+    
+    // Store editors globally
+    window.codeEditors = {};
+    
+    // Get initial values from hidden textareas
+    const htmlTextarea = document.getElementById('id_html_content');
+    const cssTextarea = document.getElementById('id_css_code');
+    const jsTextarea = document.getElementById('id_js_code');
+    
+    // Preview update function
+    let previewTimeout = null;
+    function updatePreview() {
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(() => {
+            const htmlContent = window.codeEditors.html ? window.codeEditors.html.getValue() : '';
+            const cssContent = window.codeEditors.css ? window.codeEditors.css.getValue() : '';
+            const jsContent = window.codeEditors.js ? window.codeEditors.js.getValue() : '';
             
-            // Insert after the textarea
-            const textarea = document.getElementById('id_html_content');
-            if (textarea) {
-                textarea.parentNode.insertBefore(quillWrapper, textarea.nextSibling);
+            const previewFrame = document.getElementById('preview-frame');
+            const fullPage = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <base href="${window.location.origin}/">
+                    <style>${cssContent}</style>
+                </head>
+                <body>${htmlContent}<script>${jsContent}<\/script></body>
+                </html>
+            `;
+            previewFrame.srcdoc = fullPage;
+        }, 300);
+    }
+    window.updatePreview = updatePreview;
+    
+    // Load Monaco and create editors
+    require(['vs/editor/editor.main'], function() {
+        // Define VS Code dark theme
+        monaco.editor.defineTheme('customDark', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: {
+                'editor.background': '#1e1e1e'
+            }
+        });
+        
+        // Common editor options
+        const editorOptions = {
+            theme: 'customDark',
+            fontSize: 14,
+            fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace",
+            lineNumbers: 'on',
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 2,
+            wordWrap: 'on',
+            padding: { top: 10, bottom: 10 }
+        };
+        
+        // Create HTML editor
+        window.codeEditors.html = monaco.editor.create(document.getElementById('editor-html'), {
+            ...editorOptions,
+            language: 'html',
+            value: htmlTextarea?.value || ''
+        });
+        
+        // Create CSS editor
+        window.codeEditors.css = monaco.editor.create(document.getElementById('editor-css'), {
+            ...editorOptions,
+            language: 'css',
+            value: cssTextarea?.value || ''
+        });
+        
+        // Create JavaScript editor
+        window.codeEditors.js = monaco.editor.create(document.getElementById('editor-js'), {
+            ...editorOptions,
+            language: 'javascript',
+            value: jsTextarea?.value || ''
+        });
+        
+        // Sync editors to textareas and update preview
+        window.codeEditors.html.onDidChangeModelContent(() => {
+            if (htmlTextarea) htmlTextarea.value = window.codeEditors.html.getValue();
+            updatePreview();
+        });
+        
+        window.codeEditors.css.onDidChangeModelContent(() => {
+            if (cssTextarea) cssTextarea.value = window.codeEditors.css.getValue();
+            updatePreview();
+        });
+        
+        window.codeEditors.js.onDidChangeModelContent(() => {
+            if (jsTextarea) jsTextarea.value = window.codeEditors.js.getValue();
+            updatePreview();
+        });
+        
+        // Initial preview
+        updatePreview();
+        
+        console.log('Monaco editors initialized successfully');
+    });
+    
+    // Tab switching
+    document.querySelectorAll('.code-editor-tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            
+            // Update active tab
+            document.querySelectorAll('.code-editor-tabs button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Show corresponding panel
+            document.querySelectorAll('.editor-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`panel-${tab}`).classList.add('active');
+            
+            // Trigger layout update for the newly visible editor
+            if (window.codeEditors[tab]) {
+                window.codeEditors[tab].layout();
+            }
+        });
+    });
+    
+    // Refresh preview button
+    document.getElementById('btn-refresh-preview').addEventListener('click', updatePreview);
+    
+    // Open in new window
+    document.getElementById('btn-popup-preview').addEventListener('click', () => {
+        const htmlContent = window.codeEditors.html ? window.codeEditors.html.getValue() : '';
+        const cssContent = window.codeEditors.css ? window.codeEditors.css.getValue() : '';
+        const jsContent = window.codeEditors.js ? window.codeEditors.js.getValue() : '';
+        
+        const popup = window.open('', '_blank', 'width=1000,height=700');
+        popup.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <base href="${window.location.origin}/">
+                <style>${cssContent}</style>
+            </head>
+            <body>${htmlContent}<script>${jsContent}<\/script></body>
+            </html>
+        `);
+        popup.document.close();
+    });
+    
+    // Image upload handling
+    const uploadInput = document.getElementById('image-upload-input');
+    
+    document.getElementById('btn-upload-image').addEventListener('click', () => {
+        uploadInput.click();
+    });
+    
+    uploadInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch('/api/pages/upload/', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                insertImageTag(data.url, file.name);
+            } else {
+                const error = await response.json();
+                alert('Upload failed: ' + (error.error || 'Unknown error'));
+            }
+        } catch (err) {
+            alert('Upload failed: ' + err.message);
+        }
+        
+        uploadInput.value = '';
+    });
+    
+    // Insert image tag at cursor
+    function insertImageTag(url, alt = '') {
+        const editor = window.codeEditors.html;
+        if (!editor) return;
+        
+        const imgTag = `<img src="${url}" alt="${alt}" />`;
+        const selection = editor.getSelection();
+        const range = new monaco.Range(
+            selection.startLineNumber,
+            selection.startColumn,
+            selection.endLineNumber,
+            selection.endColumn
+        );
+        
+        editor.executeEdits('insert-image', [{
+            range: range,
+            text: imgTag,
+            forceMoveMarkers: true
+        }]);
+        editor.focus();
+    }
+    window.insertImageTag = insertImageTag;
+    
+    // Drag and drop image upload
+    const htmlPanel = document.getElementById('panel-html');
+    
+    htmlPanel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        htmlPanel.classList.add('drag-over');
+    });
+    
+    htmlPanel.addEventListener('dragleave', () => {
+        htmlPanel.classList.remove('drag-over');
+    });
+    
+    htmlPanel.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        htmlPanel.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        for (const file of files) {
+            if (file.type.startsWith('image/')) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const response = await fetch('/api/pages/upload/', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        insertImageTag(data.url, file.name);
+                    }
+                } catch (err) {
+                    console.error('Upload failed:', err);
+                }
             }
         }
     });
+    
+    // Media Library
+    const mediaModal = document.getElementById('media-modal');
+    const mediaGrid = document.getElementById('media-grid');
+    let selectedAsset = null;
+    
+    document.getElementById('btn-media-library').addEventListener('click', async () => {
+        mediaModal.classList.add('active');
+        await loadMediaAssets();
+    });
+    
+    mediaModal.querySelector('.media-modal-close').addEventListener('click', () => {
+        mediaModal.classList.remove('active');
+    });
+    
+    mediaModal.querySelector('.btn-cancel').addEventListener('click', () => {
+        mediaModal.classList.remove('active');
+    });
+    
+    mediaModal.querySelector('.btn-insert').addEventListener('click', () => {
+        if (selectedAsset) {
+            insertImageTag(selectedAsset.url, selectedAsset.name);
+            mediaModal.classList.remove('active');
+            selectedAsset = null;
+        }
+    });
+    
+    async function loadMediaAssets() {
+        try {
+            const response = await fetch('/api/pages/media/?type=image', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            
+            mediaGrid.innerHTML = data.assets.map(asset => `
+                <div class="media-item" data-url="${asset.url}" data-name="${asset.name}">
+                    <img src="${asset.url}" alt="${asset.name}" />
+                    <div class="media-item-name">${asset.name}</div>
+                </div>
+            `).join('');
+            
+            // Add click handlers
+            mediaGrid.querySelectorAll('.media-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    mediaGrid.querySelectorAll('.media-item').forEach(i => i.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedAsset = {
+                        url: item.dataset.url,
+                        name: item.dataset.name
+                    };
+                });
+                
+                item.addEventListener('dblclick', () => {
+                    insertImageTag(item.dataset.url, item.dataset.name);
+                    mediaModal.classList.remove('active');
+                });
+            });
+        } catch (err) {
+            console.error('Failed to load media:', err);
+            mediaGrid.innerHTML = '<p style="color: #999; text-align: center;">Failed to load media assets</p>';
+        }
+    }
+    
+    // Click outside modal to close
+    mediaModal.addEventListener('click', (e) => {
+        if (e.target === mediaModal) {
+            mediaModal.classList.remove('active');
+        }
+    });
+})();
 </script>
-
-<!-- Quill JS -->
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-<!-- Quill Image Resize Module -->
-<script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
-<!-- Component Admin JS -->
-<script src="{% static 'pages/js/component-admin.js' %}"></script>
 {% endblock %}
-

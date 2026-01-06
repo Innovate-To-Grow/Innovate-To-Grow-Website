@@ -114,6 +114,26 @@ STATICFILES_DIRS = [
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# File Storage Configuration
+# --------------------------
+# By default, Django uses local filesystem storage.
+# For production with cloud storage (S3, R2, etc.), configure in prod.py
+#
+# Storage backends available:
+# - django.core.files.storage.FileSystemStorage (default, local)
+# - storages.backends.s3boto3.S3Boto3Storage (AWS S3 / S3-compatible)
+#
+# The DEFAULT_FILE_STORAGE setting is deprecated in Django 4.2+
+# Use STORAGES dict instead for Django 4.2+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
