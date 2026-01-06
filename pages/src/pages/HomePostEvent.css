@@ -1,0 +1,230 @@
+/* Color Scheme Variables (matching WinnersSection and ScheduleTable) */
+:root {
+  --color-cap-gold: #D4A843;
+  --color-cee-teal: #A8D5D8;
+  --color-cse-navy: #000080;
+  --color-heading-teal: #2E8B8B;
+  --color-award-gold: #D4A843;
+  --color-light-grey: #E8E8E8;
+  --color-white: #FFFFFF;
+}
+
+.home-post-event-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  padding-top: 0;
+}
+
+.home-post-event-state {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.home-post-event-error {
+  color: #d32f2f;
+}
+
+/* Winners Section */
+.winners-section {
+  margin: 0 0 2rem 0;
+  padding: 0 0 2rem 0;
+}
+
+.winners-title {
+  font-size: 2.5rem;
+  margin: 0 0 1rem 0;
+  color: var(--color-heading-teal);
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Special Awards Text - Right below title */
+.special-awards-text {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.special-award-item {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  color: #333;
+  line-height: 1.6;
+}
+
+.special-award-item:last-child {
+  margin-bottom: 0;
+}
+
+.special-award-item strong {
+  font-weight: 600;
+  color: #555;
+}
+
+/* Winners Grid - Responsive */
+.winners-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+/* Program Winners Column */
+.program-winners-column {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-white);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.program-winners-header {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--color-white);
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Program-specific header colors */
+.program-cap .program-winners-header {
+  background: var(--color-cap-gold);
+}
+
+.program-cee .program-winners-header {
+  background: var(--color-cee-teal);
+  color: #333;
+}
+
+.program-cse .program-winners-header {
+  background: var(--color-cse-navy);
+}
+
+
+/* Track Winners Table */
+.track-winners-table-container {
+  margin-top: 0.5rem;
+}
+
+.track-winners-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.track-winners-table thead th {
+  background: var(--color-light-grey);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border: 1px solid #ddd;
+  font-size: 0.95rem;
+}
+
+.track-winners-table tbody td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  vertical-align: middle;
+}
+
+.track-cell {
+  font-weight: 500;
+  color: #555;
+}
+
+.winner-cell {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Keep all table rows the same color - no alternating or hover effects */
+
+/* Past Events Link Container */
+.past-events-link-container {
+  margin: 3rem 0 2rem;
+  text-align: center;
+  padding: 2rem 0;
+  border-top: 2px solid var(--color-light-grey);
+}
+
+.past-events-link-button {
+  display: inline-block;
+  background-color: var(--color-heading-teal);
+  color: var(--color-white);
+  padding: 0.875rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background-color 0.2s, transform 0.1s;
+  box-shadow: 0 2px 4px rgba(46, 139, 139, 0.2);
+}
+
+.past-events-link-button:hover {
+  background-color: #247575;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(46, 139, 139, 0.3);
+}
+
+.past-events-link-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .home-post-event-container {
+    padding: 1rem;
+  }
+
+  .winners-title {
+    font-size: 2rem;
+  }
+
+  .winners-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .program-winners-column {
+    padding: 1rem;
+  }
+
+  .program-winners-header {
+    font-size: 1.25rem;
+    padding: 0.625rem 0.875rem;
+  }
+
+  .special-awards-text {
+    margin-bottom: 1.5rem;
+  }
+
+  .special-award-item {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .track-winners-table {
+    font-size: 0.9rem;
+  }
+
+  .track-winners-table thead th,
+  .track-winners-table tbody td {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .past-events-link-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
