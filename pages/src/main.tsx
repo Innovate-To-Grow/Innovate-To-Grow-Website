@@ -5,24 +5,32 @@ import './index.css';
 import { router } from './router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
 import { HealthCheckProvider } from './components/MaintenanceMode';
+import { AuthProvider, AuthModal, ProfileModal } from './components/Auth';
 
-// Mount main app to #root with health check
+// Mount main app to #root with health check and auth
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HealthCheckProvider pollingInterval={10000}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+        {/* Auth modals rendered at app root level */}
+        <AuthModal />
+        <ProfileModal />
+      </AuthProvider>
     </HealthCheckProvider>
   </StrictMode>,
 );
 
-// Mount MainMenu to #menu-root with LayoutProvider
+// Mount MainMenu to #menu-root with LayoutProvider and AuthProvider
 const menuRoot = document.getElementById('menu-root');
 if (menuRoot) {
   createRoot(menuRoot).render(
     <StrictMode>
-      <LayoutProvider>
-        <MainMenu />
-      </LayoutProvider>
+      <AuthProvider>
+        <LayoutProvider>
+          <MainMenu />
+        </LayoutProvider>
+      </AuthProvider>
     </StrictMode>,
   );
 }

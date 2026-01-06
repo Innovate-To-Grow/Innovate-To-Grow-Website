@@ -20,7 +20,16 @@ def send_email(
     provider_name = provider or os.getenv("EMAIL_PROVIDER", "console")
 
     if provider_name == "console":
-        logger.info("[email][console] to=%s subject=%s body=%s", to_address, subject, body)
+        # Pretty print for development - makes verification emails easy to find
+        print("\n" + "=" * 60)
+        print("EMAIL NOTIFICATION (Console Mode)")
+        print("=" * 60)
+        print(f"To:      {to_address}")
+        print(f"Subject: {subject}")
+        print("-" * 60)
+        print(body)
+        print("=" * 60 + "\n")
+        logger.info("[email][console] to=%s subject=%s", to_address, subject)
         return True, "console"
 
     # Placeholder for real provider integration
@@ -42,7 +51,15 @@ def send_sms(
     provider_name = provider or os.getenv("SMS_PROVIDER", "console")
 
     if provider_name == "console":
-        logger.info("[sms][console] to=%s message=%s", to_number, message)
+        # Pretty print for development
+        print("\n" + "=" * 60)
+        print("SMS NOTIFICATION (Console Mode)")
+        print("=" * 60)
+        print(f"To: {to_number}")
+        print("-" * 60)
+        print(message)
+        print("=" * 60 + "\n")
+        logger.info("[sms][console] to=%s", to_number)
         return True, "console"
 
     # Placeholder for real provider integration

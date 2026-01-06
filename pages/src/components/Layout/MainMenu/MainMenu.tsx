@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
+import { useAuth } from '../../Auth';
 import './MainMenu.css';
 
 const buildHref = (item: MenuItem) => {
@@ -18,8 +19,10 @@ const buildHref = (item: MenuItem) => {
 
 export const MainMenu = () => {
   const { menu, state } = useMenu();
+  const { user, isAuthenticated, openModal, logout } = useAuth();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
   const currentDate = useMemo(() => {
     const date = new Date();
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -254,6 +257,62 @@ export const MainMenu = () => {
           <div className="site-header-date" aria-label="Current date">
             {currentDate}
           </div>
+
+          {/* Member Section */}
+          <div 
+            className="site-header-member"
+            onMouseEnter={() => isAuthenticated && setIsMemberDropdownOpen(true)}
+            onMouseLeave={() => setIsMemberDropdownOpen(false)}
+          >
+            {isAuthenticated ? (
+              <>
+                <button
+                  type="button"
+                  className="member-button authenticated"
+                  onClick={() => setIsMemberDropdownOpen(prev => !prev)}
+                >
+                  <i className="fa fa-user-circle" />
+                  <span className="member-name">{user?.display_name || user?.username || 'Member'}</span>
+                  <i className="fa fa-angle-down member-arrow" />
+                </button>
+                {isMemberDropdownOpen && (
+                  <div className="member-dropdown">
+                    <button
+                      type="button"
+                      className="member-dropdown-item"
+                      onClick={() => {
+                        setIsMemberDropdownOpen(false);
+                        openModal('profile');
+                      }}
+                    >
+                      <i className="fa fa-cog" />
+                      <span>Profile</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="member-dropdown-item logout"
+                      onClick={() => {
+                        setIsMemberDropdownOpen(false);
+                        logout();
+                      }}
+                    >
+                      <i className="fa fa-sign-out" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                className="member-button"
+                onClick={() => openModal('login')}
+              >
+                <i className="fa fa-user" />
+                <span>Sign In</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -288,6 +347,54 @@ export const MainMenu = () => {
         <nav className="header-mobile-nav">
           {state === 'ready' && menu && menu.items && menu.items.length > 0 && renderMenuItems(menu.items)}
         </nav>
+
+        {/* Mobile Member Actions */}
+        <div className="header-mobile-member">
+          {isAuthenticated ? (
+            <>
+              <div className="header-mobile-member-info">
+                <i className="fa fa-user-circle" />
+                <span>{user?.display_name || user?.username || 'Member'}</span>
+              </div>
+              <div className="header-mobile-member-actions">
+                <button
+                  type="button"
+                  className="header-mobile-action"
+                  onClick={() => {
+                    setIsMobileOpen(false);
+                    openModal('profile');
+                  }}
+                >
+                  <i className="fa fa-cog" />
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  className="header-mobile-action"
+                  onClick={() => {
+                    setIsMobileOpen(false);
+                    logout();
+                  }}
+                >
+                  <i className="fa fa-sign-out" />
+                  Sign Out
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="header-mobile-action primary"
+              onClick={() => {
+                setIsMobileOpen(false);
+                openModal('login');
+              }}
+            >
+              <i className="fa fa-user" />
+              Sign In / Sign Up
+            </button>
+          )}
+        </div>
 
         <div className="header-mobile-actions">
           <a 

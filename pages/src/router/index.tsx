@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { Home } from '../pages/Home';
 import { PageContent } from '../components/PageContent/PageContent';
 import { EventPage } from '../components/Event';
+import { VerifyEmailPage } from '../components/Auth';
 
 export const router = createBrowserRouter([
   {
@@ -11,6 +12,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'event', element: <EventPage /> },
+      // Email verification route
+      { path: 'verify-email/:token', element: <VerifyEmailPage /> },
       // Catch-all route for CMS-driven pages (e.g., /about, /about/team)
       { path: '*', element: <PageContent /> },
     ],
