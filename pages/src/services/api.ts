@@ -180,6 +180,7 @@ export interface Presentation {
   team_name: string;
   project_title: string;
   organization: string;
+  abstract: string | null;
 }
 
 export interface Track {
@@ -226,6 +227,8 @@ export interface EventData {
   expo_table: ExpoRow[];
   reception_table: ReceptionRow[];
   is_published: boolean;
+  slug: string;
+  is_live: boolean;
   programs: Program[];
   track_winners: TrackWinner[];
   special_awards: SpecialAward[];
@@ -233,8 +236,24 @@ export interface EventData {
   updated_at: string;
 }
 
+export interface PastEventListItem {
+  slug: string;
+  event_name: string;
+  event_date: string; // ISO date string
+}
+
 export const fetchEvent = async (): Promise<EventData> => {
   const response = await api.get<EventData>('/events/');
+  return response.data;
+};
+
+export const fetchArchivedEvent = async (slug: string): Promise<EventData> => {
+  const response = await api.get<EventData>(`/events/archive/${slug}/`);
+  return response.data;
+};
+
+export const fetchPastEventsList = async (): Promise<PastEventListItem[]> => {
+  const response = await api.get<PastEventListItem[]>('/events/past-events-list/');
   return response.data;
 };
 

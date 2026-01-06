@@ -21,6 +21,7 @@ class PresentationSerializer(serializers.ModelSerializer):
             'team_name',
             'project_title',
             'organization',
+            'abstract',
         ]
         read_only_fields = ['id']
 
@@ -100,6 +101,8 @@ class EventReadSerializer(serializers.ModelSerializer):
             'expo_table',
             'reception_table',
             'is_published',
+            'slug',
+            'is_live',
             'programs',
             'track_winners',
             'special_awards',
@@ -125,6 +128,7 @@ class PresentationSyncSerializer(serializers.Serializer):
     team_name = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
     project_title = serializers.CharField(max_length=500)
     organization = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    abstract = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate(self, attrs):
         """
@@ -250,12 +254,22 @@ class WinnersSerializer(serializers.Serializer):
     special_awards = SpecialAwardSyncSerializer(many=True, required=False)
 
 
+class PastEventListSerializer(serializers.Serializer):
+    """Serializer for past events list endpoint."""
+
+    slug = serializers.CharField()
+    event_name = serializers.CharField()
+    event_date = serializers.DateField()
+
+
 class EventSyncSerializer(serializers.Serializer):
     """
     Main serializer for Google Sheets sync endpoint.
 
     Accepts the full JSON payload matching the specification:
     {
+        "slug": "fall-2025-expo",  # Required
+        "is_live": true,           # Optional, defaults to False
         "basic_info": {...},
         "schedule": [...],
         "expo_table": [...],
@@ -264,6 +278,8 @@ class EventSyncSerializer(serializers.Serializer):
     }
     """
 
+    slug = serializers.SlugField(max_length=255)
+    is_live = serializers.BooleanField(required=False, default=False)
     basic_info = BasicInfoSerializer(required=False)
     schedule = ProgramSyncSerializer(many=True, required=False)
     expo_table = ExpoRowSerializer(many=True, required=False)
@@ -271,10 +287,10 @@ class EventSyncSerializer(serializers.Serializer):
     winners = WinnersSerializer(required=False)
 
     def validate(self, attrs):
-        """Ensure at least one section is provided."""
-        if not any(key in attrs for key in ['basic_info', 'schedule', 'expo_table', 'reception_table', 'winners']):
+        """Ensure basic_info is provided for event creation/update."""
+        if 'basic_info' not in attrs:
             raise serializers.ValidationError(
-                "At least one of 'basic_info', 'schedule', 'expo_table', 'reception_table', or 'winners' must be provided."
+                "basic_info is required for event creation/update."
             )
         return attrs
 

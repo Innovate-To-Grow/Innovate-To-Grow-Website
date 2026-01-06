@@ -35,9 +35,11 @@ class EventSyncAPIView(APIView):
 
         Expected JSON structure:
         {
-            "basic_info": {...},  # Optional
-            "schedule": [...],    # Optional
-            "winners": {...}      # Optional
+            "slug": "fall-2025-expo",  # Required
+            "is_live": true,           # Optional, defaults to False
+            "basic_info": {...},       # Optional
+            "schedule": [...],         # Optional
+            "winners": {...}           # Optional
         }
         """
         serializer = EventSyncSerializer(data=request.data)
@@ -49,41 +51,36 @@ class EventSyncAPIView(APIView):
             )
 
         validated_data = serializer.validated_data
+        slug = validated_data.get('slug')
+        is_live = validated_data.get('is_live', False)
 
         # Perform atomic transaction
         try:
             with transaction.atomic():
-                # Get or create a single event (assuming single event system)
-                # If multiple events are needed, we'd need to identify by event_name/date
-                event = Event.objects.first()
+                # Live Switch Logic: If is_live is True, clear other live events first
+                if is_live:
+                    Event.objects.filter(is_live=True).update(is_live=False)
 
-                # If no event exists, create one (will be populated by basic_info if provided)
-                if not event:
-                    if 'basic_info' not in validated_data:
-                        return Response(
-                            {'error': 'No event exists and basic_info not provided.'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    basic_info = validated_data['basic_info']
-                    event = Event.objects.create(
-                        event_name=basic_info['event_name'],
-                        event_date=basic_info['event_date'],
-                        event_time=basic_info['event_time'],
-                        upper_bullet_points=basic_info.get('upper_bullet_points', []),
-                        lower_bullet_points=basic_info.get('lower_bullet_points', []),
-                        is_published=True,  # Assume published if synced
+                # Atomic Upsert: Use update_or_create based on slug
+                if 'basic_info' not in validated_data:
+                    return Response(
+                        {'error': 'basic_info is required for event creation/update.'},
+                        status=status.HTTP_400_BAD_REQUEST
                     )
-                else:
-                    # Update basic_info if provided
-                    if 'basic_info' in validated_data:
-                        basic_info = validated_data['basic_info']
-                        event.event_name = basic_info['event_name']
-                        event.event_date = basic_info['event_date']
-                        event.event_time = basic_info['event_time']
-                        event.upper_bullet_points = basic_info.get('upper_bullet_points', [])
-                        event.lower_bullet_points = basic_info.get('lower_bullet_points', [])
-                        event.is_published = True
-                        event.save()
+
+                basic_info = validated_data['basic_info']
+                event, created = Event.objects.update_or_create(
+                    slug=slug,
+                    defaults={
+                        'event_name': basic_info['event_name'],
+                        'event_date': basic_info['event_date'],
+                        'event_time': basic_info['event_time'],
+                        'upper_bullet_points': basic_info.get('upper_bullet_points', []),
+                        'lower_bullet_points': basic_info.get('lower_bullet_points', []),
+                        'is_published': True,  # Assume published if synced
+                        'is_live': is_live,
+                    }
+                )
 
                 # Process expo_table if provided
                 if 'expo_table' in validated_data:
@@ -203,10 +200,10 @@ class EventSyncAPIView(APIView):
                     event.reception_table = valid_rows
                     event.save()
 
-                # Process schedule (full replace)
+                # Process schedule (full replace with deep clean)
                 if 'schedule' in validated_data:
-                    # Delete all existing programs (cascades to tracks and presentations)
-                    event.programs.all().delete()
+                    # Deep Clean Sync: Delete all existing related objects for this event
+                    event.programs.all().delete()  # Cascades to tracks and presentations
 
                     # Create new schedule hierarchy
                     for program_data in validated_data['schedule']:
@@ -230,6 +227,7 @@ class EventSyncAPIView(APIView):
                                 team_id = presentation_data.get('team_id', '') or None
                                 team_name = presentation_data.get('team_name', '') or None
                                 organization = presentation_data.get('organization', '') or None
+                                abstract = presentation_data.get('abstract', '') or None
                                 
                                 Presentation.objects.create(
                                     track=track,
@@ -238,13 +236,14 @@ class EventSyncAPIView(APIView):
                                     team_name=team_name if team_name else None,
                                     project_title=presentation_data['project_title'],
                                     organization=organization if organization else None,
+                                    abstract=abstract if abstract else None,
                                 )
 
-                # Process winners (full replace)
+                # Process winners (full replace with deep clean)
                 if 'winners' in validated_data:
                     winners_data = validated_data['winners']
 
-                    # Delete all existing winners
+                    # Deep Clean Sync: Delete all existing winners for this event
                     event.track_winners.all().delete()
                     event.special_awards.all().delete()
 
@@ -272,6 +271,8 @@ class EventSyncAPIView(APIView):
                         'status': 'success',
                         'message': 'Event data synced successfully.',
                         'event_uuid': str(event.event_uuid),
+                        'slug': event.slug,
+                        'is_live': event.is_live,
                     },
                     status=status.HTTP_200_OK
                 )
@@ -286,28 +287,71 @@ class EventSyncAPIView(APIView):
 
 class EventRetrieveAPIView(APIView):
     """
-    GET endpoint for retrieving event data for frontend.
+    GET endpoint for retrieving the live event data for frontend.
 
-    Returns the most recent published event, or the most recent event if none are published.
+    Returns the single event where is_live=True, or 404 with friendly message.
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request):
-        """Retrieve the current event."""
-        # Try to get published event first
-        event = Event.objects.filter(is_published=True).first()
-
-        # If no published event, get the most recent one
-        if not event:
-            event = Event.objects.first()
+        """Retrieve the live event."""
+        event = Event.objects.filter(is_live=True).first()
 
         if not event:
             return Response(
-                {'error': 'No event found.'},
+                {'detail': 'No active event scheduled'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = EventReadSerializer(event)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class EventArchiveRetrieveAPIView(APIView):
+    """
+    GET endpoint for retrieving archived event data by slug.
+
+    Returns a specific event by slug, or 404 if not found.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        """Retrieve event by slug."""
+        try:
+            event = Event.objects.get(slug=slug)
+        except Event.DoesNotExist:
+            return Response(
+                {'detail': 'Event not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = EventReadSerializer(event)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PastEventsListAPIView(APIView):
+    """
+    GET endpoint for retrieving list of past events.
+
+    Returns a list of all events where is_live=False, ordered by event_date (most recent first).
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """Retrieve list of past events."""
+        past_events = Event.objects.filter(is_live=False).order_by('-event_date')
+        
+        events_list = [
+            {
+                'slug': event.slug,
+                'event_name': event.event_name,
+                'event_date': event.event_date.isoformat(),
+            }
+            for event in past_events
+        ]
+
+        return Response(events_list, status=status.HTTP_200_OK)
 

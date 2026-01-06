@@ -1,26 +1,34 @@
 import { useState, useEffect } from 'react';
-import { fetchEvent, type EventData } from '../../services/api';
-import { ScheduleTable } from './ScheduleTable';
-import { DataTable } from './DataTable';
-import { SimpleTable } from './SimpleTable';
-import { renderMarkdown } from './markdown';
-import { formatEventDate } from '../../utils/dateUtils';
-import './EventPage.css';
+import { useParams } from 'react-router-dom';
+import { fetchArchivedEvent, type EventData } from '../services/api';
+import { ScheduleTable } from '../components/Event/ScheduleTable';
+import { DataTable } from '../components/Event/DataTable';
+import { SimpleTable } from '../components/Event/SimpleTable';
+import { renderMarkdown } from '../components/Event/markdown';
+import { formatEventDate } from '../utils/dateUtils';
+import '../components/Event/EventPage.css';
 
-export const EventPage = () => {
+export const ArchivePage = () => {
+  const { slug } = useParams<{ slug: string }>();
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadEventData = async () => {
+      if (!slug) {
+        setError('Invalid event slug.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchEvent();
+        const data = await fetchArchivedEvent(slug);
         setEventData(data);
       } catch (err) {
-        setError('Unable to load event data.');
+        setError('Unable to load archived event data.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -28,12 +36,12 @@ export const EventPage = () => {
     };
 
     loadEventData();
-  }, []);
+  }, [slug]);
 
   if (loading) {
     return (
       <div className="event-container">
-        <div className="event-state">Loading event data...</div>
+        <div className="event-state">Loading archived event data...</div>
       </div>
     );
   }
@@ -77,29 +85,24 @@ export const EventPage = () => {
               </ul>
             </div>
           )}
-          <button className="btn-register-now">REGISTER NOW!</button>
         </div>
 
         {/* Top Right Section */}
         <div className="event-section event-section-top-right">
-          <h2 className="event-section-title">Preparing for the Event</h2>
+          <h2 className="event-section-title">Event Information</h2>
           <div className="event-bullets-inline">
             <ul>
-              <li>Register ASAP to attend in person (no zoom this edition)</li>
-              <li>Review schedule, projects, and teams (below): check for updates!</li>
+              <li>This is an archived event from the past.</li>
+              <li>Review schedule, projects, and teams below.</li>
               <li>You may click on a team (e.g. CSE-314) to open that team info.</li>
               <li>Then, you may click the open/close icon to view project details.</li>
             </ul>
-          </div>
-          <div className="event-buttons-group">
-            <button className="btn-for-attendees">FOR ATTENDEES</button>
-            <button className="btn-for-judges">FOR JUDGES</button>
           </div>
         </div>
 
         {/* Bottom Left Section */}
         <div className="event-section event-section-bottom-left">
-          <h2 className="event-section-title">Attend in Person: (EVENT MAP)</h2>
+          <h2 className="event-section-title">Event Details</h2>
           {eventData.lower_bullet_points && eventData.lower_bullet_points.length > 0 && (
             <div className="event-bullets-inline">
               <ul>
@@ -144,5 +147,4 @@ export const EventPage = () => {
     </div>
   );
 };
-
 

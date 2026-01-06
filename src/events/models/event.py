@@ -62,6 +62,17 @@ class Event(models.Model):
         help_text="Whether this event is published and visible."
     )
 
+    # Multi-event archive fields
+    slug = models.SlugField(
+        max_length=255,
+        unique=True,
+        help_text="Unique slug identifier for the event (e.g., 'spring-expo-2026')."
+    )
+    is_live = models.BooleanField(
+        default=False,
+        help_text="Whether this event is currently live (only one event can be live at a time)."
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -176,6 +187,11 @@ class Presentation(models.Model):
         blank=True,
         null=True,
         help_text="Organization name."
+    )
+    abstract = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Abstract/project description."
     )
 
     def __str__(self):

@@ -14,6 +14,8 @@ interface TableRow {
   teamName: string;
   projectTitle: string;
   organization: string;
+  abstract: string | null;
+  rowKey: string;
 }
 
 const flattenPresentations = (programs: Program[]): TableRow[] => {
@@ -26,6 +28,7 @@ const flattenPresentations = (programs: Program[]): TableRow[] => {
                        presentation.organization?.toLowerCase() === 'break';
         
         if (!isBreak) {
+          const rowKey = `${program.program_name}-${trackIndex + 1}-${presentation.order}`;
           rows.push({
             order: presentation.order,
             trackNumber: `${trackIndex + 1}`,
@@ -34,6 +37,8 @@ const flattenPresentations = (programs: Program[]): TableRow[] => {
             teamName: presentation.team_name || '',
             projectTitle: presentation.project_title,
             organization: presentation.organization || '',
+            abstract: presentation.abstract || null,
+            rowKey,
           });
         }
       });
@@ -46,6 +51,7 @@ export const DataTable = ({ programs }: DataTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const allRows = useMemo(() => flattenPresentations(programs), [programs]);
 
@@ -61,7 +67,8 @@ export const DataTable = ({ programs }: DataTableProps) => {
       row.teamNumber.toLowerCase().includes(term) ||
       row.teamName.toLowerCase().includes(term) ||
       row.projectTitle.toLowerCase().includes(term) ||
-      row.organization.toLowerCase().includes(term)
+      row.organization.toLowerCase().includes(term) ||
+      (row.abstract && row.abstract.toLowerCase().includes(term))
     );
   }, [allRows, searchTerm]);
 
@@ -69,6 +76,18 @@ export const DataTable = ({ programs }: DataTableProps) => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, entriesPerPage]);
+
+  const toggleRowExpansion = (rowKey: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowKey)) {
+        newSet.delete(rowKey);
+      } else {
+        newSet.add(rowKey);
+      }
+      return newSet;
+    });
+  };
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredRows.length / entriesPerPage);
@@ -126,27 +145,59 @@ export const DataTable = ({ programs }: DataTableProps) => {
               <th>Team Name</th>
               <th>Project Title</th>
               <th>Organization</th>
+              <th>More Info</th>
             </tr>
           </thead>
           <tbody>
             {filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="no-results">
+                <td colSpan={8} className="no-results">
                   No results found
                 </td>
               </tr>
             ) : (
-              paginatedRows.map((row, index) => (
-                <tr key={`${row.program}-${row.trackNumber}-${row.order}-${index}`}>
-                  <td>{row.order}</td>
-                  <td>{row.trackNumber}</td>
-                  <td>{row.program}</td>
-                  <td>{row.teamNumber}</td>
-                  <td>{row.teamName}</td>
-                  <td>{row.projectTitle}</td>
-                  <td>{row.organization}</td>
-                </tr>
-              ))
+              paginatedRows.map((row, index) => {
+                const isExpanded = expandedRows.has(row.rowKey);
+                const hasAbstract = row.abstract && row.abstract.trim().length > 0;
+                
+                return (
+                  <>
+                    <tr key={row.rowKey}>
+                      <td>{row.order}</td>
+                      <td>{row.trackNumber}</td>
+                      <td>{row.program}</td>
+                      <td>{row.teamNumber}</td>
+                      <td>{row.teamName}</td>
+                      <td>{row.projectTitle}</td>
+                      <td>{row.organization}</td>
+                      <td>
+                        {hasAbstract ? (
+                          <button
+                            className="expand-btn"
+                            onClick={() => toggleRowExpansion(row.rowKey)}
+                            aria-expanded={isExpanded}
+                            aria-label={isExpanded ? 'Collapse abstract' : 'Expand abstract'}
+                          >
+                            {isExpanded ? '−' : '+'}
+                          </button>
+                        ) : (
+                          <span className="no-abstract">—</span>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && hasAbstract && (
+                      <tr key={`${row.rowKey}-expanded`} className="expanded-row">
+                        <td colSpan={8} className="abstract-cell">
+                          <div className="abstract-content">
+                            <strong>Abstract:</strong>
+                            <p>{row.abstract}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })
             )}
           </tbody>
         </table>

@@ -3,6 +3,7 @@ import { fetchEvent, type EventData } from '../../services/api';
 import { ScheduleTable } from './ScheduleTable';
 import { DataTable } from './DataTable';
 import { SimpleTable } from './SimpleTable';
+import { formatEventDate } from '../../utils/dateUtils';
 import './EventPage.css';
 
 export const SchedulePage = () => {
@@ -48,13 +49,8 @@ export const SchedulePage = () => {
     return null;
   }
 
-  // Format date
-  const eventDate = new Date(eventData.event_date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // Format date (using local date parsing to avoid timezone issues)
+  const eventDate = formatEventDate(eventData.event_date);
 
   return (
     <div className="event-container">
