@@ -3,7 +3,7 @@ Admin interface for Event models with inline editors.
 """
 
 from django.contrib import admin
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
+from ..models import Event, Program, Track, Presentation, TrackWinner
 
 
 class PresentationInline(admin.TabularInline):
@@ -43,14 +43,6 @@ class TrackWinnerInline(admin.TabularInline):
     fields = ('track_name', 'winner_name')
 
 
-class SpecialAwardInline(admin.TabularInline):
-    """Inline editor for Special Awards within an Event."""
-
-    model = SpecialAward
-    extra = 0
-    fields = ('program_name', 'award_winner')
-
-
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     """Admin interface for Event model with hierarchical inlines."""
@@ -58,7 +50,6 @@ class EventAdmin(admin.ModelAdmin):
     inlines = [
         ProgramInline,
         TrackWinnerInline,
-        SpecialAwardInline,
     ]
 
     list_display = ('event_name', 'event_date', 'event_time', 'is_published', 'updated_at')
@@ -71,7 +62,7 @@ class EventAdmin(admin.ModelAdmin):
             'fields': ('event_uuid', 'event_name', 'event_date', 'event_time')
         }),
         ('Content', {
-            'fields': ('upper_bullet_points', 'lower_bullet_points'),
+            'fields': ('upper_bullet_points', 'lower_bullet_points', 'special_awards'),
         }),
         ('Publishing', {
             'fields': ('is_published', 'created_at', 'updated_at'),

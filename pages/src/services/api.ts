@@ -200,11 +200,6 @@ export interface TrackWinner {
   winner_name: string;
 }
 
-export interface SpecialAward {
-  program_name: string;
-  award_winner: string;
-}
-
 export interface ExpoRow {
   time: string;
   room: string;
@@ -231,7 +226,7 @@ export interface EventData {
   is_live: boolean;
   programs: Program[];
   track_winners: TrackWinner[];
-  special_awards: SpecialAward[];
+  special_awards: string[];
   created_at: string;
   updated_at: string;
 }

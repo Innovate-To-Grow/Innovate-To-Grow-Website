@@ -5,7 +5,7 @@ Includes both sync serializer (for Google Sheets POST) and read serializer (for 
 """
 
 from rest_framework import serializers
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
+from ..models import Event, Program, Track, Presentation, TrackWinner
 
 
 # ==================== Nested Serializers (for read) ====================
@@ -68,18 +68,6 @@ class TrackWinnerSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class SpecialAwardSerializer(serializers.ModelSerializer):
-    """Serializer for SpecialAward model."""
-
-    class Meta:
-        model = SpecialAward
-        fields = [
-            'program_name',
-            'award_winner',
-        ]
-        read_only_fields = ['id']
-
-
 # ==================== Event Serializers ====================
 
 class EventReadSerializer(serializers.ModelSerializer):
@@ -87,7 +75,6 @@ class EventReadSerializer(serializers.ModelSerializer):
 
     programs = ProgramSerializer(many=True, read_only=True)
     track_winners = TrackWinnerSerializer(many=True, read_only=True)
-    special_awards = SpecialAwardSerializer(many=True, read_only=True)
 
     class Meta:
         model = Event
@@ -180,13 +167,6 @@ class TrackWinnerSyncSerializer(serializers.Serializer):
     winner_name = serializers.CharField(max_length=255)
 
 
-class SpecialAwardSyncSerializer(serializers.Serializer):
-    """Serializer for special award data from Google Sheets."""
-
-    program_name = serializers.CharField(max_length=255)
-    award_winner = serializers.CharField(max_length=255)
-
-
 class ExpoRowSerializer(serializers.Serializer):
     """Serializer for expo table row from Google Sheets."""
 
@@ -251,7 +231,11 @@ class WinnersSerializer(serializers.Serializer):
     """Serializer for winners section from Google Sheets."""
 
     track_winners = TrackWinnerSyncSerializer(many=True, required=False)
-    special_awards = SpecialAwardSyncSerializer(many=True, required=False)
+    special_awards = serializers.ListField(
+        child=serializers.CharField(max_length=500),
+        required=False,
+        allow_empty=True
+    )
 
 
 class PastEventListSerializer(serializers.Serializer):

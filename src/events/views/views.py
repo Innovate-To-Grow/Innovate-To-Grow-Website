@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from ..models import Event, Program, Track, Presentation, TrackWinner, SpecialAward
+from ..models import Event, Program, Track, Presentation, TrackWinner
 from ..serializers import EventSyncSerializer, EventReadSerializer
 from ..authentication import APIKeyAuthentication, APIKeyPermission
 
@@ -243,9 +243,8 @@ class EventSyncAPIView(APIView):
                 if 'winners' in validated_data:
                     winners_data = validated_data['winners']
 
-                    # Deep Clean Sync: Delete all existing winners for this event
+                    # Deep Clean Sync: Delete all existing track winners for this event
                     event.track_winners.all().delete()
-                    event.special_awards.all().delete()
 
                     # Create track winners
                     if 'track_winners' in winners_data:
@@ -256,14 +255,10 @@ class EventSyncAPIView(APIView):
                                 winner_name=winner_data['winner_name'],
                             )
 
-                    # Create special awards
+                    # Update special awards (simple string array)
                     if 'special_awards' in winners_data:
-                        for award_data in winners_data['special_awards']:
-                            SpecialAward.objects.create(
-                                event=event,
-                                program_name=award_data['program_name'],
-                                award_winner=award_data['award_winner'],
-                            )
+                        event.special_awards = winners_data['special_awards']
+                        event.save()
 
                 # Return success response
                 return Response(

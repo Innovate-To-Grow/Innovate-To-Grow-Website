@@ -56,6 +56,13 @@ class Event(models.Model):
         help_text="Reception table rows: [{time, room, description}]"
     )
 
+    # Special awards (stored as JSON array of strings)
+    special_awards = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Special awards as array of strings (e.g., ['Award 1', 'Award 2'])."
+    )
+
     # Publishing
     is_published = models.BooleanField(
         default=False,

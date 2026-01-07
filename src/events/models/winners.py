@@ -33,30 +33,5 @@ class TrackWinner(models.Model):
         verbose_name_plural = "Track Winners"
 
 
-class SpecialAward(models.Model):
-    """Special award winner for a program."""
-
-    event = models.ForeignKey(
-        Event,
-        on_delete=models.CASCADE,
-        related_name='special_awards',
-        help_text="The event this award belongs to."
-    )
-    program_name = models.CharField(
-        max_length=255,
-        help_text="Name of the program (matches Program.program_name)."
-    )
-    award_winner = models.CharField(
-        max_length=255,
-        help_text="Name of the award winner."
-    )
-
-    def __str__(self):
-        return f"{self.event.event_name} - {self.program_name}: {self.award_winner}"
-
-    class Meta:
-        unique_together = [['event', 'program_name']]
-        verbose_name = "Special Award"
-        verbose_name_plural = "Special Awards"
 
 

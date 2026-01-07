@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchArchivedEvent, type EventData } from '../services/api';
+import { fetchArchivedEvent, type EventData, type Program, type TrackWinner } from '../services/api';
 import { ScheduleTable } from '../components/Event/ScheduleTable';
 import { DataTable } from '../components/Event/DataTable';
-import { SimpleTable } from '../components/Event/SimpleTable';
-import { renderMarkdown } from '../components/Event/markdown';
 import { formatEventDate } from '../utils/dateUtils';
-import '../components/Event/EventPage.css';
+import './ArchivePage.css';
+
+interface ProgramWinners {
+  program: Program;
+  trackWinners: TrackWinner[];
+}
 
 export const ArchivePage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -38,18 +41,42 @@ export const ArchivePage = () => {
     loadEventData();
   }, [slug]);
 
+  // Map track winners to programs by matching track_name
+  const programWinners = useMemo(() => {
+    if (!eventData || !eventData.programs || !eventData.track_winners) {
+      return [];
+    }
+
+    return eventData.programs.map((program): ProgramWinners => {
+      // Find all tracks in this program
+      const programTrackNames = new Set(
+        program.tracks.map(track => track.track_name)
+      );
+
+      // Find track winners that belong to this program
+      const trackWinners = eventData.track_winners.filter(winner =>
+        programTrackNames.has(winner.track_name)
+      );
+
+      return {
+        program,
+        trackWinners,
+      };
+    }).filter(pw => pw.trackWinners.length > 0);
+  }, [eventData]);
+
   if (loading) {
     return (
-      <div className="event-container">
-        <div className="event-state">Loading archived event data...</div>
+      <div className="archive-container">
+        <div className="archive-state">Loading archived event data...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="event-container">
-        <div className="event-state event-error">{error}</div>
+      <div className="archive-container">
+        <div className="archive-state archive-error">{error}</div>
       </div>
     );
   }
@@ -60,74 +87,66 @@ export const ArchivePage = () => {
 
   // Format date (using local date parsing to avoid timezone issues)
   const eventDate = formatEventDate(eventData.event_date);
+  const hasWinners = programWinners.length > 0 || (eventData.special_awards && eventData.special_awards.length > 0);
 
   return (
-    <div className="event-container">
-      {/* Main Event Title */}
-      <h1 className="event-main-title">{eventData.event_name}: {eventDate}</h1>
+    <div className="archive-container">
+      {/* Event Title */}
+      <h1 className="archive-event-title">{eventData.event_name}: {eventDate}</h1>
 
-      {/* Top Section - 2x2 Grid */}
-      <div className="event-top-section">
-        {/* Top Left Section */}
-        <div className="event-section event-section-top-left">
-          <h2 className="event-section-title">
-            {eventData.event_name}: {eventDate}
-          </h2>
-          {eventData.upper_bullet_points && eventData.upper_bullet_points.length > 0 && (
-            <div className="event-bullets-inline">
-              <ul>
-                {eventData.upper_bullet_points.map((bullet, index) => (
-                  <li
-                    key={`upper-${index}`}
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(bullet) }}
-                  />
+      {/* Winners Section */}
+      {hasWinners && (
+        <div className="winners-section">
+          <h2 className="winners-title">Winners! Innovate to Grow</h2>
+          
+          {/* Special Awards Section - Right below title */}
+          {eventData.special_awards && eventData.special_awards.length > 0 && (
+            <div className="special-awards-section">
+              <h3 className="special-awards-title">Special Awards</h3>
+              <ul className="special-awards-list">
+                {eventData.special_awards.map((award, index) => (
+                  <li key={index} className="special-award-item">{award}</li>
                 ))}
               </ul>
             </div>
           )}
-        </div>
+          
+          <div className="winners-grid">
+            {programWinners.map((programWinner) => {
+              const { program, trackWinners } = programWinner;
+              const programColorClass = getProgramColorClass(program.program_name);
 
-        {/* Top Right Section */}
-        <div className="event-section event-section-top-right">
-          <h2 className="event-section-title">Event Information</h2>
-          <div className="event-bullets-inline">
-            <ul>
-              <li>This is an archived event from the past.</li>
-              <li>Review schedule, projects, and teams below.</li>
-              <li>You may click on a team (e.g. CSE-314) to open that team info.</li>
-              <li>Then, you may click the open/close icon to view project details.</li>
-            </ul>
+              return (
+                <div key={program.program_name} className={`program-winners-column ${programColorClass}`}>
+                  {/* Program Header */}
+                  <h3 className="program-winners-header">{program.program_name}</h3>
+
+                  {/* Track Winners Table */}
+                  {trackWinners.length > 0 && (
+                    <div className="track-winners-table-container">
+                      <table className="track-winners-table">
+                        <thead>
+                          <tr>
+                            <th>Track</th>
+                            <th>Winning Team</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {trackWinners.map((winner) => (
+                            <tr key={winner.track_name}>
+                              <td className="track-cell">{winner.track_name}</td>
+                              <td className="winner-cell">{winner.winner_name}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-
-        {/* Bottom Left Section */}
-        <div className="event-section event-section-bottom-left">
-          <h2 className="event-section-title">Event Details</h2>
-          {eventData.lower_bullet_points && eventData.lower_bullet_points.length > 0 && (
-            <div className="event-bullets-inline">
-              <ul>
-                {eventData.lower_bullet_points.map((bullet, index) => (
-                  <li
-                    key={`lower-${index}`}
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(bullet) }}
-                  />
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Right Section - Map Placeholder */}
-        <div className="event-section event-section-bottom-right">
-          <div className="map-placeholder">
-            {/* Map image will go here */}
-          </div>
-        </div>
-      </div>
-
-      {/* Expo Table Section */}
-      {eventData.expo_table && eventData.expo_table.length > 0 && (
-        <SimpleTable title="EXPO: POSTERS AND DEMOS" rows={eventData.expo_table} />
       )}
 
       {/* Schedule Section */}
@@ -135,16 +154,23 @@ export const ArchivePage = () => {
         <ScheduleTable programs={eventData.programs} />
       )}
 
-      {/* Reception Table Section */}
-      {eventData.reception_table && eventData.reception_table.length > 0 && (
-        <SimpleTable title="AWARDS & RECEPTION" rows={eventData.reception_table} />
-      )}
-
-      {/* Data Table Section */}
+      {/* Projects Data Table Section */}
       {eventData.programs && eventData.programs.length > 0 && (
         <DataTable programs={eventData.programs} />
       )}
     </div>
   );
+};
+
+// Helper function to get program color class (matching ScheduleTable logic)
+const getProgramColorClass = (programName: string): string => {
+  if (programName.includes('CSE') || programName.includes('Software') || programName.includes('Sofware')) {
+    return 'program-cse';
+  } else if (programName.includes('Civil') || programName.includes('CEE')) {
+    return 'program-cee';
+  } else if (programName.includes('Engineering Capstone') || programName.includes('CAP')) {
+    return 'program-cap';
+  }
+  return '';
 };
 

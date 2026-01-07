@@ -1,9 +1,9 @@
-import type { TrackWinner, SpecialAward } from '../../services/api';
+import type { TrackWinner } from '../../services/api';
 import './WinnersSection.css';
 
 interface WinnersSectionProps {
   trackWinners: TrackWinner[];
-  specialAwards: SpecialAward[];
+  specialAwards: string[];
 }
 
 // Determine program type from track name
@@ -67,14 +67,12 @@ export const WinnersSection = ({ trackWinners, specialAwards }: WinnersSectionPr
       {/* Special Awards at Top */}
       {hasSpecialAwards && (
         <div className="special-awards-section">
-          {specialAwards.map((award, index) => {
-            const isEngineering = award.program_name.includes('Engineering') || award.program_name.includes('CAP');
-            return (
-              <div key={`${award.program_name}-${index}`} className={`special-award ${isEngineering ? 'award-engineering' : 'award-software'}`}>
-                {award.program_name}: {award.award_winner}
-              </div>
-            );
-          })}
+          <h3 className="special-awards-title">Special Awards</h3>
+          <ul className="special-awards-list">
+            {specialAwards.map((award, index) => (
+              <li key={index} className="special-award-item">{award}</li>
+            ))}
+          </ul>
         </div>
       )}
 

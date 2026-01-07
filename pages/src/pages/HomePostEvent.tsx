@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchEvent, type EventData, type Program, type TrackWinner, type SpecialAward } from '../services/api';
+import { fetchEvent, type EventData, type Program, type TrackWinner } from '../services/api';
 import { ScheduleTable } from '../components/Event/ScheduleTable';
 import { DataTable } from '../components/Event/DataTable';
 import './HomePostEvent.css';
@@ -7,7 +7,6 @@ import './HomePostEvent.css';
 interface ProgramWinners {
   program: Program;
   trackWinners: TrackWinner[];
-  specialAward: SpecialAward | null;
 }
 
 export const HomePostEvent = () => {
@@ -50,17 +49,11 @@ export const HomePostEvent = () => {
         programTrackNames.has(winner.track_name)
       );
 
-      // Find special award for this program
-      const specialAward = eventData.special_awards?.find(
-        award => award.program_name === program.program_name
-      ) || null;
-
       return {
         program,
         trackWinners,
-        specialAward,
       };
-    }).filter(pw => pw.trackWinners.length > 0 || pw.specialAward !== null);
+    }).filter(pw => pw.trackWinners.length > 0);
   }, [eventData]);
 
   if (loading) {
@@ -83,8 +76,7 @@ export const HomePostEvent = () => {
     return null;
   }
 
-  const hasWinners = programWinners.length > 0;
-  const allSpecialAwards = eventData.special_awards || [];
+  const hasWinners = programWinners.length > 0 || (eventData.special_awards && eventData.special_awards.length > 0);
 
   return (
     <div className="home-post-event-container">
@@ -93,14 +85,15 @@ export const HomePostEvent = () => {
         <div className="winners-section">
           <h2 className="winners-title">Winners! Innovate to Grow</h2>
           
-          {/* Special Awards Text - Right below title */}
-          {allSpecialAwards.length > 0 && (
-            <div className="special-awards-text">
-              {allSpecialAwards.map((award, index) => (
-                <div key={index} className="special-award-item">
-                  <strong>{award.program_name} - Program Special Award Winner:</strong> {award.award_winner}
-                </div>
-              ))}
+          {/* Special Awards Section - Right below title */}
+          {eventData.special_awards && eventData.special_awards.length > 0 && (
+            <div className="special-awards-section">
+              <h3 className="special-awards-title">Special Awards</h3>
+              <ul className="special-awards-list">
+                {eventData.special_awards.map((award, index) => (
+                  <li key={index} className="special-award-item">{award}</li>
+                ))}
+              </ul>
             </div>
           )}
           
