@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from layout.serializers import MenuSerializer as LayoutMenuSerializer
 from layout.models import MenuPageLink
-from ..models import Page, HomePage, PageComponent, UniformForm, FormSubmission
+from ..models import Page, HomePage, PageComponent, UniformForm, FormSubmission, SiteSettings
 
 
 class PageComponentSerializer(serializers.ModelSerializer):
@@ -51,6 +51,15 @@ class HomePageSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomePage
         fields = ["id", "name", "is_active", "components", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class SiteSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for site settings."""
+
+    class Meta:
+        model = SiteSettings
+        fields = ["id", "home_page_mode", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
 

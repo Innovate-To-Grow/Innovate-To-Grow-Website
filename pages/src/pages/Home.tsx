@@ -1,28 +1,31 @@
 import { useState, useEffect } from 'react';
-import { fetchHomeContent, type HomeContent } from '../services/api';
+import { Navigate } from 'react-router-dom';
+import { fetchSiteSettings, type SiteSettings } from '../services/api';
+import { HomePreEvent } from './HomePreEvent';
+import { HomeDuringSemester } from './HomeDuringSemester';
 import './Home.css';
 
 export const Home = () => {
-  const [homeContent, setHomeContent] = useState<HomeContent | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadHomeContent = async () => {
+    const loadSiteSettings = async () => {
       setLoading(true);
       setError(null);
       try {
-        const content = await fetchHomeContent();
-        setHomeContent(content);
+        const settings = await fetchSiteSettings();
+        setSiteSettings(settings);
       } catch (err) {
-        setError('Unable to load home page content.');
+        setError('Unable to load site settings.');
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadHomeContent();
+    loadSiteSettings();
   }, []);
 
   if (loading) {
@@ -41,18 +44,19 @@ export const Home = () => {
     );
   }
 
-  if (!homeContent) {
+  if (!siteSettings) {
     return null;
   }
 
-  return (
-    <div className="home-container">
-      <div className="home-content">
-        <div 
-          className="home-body" 
-          dangerouslySetInnerHTML={{ __html: homeContent.body }} 
-        />
-      </div>
-    </div>
-  );
+  // Render the appropriate component based on home_page_mode
+  switch (siteSettings.home_page_mode) {
+    case 'pre_event':
+      return <HomePreEvent />;
+    case 'during_semester':
+      return <HomeDuringSemester />;
+    case 'event':
+      return <Navigate to="/event" replace />;
+    default:
+      return <HomePreEvent />;
+  }
 };

@@ -5,13 +5,14 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError, PermissionDenied
-from ..models import Page, HomePage, UniformForm, FormSubmission
+from ..models import Page, HomePage, UniformForm, FormSubmission, SiteSettings
 from ..serializers import (
     PageSerializer,
     HomePageSerializer,
     UniformFormSerializer,
     FormSubmissionCreateSerializer,
-    FormSubmissionListSerializer
+    FormSubmissionListSerializer,
+    SiteSettingsSerializer,
 )
 
 
@@ -36,6 +37,18 @@ class HomePageAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         serializer = HomePageSerializer(home_page)
+        return Response(serializer.data)
+
+
+class SiteSettingsAPIView(APIView):
+    """
+    Retrieve the current site settings.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        site_settings = SiteSettings.get_instance()
+        serializer = SiteSettingsSerializer(site_settings)
         return Response(serializer.data)
 
 

@@ -3,6 +3,7 @@ from .views import (
     PageRetrieveAPIView,
     PageListAPIView,
     HomePageAPIView,
+    SiteSettingsAPIView,
     UniformFormRetrieveAPIView,
     FormSubmissionCreateAPIView,
     FormSubmissionListAPIView
@@ -17,6 +18,9 @@ urlpatterns = [
 
     # home page
     path("home/", HomePageAPIView.as_view(), name="home-page"),
+
+    # site settings
+    path("site-settings/", SiteSettingsAPIView.as_view(), name="site-settings"),
 
     # forms
     path("forms/<slug:slug>/", UniformFormRetrieveAPIView.as_view(), name="form-detail"),

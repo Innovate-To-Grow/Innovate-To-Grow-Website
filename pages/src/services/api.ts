@@ -55,6 +55,20 @@ export const fetchHomeContent = async (): Promise<HomeContent> => {
   return response.data;
 };
 
+// ======================== Site Settings Types ========================
+
+export interface SiteSettings {
+  id: number;
+  home_page_mode: 'pre_event' | 'during_semester' | 'event';
+  created_at: string;
+  updated_at: string;
+}
+
+export const fetchSiteSettings = async (): Promise<SiteSettings> => {
+  const response = await api.get<SiteSettings>('/pages/site-settings/');
+  return response.data;
+};
+
 // ======================== Footer ========================
 
 export interface FooterLink {
