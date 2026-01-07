@@ -49,3 +49,5 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             pass
         return readonly
 
+
+

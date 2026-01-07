@@ -174,3 +174,27 @@ CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "ck_editor_5_upload_file"
 # Events API Key for Google Sheets sync
 EVENTS_API_KEY = os.getenv('EVENTS_API_KEY', '')
 
+# Google Sheets configuration for Past Projects
+GOOGLE_SHEETS_SPREADSHEET_ID = os.getenv(
+    'GOOGLE_SHEETS_SPREADSHEET_ID',
+    '1KATiK1Fnlb7Vsd186mCbaGjhID-OUGN-1QHWY8hIc5U'
+)
+GOOGLE_SHEETS_WORKSHEET_NAME = os.getenv(
+    'GOOGLE_SHEETS_WORKSHEET_NAME',
+    'Past-Projects-WEB-LIVE'
+)
+GOOGLE_SHEETS_API_KEY = os.getenv('GOOGLE_SHEETS_API_KEY', None)
+
+# Service account file: check env var first, then default location (~/.config/gspread/service_account.json)
+# Priority: 1) GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE env var, 2) default location if exists, 3) None (fallback to API key)
+default_service_account_path = Path.home() / '.config' / 'gspread' / 'service_account.json'
+service_account_from_env = os.getenv('GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE', None)
+GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE = (
+    service_account_from_env
+    if service_account_from_env
+    else (str(default_service_account_path) if default_service_account_path.exists() else None)
+)
+
+# Frontend URL for generating shareable links
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
