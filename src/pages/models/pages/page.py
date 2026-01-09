@@ -22,7 +22,7 @@ class Page(
 ):
     """Content page model composed of ordered PageComponents."""
 
-    # Technical identifier (not primary key, just an extra UUID)
+    # Technical identifier
     page_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     # ------------------------------ Basic Fields ------------------------------

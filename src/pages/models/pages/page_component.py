@@ -1,7 +1,9 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from core.models.base import OrderedModel, TimeStampedModel
+from core.models.base import TimeStampedModel, SoftDeleteModel
 
 
 def default_config():
@@ -9,59 +11,31 @@ def default_config():
     return {}
 
 
-class PageComponent(TimeStampedModel, OrderedModel):
+class PageCascadingStyleSheets(models.Model):
+    pass
+
+
+
+class PageComponent(TimeStampedModel, SoftDeleteModel):
     """
     Reusable, ordered content block that can belong to a Page or HomePage.
-
-    Supported component types (extensible):
-    - html: raw HTML content (current focus)
-    - form: reference to a form component (future use)
-    - google_sheet: embedded Google Sheet (future use)
-    - sheet: internal sheet/table data (future use)
     """
 
-    COMPONENT_TYPE_HTML = "html"
-    COMPONENT_TYPE_FORM = "form"
-    COMPONENT_TYPE_GOOGLE_SHEET = "google_sheet"
-    COMPONENT_TYPE_SHEET = "sheet"
-
-    COMPONENT_TYPE_CHOICES = [
-        (COMPONENT_TYPE_HTML, "HTML"),
-        (COMPONENT_TYPE_FORM, "Form"),
-        (COMPONENT_TYPE_GOOGLE_SHEET, "Google Sheet"),
-        (COMPONENT_TYPE_SHEET, "Sheet"),
-    ]
-
-    # Parent relations (exactly one must be set)
-    page = models.ForeignKey(
-        "pages.Page",
-        related_name="components",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        help_text="Parent Page (set for standard pages).",
-    )
-    home_page = models.ForeignKey(
-        "pages.HomePage",
-        related_name="components",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        help_text="Parent HomePage (set for homepage versions).",
+    # Technical identifier
+    page_component_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    page_component_name = models.CharField(
+        max_length=255,
+        help_text="Human readable name of the component."
     )
 
-    # Component definition
-    component_type = models.CharField(
-        max_length=50,
-        choices=COMPONENT_TYPE_CHOICES,
-        default=COMPONENT_TYPE_HTML,
-        help_text="Type of component to render.",
-    )
+    # Basic Fields
     html_content = models.TextField(
         blank=True,
         default="",
         help_text="HTML content when component_type='html'.",
     )
+
+    # TODO: Complete the page component logic
     css_file = models.FileField(
         upload_to="page_components/css/",
         blank=True,
