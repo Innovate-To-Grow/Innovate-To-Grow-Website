@@ -1,0 +1,376 @@
+.enhanced-data-table-container {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.enhanced-data-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.enhanced-data-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.enhanced-data-table-entries {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.enhanced-data-table-entries label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.entries-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.entries-select:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+.enhanced-data-table-entries span {
+  color: #666;
+  font-size: 1rem;
+}
+
+.enhanced-data-table-info {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.enhanced-data-table-export {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.export-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: #f5f5f5;
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.export-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.enhanced-data-table-wrapper {
+  overflow-x: auto;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.enhanced-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.enhanced-data-table thead {
+  background: #f5f5f5;
+}
+
+.enhanced-data-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  white-space: nowrap;
+}
+
+.enhanced-data-table th.select-column {
+  width: 50px;
+  text-align: center;
+}
+
+.sortable-header {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.2s;
+}
+
+.sortable-header:hover {
+  color: #0066cc;
+}
+
+.sortable-header:focus {
+  outline: none;
+  text-decoration: underline;
+}
+
+.enhanced-data-table tbody tr {
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.enhanced-data-table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.enhanced-data-table tbody tr.selected-row {
+  background-color: #e3f2fd;
+}
+
+.enhanced-data-table tbody tr.selected-row:hover {
+  background-color: #bbdefb;
+}
+
+.enhanced-data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.enhanced-data-table td {
+  padding: 0.75rem 1rem;
+  color: #444;
+  vertical-align: top;
+}
+
+.enhanced-data-table td.select-column {
+  text-align: center;
+  width: 50px;
+}
+
+.enhanced-data-table td.select-column input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+  font-style: italic;
+}
+
+.expand-btn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-btn:hover {
+  background: #f5f5f5;
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.expand-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.no-details {
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.expanded-row {
+  background-color: #f9f9f9;
+  animation: expandRow 0.3s ease-out;
+}
+
+@keyframes expandRow {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+.details-cell {
+  padding: 1.5rem !important;
+  background-color: #f9f9f9;
+  border-top: 2px solid #e0e0e0;
+}
+
+.details-content {
+  max-width: 100%;
+}
+
+.detail-section {
+  margin-bottom: 1rem;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section strong {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.detail-section p {
+  margin: 0;
+  color: #555;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.enhanced-data-table-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #0066cc;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.pagination-info {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .enhanced-data-table-container {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .enhanced-data-table-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .enhanced-data-table-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .enhanced-data-table-export {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .export-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .enhanced-data-table {
+    font-size: 0.85rem;
+  }
+
+  .enhanced-data-table th,
+  .enhanced-data-table td {
+    padding: 0.5rem;
+  }
+
+  .expand-btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 1rem;
+  }
+
+  .details-cell {
+    padding: 1rem !important;
+  }
+
+  .detail-section strong {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .detail-section p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+}
+
+

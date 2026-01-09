@@ -17,6 +17,12 @@ openpyxl>=3.1.0
 # Cryptography (RSA key generation)
 cryptography>=41.0.0
 
+# Google Sheets Integration
+gspread>=5.0.0
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+requests>=2.31.0
+
 # Production Dependencies (uncomment when needed)
 # gunicorn>=21.0.0
 # psycopg2-binary>=2.9.0  # PostgreSQL adapter

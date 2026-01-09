@@ -266,4 +266,64 @@ export const fetchPastEventsList = async (): Promise<PastEventListItem[]> => {
   return response.data;
 };
 
+// ======================== Past Projects Types ========================
+
+export interface PastProject {
+  'Year-Semester': string;
+  'Class': string;
+  'Team#': string;
+  'Team Name': string;
+  'Project Title': string;
+  'Organization': string;
+  'Industry': string;
+  'Abstract': string;
+  'Student Names': string;
+}
+
+export interface SharedProjectURLRequest {
+  team_names: string[];
+  team_numbers: string[];
+  project_keys?: string[]; // Optional: unique project identifiers for precise matching
+}
+
+export interface SharedProjectURLResponse {
+  uuid: string;
+  url: string;
+}
+
+export interface SharedProjectURLData {
+  uuid: string;
+  team_names: string[];
+  team_numbers: string[];
+  project_keys?: string[];
+  created_at: string;
+  expires_at: string | null;
+}
+
+// ======================== Past Projects API ========================
+
+export const fetchPastProjects = async (): Promise<PastProject[]> => {
+  const response = await api.get<PastProject[]>('/pages/past-projects/');
+  return response.data;
+};
+
+export const createSharedURL = async (
+  data: SharedProjectURLRequest
+): Promise<SharedProjectURLResponse> => {
+  const response = await api.post<SharedProjectURLResponse>(
+    '/pages/past-projects/share/',
+    data
+  );
+  return response.data;
+};
+
+export const fetchSharedURL = async (
+  uuid: string
+): Promise<SharedProjectURLData> => {
+  const response = await api.get<SharedProjectURLData>(
+    `/pages/past-projects/shared/${uuid}/`
+  );
+  return response.data;
+};
+
 export default api;
