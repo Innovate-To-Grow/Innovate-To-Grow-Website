@@ -32,7 +32,6 @@ INSTALLED_APPS = [
     "layout.apps.LayoutConfig",
     "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
-    "sheets.apps.SheetsConfig",
     # third party application
     "rest_framework",
     "rest_framework_simplejwt",

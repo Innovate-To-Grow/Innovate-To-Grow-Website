@@ -4,8 +4,6 @@ Django development settings for core project.
 This file contains settings specific to the development environment.
 """
 
-import os
-
 from .base import *
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -27,12 +25,8 @@ STATICFILES_DIRS = [
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "innovate_to_grow"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 

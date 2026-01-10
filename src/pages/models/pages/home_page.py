@@ -1,9 +1,16 @@
+"""
+Home page model for the main landing page.
+
+Supports multiple versions with only one active at a time.
+Content is composed of ordered PageComponent blocks.
+"""
+
 from django.db import models
 
-from core.models.base import SoftDeleteModel, TimeStampedModel
+from core.models.base import ProjectControlModel
 
 
-class HomePage(TimeStampedModel, SoftDeleteModel):
+class HomePage(ProjectControlModel):
     """Home page model composed of ordered PageComponents (one version active)."""
 
     name = models.CharField(max_length=200, help_text="Internal name to identify this home page version")
@@ -31,5 +38,10 @@ class HomePage(TimeStampedModel, SoftDeleteModel):
 
     @property
     def ordered_components(self):
-        """Return components ordered for rendering."""
+        """Return enabled components ordered for rendering."""
+        return self.components.filter(is_enabled=True).order_by("order", "id")
+
+    @property
+    def all_components(self):
+        """Return all components (including disabled) ordered."""
         return self.components.order_by("order", "id")

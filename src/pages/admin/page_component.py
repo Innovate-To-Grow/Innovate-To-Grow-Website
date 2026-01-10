@@ -1,51 +1,82 @@
 from django import forms
 from django.contrib import admin
 
-from ..models import PageComponent
+from ..models import ComponentDataSource, PageComponent, PageComponentImage
 
 
 class PageComponentForm(forms.ModelForm):
-    """Form for PageComponent with hidden code fields (managed by JS editor)."""
+    """Form for PageComponent with code editor fields."""
 
     class Meta:
         model = PageComponent
         fields = "__all__"
         widgets = {
-            # These textareas are hidden and synced by the CodeMirror editor
             "html_content": forms.Textarea(attrs={"rows": 12, "class": "vLargeTextField"}),
             "css_code": forms.Textarea(attrs={"rows": 8, "class": "vLargeTextField"}),
             "js_code": forms.Textarea(attrs={"rows": 10, "class": "vLargeTextField"}),
         }
 
 
+class PageComponentImageInline(admin.TabularInline):
+    model = PageComponentImage
+    extra = 1
+    fields = ("order", "image", "alt", "caption", "link")
+    ordering = ("order",)
+
+
+@admin.register(ComponentDataSource)
+class ComponentDataSourceAdmin(admin.ModelAdmin):
+    list_display = ("source_name", "request_method", "source_url", "auth_mode", "is_enabled")
+    list_filter = ("request_method", "auth_mode", "is_enabled")
+    search_fields = ("source_name", "source_url")
+    ordering = ("source_name",)
+
+
 @admin.register(PageComponent)
 class PageComponentAdmin(admin.ModelAdmin):
     """
     Admin for PageComponent with integrated code editor.
-
-    The HTML/CSS/JS fields are edited via a CodeMirror-based editor
-    with live preview. The textarea fields are hidden but still synced.
     """
 
     form = PageComponentForm
     change_form_template = "admin/pages/pagecomponent/change_form.html"
-    list_display = ("component_type", "order", "parent_display", "created_at", "updated_at")
-    list_filter = ("component_type",)
-    search_fields = ("html_content", "css_code", "js_code")
-    readonly_fields = ("created_at", "updated_at")
-    ordering = ("component_type", "order", "id")
+    list_display = ("name", "component_type", "order", "parent_display", "is_enabled", "updated_at")
+    list_filter = ("component_type", "is_enabled", "page", "home_page")
+    search_fields = ("name", "html_content", "css_code", "js_code")
+    readonly_fields = ("component_uuid", "created_at", "updated_at")
+    ordering = ("order", "name")
+    inlines = [PageComponentImageInline]
 
     fieldsets = (
         (None, {
-            "fields": ("html_content", "css_code", "js_code"),
-            "classes": ("wide", "hidden-fieldset"),
+            "fields": ("name", "component_type", "component_uuid"),
         }),
-        ("Component Settings", {
-            "fields": ("component_type", "order", "page", "home_page"),
+        ("Parent Assignment", {
+            "fields": ("page", "home_page"),
+            "description": "Component must belong to exactly one of Page or Home Page.",
+        }),
+        ("Display Settings", {
+            "fields": ("order", "is_enabled"),
+        }),
+        ("Content", {
+            "fields": ("html_content", "css_code", "js_code", "config"),
+            "classes": ("wide",),
+        }),
+        ("Form (for component_type='form')", {
+            "fields": ("form",),
+            "classes": ("collapse",),
+            "description": "Select a form to embed when component type is 'Form'.",
+        }),
+        ("Images", {
+            "fields": ("image", "image_alt", "image_caption", "image_link", "background_image", "background_image_alt"),
             "classes": ("collapse",),
         }),
-        ("Additional Settings", {
-            "fields": ("config", "css_file"),
+        ("CSS File", {
+            "fields": ("css_file",),
+            "classes": ("collapse",),
+        }),
+        ("Data Source", {
+            "fields": ("data_source", "data_params", "refresh_interval_seconds", "hydrate_on_client"),
             "classes": ("collapse",),
         }),
         ("Timestamps", {
@@ -63,3 +94,11 @@ class PageComponentAdmin(admin.ModelAdmin):
         return "Unassigned"
 
     parent_display.short_description = "Parent"
+
+
+@admin.register(PageComponentImage)
+class PageComponentImageAdmin(admin.ModelAdmin):
+    list_display = ("image_uuid", "component", "order", "alt")
+    list_filter = ("component",)
+    search_fields = ("alt", "caption")
+    ordering = ("component", "order")

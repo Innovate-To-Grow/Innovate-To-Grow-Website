@@ -10,7 +10,7 @@ A Menu contains a JSON structure of navigation items that can be:
 
 from django.db import models
 
-from core.models.base import OrderedModel, SoftDeleteModel, TimeStampedModel
+from core.models.base import OrderedModel, ProjectControlModel
 
 
 def default_menu_items():
@@ -29,7 +29,7 @@ def default_menu_items():
     return [{"type": "home", "title": "Home", "icon": "", "open_in_new_tab": False, "children": []}]
 
 
-class Menu(TimeStampedModel, SoftDeleteModel):
+class Menu(ProjectControlModel):
     """
     Menu container model.
 
@@ -83,7 +83,7 @@ class Menu(TimeStampedModel, SoftDeleteModel):
         verbose_name_plural = "Menus"
 
 
-class MenuPageLink(TimeStampedModel, OrderedModel):
+class MenuPageLink(ProjectControlModel, OrderedModel):
     """
     Through model for Menu-Page relationship.
 

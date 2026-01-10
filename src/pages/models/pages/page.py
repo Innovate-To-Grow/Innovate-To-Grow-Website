@@ -9,7 +9,7 @@ import uuid
 
 from django.db import models
 
-from core.models.base import AuthoredModel, SoftDeleteModel, TimeStampedModel
+from core.models.base import AuthoredModel, ProjectControlModel
 
 from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
 from .validators import validate_nested_slug
@@ -18,7 +18,7 @@ from .validators import validate_nested_slug
 
 
 class Page(
-    SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDeleteModel, AuthoredModel, TimeStampedModel
+    SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, AuthoredModel, ProjectControlModel
 ):
     """Content page model composed of ordered PageComponents."""
 
@@ -36,6 +36,12 @@ class Page(
             "User-defined slug. Supports nested paths, e.g. 'about/team'. Do NOT include leading or trailing '/'."
         ),
     )
+
+    class Meta:
+        ordering = ["slug"]
+        verbose_name = "Page"
+        verbose_name_plural = "Pages"
+
     # -------------------------- Utility Methods ----------------------------
 
     def save(self, *args, **kwargs):
@@ -60,7 +66,12 @@ class Page(
 
     @property
     def ordered_components(self):
-        """Return components ordered for rendering."""
+        """Return enabled components ordered for rendering."""
+        return self.components.filter(is_enabled=True).order_by("order", "id")
+
+    @property
+    def all_components(self):
+        """Return all components (including disabled) ordered."""
         return self.components.order_by("order", "id")
 
     @property
@@ -72,8 +83,3 @@ class Page(
 
     def __str__(self) -> str:
         return f"{self.slug} - {self.title}"
-
-    class Meta:
-        ordering = ["slug"]
-        verbose_name = "Page"
-        verbose_name_plural = "Pages"

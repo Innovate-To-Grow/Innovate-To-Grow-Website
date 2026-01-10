@@ -2,26 +2,8 @@ from rest_framework import serializers
 
 from layout.models import MenuPageLink
 from layout.serializers import MenuSerializer as LayoutMenuSerializer
-from sheets.models import Sheet
 
 from ..models import FormSubmission, HomePage, Page, PageComponent, UniformForm
-
-
-class SheetSerializer(serializers.ModelSerializer):
-    """Serializer for retrieving sheet data."""
-
-    class Meta:
-        model = Sheet
-        fields = [
-            "id",
-            "name",
-            "description",
-            "columns",
-            "data",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class PageComponentSerializer(serializers.ModelSerializer):
