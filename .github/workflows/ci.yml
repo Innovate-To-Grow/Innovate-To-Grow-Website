@@ -1,17 +1,27 @@
-name: Build & Test
+name: CI
 
 on:
-  workflow_run:
-    workflows: ["Code Style Check"]
-    types:
-      - completed
+  push:
+    branches: [main, master]
+  pull_request:
 
 jobs:
+  # ============================================
+  # Stage 1: Code Style Check
+  # ============================================
+  lint:
+    name: Code Style Check
+    uses: ./.github/workflows/lint.yml
+
+  # ============================================
+  # Stage 2: Build & Test (depends on linting)
+  # ============================================
+
   # Django Backend Build & Test
   django-build:
     name: Django Build & Test
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: lint
     defaults:
       run:
         working-directory: src
@@ -19,8 +29,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,7 +55,7 @@ jobs:
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: lint
     defaults:
       run:
         working-directory: pages
@@ -55,8 +63,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
