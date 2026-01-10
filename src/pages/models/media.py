@@ -16,7 +16,7 @@ def asset_upload_path(instance, filename):
     """
     Generate upload path for media assets.
     Uses UUID to ensure unique filenames and prevent collisions.
-    
+
     Format: assets/{uuid}.{extension}
     """
     ext = os.path.splitext(filename)[1].lower()
@@ -26,11 +26,11 @@ def asset_upload_path(instance, filename):
 class MediaAsset(models.Model):
     """
     Unified media asset management.
-    
+
     Stores metadata about uploaded files and provides consistent URL access
     regardless of the storage backend (local filesystem or cloud storage).
     """
-    
+
     uuid = models.UUIDField(
         default=uuid.uuid4,
         unique=True,
@@ -73,32 +73,32 @@ class MediaAsset(models.Model):
         related_name="uploaded_assets",
         help_text="User who uploaded the file.",
     )
-    
+
     class Meta:
         ordering = ["-uploaded_at"]
         verbose_name = "Media Asset"
         verbose_name_plural = "Media Assets"
-    
+
     def __str__(self):
         return f"{self.original_name} ({self.uuid})"
-    
+
     @property
     def url(self):
         """Return the URL for this asset (works with any storage backend)."""
         return self.file.url if self.file else ""
-    
+
     @property
     def extension(self):
         """Return the file extension (lowercase, without dot)."""
         if self.original_name:
             return os.path.splitext(self.original_name)[1].lower().lstrip(".")
         return ""
-    
+
     @property
     def is_image(self):
         """Check if the asset is an image based on content type."""
         return self.content_type.startswith("image/")
-    
+
     def save(self, *args, **kwargs):
         """Auto-populate file_size if not set."""
         if self.file and not self.file_size:

@@ -18,20 +18,6 @@ const getProgramFromTrack = (trackName: string): 'CAP' | 'CEE' | 'CSE' | null =>
   return null;
 };
 
-// Get program display name (reserved for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// @ts-expect-error reserved for future use
-const getProgramDisplayName = (program: 'CAP' | 'CEE' | 'CSE'): string => {
-  switch (program) {
-    case 'CAP':
-      return 'Engineering Capstone (CAP)';
-    case 'CEE':
-      return 'Civil & Environmental Track 3';
-    case 'CSE':
-      return 'Software Engineering Capstone (CSE)';
-  }
-};
-
 // Get track category
 const getTrackCategory = (trackName: string): string => {
   if (trackName.includes('Track 1')) return 'FoodTech';

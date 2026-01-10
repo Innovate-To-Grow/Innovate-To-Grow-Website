@@ -14,7 +14,7 @@ from ..models import MediaAsset
 @admin.register(MediaAsset)
 class MediaAssetAdmin(admin.ModelAdmin):
     """Admin interface for MediaAsset model."""
-    
+
     list_display = (
         "thumbnail_preview",
         "original_name",
@@ -33,7 +33,7 @@ class MediaAssetAdmin(admin.ModelAdmin):
         "file_url_display",
     )
     ordering = ("-uploaded_at",)
-    
+
     fieldsets = (
         (None, {
             "fields": ("file", "original_name", "alt_text"),
@@ -50,7 +50,7 @@ class MediaAssetAdmin(admin.ModelAdmin):
             "classes": ("collapse",),
         }),
     )
-    
+
     def thumbnail_preview(self, obj):
         """Display a small thumbnail in list view."""
         if obj.is_image and obj.file:
@@ -64,7 +64,7 @@ class MediaAssetAdmin(admin.ModelAdmin):
             obj.extension.upper() or "FILE"
         )
     thumbnail_preview.short_description = "Preview"
-    
+
     def preview_large(self, obj):
         """Display a larger preview in detail view."""
         if obj.is_image and obj.file:
@@ -81,7 +81,7 @@ class MediaAssetAdmin(admin.ModelAdmin):
             obj.original_name
         )
     preview_large.short_description = "Preview"
-    
+
     def file_size_display(self, obj):
         """Display file size in human-readable format."""
         size = obj.file_size
@@ -92,7 +92,7 @@ class MediaAssetAdmin(admin.ModelAdmin):
         else:
             return f"{size / (1024 * 1024):.1f} MB"
     file_size_display.short_description = "Size"
-    
+
     def file_url_display(self, obj):
         """Display the file URL with a copy button."""
         if obj.file:
@@ -103,7 +103,7 @@ class MediaAssetAdmin(admin.ModelAdmin):
             )
         return "-"
     file_url_display.short_description = "URL"
-    
+
     def save_model(self, request, obj, form, change):
         """Auto-set uploaded_by when creating new assets."""
         if not change and not obj.uploaded_by:

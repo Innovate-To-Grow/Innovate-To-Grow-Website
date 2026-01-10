@@ -1,17 +1,11 @@
-import { useState, type FormEvent, useEffect } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useAuth } from './AuthContext';
 import './Auth.css';
 
 export const ProfileModal = () => {
   const { user, updateDisplayName, logout, error, isLoading, closeModal, clearError } = useAuth();
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (user?.display_name) {
-      setDisplayName(user.display_name);
-    }
-  }, [user?.display_name]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

@@ -7,11 +7,11 @@ used by the admin code editor for image uploads.
 
 import mimetypes
 
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.contrib.admin.views.decorators import staff_member_required
 
 from ..models import MediaAsset
 
@@ -20,23 +20,23 @@ from ..models import MediaAsset
 class MediaUploadView(View):
     """
     Handle media file uploads from the admin interface.
-    
+
     POST /api/pages/upload/
     - Accepts multipart form data with 'file' field
     - Creates MediaAsset record
     - Returns JSON with file URL
     """
-    
+
     def post(self, request):
         """Handle file upload."""
         uploaded_file = request.FILES.get("file")
-        
+
         if not uploaded_file:
             return JsonResponse(
                 {"error": "No file provided"},
                 status=400
             )
-        
+
         # Validate file type (images only for now)
         content_type = uploaded_file.content_type or ""
         if not content_type.startswith("image/"):
@@ -49,7 +49,7 @@ class MediaUploadView(View):
                     {"error": "Only image files are allowed"},
                     status=400
                 )
-        
+
         # Create MediaAsset
         asset = MediaAsset.objects.create(
             file=uploaded_file,
@@ -58,7 +58,7 @@ class MediaUploadView(View):
             file_size=uploaded_file.size,
             uploaded_by=request.user if request.user.is_authenticated else None,
         )
-        
+
         return JsonResponse({
             "success": True,
             "url": asset.url,
@@ -71,28 +71,28 @@ class MediaUploadView(View):
 class MediaListView(View):
     """
     List all media assets for the media library browser.
-    
+
     GET /api/pages/media/
     - Returns JSON list of all media assets
     - Supports pagination via ?page=1&limit=20
     """
-    
+
     def get(self, request):
         """Return list of media assets."""
         page = int(request.GET.get("page", 1))
         limit = int(request.GET.get("limit", 50))
         offset = (page - 1) * limit
-        
+
         # Filter by type if specified
         content_type_filter = request.GET.get("type", "")
-        
+
         queryset = MediaAsset.objects.all()
         if content_type_filter:
             queryset = queryset.filter(content_type__startswith=content_type_filter)
-        
+
         total = queryset.count()
         assets = queryset[offset:offset + limit]
-        
+
         return JsonResponse({
             "assets": [
                 {

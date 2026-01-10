@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import './Auth.css';
@@ -7,13 +7,18 @@ export const VerifyEmailPage = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { verifyEmail, error } = useAuth();
-  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  // Initialize status based on whether token exists
+  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>(
+    token ? 'verifying' : 'error'
+  );
+  const hasVerified = useRef(false);
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error');
+    if (!token || hasVerified.current) {
       return;
     }
+
+    hasVerified.current = true;
 
     const verify = async () => {
       try {

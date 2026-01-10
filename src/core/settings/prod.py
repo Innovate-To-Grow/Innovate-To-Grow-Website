@@ -74,7 +74,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 #         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
 #     },
 # }
-# 
+#
 # # Update MEDIA_URL for cloud storage
 # AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "")
 # if AWS_S3_CUSTOM_DOMAIN:

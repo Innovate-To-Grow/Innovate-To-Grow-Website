@@ -48,7 +48,7 @@ export const ComponentRenderer = ({ component, className = '' }: ComponentRender
               message: error.message 
             }, '*');
           }
-        <\/script>
+        ${'<'}/script>
       </body>
       </html>
     `;
