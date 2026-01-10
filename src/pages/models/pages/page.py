@@ -17,9 +17,7 @@ from .validators import validate_nested_slug
 # ============================== Page Model ==============================
 
 
-class Page(
-    SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, AuthoredModel, ProjectControlModel
-):
+class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, AuthoredModel, ProjectControlModel):
     """Content page model composed of ordered PageComponents."""
 
     # Technical identifier

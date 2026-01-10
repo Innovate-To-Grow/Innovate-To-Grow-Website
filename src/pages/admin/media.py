@@ -35,34 +35,43 @@ class MediaAssetAdmin(admin.ModelAdmin):
     ordering = ("-uploaded_at",)
 
     fieldsets = (
-        (None, {
-            "fields": ("file", "original_name", "alt_text"),
-        }),
-        ("File Info", {
-            "fields": ("uuid", "content_type", "file_size", "file_url_display"),
-            "classes": ("collapse",),
-        }),
-        ("Preview", {
-            "fields": ("preview_large",),
-        }),
-        ("Metadata", {
-            "fields": ("uploaded_by", "uploaded_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": ("file", "original_name", "alt_text"),
+            },
+        ),
+        (
+            "File Info",
+            {
+                "fields": ("uuid", "content_type", "file_size", "file_url_display"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Preview",
+            {
+                "fields": ("preview_large",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": ("uploaded_by", "uploaded_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def thumbnail_preview(self, obj):
         """Display a small thumbnail in list view."""
         if obj.is_image and obj.file:
             return format_html(
-                '<img src="{}" style="max-width: 60px; max-height: 60px; '
-                'object-fit: cover; border-radius: 4px;" />',
-                obj.url
+                '<img src="{}" style="max-width: 60px; max-height: 60px; object-fit: cover; border-radius: 4px;" />',
+                obj.url,
             )
-        return format_html(
-            '<span style="color: #666; font-size: 12px;">📄 {}</span>',
-            obj.extension.upper() or "FILE"
-        )
+        return format_html('<span style="color: #666; font-size: 12px;">📄 {}</span>', obj.extension.upper() or "FILE")
+
     thumbnail_preview.short_description = "Preview"
 
     def preview_large(self, obj):
@@ -71,15 +80,16 @@ class MediaAssetAdmin(admin.ModelAdmin):
             return format_html(
                 '<img src="{}" style="max-width: 400px; max-height: 300px; '
                 'border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />',
-                obj.url
+                obj.url,
             )
         return format_html(
             '<div style="padding: 20px; background: #f5f5f5; border-radius: 8px; '
             'text-align: center; color: #666;">'
             '<span style="font-size: 48px;">📄</span><br/>'
-            '<span>{}</span></div>',
-            obj.original_name
+            "<span>{}</span></div>",
+            obj.original_name,
         )
+
     preview_large.short_description = "Preview"
 
     def file_size_display(self, obj):
@@ -91,17 +101,18 @@ class MediaAssetAdmin(admin.ModelAdmin):
             return f"{size / 1024:.1f} KB"
         else:
             return f"{size / (1024 * 1024):.1f} MB"
+
     file_size_display.short_description = "Size"
 
     def file_url_display(self, obj):
         """Display the file URL with a copy button."""
         if obj.file:
             return format_html(
-                '<code style="background: #f5f5f5; padding: 4px 8px; '
-                'border-radius: 4px; font-size: 12px;">{}</code>',
-                obj.url
+                '<code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px; font-size: 12px;">{}</code>',
+                obj.url,
             )
         return "-"
+
     file_url_display.short_description = "URL"
 
     def save_model(self, request, obj, form, change):
@@ -109,4 +120,3 @@ class MediaAssetAdmin(admin.ModelAdmin):
         if not change and not obj.uploaded_by:
             obj.uploaded_by = request.user
         super().save_model(request, obj, form, change)
-

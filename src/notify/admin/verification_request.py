@@ -212,15 +212,15 @@ class VerificationRequestAdmin(admin.ModelAdmin):
             verify_url = f"/verify-email/{obj.token}"
             return format_html(
                 '<div style="background:#f8f9fa; padding:10px; border-radius:4px; margin:5px 0;">'
-                '<strong>Token:</strong><br>'
+                "<strong>Token:</strong><br>"
                 '<code style="word-break:break-all; font-size:12px;">{}</code>'
-                '<br><br>'
-                '<strong>Verification URL:</strong><br>'
+                "<br><br>"
+                "<strong>Verification URL:</strong><br>"
                 '<code style="word-break:break-all; font-size:12px;">{}</code>'
-                '<br><br>'
+                "<br><br>"
                 '<a href="{}" target="_blank" style="display:inline-block; background:#3498db; color:#fff; '
                 'padding:8px 16px; border-radius:4px; text-decoration:none; margin-top:5px;">Open Verification Link</a>'
-                '</div>',
+                "</div>",
                 obj.token,
                 verify_url,
                 verify_url,
@@ -228,9 +228,9 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         elif obj.code:
             return format_html(
                 '<div style="background:#f8f9fa; padding:10px; border-radius:4px;">'
-                '<strong>Verification Code:</strong><br>'
+                "<strong>Verification Code:</strong><br>"
                 '<code style="font-size:18px; font-weight:bold; letter-spacing:2px;">{}</code>'
-                '</div>',
+                "</div>",
                 obj.code,
             )
         return "No verification credentials available."

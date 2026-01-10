@@ -57,4 +57,3 @@ class ProfileSerializer(serializers.Serializer):
             profile.save(update_fields=["display_name", "updated_at"])
 
         return instance
-

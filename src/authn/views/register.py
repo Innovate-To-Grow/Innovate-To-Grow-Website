@@ -56,4 +56,3 @@ class RegisterView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-

@@ -57,9 +57,7 @@ class LoginSerializer(serializers.Serializer):
 
         # Check if account is active
         if not member.is_active:
-            raise serializers.ValidationError(
-                {"email": "Account is not activated. Please verify your email first."}
-            )
+            raise serializers.ValidationError({"email": "Account is not activated. Please verify your email first."})
 
         # Authenticate using username (Django's default backend)
         user = authenticate(username=member.username, password=password)
@@ -68,4 +66,3 @@ class LoginSerializer(serializers.Serializer):
 
         attrs["user"] = user
         return attrs
-

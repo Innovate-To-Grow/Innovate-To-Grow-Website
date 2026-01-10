@@ -32,10 +32,7 @@ class MediaUploadView(View):
         uploaded_file = request.FILES.get("file")
 
         if not uploaded_file:
-            return JsonResponse(
-                {"error": "No file provided"},
-                status=400
-            )
+            return JsonResponse({"error": "No file provided"}, status=400)
 
         # Validate file type (images only for now)
         content_type = uploaded_file.content_type or ""
@@ -45,10 +42,7 @@ class MediaUploadView(View):
             if guessed_type and guessed_type.startswith("image/"):
                 content_type = guessed_type
             else:
-                return JsonResponse(
-                    {"error": "Only image files are allowed"},
-                    status=400
-                )
+                return JsonResponse({"error": "Only image files are allowed"}, status=400)
 
         # Create MediaAsset
         asset = MediaAsset.objects.create(
@@ -59,12 +53,14 @@ class MediaUploadView(View):
             uploaded_by=request.user if request.user.is_authenticated else None,
         )
 
-        return JsonResponse({
-            "success": True,
-            "url": asset.url,
-            "uuid": str(asset.uuid),
-            "name": asset.original_name,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "url": asset.url,
+                "uuid": str(asset.uuid),
+                "name": asset.original_name,
+            }
+        )
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -91,24 +87,25 @@ class MediaListView(View):
             queryset = queryset.filter(content_type__startswith=content_type_filter)
 
         total = queryset.count()
-        assets = queryset[offset:offset + limit]
+        assets = queryset[offset : offset + limit]
 
-        return JsonResponse({
-            "assets": [
-                {
-                    "uuid": str(asset.uuid),
-                    "url": asset.url,
-                    "name": asset.original_name,
-                    "type": asset.content_type,
-                    "size": asset.file_size,
-                    "uploaded_at": asset.uploaded_at.isoformat(),
-                    "is_image": asset.is_image,
-                }
-                for asset in assets
-            ],
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "has_more": offset + limit < total,
-        })
-
+        return JsonResponse(
+            {
+                "assets": [
+                    {
+                        "uuid": str(asset.uuid),
+                        "url": asset.url,
+                        "name": asset.original_name,
+                        "type": asset.content_type,
+                        "size": asset.file_size,
+                        "uploaded_at": asset.uploaded_at.isoformat(),
+                        "is_image": asset.is_image,
+                    }
+                    for asset in assets
+                ],
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "has_more": offset + limit < total,
+            }
+        )

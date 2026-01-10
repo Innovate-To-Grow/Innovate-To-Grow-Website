@@ -10,12 +10,22 @@ class HomePageComponentInline(admin.StackedInline):
     extra = 0
     form = PageComponentForm
     fields = (
-        "name", "component_type", "order", "is_enabled",
-        "html_content", "css_code", "js_code", "config",
+        "name",
+        "component_type",
+        "order",
+        "is_enabled",
+        "html_content",
+        "css_code",
+        "js_code",
+        "config",
         "form",
-        "image", "image_alt", "background_image",
-        "data_source", "data_params",
-        "created_at", "updated_at",
+        "image",
+        "image_alt",
+        "background_image",
+        "data_source",
+        "data_params",
+        "created_at",
+        "updated_at",
     )
     readonly_fields = ("created_at", "updated_at")
     ordering = ("order", "id")

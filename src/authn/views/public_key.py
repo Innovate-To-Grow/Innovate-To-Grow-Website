@@ -33,4 +33,3 @@ class PublicKeyView(APIView):
                 {"error": f"Failed to retrieve public key: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-

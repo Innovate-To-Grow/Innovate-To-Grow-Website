@@ -133,4 +133,3 @@ class ResendVerificationView(APIView):
             {"message": "If an account exists with this email, a verification link has been sent."},
             status=status.HTTP_200_OK,
         )
-

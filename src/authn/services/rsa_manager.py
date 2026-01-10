@@ -133,4 +133,3 @@ def is_encrypted_password(password: str) -> bool:
         return len(decoded) >= 128
     except Exception:
         return False
-

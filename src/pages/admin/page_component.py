@@ -48,41 +48,75 @@ class PageComponentAdmin(admin.ModelAdmin):
     inlines = [PageComponentImageInline]
 
     fieldsets = (
-        (None, {
-            "fields": ("name", "component_type", "component_uuid"),
-        }),
-        ("Parent Assignment", {
-            "fields": ("page", "home_page"),
-            "description": "Component must belong to exactly one of Page or Home Page.",
-        }),
-        ("Display Settings", {
-            "fields": ("order", "is_enabled"),
-        }),
-        ("Content", {
-            "fields": ("html_content", "css_code", "js_code", "config"),
-            "classes": ("wide",),
-        }),
-        ("Form (for component_type='form')", {
-            "fields": ("form",),
-            "classes": ("collapse",),
-            "description": "Select a form to embed when component type is 'Form'.",
-        }),
-        ("Images", {
-            "fields": ("image", "image_alt", "image_caption", "image_link", "background_image", "background_image_alt"),
-            "classes": ("collapse",),
-        }),
-        ("CSS File", {
-            "fields": ("css_file",),
-            "classes": ("collapse",),
-        }),
-        ("Data Source", {
-            "fields": ("data_source", "data_params", "refresh_interval_seconds", "hydrate_on_client"),
-            "classes": ("collapse",),
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": ("name", "component_type", "component_uuid"),
+            },
+        ),
+        (
+            "Parent Assignment",
+            {
+                "fields": ("page", "home_page"),
+                "description": "Component must belong to exactly one of Page or Home Page.",
+            },
+        ),
+        (
+            "Display Settings",
+            {
+                "fields": ("order", "is_enabled"),
+            },
+        ),
+        (
+            "Content",
+            {
+                "fields": ("html_content", "css_code", "js_code", "config"),
+                "classes": ("wide",),
+            },
+        ),
+        (
+            "Form (for component_type='form')",
+            {
+                "fields": ("form",),
+                "classes": ("collapse",),
+                "description": "Select a form to embed when component type is 'Form'.",
+            },
+        ),
+        (
+            "Images",
+            {
+                "fields": (
+                    "image",
+                    "image_alt",
+                    "image_caption",
+                    "image_link",
+                    "background_image",
+                    "background_image_alt",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "CSS File",
+            {
+                "fields": ("css_file",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Data Source",
+            {
+                "fields": ("data_source", "data_params", "refresh_interval_seconds", "hydrate_on_client"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def parent_display(self, obj):

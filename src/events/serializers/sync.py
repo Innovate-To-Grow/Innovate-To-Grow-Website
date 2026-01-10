@@ -161,4 +161,3 @@ class EventSyncSerializer(serializers.Serializer):
                 "At least one of 'basic_info', 'schedule', 'expo_table', 'reception_table', or 'winners' must be provided."
             )
         return attrs
-

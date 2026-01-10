@@ -102,4 +102,3 @@ class EventReadSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["event_uuid", "created_at", "updated_at"]
-

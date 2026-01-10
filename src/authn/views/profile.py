@@ -38,4 +38,3 @@ class ProfileView(APIView):
             ProfileSerializer(instance=request.user).data,
             status=status.HTTP_200_OK,
         )
-

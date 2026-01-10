@@ -109,4 +109,3 @@ class RegisterSerializer(serializers.Serializer):
         )
 
         return member
-

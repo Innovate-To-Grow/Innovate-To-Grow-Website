@@ -91,9 +91,7 @@ class PageComponent(ProjectControlModel):
     )
 
     # Parent assignment (exactly one)
-    page = models.ForeignKey(
-        "pages.Page", on_delete=models.CASCADE, related_name="components", blank=True, null=True
-    )
+    page = models.ForeignKey("pages.Page", on_delete=models.CASCADE, related_name="components", blank=True, null=True)
     home_page = models.ForeignKey(
         "pages.HomePage", on_delete=models.CASCADE, related_name="components", blank=True, null=True
     )

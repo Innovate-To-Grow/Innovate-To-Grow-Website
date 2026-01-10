@@ -107,4 +107,3 @@ class MediaAsset(models.Model):
             except Exception:
                 pass
         super().save(*args, **kwargs)
-
