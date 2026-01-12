@@ -10,6 +10,8 @@ import { HomePreEvent } from '../pages/HomePreEvent';
 import { HomeDuringSemester } from '../pages/HomeDuringSemester';
 import { PageContent } from '../components/PageContent/PageContent';
 import { EventPage, SchedulePage } from '../components/Event';
+import { SignupPage } from '../pages/SignupPage';
+import { EmailVerificationPage } from '../pages/EmailVerificationPage';
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +29,8 @@ export const router = createBrowserRouter([
       { path: 'home-post-event', element: <HomePostEvent /> },
       { path: 'home-pre-event', element: <HomePreEvent /> },
       { path: 'home-during-semester', element: <HomeDuringSemester /> },
+      { path: 'signup', element: <SignupPage /> },
+      { path: 'signup/verify', element: <EmailVerificationPage /> },
       // Catch-all route for CMS-driven pages (e.g., /about, /about/team)
       { path: '*', element: <PageContent /> },
     ],

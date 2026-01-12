@@ -39,6 +39,50 @@ export const fetchPageContent = async (slug: string): Promise<PageContent> => {
   return response.data;
 };
 
+// ======================== Signup Types ========================
+
+export interface SignupFormData {
+  first_name: string;
+  last_name: string;
+  primary_email: string;
+  confirm_primary_email: string;
+  subscribe_primary_email: boolean;
+  secondary_email?: string;
+  confirm_secondary_email?: string;
+  subscribe_secondary_email?: boolean;
+  phone_number?: string;
+  confirm_phone_number?: string;
+  subscribe_phone?: boolean;
+}
+
+export interface SignupResponse {
+  success: boolean;
+  message: string;
+  member_id: number;
+  member_uuid: string;
+  username: string;
+}
+
+export interface EmailVerificationData {
+  token: string;
+}
+
+export interface EmailVerificationResponse {
+  success: boolean;
+  message: string;
+  email: string;
+}
+
+export const signup = async (data: SignupFormData): Promise<SignupResponse> => {
+  const response = await api.post<SignupResponse>('/authn/signup/', data);
+  return response.data;
+};
+
+export const verifyEmail = async (data: EmailVerificationData): Promise<EmailVerificationResponse> => {
+  const response = await api.post<EmailVerificationResponse>('/authn/signup/verify/', data);
+  return response.data;
+};
+
 // ======================== Home Types ========================
 
 export interface HomeContent {
