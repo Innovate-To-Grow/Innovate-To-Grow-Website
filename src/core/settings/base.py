@@ -174,6 +174,10 @@ CK_EDITOR_5_UPLOAD_FILE_VIEW_NAME = "ck_editor_5_upload_file"
 # Events API Key for Google Sheets sync
 EVENTS_API_KEY = os.getenv('EVENTS_API_KEY', '')
 
+# Google Sheets configuration for Members/Prospects/Events sync
+GOOGLE_SHEETS_MEMBERS_SPREADSHEET_ID = os.getenv('GOOGLE_SHEETS_MEMBERS_SPREADSHEET_ID', None)
+GOOGLE_SHEETS_SYNC_API_KEY = os.getenv('GOOGLE_SHEETS_SYNC_API_KEY', None) or EVENTS_API_KEY
+
 # Google Sheets configuration for Past Projects
 GOOGLE_SHEETS_SPREADSHEET_ID = os.getenv(
     'GOOGLE_SHEETS_SPREADSHEET_ID',
@@ -198,3 +202,9 @@ GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE = (
 # Frontend URL for generating shareable links
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
+
+# AWS SES Email Configuration
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', None)
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', None)
+AWS_SES_REGION = os.getenv('AWS_SES_REGION', 'us-east-1')
+AWS_SES_FROM_EMAIL = os.getenv('AWS_SES_FROM_EMAIL', None)

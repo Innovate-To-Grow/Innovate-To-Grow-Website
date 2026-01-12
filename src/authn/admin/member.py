@@ -172,7 +172,7 @@ class MemberAdmin(UserAdmin):
         return '-'
     
     # Actions
-    actions = ['activate_members', 'deactivate_members', 'assign_default_groups']
+    actions = ['activate_members', 'deactivate_members', 'assign_default_groups', 'sync_to_google_sheets', 'sync_from_google_sheets']
     
     @admin.action(description='Activate selected members')
     def activate_members(self, request, queryset):
@@ -188,6 +188,35 @@ class MemberAdmin(UserAdmin):
     def assign_default_groups(self, request, queryset):
         I2GMemberGroup.create_default_groups()
         self.message_user(request, 'Default I2G groups created successfully.')
+    
+    @admin.action(description='Sync selected members to Google Sheets')
+    def sync_to_google_sheets(self, request, queryset):
+        """Sync selected members to Google Sheets."""
+        from ..services.google_sheets_sync import get_sync_service
+        try:
+            sync_service = get_sync_service()
+            sync_service.ensure_sheet_structure()
+            result = sync_service.sync_members_to_sheet()
+            if result['success']:
+                self.message_user(request, f"Successfully synced {result['rows_synced']} members to Google Sheets.")
+            else:
+                self.message_user(request, f"Error syncing to Google Sheets: {', '.join(result['errors'])}", level='ERROR')
+        except Exception as e:
+            self.message_user(request, f"Error syncing to Google Sheets: {str(e)}", level='ERROR')
+    
+    @admin.action(description='Sync members from Google Sheets')
+    def sync_from_google_sheets(self, request, queryset):
+        """Sync members from Google Sheets to database."""
+        from ..services.google_sheets_sync import get_sync_service
+        try:
+            sync_service = get_sync_service()
+            result = sync_service.sync_members_from_sheet()
+            if result['success']:
+                self.message_user(request, f"Successfully synced {result['rows_synced']} members from Google Sheets.")
+            else:
+                self.message_user(request, f"Error syncing from Google Sheets: {', '.join(result['errors'])}", level='ERROR')
+        except Exception as e:
+            self.message_user(request, f"Error syncing from Google Sheets: {str(e)}", level='ERROR')
     
     # =========================================================================
     # Custom URLs for Excel Import

@@ -42,6 +42,36 @@ class ContactEmail(models.Model):
         verbose_name="Verified"
     )
 
+    # bounced
+    bounced = models.BooleanField(
+        default=False,
+        help_text="Whether the email has bounced",
+        verbose_name="Bounced"
+    )
+
+    # bounced_at
+    bounced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the email bounced",
+        verbose_name="Bounced At"
+    )
+
+    # expired
+    expired = models.BooleanField(
+        default=False,
+        help_text="Whether the email has expired",
+        verbose_name="Expired"
+    )
+
+    # expired_at
+    expired_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the email expired",
+        verbose_name="Expired At"
+    )
+
     # time stamps
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -62,6 +92,8 @@ class ContactEmail(models.Model):
             models.Index(fields=['email_address']),
             models.Index(fields=['email_type']),
             models.Index(fields=['verified']),
+            models.Index(fields=['bounced']),
+            models.Index(fields=['expired']),
         ]
 
     def __str__(self):

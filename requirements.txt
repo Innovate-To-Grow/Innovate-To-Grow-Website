@@ -23,6 +23,9 @@ google-auth>=2.0.0
 google-auth-oauthlib>=1.0.0
 requests>=2.31.0
 
+# AWS SES Email Integration
+boto3>=1.34.0
+
 # Production Dependencies (uncomment when needed)
 # gunicorn>=21.0.0
 # psycopg2-binary>=2.9.0  # PostgreSQL adapter

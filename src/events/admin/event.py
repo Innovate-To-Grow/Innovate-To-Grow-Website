@@ -3,7 +3,7 @@ Admin interface for Event models with inline editors.
 """
 
 from django.contrib import admin
-from ..models import Event, Program, Track, Presentation, TrackWinner
+from ..models import Event, Program, Track, Presentation, TrackWinner, EventRegistration
 
 
 class PresentationInline(admin.TabularInline):
@@ -93,4 +93,27 @@ class ProgramAdmin(admin.ModelAdmin):
     search_fields = ('program_name', 'event__event_name')
     ordering = ('event', 'order', 'id')
 
+
+@admin.register(EventRegistration)
+class EventRegistrationAdmin(admin.ModelAdmin):
+    """Admin interface for EventRegistration model."""
+
+    list_display = ('member', 'event', 'registered_at', 'updated_at')
+    list_filter = ('event', 'registered_at')
+    search_fields = (
+        'member__username',
+        'member__email',
+        'member__first_name',
+        'member__last_name',
+        'event__event_name',
+        'event__slug',
+    )
+    readonly_fields = ('registered_at', 'updated_at')
+    autocomplete_fields = ['member', 'event']
+    
+    fieldsets = (
+        ('Registration', {
+            'fields': ('event', 'member', 'registered_at', 'updated_at')
+        }),
+    )
 
