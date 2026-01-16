@@ -1,19 +1,9 @@
 """Shared core models."""
 
-from .base import (
-    ActiveModel,
-    AuthoredModel,
-    ModelVersion,
-    OrderedModel,
-    ProjectControlManager,
-    ProjectControlModel,
-    ProjectControlQuerySet,
-    # Legacy aliases for backward compatibility
-    SoftDeleteManager,
-    SoftDeleteModel,
-    TimeStampedModel,
-    UUIDModel,
-)
+from .legacy import SoftDeleteManager, SoftDeleteModel, TimeStampedModel, UUIDModel
+from .managers import ProjectControlManager, ProjectControlQuerySet
+from .mixins import ActiveModel, AuthoredModel, OrderedModel
+from .versioning import ModelVersion, ProjectControlModel
 
 __all__ = [
     "ActiveModel",
