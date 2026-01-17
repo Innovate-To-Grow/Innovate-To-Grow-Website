@@ -9,10 +9,10 @@ import uuid
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from core.models.base import OrderedModel, TimeStampedModel
+from core.models import OrderedModel, ProjectControlModel
 
 
-class Event(TimeStampedModel):
+class Event(ProjectControlModel):
     """Core event model containing basic info and markdown bullet points."""
 
     event_uuid = models.UUIDField(

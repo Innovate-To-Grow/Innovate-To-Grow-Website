@@ -1,9 +1,9 @@
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class Transaction(TimeStampedModel):
+class Transaction(ProjectControlModel):
     """
     Usage log tying members and barcodes.
     """

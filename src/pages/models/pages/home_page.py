@@ -7,7 +7,7 @@ Content is composed of ordered PageComponent blocks.
 
 from django.db import models
 
-from core.models.base import ProjectControlModel
+from core.models import ProjectControlModel
 
 
 class HomePage(ProjectControlModel):

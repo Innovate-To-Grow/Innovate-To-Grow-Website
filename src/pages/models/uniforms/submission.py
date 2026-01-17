@@ -3,10 +3,10 @@ import uuid
 from django.db import models
 from django.utils import timezone
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class FormSubmission(TimeStampedModel):
+class FormSubmission(ProjectControlModel):
     """
     Stores individual form submissions with complete metadata.
 

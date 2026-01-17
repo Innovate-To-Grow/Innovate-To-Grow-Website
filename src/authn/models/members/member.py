@@ -6,13 +6,13 @@ from django.contrib.auth.models import (
 )
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 from ..contact.contact_info import MemberContactInfo
 from .user_group import MemberGroup
 
 
-class Member(AbstractUser, TimeStampedModel):
+class Member(AbstractUser, ProjectControlModel):
     # member uuid
     member_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, help_text="Member UUID")
 
@@ -107,7 +107,7 @@ class Member(AbstractUser, TimeStampedModel):
         return contact_info
 
 
-class MemberProfile(TimeStampedModel):
+class MemberProfile(ProjectControlModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 

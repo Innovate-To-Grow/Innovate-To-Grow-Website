@@ -2,10 +2,10 @@ import uuid
 
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class Barcode(TimeStampedModel):
+class Barcode(ProjectControlModel):
     """
     Physical/virtual barcode assigned to a member.
     """

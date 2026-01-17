@@ -1,9 +1,9 @@
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class MobileID(TimeStampedModel):
+class MobileID(ProjectControlModel):
     """
     Mobile ID configuration bound to a barcode.
     """

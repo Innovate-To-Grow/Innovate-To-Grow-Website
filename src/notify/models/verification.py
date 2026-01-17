@@ -1,9 +1,9 @@
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class VerificationRequest(TimeStampedModel):
+class VerificationRequest(ProjectControlModel):
     """
     Verification challenge for email/SMS using either code or link.
     """
@@ -104,7 +104,7 @@ class VerificationRequest(TimeStampedModel):
         return f"{self.channel}:{self.method}:{self.target} ({self.purpose})"
 
 
-class NotificationLog(TimeStampedModel):
+class NotificationLog(ProjectControlModel):
     """
     Delivery log for outgoing notifications (email/SMS).
     """

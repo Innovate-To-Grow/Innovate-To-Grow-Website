@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 from django.db.models import F
 
-from core.models.base import AuthoredModel, ProjectControlModel
+from core.models import AuthoredModel, ProjectControlModel
 
 
 def default_form_fields():

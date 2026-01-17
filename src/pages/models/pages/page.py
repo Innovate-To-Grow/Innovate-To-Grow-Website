@@ -9,7 +9,7 @@ import uuid
 
 from django.db import models
 
-from core.models.base import AuthoredModel, ProjectControlModel
+from core.models import AuthoredModel, ProjectControlModel
 
 from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
 from .validators import validate_nested_slug

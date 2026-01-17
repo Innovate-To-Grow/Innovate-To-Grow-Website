@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
-from core.models.base import ProjectControlModel
+from core.models import ProjectControlModel
 
 
 def default_config() -> dict:

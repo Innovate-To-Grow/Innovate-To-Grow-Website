@@ -1,7 +1,7 @@
 from django.core.cache import cache
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
 def default_footer_content():
@@ -24,7 +24,7 @@ FOOTER_CACHE_KEY = "layout.footer_content.active"
 FOOTER_CACHE_TIMEOUT = 300  # seconds
 
 
-class FooterContent(TimeStampedModel):
+class FooterContent(ProjectControlModel):
     """
     Stores the entire footer layout as JSON so it can be edited in admin.
 

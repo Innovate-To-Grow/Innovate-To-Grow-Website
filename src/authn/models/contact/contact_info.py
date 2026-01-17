@@ -1,10 +1,10 @@
 from django.db import models
 
 from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class ContactEmail(TimeStampedModel):
+class ContactEmail(ProjectControlModel):
     # contact email
     email_address = models.EmailField(unique=True, help_text="Email address for contact", verbose_name="Email Address")
 
@@ -59,7 +59,7 @@ class ContactEmail(TimeStampedModel):
         return str_contact_email
 
 
-class ContactPhone(TimeStampedModel):
+class ContactPhone(ProjectControlModel):
     # contact phone number
     phone_number = models.CharField(max_length=20, unique=True, help_text="Contact Phone Number (e.g. +1234567890)")
 
@@ -111,7 +111,7 @@ class ContactPhone(TimeStampedModel):
         return region_dict.get(self.region, self.region)
 
 
-class MemberContactInfo(TimeStampedModel):
+class MemberContactInfo(ProjectControlModel):
     # foreign key link to user
     model_user = models.ForeignKey(
         "authn.Member",
