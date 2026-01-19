@@ -3,60 +3,86 @@ import './MaintenanceMode.css';
 export const MaintenanceMode = () => {
   return (
     <div className="maintenance-container">
-      {/* Decorative Background Elements */}
-      <div className="maintenance-bg-pattern"></div>
-      
-      <div className="maintenance-content">
-        {/* UC Merced Logo */}
-        <div className="maintenance-logo-group">
-          <img 
-            src="https://innovatetogrow.ucmerced.edu/sites/all/themes/UCMerced/ucmlogo.png" 
-            alt="UC Merced" 
-            className="maintenance-ucm-logo"
-          />
-          <div className="maintenance-logo-divider"></div>
-          <img 
-            src="/static/images/I2G-fullname-low.png" 
-            alt="Innovate To Grow" 
-            className="maintenance-i2g-logo"
-          />
+      <div className="maintenance-shell">
+        <div className="maintenance-main">
+          <main className="maintenance-content">
+          <div className="maintenance-card">
+            <div className="maintenance-hero">
+              <div className="maintenance-title-row">
+                  <img 
+                    src="/static/images/ucmlogo.png" 
+                    alt="UC Merced" 
+                    className="maintenance-ucm-logo"
+                  />
+              </div>
+            </div>
+
+            <section className="maintenance-status-card" aria-label="System status">
+              <div className="status-item">
+                <div className="status-logo-wrapper" aria-hidden="true">
+                  <img
+                    className="status-logo status-logo-browser"
+                    src="https://upload.wikimedia.org/wikipedia/commons/8/87/Google_Chrome_icon_%282011%29.png"
+                    alt=""
+                  />
+                </div>
+                <div className="status-text">
+                  <div className="status-title">Your Browser</div>
+                  <div className="status-subtitle status-subtitle-ok">Normal</div>
+                </div>
+              </div>
+
+              <div className="status-item">
+                <div className="status-logo-wrapper" aria-hidden="true">
+                  <img
+                    className="status-logo status-logo-aws"
+                    src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg"
+                    alt=""
+                  />
+                </div>
+                <div className="status-text">
+                  <div className="status-title">Amazon Web Services</div>
+                  <div className="status-subtitle status-subtitle-alert">Always down</div>
+                </div>
+              </div>
+
+              <div className="status-item">
+                <div className="status-logo-wrapper" aria-hidden="true">
+                  <img
+                    className="status-logo status-logo-backend"
+                    src="/static/images/i2glogo.png"
+                    alt=""
+                  />
+                </div>
+                <div className="status-text">
+                  <div className="status-title">Hongzhe's Backend Code</div>
+                  <div className="status-subtitle status-subtitle-ok">Always working</div>
+                </div>
+              </div>
+            </section>
+
+            <section className="maintenance-info" aria-label="Maintenance details">
+              <div className="info-block">
+                <h2>What happened?</h2>
+                <p>We are performing scheduled maintenance on this service.</p>
+              </div>
+              <div className="info-block">
+                <h2>What can I do?</h2>
+                <p>Please try again in a few minutes. This page will refresh automatically.</p>
+              </div>
+            </section>
+          </div>
+        </main>
         </div>
 
-        {/* Maintenance Icon */}
-        <div className="maintenance-icon">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </div>
-        
-        <h1 className="maintenance-title">System Maintenance</h1>
-        
-        <div className="maintenance-message">
-          <p>
-            Our team is currently performing scheduled maintenance to improve your experience.
-          </p>
-          <p className="maintenance-message-secondary">
-            Thank you for your patience. The page will automatically refresh when service is restored.
-          </p>
-        </div>
-      </div>
-
-      <div className="maintenance-footer">
-        <div className="maintenance-footer-links">
-          <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">UC Merced</a>
-          <span className="footer-divider">|</span>
-          <a href="https://engineering.ucmerced.edu" target="_blank" rel="noopener noreferrer">School of Engineering</a>
-        </div>
-        <p className="maintenance-copyright">© {new Date().getFullYear()} The Regents of the University of California</p>
+        <footer className="maintenance-footer">
+          <div className="maintenance-footer-links">
+            <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">UC Merced</a>
+            <span className="footer-divider">|</span>
+            <a href="https://engineering.ucmerced.edu" target="_blank" rel="noopener noreferrer">School of Engineering</a>
+          </div>
+          <p className="maintenance-copyright">© {new Date().getFullYear()} The Regents of the University of California</p>
+        </footer>
       </div>
     </div>
   );
