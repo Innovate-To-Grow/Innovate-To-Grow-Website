@@ -13,14 +13,12 @@ from .user_group import MemberGroup
 
 
 class Member(AbstractUser, ProjectControlModel):
-    # member uuid
-    member_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, help_text="Member UUID")
 
     # add field for user models
     middle_name = models.CharField(max_length=255, null=True, blank=True, help_text="Middle Name")
 
     # member account
-    contect_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)
+    account_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)
 
     # organization
     organization = models.CharField(
