@@ -1,5 +1,3 @@
-import uuid
-
 from django.contrib.auth.models import (
     AbstractUser,
     Group,
@@ -16,6 +14,11 @@ class Member(AbstractUser, ProjectControlModel):
 
     # add field for user models
     middle_name = models.CharField(max_length=255, null=True, blank=True, help_text="Middle Name")
+
+    @property
+    def member_uuid(self):
+        """Return the member's UUID (alias for id from ProjectControlModel)."""
+        return self.id
 
     # member account
     account_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)

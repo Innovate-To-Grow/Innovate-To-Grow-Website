@@ -11,8 +11,6 @@ from django.utils import timezone
 from authn.models.contact.contact_info import ContactEmail, ContactPhone
 
 from ..models import BroadcastMessage, NotificationLog, Unsubscribe, VerificationRequest
-from ..providers import send_email, send_sms
-
 
 class RateLimitError(Exception):
     """Raised when sending exceeds the configured rate limit."""
