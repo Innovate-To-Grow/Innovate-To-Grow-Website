@@ -5,8 +5,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
-from .managers import AllObjectsManager, ProjectControlManager
-from .versioning import ModelVersion
+from ..managers import AllObjectsManager, ProjectControlManager
+from ..versioning import ModelVersion
 
 
 class ProjectControlModel(models.Model):
