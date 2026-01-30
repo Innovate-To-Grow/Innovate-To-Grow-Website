@@ -13,13 +13,8 @@ class MobileID(ProjectControlModel):
 
     # user barcode
     user_barcode = models.ForeignKey("mobileid.Barcode", on_delete=models.CASCADE)
-    user_activate_barcode = models.ForeignKey(
+    user_activate_barcode = models.OneToOneField(
         "mobileid.Barcode", on_delete=models.CASCADE, related_name="user_activate_barcode"
-    )
-    user_mobile_id_server = models.CharField(
-        max_length=255,
-        default="i2g.ucmerced.edu",
-        verbose_name="user mobile id server",
     )
 
     class Meta:
@@ -28,4 +23,4 @@ class MobileID(ProjectControlModel):
         db_table = "authn_mobileid"
 
     def __str__(self):
-        return f"MobileID for {self.model_user.username} ({self.user_mobile_id_server})"
+        return f"MobileID for {self.model_user.username}"

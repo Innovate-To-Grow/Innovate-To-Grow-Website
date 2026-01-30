@@ -51,17 +51,19 @@ class BarcodeInline(admin.TabularInline):
     """Inline admin for Barcode - displayed within Member admin."""
 
     model = Barcode
+    fk_name = "model_user"
     extra = 0
     verbose_name = "Barcode"
     verbose_name_plural = "Barcodes"
     fields = ("barcode_type", "barcode", "profile_name", "created_at")
-    readonly_fields = ("barcode_uuid", "created_at")
+    readonly_fields = ("created_at",)
 
 
 class MobileIDInline(admin.TabularInline):
     """Inline admin for MobileID - displayed within Member admin."""
 
     model = MobileID
+    fk_name = "model_user"
     extra = 0
     verbose_name = "Mobile ID"
     verbose_name_plural = "Mobile IDs"

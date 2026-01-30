@@ -10,24 +10,28 @@ class Barcode(ProjectControlModel):
     Physical/virtual barcode assigned to a member.
     """
 
+    # foreign key linked to the user
     model_user = models.ForeignKey("authn.Member", on_delete=models.CASCADE)
-    barcode_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, verbose_name="barcode uuid")
+
     BARCODE_TYPE = [
-        ("CatCardBarcode", "CatCardBarcode"),
+        ("DynamicBarcode", "DynamicBarcode"),
         ("Identification", "Identification"),
+        ("EventOneTimePass", "EventOneTimePass")
     ]
     barcode_type = models.CharField(max_length=255, choices=BARCODE_TYPE, verbose_name="barcode type")
     barcode = models.CharField(max_length=255, verbose_name="barcode")
+
+    # barcode profile
+    profile_name = models.TextField(
+        null=True,
+        blank=True,
+    )
     profile_img = models.TextField(
         null=True,
         blank=True,
         help_text="Base64 encoded PNG. No data-URL prefix",
     )
     profile_information_id = models.TextField(
-        null=True,
-        blank=True,
-    )
-    profile_name = models.TextField(
         null=True,
         blank=True,
     )
@@ -48,8 +52,13 @@ class Barcode(ProjectControlModel):
         """
         return bool(self.profile_img or self.profile_information_id or self.profile_name)
 
+    @property
+    def barcode_uuid(self):
+        """Return the barcode's UUID (alias for id from ProjectControlModel)."""
+        return self.id
+
     def get_profile_label(self) -> str:
         """
         Human-friendly label for display; fallback to UUID when not named.
         """
-        return self.profile_name or str(self.barcode_uuid)
+        return self.profile_name or str(self.id)
