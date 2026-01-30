@@ -40,6 +40,7 @@ class TrackWinnerInline(admin.TabularInline):
     """Inline editor for Track Winners within an Event."""
 
     model = TrackWinner
+    fk_name = "event"
     extra = 0
     fields = ("track_name", "winner_name")
 
@@ -48,6 +49,7 @@ class SpecialAwardInline(admin.TabularInline):
     """Inline editor for Special Awards within an Event."""
 
     model = SpecialAward
+    fk_name = "event"
     extra = 0
     fields = ("program_name", "award_winner")
 
@@ -62,23 +64,24 @@ class EventAdmin(admin.ModelAdmin):
         SpecialAwardInline,
     ]
 
-    list_display = ("event_name", "event_date", "event_time", "is_published", "updated_at")
-    list_filter = ("is_published", "event_date", "created_at")
-    search_fields = ("event_name",)
+    list_display = ("event_name", "event_date_time", "is_published", "is_live", "updated_at")
+    list_filter = ("is_published", "is_live", "event_date_time", "created_at")
+    search_fields = ("event_name", "slug")
     readonly_fields = ("event_uuid", "created_at", "updated_at")
+    prepopulated_fields = {"slug": ("event_name",)}
 
     fieldsets = (
-        ("Basic Information", {"fields": ("event_uuid", "event_name", "event_date", "event_time")}),
+        ("Basic Information", {"fields": ("event_uuid", "event_name", "slug", "event_date_time")}),
         (
             "Content",
             {
-                "fields": ("upper_bullet_points", "lower_bullet_points"),
+                "fields": ("upper_bullet_points", "lower_bullet_points", "expo_table", "reception_table", "special_awards"),
             },
         ),
         (
             "Publishing",
             {
-                "fields": ("is_published", "created_at", "updated_at"),
+                "fields": ("is_published", "is_live", "created_at", "updated_at"),
             },
         ),
     )
