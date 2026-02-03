@@ -40,6 +40,7 @@ class RequestCodeAPIView(APIView):
                 expires_in_minutes=10,
                 max_attempts=5,
                 rate_limit_per_hour=5,
+                context=data.get("context"),
             )
         except RateLimitError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
@@ -68,6 +69,7 @@ class RequestLinkAPIView(APIView):
                 max_attempts=5,
                 rate_limit_per_hour=5,
                 base_url=data.get("base_url") or None,
+                context=data.get("context"),
             )
         except RateLimitError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
@@ -135,6 +137,7 @@ class SendNotificationAPIView(APIView):
             subject=data.get("subject", ""),
             message=data["message"],
             provider=data.get("provider") or None,
+            context=data.get("context"),
         )
 
         return Response(

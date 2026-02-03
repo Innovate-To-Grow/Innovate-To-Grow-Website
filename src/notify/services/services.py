@@ -10,7 +10,16 @@ from django.utils import timezone
 
 from authn.models.contact.contact_info import ContactEmail, ContactPhone
 
-from ..models import BroadcastMessage, NotificationLog, Unsubscribe, VerificationRequest
+from ..providers.email import send_email
+from ..providers.message import send_sms
+from ..models import (
+    BroadcastMessage,
+    EmailLayout,
+    EmailMessageLayout,
+    NotificationLog,
+    Unsubscribe,
+    VerificationRequest,
+)
 
 class RateLimitError(Exception):
     """Raised when sending exceeds the configured rate limit."""
@@ -35,6 +44,26 @@ def _check_rate_limit(channel: str, target: str, limit: int, window_minutes: int
         raise RateLimitError("Rate limit exceeded for this recipient.")
 
 
+def _render_email_template(
+    *,
+    template_key: str,
+    context: dict | None,
+    recipient_email: str,
+    fallback_subject: str,
+    fallback_body: str,
+) -> tuple[str, str, dict, EmailLayout | None]:
+    layout = EmailMessageLayout.objects.filter(key=template_key, is_active=True).first()
+    if not layout:
+        return fallback_subject, fallback_body, context or {}, None
+
+    subject, body, preheader, ctx = layout.render(context=context, recipient_email=recipient_email)
+    if preheader:
+        ctx = {**ctx, "preheader": preheader}
+
+    base_layout = layout.layout if getattr(layout, "layout", None) and layout.layout.is_active else None
+    return subject or fallback_subject, body or fallback_body, ctx, base_layout
+
+
 def issue_code(
     channel: str,
     target: str,
@@ -43,6 +72,7 @@ def issue_code(
     expires_in_minutes: int = 10,
     max_attempts: int = 5,
     rate_limit_per_hour: int = 5,
+    context: dict | None = None,
 ) -> VerificationRequest:
     """
     Create and send a verification code.
@@ -64,7 +94,23 @@ def issue_code(
 
     message = f"Your verification code is: {code}. It expires in {expires_in_minutes} minutes."
     if channel == VerificationRequest.CHANNEL_EMAIL:
-        send_email(target, subject="Your verification code", body=message)
+        email_context = dict(context or {})
+        email_context.update({"code": code, "expires_in_minutes": expires_in_minutes})
+        default_subject = "Your verification code"
+        default_body = (
+            "Hi {{ recipient_name }},\n\n"
+            "Your verification code is: {{ code }}.\n"
+            "It expires in {{ expires_in_minutes }} minutes.\n\n"
+            "If you did not request this, you can ignore this email."
+        )
+        subject, body, rendered_context, base_layout = _render_email_template(
+            template_key="verification_code",
+            context=email_context,
+            recipient_email=target,
+            fallback_subject=default_subject,
+            fallback_body=default_body,
+        )
+        send_email(target, subject=subject, body=body, context=rendered_context, layout=base_layout)
     else:
         send_sms(target, message=message)
 
@@ -79,6 +125,7 @@ def issue_link(
     max_attempts: int = 5,
     rate_limit_per_hour: int = 5,
     base_url: str | None = None,
+    context: dict | None = None,
 ) -> tuple[VerificationRequest, str]:
     """
     Create and send a verification link token. Returns the verification record and the URL.
@@ -102,7 +149,25 @@ def issue_link(
     message = f"Click to verify: {link} (expires in {expires_in_minutes} minutes)."
 
     if channel == VerificationRequest.CHANNEL_EMAIL:
-        send_email(target, subject="Verify your email", body=message)
+        email_context = dict(context or {})
+        email_context.update(
+            {"verification_link": link, "link": link, "expires_in_minutes": expires_in_minutes}
+        )
+        default_subject = "Verify your email"
+        default_body = (
+            "Hi {{ recipient_name }},\n\n"
+            "Please verify your email by clicking the link below:\n"
+            "{{ verification_link }}\n\n"
+            "This link expires in {{ expires_in_minutes }} minutes."
+        )
+        subject, body, rendered_context, base_layout = _render_email_template(
+            template_key="verification_link",
+            context=email_context,
+            recipient_email=target,
+            fallback_subject=default_subject,
+            fallback_body=default_body,
+        )
+        send_email(target, subject=subject, body=body, context=rendered_context, layout=base_layout)
     else:
         send_sms(target, message=message)
 
@@ -197,6 +262,7 @@ def send_notification(
     message: str,
     subject: str = "",
     provider: str | None = None,
+    context: dict | None = None,
 ) -> NotificationLog:
     """
     Send a generic notification (email/SMS) and persist a delivery log.
@@ -216,10 +282,17 @@ def send_notification(
 
         if channel == VerificationRequest.CHANNEL_EMAIL:
             success, provider_name = send_email(
-                target, subject=subject or "Notification", body=message, provider=provider
+                target,
+                subject=subject or "Notification",
+                body=message,
+                provider=provider,
+                context=context,
             )
         else:
             success, provider_name = send_sms(target, message=message, provider=provider)
+
+        if not success and not error_message:
+            error_message = f"Failed to send notification via provider '{provider_name}'."
 
         if success:
             log.status = NotificationLog.STATUS_SENT

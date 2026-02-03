@@ -7,6 +7,7 @@ class RequestCodeSerializer(serializers.Serializer):
     channel = serializers.ChoiceField(choices=VerificationRequest.CHANNEL_CHOICES)
     target = serializers.CharField(max_length=255)
     purpose = serializers.CharField(max_length=64, required=False, default="contact_verification")
+    context = serializers.JSONField(required=False)
 
 
 class RequestLinkSerializer(serializers.Serializer):
@@ -19,6 +20,7 @@ class RequestLinkSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="Optional base URL to prefix the verification token.",
     )
+    context = serializers.JSONField(required=False)
 
 
 class VerifyCodeSerializer(serializers.Serializer):
@@ -34,3 +36,4 @@ class SendNotificationSerializer(serializers.Serializer):
     subject = serializers.CharField(max_length=255, required=False, allow_blank=True)
     message = serializers.CharField()
     provider = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    context = serializers.JSONField(required=False)
