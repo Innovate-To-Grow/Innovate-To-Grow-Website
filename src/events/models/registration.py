@@ -2,9 +2,9 @@
 Event Registration model for linking Members to Events.
 """
 
-from core.models.base.control import ProjectControlModel
-
 from django.db import models
+
+from core.models.base.control import ProjectControlModel
 
 
 class EventRegistration(ProjectControlModel):

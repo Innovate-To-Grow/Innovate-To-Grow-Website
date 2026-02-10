@@ -5,6 +5,7 @@ from ..models import EmailLayout, EmailMessageContext, EmailMessageLayout
 from ..providers.email import render_email_layout
 from .utils import _collect_highlight_values, _highlight_values, _inject_preview_style
 
+
 class EmailMessageContextInline(admin.TabularInline):
     model = EmailMessageContext
     extra = 0

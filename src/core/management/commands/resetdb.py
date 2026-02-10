@@ -226,13 +226,13 @@ class Command(BaseCommand):
             return
 
         # Create superuser
-        admin = Member.objects.create_superuser(
+        Member.objects.create_superuser(
             username=self.DEV_DEFAULT_ADMIN_USERNAME,
             email=self.DEV_DEFAULT_ADMIN_EMAIL,
             password=self.DEV_DEFAULT_ADMIN_PASSWORD,
         )
 
-        self.stdout.write(self.style.SUCCESS(f"  Created admin user:"))
+        self.stdout.write(self.style.SUCCESS("  Created admin user:"))
         self.stdout.write(f"    Username: {self.DEV_DEFAULT_ADMIN_USERNAME}")
         self.stdout.write(f"    Email:    {self.DEV_DEFAULT_ADMIN_EMAIL}")
         self.stdout.write(f"    Password: {self.DEV_DEFAULT_ADMIN_PASSWORD}")

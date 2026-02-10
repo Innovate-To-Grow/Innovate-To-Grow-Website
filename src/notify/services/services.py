@@ -10,8 +10,6 @@ from django.utils import timezone
 
 from authn.models.contact.contact_info import ContactEmail, ContactPhone
 
-from ..providers.email import send_email
-from ..providers.message import send_sms
 from ..models import (
     BroadcastMessage,
     EmailLayout,
@@ -20,6 +18,9 @@ from ..models import (
     Unsubscribe,
     VerificationRequest,
 )
+from ..providers.email import send_email
+from ..providers.message import send_sms
+
 
 class RateLimitError(Exception):
     """Raised when sending exceeds the configured rate limit."""

@@ -4,10 +4,11 @@ Event models for hierarchical event structure.
 Event -> Program -> Track -> Presentation
 """
 
-from django.db import models
 from django.core.validators import MinValueValidator
+from django.db import models
 
 from core.models import ProjectControlModel
+
 
 class Event(ProjectControlModel):
     """Core event model containing basic info and markdown bullet points."""
