@@ -3,11 +3,12 @@ Admin interface for Event models with inline editors.
 """
 
 from django.contrib import admin
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
 from ..models import Event, Presentation, Program, SpecialAward, Track, TrackWinner
 
 
-class PresentationInline(admin.TabularInline):
+class PresentationInline(TabularInline):
     """Inline editor for Presentations within a Track."""
 
     model = Presentation
@@ -16,7 +17,7 @@ class PresentationInline(admin.TabularInline):
     ordering = ("order", "id")
 
 
-class TrackInline(admin.TabularInline):
+class TrackInline(TabularInline):
     """Inline editor for Tracks within a Program."""
 
     model = Track
@@ -26,7 +27,7 @@ class TrackInline(admin.TabularInline):
     show_change_link = True
 
 
-class ProgramInline(admin.StackedInline):
+class ProgramInline(StackedInline):
     """Inline editor for Programs within an Event."""
 
     model = Program
@@ -36,7 +37,7 @@ class ProgramInline(admin.StackedInline):
     show_change_link = True
 
 
-class TrackWinnerInline(admin.TabularInline):
+class TrackWinnerInline(TabularInline):
     """Inline editor for Track Winners within an Event."""
 
     model = TrackWinner
@@ -45,7 +46,7 @@ class TrackWinnerInline(admin.TabularInline):
     fields = ("track_name", "winner_name")
 
 
-class SpecialAwardInline(admin.TabularInline):
+class SpecialAwardInline(TabularInline):
     """Inline editor for Special Awards within an Event."""
 
     model = SpecialAward
@@ -55,7 +56,7 @@ class SpecialAwardInline(admin.TabularInline):
 
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(ModelAdmin):
     """Admin interface for Event model with hierarchical inlines."""
 
     inlines = [
@@ -88,7 +89,7 @@ class EventAdmin(admin.ModelAdmin):
 
 
 @admin.register(Track)
-class TrackAdmin(admin.ModelAdmin):
+class TrackAdmin(ModelAdmin):
     """Admin interface for Track model with Presentation inlines."""
 
     inlines = [PresentationInline]
@@ -102,7 +103,7 @@ class TrackAdmin(admin.ModelAdmin):
 
 
 @admin.register(Program)
-class ProgramAdmin(admin.ModelAdmin):
+class ProgramAdmin(ModelAdmin):
     """Admin interface for Program model with Track inlines."""
 
     inlines = [TrackInline]

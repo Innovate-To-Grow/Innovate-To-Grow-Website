@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.utils.html import escape, format_html
+from unfold.admin import ModelAdmin, TabularInline
 
 from ..models import EmailLayout, EmailMessageContext, EmailMessageLayout
 from ..providers.email import render_email_layout
 from .utils import _collect_highlight_values, _highlight_values, _inject_preview_style
 
 
-class EmailMessageContextInline(admin.TabularInline):
+class EmailMessageContextInline(TabularInline):
     model = EmailMessageContext
     extra = 0
     fields = (
@@ -21,7 +22,7 @@ class EmailMessageContextInline(admin.TabularInline):
 
 
 @admin.register(EmailMessageLayout)
-class EmailMessageLayoutAdmin(admin.ModelAdmin):
+class EmailMessageLayoutAdmin(ModelAdmin):
     list_display = ("key", "name", "is_active", "updated_at")
     list_filter = ("is_active", "created_at", "updated_at")
     search_fields = ("key", "name", "subject_template", "body_template", "description")
@@ -99,7 +100,7 @@ class EmailMessageLayoutAdmin(admin.ModelAdmin):
 
 
 @admin.register(EmailMessageContext)
-class EmailMessageContextAdmin(admin.ModelAdmin):
+class EmailMessageContextAdmin(ModelAdmin):
     list_display = ("layout", "name", "is_default", "updated_at")
     list_filter = ("is_default", "created_at", "updated_at")
     search_fields = ("layout__name", "layout__key", "name", "description")
@@ -108,7 +109,7 @@ class EmailMessageContextAdmin(admin.ModelAdmin):
 
 
 @admin.register(EmailLayout)
-class EmailLayoutAdmin(admin.ModelAdmin):
+class EmailLayoutAdmin(ModelAdmin):
     list_display = ("key", "name", "is_active", "is_default", "updated_at")
     list_filter = ("is_active", "is_default", "created_at", "updated_at")
     search_fields = ("key", "name", "description", "html_template")

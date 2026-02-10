@@ -1,12 +1,13 @@
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin, StackedInline
 
 from ..models import Page, PageComponent
 from .page_component import PageComponentForm
 
 
-class PageComponentInline(admin.StackedInline):
+class PageComponentInline(StackedInline):
     model = PageComponent
     fk_name = "page"
     extra = 0
@@ -17,25 +18,14 @@ class PageComponentInline(admin.StackedInline):
         "order",
         "is_enabled",
         "html_content",
-        "css_code",
-        "js_code",
         "config",
-        "form",
-        "image",
-        "image_alt",
-        "background_image",
-        "data_source",
-        "data_params",
-        "created_at",
-        "updated_at",
     )
-    readonly_fields = ("created_at", "updated_at")
     ordering = ("order", "id")
     show_change_link = True
 
 
 @admin.register(Page)
-class PageAdmin(admin.ModelAdmin):
+class PageAdmin(ModelAdmin):
     inlines = [PageComponentInline]
     change_form_template = "admin/pages/page/change_form.html"
     list_display = ("title", "slug", "status_badge", "view_count", "updated_at")
@@ -43,58 +33,29 @@ class PageAdmin(admin.ModelAdmin):
     search_fields = ("title", "slug")
     prepopulated_fields = {"slug": ("title",)}
     readonly_fields = (
-        "page_uuid",
-        "slug_depth",
-        "view_count",
-        "last_viewed_at",
-        "created_at",
-        "updated_at",
         "status",
         "published_at",
         "published_by",
-        "submitted_for_review_at",
-        "submitted_for_review_by",
     )
 
     fieldsets = (
-        ("Basic Information", {"fields": ("title", "slug", "page_uuid")}),
-        ("Rendering", {"fields": ("template_name",), "classes": ("extrapretty",)}),
+        (None, {"fields": ("title", "slug", "template_name")}),
         (
-            "SEO & Metadata",
-            {
-                "fields": (
-                    "meta_title",
-                    "meta_description",
-                    "meta_keywords",
-                    "og_image",
-                    "canonical_url",
-                    "meta_robots",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
-            "Publishing Workflow",
+            "Publishing",
             {
                 "fields": (
                     "status",
                     "published_at",
                     "published_by",
-                    "submitted_for_review_at",
-                    "submitted_for_review_by",
                 ),
             },
         ),
         (
-            "Timestamps",
+            "SEO",
             {
-                "fields": ("created_at", "updated_at"),
+                "fields": ("meta_title", "meta_description"),
                 "classes": ("collapse",),
             },
-        ),
-        (
-            "Statistics",
-            {"fields": ("view_count", "last_viewed_at", "slug_depth"), "classes": ("collapse",)},
         ),
     )
 

@@ -1,21 +1,3 @@
 {% extends "admin/base.html" %}
-{% load static %}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | I2G Admin{% endblock %}
-
-{% block extrastyle %}
-{{ block.super }}
-<link rel="stylesheet" type="text/css" href="{% static 'core/css/admin_custom.css' %}">
-{% endblock %}
-
-{% block branding %}
-<div id="site-name">
-    <a href="{% url 'admin:index' %}">
-        <img src="{% static 'images/i2glogo.png' %}" alt="I2G Logo" style="height: 40px; vertical-align: middle; margin-right: 10px;">
-        <span style="font-weight: bold; font-size: 18px;">Innovate To Grow Admin</span>
-    </a>
-</div>
-{% endblock %}
-
-{% block nav-global %}{% endblock %}
-

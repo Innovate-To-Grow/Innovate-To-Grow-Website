@@ -10,6 +10,7 @@ import smtplib
 from django import forms
 from django.contrib import admin, messages
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin
 
 from notify.models import GoogleGmailAccount
 
@@ -28,7 +29,7 @@ class GmailAccountForm(forms.ModelForm):
 
 
 @admin.register(GoogleGmailAccount)
-class GoogleGmailAccountAdmin(admin.ModelAdmin):
+class GoogleGmailAccountAdmin(ModelAdmin):
     """Admin for managing Gmail SMTP accounts."""
 
     form = GmailAccountForm

@@ -7,12 +7,13 @@ preview, filtering, and search capabilities.
 
 from django.contrib import admin
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin
 
 from ..models import MediaAsset
 
 
 @admin.register(MediaAsset)
-class MediaAssetAdmin(admin.ModelAdmin):
+class MediaAssetAdmin(ModelAdmin):
     """Admin interface for MediaAsset model."""
 
     list_display = (

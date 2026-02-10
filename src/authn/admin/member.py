@@ -8,6 +8,8 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
+from unfold.admin import ModelAdmin as UnfoldModelAdmin
+from unfold.admin import StackedInline, TabularInline
 
 from mobileid.models import Barcode, MobileID
 
@@ -24,7 +26,7 @@ from .forms import MemberImportForm
 # ============================================================================
 
 
-class MemberProfileInline(admin.StackedInline):
+class MemberProfileInline(StackedInline):
     """Inline admin for MemberProfile - displayed within Member admin."""
 
     model = MemberProfile
@@ -36,7 +38,7 @@ class MemberProfileInline(admin.StackedInline):
     readonly_fields = ("updated_at",)
 
 
-class MemberContactInfoInline(admin.TabularInline):
+class MemberContactInfoInline(TabularInline):
     """Inline admin for MemberContactInfo - displayed within Member admin."""
 
     model = MemberContactInfo
@@ -47,7 +49,7 @@ class MemberContactInfoInline(admin.TabularInline):
     readonly_fields = ("created_at", "updated_at")
 
 
-class BarcodeInline(admin.TabularInline):
+class BarcodeInline(TabularInline):
     """Inline admin for Barcode - displayed within Member admin."""
 
     model = Barcode
@@ -59,7 +61,7 @@ class BarcodeInline(admin.TabularInline):
     readonly_fields = ("created_at",)
 
 
-class MobileIDInline(admin.TabularInline):
+class MobileIDInline(TabularInline):
     """Inline admin for MobileID - displayed within Member admin."""
 
     model = MobileID
@@ -76,7 +78,7 @@ class MobileIDInline(admin.TabularInline):
 
 
 @admin.register(Member)
-class MemberAdmin(UserAdmin):
+class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     """
     Custom admin for Member model.
     Extends Django's UserAdmin with additional fields specific to Member.
@@ -293,7 +295,7 @@ class MemberAdmin(UserAdmin):
 
 
 @admin.register(MemberProfile)
-class MemberProfileAdmin(admin.ModelAdmin):
+class MemberProfileAdmin(UnfoldModelAdmin):
     """Admin for MemberProfile model."""
 
     list_display = ("model_user", "display_name", "has_profile_image_display", "updated_at")

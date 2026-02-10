@@ -18,6 +18,10 @@ load_dotenv(BASE_DIR / ".env")
 
 # Application definition
 INSTALLED_APPS = [
+    # Admin theme (must be before django.contrib.admin)
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     # django contrib application
     "django.contrib.admin",
     "django.contrib.auth",
@@ -212,3 +216,65 @@ CKEDITOR_5_CONFIGS = {
     },
 }
 CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
+
+# Unfold Admin Theme Configuration
+UNFOLD = {
+    "SITE_TITLE": "I2G Admin",
+    "SITE_HEADER": "Innovate To Grow",
+    "SITE_SYMBOL": "school",
+    "SIDEBAR": {
+        "show_search": True,
+        "navigation": [
+            {
+                "title": "Content Management",
+                "items": [
+                    {"title": "Pages", "icon": "article", "link": "/admin/pages/page/"},
+                    {"title": "Home Pages", "icon": "home", "link": "/admin/pages/homepage/"},
+                    {"title": "Components", "icon": "widgets", "link": "/admin/pages/pagecomponent/"},
+                    {"title": "Media", "icon": "image", "link": "/admin/pages/mediaasset/"},
+                    {"title": "Forms", "icon": "dynamic_form", "link": "/admin/pages/uniformform/"},
+                    {"title": "Submissions", "icon": "inbox", "link": "/admin/pages/formsubmission/"},
+                ],
+            },
+            {
+                "title": "Layout",
+                "items": [
+                    {"title": "Menus", "icon": "menu", "link": "/admin/layout/menu/"},
+                    {"title": "Footer", "icon": "bottom_navigation", "link": "/admin/layout/footercontent/"},
+                ],
+            },
+            {
+                "title": "Events",
+                "items": [
+                    {"title": "Events", "icon": "event", "link": "/admin/events/event/"},
+                    {"title": "Programs", "icon": "category", "link": "/admin/events/program/"},
+                    {"title": "Tracks", "icon": "view_timeline", "link": "/admin/events/track/"},
+                ],
+            },
+            {
+                "title": "Members",
+                "items": [
+                    {"title": "Members", "icon": "people", "link": "/admin/authn/member/"},
+                    {"title": "Groups", "icon": "group_work", "link": "/admin/authn/i2gmembergroup/"},
+                ],
+            },
+            {
+                "title": "MobileID",
+                "items": [
+                    {"title": "Barcodes", "icon": "qr_code", "link": "/admin/mobileid/barcode/"},
+                    {"title": "Mobile IDs", "icon": "badge", "link": "/admin/mobileid/mobileid/"},
+                    {"title": "Transactions", "icon": "receipt_long", "link": "/admin/mobileid/transaction/"},
+                ],
+            },
+            {
+                "title": "Email & Notifications",
+                "items": [
+                    {"title": "Gmail Accounts", "icon": "mail", "link": "/admin/notify/googlegmailaccount/"},
+                    {"title": "Email Templates", "icon": "drafts", "link": "/admin/notify/emailmessagelayout/"},
+                    {"title": "Email Layouts", "icon": "web", "link": "/admin/notify/emaillayout/"},
+                    {"title": "Broadcasts", "icon": "campaign", "link": "/admin/notify/broadcastmessage/"},
+                ],
+            },
+        ],
+    },
+}

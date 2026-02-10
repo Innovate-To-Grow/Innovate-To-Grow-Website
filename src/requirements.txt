@@ -8,6 +8,9 @@ djangorestframework-simplejwt>=5.3.0
 # Environment Variables
 python-dotenv>=1.0.0
 
+# Admin Theme
+django-unfold>=0.78.0
+
 # Rich Text Editor
 django-ckeditor-5>=0.2.13
 Pillow>=10.0.0

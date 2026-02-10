@@ -1,10 +1,11 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from ..models import Menu
 
 
 @admin.register(Menu)
-class MenuAdmin(admin.ModelAdmin):
+class MenuAdmin(ModelAdmin):
     list_display = ("name", "items_count", "created_at")
     search_fields = ("name",)
     readonly_fields = ("created_at", "updated_at")

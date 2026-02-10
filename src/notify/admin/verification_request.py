@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin
 
 from ..models import VerificationRequest
 
 
 @admin.register(VerificationRequest)
-class VerificationRequestAdmin(admin.ModelAdmin):
+class VerificationRequestAdmin(ModelAdmin):
     """
     Enhanced admin for verification requests with detailed management.
     """

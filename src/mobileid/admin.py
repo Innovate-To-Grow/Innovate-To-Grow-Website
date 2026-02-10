@@ -12,12 +12,13 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import path, reverse
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin
 
 from .models import Barcode, MobileID, Transaction
 
 
 @admin.register(Barcode)
-class BarcodeAdmin(admin.ModelAdmin):
+class BarcodeAdmin(ModelAdmin):
     """Admin for Barcode model."""
 
     list_display = ("barcode", "barcode_type", "model_user", "profile_name", "created_at")
@@ -34,7 +35,7 @@ class BarcodeAdmin(admin.ModelAdmin):
 
 
 @admin.register(MobileID)
-class MobileIDAdmin(admin.ModelAdmin):
+class MobileIDAdmin(ModelAdmin):
     """Admin for MobileID model."""
 
     list_display = ("model_user", "user_barcode", "created_at")
@@ -45,7 +46,7 @@ class MobileIDAdmin(admin.ModelAdmin):
 
 
 @admin.register(Transaction)
-class TransactionAdmin(admin.ModelAdmin):
+class TransactionAdmin(ModelAdmin):
     """
     Admin for Transaction model with barcode scanning capability.
 

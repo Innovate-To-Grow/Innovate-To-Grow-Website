@@ -1,12 +1,13 @@
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin, StackedInline
 
 from ..models import HomePage, PageComponent
 from .page_component import PageComponentForm
 
 
-class HomePageComponentInline(admin.StackedInline):
+class HomePageComponentInline(StackedInline):
     model = PageComponent
     fk_name = "home_page"
     extra = 0
@@ -17,62 +18,31 @@ class HomePageComponentInline(admin.StackedInline):
         "order",
         "is_enabled",
         "html_content",
-        "css_code",
-        "js_code",
         "config",
-        "form",
-        "image",
-        "image_alt",
-        "background_image",
-        "data_source",
-        "data_params",
-        "created_at",
-        "updated_at",
     )
-    readonly_fields = ("created_at", "updated_at")
     ordering = ("order", "id")
     show_change_link = True
 
 
 @admin.register(HomePage)
-class HomePageAdmin(admin.ModelAdmin):
+class HomePageAdmin(ModelAdmin):
     inlines = [HomePageComponentInline]
     change_form_template = "admin/pages/homepage/change_form.html"
     list_display = ("name", "is_active", "status_badge", "component_count", "created_at", "updated_at")
     list_filter = ("is_active", "status", "created_at")
     search_fields = ("name",)
     readonly_fields = (
-        "created_at",
-        "updated_at",
         "status",
         "published_at",
         "published_by",
-        "submitted_for_review_at",
-        "submitted_for_review_by",
     )
 
     fieldsets = (
+        (None, {"fields": ("name", "is_active")}),
         (
-            "Basic Information",
-            {"fields": ("name", "is_active")},
-        ),
-        (
-            "Publishing Workflow",
+            "Publishing",
             {
-                "fields": (
-                    "status",
-                    "published_at",
-                    "published_by",
-                    "submitted_for_review_at",
-                    "submitted_for_review_by",
-                ),
-            },
-        ),
-        (
-            "Timestamps",
-            {
-                "fields": ("created_at", "updated_at"),
-                "classes": ("collapse",),
+                "fields": ("status", "published_at", "published_by"),
             },
         ),
     )
