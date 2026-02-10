@@ -2,6 +2,7 @@
 Events app serializers export.
 """
 
+from .export import EventSheetExportSerializer
 from .read import (
     EventReadSerializer,
     PresentationSerializer,
@@ -31,6 +32,7 @@ __all__ = [
     "TrackWinnerSerializer",
     "SpecialAwardSerializer",
     "EventReadSerializer",
+    "EventSheetExportSerializer",
     # Sync serializers
     "PresentationSyncSerializer",
     "TrackSyncSerializer",

@@ -5,9 +5,11 @@ Includes sync endpoint (POST) for Google Sheets and read endpoint (GET) for fron
 """
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 from django.db import transaction
+from django.db.models import Prefetch
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -15,7 +17,20 @@ from rest_framework.views import APIView
 
 from ..authentication import APIKeyAuthentication, APIKeyPermission
 from ..models import Event, Presentation, Program, SpecialAward, Track, TrackWinner
-from ..serializers import EventReadSerializer, EventSyncSerializer
+from ..serializers import EventReadSerializer, EventSheetExportSerializer, EventSyncSerializer
+
+
+def _parse_iso8601_datetime(value):
+    """Parse ISO-8601 datetime and normalize to UTC."""
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+
+    parsed = datetime.fromisoformat(normalized)
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, UTC)
+
+    return parsed.astimezone(UTC)
 
 
 class EventSyncAPIView(APIView):
@@ -249,7 +264,7 @@ class EventSyncAPIView(APIView):
 
                     # Delete all existing winners
                     event.track_winners.all().delete()
-                    event.special_awards.all().delete()
+                    event.special_award_winners.all().delete()
 
                     # Create track winners
                     if "track_winners" in winners_data:
@@ -268,6 +283,9 @@ class EventSyncAPIView(APIView):
                                 program_name=award_data["program_name"],
                                 award_winner=award_data["award_winner"],
                             )
+
+                # Ensure updated_at watermark always advances after a sync payload.
+                event.save(update_fields=["updated_at"])
 
                 # Return success response
                 return Response(
@@ -308,4 +326,81 @@ class EventRetrieveAPIView(APIView):
             return Response({"error": "No event found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = EventReadSerializer(event)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class EventSheetExportAPIView(APIView):
+    """
+    GET endpoint for exporting live event data in sheet-friendly format.
+
+    Requires X-API-Key authentication.
+    Supports:
+    - mode=full
+    - mode=delta&since=<ISO8601>
+    """
+
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [APIKeyPermission]
+
+    def get(self, request):
+        mode = (request.query_params.get("mode") or "full").strip().lower()
+        if mode not in {"full", "delta"}:
+            return Response(
+                {"error": "Invalid mode. Expected 'full' or 'delta'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        since_dt = None
+        if mode == "delta":
+            since_raw = request.query_params.get("since")
+            if not since_raw:
+                return Response(
+                    {"error": "Missing required 'since' query parameter for delta mode."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                since_dt = _parse_iso8601_datetime(since_raw)
+            except ValueError:
+                return Response(
+                    {"error": "Invalid 'since' value. Expected ISO-8601 datetime."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        event = (
+            Event.objects.filter(is_live=True)
+            .prefetch_related(
+                Prefetch(
+                    "programs",
+                    queryset=Program.objects.order_by("order", "id").prefetch_related(
+                        Prefetch(
+                            "tracks",
+                            queryset=Track.objects.order_by("order", "id").prefetch_related(
+                                Prefetch("presentations", queryset=Presentation.objects.order_by("order", "id"))
+                            ),
+                        )
+                    ),
+                ),
+                Prefetch("track_winners", queryset=TrackWinner.objects.order_by("created_at", "id")),
+                Prefetch("special_award_winners", queryset=SpecialAward.objects.order_by("created_at", "id")),
+            )
+            .order_by("-updated_at", "-created_at")
+            .first()
+        )
+
+        if not event:
+            return Response({"error": "No live event found."}, status=status.HTTP_404_NOT_FOUND)
+
+        watermark = event.updated_at
+        delta_changed = mode == "full" or watermark > since_dt
+
+        serializer = EventSheetExportSerializer(
+            event,
+            context={
+                "mode": mode,
+                "delta_changed": delta_changed,
+                "generated_at": timezone.now(),
+                "watermark": watermark,
+            },
+        )
+
         return Response(serializer.data, status=status.HTTP_200_OK)
