@@ -1,0 +1,371 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Scan Barcode - {{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+    &rsaquo; <a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; Scan Barcode
+  </div>
+{% endblock %}
+
+{% block content %}
+<style>
+  .scan-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .scan-section {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .scan-section h3 {
+    margin-top: 0;
+    color: #417690;
+    border-bottom: 2px solid #417690;
+    padding-bottom: 8px;
+  }
+  #reader {
+    width: 100%;
+    max-width: 500px;
+    margin: 10px auto;
+  }
+  .manual-input-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .manual-input-group input {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .btn-primary { background: #417690; color: #fff; }
+  .btn-primary:hover { background: #366076; }
+  .btn-success { background: #28a745; color: #fff; font-size: 16px; }
+  .btn-success:hover { background: #218838; }
+  .btn-danger { background: #dc3545; color: #fff; }
+  .btn-danger:hover { background: #c82333; }
+  .btn-secondary { background: #6c757d; color: #fff; }
+  .btn-secondary:hover { background: #5a6268; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Camera controls */
+  .camera-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Result card */
+  .result-card {
+    display: none;
+    border: 2px solid #417690;
+    border-radius: 8px;
+    padding: 20px;
+    background: #f0f6fa;
+  }
+  .result-card.found { border-color: #28a745; background: #f0fff4; }
+  .result-card.not-found { border-color: #dc3545; background: #fff5f5; }
+  .user-info {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .user-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #666;
+    flex-shrink: 0;
+  }
+  .user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .user-details {
+    flex: 1;
+  }
+  .user-details table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .user-details table td {
+    padding: 4px 8px;
+    vertical-align: top;
+  }
+  .user-details table td:first-child {
+    font-weight: bold;
+    width: 120px;
+    color: #666;
+  }
+  .confirm-area {
+    margin-top: 15px;
+    text-align: center;
+  }
+
+  /* Status messages */
+  .status-msg {
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 10px;
+    display: none;
+  }
+  .status-msg.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+  .status-msg.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+  .status-msg.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; display: block; }
+</style>
+
+<div class="scan-container">
+  <!-- Camera Scanner Section -->
+  <div class="scan-section">
+    <h3>Camera Scanner</h3>
+    <div class="camera-controls">
+      <button id="btn-start-scan" class="btn btn-primary" onclick="startScanning()">
+        Start Camera
+      </button>
+      <button id="btn-stop-scan" class="btn btn-danger" onclick="stopScanning()" disabled>
+        Stop Camera
+      </button>
+    </div>
+    <div id="reader"></div>
+  </div>
+
+  <!-- Manual Input Section -->
+  <div class="scan-section">
+    <h3>Manual Input</h3>
+    <div class="manual-input-group">
+      <input type="text" id="barcode-input" placeholder="Enter barcode or scan value..."
+             onkeydown="if(event.key==='Enter') lookupBarcode()">
+      <button class="btn btn-primary" onclick="lookupBarcode()">Look Up</button>
+    </div>
+  </div>
+
+  <!-- Result Section -->
+  <div class="scan-section">
+    <h3>Result</h3>
+    <div id="result-card" class="result-card">
+      <div id="result-content"></div>
+      <div id="confirm-area" class="confirm-area" style="display:none;">
+        <button id="btn-confirm" class="btn btn-success" onclick="confirmTransaction()">
+          Confirm &amp; Create Transaction
+        </button>
+        <button class="btn btn-secondary" onclick="resetResult()" style="margin-left:10px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+    <div id="status-msg" class="status-msg"></div>
+  </div>
+</div>
+
+<!-- html5-qrcode library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+const LOOKUP_URL = "{{ lookup_url }}";
+const CONFIRM_URL = "{{ confirm_url }}";
+const CHANGELIST_URL = "{{ changelist_url }}";
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+let html5QrCode = null;
+let currentResult = null;  // {barcode_id, user_id, ...}
+
+// ======================================
+// Camera Scanner
+// ======================================
+function startScanning() {
+  const readerEl = document.getElementById("reader");
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode("reader");
+  }
+  document.getElementById("btn-start-scan").disabled = true;
+  document.getElementById("btn-stop-scan").disabled = false;
+
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (decodedText) => {
+      // Auto-fill and look up
+      document.getElementById("barcode-input").value = decodedText;
+      stopScanning();
+      lookupBarcode();
+    },
+    (errorMessage) => {
+      // Scan error (ignore frame-level errors)
+    }
+  ).catch(err => {
+    showStatus("Camera error: " + err, "error");
+    document.getElementById("btn-start-scan").disabled = false;
+    document.getElementById("btn-stop-scan").disabled = true;
+  });
+}
+
+function stopScanning() {
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.stop().then(() => {
+      document.getElementById("btn-start-scan").disabled = false;
+      document.getElementById("btn-stop-scan").disabled = true;
+    }).catch(err => console.error("Stop error:", err));
+  }
+}
+
+// ======================================
+// Barcode Lookup
+// ======================================
+function lookupBarcode() {
+  const value = document.getElementById("barcode-input").value.trim();
+  if (!value) {
+    showStatus("Please enter a barcode value.", "error");
+    return;
+  }
+
+  showStatus("Looking up...", "info");
+  resetResult();
+
+  fetch(LOOKUP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": CSRF_TOKEN,
+    },
+    body: JSON.stringify({ barcode: value }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    const card = document.getElementById("result-card");
+    const content = document.getElementById("result-content");
+    card.style.display = "block";
+    hideStatus();
+
+    if (data.found) {
+      card.className = "result-card found";
+      currentResult = data;
+
+      // Build user info display
+      let avatarHTML;
+      if (data.profile_img) {
+        avatarHTML = `<div class="user-avatar"><img src="data:image/png;base64,${data.profile_img}" alt="avatar"></div>`;
+      } else {
+        const initial = (data.full_name || data.username || "?")[0].toUpperCase();
+        avatarHTML = `<div class="user-avatar">${initial}</div>`;
+      }
+
+      content.innerHTML = `
+        <div class="user-info">
+          ${avatarHTML}
+          <div class="user-details">
+            <table>
+              <tr><td>Username</td><td>${escHTML(data.username)}</td></tr>
+              <tr><td>Full Name</td><td>${escHTML(data.full_name || '-')}</td></tr>
+              <tr><td>Email</td><td>${escHTML(data.email || '-')}</td></tr>
+              <tr><td>Profile Name</td><td>${escHTML(data.profile_name || '-')}</td></tr>
+              <tr><td>Barcode</td><td><strong>${escHTML(data.barcode_value)}</strong></td></tr>
+              <tr><td>Barcode Type</td><td>${escHTML(data.barcode_type)}</td></tr>
+            </table>
+          </div>
+        </div>
+      `;
+      document.getElementById("confirm-area").style.display = "block";
+    } else {
+      card.className = "result-card not-found";
+      content.innerHTML = `<p style="color:#dc3545;font-weight:bold;">${escHTML(data.error)}</p>`;
+      document.getElementById("confirm-area").style.display = "none";
+    }
+  })
+  .catch(err => {
+    showStatus("Network error: " + err, "error");
+  });
+}
+
+// ======================================
+// Transaction Confirmation
+// ======================================
+function confirmTransaction() {
+  if (!currentResult) return;
+
+  const btn = document.getElementById("btn-confirm");
+  btn.disabled = true;
+  btn.textContent = "Creating...";
+
+  fetch(CONFIRM_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": CSRF_TOKEN,
+    },
+    body: JSON.stringify({
+      barcode_id: currentResult.barcode_id,
+      user_id: currentResult.user_id,
+    }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      showStatus(data.message + " Redirecting...", "success");
+      setTimeout(() => { window.location.href = CHANGELIST_URL; }, 1500);
+    } else {
+      showStatus("Error: " + data.error, "error");
+      btn.disabled = false;
+      btn.textContent = "Confirm & Create Transaction";
+    }
+  })
+  .catch(err => {
+    showStatus("Network error: " + err, "error");
+    btn.disabled = false;
+    btn.textContent = "Confirm & Create Transaction";
+  });
+}
+
+// ======================================
+// Helpers
+// ======================================
+function resetResult() {
+  currentResult = null;
+  document.getElementById("result-card").style.display = "none";
+  document.getElementById("confirm-area").style.display = "none";
+}
+
+function showStatus(msg, level) {
+  const el = document.getElementById("status-msg");
+  el.className = "status-msg " + level;
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function hideStatus() {
+  document.getElementById("status-msg").style.display = "none";
+}
+
+function escHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+{% endblock %}

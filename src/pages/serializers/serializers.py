@@ -26,6 +26,7 @@ class PageComponentSerializer(serializers.ModelSerializer):
 
 class PageSerializer(serializers.ModelSerializer):
     components = PageComponentSerializer(many=True, read_only=True)
+    published = serializers.BooleanField(read_only=True)  # computed from status
 
     class Meta:
         model = Page
@@ -40,21 +41,32 @@ class PageSerializer(serializers.ModelSerializer):
             "canonical_url",
             "meta_robots",
             "template_name",
+            "status",
             "published",
             "components",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "slug", "created_at", "updated_at"]
+        read_only_fields = ["id", "slug", "created_at", "updated_at", "published"]
 
 
 class HomePageSerializer(serializers.ModelSerializer):
     components = PageComponentSerializer(many=True, read_only=True)
+    published = serializers.BooleanField(read_only=True)  # computed from status
 
     class Meta:
         model = HomePage
-        fields = ["id", "name", "is_active", "components", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "name",
+            "is_active",
+            "status",
+            "published",
+            "components",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at", "published"]
 
 
 class UniformFormSerializer(serializers.ModelSerializer):

@@ -52,14 +52,14 @@ class HomePageAPIView(APIView):
 
 class PageListAPIView(ListAPIView):
     """
-    List all pages (for menu editor dropdown).
+    List published pages (for menu editor dropdown and public listing).
     """
 
     serializer_class = PageSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Page.objects.all().order_by("title")
+        return Page.objects.filter(status="published").order_by("title")
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -70,14 +70,25 @@ class PageListAPIView(ListAPIView):
 
 class PageRetrieveAPIView(RetrieveAPIView):
     """
-    Retrieve a page by slug.
+    Retrieve a published page by slug, with caching.
     """
 
-    queryset = Page.objects.all()
     serializer_class = PageSerializer
     lookup_field = "slug"
     lookup_url_kwarg = "slug"
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Page.objects.filter(status="published")
+
+    def get_object(self):
+        slug = self.kwargs.get("slug")
+        page = Page.get_published_by_slug(slug)
+        if page is None:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("Page not found.")
+        return page
 
 
 class UniformFormRetrieveAPIView(RetrieveAPIView):

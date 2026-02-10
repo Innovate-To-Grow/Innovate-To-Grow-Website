@@ -1,12 +1,8 @@
 {% extends "admin/change_form.html" %}
-{% load static i18n %}
+{% load i18n %}
 
 {% block extrahead %}
 {{ block.super }}
-<!-- Quill CSS -->
-<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-<!-- Custom styles -->
-<link rel="stylesheet" href="{% static 'pages/css/quill-admin.css' %}">
 <style>
 /* Workflow Actions Panel */
 .workflow-panel {
@@ -18,10 +14,11 @@
 
 .workflow-panel-header {
     padding: 12px 20px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
     font-weight: 600;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .workflow-panel-body {
@@ -29,9 +26,11 @@
     background: #fff;
 }
 
+/* Status Indicator */
 .status-indicator {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 13px;
@@ -43,6 +42,7 @@
 .status-review { background: #f0ad4e; }
 .status-published { background: #5cb85c; }
 
+/* Workflow Buttons */
 .workflow-actions {
     display: flex;
     gap: 10px;
@@ -59,6 +59,9 @@
     font-weight: 500;
     color: white;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .workflow-btn:hover {
@@ -67,11 +70,51 @@
 }
 
 .btn-review { background: #f0ad4e; }
-.btn-publish { background: #5cb85c; }
-.btn-unpublish { background: #d9534f; }
-.btn-reject { background: #d9534f; }
+.btn-review:hover { background: #ec971f; }
 
-/* Version History */
+.btn-publish { background: #5cb85c; }
+.btn-publish:hover { background: #449d44; }
+
+.btn-unpublish { background: #d9534f; }
+.btn-unpublish:hover { background: #c9302c; }
+
+.btn-reject { background: #d9534f; }
+.btn-reject:hover { background: #c9302c; }
+
+/* Workflow Flow Diagram */
+.workflow-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #666;
+}
+
+.workflow-step {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.workflow-step.active {
+    color: white;
+}
+
+.workflow-step.inactive {
+    background: #e9ecef;
+    color: #999;
+}
+
+.workflow-arrow {
+    color: #ccc;
+    font-size: 16px;
+}
+
+/* Version History Table */
 .version-panel {
     margin: 20px 0;
     border: 1px solid #dee2e6;
@@ -85,6 +128,9 @@
     border-bottom: 1px solid #dee2e6;
     font-weight: 600;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .version-table {
@@ -99,6 +145,7 @@
     border-bottom: 2px solid #dee2e6;
     font-size: 12px;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
     color: #666;
 }
 
@@ -106,6 +153,14 @@
     padding: 10px 15px;
     border-bottom: 1px solid #eee;
     font-size: 13px;
+}
+
+.version-table tr:hover {
+    background: #f8f9fa;
+}
+
+.version-table tr:last-child td {
+    border-bottom: none;
 }
 
 .btn-rollback {
@@ -116,24 +171,27 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    transition: all 0.2s;
 }
 
-.btn-rollback:hover { background: #5a6268; }
-</style>
-{% endblock %}
+.btn-rollback:hover {
+    background: #5a6268;
+}
 
-{% block object-tools-items %}
-{{ block.super }}
-<li>
-    <a href="#" id="popup-preview-btn" class="popup-preview-link">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-        </svg>
-        Open Live Preview
-    </a>
-</li>
+.version-comment {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.no-versions {
+    padding: 20px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+</style>
 {% endblock %}
 
 {% block after_related_objects %}
@@ -142,10 +200,11 @@
 {% if original %}
 <!-- Publishing Workflow Panel -->
 <div class="workflow-panel">
-    <div class="workflow-panel-header">
+    <div class="workflow-panel-header" style="background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
         &#128640; Publishing Workflow
     </div>
     <div class="workflow-panel-body">
+        <!-- Current Status -->
         <div style="margin-bottom: 12px;">
             <span style="color: #666; font-size: 13px;">Current status:</span>
             <span class="status-indicator status-{{ original.status }}">
@@ -153,13 +212,29 @@
             </span>
         </div>
 
+        <!-- Flow Diagram -->
+        <div class="workflow-flow">
+            <span class="workflow-step {% if original.status == 'draft' %}active status-draft{% else %}inactive{% endif %}">
+                Draft
+            </span>
+            <span class="workflow-arrow">&rarr;</span>
+            <span class="workflow-step {% if original.status == 'review' %}active status-review{% else %}inactive{% endif %}">
+                In Review
+            </span>
+            <span class="workflow-arrow">&rarr;</span>
+            <span class="workflow-step {% if original.status == 'published' %}active status-published{% else %}inactive{% endif %}">
+                Published
+            </span>
+        </div>
+
+        <!-- Action Buttons -->
         <div class="workflow-actions">
             {% if original.status == "draft" %}
                 <button type="submit" name="_submit_for_review" class="workflow-btn btn-review">
                     &#128269; Submit for Review
                 </button>
                 <button type="submit" name="_publish" class="workflow-btn btn-publish"
-                        onclick="return confirm('Publish directly?');">
+                        onclick="return confirm('Publish this page directly without review?');">
                     &#9989; Publish Directly
                 </button>
             {% endif %}
@@ -169,29 +244,30 @@
                     &#9989; Approve &amp; Publish
                 </button>
                 <button type="submit" name="_reject_review" class="workflow-btn btn-reject"
-                        onclick="return confirm('Reject and send back to draft?');">
-                    &#10060; Reject
+                        onclick="return confirm('Reject this review and send back to draft?');">
+                    &#10060; Reject (Back to Draft)
                 </button>
             {% endif %}
 
             {% if original.status == "published" %}
                 <button type="submit" name="_unpublish" class="workflow-btn btn-unpublish"
-                        onclick="return confirm('Unpublish this home page?');">
+                        onclick="return confirm('Unpublish this page? It will no longer be visible to the public.');">
                     &#128683; Unpublish
                 </button>
             {% endif %}
         </div>
 
+        <!-- Publishing Info -->
         {% if original.published_at %}
         <div style="margin-top: 12px; font-size: 12px; color: #888;">
-            Published: {{ original.published_at }}
+            First published: {{ original.published_at }}
             {% if original.published_by %} by {{ original.published_by }}{% endif %}
         </div>
         {% endif %}
     </div>
 </div>
 
-<!-- Version History -->
+<!-- Version History Panel -->
 <div class="version-panel">
     <div class="version-panel-header">
         &#128196; Version History
@@ -211,13 +287,13 @@
         {% for v in versions %}
             <tr>
                 <td><strong>v{{ v.version_number }}</strong></td>
-                <td>{{ v.comment|default:"—" }}</td>
+                <td class="version-comment">{{ v.comment|default:"—" }}</td>
                 <td>{{ v.created_by|default:"System" }}</td>
                 <td>{{ v.created_at|date:"Y-m-d H:i" }}</td>
                 <td>
                     <button type="submit" name="_rollback" value="{{ v.version_number }}"
                             class="btn-rollback"
-                            onclick="return confirm('Rollback to version {{ v.version_number }}?');">
+                            onclick="return confirm('Rollback to version {{ v.version_number }}? Current state will be saved first.');">
                         Rollback
                     </button>
                 </td>
@@ -226,41 +302,10 @@
         </tbody>
     </table>
     {% else %}
-    <div style="padding: 20px; text-align: center; color: #999; font-style: italic;">
-        No versions saved yet.
+    <div class="no-versions">
+        No versions saved yet. Versions are created when you save changes or perform workflow actions.
     </div>
     {% endif %}
 </div>
 {% endif %}
-{% endblock %}
-
-{% block content %}
-{{ block.super }}
-
-<!-- Quill Editor Container (inserted after the form renders) -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Find the body field row and add Quill editor after the hidden textarea
-        const bodyField = document.querySelector('.field-body');
-        if (bodyField) {
-            // Create Quill container
-            const quillWrapper = document.createElement('div');
-            quillWrapper.className = 'quill-editor-wrapper';
-            quillWrapper.innerHTML = '<div id="quill-editor"></div>';
-
-            // Insert after the textarea
-            const textarea = document.getElementById('id_body');
-            if (textarea) {
-                textarea.parentNode.insertBefore(quillWrapper, textarea.nextSibling);
-            }
-        }
-    });
-</script>
-
-<!-- Quill JS -->
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-<!-- Quill Image Resize Module -->
-<script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
-<!-- Custom Quill Admin JS -->
-<script src="{% static 'pages/js/quill-admin.js' %}"></script>
 {% endblock %}

@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -194,7 +195,21 @@ class PageComponent(ProjectControlModel):
 
     def save(self, *args, **kwargs):
         self.full_clean()
-        return super().save(*args, **kwargs)
+        result = super().save(*args, **kwargs)
+        # Invalidate parent page/homepage cache
+        self._invalidate_parent_cache()
+        return result
+
+    def _invalidate_parent_cache(self):
+        """Invalidate cache for the parent page or home page."""
+        if self.page_id:
+            from .page import PAGE_CACHE_KEY_PREFIX
+
+            cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.slug.{self.page.slug}")
+        if self.home_page_id:
+            from .home_page import HOMEPAGE_CACHE_KEY
+
+            cache.delete(HOMEPAGE_CACHE_KEY)
 
     def __str__(self) -> str:
         parent_label = self.page.slug if self.page_id else self.home_page.name

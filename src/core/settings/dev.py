@@ -32,7 +32,14 @@ DATABASES = {
 
 
 # Development-specific settings
-# Add any development-only settings here
+
+# Cache configuration - use in-memory cache for development
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "innovate-to-grow-dev",
+    }
+}
 
 # Example: Email backend for development
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

@@ -7,17 +7,23 @@ body field or external URL flag.
 
 import uuid
 
+from django.core.cache import cache
 from django.db import models
 
 from core.models import AuthoredModel, ProjectControlModel
 
-from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
+from .mixins import AnalyticsFieldsMixin, SEOFieldsMixin, WorkflowPublishingMixin
 from .validators import validate_nested_slug
+
+# ============================== Cache Configuration ==============================
+
+PAGE_CACHE_KEY_PREFIX = "pages.page"
+PAGE_CACHE_TIMEOUT = 300  # 5 minutes
 
 # ============================== Page Model ==============================
 
 
-class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, AuthoredModel, ProjectControlModel):
+class Page(SEOFieldsMixin, AnalyticsFieldsMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
     """Content page model composed of ordered PageComponents."""
 
     # Technical identifier
@@ -44,7 +50,8 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, Authored
 
     def save(self, *args, **kwargs):
         """
-        Override save to automatically maintain some redundant fields.
+        Override save to automatically maintain some redundant fields
+        and invalidate cache.
         """
         # Keep slug_depth updated from slug (number of '/' characters)
         self.slug_depth = self.slug.count("/")
@@ -55,12 +62,40 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, Authored
 
         super().save(*args, **kwargs)
 
+        # Invalidate cache
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.slug.{self.slug}")
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.list")
+
+    def delete(self, *args, **kwargs):
+        """Override delete to invalidate cache."""
+        slug = self.slug
+        super().delete(*args, **kwargs)
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.slug.{slug}")
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.list")
+
     def get_absolute_url(self):
         """
         Return the absolute URL path for this page.
-        Returns a frontend-friendly path for Vue Router.
+        Returns a frontend-friendly path for the React Router.
         """
         return f"/pages/{self.slug}"
+
+    @classmethod
+    def get_published_by_slug(cls, slug):
+        """
+        Retrieve a published page by slug, with caching.
+
+        Returns the Page instance if found and published, otherwise None.
+        """
+        cache_key = f"{PAGE_CACHE_KEY_PREFIX}.slug.{slug}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        page = cls.objects.filter(slug=slug, status="published").first()
+        if page:
+            cache.set(cache_key, page, PAGE_CACHE_TIMEOUT)
+        return page
 
     @property
     def ordered_components(self):

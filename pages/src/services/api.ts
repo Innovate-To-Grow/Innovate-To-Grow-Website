@@ -29,6 +29,7 @@ export interface PageContent {
   canonical_url: string | null;
   meta_robots: string;
   template_name: string;
+  status?: 'draft' | 'review' | 'published';
   published: boolean;
   components?: PageComponent[];
   created_at: string;
@@ -62,6 +63,8 @@ export interface HomeContent {
   name: string;
   body?: string;
   is_active: boolean;
+  status?: 'draft' | 'review' | 'published';
+  published: boolean;
   components?: PageComponent[];
   created_at: string;
   updated_at: string;

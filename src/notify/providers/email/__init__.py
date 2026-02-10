@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from typing import TYPE_CHECKING, Any
@@ -11,13 +12,15 @@ from django.utils import timezone
 from django.utils.html import escape, strip_tags
 from django.utils.safestring import mark_safe
 
+logger = logging.getLogger(__name__)
+
 _HTML_TAG_RE = re.compile(r"<[a-z][\s\S]*>", re.IGNORECASE)
 _HTML_DOC_RE = re.compile(r"<!doctype|<html", re.IGNORECASE)
 _SUBJECT_ENGINE = Engine(autoescape=True)
 _BODY_ENGINE = Engine(autoescape=False)
 
 if TYPE_CHECKING:
-    from notify.models import EmailLayout
+    from notify.models import EmailLayout, GoogleGmailAccount
 
 
 def _normalize_provider(provider: str | None) -> str:
@@ -200,6 +203,7 @@ def render_email_layout(
 
 
 def _smtp_connection():
+    """Create an SMTP connection from Django settings."""
     host = getattr(settings, "EMAIL_HOST", None) or os.environ.get("EMAIL_HOST", "smtp.gmail.com")
     port = getattr(settings, "EMAIL_PORT", None) or int(os.environ.get("EMAIL_PORT", 587))
     username = getattr(settings, "EMAIL_HOST_USER", None) or os.environ.get("EMAIL_HOST_USER", "")
@@ -222,6 +226,47 @@ def _smtp_connection():
     )
 
 
+def _smtp_connection_from_account(account: "GoogleGmailAccount"):
+    """Create an SMTP connection from a database GoogleGmailAccount."""
+    use_ssl = not account.use_tls and account.smtp_port == 465
+    return get_connection(
+        host=account.smtp_host,
+        port=account.smtp_port,
+        username=account.gmail_address,
+        password=account.password,
+        use_tls=account.use_tls,
+        use_ssl=use_ssl,
+    )
+
+
+def _resolve_gmail_account(
+    gmail_account_id: int | None = None,
+) -> "GoogleGmailAccount | None":
+    """
+    Resolve a GoogleGmailAccount to use for sending.
+
+    Priority:
+    1. Explicit ``gmail_account_id`` if provided
+    2. Default active account from the database
+    3. ``None`` (fall back to Django settings)
+    """
+    try:
+        from notify.models import GoogleGmailAccount
+    except Exception:
+        return None
+
+    if gmail_account_id:
+        try:
+            return GoogleGmailAccount.objects.get(
+                pk=gmail_account_id, is_active=True, is_deleted=False
+            )
+        except GoogleGmailAccount.DoesNotExist:
+            logger.warning("Gmail account %s not found or inactive", gmail_account_id)
+            return None
+
+    return GoogleGmailAccount.get_default()
+
+
 def send_email(
     target: str,
     subject: str,
@@ -231,12 +276,26 @@ def send_email(
     context: dict[str, Any] | None = None,
     layout: "EmailLayout | None" = None,
     layout_key: str | None = None,
+    gmail_account_id: int | None = None,
+    attachments: list[tuple[str, bytes, str]] | None = None,
 ) -> tuple[bool, str]:
     """
     Send an email using the configured provider.
 
+    Args:
+        target: Recipient email address.
+        subject: Email subject (may contain Django template variables).
+        body: Email body (may contain Django template variables).
+        provider: "console", "gmail", "smtp", or ``None`` for auto-detect.
+        from_email: Explicit sender address (overrides account / settings).
+        context: Template rendering context dict.
+        layout: An ``EmailLayout`` instance to wrap the body with.
+        layout_key: Key to look up an ``EmailLayout`` from the database.
+        gmail_account_id: ID of a ``GoogleGmailAccount`` to use for SMTP.
+        attachments: List of ``(filename, content_bytes, mimetype)`` tuples.
+
     Returns:
-        (success, provider_name)
+        ``(success, provider_name)``
     """
     provider_name = _normalize_provider(provider).lower()
 
@@ -245,16 +304,24 @@ def send_email(
         rendered_subject = _render_template(subject, ctx, autoescape=True)
         rendered_body = _render_template(body, ctx, autoescape=False)
         print(f"[EMAIL][console] To: {target}\nSubject: {rendered_subject}\n\n{rendered_body}")
+        if attachments:
+            print(f"[EMAIL][console] Attachments: {[a[0] for a in attachments]}")
         return True, "console"
 
     if provider_name in {"gmail", "smtp"}:
-        connection = _smtp_connection()
-        from_address = (
-            from_email
-            or getattr(settings, "DEFAULT_FROM_EMAIL", "")
-            or getattr(settings, "EMAIL_HOST_USER", "")
-            or "noreply@innovatetogrow.com"
-        )
+        # Resolve Gmail account from DB (if available)
+        account = _resolve_gmail_account(gmail_account_id)
+        if account:
+            connection = _smtp_connection_from_account(account)
+            from_address = from_email or account.get_from_email()
+        else:
+            connection = _smtp_connection()
+            from_address = (
+                from_email
+                or getattr(settings, "DEFAULT_FROM_EMAIL", "")
+                or getattr(settings, "EMAIL_HOST_USER", "")
+                or "noreply@innovatetogrow.com"
+            )
 
         ctx = _normalize_context(context, target)
         rendered_subject = _render_template(subject, ctx, autoescape=True)
@@ -277,11 +344,21 @@ def send_email(
         if html_body:
             message.attach_alternative(html_body, "text/html")
 
+        # Attach files
+        if attachments:
+            for filename, content, mimetype in attachments:
+                message.attach(filename, content, mimetype)
+
         try:
             message.send()
-        except Exception:
+        except Exception as exc:
+            logger.exception("Failed to send email to %s", target)
+            if account:
+                account.mark_used(error=str(exc))
             return False, provider_name
 
+        if account:
+            account.mark_used()
         return True, provider_name
 
     # Unknown provider: fallback to console for safety
