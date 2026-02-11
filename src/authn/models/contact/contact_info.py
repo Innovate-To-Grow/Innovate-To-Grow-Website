@@ -70,6 +70,11 @@ class ContactPhone(ProjectControlModel):
     subscribe = models.BooleanField(
         default=False, help_text="Whether the phone number is subscribed to communications", verbose_name="Subscribed"
     )
+    verified = models.BooleanField(
+        default=False,
+        help_text="Whether the phone number has been verified",
+        verbose_name="Verified",
+    )
 
     class Meta:
         verbose_name = "Contact Phone"
@@ -79,6 +84,7 @@ class ContactPhone(ProjectControlModel):
             models.Index(fields=["phone_number"]),
             models.Index(fields=["region"]),
             models.Index(fields=["subscribe"]),
+            models.Index(fields=["verified"]),
         ]
 
     def __str__(self):
@@ -89,6 +95,8 @@ class ContactPhone(ProjectControlModel):
         # append subscribe info to string
         if self.subscribe:
             str_contact_phone += " - Subscribed"
+        if self.verified:
+            str_contact_phone += " - Verified"
 
         return str_contact_phone
 

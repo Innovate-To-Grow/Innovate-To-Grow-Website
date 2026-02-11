@@ -90,7 +90,7 @@ class FullSyncFlowTest(TestCase):
         self.assertEqual(len(event.expo_table), 1)
         self.assertEqual(len(event.reception_table), 1)
         self.assertEqual(event.track_winners.count(), 1)
-        self.assertEqual(event.special_awards.count(), 1)
+        self.assertEqual(event.special_award_winners.count(), 1)
 
     @override_settings(EVENTS_API_KEY="test-api-key-123")
     def test_sync_then_retrieve_flow(self):
@@ -330,7 +330,7 @@ class FullSyncFlowTest(TestCase):
         self.assertEqual(web_track.presentations.count(), 3)  # Including break
 
         self.assertEqual(event.track_winners.count(), 3)
-        self.assertEqual(event.special_awards.count(), 1)
+        self.assertEqual(event.special_award_winners.count(), 1)
 
 
 class DataConsistencyTest(TestCase):
@@ -409,7 +409,7 @@ class DataConsistencyTest(TestCase):
 
         # Verify winners are linked to correct event
         winner = event.track_winners.first()
-        award = event.special_awards.first()
+        award = event.special_award_winners.first()
         self.assertEqual(winner.event, event)
         self.assertEqual(award.event, event)
 

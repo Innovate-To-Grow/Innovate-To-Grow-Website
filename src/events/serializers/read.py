@@ -18,6 +18,7 @@ class PresentationSerializer(serializers.ModelSerializer):
             "team_name",
             "project_title",
             "organization",
+            "abstract",
         ]
         read_only_fields = ["id"]
 
@@ -79,9 +80,21 @@ class SpecialAwardSerializer(serializers.ModelSerializer):
 class EventReadSerializer(serializers.ModelSerializer):
     """Read-only serializer for frontend consumption."""
 
+    event_uuid = serializers.SerializerMethodField()
+    event_date = serializers.SerializerMethodField()
+    event_time = serializers.SerializerMethodField()
     programs = ProgramSerializer(many=True, read_only=True)
     track_winners = TrackWinnerSerializer(many=True, read_only=True)
-    special_awards = SpecialAwardSerializer(many=True, read_only=True)
+    special_awards = SpecialAwardSerializer(source="special_award_winners", many=True, read_only=True)
+
+    def get_event_uuid(self, obj):
+        return str(obj.event_uuid)
+
+    def get_event_date(self, obj):
+        return obj.event_date.isoformat() if obj.event_date else None
+
+    def get_event_time(self, obj):
+        return obj.event_time.isoformat() if obj.event_time else None
 
     class Meta:
         model = Event

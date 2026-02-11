@@ -20,6 +20,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from events.views import (
+    EventRegistrationRequestLinkAPIView,
+    EventRegistrationStatusAPIView,
+    EventRegistrationVerifyOTPAPIView,
+    MembershipEventRegistrationAPIView,
+)
 from pages.views import ComponentPreviewView, PreviewPopupView
 
 from .views import HealthCheckView
@@ -52,6 +58,21 @@ urlpatterns = [
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn
     path("authn/", include("authn.urls")),
+    # legacy membership-compatible event registration routes
+    path("membership/events", EventRegistrationRequestLinkAPIView.as_view(), name="membership-events"),
+    path("membership/events/<slug:event_slug>", EventRegistrationRequestLinkAPIView.as_view(), name="membership-events-slug"),
+    path(
+        "membership/event-registration/<slug:event_slug>/<str:token>",
+        MembershipEventRegistrationAPIView.as_view(),
+        name="membership-event-registration",
+    ),
+    path("membership/otp", EventRegistrationVerifyOTPAPIView.as_view(), name="membership-event-otp"),
+    path("membership/otp/<str:token>", EventRegistrationVerifyOTPAPIView.as_view(), name="membership-event-otp-token"),
+    path(
+        "membership/event-registration/status/<slug:event_slug>/<str:token>",
+        EventRegistrationStatusAPIView.as_view(),
+        name="membership-event-registration-status",
+    ),
 ]
 
 if settings.DEBUG:

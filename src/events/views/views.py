@@ -33,6 +33,13 @@ def _parse_iso8601_datetime(value):
     return parsed.astimezone(UTC)
 
 
+def _combine_event_datetime(event_date, event_time):
+    """Combine date and time into timezone-aware datetime using current timezone."""
+    combined = datetime.combine(event_date, event_time)
+    current_tz = timezone.get_current_timezone()
+    return timezone.make_aware(combined, current_tz)
+
+
 class EventSyncAPIView(APIView):
     """
     POST endpoint for syncing event data from Google Sheets.
@@ -81,8 +88,10 @@ class EventSyncAPIView(APIView):
                     basic_info = validated_data["basic_info"]
                     event = Event.objects.create(
                         event_name=basic_info["event_name"],
-                        event_date=basic_info["event_date"],
-                        event_time=basic_info["event_time"],
+                        event_date_time=_combine_event_datetime(
+                            basic_info["event_date"],
+                            basic_info["event_time"],
+                        ),
                         upper_bullet_points=basic_info.get("upper_bullet_points", []),
                         lower_bullet_points=basic_info.get("lower_bullet_points", []),
                         is_published=True,  # Assume published if synced
@@ -92,8 +101,10 @@ class EventSyncAPIView(APIView):
                     if "basic_info" in validated_data:
                         basic_info = validated_data["basic_info"]
                         event.event_name = basic_info["event_name"]
-                        event.event_date = basic_info["event_date"]
-                        event.event_time = basic_info["event_time"]
+                        event.event_date_time = _combine_event_datetime(
+                            basic_info["event_date"],
+                            basic_info["event_time"],
+                        )
                         event.upper_bullet_points = basic_info.get("upper_bullet_points", [])
                         event.lower_bullet_points = basic_info.get("lower_bullet_points", [])
                         event.is_published = True

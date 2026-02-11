@@ -249,6 +249,9 @@ UNFOLD = {
                     {"title": "Events", "icon": "event", "link": "/admin/events/event/"},
                     {"title": "Programs", "icon": "category", "link": "/admin/events/program/"},
                     {"title": "Tracks", "icon": "view_timeline", "link": "/admin/events/track/"},
+                    {"title": "Ticket Options", "icon": "confirmation_number", "link": "/admin/events/eventticketoption/"},
+                    {"title": "Questions", "icon": "quiz", "link": "/admin/events/eventquestion/"},
+                    {"title": "Registrations", "icon": "how_to_reg", "link": "/admin/events/eventregistration/"},
                 ],
             },
             {

@@ -3,6 +3,12 @@ Events app serializers export.
 """
 
 from .export import EventSheetExportSerializer
+from .registration import (
+    EventRegistrationAnswerInputSerializer,
+    EventRegistrationRequestLinkSerializer,
+    EventRegistrationSubmitSerializer,
+    EventRegistrationVerifyOTPSerializer,
+)
 from .read import (
     EventReadSerializer,
     PresentationSerializer,
@@ -33,6 +39,10 @@ __all__ = [
     "SpecialAwardSerializer",
     "EventReadSerializer",
     "EventSheetExportSerializer",
+    "EventRegistrationRequestLinkSerializer",
+    "EventRegistrationSubmitSerializer",
+    "EventRegistrationVerifyOTPSerializer",
+    "EventRegistrationAnswerInputSerializer",
     # Sync serializers
     "PresentationSyncSerializer",
     "TrackSyncSerializer",
