@@ -21,10 +21,10 @@ from django.contrib import admin
 from django.urls import include, path
 
 from events.views import (
-    EventRegistrationRequestLinkAPIView,
     EventRegistrationStatusAPIView,
-    EventRegistrationVerifyOTPAPIView,
-    MembershipEventRegistrationAPIView,
+    MembershipEventRegistrationPageView,
+    MembershipEventsPageView,
+    MembershipOTPPageView,
 )
 from pages.views import ComponentPreviewView, PreviewPopupView
 
@@ -59,15 +59,15 @@ urlpatterns = [
     # authn
     path("authn/", include("authn.urls")),
     # legacy membership-compatible event registration routes
-    path("membership/events", EventRegistrationRequestLinkAPIView.as_view(), name="membership-events"),
-    path("membership/events/<slug:event_slug>", EventRegistrationRequestLinkAPIView.as_view(), name="membership-events-slug"),
+    path("membership/events", MembershipEventsPageView.as_view(), name="membership-events"),
+    path("membership/events/<slug:event_slug>", MembershipEventsPageView.as_view(), name="membership-events-slug"),
     path(
         "membership/event-registration/<slug:event_slug>/<str:token>",
-        MembershipEventRegistrationAPIView.as_view(),
+        MembershipEventRegistrationPageView.as_view(),
         name="membership-event-registration",
     ),
-    path("membership/otp", EventRegistrationVerifyOTPAPIView.as_view(), name="membership-event-otp"),
-    path("membership/otp/<str:token>", EventRegistrationVerifyOTPAPIView.as_view(), name="membership-event-otp-token"),
+    path("membership/otp", MembershipOTPPageView.as_view(), name="membership-event-otp"),
+    path("membership/otp/<str:token>", MembershipOTPPageView.as_view(), name="membership-event-otp-token"),
     path(
         "membership/event-registration/status/<slug:event_slug>/<str:token>",
         EventRegistrationStatusAPIView.as_view(),

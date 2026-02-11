@@ -1,0 +1,46 @@
+{% extends "events/membership/base.html" %}
+
+{% block title %}{{ page_title }} | Innovate to Grow{% endblock %}
+
+{% block content %}
+<section class="membership-card">
+  <h1 class="membership-title">{{ page_title }}</h1>
+  <p class="membership-subtitle">{{ page_subtitle }}</p>
+  <hr class="membership-divider">
+
+  {% if success_message %}
+    <div class="alert alert-success">{{ success_message }}</div>
+  {% endif %}
+
+  {% if error_message %}
+    <div class="alert alert-error">{{ error_message }}</div>
+  {% endif %}
+
+  <form method="post" class="membership-form">
+    {% csrf_token %}
+    <div class="membership-field">
+      <label for="id_email">Email Address</label>
+      <input
+        class="membership-input"
+        id="id_email"
+        type="email"
+        name="email"
+        value="{{ email|default:'' }}"
+        placeholder="you@example.com"
+        required
+        autocomplete="email"
+      >
+    </div>
+    <div class="membership-actions">
+      <button class="btn-primary" type="submit">Send Registration Link</button>
+      <a class="btn-secondary" href="/">Back to Home</a>
+    </div>
+  </form>
+
+  {% if debug_registration_link %}
+    <p class="muted" style="margin-top: 16px;">
+      Debug link: <a href="{{ debug_registration_link }}">{{ debug_registration_link }}</a>
+    </p>
+  {% endif %}
+</section>
+{% endblock %}

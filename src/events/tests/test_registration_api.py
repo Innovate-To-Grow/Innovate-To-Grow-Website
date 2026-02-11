@@ -81,27 +81,30 @@ class EventRegistrationAPITest(TestCase):
         registration = EventRegistration.objects.get(event=self.event, member=self.member)
         self.assertEqual(registration.registration_token, "tok-generated")
 
-    def test_legacy_membership_events_get_and_slug_mismatch(self):
+    def test_membership_events_page_get_and_slug_mismatch(self):
         ready = self.client.get("/membership/events")
         self.assertEqual(ready.status_code, status.HTTP_200_OK)
-        self.assertEqual(ready.data["event_slug"], self.event.slug)
+        self.assertContains(ready, self.event.event_name)
+        self.assertContains(ready, "Send Registration Link")
 
         ready_slug = self.client.get(f"/membership/events/{self.event.slug}")
         self.assertEqual(ready_slug.status_code, status.HTTP_200_OK)
+        self.assertContains(ready_slug, self.event.event_name)
 
         mismatch = self.client.get("/membership/events/wrong-slug")
         self.assertEqual(mismatch.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(mismatch.data["code"], "event_not_found")
 
-    @patch("events.views.registration.issue_link")
-    def test_legacy_membership_events_post(self, mock_issue_link):
+    @patch("events.views.membership.issue_link")
+    def test_membership_events_page_post(self, mock_issue_link):
         mock_issue_link.return_value = (
             SimpleNamespace(token="tok-legacy"),
             "https://example.com/membership/event-registration/spring-demo/tok-legacy",
         )
-        response = self.client.post(f"/membership/events/{self.event.slug}", {"email": self.member.email}, format="json")
+        response = self.client.post(f"/membership/events/{self.event.slug}", {"email": self.member.email})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["event_slug"], self.event.slug)
+        self.assertContains(response, "Instructions sent")
+        registration = EventRegistration.objects.get(event=self.event, member=self.member)
+        self.assertEqual(registration.registration_token, "tok-legacy")
 
     def test_form_endpoint_with_token(self):
         token = self._create_link_token("tok-form")
@@ -118,7 +121,7 @@ class EventRegistrationAPITest(TestCase):
         self.assertEqual(len(response.data["schema"]["ticket_options"]), 1)
         self.assertEqual(len(response.data["schema"]["questions"]), 1)
 
-    def test_legacy_event_registration_get_and_post(self):
+    def test_membership_event_registration_page_get(self):
         token = self._create_link_token("tok-legacy-form")
         EventRegistration.objects.create(
             event=self.event,
@@ -130,28 +133,13 @@ class EventRegistrationAPITest(TestCase):
 
         get_response = self.client.get(path)
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(get_response.data["event"]["event_name"], self.event.event_name)
+        self.assertContains(get_response, self.event.event_name)
+        self.assertContains(get_response, "Submit Registration")
 
-        post_payload = {
-            "first_name": "New",
-            "last_name": "Member",
-            "secondary_email": "secondary@example.com",
-            "primary_email_subscribed": True,
-            "secondary_email_subscribed": True,
-            "ticket_option_id": str(self.ticket.id),
-            "answers": [{"question_id": str(self.question.id), "answer_text": "None"}],
-        }
-        post_response = self.client.post(path, post_payload, format="json")
-        self.assertEqual(post_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(post_response.data["status"], EventRegistration.STATUS_COMPLETED)
-        self.assertFalse(post_response.data["otp_required"])
-
-        registration = EventRegistration.objects.get(event=self.event, member=self.member)
-        self.assertEqual(registration.ticket_option_id, self.ticket.id)
-        self.assertEqual(registration.answers.count(), 1)
-        self.member.refresh_from_db()
-        self.assertEqual(self.member.first_name, "New")
-        self.assertEqual(self.member.last_name, "Member")
+    def test_membership_otp_page_get(self):
+        response = self.client.get("/membership/otp/some-token?event_slug=spring-demo")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "Verify Your Phone Number")
 
     def test_submit_rejects_primary_email_change(self):
         token = self._create_link_token("tok-primary-lock")
@@ -211,7 +199,7 @@ class EventRegistrationAPITest(TestCase):
         self.assertEqual(failed.data["code"], "invalid_otp")
 
         with patch("events.views.registration.verify_code", return_value=True):
-            success = self.client.post(f"/membership/otp/{token}", {"code": "123456"}, format="json")
+            success = self.client.post(self.verify_otp_url, {"token": token, "code": "123456"}, format="json")
         self.assertEqual(success.status_code, status.HTTP_200_OK)
         self.assertTrue(success.data["phone_verified"])
 

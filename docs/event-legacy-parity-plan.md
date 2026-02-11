@@ -10,13 +10,12 @@ Bring old deployed event registration capabilities (`/membership/events*`) into 
 
 ### Implemented in this phase
 
-1. Legacy route compatibility (API form):
-   - `GET/POST /membership/events`
-   - `GET/POST /membership/events/<event_slug>`
-   - `GET/POST /membership/event-registration/<event_slug>/<token>`
-   - `POST /membership/otp`
-   - `POST /membership/otp/<token>`
-   - `GET /membership/event-registration/status/<event_slug>/<token>`
+1. Legacy route compatibility (browser pages + API status):
+   - `GET/POST /membership/events` (server-rendered page)
+   - `GET/POST /membership/events/<event_slug>` (server-rendered page)
+   - `GET /membership/event-registration/<event_slug>/<token>` (server-rendered page)
+   - `GET /membership/otp` and `GET /membership/otp/<token>` (server-rendered page)
+   - `GET /membership/event-registration/status/<event_slug>/<token>` (JSON status API)
 2. DB-primary registration domain:
    - ticket options
    - event questions
@@ -29,18 +28,16 @@ Bring old deployed event registration capabilities (`/membership/events*`) into 
    - optional SMS OTP
    - OTP verify + status query
 4. Admin coverage for event registration models.
-5. Automated test coverage for registration + legacy route compatibility.
+5. Automated test coverage for registration APIs and membership page routes.
 
 ### Remaining gaps to reach full old behavior parity
 
-1. Server-rendered HTML templates are not ported:
-   - old pages under `project/templates/membership/events/*` were form pages and receipts.
-   - new compatibility routes currently return JSON (API-first), not Jinja/HTML pages.
-2. Old “unknown email -> send complete membership registration email” behavior is not ported.
+1. Old “unknown email -> send complete membership registration email” behavior is not ported.
    - current behavior: `member_not_found` (404) in request-link flow.
-3. Old primary/secondary email verification branching logic is not ported 1:1.
-4. Old member “custom dynamic fields” (`edit_form`) are not ported to authn/event APIs.
-5. Old confirmation email variants and SMS message templates are simplified and not 1:1 matched.
+2. Old primary/secondary email verification branching logic is not ported 1:1.
+3. Old member “custom dynamic fields” (`edit_form`) are not ported to authn/event APIs.
+4. Old confirmation email variants and SMS message templates are simplified and not 1:1 matched.
+5. Receipt-style HTML result pages are simplified; the new pages currently show inline success messages.
 
 ## Next Phases (Decision-Complete)
 
