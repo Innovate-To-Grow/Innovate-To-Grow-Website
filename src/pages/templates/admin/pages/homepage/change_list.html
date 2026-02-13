@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+{{ block.super }}
+{% if import_url %}
+<li>
+    <a href="{{ import_url }}" style="background: #0f2d52;">
+        Import JSON
+    </a>
+</li>
+{% endif %}
+{% endblock %}
