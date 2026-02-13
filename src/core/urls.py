@@ -26,7 +26,7 @@ from events.views import (
     MembershipEventsPageView,
     MembershipOTPPageView,
 )
-from pages.views import ComponentPreviewView, PreviewPopupView
+from pages.views import ComponentPreviewView, LayoutAPIView, PreviewPopupView
 
 from .views import HealthCheckView
 
@@ -46,8 +46,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # pages
     path("pages/", include("pages.urls")),
-    # layout (menus, footer)
-    path("layout/", include("layout.urls")),
+    # layout (menus, footer) - merged into pages app
+    path("layout/", LayoutAPIView.as_view(), name="layout-data"),
     # notify (verification + notifications)
     path("notify/", include("notify.urls")),
     # mobile id domain

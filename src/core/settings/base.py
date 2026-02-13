@@ -239,8 +239,8 @@ UNFOLD = {
             {
                 "title": "Layout",
                 "items": [
-                    {"title": "Menus", "icon": "menu", "link": "/admin/layout/menu/"},
-                    {"title": "Footer", "icon": "bottom_navigation", "link": "/admin/layout/footercontent/"},
+                    {"title": "Menus", "icon": "menu", "link": "/admin/pages/menu/"},
+                    {"title": "Footer", "icon": "bottom_navigation", "link": "/admin/pages/footercontent/"},
                 ],
             },
             {

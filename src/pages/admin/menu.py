@@ -9,7 +9,7 @@ class MenuAdmin(ModelAdmin):
     list_display = ("name", "items_count", "created_at")
     search_fields = ("name",)
     readonly_fields = ("created_at", "updated_at")
-    change_form_template = "admin/layout/menu/change_form.html"
+    change_form_template = "admin/pages/menu/change_form.html"
 
     fieldsets = (
         (None, {"fields": ("name", "description")}),

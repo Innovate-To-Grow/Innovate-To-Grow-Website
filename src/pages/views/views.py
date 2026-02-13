@@ -6,11 +6,13 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import FormSubmission, HomePage, Page, UniformForm
+from ..models import FooterContent, FormSubmission, HomePage, Menu, Page, UniformForm
 from ..serializers import (
+    FooterContentSerializer,
     FormSubmissionCreateSerializer,
     FormSubmissionListSerializer,
     HomePageSerializer,
+    MenuSerializer,
     PageSerializer,
     UniformFormSerializer,
 )
@@ -154,3 +156,25 @@ class FormSubmissionListAPIView(ListAPIView):
     def get_queryset(self):
         form_slug = self.kwargs["form_slug"]
         return FormSubmission.objects.filter(form__slug=form_slug)
+
+
+class LayoutAPIView(APIView):
+    """
+    Unified endpoint for layout data (menus and footer).
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        # 1. Get menus
+        menus = Menu.objects.all().order_by("display_name")
+        menu_serializer = MenuSerializer(menus, many=True)
+
+        # 2. Get active footer
+        footer = FooterContent.get_active()
+        footer_data = None
+        if footer:
+            footer_serializer = FooterContentSerializer(footer)
+            footer_data = footer_serializer.data
+
+        return Response({"menus": menu_serializer.data, "footer": footer_data})

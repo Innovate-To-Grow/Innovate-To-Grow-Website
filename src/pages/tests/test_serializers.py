@@ -1,8 +1,6 @@
 from django.test import TestCase
 
-from layout.models import Menu
-
-from ..models import HomePage, Page, PageComponent
+from ..models import HomePage, Menu, Page, PageComponent
 from ..serializers import HomePageSerializer, MenuSerializer, PageSerializer
 
 

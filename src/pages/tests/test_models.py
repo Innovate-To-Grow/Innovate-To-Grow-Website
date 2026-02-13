@@ -2,9 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from layout.models import Menu, MenuPageLink
-
-from ..models import HomePage, Page, PageComponent, validate_nested_slug
+from ..models import HomePage, Menu, MenuPageLink, Page, PageComponent, validate_nested_slug
 
 User = get_user_model()
 
