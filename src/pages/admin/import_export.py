@@ -2,14 +2,18 @@
 JSON import/export utilities for Page and HomePage models.
 
 Exports page content (text fields, config, ordering, FK references by name/slug)
-to a portable JSON format. Does NOT export PKs, user FKs, timestamps, file uploads,
-view_count, or status — imported pages always arrive as draft.
+to a portable JSON format. Optionally includes file field paths for ZIP-based
+export/import with media files.
+
+Imported pages always arrive as draft.
 """
 
 import logging
+import os
 from datetime import datetime, timezone
 
 from django.core.cache import cache
+from django.core.files.base import ContentFile
 from django.db import transaction
 
 from ..models import (
@@ -24,6 +28,7 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 EXPORT_VERSION = "1.0"
+ZIP_EXPORT_VERSION = "2.0"
 
 
 # ========================
@@ -31,20 +36,26 @@ EXPORT_VERSION = "1.0"
 # ========================
 
 
-def _serialize_component(component):
-    """Serialize a single PageComponent to a dict."""
+def _serialize_component(component, include_files=False):
+    """Serialize a single PageComponent to a dict.
+
+    Args:
+        include_files: When True, include storage-relative paths for file fields
+                       (css_file, image, background_image, gallery images).
+    """
     images = []
     for img in component.images.order_by("order", "id"):
-        images.append(
-            {
-                "order": img.order,
-                "alt": img.alt,
-                "caption": img.caption,
-                "link": img.link,
-            }
-        )
+        img_data = {
+            "order": img.order,
+            "alt": img.alt,
+            "caption": img.caption,
+            "link": img.link,
+        }
+        if include_files:
+            img_data["image"] = img.image.name if img.image else None
+        images.append(img_data)
 
-    return {
+    data = {
         "name": component.name,
         "component_type": component.component_type,
         "order": component.order,
@@ -67,8 +78,17 @@ def _serialize_component(component):
         "images": images,
     }
 
+    if include_files:
+        data["css_file"] = component.css_file.name if component.css_file else None
+        data["image"] = component.image.name if component.image else None
+        data["background_image"] = (
+            component.background_image.name if component.background_image else None
+        )
 
-def serialize_page(page):
+    return data
+
+
+def serialize_page(page, include_files=False):
     """Serialize a Page + its components + images to an export dict."""
     components = page.components.order_by("order", "id").prefetch_related("images")
     return {
@@ -88,11 +108,11 @@ def serialize_page(page):
             "google_site_verification": page.google_site_verification,
             "google_structured_data": page.google_structured_data,
         },
-        "components": [_serialize_component(c) for c in components],
+        "components": [_serialize_component(c, include_files=include_files) for c in components],
     }
 
 
-def serialize_homepage(homepage):
+def serialize_homepage(homepage, include_files=False):
     """Serialize a HomePage + its components + images to an export dict."""
     components = homepage.components.order_by("order", "id").prefetch_related("images")
     return {
@@ -102,7 +122,7 @@ def serialize_homepage(homepage):
         "homepage": {
             "name": homepage.name,
         },
-        "components": [_serialize_component(c) for c in components],
+        "components": [_serialize_component(c, include_files=include_files) for c in components],
     }
 
 
@@ -131,8 +151,14 @@ def _resolve_fk_refs(comp_data, warnings):
     return data_source, form
 
 
-def _create_components(parent_field, parent, components_data, warnings):
-    """Create PageComponent + PageComponentImage rows for a parent page/homepage."""
+def _create_components(parent_field, parent, components_data, warnings, file_map=None):
+    """Create PageComponent + PageComponentImage rows for a parent page/homepage.
+
+    Args:
+        file_map: Optional dict mapping archive paths (``media/{storage_path}``)
+                  to raw ``bytes``.  When provided, file fields are restored from
+                  the archive data.
+    """
     for comp_data in components_data:
         data_source, form = _resolve_fk_refs(comp_data, warnings)
 
@@ -161,10 +187,14 @@ def _create_components(parent_field, parent, components_data, warnings):
             ]
         )[0]
 
-        # Create gallery images (skip file-based image field)
+        # Restore file fields from archive
+        if file_map is not None:
+            _restore_component_files(component, comp_data, file_map, warnings)
+
+        # Create gallery images
         images_data = comp_data.get("images", [])
         if images_data:
-            PageComponentImage.objects.bulk_create(
+            img_objects = PageComponentImage.objects.bulk_create(
                 [
                     PageComponentImage(
                         component=component,
@@ -176,16 +206,23 @@ def _create_components(parent_field, parent, components_data, warnings):
                     for idx, img in enumerate(images_data)
                 ]
             )
+            # Restore gallery image files from archive
+            if file_map is not None:
+                for img_obj, img_data in zip(img_objects, images_data):
+                    _restore_image_file(img_obj, img_data, file_map, warnings)
 
 
 @transaction.atomic
-def deserialize_page(data, user=None):
+def deserialize_page(data, user=None, file_map=None):
     """
     Import a Page from an export dict.
 
     - If a page with matching slug exists, update it (replace all components).
     - Otherwise create a new page.
     - Imported pages always get status='draft'.
+
+    Args:
+        file_map: Optional dict mapping archive paths to raw bytes for file restoration.
 
     Returns (page, warnings) where warnings is a list of strings.
     """
@@ -239,7 +276,7 @@ def deserialize_page(data, user=None):
     PageComponent.objects.filter(page=page).hard_delete()
 
     # Create new components from import data
-    _create_components("page", page, data.get("components", []), warnings)
+    _create_components("page", page, data.get("components", []), warnings, file_map=file_map)
 
     # Invalidate page cache after component replacement
     from ..models.pages.page import PAGE_CACHE_KEY_PREFIX
@@ -251,13 +288,16 @@ def deserialize_page(data, user=None):
 
 
 @transaction.atomic
-def deserialize_homepage(data, user=None):
+def deserialize_homepage(data, user=None, file_map=None):
     """
     Import a HomePage from an export dict.
 
     - If a homepage with matching name exists, update it (replace all components).
     - Otherwise create a new homepage.
     - Imported homepages always get status='draft', is_active=False.
+
+    Args:
+        file_map: Optional dict mapping archive paths to raw bytes for file restoration.
 
     Returns (homepage, warnings) where warnings is a list of strings.
     """
@@ -281,7 +321,7 @@ def deserialize_homepage(data, user=None):
     # Replace all components
     PageComponent.objects.filter(home_page=homepage).hard_delete()
 
-    _create_components("home_page", homepage, data.get("components", []), warnings)
+    _create_components("home_page", homepage, data.get("components", []), warnings, file_map=file_map)
 
     # Invalidate homepage cache after component replacement
     from ..models.pages.home_page import HOMEPAGE_CACHE_KEY
@@ -289,3 +329,75 @@ def deserialize_homepage(data, user=None):
     cache.delete(HOMEPAGE_CACHE_KEY)
 
     return homepage, warnings
+
+
+# ========================
+# File helpers
+# ========================
+
+
+def collect_component_files(components_queryset):
+    """Collect all storage-relative file paths referenced by a set of components.
+
+    Returns a set of paths like ``page_components/images/hero.png``
+    (the ``.name`` value from each FileField/ImageField).
+    """
+    file_paths = set()
+    for component in components_queryset.prefetch_related("images"):
+        if component.css_file:
+            file_paths.add(component.css_file.name)
+        if component.image:
+            file_paths.add(component.image.name)
+        if component.background_image:
+            file_paths.add(component.background_image.name)
+        for img in component.images.all():
+            if img.image:
+                file_paths.add(img.image.name)
+    return file_paths
+
+
+def _restore_component_files(component, comp_data, file_map, warnings):
+    """Assign file fields on a PageComponent from archive *file_map*.
+
+    Uses ``queryset.update()`` to persist path strings without triggering
+    ``PageComponent.save()`` / ``full_clean()`` which may reject partial
+    objects during import.
+    """
+    _COMPONENT_FILE_FIELDS = ("css_file", "image", "background_image")
+    update_kwargs = {}
+
+    for field_name in _COMPONENT_FILE_FIELDS:
+        rel_path = comp_data.get(field_name)
+        if not rel_path:
+            continue
+        archive_key = f"media/{rel_path}" if not rel_path.startswith("media/") else rel_path
+        file_bytes = file_map.get(archive_key)
+        if file_bytes is not None:
+            field = getattr(component, field_name)
+            field.save(os.path.basename(rel_path), ContentFile(file_bytes), save=False)
+            update_kwargs[field_name] = field.name
+        else:
+            warnings.append(
+                f"File '{rel_path}' for component '{comp_data.get('name')}' "
+                f"field '{field_name}' not found in archive."
+            )
+
+    if update_kwargs:
+        PageComponent.objects.filter(pk=component.pk).update(**update_kwargs)
+
+
+def _restore_image_file(img_obj, img_data, file_map, warnings):
+    """Assign image file on a PageComponentImage from archive *file_map*."""
+    rel_path = img_data.get("image")
+    if not rel_path:
+        return
+    archive_key = f"media/{rel_path}" if not rel_path.startswith("media/") else rel_path
+    file_bytes = file_map.get(archive_key)
+    if file_bytes is not None:
+        img_obj.image.save(os.path.basename(rel_path), ContentFile(file_bytes), save=False)
+        PageComponentImage.objects.filter(pk=img_obj.pk).update(image=img_obj.image.name)
+    else:
+        warnings.append(
+            f"Image file '{rel_path}' for gallery image (order {img_data.get('order')}) "
+            f"not found in archive."
+        )
