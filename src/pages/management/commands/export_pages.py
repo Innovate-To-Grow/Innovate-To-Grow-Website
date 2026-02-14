@@ -13,7 +13,7 @@ Usage:
 import json
 import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 
 from django.core.files.storage import default_storage
@@ -103,7 +103,7 @@ class Command(BaseCommand):
         manifest = {
             "export_version": ZIP_EXPORT_VERSION,
             "export_format": "zip",
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "entries": entries,
         }
 

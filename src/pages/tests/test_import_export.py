@@ -34,7 +34,6 @@ from ..models import (
     UniformForm,
 )
 
-
 # ========================
 # Serialization Tests
 # ========================

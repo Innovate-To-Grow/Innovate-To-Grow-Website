@@ -3,12 +3,6 @@ Events app serializers export.
 """
 
 from .export import EventSheetExportSerializer
-from .registration import (
-    EventRegistrationAnswerInputSerializer,
-    EventRegistrationRequestLinkSerializer,
-    EventRegistrationSubmitSerializer,
-    EventRegistrationVerifyOTPSerializer,
-)
 from .read import (
     EventReadSerializer,
     PresentationSerializer,
@@ -16,6 +10,12 @@ from .read import (
     SpecialAwardSerializer,
     TrackSerializer,
     TrackWinnerSerializer,
+)
+from .registration import (
+    EventRegistrationAnswerInputSerializer,
+    EventRegistrationRequestLinkSerializer,
+    EventRegistrationSubmitSerializer,
+    EventRegistrationVerifyOTPSerializer,
 )
 from .sync import (
     BasicInfoSerializer,

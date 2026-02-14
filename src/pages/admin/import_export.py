@@ -10,7 +10,7 @@ Imported pages always arrive as draft.
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -94,7 +94,7 @@ def serialize_page(page, include_files=False):
     return {
         "export_version": EXPORT_VERSION,
         "export_type": "page",
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "page": {
             "title": page.title,
             "slug": page.slug,
@@ -118,7 +118,7 @@ def serialize_homepage(homepage, include_files=False):
     return {
         "export_version": EXPORT_VERSION,
         "export_type": "homepage",
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "homepage": {
             "name": homepage.name,
         },
@@ -208,7 +208,7 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
             )
             # Restore gallery image files from archive
             if file_map is not None:
-                for img_obj, img_data in zip(img_objects, images_data):
+                for img_obj, img_data in zip(img_objects, images_data, strict=False):
                     _restore_image_file(img_obj, img_data, file_map, warnings)
 
 

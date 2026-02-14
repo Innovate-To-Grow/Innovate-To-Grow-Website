@@ -15,7 +15,6 @@ from django.core.management.base import BaseCommand
 
 from pages.models import FooterContent, HomePage, Menu, Page, PageComponent
 
-
 # Menu items matching the old Flask site navigation structure
 MAIN_NAV_ITEMS = [
     {

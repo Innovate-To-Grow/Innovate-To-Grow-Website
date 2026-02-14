@@ -5,7 +5,8 @@ Event -> Program -> Track -> Presentation
 """
 
 from datetime import date as date_cls
-from datetime import datetime, time as time_cls
+from datetime import datetime
+from datetime import time as time_cls
 
 from django.core.validators import MinValueValidator
 from django.db import models
