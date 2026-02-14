@@ -25,6 +25,6 @@ urlpatterns = [
     path("forms/<slug:slug>/", UniformFormRetrieveAPIView.as_view(), name="form-detail"),
     path("forms/<slug:slug>/submit/", FormSubmissionCreateAPIView.as_view(), name="form-submit"),
     path("forms/<slug:form_slug>/submissions/", FormSubmissionListAPIView.as_view(), name="form-submissions"),
-    # page detail
-    path("<slug:slug>/", PageRetrieveAPIView.as_view(), name="page-retrieve"),
+    # page detail (path: instead of slug: to support nested slugs like legacy/about)
+    path("<path:slug>/", PageRetrieveAPIView.as_view(), name="page-retrieve"),
 ]

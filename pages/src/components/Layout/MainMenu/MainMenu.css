@@ -30,9 +30,9 @@
   width: min(1200px, calc(100% - 48px));
 }
 
-/* Bottom menu bar container - max width 800px as required */
+/* Bottom menu bar container */
 .site-header-bottom .site-header-container {
-  width: min(800px, calc(100% - 48px));
+  width: min(1200px, calc(100% - 48px));
 }
 
 /* ---------- Top bar ---------- */
