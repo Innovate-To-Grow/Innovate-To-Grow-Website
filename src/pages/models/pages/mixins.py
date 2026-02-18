@@ -63,7 +63,7 @@ class WorkflowPublishingMixin(models.Model):
 
     class PublishStatus(models.TextChoices):
         DRAFT = "draft", "Draft"
-        REVIEW = "review", "In Review"
+        REVIEW = "review", "Pending Publish"
         PUBLISHED = "published", "Published"
 
     status = models.CharField(

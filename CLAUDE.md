@@ -78,7 +78,7 @@ The backend is organized into specialized Django apps:
 - **`events/`**: Event management with registration, presentation schedules, and Google Sheets sync API
 - **`notify/`**: Email/SMS verification and notification system
 - **`mobileid/`**: Mobile ID validation integration
-- **`layout/`**: Site-wide layout elements (menus, footers) - **merged into pages app**
+
 
 ### Settings Structure
 
@@ -101,6 +101,29 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
   - `MaintenanceMode/`: Maintenance mode handling
 - **`pages/src/router/`**: React Router configuration
 - **Vite proxy**: `/api`, `/media`, `/admin` proxied to backend (localhost:8000)
+
+### ProjectControlModel (Base Model)
+
+All main models inherit from `core.models.ProjectControlModel`, which provides:
+
+- **UUID primary keys** (not auto-incrementing integers)
+- **Soft delete**: `delete()` marks as deleted; `hard_delete()` for permanent removal; `restore()` to undelete
+- **Version control**: `save_version()`, `get_versions()`, `rollback()`, `get_version_diff()`
+- **Two managers**: `objects` (excludes soft-deleted) and `all_objects` (includes all)
+- **Timestamps**: `created_at`, `updated_at` (auto-managed)
+
+When querying, use `Model.objects` for normal queries and `Model.all_objects` when you need to include soft-deleted records.
+
+### Admin Interface
+
+The admin uses **django-unfold** for theming and **CKEditor 5** for rich text editing. Configuration is in `src/core/settings/base.py` under `UNFOLD`. Custom admin templates live in `src/core/templates/unfold/helpers/`.
+
+### Caching
+
+- **Dev**: In-memory cache (`LocMemCache`)
+- **Prod**: Redis via `django-redis`
+- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Page, HomePage, PageComponent, Menu, or FooterContent are saved/deleted
+- **Cache keys**: `"homepage:active"`, `"page:slug:{slug}"`, `"layout:data"`
 
 ### Page Component System
 
@@ -129,6 +152,11 @@ Special API for Google Apps Script integration:
 - **Modes**: `full` (complete snapshot) or `delta` (changed since watermark)
 - **Documentation**: `docs/events-sheet-sync.md`
 
+### Health Check
+
+- **Endpoint**: `/health-check/` — returns JSON with status and database connectivity
+- Returns HTTP 503 if the database is unreachable
+
 ## Development Workflow
 
 ### Full-Stack Local Development
@@ -143,7 +171,7 @@ Special API for Google Apps Script integration:
 - **Never edit** existing migrations on `main` branch
 - Generate migrations after model changes: `python manage.py makemigrations`
 - Always commit generated migration files
-- Fixtures in `src/layout/fixtures/` - load with `python manage.py loaddata layout/fixtures/<file>.json`
+- Fixtures in `src/pages/fixtures/` - load with `python manage.py loaddata pages/fixtures/<file>.json`
 
 ### Git Workflow
 
@@ -180,7 +208,7 @@ Key ignored rules (see `pyproject.toml`):
 ## Testing
 
 - **Backend tests**: `cd src && python manage.py test`
-- **CI/CD**: GitHub Actions runs Ruff + ESLint + TypeScript checks on every push/PR
+- **CI/CD**: GitHub Actions (`lint.yml` + `ci.yml`) runs Ruff check/format, ESLint, TypeScript checks, Django migrations, and `python manage.py test` on pushes to main and all PRs
 - Add tests when:
   - Creating/changing models, serializers, services
   - Modifying API endpoints

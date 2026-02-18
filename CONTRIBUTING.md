@@ -163,7 +163,7 @@ Please add or update automated tests when you:
 ## Database & Migrations
 - Never edit an existing migration that has already landed on `main`. Create a new migration instead.
 - Keep migrations deterministic (no reliance on runtime data).
-- Use fixtures in `src/layout/fixtures/` sparingly; document how to load them in the PR if they are required (`python manage.py loaddata layout/fixtures/footer_content.json`).
+- Use fixtures in `src/pages/fixtures/` sparingly; document how to load them in the PR if they are required (`python manage.py loaddata pages/fixtures/footer_content.json`).
 - If your change requires seeded admin data, explain the manual steps in the PR description and update the docs if needed.
 
 ---

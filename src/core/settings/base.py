@@ -34,7 +34,6 @@ INSTALLED_APPS = [
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
     "mobileid.apps.MobileIDConfig",
-    "layout.apps.LayoutConfig",
     "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
     # third party application
@@ -108,14 +107,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
 
 STATICFILES_DIRS = [
     BASE_DIR / "core" / "static",
 ]
 
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # File Storage Configuration
@@ -221,61 +220,61 @@ CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
 UNFOLD = {
     "SITE_TITLE": "I2G Admin",
     "SITE_HEADER": "Innovate To Grow",
-    "SITE_SYMBOL": "school",
+    "THEME": "light",  # Force light theme only (disable dark mode)
     "SIDEBAR": {
         "show_search": True,
         "navigation": [
             {
                 "title": "Content Management",
                 "items": [
-                    {"title": "Pages", "icon": "article", "link": "/admin/pages/page/"},
-                    {"title": "Home Pages", "icon": "home", "link": "/admin/pages/homepage/"},
-                    {"title": "Components", "icon": "widgets", "link": "/admin/pages/pagecomponent/"},
-                    {"title": "Media", "icon": "image", "link": "/admin/pages/mediaasset/"},
-                    {"title": "Forms", "icon": "dynamic_form", "link": "/admin/pages/uniformform/"},
-                    {"title": "Submissions", "icon": "inbox", "link": "/admin/pages/formsubmission/"},
+                    {"title": "Pages", "link": "/admin/pages/page/"},
+                    {"title": "Home Pages", "link": "/admin/pages/homepage/"},
+                    {"title": "Components", "link": "/admin/pages/pagecomponent/"},
+                    {"title": "Media", "link": "/admin/pages/mediaasset/"},
+                    {"title": "Forms", "link": "/admin/pages/uniformform/"},
+                    {"title": "Submissions", "link": "/admin/pages/formsubmission/"},
                 ],
             },
             {
                 "title": "Layout",
                 "items": [
-                    {"title": "Menus", "icon": "menu", "link": "/admin/pages/menu/"},
-                    {"title": "Footer", "icon": "bottom_navigation", "link": "/admin/pages/footercontent/"},
+                    {"title": "Menus", "link": "/admin/pages/menu/"},
+                    {"title": "Footer", "link": "/admin/pages/footercontent/"},
                 ],
             },
             {
                 "title": "Events",
                 "items": [
-                    {"title": "Events", "icon": "event", "link": "/admin/events/event/"},
-                    {"title": "Programs", "icon": "category", "link": "/admin/events/program/"},
-                    {"title": "Tracks", "icon": "view_timeline", "link": "/admin/events/track/"},
-                    {"title": "Ticket Options", "icon": "confirmation_number", "link": "/admin/events/eventticketoption/"},
-                    {"title": "Questions", "icon": "quiz", "link": "/admin/events/eventquestion/"},
-                    {"title": "Registrations", "icon": "how_to_reg", "link": "/admin/events/eventregistration/"},
+                    {"title": "Events", "link": "/admin/events/event/"},
+                    {"title": "Programs", "link": "/admin/events/program/"},
+                    {"title": "Tracks", "link": "/admin/events/track/"},
+                    {"title": "Ticket Options", "link": "/admin/events/eventticketoption/"},
+                    {"title": "Questions", "link": "/admin/events/eventquestion/"},
+                    {"title": "Registrations", "link": "/admin/events/eventregistration/"},
                 ],
             },
             {
                 "title": "Members",
                 "items": [
-                    {"title": "Members", "icon": "people", "link": "/admin/authn/member/"},
-                    {"title": "Groups", "icon": "group_work", "link": "/admin/authn/i2gmembergroup/"},
+                    {"title": "Members", "link": "/admin/authn/member/"},
+                    {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
                 ],
             },
             {
                 "title": "MobileID",
                 "items": [
-                    {"title": "Barcodes", "icon": "qr_code", "link": "/admin/mobileid/barcode/"},
-                    {"title": "Mobile IDs", "icon": "badge", "link": "/admin/mobileid/mobileid/"},
-                    {"title": "Transactions", "icon": "receipt_long", "link": "/admin/mobileid/transaction/"},
+                    {"title": "Barcodes", "link": "/admin/mobileid/barcode/"},
+                    {"title": "Mobile IDs", "link": "/admin/mobileid/mobileid/"},
+                    {"title": "Transactions", "link": "/admin/mobileid/transaction/"},
                 ],
             },
             {
                 "title": "Email & Notifications",
                 "items": [
-                    {"title": "Gmail Accounts", "icon": "mail", "link": "/admin/notify/googlegmailaccount/"},
-                    {"title": "Email Templates", "icon": "drafts", "link": "/admin/notify/emailmessagelayout/"},
-                    {"title": "Email Layouts", "icon": "web", "link": "/admin/notify/emaillayout/"},
-                    {"title": "Broadcasts", "icon": "campaign", "link": "/admin/notify/broadcastmessage/"},
+                    {"title": "Gmail Accounts", "link": "/admin/notify/googlegmailaccount/"},
+                    {"title": "Email Templates", "link": "/admin/notify/emailmessagelayout/"},
+                    {"title": "Email Layouts", "link": "/admin/notify/emaillayout/"},
+                    {"title": "Broadcasts", "link": "/admin/notify/broadcastmessage/"},
                 ],
             },
         ],

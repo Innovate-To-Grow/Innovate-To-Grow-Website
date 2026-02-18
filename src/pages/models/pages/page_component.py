@@ -219,6 +219,7 @@ class PageComponent(ProjectControlModel):
 class PageComponentImage(ProjectControlModel):
     """
     Optional: multiple images per component (carousel/gallery).
+    Kept for backward compatibility — new code should use PageComponentAsset.
     """
 
     image_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -243,3 +244,79 @@ class PageComponentImage(ProjectControlModel):
 
     def __str__(self) -> str:
         return f"Image {self.order} for {self.component.name}"
+
+
+class PageComponentAsset(ProjectControlModel):
+    """
+    General-purpose static asset attached to a PageComponent.
+    Supports images, videos, audio, CSS, JS, PDFs, and any other file type.
+    """
+
+    class AssetType(models.TextChoices):
+        IMAGE = "image", "Image"
+        VIDEO = "video", "Video"
+        AUDIO = "audio", "Audio"
+        CSS = "css", "CSS"
+        JS = "js", "JavaScript"
+        PDF = "pdf", "PDF"
+        OTHER = "other", "Other"
+
+    asset_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    component = models.ForeignKey(PageComponent, on_delete=models.CASCADE, related_name="assets")
+
+    file = models.FileField(upload_to="page_components/assets/")
+    asset_type = models.CharField(
+        max_length=16,
+        choices=AssetType.choices,
+        default=AssetType.OTHER,
+        db_index=True,
+        help_text="Auto-detected from MIME type on upload; can be corrected manually.",
+    )
+
+    order = models.PositiveIntegerField(default=0, db_index=True)
+    title = models.CharField(max_length=255, blank=True, default="")
+    caption = models.CharField(max_length=255, blank=True, default="")
+    link = models.URLField(blank=True, default="")
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "Page Component Asset"
+        verbose_name_plural = "Page Component Assets"
+        constraints = [
+            models.UniqueConstraint(fields=["component", "order"], name="uniq_component_asset_order"),
+        ]
+        indexes = [
+            models.Index(fields=["component", "order"]),
+            models.Index(fields=["asset_type"]),
+        ]
+
+    @staticmethod
+    def detect_asset_type(content_type: str, filename: str = "") -> str:
+        """Infer AssetType from MIME content_type or filename extension."""
+        ct = (content_type or "").lower()
+        if ct.startswith("image/"):
+            return PageComponentAsset.AssetType.IMAGE
+        if ct.startswith("video/"):
+            return PageComponentAsset.AssetType.VIDEO
+        if ct.startswith("audio/"):
+            return PageComponentAsset.AssetType.AUDIO
+        if ct in ("text/css",):
+            return PageComponentAsset.AssetType.CSS
+        if ct in ("application/javascript", "text/javascript"):
+            return PageComponentAsset.AssetType.JS
+        if ct == "application/pdf":
+            return PageComponentAsset.AssetType.PDF
+
+        # Fallback: check extension
+        import os
+
+        ext = os.path.splitext(filename)[1].lower().lstrip(".")
+        ext_map = {
+            "css": PageComponentAsset.AssetType.CSS,
+            "js": PageComponentAsset.AssetType.JS,
+            "pdf": PageComponentAsset.AssetType.PDF,
+        }
+        return ext_map.get(ext, PageComponentAsset.AssetType.OTHER)
+
+    def __str__(self) -> str:
+        return f"{self.get_asset_type_display()} asset {self.order} for {self.component.name}"

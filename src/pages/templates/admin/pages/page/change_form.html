@@ -3,6 +3,11 @@
 
 {% block extrahead %}
 {{ block.super }}
+<!-- CodeMirror 5 for inline HTML/JSON editing -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <style>
 /* Workflow Actions Panel */
 .workflow-panel {
@@ -191,7 +196,60 @@
     color: #999;
     font-style: italic;
 }
+
+/* Inline code editors (Html content / Config) */
+.inline-cm-wrapper {
+    margin-top: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fafafa;
+}
+.inline-cm-wrapper .CodeMirror {
+    height: 220px;
+    font-size: 13px;
+    border: none;
+}
+.inline-cm-wrapper .CodeMirror-gutters {
+    border-right: 1px solid #eee;
+    background: #f5f5f5;
+}
 </style>
+<script>
+(function() {
+    function initInlineCodeEditors() {
+        var textareas = document.querySelectorAll('textarea[name$="-html_content"], textarea[name$="-config"]');
+        textareas.forEach(function(ta) {
+            if (ta.getAttribute('data-cm-inited')) return;
+            var isJson = ta.name.indexOf('-config') !== -1;
+            var wrapper = document.createElement('div');
+            wrapper.className = 'inline-cm-wrapper';
+            ta.parentNode.insertBefore(wrapper, ta);
+            wrapper.appendChild(ta);
+            var editor = CodeMirror.fromTextArea(ta, {
+                mode: isJson ? 'application/json' : 'htmlmixed',
+                lineNumbers: true,
+                lineWrapping: true,
+                indentUnit: 2,
+                tabSize: 2
+            });
+            ta.setAttribute('data-cm-inited', '1');
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initInlineCodeEditors();
+            var container = document.querySelector('#content') || document.querySelector('form');
+            if (container && window.MutationObserver) {
+                var obs = new MutationObserver(function() { initInlineCodeEditors(); });
+                obs.observe(container, { childList: true, subtree: true });
+            }
+        });
+    } else {
+        initInlineCodeEditors();
+    }
+})();
+</script>
 {% endblock %}
 
 {% block after_related_objects %}
@@ -201,7 +259,7 @@
 <!-- Publishing Workflow Panel -->
 <div class="workflow-panel">
     <div class="workflow-panel-header" style="background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
-        &#128640; Publishing Workflow
+        Publishing Workflow
     </div>
     <div class="workflow-panel-body">
         <!-- Current Status -->
@@ -217,11 +275,9 @@
             <span class="workflow-step {% if original.status == 'draft' %}active status-draft{% else %}inactive{% endif %}">
                 Draft
             </span>
-            <span class="workflow-arrow">&rarr;</span>
             <span class="workflow-step {% if original.status == 'review' %}active status-review{% else %}inactive{% endif %}">
-                In Review
+                Pending Publish
             </span>
-            <span class="workflow-arrow">&rarr;</span>
             <span class="workflow-step {% if original.status == 'published' %}active status-published{% else %}inactive{% endif %}">
                 Published
             </span>
@@ -231,28 +287,28 @@
         <div class="workflow-actions">
             {% if original.status == "draft" %}
                 <button type="submit" name="_submit_for_review" class="workflow-btn btn-review">
-                    &#128269; Submit for Review
+                    Submit for Review
                 </button>
                 <button type="submit" name="_publish" class="workflow-btn btn-publish"
                         onclick="return confirm('Publish this page directly without review?');">
-                    &#9989; Publish Directly
+                    Publish Directly
                 </button>
             {% endif %}
 
             {% if original.status == "review" %}
                 <button type="submit" name="_publish" class="workflow-btn btn-publish">
-                    &#9989; Approve &amp; Publish
+                    Approve &amp; Publish
                 </button>
                 <button type="submit" name="_reject_review" class="workflow-btn btn-reject"
                         onclick="return confirm('Reject this review and send back to draft?');">
-                    &#10060; Reject (Back to Draft)
+                    Reject (Back to Draft)
                 </button>
             {% endif %}
 
             {% if original.status == "published" %}
                 <button type="submit" name="_unpublish" class="workflow-btn btn-unpublish"
                         onclick="return confirm('Unpublish this page? It will no longer be visible to the public.');">
-                    &#128683; Unpublish
+                    Unpublish
                 </button>
             {% endif %}
         </div>
@@ -270,7 +326,7 @@
 <!-- Version History Panel -->
 <div class="version-panel">
     <div class="version-panel-header">
-        &#128196; Version History
+        Version History
     </div>
     {% if versions %}
     <table class="version-table">

@@ -13,6 +13,7 @@ from .pages import (
     MenuPageLink,
     Page,
     PageComponent,
+    PageComponentAsset,
     PageComponentImage,
     validate_nested_slug,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "Page",
     "PageComponent",
     "PageComponentImage",
+    "PageComponentAsset",
     "ComponentDataSource",
     "HomePage",
     "validate_nested_slug",

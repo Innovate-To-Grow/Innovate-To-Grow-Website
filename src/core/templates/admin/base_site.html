@@ -1,3 +1,5 @@
 {% extends "admin/base.html" %}
+{% load i18n %}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | I2G Admin{% endblock %}
+{% block branding %}{{ site_header|default:_("Innovate To Grow") }}{% endblock %}

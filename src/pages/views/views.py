@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -36,20 +37,35 @@ class ComponentPreviewView(TemplateView):
 
 class HomePageAPIView(APIView):
     """
-    Retrieve the currently active home page.
+    Retrieve the currently active home page with caching.
+    Cache timeout: 5 minutes (300 seconds)
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        # Try to get from cache
+        cache_key = "homepage:active"
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return Response(cached_data)
+
+        # Cache miss - fetch from database
         home_page = HomePage.get_active()
         if not home_page:
             return Response(
                 {"detail": "No active home page found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
         serializer = HomePageSerializer(home_page)
-        return Response(serializer.data)
+        data = serializer.data
+
+        # Cache for 5 minutes
+        cache.set(cache_key, data, timeout=300)
+
+        return Response(data)
 
 
 class PageListAPIView(ListAPIView):
@@ -73,6 +89,7 @@ class PageListAPIView(ListAPIView):
 class PageRetrieveAPIView(RetrieveAPIView):
     """
     Retrieve a published page by slug, with caching.
+    Cache timeout: 5 minutes (300 seconds)
     """
 
     serializer_class = PageSerializer
@@ -83,14 +100,29 @@ class PageRetrieveAPIView(RetrieveAPIView):
     def get_queryset(self):
         return Page.objects.filter(status="published")
 
-    def get_object(self):
+    def retrieve(self, request, *args, **kwargs):
         slug = self.kwargs.get("slug")
+        cache_key = f"page:slug:{slug}"
+
+        # Try to get from cache
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        # Cache miss - fetch from database
         page = Page.get_published_by_slug(slug)
         if page is None:
             from rest_framework.exceptions import NotFound
 
             raise NotFound("Page not found.")
-        return page
+
+        serializer = self.get_serializer(page)
+        data = serializer.data
+
+        # Cache for 5 minutes
+        cache.set(cache_key, data, timeout=300)
+
+        return Response(data)
 
 
 class UniformFormRetrieveAPIView(RetrieveAPIView):
@@ -160,12 +192,21 @@ class FormSubmissionListAPIView(ListAPIView):
 
 class LayoutAPIView(APIView):
     """
-    Unified endpoint for layout data (menus and footer).
+    Unified endpoint for layout data (menus and footer) with caching.
+    Cache timeout: 10 minutes (600 seconds) - layout changes infrequently
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        cache_key = "layout:data"
+
+        # Try to get from cache
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        # Cache miss - fetch from database
         # 1. Get menus
         menus = Menu.objects.all().order_by("display_name")
         menu_serializer = MenuSerializer(menus, many=True)
@@ -177,4 +218,9 @@ class LayoutAPIView(APIView):
             footer_serializer = FooterContentSerializer(footer)
             footer_data = footer_serializer.data
 
-        return Response({"menus": menu_serializer.data, "footer": footer_data})
+        data = {"menus": menu_serializer.data, "footer": footer_data}
+
+        # Cache for 10 minutes (layout changes infrequently)
+        cache.set(cache_key, data, timeout=600)
+
+        return Response(data)

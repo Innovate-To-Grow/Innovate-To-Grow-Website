@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 
-from ..models import ComponentDataSource, PageComponent, PageComponentImage
+from ..models import ComponentDataSource, PageComponent, PageComponentAsset, PageComponentImage
 
 
 class PageComponentForm(forms.ModelForm):
@@ -22,6 +22,13 @@ class PageComponentImageInline(TabularInline):
     model = PageComponentImage
     extra = 1
     fields = ("order", "image", "alt", "caption", "link")
+    ordering = ("order",)
+
+
+class PageComponentAssetInline(TabularInline):
+    model = PageComponentAsset
+    extra = 1
+    fields = ("order", "file", "asset_type", "title", "caption", "link")
     ordering = ("order",)
 
 
@@ -45,7 +52,7 @@ class PageComponentAdmin(ModelAdmin):
     list_filter = ("component_type", "is_enabled", "page", "home_page")
     search_fields = ("name", "html_content", "css_code", "js_code")
     ordering = ("order", "name")
-    inlines = [PageComponentImageInline]
+    inlines = [PageComponentAssetInline, PageComponentImageInline]
 
     fieldsets = (
         (None, {"fields": ("name", "component_type", "page", "home_page", "order", "is_enabled")}),

@@ -51,7 +51,7 @@ urlpatterns = [
     # notify (verification + notifications)
     path("notify/", include("notify.urls")),
     # mobile id domain
-    path("api/mobileid/", include("mobileid.urls")),
+    path("mobileid/", include("mobileid.urls")),
     # events (proxy removes /api prefix)
     path("events/", include("events.urls")),
     # ckeditor 5

@@ -64,6 +64,7 @@
     background: #252526;
     border-bottom: 1px solid #3c3c3c;
     gap: 8px;
+    align-items: center;
 }
 
 .editor-toolbar button {
@@ -82,6 +83,38 @@
 
 .editor-toolbar button:hover {
     background: #3c3c3c;
+    color: #fff;
+}
+
+/* Insert mode toggle */
+.insert-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: auto;
+    font-size: 12px;
+    color: #969696;
+}
+
+.insert-mode-toggle label {
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.insert-mode-toggle input[type="radio"] {
+    display: none;
+}
+
+.insert-mode-toggle input[type="radio"]:checked + label {
+    color: #fff;
+    background: #0078d4;
+    border-color: #0078d4;
+}
+
+.insert-mode-toggle label:hover {
     color: #fff;
 }
 
@@ -207,6 +240,37 @@
     color: #666;
 }
 
+/* Media type filter bar */
+.media-filter-bar {
+    padding: 10px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.media-filter-bar button {
+    padding: 4px 12px;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.media-filter-bar button:hover {
+    border-color: #0078d4;
+    color: #0078d4;
+}
+
+.media-filter-bar button.active {
+    background: #0078d4;
+    border-color: #0078d4;
+    color: white;
+}
+
 .media-modal-body {
     flex: 1;
     overflow-y: auto;
@@ -242,6 +306,18 @@
     width: 100%;
     height: 100px;
     object-fit: cover;
+}
+
+/* Non-image asset preview */
+.media-item-icon {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #999;
+    background: #e8e8e8;
 }
 
 .media-item-name {
@@ -282,7 +358,7 @@
 
 /* Drop zone indicator */
 .editor-panel.drag-over::after {
-    content: 'Drop image to upload';
+    content: 'Drop file to upload';
     position: absolute;
     top: 0;
     left: 0;
@@ -330,16 +406,25 @@ fieldset.hidden-fieldset {
         <li><button type="button" data-tab="css"><span class="lang-icon">#</span> CSS</button></li>
         <li><button type="button" data-tab="js"><span class="lang-icon">{ }</span> JavaScript</button></li>
     </ul>
-    
+
     <!-- Toolbar -->
     <div class="editor-toolbar">
-        <button type="button" id="btn-upload-image" title="Upload Image">
+        <!-- Insert mode toggle -->
+        <div class="insert-mode-toggle">
+            <span style="margin-right: 4px;">Insert:</span>
+            <input type="radio" name="insert-mode" id="insert-mode-smart" value="smart" checked>
+            <label for="insert-mode-smart" title="Generate HTML tag based on file type (img, video, audio, link, script, etc.)">Smart Tag</label>
+            <input type="radio" name="insert-mode" id="insert-mode-url" value="url">
+            <label for="insert-mode-url" title="Insert raw URL only">URL Only</label>
+        </div>
+
+        <button type="button" id="btn-upload-file" title="Upload File">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            Upload Image
+            Upload File
         </button>
         <button type="button" id="btn-media-library" title="Media Library">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -348,7 +433,7 @@ fieldset.hidden-fieldset {
             Media Library
         </button>
     </div>
-    
+
     <!-- Editor Panels -->
     <div class="editor-panel active" id="panel-html" data-lang="html">
         <div id="editor-html"></div>
@@ -395,6 +480,16 @@ fieldset.hidden-fieldset {
             <h3>Media Library</h3>
             <button type="button" class="media-modal-close">&times;</button>
         </div>
+        <!-- Type filter bar -->
+        <div class="media-filter-bar" id="media-filter-bar">
+            <button type="button" class="active" data-filter="">All</button>
+            <button type="button" data-filter="image">Images</button>
+            <button type="button" data-filter="video">Video</button>
+            <button type="button" data-filter="audio">Audio</button>
+            <button type="button" data-filter="text/css">CSS</button>
+            <button type="button" data-filter="application/javascript">JS</button>
+            <button type="button" data-filter="application/pdf">PDF</button>
+        </div>
         <div class="media-modal-body">
             <div class="media-grid" id="media-grid">
                 <!-- Media items loaded via JS -->
@@ -407,26 +502,92 @@ fieldset.hidden-fieldset {
     </div>
 </div>
 
-<!-- Hidden file input for upload -->
-<input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+<!-- Hidden file input for upload (all file types) -->
+<input type="file" id="file-upload-input" style="display: none;">
 
 <!-- Monaco Editor (VS Code's editor) -->
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <script>
 (function() {
     'use strict';
-    
+
+    // ---- Insert mode helpers ----
+    function getInsertMode() {
+        const checked = document.querySelector('input[name="insert-mode"]:checked');
+        return checked ? checked.value : 'smart';
+    }
+
+    /**
+     * Map MIME type / extension to a file-type category.
+     */
+    function classifyAsset(contentType, filename) {
+        const ct = (contentType || '').toLowerCase();
+        if (ct.startsWith('image/')) return 'image';
+        if (ct.startsWith('video/')) return 'video';
+        if (ct.startsWith('audio/')) return 'audio';
+        if (ct === 'text/css') return 'css';
+        if (ct === 'application/javascript' || ct === 'text/javascript') return 'js';
+        if (ct === 'application/pdf') return 'pdf';
+        // Fallback: extension
+        const ext = (filename || '').split('.').pop().toLowerCase();
+        const extMap = { css: 'css', js: 'js', pdf: 'pdf',
+                         mp4: 'video', webm: 'video', ogg: 'audio', mp3: 'audio', wav: 'audio',
+                         png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', webp: 'image' };
+        return extMap[ext] || 'other';
+    }
+
+    /**
+     * Return an icon string for a given asset category.
+     */
+    function assetIcon(category) {
+        const icons = {
+            image: '\ud83d\uddbc\ufe0f',
+            video: '\ud83c\udfac',
+            audio: '\ud83c\udfb5',
+            css: '\ud83c\udfa8',
+            js: '\u26a1',
+            pdf: '\ud83d\udcc4',
+            other: '\ud83d\udcce',
+        };
+        return icons[category] || icons.other;
+    }
+
+    /**
+     * Build the snippet to insert into the editor based on asset type and insert mode.
+     */
+    function buildInsertSnippet(url, name, contentType) {
+        if (getInsertMode() === 'url') return url;
+
+        const kind = classifyAsset(contentType, name);
+        switch (kind) {
+            case 'image':
+                return '<img src="' + url + '" alt="' + name + '" />';
+            case 'video':
+                return '<video controls src="' + url + '"></video>';
+            case 'audio':
+                return '<audio controls src="' + url + '"></audio>';
+            case 'css':
+                return '<link rel="stylesheet" href="' + url + '">';
+            case 'js':
+                return '<script src="' + url + '"><\/script>';
+            case 'pdf':
+                return '<a href="' + url + '" target="_blank" rel="noopener">' + name + '</a>';
+            default:
+                return '<a href="' + url + '" target="_blank" rel="noopener">' + name + '</a>';
+        }
+    }
+
     // Configure Monaco loader
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-    
+
     // Store editors globally
     window.codeEditors = {};
-    
+
     // Get initial values from hidden textareas
     const htmlTextarea = document.getElementById('id_html_content');
     const cssTextarea = document.getElementById('id_css_code');
     const jsTextarea = document.getElementById('id_js_code');
-    
+
     // Preview update function
     let previewTimeout = null;
     function updatePreview() {
@@ -435,7 +596,7 @@ fieldset.hidden-fieldset {
             const htmlContent = window.codeEditors.html ? window.codeEditors.html.getValue() : '';
             const cssContent = window.codeEditors.css ? window.codeEditors.css.getValue() : '';
             const jsContent = window.codeEditors.js ? window.codeEditors.js.getValue() : '';
-            
+
             const previewFrame = document.getElementById('preview-frame');
             const fullPage = `
                 <!DOCTYPE html>
@@ -451,7 +612,7 @@ fieldset.hidden-fieldset {
         }, 300);
     }
     window.updatePreview = updatePreview;
-    
+
     // Load Monaco and create editors
     require(['vs/editor/editor.main'], function() {
         // Define VS Code dark theme
@@ -463,7 +624,7 @@ fieldset.hidden-fieldset {
                 'editor.background': '#1e1e1e'
             }
         });
-        
+
         // Common editor options
         const editorOptions = {
             theme: 'customDark',
@@ -477,79 +638,79 @@ fieldset.hidden-fieldset {
             wordWrap: 'on',
             padding: { top: 10, bottom: 10 }
         };
-        
+
         // Create HTML editor
         window.codeEditors.html = monaco.editor.create(document.getElementById('editor-html'), {
             ...editorOptions,
             language: 'html',
             value: htmlTextarea?.value || ''
         });
-        
+
         // Create CSS editor
         window.codeEditors.css = monaco.editor.create(document.getElementById('editor-css'), {
             ...editorOptions,
             language: 'css',
             value: cssTextarea?.value || ''
         });
-        
+
         // Create JavaScript editor
         window.codeEditors.js = monaco.editor.create(document.getElementById('editor-js'), {
             ...editorOptions,
             language: 'javascript',
             value: jsTextarea?.value || ''
         });
-        
+
         // Sync editors to textareas and update preview
         window.codeEditors.html.onDidChangeModelContent(() => {
             if (htmlTextarea) htmlTextarea.value = window.codeEditors.html.getValue();
             updatePreview();
         });
-        
+
         window.codeEditors.css.onDidChangeModelContent(() => {
             if (cssTextarea) cssTextarea.value = window.codeEditors.css.getValue();
             updatePreview();
         });
-        
+
         window.codeEditors.js.onDidChangeModelContent(() => {
             if (jsTextarea) jsTextarea.value = window.codeEditors.js.getValue();
             updatePreview();
         });
-        
+
         // Initial preview
         updatePreview();
-        
+
         console.log('Monaco editors initialized successfully');
     });
-    
+
     // Tab switching
     document.querySelectorAll('.code-editor-tabs button').forEach(btn => {
         btn.addEventListener('click', () => {
             const tab = btn.dataset.tab;
-            
+
             // Update active tab
             document.querySelectorAll('.code-editor-tabs button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             // Show corresponding panel
             document.querySelectorAll('.editor-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`panel-${tab}`).classList.add('active');
-            
+
             // Trigger layout update for the newly visible editor
             if (window.codeEditors[tab]) {
                 window.codeEditors[tab].layout();
             }
         });
     });
-    
+
     // Refresh preview button
     document.getElementById('btn-refresh-preview').addEventListener('click', updatePreview);
-    
+
     // Open in new window
     document.getElementById('btn-popup-preview').addEventListener('click', () => {
         const htmlContent = window.codeEditors.html ? window.codeEditors.html.getValue() : '';
         const cssContent = window.codeEditors.css ? window.codeEditors.css.getValue() : '';
         const jsContent = window.codeEditors.js ? window.codeEditors.js.getValue() : '';
-        
+
         const popup = window.open('', '_blank', 'width=1000,height=700');
         popup.document.write(`
             <!DOCTYPE html>
@@ -563,48 +724,12 @@ fieldset.hidden-fieldset {
         `);
         popup.document.close();
     });
-    
-    // Image upload handling
-    const uploadInput = document.getElementById('image-upload-input');
-    
-    document.getElementById('btn-upload-image').addEventListener('click', () => {
-        uploadInput.click();
-    });
-    
-    uploadInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        try {
-            const response = await fetch('/api/pages/upload/', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                insertImageTag(data.url, file.name);
-            } else {
-                const error = await response.json();
-                alert('Upload failed: ' + (error.error || 'Unknown error'));
-            }
-        } catch (err) {
-            alert('Upload failed: ' + err.message);
-        }
-        
-        uploadInput.value = '';
-    });
-    
-    // Insert image tag at cursor
-    function insertImageTag(url, alt = '') {
+
+    // ---- Insert snippet into active editor at cursor ----
+    function insertSnippet(snippet) {
         const editor = window.codeEditors.html;
         if (!editor) return;
-        
-        const imgTag = `<img src="${url}" alt="${alt}" />`;
+
         const selection = editor.getSelection();
         const range = new monaco.Range(
             selection.startLineNumber,
@@ -612,96 +737,155 @@ fieldset.hidden-fieldset {
             selection.endLineNumber,
             selection.endColumn
         );
-        
-        editor.executeEdits('insert-image', [{
+
+        editor.executeEdits('insert-asset', [{
             range: range,
-            text: imgTag,
+            text: snippet,
             forceMoveMarkers: true
         }]);
         editor.focus();
     }
+
+    // Keep backward-compatible global for any external callers
+    function insertImageTag(url, alt) {
+        insertSnippet(buildInsertSnippet(url, alt || '', 'image/'));
+    }
     window.insertImageTag = insertImageTag;
-    
-    // Drag and drop image upload
+
+    // ---- File upload handling ----
+    const uploadInput = document.getElementById('file-upload-input');
+
+    document.getElementById('btn-upload-file').addEventListener('click', () => {
+        uploadInput.click();
+    });
+
+    uploadInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/pages/upload/', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                insertSnippet(buildInsertSnippet(data.url, data.name, data.type));
+            } else {
+                const error = await response.json();
+                console.error('Upload failed: ' + (error.error || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Upload failed: ' + err.message);
+        }
+
+        uploadInput.value = '';
+    });
+
+    // ---- Drag and drop file upload ----
     const htmlPanel = document.getElementById('panel-html');
-    
+
     htmlPanel.addEventListener('dragover', (e) => {
         e.preventDefault();
         htmlPanel.classList.add('drag-over');
     });
-    
+
     htmlPanel.addEventListener('dragleave', () => {
         htmlPanel.classList.remove('drag-over');
     });
-    
+
     htmlPanel.addEventListener('drop', async (e) => {
         e.preventDefault();
         htmlPanel.classList.remove('drag-over');
-        
+
         const files = e.dataTransfer.files;
         for (const file of files) {
-            if (file.type.startsWith('image/')) {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                try {
-                    const response = await fetch('/api/pages/upload/', {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'include'
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        insertImageTag(data.url, file.name);
-                    }
-                } catch (err) {
-                    console.error('Upload failed:', err);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/pages/upload/', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    insertSnippet(buildInsertSnippet(data.url, data.name, data.type));
                 }
+            } catch (err) {
+                console.error('Upload failed:', err);
             }
         }
     });
-    
-    // Media Library
+
+    // ---- Media Library ----
     const mediaModal = document.getElementById('media-modal');
     const mediaGrid = document.getElementById('media-grid');
     let selectedAsset = null;
-    
+    let currentFilter = '';
+
     document.getElementById('btn-media-library').addEventListener('click', async () => {
         mediaModal.classList.add('active');
+        currentFilter = '';
+        // Reset filter bar active state
+        document.querySelectorAll('#media-filter-bar button').forEach(b => b.classList.remove('active'));
+        document.querySelector('#media-filter-bar button[data-filter=""]').classList.add('active');
         await loadMediaAssets();
     });
-    
+
+    // Filter bar clicks
+    document.querySelectorAll('#media-filter-bar button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            document.querySelectorAll('#media-filter-bar button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            await loadMediaAssets();
+        });
+    });
+
     mediaModal.querySelector('.media-modal-close').addEventListener('click', () => {
         mediaModal.classList.remove('active');
     });
-    
+
     mediaModal.querySelector('.btn-cancel').addEventListener('click', () => {
         mediaModal.classList.remove('active');
     });
-    
+
     mediaModal.querySelector('.btn-insert').addEventListener('click', () => {
         if (selectedAsset) {
-            insertImageTag(selectedAsset.url, selectedAsset.name);
+            insertSnippet(buildInsertSnippet(selectedAsset.url, selectedAsset.name, selectedAsset.type));
             mediaModal.classList.remove('active');
             selectedAsset = null;
         }
     });
-    
+
     async function loadMediaAssets() {
         try {
-            const response = await fetch('/api/pages/media/?type=image', {
+            const filterParam = currentFilter ? '?type=' + encodeURIComponent(currentFilter) : '';
+            const response = await fetch('/api/pages/media/' + filterParam, {
                 credentials: 'include'
             });
             const data = await response.json();
-            
-            mediaGrid.innerHTML = data.assets.map(asset => `
-                <div class="media-item" data-url="${asset.url}" data-name="${asset.name}">
-                    <img src="${asset.url}" alt="${asset.name}" />
-                    <div class="media-item-name">${asset.name}</div>
-                </div>
-            `).join('');
-            
+
+            mediaGrid.innerHTML = data.assets.map(asset => {
+                const category = classifyAsset(asset.type, asset.name);
+                const isImg = asset.is_image;
+                const preview = isImg
+                    ? '<img src="' + asset.url + '" alt="' + asset.name + '" />'
+                    : '<div class="media-item-icon">' + assetIcon(category) + '</div>';
+                return '<div class="media-item" data-url="' + asset.url + '" data-name="' + asset.name + '" data-type="' + (asset.type || '') + '">'
+                    + preview
+                    + '<div class="media-item-name">' + asset.name + '</div>'
+                    + '</div>';
+            }).join('');
+
             // Add click handlers
             mediaGrid.querySelectorAll('.media-item').forEach(item => {
                 item.addEventListener('click', () => {
@@ -709,12 +893,14 @@ fieldset.hidden-fieldset {
                     item.classList.add('selected');
                     selectedAsset = {
                         url: item.dataset.url,
-                        name: item.dataset.name
+                        name: item.dataset.name,
+                        type: item.dataset.type
                     };
                 });
-                
+
                 item.addEventListener('dblclick', () => {
-                    insertImageTag(item.dataset.url, item.dataset.name);
+                    const a = { url: item.dataset.url, name: item.dataset.name, type: item.dataset.type };
+                    insertSnippet(buildInsertSnippet(a.url, a.name, a.type));
                     mediaModal.classList.remove('active');
                 });
             });
@@ -723,7 +909,7 @@ fieldset.hidden-fieldset {
             mediaGrid.innerHTML = '<p style="color: #999; text-align: center;">Failed to load media assets</p>';
         }
     }
-    
+
     // Click outside modal to close
     mediaModal.addEventListener('click', (e) => {
         if (e.target === mediaModal) {

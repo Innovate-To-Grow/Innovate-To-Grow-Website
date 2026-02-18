@@ -1,5 +1,6 @@
-# Merge layout app models into pages app (state-only, no database changes).
-# The database tables already exist with 'pages_' prefix from the layout app.
+# Merge layout app models into pages app.
+# Originally this was a state-only migration, but now that layout app is removed,
+# this migration is responsible for creating the tables for new installations.
 
 import django.db.models.deletion
 import pages.models.pages.footer_content
@@ -12,222 +13,215 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("pages", "0002_remove_page_published_homepage_published_at_and_more"),
-        ("layout", "0002_migrate_to_pages"),
+        # Removed dependency on layout app since it is being deleted.
     ]
 
     operations = [
-        # State-only operations: register models in pages app's Django state.
-        # The actual database tables already exist and remain untouched.
-        migrations.SeparateDatabaseAndState(
-            state_operations=[
-                migrations.CreateModel(
-                    name="FooterContent",
-                    fields=[
-                        (
-                            "id",
-                            models.UUIDField(
-                                default=uuid.uuid4,
-                                editable=False,
-                                primary_key=True,
-                                serialize=False,
-                            ),
-                        ),
-                        ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
-                        ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
-                        ("is_deleted", models.BooleanField(db_index=True, default=False)),
-                        ("deleted_at", models.DateTimeField(blank=True, null=True)),
-                        ("version", models.PositiveIntegerField(default=0, editable=False)),
-                        (
-                            "name",
-                            models.CharField(
-                                help_text="Internal name to identify this footer version",
-                                max_length=200,
-                            ),
-                        ),
-                        (
-                            "slug",
-                            models.SlugField(
-                                help_text="Machine-readable key for this footer version",
-                                max_length=100,
-                                unique=True,
-                            ),
-                        ),
-                        (
-                            "content",
-                            models.JSONField(
-                                default=pages.models.pages.footer_content.default_footer_content,
-                                help_text="Structured JSON describing footer sections, links, and CTAs",
-                            ),
-                        ),
-                        (
-                            "is_active",
-                            models.BooleanField(
-                                default=False,
-                                help_text="Only one footer can be active at a time",
-                            ),
-                        ),
-                    ],
-                    options={
-                        "verbose_name": "Footer Content",
-                        "verbose_name_plural": "Footer Contents",
-                        "db_table": "pages_footercontent",
-                        "ordering": ["-created_at"],
-                    },
+        migrations.CreateModel(
+            name="FooterContent",
+            fields=[
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
                 ),
-                migrations.CreateModel(
-                    name="Menu",
-                    fields=[
-                        (
-                            "id",
-                            models.UUIDField(
-                                default=uuid.uuid4,
-                                editable=False,
-                                primary_key=True,
-                                serialize=False,
-                            ),
-                        ),
-                        ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
-                        ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
-                        ("is_deleted", models.BooleanField(db_index=True, default=False)),
-                        ("deleted_at", models.DateTimeField(blank=True, null=True)),
-                        ("version", models.PositiveIntegerField(default=0, editable=False)),
-                        (
-                            "name",
-                            models.SlugField(
-                                help_text="Machine-readable name (e.g. 'main_nav', 'footer').",
-                                max_length=100,
-                                unique=True,
-                            ),
-                        ),
-                        (
-                            "display_name",
-                            models.CharField(
-                                blank=True,
-                                help_text="Auto-generated from name if not provided.",
-                                max_length=200,
-                            ),
-                        ),
-                        (
-                            "description",
-                            models.TextField(
-                                blank=True,
-                                help_text="Optional description of this menu's purpose.",
-                                null=True,
-                            ),
-                        ),
-                        (
-                            "items",
-                            models.JSONField(
-                                default=pages.models.pages.menu.default_menu_items,
-                                help_text="JSON array of menu items. Each item can be home, page, or external link.",
-                            ),
-                        ),
-                    ],
-                    options={
-                        "verbose_name": "Menu",
-                        "verbose_name_plural": "Menus",
-                        "db_table": "pages_menu",
-                        "ordering": ["name"],
-                    },
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
+                ("is_deleted", models.BooleanField(db_index=True, default=False)),
+                ("deleted_at", models.DateTimeField(blank=True, null=True)),
+                ("version", models.PositiveIntegerField(default=0, editable=False)),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Internal name to identify this footer version",
+                        max_length=200,
+                    ),
                 ),
-                migrations.CreateModel(
-                    name="MenuPageLink",
-                    fields=[
-                        (
-                            "id",
-                            models.UUIDField(
-                                default=uuid.uuid4,
-                                editable=False,
-                                primary_key=True,
-                                serialize=False,
-                            ),
-                        ),
-                        ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
-                        ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
-                        ("is_deleted", models.BooleanField(db_index=True, default=False)),
-                        ("deleted_at", models.DateTimeField(blank=True, null=True)),
-                        ("version", models.PositiveIntegerField(default=0, editable=False)),
-                        ("order", models.PositiveIntegerField(db_index=True, default=0)),
-                        (
-                            "custom_title",
-                            models.CharField(
-                                blank=True,
-                                help_text="Override the page title for this menu (optional).",
-                                max_length=200,
-                                null=True,
-                            ),
-                        ),
-                        (
-                            "css_classes",
-                            models.CharField(
-                                blank=True,
-                                help_text="Additional CSS classes for styling.",
-                                max_length=255,
-                                null=True,
-                            ),
-                        ),
-                        (
-                            "icon",
-                            models.CharField(
-                                blank=True,
-                                help_text="Icon class name (e.g. 'fa-home' for FontAwesome).",
-                                max_length=100,
-                                null=True,
-                            ),
-                        ),
-                        (
-                            "open_in_new_tab",
-                            models.BooleanField(
-                                default=False,
-                                help_text="Whether to open the link in a new browser tab.",
-                            ),
-                        ),
-                        (
-                            "menu",
-                            models.ForeignKey(
-                                help_text="The menu this link belongs to.",
-                                on_delete=django.db.models.deletion.CASCADE,
-                                to="pages.menu",
-                            ),
-                        ),
-                        (
-                            "page",
-                            models.ForeignKey(
-                                help_text="The page being linked.",
-                                on_delete=django.db.models.deletion.CASCADE,
-                                to="pages.page",
-                            ),
-                        ),
-                    ],
-                    options={
-                        "verbose_name": "Menu Page Link",
-                        "verbose_name_plural": "Menu Page Links",
-                        "db_table": "pages_menupagelink",
-                        "ordering": ["menu", "order"],
-                    },
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="Machine-readable key for this footer version",
+                        max_length=100,
+                        unique=True,
+                    ),
                 ),
-                migrations.AddField(
-                    model_name="menu",
-                    name="pages",
-                    field=models.ManyToManyField(
+                (
+                    "content",
+                    models.JSONField(
+                        default=pages.models.pages.footer_content.default_footer_content,
+                        help_text="Structured JSON describing footer sections, links, and CTAs",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Only one footer can be active at a time",
+                    ),
+                ),
+            ],
+            options={
+                "verbose_name": "Footer Content",
+                "verbose_name_plural": "Footer Contents",
+                "db_table": "pages_footercontent",
+                "ordering": ["-created_at"],
+            },
+        ),
+        migrations.CreateModel(
+            name="Menu",
+            fields=[
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
+                ("is_deleted", models.BooleanField(db_index=True, default=False)),
+                ("deleted_at", models.DateTimeField(blank=True, null=True)),
+                ("version", models.PositiveIntegerField(default=0, editable=False)),
+                (
+                    "name",
+                    models.SlugField(
+                        help_text="Machine-readable name (e.g. 'main_nav', 'footer').",
+                        max_length=100,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "display_name",
+                    models.CharField(
                         blank=True,
-                        help_text="Legacy: Pages included in this menu.",
-                        related_name="menus",
-                        through="pages.MenuPageLink",
+                        help_text="Auto-generated from name if not provided.",
+                        max_length=200,
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True,
+                        help_text="Optional description of this menu's purpose.",
+                        null=True,
+                    ),
+                ),
+                (
+                    "items",
+                    models.JSONField(
+                        default=pages.models.pages.menu.default_menu_items,
+                        help_text="JSON array of menu items. Each item can be home, page, or external link.",
+                    ),
+                ),
+            ],
+            options={
+                "verbose_name": "Menu",
+                "verbose_name_plural": "Menus",
+                "db_table": "pages_menu",
+                "ordering": ["name"],
+            },
+        ),
+        migrations.CreateModel(
+            name="MenuPageLink",
+            fields=[
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
+                ("is_deleted", models.BooleanField(db_index=True, default=False)),
+                ("deleted_at", models.DateTimeField(blank=True, null=True)),
+                ("version", models.PositiveIntegerField(default=0, editable=False)),
+                ("order", models.PositiveIntegerField(db_index=True, default=0)),
+                (
+                    "custom_title",
+                    models.CharField(
+                        blank=True,
+                        help_text="Override the page title for this menu (optional).",
+                        max_length=200,
+                        null=True,
+                    ),
+                ),
+                (
+                    "css_classes",
+                    models.CharField(
+                        blank=True,
+                        help_text="Additional CSS classes for styling.",
+                        max_length=255,
+                        null=True,
+                    ),
+                ),
+                (
+                    "icon",
+                    models.CharField(
+                        blank=True,
+                        help_text="Icon class name (e.g. 'fa-home' for FontAwesome).",
+                        max_length=100,
+                        null=True,
+                    ),
+                ),
+                (
+                    "open_in_new_tab",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Whether to open the link in a new browser tab.",
+                    ),
+                ),
+                (
+                    "menu",
+                    models.ForeignKey(
+                        help_text="The menu this link belongs to.",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="pages.menu",
+                    ),
+                ),
+                (
+                    "page",
+                    models.ForeignKey(
+                        help_text="The page being linked.",
+                        on_delete=django.db.models.deletion.CASCADE,
                         to="pages.page",
                     ),
                 ),
-                migrations.AddIndex(
-                    model_name="menupagelink",
-                    index=models.Index(
-                        fields=["menu", "order"], name="pages_menu_menu_id_c18fe0_idx"
-                    ),
-                ),
-                migrations.AlterUniqueTogether(
-                    name="menupagelink",
-                    unique_together={("menu", "page")},
-                ),
             ],
-            database_operations=[],
+            options={
+                "verbose_name": "Menu Page Link",
+                "verbose_name_plural": "Menu Page Links",
+                "db_table": "pages_menupagelink",
+                "ordering": ["menu", "order"],
+            },
+        ),
+        migrations.AddField(
+            model_name="menu",
+            name="pages",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Legacy: Pages included in this menu.",
+                related_name="menus",
+                through="pages.MenuPageLink",
+                to="pages.page",
+            ),
+        ),
+        migrations.AddIndex(
+            model_name="menupagelink",
+            index=models.Index(
+                fields=["menu", "order"], name="pages_menu_menu_id_c18fe0_idx"
+            ),
+        ),
+        migrations.AlterUniqueTogether(
+            name="menupagelink",
+            unique_together={("menu", "page")},
         ),
     ]

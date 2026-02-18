@@ -26,7 +26,7 @@ class HomePage(ProjectControlModel):
 
     class PublishStatus(models.TextChoices):
         DRAFT = "draft", "Draft"
-        REVIEW = "review", "In Review"
+        REVIEW = "review", "Pending Publish"
         PUBLISHED = "published", "Published"
 
     name = models.CharField(max_length=200, help_text="Internal name to identify this home page version")
