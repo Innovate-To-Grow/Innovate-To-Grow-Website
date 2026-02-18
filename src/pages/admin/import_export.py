@@ -159,15 +159,25 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
                   to raw ``bytes``.  When provided, file fields are restored from
                   the archive data.
     """
+    valid_types = {"html", "markdown", "form", "table"}
+
     for comp_data in components_data:
         data_source, form = _resolve_fk_refs(comp_data, warnings)
+
+        # Convert deprecated component types to html
+        comp_type = comp_data.get("component_type", "html")
+        if comp_type not in valid_types:
+            warnings.append(
+                f"Component '{comp_data.get('name')}' had unsupported type '{comp_type}', defaulted to 'html'."
+            )
+            comp_type = "html"
 
         component = PageComponent.objects.bulk_create(
             [
                 PageComponent(
                     **{parent_field: parent},
                     name=comp_data.get("name", ""),
-                    component_type=comp_data.get("component_type", "html"),
+                    component_type=comp_type,
                     order=comp_data.get("order", 0),
                     is_enabled=comp_data.get("is_enabled", True),
                     html_content=comp_data.get("html_content", ""),

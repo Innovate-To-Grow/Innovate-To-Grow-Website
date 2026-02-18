@@ -12,7 +12,7 @@ from django.db import models
 
 from core.models import AuthoredModel, ProjectControlModel
 
-from .mixins import AnalyticsFieldsMixin, SEOFieldsMixin, WorkflowPublishingMixin
+from .mixins import AnalyticsFieldsMixin, ComponentPageMixin, SEOFieldsMixin, WorkflowPublishingMixin
 from .validators import validate_nested_slug
 
 # ============================== Cache Configuration ==============================
@@ -23,7 +23,7 @@ PAGE_CACHE_TIMEOUT = 300  # 5 minutes
 # ============================== Page Model ==============================
 
 
-class Page(SEOFieldsMixin, AnalyticsFieldsMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
+class Page(SEOFieldsMixin, AnalyticsFieldsMixin, ComponentPageMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
     """Content page model composed of ordered PageComponents."""
 
     # Technical identifier
@@ -96,16 +96,6 @@ class Page(SEOFieldsMixin, AnalyticsFieldsMixin, WorkflowPublishingMixin, Author
         if page:
             cache.set(cache_key, page, PAGE_CACHE_TIMEOUT)
         return page
-
-    @property
-    def ordered_components(self):
-        """Return enabled components ordered for rendering."""
-        return self.components.filter(is_enabled=True).order_by("order", "id")
-
-    @property
-    def all_components(self):
-        """Return all components (including disabled) ordered."""
-        return self.components.order_by("order", "id")
 
     @property
     def effective_meta_title(self) -> str:

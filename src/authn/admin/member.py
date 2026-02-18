@@ -34,7 +34,7 @@ class MemberProfileInline(StackedInline):
     verbose_name = "Profile"
     verbose_name_plural = "Profile"
     extra = 0
-    fields = ("display_name", "profile_image", "updated_at")
+    fields = ("display_name", "avatar", "profile_image", "updated_at")
     readonly_fields = ("updated_at",)
 
 
@@ -132,7 +132,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             _("Personal Info"),
-            {"fields": ("first_name", "middle_name", "last_name", "email", "contect_email", "organization")},
+            {"fields": ("first_name", "middle_name", "last_name", "email", "account_email", "organization")},
         ),
         (
             _("Member Info"),
@@ -306,7 +306,7 @@ class MemberProfileAdmin(UnfoldModelAdmin):
 
     fieldsets = (
         (None, {"fields": ("model_user",)}),
-        (_("Profile Information"), {"fields": ("display_name", "profile_image")}),
+        (_("Profile Information"), {"fields": ("display_name", "avatar", "profile_image")}),
         (_("Timestamps"), {"fields": ("updated_at",), "classes": ("collapse",)}),
     )
 

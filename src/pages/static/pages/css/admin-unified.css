@@ -1,0 +1,205 @@
+/* Workflow Actions Panel */
+.workflow-panel {
+    margin: 20px 0;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.workflow-panel-header {
+    padding: 12px 20px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.workflow-panel-body {
+    padding: 15px 20px;
+    background: #fff;
+}
+
+/* Status Indicator */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+}
+
+.status-draft { background: #6c757d; }
+.status-review { background: #f0ad4e; }
+.status-published { background: #5cb85c; }
+
+/* Workflow Buttons */
+.workflow-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.workflow-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.workflow-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.btn-review { background: #f0ad4e; }
+.btn-review:hover { background: #ec971f; }
+
+.btn-publish { background: #5cb85c; }
+.btn-publish:hover { background: #449d44; }
+
+.btn-unpublish { background: #d9534f; }
+.btn-unpublish:hover { background: #c9302c; }
+
+.btn-reject { background: #d9534f; }
+.btn-reject:hover { background: #c9302c; }
+
+/* Workflow Flow Diagram */
+.workflow-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #666;
+}
+
+.workflow-step {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.workflow-step.active {
+    color: white;
+}
+
+.workflow-step.inactive {
+    background: #e9ecef;
+    color: #999;
+}
+
+.workflow-arrow {
+    color: #ccc;
+    font-size: 16px;
+}
+
+/* Version History Table */
+.version-panel {
+    margin: 20px 0;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.version-panel-header {
+    padding: 12px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.version-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.version-table th {
+    padding: 10px 15px;
+    text-align: left;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+}
+
+.version-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+.version-table tr:hover {
+    background: #f8f9fa;
+}
+
+.version-table tr:last-child td {
+    border-bottom: none;
+}
+
+.btn-rollback {
+    padding: 4px 12px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.btn-rollback:hover {
+    background: #5a6268;
+}
+
+.version-comment {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.no-versions {
+    padding: 20px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+/* Inline code editors (Html content / Config) */
+.inline-cm-wrapper {
+    margin-top: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fafafa;
+}
+.inline-cm-wrapper .CodeMirror {
+    height: 220px;
+    font-size: 13px;
+    border: none;
+}
+.inline-cm-wrapper .CodeMirror-gutters {
+    border-right: 1px solid #eee;
+    background: #f5f5f5;
+}

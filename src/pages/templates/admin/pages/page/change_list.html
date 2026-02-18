@@ -2,12 +2,10 @@
 {% load i18n %}
 
 {% block object-tools-items %}
-{{ block.super }}
 {% if import_url %}
-<li>
-    <a href="{{ import_url }}">
-        Import JSON
-    </a>
-</li>
+<div class="flex flex-row items-center">
+    <a href="{{ import_url }}">Import JSON</a>
+</div>
 {% endif %}
+{{ block.super }}
 {% endblock %}

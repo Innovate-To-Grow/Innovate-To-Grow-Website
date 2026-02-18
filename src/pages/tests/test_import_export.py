@@ -615,3 +615,104 @@ class ImportPagesCommandTest(TestCase):
         call_command("import_pages", path)
 
         self.assertTrue(Page.objects.filter(slug="legacy").exists())
+
+
+# ========================
+# Deprecated Component Type Fallback
+# ========================
+
+
+class ImportDeprecatedComponentTypeTest(TestCase):
+    """Test that importing old component types (template, widget) falls back to html."""
+
+    def test_deprecated_template_type_converts_to_html(self):
+        data = {
+            "export_type": "page",
+            "page": {"title": "Old Page", "slug": "old-template"},
+            "components": [
+                {
+                    "name": "Legacy",
+                    "component_type": "template",
+                    "order": 0,
+                    "html_content": "<p>Legacy</p>",
+                },
+            ],
+        }
+        page, warnings = deserialize_page(data)
+        comp = page.components.first()
+        self.assertEqual(comp.component_type, "html")
+        self.assertTrue(any("template" in w and "defaulted to 'html'" in w for w in warnings))
+
+    def test_deprecated_widget_type_converts_to_html(self):
+        data = {
+            "export_type": "page",
+            "page": {"title": "Old Page", "slug": "old-widget"},
+            "components": [
+                {
+                    "name": "Widget Comp",
+                    "component_type": "widget",
+                    "order": 0,
+                    "html_content": "<div>Widget</div>",
+                },
+            ],
+        }
+        page, warnings = deserialize_page(data)
+        comp = page.components.first()
+        self.assertEqual(comp.component_type, "html")
+        self.assertTrue(any("widget" in w for w in warnings))
+
+    def test_valid_types_pass_through(self):
+        """Valid types (html, markdown, form, table) are not converted."""
+        for comp_type in ("html", "markdown", "form", "table"):
+            data = {
+                "export_type": "page",
+                "page": {"title": "T", "slug": f"valid-{comp_type}"},
+                "components": [
+                    {
+                        "name": f"Comp {comp_type}",
+                        "component_type": comp_type,
+                        "order": 0,
+                        "html_content": "<p/>",
+                    },
+                ],
+            }
+            page, warnings = deserialize_page(data)
+            comp = page.components.first()
+            self.assertEqual(comp.component_type, comp_type)
+
+    def test_deprecated_type_in_homepage_import(self):
+        data = {
+            "export_type": "homepage",
+            "homepage": {"name": "Old Home"},
+            "components": [
+                {
+                    "name": "Legacy Widget",
+                    "component_type": "widget",
+                    "order": 0,
+                    "html_content": "<p>Old</p>",
+                },
+            ],
+        }
+        hp, warnings = deserialize_homepage(data)
+        comp = hp.components.first()
+        self.assertEqual(comp.component_type, "html")
+        self.assertTrue(any("widget" in w for w in warnings))
+
+    def test_unknown_type_converts_to_html(self):
+        """Completely unknown types also fall back to html."""
+        data = {
+            "export_type": "page",
+            "page": {"title": "T", "slug": "unknown-type"},
+            "components": [
+                {
+                    "name": "Mystery",
+                    "component_type": "carousel",
+                    "order": 0,
+                    "html_content": "<div/>",
+                },
+            ],
+        }
+        page, warnings = deserialize_page(data)
+        comp = page.components.first()
+        self.assertEqual(comp.component_type, "html")
+        self.assertTrue(any("carousel" in w for w in warnings))

@@ -45,8 +45,10 @@ export const fetchPageContent = async (slug: string): Promise<PageContent> => {
 
 export interface PageComponent {
   id: number;
-  component_type: 'html' | 'form' | 'google_sheet' | 'sheet';
+  name: string;
+  component_type: 'html' | 'markdown' | 'form' | 'table';
   order: number;
+  is_enabled: boolean;
   html_content: string;
   css_file: string | null;
   css_code: string;

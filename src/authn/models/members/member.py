@@ -115,12 +115,21 @@ class MemberProfile(ProjectControlModel):
     # user display name
     display_name = models.TextField(null=True, blank=True, help_text=("User Display Name"), verbose_name="Display Name")
 
-    # user profile image (base64 encoded png 128*128)
+    # user profile image (base64 encoded png 128*128) — legacy, prefer avatar
     profile_image = models.TextField(
         null=True,
         blank=True,
         help_text=("User Profile Image, Base64 Encoded PNG 128*128"),
         verbose_name="Profile Image (Base64 Encoded PNG)",
+    )
+
+    # avatar image upload
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        null=True,
+        blank=True,
+        help_text="Upload a profile picture.",
+        verbose_name="Avatar",
     )
 
     def __str__(self):

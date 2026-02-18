@@ -54,8 +54,11 @@ class PageComponentAdmin(ModelAdmin):
     ordering = ("order", "name")
     inlines = [PageComponentAssetInline, PageComponentImageInline]
 
+    readonly_fields = ("page", "home_page")
+
     fieldsets = (
-        (None, {"fields": ("name", "component_type", "page", "home_page", "order", "is_enabled")}),
+        (None, {"fields": ("name", "component_type", "order", "is_enabled")}),
+        ("Parent (read-only)", {"fields": ("page", "home_page"), "classes": ("collapse",)}),
         ("Content", {"fields": ("html_content", "css_code", "js_code", "config")}),
         ("Images", {"fields": ("image", "image_alt", "background_image"), "classes": ("collapse",)}),
         ("Data Source", {"fields": ("data_source", "data_params"), "classes": ("collapse",)}),

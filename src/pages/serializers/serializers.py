@@ -17,8 +17,10 @@ class PageComponentSerializer(serializers.ModelSerializer):
         model = PageComponent
         fields = [
             "id",
+            "name",
             "component_type",
             "order",
+            "is_enabled",
             "html_content",
             "css_file",
             "css_code",

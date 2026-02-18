@@ -101,8 +101,8 @@ export const ComponentRenderer = ({ component, className = '' }: ComponentRender
         .join('}')
     : '';
 
-  // Only render HTML component type for now
-  if (component.component_type !== 'html') {
+  // Only render HTML and Markdown component types (both use html_content)
+  if (!['html', 'markdown'].includes(component.component_type)) {
     return null;
   }
 
@@ -116,6 +116,7 @@ export const ComponentRenderer = ({ component, className = '' }: ComponentRender
         ref={containerRef}
         className={`page-component component-${component.id} ${className}`}
         data-component-type={component.component_type}
+        data-component-name={component.name}
         data-component-order={component.order}
       >
         {/* Main HTML content */}
@@ -152,8 +153,10 @@ interface ComponentListRendererProps {
  * ComponentListRenderer renders a list of PageComponents in order.
  */
 export const ComponentListRenderer = ({ components, className = '' }: ComponentListRendererProps) => {
-  // Sort components by order
-  const sortedComponents = [...components].sort((a, b) => a.order - b.order);
+  // Filter enabled components and sort by order
+  const sortedComponents = [...components]
+    .filter((c) => c.is_enabled)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className={`components-container ${className}`}>

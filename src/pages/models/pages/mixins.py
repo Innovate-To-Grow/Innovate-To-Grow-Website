@@ -160,5 +160,22 @@ class WorkflowPublishingMixin(models.Model):
             self.save_version(comment="Review rejected, reverted to draft", user=user)
 
 
+class ComponentPageMixin(models.Model):
+    """Shared component-ordering logic for Page and HomePage."""
+
+    class Meta:
+        abstract = True
+
+    @property
+    def ordered_components(self):
+        """Return enabled components ordered for rendering."""
+        return self.components.filter(is_enabled=True).order_by("order", "id")
+
+    @property
+    def all_components(self):
+        """Return all components (including disabled) ordered."""
+        return self.components.order_by("order", "id")
+
+
 # Backward-compatible alias
 PublishingFieldsMixin = WorkflowPublishingMixin

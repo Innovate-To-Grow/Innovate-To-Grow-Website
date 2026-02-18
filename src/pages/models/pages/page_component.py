@@ -79,10 +79,9 @@ class PageComponent(ProjectControlModel):
 
     class ComponentType(models.TextChoices):
         HTML = "html", "HTML"
-        TEMPLATE = "template", "Template"
         MARKDOWN = "markdown", "Markdown"
-        WIDGET = "widget", "Widget"
         FORM = "form", "Form"
+        TABLE = "table", "Table"
 
     component_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255, default="")

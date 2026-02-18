@@ -7,6 +7,7 @@ This file contains settings that are common to all environments.
 from datetime import timedelta
 from pathlib import Path
 
+from django.templatetags.static import static
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -220,6 +221,8 @@ CKEDITOR_5_FILE_UPLOAD_PERMISSION = "staff"
 UNFOLD = {
     "SITE_TITLE": "I2G Admin",
     "SITE_HEADER": "Innovate To Grow",
+    "SITE_ICON": lambda request: static("images/i2glogo.png"),
+    "SITE_LOGO": lambda request: static("images/i2glogo.png"),
     "THEME": "light",  # Force light theme only (disable dark mode)
     "SIDEBAR": {
         "show_search": True,

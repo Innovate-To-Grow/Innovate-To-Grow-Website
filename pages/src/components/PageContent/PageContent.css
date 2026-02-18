@@ -1,6 +1,8 @@
 .page-content-container {
   min-height: 50vh;
   padding: 20px 0;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .loading,
@@ -15,10 +17,7 @@
 }
 
 .page-content {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 20px 0;
 }
 
 .page-content.not-found {
@@ -91,7 +90,7 @@
   }
 
   .page-content {
-    padding: 15px;
+    padding: 15px 0;
   }
 }
 
@@ -101,7 +100,7 @@
   }
 
   .page-content {
-    padding: 12px;
+    padding: 12px 0;
   }
 
   .page-content h1 {
