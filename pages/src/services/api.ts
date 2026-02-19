@@ -46,7 +46,7 @@ export const fetchPageContent = async (slug: string): Promise<PageContent> => {
 export interface PageComponent {
   id: number;
   name: string;
-  component_type: 'html' | 'markdown' | 'form' | 'table';
+  component_type: 'html' | 'markdown' | 'form' | 'table' | 'google_sheet';
   order: number;
   is_enabled: boolean;
   html_content: string;
@@ -54,8 +54,17 @@ export interface PageComponent {
   css_code: string;
   js_code: string;
   config: Record<string, unknown> | null;
+  google_sheet: string | null;
+  google_sheet_style: 'default' | 'striped' | 'bordered' | 'compact';
   created_at: string;
   updated_at: string;
+}
+
+export interface GoogleSheetDataResponse {
+  sheet_id: string;
+  sheet_name: string;
+  headers: string[];
+  rows: string[][];
 }
 
 // ======================== Home Types ========================
@@ -74,6 +83,11 @@ export interface HomeContent {
 
 export const fetchHomeContent = async (): Promise<HomeContent> => {
   const response = await api.get<HomeContent>('/pages/home/');
+  return response.data;
+};
+
+export const fetchGoogleSheetData = async (sheetId: string): Promise<GoogleSheetDataResponse> => {
+  const response = await api.get<GoogleSheetDataResponse>(`/pages/google-sheets/${sheetId}/`);
   return response.data;
 };
 
@@ -258,6 +272,36 @@ export interface EventData {
 export const fetchEvent = async (): Promise<EventData> => {
   const response = await api.get<EventData>('/events/');
   return response.data;
+};
+
+// ======================== Preview ========================
+
+export interface PreviewTokenValidationResponse {
+  valid: boolean;
+  detail?: string;
+}
+
+export const validatePreviewToken = async (token: string, objectId?: string): Promise<boolean> => {
+  try {
+    const response = await api.post<PreviewTokenValidationResponse>('/pages/preview/validate-token/', { token, objectId });
+    return response.data.valid;
+  } catch {
+    return false;
+  }
+};
+
+export interface PreviewDataResponse {
+  components: PageComponent[];
+  timestamp: number;
+}
+
+export const fetchPreviewData = async (sessionId: string): Promise<PreviewDataResponse | null> => {
+  try {
+    const response = await api.get<PreviewDataResponse>('/pages/preview/data/', { params: { sessionId } });
+    return response.data;
+  } catch {
+    return null;
+  }
 };
 
 export default api;

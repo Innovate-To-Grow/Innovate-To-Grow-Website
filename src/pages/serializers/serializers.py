@@ -26,6 +26,8 @@ class PageComponentSerializer(serializers.ModelSerializer):
             "css_code",
             "js_code",
             "config",
+            "google_sheet",
+            "google_sheet_style",
             "created_at",
             "updated_at",
         ]

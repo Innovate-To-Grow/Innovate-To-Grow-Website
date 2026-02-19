@@ -4,6 +4,7 @@ Django base settings for core project.
 This file contains settings that are common to all environments.
 """
 
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -16,6 +17,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Load environment variables from .env file
 load_dotenv(BASE_DIR / ".env")
 
+
+# Frontend URL for Live Preview (optional)
+# If set, the "Open Live Preview" button in admin will link to this URL + /preview
+# Example: "https://www.innovatetogrow.com" or "http://localhost:5173"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
+
+# Google Sheets service account settings
+GOOGLE_SHEETS_CREDENTIALS_JSON = os.environ.get("GOOGLE_SHEETS_CREDENTIALS_JSON", "")
+GOOGLE_SHEETS_SCOPES = [
+    scope.strip()
+    for scope in os.environ.get(
+        "GOOGLE_SHEETS_SCOPES",
+        "https://www.googleapis.com/auth/spreadsheets.readonly",
+    ).split(",")
+    if scope.strip()
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -233,6 +250,7 @@ UNFOLD = {
                     {"title": "Pages", "link": "/admin/pages/page/"},
                     {"title": "Home Pages", "link": "/admin/pages/homepage/"},
                     {"title": "Components", "link": "/admin/pages/pagecomponent/"},
+                    {"title": "Google Sheets", "link": "/admin/pages/googlesheet/"},
                     {"title": "Media", "link": "/admin/pages/mediaasset/"},
                     {"title": "Forms", "link": "/admin/pages/uniformform/"},
                     {"title": "Submissions", "link": "/admin/pages/formsubmission/"},

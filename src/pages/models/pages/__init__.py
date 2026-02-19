@@ -1,4 +1,5 @@
 from .footer_content import FooterContent
+from .google_sheet import GoogleSheet
 from .home_page import HomePage
 from .menu import Menu, MenuPageLink
 from .mixins import (
@@ -14,6 +15,7 @@ from .validators import validate_nested_slug
 
 __all__ = [
     "FooterContent",
+    "GoogleSheet",
     "HomePage",
     "Menu",
     "MenuPageLink",

@@ -82,6 +82,13 @@ class PageComponent(ProjectControlModel):
         MARKDOWN = "markdown", "Markdown"
         FORM = "form", "Form"
         TABLE = "table", "Table"
+        GOOGLE_SHEET = "google_sheet", "Google Sheet"
+
+    class GoogleSheetStyle(models.TextChoices):
+        DEFAULT = "default", "Default"
+        STRIPED = "striped", "Striped"
+        BORDERED = "bordered", "Bordered"
+        COMPACT = "compact", "Compact"
 
     component_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=255, default="")
@@ -123,6 +130,22 @@ class PageComponent(ProjectControlModel):
         null=True,
         related_name="page_components",
         help_text="Form to embed when component_type is 'form'.",
+    )
+
+    # Google sheet table (for component_type='google_sheet')
+    google_sheet = models.ForeignKey(
+        "pages.GoogleSheet",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="components",
+        help_text="Saved Google Sheet used when component_type is 'google_sheet'.",
+    )
+    google_sheet_style = models.CharField(
+        max_length=32,
+        choices=GoogleSheetStyle.choices,
+        default=GoogleSheetStyle.DEFAULT,
+        help_text="Table presentation style for Google Sheet components.",
     )
 
     # Dynamic data (optional)
@@ -167,6 +190,7 @@ class PageComponent(ProjectControlModel):
             models.Index(fields=["component_type"]),
             models.Index(fields=["data_source"]),
             models.Index(fields=["form"]),
+            models.Index(fields=["google_sheet"]),
         ]
 
     def clean(self):
@@ -186,6 +210,15 @@ class PageComponent(ProjectControlModel):
                 raise ValidationError("Form component must have a form selected.")
             if self.form and not self.form.is_active:
                 raise ValidationError("Selected form is not active.")
+
+        # Google Sheet component validation
+        if self.component_type == self.ComponentType.GOOGLE_SHEET:
+            if not self.google_sheet_id:
+                raise ValidationError("Google Sheet component must have a Google Sheet selected.")
+            if self.google_sheet and not self.google_sheet.is_enabled:
+                raise ValidationError("Selected Google Sheet is disabled.")
+        elif self.google_sheet_id:
+            raise ValidationError("google_sheet can only be set when component_type is 'google_sheet'.")
 
         # Basic coherence for HTML
         if self.component_type == self.ComponentType.HTML:

@@ -1,6 +1,8 @@
-from django import forms
+from uuid import uuid4
+
 from django.contrib import admin, messages
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.core.signing import TimestampSigner
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from unfold.admin import TabularInline
@@ -13,14 +15,29 @@ class CompactComponentInline(TabularInline):
 
     model = PageComponent
     extra = 0
-    fields = ("name", "component_type", "order", "is_enabled", "html_content", "css_code", "js_code", "config")
+    fields = (
+        "name",
+        "component_type",
+        "google_sheet",
+        "google_sheet_style",
+        "order",
+        "is_enabled",
+        "edit_content",
+        "html_content",
+        "css_code",
+        "js_code",
+        "config",
+    )
+    readonly_fields = ("edit_content",)
     ordering = ("order", "id")
     show_change_link = True
-    
-    formfield_overrides = {
-        models.TextField: {"widget": forms.HiddenInput},
-        models.JSONField: {"widget": forms.HiddenInput},
-    }
+
+    def edit_content(self, obj):
+        return format_html(
+            '<button type="button" class="button edit-component-btn" style="padding: 4px 12px;">Edit Content</button>'
+        )
+
+    edit_content.short_description = "Content"
 
 
 class WorkflowAdminMixin:
@@ -58,12 +75,35 @@ class WorkflowAdminMixin:
         if change:
             obj.save_version(comment=f"Edited via admin by {request.user}", user=request.user)
 
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        try:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        except ValidationError as e:
+            # Model-level ValidationError (e.g. from save()) — show as a
+            # user-friendly error message instead of a 500 error page.
+            error_messages = e.messages if hasattr(e, "messages") else [str(e)]
+            for msg in error_messages:
+                self.message_user(request, msg, messages.ERROR)
+            return HttpResponseRedirect(request.path)
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
         obj = self.get_object(request, object_id)
         if obj:
             extra_context["versions"] = obj.get_versions()[:20]
             extra_context["current_status"] = obj.status
+
+            # Generate preview token signed with object ID
+            signer = TimestampSigner()
+            # Ensure we sign the string representation of the UUID
+            extra_context["preview_token"] = signer.sign(str(obj.pk))
+
+            # Pass frontend URL to template
+            from django.conf import settings
+            extra_context["frontend_url"] = getattr(settings, "FRONTEND_URL", "")
+            extra_context["object_id"] = str(obj.pk)
+            extra_context["preview_session_id"] = str(uuid4())
+
         return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
     def response_change(self, request, obj):

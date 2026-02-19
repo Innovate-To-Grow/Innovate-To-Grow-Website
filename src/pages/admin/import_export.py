@@ -18,6 +18,7 @@ from django.db import transaction
 
 from ..models import (
     ComponentDataSource,
+    GoogleSheet,
     HomePage,
     Page,
     PageComponent,
@@ -72,6 +73,8 @@ def _serialize_component(component, include_files=False):
             component.data_source.source_name if component.data_source_id else None
         ),
         "form_slug": component.form.slug if component.form_id else None,
+        "google_sheet_name": component.google_sheet.name if component.google_sheet_id else None,
+        "google_sheet_style": component.google_sheet_style,
         "data_params": component.data_params,
         "refresh_interval_seconds": component.refresh_interval_seconds,
         "hydrate_on_client": component.hydrate_on_client,
@@ -132,9 +135,10 @@ def serialize_homepage(homepage, include_files=False):
 
 
 def _resolve_fk_refs(comp_data, warnings):
-    """Resolve data_source and form FK references by name/slug."""
+    """Resolve data_source, form, and google_sheet FK references by name/slug."""
     data_source = None
     form = None
+    google_sheet = None
 
     ds_name = comp_data.get("data_source_name")
     if ds_name:
@@ -148,7 +152,15 @@ def _resolve_fk_refs(comp_data, warnings):
         if not form:
             warnings.append(f"Form '{form_slug}' not found; skipped for component '{comp_data.get('name')}'.")
 
-    return data_source, form
+    google_sheet_name = comp_data.get("google_sheet_name")
+    if google_sheet_name:
+        google_sheet = GoogleSheet.objects.filter(name=google_sheet_name).first()
+        if not google_sheet:
+            warnings.append(
+                f"Google Sheet '{google_sheet_name}' not found; skipped for component '{comp_data.get('name')}'."
+            )
+
+    return data_source, form, google_sheet
 
 
 def _create_components(parent_field, parent, components_data, warnings, file_map=None):
@@ -159,10 +171,10 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
                   to raw ``bytes``.  When provided, file fields are restored from
                   the archive data.
     """
-    valid_types = {"html", "markdown", "form", "table"}
+    valid_types = {"html", "markdown", "form", "table", "google_sheet"}
 
     for comp_data in components_data:
-        data_source, form = _resolve_fk_refs(comp_data, warnings)
+        data_source, form, google_sheet = _resolve_fk_refs(comp_data, warnings)
 
         # Convert deprecated component types to html
         comp_type = comp_data.get("component_type", "html")
@@ -171,6 +183,21 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
                 f"Component '{comp_data.get('name')}' had unsupported type '{comp_type}', defaulted to 'html'."
             )
             comp_type = "html"
+
+        if comp_type == "google_sheet" and not google_sheet:
+            warnings.append(
+                f"Component '{comp_data.get('name')}' had unresolved google_sheet_name and was defaulted to 'html'."
+            )
+            comp_type = "html"
+
+        google_sheet_style = comp_data.get("google_sheet_style", PageComponent.GoogleSheetStyle.DEFAULT)
+        style_values = {choice[0] for choice in PageComponent.GoogleSheetStyle.choices}
+        if google_sheet_style not in style_values:
+            warnings.append(
+                f"Component '{comp_data.get('name')}' had unsupported google_sheet_style "
+                f"'{google_sheet_style}', defaulted to '{PageComponent.GoogleSheetStyle.DEFAULT}'."
+            )
+            google_sheet_style = PageComponent.GoogleSheetStyle.DEFAULT
 
         component = PageComponent.objects.bulk_create(
             [
@@ -190,6 +217,8 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
                     background_image_alt=comp_data.get("background_image_alt", ""),
                     data_source=data_source,
                     form=form,
+                    google_sheet=google_sheet if comp_type == "google_sheet" else None,
+                    google_sheet_style=google_sheet_style,
                     data_params=comp_data.get("data_params") or {},
                     refresh_interval_seconds=comp_data.get("refresh_interval_seconds", 0),
                     hydrate_on_client=comp_data.get("hydrate_on_client", True),

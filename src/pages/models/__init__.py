@@ -8,6 +8,7 @@ from .media import MediaAsset
 from .pages import (
     ComponentDataSource,
     FooterContent,
+    GoogleSheet,
     HomePage,
     Menu,
     MenuPageLink,
@@ -26,6 +27,7 @@ __all__ = [
     "PageComponentImage",
     "PageComponentAsset",
     "ComponentDataSource",
+    "GoogleSheet",
     "HomePage",
     "validate_nested_slug",
     # Layout (merged from layout app)

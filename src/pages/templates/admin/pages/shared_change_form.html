@@ -10,13 +10,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
 <link rel="stylesheet" href="{% static 'pages/css/admin-unified.css' %}">
+<link rel="stylesheet" href="{% static 'pages/css/component-editor.css' %}">
 <script src="{% static 'pages/js/page-live-preview.js' %}"></script>
+<script src="{% static 'pages/js/component-editor.js' %}"></script>
+{% endblock %}
+
+{% block messages %}
+{# Hide default message rendering — we show toasts via JS instead #}
+<div id="django-messages-data" style="display:none;">
+    {% if messages %}{% for message in messages %}
+    <span data-type="{{ message.tags }}" data-text="{{ message|escapejs }}"></span>
+    {% endfor %}{% endif %}
+</div>
 {% endblock %}
 
 {% block object-tools-items %}
 {{ block.super }}
 <li class="border border-base-200 max-lg:-mt-px max-lg:first:rounded-t-default max-lg:last:rounded-b-default min-lg:-ml-px min-lg:first:rounded-l-default min-lg:last:rounded-r-default">
-    <a href="#" id="popup-preview-btn" class="popup-preview-link cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
+    <a href="#" id="popup-preview-btn" data-preview-token="{{ preview_token }}" data-frontend-url="{{ frontend_url }}" data-object-id="{{ object_id }}" data-preview-session-id="{{ preview_session_id }}" class="popup-preview-link cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
         <span class="material-symbols-outlined">open_in_new</span>
         Open Live Preview
     </a>
@@ -60,8 +71,10 @@
                 <button type="submit" name="_submit_for_review" class="workflow-btn btn-review">
                     Submit for Review
                 </button>
-                <button type="submit" name="_publish" class="workflow-btn btn-publish"
-                        onclick="return confirm('Publish this item directly without review?');">
+                <button type="button" class="workflow-btn btn-publish"
+                        data-confirm="Publish this item directly without review?"
+                        data-confirm-style="warning"
+                        data-submit-name="_publish">
                     Publish Directly
                 </button>
             {% endif %}
@@ -70,15 +83,19 @@
                 <button type="submit" name="_publish" class="workflow-btn btn-publish">
                     Approve &amp; Publish
                 </button>
-                <button type="submit" name="_reject_review" class="workflow-btn btn-reject"
-                        onclick="return confirm('Reject this review and send back to draft?');">
+                <button type="button" class="workflow-btn btn-reject"
+                        data-confirm="Reject this review and send back to draft?"
+                        data-confirm-style="danger"
+                        data-submit-name="_reject_review">
                     Reject (Back to Draft)
                 </button>
             {% endif %}
 
             {% if original.status == "published" %}
-                <button type="submit" name="_unpublish" class="workflow-btn btn-unpublish"
-                        onclick="return confirm('Unpublish this item? It will no longer be visible to the public.');">
+                <button type="button" class="workflow-btn btn-unpublish"
+                        data-confirm="Unpublish this item? It will no longer be visible to the public."
+                        data-confirm-style="danger"
+                        data-submit-name="_unpublish">
                     Unpublish
                 </button>
             {% endif %}
@@ -118,9 +135,11 @@
                 <td>{{ v.created_by|default:"System" }}</td>
                 <td>{{ v.created_at|date:"Y-m-d H:i" }}</td>
                 <td>
-                    <button type="submit" name="_rollback" value="{{ v.version_number }}"
-                            class="btn-rollback"
-                            onclick="return confirm('Rollback to version {{ v.version_number }}? Current state will be saved first.');">
+                    <button type="button" class="btn-rollback"
+                            data-confirm="Rollback to version {{ v.version_number }}? Current state will be saved first."
+                            data-confirm-style="warning"
+                            data-submit-name="_rollback"
+                            data-submit-value="{{ v.version_number }}">
                         Rollback
                     </button>
                 </td>
@@ -135,4 +154,175 @@
     {% endif %}
 </div>
 {% endif %}
+
+<!-- Toast container -->
+<div class="admin-toast-container" id="admin-toast-container"></div>
+
+<!-- Confirm modal -->
+<div class="admin-modal-overlay" id="admin-confirm-overlay">
+    <div class="admin-modal">
+        <div class="admin-modal-icon" id="admin-modal-icon">&#9888;</div>
+        <div class="admin-modal-title" id="admin-modal-title">Confirm Action</div>
+        <div class="admin-modal-message" id="admin-modal-message"></div>
+        <div class="admin-modal-actions">
+            <button type="button" class="admin-modal-btn admin-modal-btn-cancel" id="admin-modal-cancel">Cancel</button>
+            <button type="button" class="admin-modal-btn" id="admin-modal-confirm">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    /* ==================== Toast System ==================== */
+    var TOAST_ICONS = {
+        error:   '&#10007;',
+        success: '&#10003;',
+        warning: '&#9888;',
+        info:    '&#8505;'
+    };
+
+    function showToast(message, type) {
+        type = type || 'info';
+        // Normalize Django message tags (e.g. "error success" -> pick first relevant)
+        if (type.indexOf('error') !== -1) type = 'error';
+        else if (type.indexOf('success') !== -1) type = 'success';
+        else if (type.indexOf('warning') !== -1) type = 'warning';
+        else type = 'info';
+
+        var container = document.getElementById('admin-toast-container');
+        var toast = document.createElement('div');
+        toast.className = 'admin-toast admin-toast-' + type;
+        toast.innerHTML =
+            '<span class="admin-toast-icon">' + (TOAST_ICONS[type] || '') + '</span>' +
+            '<span class="admin-toast-body">' + message + '</span>' +
+            '<button class="admin-toast-close" type="button">&times;</button>';
+
+        container.appendChild(toast);
+
+        // Trigger enter animation
+        requestAnimationFrame(function() {
+            toast.classList.add('show');
+        });
+
+        // Auto dismiss
+        var timer = setTimeout(function() { dismissToast(toast); }, 5000);
+
+        toast.querySelector('.admin-toast-close').addEventListener('click', function() {
+            clearTimeout(timer);
+            dismissToast(toast);
+        });
+    }
+
+    function dismissToast(toast) {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        setTimeout(function() { toast.remove(); }, 400);
+    }
+
+    /* Read Django messages injected by template and show as toasts */
+    function showDjangoMessages() {
+        var container = document.getElementById('django-messages-data');
+        if (!container) return;
+        var items = container.querySelectorAll('span[data-text]');
+        items.forEach(function(item) {
+            showToast(item.getAttribute('data-text'), item.getAttribute('data-type'));
+        });
+    }
+
+    /* ==================== Confirm Modal ==================== */
+    var pendingResolve = null;
+
+    function showConfirmModal(message, style) {
+        var overlay  = document.getElementById('admin-confirm-overlay');
+        var msgEl    = document.getElementById('admin-modal-message');
+        var iconEl   = document.getElementById('admin-modal-icon');
+        var titleEl  = document.getElementById('admin-modal-title');
+        var btnEl    = document.getElementById('admin-modal-confirm');
+
+        msgEl.textContent = message;
+
+        if (style === 'danger') {
+            iconEl.innerHTML = '&#9888;';
+            iconEl.style.background = '#fee2e2';
+            titleEl.textContent = 'Are you sure?';
+            btnEl.className = 'admin-modal-btn admin-modal-btn-danger';
+            btnEl.textContent = 'Confirm';
+        } else {
+            iconEl.innerHTML = '&#9888;';
+            iconEl.style.background = '#fff3cd';
+            titleEl.textContent = 'Confirm Action';
+            btnEl.className = 'admin-modal-btn admin-modal-btn-confirm';
+            btnEl.textContent = 'Confirm';
+        }
+
+        overlay.classList.add('active');
+
+        return new Promise(function(resolve) {
+            pendingResolve = resolve;
+        });
+    }
+
+    function closeModal(result) {
+        document.getElementById('admin-confirm-overlay').classList.remove('active');
+        if (pendingResolve) {
+            pendingResolve(result);
+            pendingResolve = null;
+        }
+    }
+
+    /* ==================== Init ==================== */
+    function init() {
+        showDjangoMessages();
+
+        /* Modal button handlers */
+        document.getElementById('admin-modal-confirm').addEventListener('click', function() {
+            closeModal(true);
+        });
+        document.getElementById('admin-modal-cancel').addEventListener('click', function() {
+            closeModal(false);
+        });
+        document.getElementById('admin-confirm-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal(false);
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal(false);
+        });
+
+        /* Bind all [data-confirm] buttons */
+        document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var message = btn.getAttribute('data-confirm');
+                var style   = btn.getAttribute('data-confirm-style') || 'warning';
+                var submitName  = btn.getAttribute('data-submit-name');
+                var submitValue = btn.getAttribute('data-submit-value') || '';
+
+                showConfirmModal(message, style).then(function(confirmed) {
+                    if (!confirmed) return;
+                    // Create a hidden input and submit the form
+                    var form = btn.closest('form');
+                    if (!form) return;
+                    var hidden = document.createElement('input');
+                    hidden.type  = 'hidden';
+                    hidden.name  = submitName;
+                    hidden.value = submitValue;
+                    form.appendChild(hidden);
+                    form.submit();
+                });
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    // Expose globally for potential use elsewhere
+    window.adminToast = showToast;
+})();
+</script>
 {% endblock %}

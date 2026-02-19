@@ -27,6 +27,7 @@ from ..admin.import_export import (
 )
 from ..models import (
     ComponentDataSource,
+    GoogleSheet,
     HomePage,
     Page,
     PageComponent,
@@ -134,6 +135,25 @@ class SerializePageTest(TestCase):
         )
         data = serialize_page(page)
         self.assertEqual(data["components"][0]["form_slug"], "contact")
+
+    def test_google_sheet_ref_serialized(self):
+        google_sheet = GoogleSheet.objects.create(
+            name="Event Schedule",
+            spreadsheet_id="spreadsheet-id",
+            sheet_name="Sheet1",
+        )
+        page = Page.objects.create(title="T", slug="google-sheet-serialized")
+        PageComponent.objects.create(
+            page=page,
+            name="Schedule",
+            component_type="google_sheet",
+            order=0,
+            google_sheet=google_sheet,
+            google_sheet_style="striped",
+        )
+        data = serialize_page(page)
+        self.assertEqual(data["components"][0]["google_sheet_name"], "Event Schedule")
+        self.assertEqual(data["components"][0]["google_sheet_style"], "striped")
 
 
 class SerializeHomePageTest(TestCase):
@@ -270,6 +290,52 @@ class DeserializePageTest(TestCase):
         }
         page, warnings = deserialize_page(data)
         self.assertTrue(any("missing-form" in w for w in warnings))
+
+    def test_resolves_google_sheet(self):
+        GoogleSheet.objects.create(
+            name="Public Table",
+            spreadsheet_id="spreadsheet-id",
+            sheet_name="Sheet1",
+        )
+        data = {
+            "export_type": "page",
+            "page": {"slug": "google-sheet-test", "title": "T"},
+            "components": [
+                {
+                    "name": "Sheet Component",
+                    "component_type": "google_sheet",
+                    "order": 0,
+                    "google_sheet_name": "Public Table",
+                    "google_sheet_style": "compact",
+                },
+            ],
+        }
+        page, warnings = deserialize_page(data)
+        comp = page.components.first()
+        self.assertEqual(comp.component_type, "google_sheet")
+        self.assertIsNotNone(comp.google_sheet)
+        self.assertEqual(comp.google_sheet.name, "Public Table")
+        self.assertEqual(comp.google_sheet_style, "compact")
+
+    def test_missing_google_sheet_falls_back_to_html(self):
+        data = {
+            "export_type": "page",
+            "page": {"slug": "google-sheet-missing", "title": "T"},
+            "components": [
+                {
+                    "name": "Missing Sheet Component",
+                    "component_type": "google_sheet",
+                    "order": 0,
+                    "html_content": "<p>Fallback</p>",
+                    "google_sheet_name": "missing-sheet",
+                },
+            ],
+        }
+        page, warnings = deserialize_page(data)
+        comp = page.components.first()
+        self.assertEqual(comp.component_type, "html")
+        self.assertIsNone(comp.google_sheet)
+        self.assertTrue(any("missing-sheet" in w for w in warnings))
 
     def test_file_map_restores_files(self):
         file_map = {
@@ -679,6 +745,33 @@ class ImportDeprecatedComponentTypeTest(TestCase):
             page, warnings = deserialize_page(data)
             comp = page.components.first()
             self.assertEqual(comp.component_type, comp_type)
+
+    def test_google_sheet_type_passes_through_with_resolved_reference(self):
+        GoogleSheet.objects.create(
+            name="Sponsors Sheet",
+            spreadsheet_id="spreadsheet-id",
+            sheet_name="Sheet1",
+        )
+        data = {
+            "export_type": "page",
+            "page": {"title": "T", "slug": "valid-google-sheet"},
+            "components": [
+                {
+                    "name": "Sheet Comp",
+                    "component_type": "google_sheet",
+                    "order": 0,
+                    "google_sheet_name": "Sponsors Sheet",
+                    "google_sheet_style": "bordered",
+                },
+            ],
+        }
+
+        page, warnings = deserialize_page(data)
+        comp = page.components.first()
+        self.assertEqual(comp.component_type, "google_sheet")
+        self.assertIsNotNone(comp.google_sheet)
+        self.assertEqual(comp.google_sheet.name, "Sponsors Sheet")
+        self.assertEqual(comp.google_sheet_style, "bordered")
 
     def test_deprecated_type_in_homepage_import(self):
         data = {

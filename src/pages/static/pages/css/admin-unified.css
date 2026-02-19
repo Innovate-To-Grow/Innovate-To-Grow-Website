@@ -211,3 +211,191 @@
 th.column-html_content, th.column-css_code, th.column-js_code, th.column-config {
     display: none !important;
 }
+
+/* ========== Toast Notifications ========== */
+.admin-toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.admin-toast {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 480px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.admin-toast.hide {
+    transform: translateX(120%);
+    opacity: 0;
+}
+
+.admin-toast-error {
+    background: #dc3545;
+}
+
+.admin-toast-success {
+    background: #28a745;
+}
+
+.admin-toast-warning {
+    background: #e67e22;
+}
+
+.admin-toast-info {
+    background: #3498db;
+}
+
+.admin-toast-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.admin-toast-body {
+    flex: 1;
+}
+
+.admin-toast-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.admin-toast-close:hover {
+    color: #fff;
+}
+
+/* ========== Confirm Modal ========== */
+.admin-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.admin-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.admin-modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px 32px 24px;
+    min-width: 380px;
+    max-width: 480px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+    transform: scale(0.9) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-modal-overlay.active .admin-modal {
+    transform: scale(1) translateY(0);
+}
+
+.admin-modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #fff3cd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 24px;
+}
+
+.admin-modal-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+}
+
+.admin-modal-message {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.admin-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.admin-modal-btn {
+    padding: 9px 22px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.admin-modal-btn-cancel {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.admin-modal-btn-cancel:hover {
+    background: #e0e0e0;
+}
+
+.admin-modal-btn-confirm {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.admin-modal-btn-confirm:hover {
+    background: #2563eb;
+}
+
+.admin-modal-btn-danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+.admin-modal-btn-danger:hover {
+    background: #c82333;
+}

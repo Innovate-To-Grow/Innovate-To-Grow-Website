@@ -61,6 +61,7 @@ class PageComponentAdmin(ModelAdmin):
         ("Parent (read-only)", {"fields": ("page", "home_page"), "classes": ("collapse",)}),
         ("Content", {"fields": ("html_content", "css_code", "js_code", "config")}),
         ("Images", {"fields": ("image", "image_alt", "background_image"), "classes": ("collapse",)}),
+        ("Google Sheet", {"fields": ("google_sheet", "google_sheet_style"), "classes": ("collapse",)}),
         ("Data Source", {"fields": ("data_source", "data_params"), "classes": ("collapse",)}),
     )
 

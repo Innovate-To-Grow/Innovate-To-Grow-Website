@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from ..models import HomePage, Menu, Page, PageComponent
+from ..models import GoogleSheet, HomePage, Menu, Page, PageComponent
 from ..serializers import HomePageSerializer, MenuSerializer, PageComponentSerializer, PageSerializer
 
 
@@ -189,3 +189,41 @@ class PageComponentSerializerFieldsTest(TestCase):
         comp_data = serializer.data["components"][0]
         self.assertEqual(comp_data["name"], "Welcome")
         self.assertTrue(comp_data["is_enabled"])
+
+    def test_serializer_includes_google_sheet_fields(self):
+        page = Page.objects.create(title="T", slug="ser-google-sheet")
+        google_sheet = GoogleSheet.objects.create(
+            name="Sponsors",
+            spreadsheet_id="sheet-id",
+            sheet_name="Sheet1",
+        )
+        comp = PageComponent.objects.create(
+            page=page,
+            name="Sponsors Table",
+            component_type="google_sheet",
+            google_sheet=google_sheet,
+            google_sheet_style="striped",
+        )
+        serializer = PageComponentSerializer(comp)
+        self.assertEqual(str(serializer.data["google_sheet"]), str(google_sheet.id))
+        self.assertEqual(serializer.data["google_sheet_style"], "striped")
+
+    def test_google_sheet_fields_present_in_nested_page_serializer(self):
+        page = Page.objects.create(title="T", slug="ser-google-nested")
+        google_sheet = GoogleSheet.objects.create(
+            name="Schedule",
+            spreadsheet_id="sheet-id",
+            sheet_name="Sheet1",
+        )
+        PageComponent.objects.create(
+            page=page,
+            name="Schedule Table",
+            component_type="google_sheet",
+            google_sheet=google_sheet,
+            google_sheet_style="compact",
+        )
+
+        serializer = PageSerializer(page)
+        comp_data = serializer.data["components"][0]
+        self.assertEqual(str(comp_data["google_sheet"]), str(google_sheet.id))
+        self.assertEqual(comp_data["google_sheet_style"], "compact")

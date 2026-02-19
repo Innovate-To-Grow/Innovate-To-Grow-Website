@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { PageComponent } from '../../services/api';
+import { GoogleSheetTable } from './GoogleSheetTable';
 
 interface ComponentRendererProps {
   component: PageComponent;
@@ -13,6 +14,7 @@ interface ComponentRendererProps {
 export const ComponentRenderer = ({ component, className = '' }: ComponentRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isHtmlLike = component.component_type === 'html' || component.component_type === 'markdown';
 
   /**
    * Execute JS code in a sandboxed iframe
@@ -58,13 +60,14 @@ export const ComponentRenderer = ({ component, className = '' }: ComponentRender
 
   // Apply scoped CSS and execute JS when component mounts or updates
   useEffect(() => {
+    if (!isHtmlLike) return;
     if (!containerRef.current) return;
 
     // If there's JS code, execute it in sandbox
     if (component.js_code && component.js_code.trim()) {
       executeJs(component.js_code, component.html_content);
     }
-  }, [component.html_content, component.js_code, executeJs]);
+  }, [component.html_content, component.js_code, executeJs, isHtmlLike]);
 
   // Handle messages from the sandboxed iframe
   useEffect(() => {
@@ -79,7 +82,7 @@ export const ComponentRenderer = ({ component, className = '' }: ComponentRender
   }, [component.id]);
 
   // Generate scoped CSS
-  const scopedCss = component.css_code
+  const scopedCss = isHtmlLike && component.css_code
     ? component.css_code
         .split('}')
         .map((rule) => {
@@ -101,8 +104,24 @@ export const ComponentRenderer = ({ component, className = '' }: ComponentRender
         .join('}')
     : '';
 
+  if (component.component_type === 'google_sheet') {
+    if (!component.google_sheet) {
+      return null;
+    }
+    return (
+      <div
+        className={`page-component component-${component.id} ${className}`}
+        data-component-type={component.component_type}
+        data-component-name={component.name}
+        data-component-order={component.order}
+      >
+        <GoogleSheetTable sheetId={component.google_sheet} tableStyle={component.google_sheet_style} />
+      </div>
+    );
+  }
+
   // Only render HTML and Markdown component types (both use html_content)
-  if (!['html', 'markdown'].includes(component.component_type)) {
+  if (!isHtmlLike) {
     return null;
   }
 
@@ -166,4 +185,3 @@ export const ComponentListRenderer = ({ components, className = '' }: ComponentL
     </div>
   );
 };
-

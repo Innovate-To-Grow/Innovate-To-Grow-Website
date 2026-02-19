@@ -464,14 +464,17 @@ class CompactComponentInlineTest(TestCase):
     """Test CompactComponentInline configuration."""
 
     def test_inline_fields(self):
-        """Verify that inline fields include the hidden content fields for live preview."""
+        """Verify that inline fields include modal edit + content fields for live preview."""
         self.assertEqual(
             CompactComponentInline.fields,
             (
                 "name",
                 "component_type",
+                "google_sheet",
+                "google_sheet_style",
                 "order",
                 "is_enabled",
+                "edit_content",
                 "html_content",
                 "css_code",
                 "js_code",
@@ -479,16 +482,9 @@ class CompactComponentInlineTest(TestCase):
             ),
         )
 
-    def test_inline_hidden_widgets(self):
-        """Verify that content fields use HiddenInput widget."""
-        from django import forms
-        from django.db import models
-
-        overrides = CompactComponentInline.formfield_overrides
-        self.assertIn(models.TextField, overrides)
-        self.assertEqual(overrides[models.TextField]["widget"], forms.HiddenInput)
-        self.assertIn(models.JSONField, overrides)
-        self.assertEqual(overrides[models.JSONField]["widget"], forms.HiddenInput)
+    def test_inline_has_edit_content_readonly_field(self):
+        """Verify edit_content is configured as readonly helper field."""
+        self.assertIn("edit_content", CompactComponentInline.readonly_fields)
 
     def test_inline_extra_is_zero(self):
         self.assertEqual(CompactComponentInline.extra, 0)
