@@ -11,6 +11,9 @@ jobs:
   deploy:
     name: Build & Deploy Frontend
     runs-on: ubuntu-latest
+    environment:
+      name: AWS Amplify (Prod)
+      url: https://main.d1fekd6ba7zdu.amplifyapp.com
     defaults:
       run:
         working-directory: pages
