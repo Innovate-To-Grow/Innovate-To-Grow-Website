@@ -4,7 +4,6 @@
  */
 (function() {
   // CSS paths - use the same CSS as frontend
-  const MENU_CSS = '/static/pages/css/menu/main-menu.css';
   const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
   
   // Get the hidden JSON input
