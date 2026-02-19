@@ -6,8 +6,9 @@ class PagesConfig(AppConfig):
     name = "pages"
 
     def ready(self):
-        """Import admin when Django apps are ready."""
+        """Import admin and signals when Django apps are ready."""
         try:
             from . import admin  # noqa
+            from . import signals  # noqa
         except ImportError:
             pass

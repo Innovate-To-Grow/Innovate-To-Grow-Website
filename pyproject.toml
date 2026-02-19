@@ -49,7 +49,7 @@ ignore = [
 "tests.py" = ["F841"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "authn", "pages", "layout", "notify", "events", "mobileid", "sheets"]
+known-first-party = ["core", "authn", "pages", "notify", "events", "mobileid", "sheets"]
 
 [tool.ruff.format]
 # Use double quotes

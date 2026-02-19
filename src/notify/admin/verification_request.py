@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
+from unfold.admin import ModelAdmin
 
 from ..models import VerificationRequest
 
 
 @admin.register(VerificationRequest)
-class VerificationRequestAdmin(admin.ModelAdmin):
+class VerificationRequestAdmin(ModelAdmin):
     """
     Enhanced admin for verification requests with detailed management.
     """
@@ -17,6 +18,8 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         "method_badge",
         "target",
         "purpose",
+        "token_display",
+        "verification_link",
         "status_badge",
         "attempts_display",
         "expires_display",
@@ -31,6 +34,7 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         "attempts",
         "time_remaining",
         "is_expired",
+        "full_verification_link",
     )
     ordering = ("-created_at",)
     date_hierarchy = "created_at"
@@ -49,9 +53,8 @@ class VerificationRequestAdmin(admin.ModelAdmin):
         (
             "Verification Credentials",
             {
-                "fields": ("code", "token"),
-                "classes": ("collapse",),
-                "description": "The code or token used for verification.",
+                "fields": ("code", "token", "full_verification_link"),
+                "description": "The code or token used for verification. Copy the link to verify the email.",
             },
         ),
         (
@@ -171,3 +174,64 @@ class VerificationRequestAdmin(admin.ModelAdmin):
     def reset_attempts(self, request, queryset):
         updated = queryset.update(attempts=0, status=VerificationRequest.STATUS_PENDING)
         self.message_user(request, f"{updated} verification(s) had attempts reset.")
+
+    @admin.display(description="Token")
+    def token_display(self, obj):
+        """Display token with copy functionality."""
+        if obj.token:
+            short_token = obj.token[:8] + "..." if len(obj.token) > 8 else obj.token
+            return format_html(
+                '<code style="background:#f5f5f5; padding:2px 6px; border-radius:3px; font-size:11px;" '
+                'title="Click to see full token: {}">{}</code>',
+                obj.token,
+                short_token,
+            )
+        elif obj.code:
+            return format_html(
+                '<code style="background:#e8f4e8; padding:2px 6px; border-radius:3px; font-size:12px; font-weight:bold;">{}</code>',
+                obj.code,
+            )
+        return format_html('<span style="color:#95a5a6;">—</span>')
+
+    @admin.display(description="Verify Link")
+    def verification_link(self, obj):
+        """Display a clickable verification link for testing."""
+        if obj.token and obj.status == VerificationRequest.STATUS_PENDING:
+            # Construct verification URL (adjust base URL as needed)
+            verify_url = f"/verify-email/{obj.token}"
+            return format_html(
+                '<a href="{}" target="_blank" style="color:#3498db; text-decoration:none;" '
+                'title="Open verification link in new tab">🔗 Open</a>',
+                verify_url,
+            )
+        return format_html('<span style="color:#95a5a6;">—</span>')
+
+    @admin.display(description="Full Verification Link")
+    def full_verification_link(self, obj):
+        """Display the full verification link for copying."""
+        if obj.token:
+            verify_url = f"/verify-email/{obj.token}"
+            return format_html(
+                '<div style="background:#f8f9fa; padding:10px; border-radius:4px; margin:5px 0;">'
+                "<strong>Token:</strong><br>"
+                '<code style="word-break:break-all; font-size:12px;">{}</code>'
+                "<br><br>"
+                "<strong>Verification URL:</strong><br>"
+                '<code style="word-break:break-all; font-size:12px;">{}</code>'
+                "<br><br>"
+                '<a href="{}" target="_blank" style="display:inline-block; background:#3498db; color:#fff; '
+                'padding:8px 16px; border-radius:4px; text-decoration:none; margin-top:5px;">Open Verification Link</a>'
+                "</div>",
+                obj.token,
+                verify_url,
+                verify_url,
+            )
+        elif obj.code:
+            return format_html(
+                '<div style="background:#f8f9fa; padding:10px; border-radius:4px;">'
+                "<strong>Verification Code:</strong><br>"
+                '<code style="font-size:18px; font-weight:bold; letter-spacing:2px;">{}</code>'
+                "</div>",
+                obj.code,
+            )
+        return "No verification credentials available."

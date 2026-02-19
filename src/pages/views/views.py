@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -6,11 +7,13 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import FormSubmission, HomePage, Page, UniformForm
+from ..models import FooterContent, FormSubmission, HomePage, Menu, Page, UniformForm
 from ..serializers import (
+    FooterContentSerializer,
     FormSubmissionCreateSerializer,
     FormSubmissionListSerializer,
     HomePageSerializer,
+    MenuSerializer,
     PageSerializer,
     UniformFormSerializer,
 )
@@ -24,34 +27,57 @@ class PreviewPopupView(TemplateView):
     template_name = "pages/preview_popup.html"
 
 
+class ComponentPreviewView(TemplateView):
+    """
+    Render the component preview page for live editing PageComponents.
+    """
+
+    template_name = "pages/component_preview.html"
+
+
 class HomePageAPIView(APIView):
     """
-    Retrieve the currently active home page.
+    Retrieve the currently active home page with caching.
+    Cache timeout: 5 minutes (300 seconds)
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        # Try to get from cache
+        cache_key = "homepage:active"
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return Response(cached_data)
+
+        # Cache miss - fetch from database
         home_page = HomePage.get_active()
         if not home_page:
             return Response(
                 {"detail": "No active home page found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
         serializer = HomePageSerializer(home_page)
-        return Response(serializer.data)
+        data = serializer.data
+
+        # Cache for 5 minutes
+        cache.set(cache_key, data, timeout=300)
+
+        return Response(data)
 
 
 class PageListAPIView(ListAPIView):
     """
-    List all pages (for menu editor dropdown).
+    List published pages (for menu editor dropdown and public listing).
     """
 
     serializer_class = PageSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Page.objects.all().order_by("title")
+        return Page.objects.filter(status="published").order_by("title")
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -62,14 +88,41 @@ class PageListAPIView(ListAPIView):
 
 class PageRetrieveAPIView(RetrieveAPIView):
     """
-    Retrieve a page by slug.
+    Retrieve a published page by slug, with caching.
+    Cache timeout: 5 minutes (300 seconds)
     """
 
-    queryset = Page.objects.all()
     serializer_class = PageSerializer
     lookup_field = "slug"
     lookup_url_kwarg = "slug"
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Page.objects.filter(status="published")
+
+    def retrieve(self, request, *args, **kwargs):
+        slug = self.kwargs.get("slug")
+        cache_key = f"page:slug:{slug}"
+
+        # Try to get from cache
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        # Cache miss - fetch from database
+        page = Page.get_published_by_slug(slug)
+        if page is None:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("Page not found.")
+
+        serializer = self.get_serializer(page)
+        data = serializer.data
+
+        # Cache for 5 minutes
+        cache.set(cache_key, data, timeout=300)
+
+        return Response(data)
 
 
 class UniformFormRetrieveAPIView(RetrieveAPIView):
@@ -135,3 +188,39 @@ class FormSubmissionListAPIView(ListAPIView):
     def get_queryset(self):
         form_slug = self.kwargs["form_slug"]
         return FormSubmission.objects.filter(form__slug=form_slug)
+
+
+class LayoutAPIView(APIView):
+    """
+    Unified endpoint for layout data (menus and footer) with caching.
+    Cache timeout: 10 minutes (600 seconds) - layout changes infrequently
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        cache_key = "layout:data"
+
+        # Try to get from cache
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        # Cache miss - fetch from database
+        # 1. Get menus
+        menus = Menu.objects.all().order_by("display_name")
+        menu_serializer = MenuSerializer(menus, many=True)
+
+        # 2. Get active footer
+        footer = FooterContent.get_active()
+        footer_data = None
+        if footer:
+            footer_serializer = FooterContentSerializer(footer)
+            footer_data = footer_serializer.data
+
+        data = {"menus": menu_serializer.data, "footer": footer_data}
+
+        # Cache for 10 minutes (layout changes infrequently)
+        cache.set(cache_key, data, timeout=600)
+
+        return Response(data)

@@ -1,0 +1,113 @@
+{% extends "events/membership/base.html" %}
+
+{% block title %}Phone Verification | Innovate to Grow{% endblock %}
+
+{% block content %}
+<section class="membership-card">
+  <h1 class="membership-title">Verify Your Phone Number</h1>
+  <p class="membership-subtitle">Enter the 6-digit OTP code to complete event registration.</p>
+  <hr class="membership-divider">
+
+  <div id="otp-error" class="alert alert-error hidden"></div>
+  <div id="otp-success" class="alert alert-success hidden">Phone verification completed.</div>
+
+  <form id="otp-form" class="membership-form">
+    <input type="hidden" id="otp_token" value="{{ token }}">
+    <input type="hidden" id="otp_event_slug" value="{{ event_slug }}">
+    <div class="membership-field">
+      <label for="otp_code">Verification Code</label>
+      <input
+        class="membership-input"
+        id="otp_code"
+        name="otp_code"
+        type="text"
+        minlength="4"
+        maxlength="12"
+        required
+        placeholder="123456"
+        autocomplete="one-time-code"
+      >
+    </div>
+    <div class="membership-actions">
+      <button id="otp-submit" class="btn-primary" type="submit">Verify OTP</button>
+      <a class="btn-secondary" href="/membership/events{% if event_slug %}/{{ event_slug }}{% endif %}">Back</a>
+    </div>
+  </form>
+</section>
+
+<script>
+  (function () {
+    const tokenNode = document.getElementById("otp_token");
+    const eventSlugNode = document.getElementById("otp_event_slug");
+    const token = (tokenNode.value || "").trim();
+    const eventSlug = (eventSlugNode.value || "").trim();
+
+    const form = document.getElementById("otp-form");
+    const submitBtn = document.getElementById("otp-submit");
+    const errorBox = document.getElementById("otp-error");
+    const successBox = document.getElementById("otp-success");
+
+    function showError(message) {
+      errorBox.textContent = message || "OTP verification failed.";
+      errorBox.classList.remove("hidden");
+    }
+
+    function clearMessages() {
+      errorBox.classList.add("hidden");
+      successBox.classList.add("hidden");
+    }
+
+    if (!token) {
+      showError("Missing registration token. Re-open the OTP page from your registration link.");
+      submitBtn.disabled = true;
+      return;
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearMessages();
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Verifying...";
+
+      const code = (document.getElementById("otp_code").value || "").trim();
+      if (!code) {
+        showError("Verification code is required.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Verify OTP";
+        return;
+      }
+
+      try {
+        const response = await fetch("/events/registration/verify-otp/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            code,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showError(data.error || "OTP verification failed.");
+          return;
+        }
+
+        successBox.classList.remove("hidden");
+        successBox.textContent = "Phone verification completed.";
+
+        setTimeout(function () {
+          const target = eventSlug ? ("/membership/events/" + encodeURIComponent(eventSlug)) : "/membership/events";
+          window.location.href = target;
+        }, 1200);
+      } catch (err) {
+        showError("Network error while verifying OTP.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Verify OTP";
+      }
+    });
+  })();
+</script>
+{% endblock %}

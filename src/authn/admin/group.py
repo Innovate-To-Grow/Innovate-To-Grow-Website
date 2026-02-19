@@ -3,12 +3,13 @@ I2G Member Group admin configuration.
 """
 
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from ..models import I2GMemberGroup
 
 
 @admin.register(I2GMemberGroup)
-class I2GMemberGroupAdmin(admin.ModelAdmin):
+class I2GMemberGroupAdmin(ModelAdmin):
     """Admin for I2GMemberGroup (proxy for Django Group)."""
 
     list_display = ("name", "is_default_group_display", "get_members_count_display")

@@ -1,10 +1,10 @@
 from django.db import models
 
 from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class ContactEmail(TimeStampedModel):
+class ContactEmail(ProjectControlModel):
     # contact email
     email_address = models.EmailField(unique=True, help_text="Email address for contact", verbose_name="Email Address")
 
@@ -59,7 +59,7 @@ class ContactEmail(TimeStampedModel):
         return str_contact_email
 
 
-class ContactPhone(TimeStampedModel):
+class ContactPhone(ProjectControlModel):
     # contact phone number
     phone_number = models.CharField(max_length=20, unique=True, help_text="Contact Phone Number (e.g. +1234567890)")
 
@@ -70,6 +70,11 @@ class ContactPhone(TimeStampedModel):
     subscribe = models.BooleanField(
         default=False, help_text="Whether the phone number is subscribed to communications", verbose_name="Subscribed"
     )
+    verified = models.BooleanField(
+        default=False,
+        help_text="Whether the phone number has been verified",
+        verbose_name="Verified",
+    )
 
     class Meta:
         verbose_name = "Contact Phone"
@@ -79,6 +84,7 @@ class ContactPhone(TimeStampedModel):
             models.Index(fields=["phone_number"]),
             models.Index(fields=["region"]),
             models.Index(fields=["subscribe"]),
+            models.Index(fields=["verified"]),
         ]
 
     def __str__(self):
@@ -89,6 +95,8 @@ class ContactPhone(TimeStampedModel):
         # append subscribe info to string
         if self.subscribe:
             str_contact_phone += " - Subscribed"
+        if self.verified:
+            str_contact_phone += " - Verified"
 
         return str_contact_phone
 
@@ -111,7 +119,7 @@ class ContactPhone(TimeStampedModel):
         return region_dict.get(self.region, self.region)
 
 
-class MemberContactInfo(TimeStampedModel):
+class MemberContactInfo(ProjectControlModel):
     # foreign key link to user
     model_user = models.ForeignKey(
         "authn.Member",

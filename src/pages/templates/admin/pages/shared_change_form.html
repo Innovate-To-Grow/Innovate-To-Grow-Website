@@ -1,0 +1,138 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+<!-- CodeMirror 5 for inline HTML/JSON editing -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<link rel="stylesheet" href="{% static 'pages/css/admin-unified.css' %}">
+<script src="{% static 'pages/js/page-live-preview.js' %}"></script>
+{% endblock %}
+
+{% block object-tools-items %}
+{{ block.super }}
+<li class="border border-base-200 max-lg:-mt-px max-lg:first:rounded-t-default max-lg:last:rounded-b-default min-lg:-ml-px min-lg:first:rounded-l-default min-lg:last:rounded-r-default">
+    <a href="#" id="popup-preview-btn" class="popup-preview-link cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
+        <span class="material-symbols-outlined">open_in_new</span>
+        Open Live Preview
+    </a>
+</li>
+{% endblock %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if original %}
+<!-- Publishing Workflow Panel -->
+<div class="workflow-panel">
+    <div class="workflow-panel-header" style="background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+        Publishing Workflow
+    </div>
+    <div class="workflow-panel-body">
+        <!-- Current Status -->
+        <div style="margin-bottom: 12px;">
+            <span style="color: #666; font-size: 13px;">Current status:</span>
+            <span class="status-indicator status-{{ original.status }}">
+                {{ original.get_status_display }}
+            </span>
+        </div>
+
+        <!-- Flow Diagram -->
+        <div class="workflow-flow">
+            <span class="workflow-step {% if original.status == 'draft' %}active status-draft{% else %}inactive{% endif %}">
+                Draft
+            </span>
+            <span class="workflow-step {% if original.status == 'review' %}active status-review{% else %}inactive{% endif %}">
+                Pending Publish
+            </span>
+            <span class="workflow-step {% if original.status == 'published' %}active status-published{% else %}inactive{% endif %}">
+                Published
+            </span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="workflow-actions">
+            {% if original.status == "draft" %}
+                <button type="submit" name="_submit_for_review" class="workflow-btn btn-review">
+                    Submit for Review
+                </button>
+                <button type="submit" name="_publish" class="workflow-btn btn-publish"
+                        onclick="return confirm('Publish this item directly without review?');">
+                    Publish Directly
+                </button>
+            {% endif %}
+
+            {% if original.status == "review" %}
+                <button type="submit" name="_publish" class="workflow-btn btn-publish">
+                    Approve &amp; Publish
+                </button>
+                <button type="submit" name="_reject_review" class="workflow-btn btn-reject"
+                        onclick="return confirm('Reject this review and send back to draft?');">
+                    Reject (Back to Draft)
+                </button>
+            {% endif %}
+
+            {% if original.status == "published" %}
+                <button type="submit" name="_unpublish" class="workflow-btn btn-unpublish"
+                        onclick="return confirm('Unpublish this item? It will no longer be visible to the public.');">
+                    Unpublish
+                </button>
+            {% endif %}
+        </div>
+
+        <!-- Publishing Info -->
+        {% if original.published_at %}
+        <div style="margin-top: 12px; font-size: 12px; color: #888;">
+            First published: {{ original.published_at }}
+            {% if original.published_by %} by {{ original.published_by }}{% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Version History Panel -->
+<div class="version-panel">
+    <div class="version-panel-header">
+        Version History
+    </div>
+    {% if versions %}
+    <table class="version-table">
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Comment</th>
+                <th>By</th>
+                <th>Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for v in versions %}
+            <tr>
+                <td><strong>v{{ v.version_number }}</strong></td>
+                <td class="version-comment">{{ v.comment|default:"—" }}</td>
+                <td>{{ v.created_by|default:"System" }}</td>
+                <td>{{ v.created_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <button type="submit" name="_rollback" value="{{ v.version_number }}"
+                            class="btn-rollback"
+                            onclick="return confirm('Rollback to version {{ v.version_number }}? Current state will be saved first.');">
+                        Rollback
+                    </button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-versions">
+        No versions saved yet. Versions are created when you save changes or perform workflow actions.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

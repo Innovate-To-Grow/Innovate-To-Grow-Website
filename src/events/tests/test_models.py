@@ -575,4 +575,4 @@ class HierarchyTest(TestCase):
         self.assertIn(track, program.tracks.all())
         self.assertIn(presentation, track.presentations.all())
         self.assertIn(winner, self.event.track_winners.all())
-        self.assertIn(award, self.event.special_awards.all())
+        self.assertIn(award, self.event.special_award_winners.all())

@@ -1,11 +1,12 @@
 from django.contrib import admin
 from django.utils import timezone
+from unfold.admin import ModelAdmin
 
 from ..models import FormSubmission, UniformForm
 
 
 @admin.register(UniformForm)
-class UniformFormAdmin(admin.ModelAdmin):
+class UniformFormAdmin(ModelAdmin):
     """Admin interface for managing form definitions."""
 
     list_display = ("name", "slug", "is_active", "published", "submission_count", "updated_at")
@@ -39,7 +40,7 @@ class UniformFormAdmin(admin.ModelAdmin):
 
 
 @admin.register(FormSubmission)
-class FormSubmissionAdmin(admin.ModelAdmin):
+class FormSubmissionAdmin(ModelAdmin):
     """Admin interface for viewing and managing form submissions."""
 
     list_display = ("get_form_name", "get_user_display", "status", "created_at", "notification_sent")

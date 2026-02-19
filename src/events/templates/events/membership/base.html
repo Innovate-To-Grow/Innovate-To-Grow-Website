@@ -1,0 +1,28 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Innovate to Grow Membership{% endblock %}</title>
+  <link rel="shortcut icon" href="{% static 'images/i2glogo.png' %}" type="image/vnd.microsoft.icon">
+  <link rel="stylesheet" href="{% static 'events/css/membership.css' %}">
+</head>
+<body>
+  <header class="membership-header">
+    <div class="header-inner">
+      <a class="brand-link" href="/">
+        <img class="brand-logo" src="{% static 'images/i2glogo.png' %}" alt="I2G logo">
+        <div class="brand-text">
+          <div class="brand-title">Innovate to Grow</div>
+          <div class="brand-subtitle">UC Merced</div>
+        </div>
+      </a>
+    </div>
+  </header>
+
+  <main class="membership-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

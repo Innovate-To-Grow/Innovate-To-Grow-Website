@@ -7,22 +7,26 @@ body field or external URL flag.
 
 import uuid
 
+from django.core.cache import cache
 from django.db import models
 
-from core.models.base import AuthoredModel, SoftDeleteModel, TimeStampedModel
+from core.models import AuthoredModel, ProjectControlModel
 
-from .mixins import AnalyticsFieldsMixin, PublishingFieldsMixin, SEOFieldsMixin
+from .mixins import AnalyticsFieldsMixin, ComponentPageMixin, SEOFieldsMixin, WorkflowPublishingMixin
 from .validators import validate_nested_slug
+
+# ============================== Cache Configuration ==============================
+
+PAGE_CACHE_KEY_PREFIX = "pages.page"
+PAGE_CACHE_TIMEOUT = 300  # 5 minutes
 
 # ============================== Page Model ==============================
 
 
-class Page(
-    SEOFieldsMixin, AnalyticsFieldsMixin, PublishingFieldsMixin, SoftDeleteModel, AuthoredModel, TimeStampedModel
-):
+class Page(SEOFieldsMixin, AnalyticsFieldsMixin, ComponentPageMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
     """Content page model composed of ordered PageComponents."""
 
-    # Technical identifier (not primary key, just an extra UUID)
+    # Technical identifier
     page_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     # ------------------------------ Basic Fields ------------------------------
@@ -36,11 +40,18 @@ class Page(
             "User-defined slug. Supports nested paths, e.g. 'about/team'. Do NOT include leading or trailing '/'."
         ),
     )
+
+    class Meta:
+        ordering = ["slug"]
+        verbose_name = "Page"
+        verbose_name_plural = "Pages"
+
     # -------------------------- Utility Methods ----------------------------
 
     def save(self, *args, **kwargs):
         """
-        Override save to automatically maintain some redundant fields.
+        Override save to automatically maintain some redundant fields
+        and invalidate cache.
         """
         # Keep slug_depth updated from slug (number of '/' characters)
         self.slug_depth = self.slug.count("/")
@@ -51,17 +62,40 @@ class Page(
 
         super().save(*args, **kwargs)
 
+        # Invalidate cache
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.slug.{self.slug}")
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.list")
+
+    def delete(self, *args, **kwargs):
+        """Override delete to invalidate cache."""
+        slug = self.slug
+        super().delete(*args, **kwargs)
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.slug.{slug}")
+        cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.list")
+
     def get_absolute_url(self):
         """
         Return the absolute URL path for this page.
-        Returns a frontend-friendly path for Vue Router.
+        Returns a frontend-friendly path for the React Router.
         """
         return f"/pages/{self.slug}"
 
-    @property
-    def ordered_components(self):
-        """Return components ordered for rendering."""
-        return self.components.order_by("order", "id")
+    @classmethod
+    def get_published_by_slug(cls, slug):
+        """
+        Retrieve a published page by slug, with caching.
+
+        Returns the Page instance if found and published, otherwise None.
+        """
+        cache_key = f"{PAGE_CACHE_KEY_PREFIX}.slug.{slug}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        page = cls.objects.filter(slug=slug, status="published").first()
+        if page:
+            cache.set(cache_key, page, PAGE_CACHE_TIMEOUT)
+        return page
 
     @property
     def effective_meta_title(self) -> str:
@@ -72,8 +106,3 @@ class Page(
 
     def __str__(self) -> str:
         return f"{self.slug} - {self.title}"
-
-    class Meta:
-        ordering = ["slug"]
-        verbose_name = "Page"
-        verbose_name_plural = "Pages"

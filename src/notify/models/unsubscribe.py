@@ -6,7 +6,7 @@ import uuid
 
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 from .verification import VerificationRequest
 
@@ -19,7 +19,7 @@ def default_metadata() -> dict:
     return {}
 
 
-class Unsubscribe(TimeStampedModel):
+class Unsubscribe(ProjectControlModel):
     """
     Stores unsubscribe requests for email/SMS channels.
     """

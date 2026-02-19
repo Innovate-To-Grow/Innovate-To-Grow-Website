@@ -1,10 +1,7 @@
 name: Code Style Check
 
 on:
-  push:
-    branches: [main, master, develop]
-  pull_request:
-    branches: [main, master, develop]
+  workflow_call:
 
 jobs:
   # Python (Django Backend) Linting
@@ -62,4 +59,3 @@ jobs:
 
       - name: Run TypeScript type check
         run: npx tsc --noEmit
-

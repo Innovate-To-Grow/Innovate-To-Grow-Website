@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 from django.db.models import F
 
-from core.models.base import AuthoredModel, SoftDeleteModel, TimeStampedModel
+from core.models import AuthoredModel, ProjectControlModel
 
 
 def default_form_fields():
@@ -16,7 +16,7 @@ def default_form_fields():
     return []
 
 
-class UniformForm(TimeStampedModel, SoftDeleteModel, AuthoredModel):
+class UniformForm(AuthoredModel, ProjectControlModel):
     """
     Dynamic form builder model that stores form definitions as JSON.
 

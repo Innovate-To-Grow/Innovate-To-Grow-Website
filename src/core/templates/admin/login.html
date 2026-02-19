@@ -1,0 +1,106 @@
+{% extends 'unfold/layouts/unauthenticated.html' %}
+
+{% load i18n static unfold %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {{ form.media }}
+    <style>
+        .login-box {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .dark .login-box {
+            background-color: #1f2937;
+            border-color: #374151;
+        }
+        .login-logo {
+            width: 56px;
+            height: auto;
+            display: block;
+        }
+        .login-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .login-title-wrap .login-subtitle {
+            display: block;
+            color: #1f2937;
+            font-size: 1.125rem;
+            line-height: 1.2;
+            margin-bottom: 0.15rem;
+        }
+        .login-title-wrap .login-title {
+            display: block;
+            color: #9333ea;
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .dark .login-title-wrap .login-subtitle {
+            color: #f3f4f6;
+        }
+        .dark .login-title-wrap .login-title {
+            color: #a855f7;
+        }
+    </style>
+{% endblock %}
+
+{% block title %}
+    {{ title }} | {{ site_title }}
+{% endblock %}
+
+{% block content %}
+    <div class="login-box">
+        <div class="login-header">
+            <div class="login-title-wrap">
+                <span class="login-subtitle">{% translate "Welcome back to" %}</span>
+                <span class="login-title">{{ site_title|default:_('Django site admin') }}</span>
+            </div>
+            <img src="{% static 'images/i2glogo.png' %}" alt="Innovate To Grow" class="login-logo">
+        </div>
+
+        {% include "unfold/helpers/messages.html" %}
+
+        {% if form.errors or form.non_field_errors %}
+            <div class="flex flex-col gap-4 mb-8 *:mb-0">
+                {% include "unfold/helpers/messages/errornote.html" with errors=form.errors %}
+
+                {% include "unfold/helpers/messages/error.html" with errors=form.non_field_errors %}
+
+                {% if user.is_authenticated %}
+                    {% blocktranslate trimmed asvar message %}
+                        You are authenticated as {{ username }}, but are not authorized to
+                        access this page. Would you like to login to a different account?
+                    {% endblocktranslate %}
+
+                    {% include "unfold/helpers/messages/error.html" with error=message %}
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% block login_before %}{% endblock %}
+
+        <form action="{{ app_path }}" method="post" id="login-form">
+            {% csrf_token %}
+
+            {% include "unfold/helpers/field.html" with field=form.username %}
+
+            {% include "unfold/helpers/field.html" with field=form.password %}
+
+            <div class="flex flex-col gap-3 mt-6">
+                {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                    {% translate 'Log in' %}
+                {% endcomponent %}
+            </div>
+        </form>
+
+        {% block login_after %}{% endblock %}
+    </div>
+{% endblock %}

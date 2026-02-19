@@ -23,8 +23,15 @@ export const useLayout = () => useContext(LayoutContext);
 
 export const useMenu = (): { menu: Menu | null; state: LayoutLoadState; error: string | null } => {
   const { menus, state, error } = useLayout();
+
+  // Prioritize 'main-nav' or 'main_nav', then fall back to 'main', then first available
+  const menu = menus.find(m => m.name === 'main-nav') ||
+               menus.find(m => m.name === 'main_nav') ||
+               menus.find(m => m.name === 'main') ||
+               (menus.length > 0 ? menus[0] : null);
+
   return {
-    menu: menus.length > 0 ? menus[0] : null,
+    menu,
     state,
     error,
   };

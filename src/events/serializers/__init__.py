@@ -2,36 +2,56 @@
 Events app serializers export.
 """
 
-from .serializers import (
-    BasicInfoSerializer,
+from .export import EventSheetExportSerializer
+from .read import (
     EventReadSerializer,
-    EventSyncSerializer,
-    ExpoRowSerializer,
     PresentationSerializer,
-    PresentationSyncSerializer,
     ProgramSerializer,
-    ProgramSyncSerializer,
-    ReceptionRowSerializer,
     SpecialAwardSerializer,
     TrackSerializer,
-    TrackSyncSerializer,
     TrackWinnerSerializer,
+)
+from .registration import (
+    EventRegistrationAnswerInputSerializer,
+    EventRegistrationRequestLinkSerializer,
+    EventRegistrationSubmitSerializer,
+    EventRegistrationVerifyOTPSerializer,
+)
+from .sync import (
+    BasicInfoSerializer,
+    EventSyncSerializer,
+    ExpoRowSerializer,
+    PresentationSyncSerializer,
+    ProgramSyncSerializer,
+    ReceptionRowSerializer,
+    SpecialAwardSyncSerializer,
+    TrackSyncSerializer,
+    TrackWinnerSyncSerializer,
     WinnersSerializer,
 )
 
 __all__ = [
+    # Read serializers
     "PresentationSerializer",
     "TrackSerializer",
     "ProgramSerializer",
     "TrackWinnerSerializer",
     "SpecialAwardSerializer",
     "EventReadSerializer",
-    "EventSyncSerializer",
+    "EventSheetExportSerializer",
+    "EventRegistrationRequestLinkSerializer",
+    "EventRegistrationSubmitSerializer",
+    "EventRegistrationVerifyOTPSerializer",
+    "EventRegistrationAnswerInputSerializer",
+    # Sync serializers
     "PresentationSyncSerializer",
     "TrackSyncSerializer",
     "ProgramSyncSerializer",
+    "TrackWinnerSyncSerializer",
+    "SpecialAwardSyncSerializer",
     "ExpoRowSerializer",
     "ReceptionRowSerializer",
     "BasicInfoSerializer",
     "WinnersSerializer",
+    "EventSyncSerializer",
 ]

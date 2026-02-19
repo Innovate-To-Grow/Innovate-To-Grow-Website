@@ -6,10 +6,10 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from django.db import models
 from django.utils import timezone
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 
-class RSAKeypair(TimeStampedModel):
+class RSAKeypair(ProjectControlModel):
     """
     Stores an RSA keypair for the site (PEM formatted).
     """

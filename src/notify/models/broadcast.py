@@ -4,12 +4,12 @@ Broadcast message model for pushing notifications to subscribers.
 
 from django.db import models
 
-from core.models.base import AuthoredModel, TimeStampedModel
+from core.models import AuthoredModel, ProjectControlModel
 
 from .verification import VerificationRequest
 
 
-class BroadcastMessage(TimeStampedModel, AuthoredModel):
+class BroadcastMessage(ProjectControlModel, AuthoredModel):
     """
     Stores email/SMS campaign content that can be sent to subscribed contacts.
     """

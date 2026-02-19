@@ -1,12 +1,13 @@
 from django.contrib import admin, messages
 from django.utils.translation import gettext_lazy as _
+from unfold.admin import ModelAdmin
 
 from ..models import BroadcastMessage
 from ..services import send_broadcast_message
 
 
 @admin.register(BroadcastMessage)
-class BroadcastMessageAdmin(admin.ModelAdmin):
+class BroadcastMessageAdmin(ModelAdmin):
     list_display = (
         "name",
         "channel",

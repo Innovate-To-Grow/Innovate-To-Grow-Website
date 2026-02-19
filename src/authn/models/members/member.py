@@ -1,26 +1,27 @@
-import uuid
-
 from django.contrib.auth.models import (
     AbstractUser,
     Group,
 )
 from django.db import models
 
-from core.models.base import TimeStampedModel
+from core.models import ProjectControlModel
 
 from ..contact.contact_info import MemberContactInfo
 from .user_group import MemberGroup
 
 
-class Member(AbstractUser, TimeStampedModel):
-    # member uuid
-    member_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, help_text="Member UUID")
+class Member(AbstractUser, ProjectControlModel):
 
     # add field for user models
     middle_name = models.CharField(max_length=255, null=True, blank=True, help_text="Middle Name")
 
+    @property
+    def member_uuid(self):
+        """Return the member's UUID (alias for id from ProjectControlModel)."""
+        return self.id
+
     # member account
-    contect_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)
+    account_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)
 
     # organization
     organization = models.CharField(
@@ -107,19 +108,28 @@ class Member(AbstractUser, TimeStampedModel):
         return contact_info
 
 
-class MemberProfile(TimeStampedModel):
+class MemberProfile(ProjectControlModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 
     # user display name
     display_name = models.TextField(null=True, blank=True, help_text=("User Display Name"), verbose_name="Display Name")
 
-    # user profile image (base64 encoded png 128*128)
+    # user profile image (base64 encoded png 128*128) — legacy, prefer avatar
     profile_image = models.TextField(
         null=True,
         blank=True,
         help_text=("User Profile Image, Base64 Encoded PNG 128*128"),
         verbose_name="Profile Image (Base64 Encoded PNG)",
+    )
+
+    # avatar image upload
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        null=True,
+        blank=True,
+        help_text="Upload a profile picture.",
+        verbose_name="Avatar",
     )
 
     def __str__(self):

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { fetchPageContent, type PageContent as PageContentType } from '../../services/api';
+import { ComponentListRenderer } from './ComponentRenderer';
 import './PageContent.css';
 
 type PageRouteParams = {
@@ -96,16 +97,19 @@ export const PageContent = () => {
   return (
     <div className="page-content-container">
       <div className="page-content">
-        <h1>{page.title}</h1>
-        
-        {/* Regular Page: Render HTML content */}
-        {page.page_type === 'page' && page.page_body && (
-          <div 
-            className="page-body" 
-            dangerouslySetInnerHTML={{ __html: page.page_body }} 
+        {/* Render PageComponents if available */}
+        {page.components && page.components.length > 0 && (
+          <ComponentListRenderer components={page.components} />
+        )}
+
+        {/* Fallback: Render legacy HTML content if no components */}
+        {(!page.components || page.components.length === 0) && page.page_type === 'page' && page.page_body && (
+          <div
+            className="page-body"
+            dangerouslySetInnerHTML={{ __html: page.page_body }}
           />
         )}
-        
+
         {/* External URL: Show redirect message */}
         {page.page_type === 'external' && (
           <div className="external-redirect">

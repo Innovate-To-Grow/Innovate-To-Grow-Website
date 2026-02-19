@@ -387,7 +387,7 @@ class EventSyncAPIViewTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertEqual(event.track_winners.count(), 1)
-        self.assertEqual(event.special_awards.count(), 1)
+        self.assertEqual(event.special_award_winners.count(), 1)
 
     @override_settings(EVENTS_API_KEY="test-api-key-123")
     def test_processes_multiple_sections_together(self):

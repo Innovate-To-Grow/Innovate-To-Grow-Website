@@ -1,9 +1,9 @@
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
-from core.models.base import TimeStampedModel
 
-
-class SEOFieldsMixin(TimeStampedModel):
+class SEOFieldsMixin(models.Model):
     """Reusable SEO and Open Graph fields."""
 
     meta_title = models.CharField(
@@ -35,7 +35,7 @@ class SEOFieldsMixin(TimeStampedModel):
         abstract = True
 
 
-class AnalyticsFieldsMixin(TimeStampedModel):
+class AnalyticsFieldsMixin(models.Model):
     """Reusable analytics and rendering metadata."""
 
     slug_depth = models.PositiveIntegerField(
@@ -53,10 +53,129 @@ class AnalyticsFieldsMixin(TimeStampedModel):
         abstract = True
 
 
-class PublishingFieldsMixin(TimeStampedModel):
-    """Common publishing flags and timestamps."""
+class WorkflowPublishingMixin(models.Model):
+    """
+    Publishing workflow: Draft -> Review -> Published.
 
-    published = models.BooleanField(default=False, help_text="Whether this page is visible to the public.")
+    Provides status field, workflow transition methods, and audit fields.
+    Integrates with ProjectControlModel's versioning system.
+    """
+
+    class PublishStatus(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        REVIEW = "review", "Pending Publish"
+        PUBLISHED = "published", "Published"
+
+    status = models.CharField(
+        max_length=20,
+        choices=PublishStatus.choices,
+        default=PublishStatus.DRAFT,
+        db_index=True,
+        help_text="Publishing workflow status.",
+    )
+
+    published_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the page was first published.",
+    )
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(app_label)s_%(class)s_published",
+        help_text="User who published this content.",
+    )
+
+    submitted_for_review_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when submitted for review.",
+    )
+    submitted_for_review_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(app_label)s_%(class)s_submitted_review",
+        help_text="User who submitted for review.",
+    )
 
     class Meta:
         abstract = True
+
+    # Backward compatibility: computed property
+    @property
+    def published(self):
+        """Backward-compatible boolean check."""
+        return self.status == self.PublishStatus.PUBLISHED
+
+    # ========================
+    # Workflow Transitions
+    # ========================
+
+    def submit_for_review(self, user=None):
+        """Transition from Draft to Review."""
+        if self.status != self.PublishStatus.DRAFT:
+            raise ValueError(f"Cannot submit for review: current status is '{self.get_status_display()}'.")
+        self.status = self.PublishStatus.REVIEW
+        self.submitted_for_review_at = timezone.now()
+        self.submitted_for_review_by = user
+        self.save(
+            update_fields=["status", "submitted_for_review_at", "submitted_for_review_by", "updated_at"]
+        )
+        # Save version for audit trail
+        if hasattr(self, "save_version"):
+            self.save_version(comment="Submitted for review", user=user)
+
+    def publish(self, user=None):
+        """Transition from Review (or Draft) to Published."""
+        if self.status not in (self.PublishStatus.REVIEW, self.PublishStatus.DRAFT):
+            raise ValueError(f"Cannot publish: current status is '{self.get_status_display()}'.")
+        self.status = self.PublishStatus.PUBLISHED
+        if not self.published_at:
+            self.published_at = timezone.now()
+        self.published_by = user
+        self.save(
+            update_fields=["status", "published_at", "published_by", "updated_at"]
+        )
+        if hasattr(self, "save_version"):
+            self.save_version(comment="Published", user=user)
+
+    def unpublish(self, user=None):
+        """Revert to Draft from any state."""
+        self.status = self.PublishStatus.DRAFT
+        self.save(update_fields=["status", "updated_at"])
+        if hasattr(self, "save_version"):
+            self.save_version(comment="Unpublished (reverted to draft)", user=user)
+
+    def reject_review(self, user=None):
+        """Reject review and send back to Draft."""
+        if self.status != self.PublishStatus.REVIEW:
+            raise ValueError(f"Cannot reject: current status is '{self.get_status_display()}'.")
+        self.status = self.PublishStatus.DRAFT
+        self.save(update_fields=["status", "updated_at"])
+        if hasattr(self, "save_version"):
+            self.save_version(comment="Review rejected, reverted to draft", user=user)
+
+
+class ComponentPageMixin(models.Model):
+    """Shared component-ordering logic for Page and HomePage."""
+
+    class Meta:
+        abstract = True
+
+    @property
+    def ordered_components(self):
+        """Return enabled components ordered for rendering."""
+        return self.components.filter(is_enabled=True).order_by("order", "id")
+
+    @property
+    def all_components(self):
+        """Return all components (including disabled) ordered."""
+        return self.components.order_by("order", "id")
+
+
+# Backward-compatible alias
+PublishingFieldsMixin = WorkflowPublishingMixin

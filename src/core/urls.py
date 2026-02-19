@@ -20,7 +20,13 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from pages.views import PreviewPopupView
+from events.views import (
+    EventRegistrationStatusAPIView,
+    MembershipEventRegistrationPageView,
+    MembershipEventsPageView,
+    MembershipOTPPageView,
+)
+from pages.views import ComponentPreviewView, LayoutAPIView, PreviewPopupView
 
 from .views import HealthCheckView
 
@@ -34,22 +40,39 @@ urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health-check"),
     # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
+    # component preview popup for live editing
+    path("admin/component-preview/", ComponentPreviewView.as_view(), name="admin-component-preview"),
     # admin site
     path("admin/", admin.site.urls),
     # pages
     path("pages/", include("pages.urls")),
-    # layout (menus, footer)
-    path("layout/", include("layout.urls")),
+    # layout (menus, footer) - merged into pages app
+    path("layout/", LayoutAPIView.as_view(), name="layout-data"),
     # notify (verification + notifications)
     path("notify/", include("notify.urls")),
     # mobile id domain
-    path("api/mobileid/", include("mobileid.urls")),
+    path("mobileid/", include("mobileid.urls")),
     # events (proxy removes /api prefix)
     path("events/", include("events.urls")),
     # ckeditor 5
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn
     path("authn/", include("authn.urls")),
+    # legacy membership-compatible event registration routes
+    path("membership/events", MembershipEventsPageView.as_view(), name="membership-events"),
+    path("membership/events/<slug:event_slug>", MembershipEventsPageView.as_view(), name="membership-events-slug"),
+    path(
+        "membership/event-registration/<slug:event_slug>/<str:token>",
+        MembershipEventRegistrationPageView.as_view(),
+        name="membership-event-registration",
+    ),
+    path("membership/otp", MembershipOTPPageView.as_view(), name="membership-event-otp"),
+    path("membership/otp/<str:token>", MembershipOTPPageView.as_view(), name="membership-event-otp-token"),
+    path(
+        "membership/event-registration/status/<slug:event_slug>/<str:token>",
+        EventRegistrationStatusAPIView.as_view(),
+        name="membership-event-registration-status",
+    ),
 ]
 
 if settings.DEBUG:
