@@ -96,13 +96,10 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 28px;
+  color: var(--ucm-gold);
   animation: maintenance-gear-rotate 6s linear infinite;
-}
-
-.maintenance-gear svg {
-  width: 100%;
-  height: 100%;
+  margin-left: auto;
 }
 
 @keyframes maintenance-gear-rotate {

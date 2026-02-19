@@ -14,6 +14,9 @@ export const MaintenanceMode = () => {
                     alt="UC Merced" 
                     className="maintenance-ucm-logo"
                   />
+                  <div className="maintenance-gear">
+                    <i className="fa fa-cog" aria-hidden="true"></i>
+                  </div>
               </div>
             </div>
 
@@ -22,8 +25,8 @@ export const MaintenanceMode = () => {
                 <i className="fa fa-exclamation-triangle" aria-hidden="true"></i>
               </div>
               <div className="maintenance-alert-content">
-                <h3>Backend System Unavailable</h3>
-                <p>The backend system is currently temporarily down for scheduled maintenance. We apologize for the inconvenience and appreciate your patience.</p>
+                <h3>Amazon Web Services Unavailable</h3>
+                <p>The system is currently temporarily down for scheduled maintenance. We apologize for the inconvenience and appreciate your patience.</p>
               </div>
             </div>
 
