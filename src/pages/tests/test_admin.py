@@ -464,10 +464,31 @@ class CompactComponentInlineTest(TestCase):
     """Test CompactComponentInline configuration."""
 
     def test_inline_fields(self):
+        """Verify that inline fields include the hidden content fields for live preview."""
         self.assertEqual(
             CompactComponentInline.fields,
-            ("name", "component_type", "order", "is_enabled"),
+            (
+                "name",
+                "component_type",
+                "order",
+                "is_enabled",
+                "html_content",
+                "css_code",
+                "js_code",
+                "config",
+            ),
         )
+
+    def test_inline_hidden_widgets(self):
+        """Verify that content fields use HiddenInput widget."""
+        from django import forms
+        from django.db import models
+
+        overrides = CompactComponentInline.formfield_overrides
+        self.assertIn(models.TextField, overrides)
+        self.assertEqual(overrides[models.TextField]["widget"], forms.HiddenInput)
+        self.assertIn(models.JSONField, overrides)
+        self.assertEqual(overrides[models.JSONField]["widget"], forms.HiddenInput)
 
     def test_inline_extra_is_zero(self):
         self.assertEqual(CompactComponentInline.extra, 0)

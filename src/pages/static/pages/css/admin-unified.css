@@ -203,3 +203,11 @@
     border-right: 1px solid #eee;
     background: #f5f5f5;
 }
+
+/* Hide hidden field columns in CompactComponentInline */
+.field-html_content, .field-css_code, .field-js_code, .field-config {
+    display: none !important;
+}
+th.column-html_content, th.column-css_code, th.column-js_code, th.column-config {
+    display: none !important;
+}

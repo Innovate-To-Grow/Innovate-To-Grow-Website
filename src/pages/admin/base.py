@@ -1,4 +1,6 @@
+from django import forms
 from django.contrib import admin, messages
+from django.db import models
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from unfold.admin import TabularInline
@@ -11,9 +13,14 @@ class CompactComponentInline(TabularInline):
 
     model = PageComponent
     extra = 0
-    fields = ("name", "component_type", "order", "is_enabled")
+    fields = ("name", "component_type", "order", "is_enabled", "html_content", "css_code", "js_code", "config")
     ordering = ("order", "id")
     show_change_link = True
+    
+    formfield_overrides = {
+        models.TextField: {"widget": forms.HiddenInput},
+        models.JSONField: {"widget": forms.HiddenInput},
+    }
 
 
 class WorkflowAdminMixin:

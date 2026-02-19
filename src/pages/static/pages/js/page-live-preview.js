@@ -26,7 +26,7 @@
         if (rows.length === 0) {
             // This is a bit heuristic, looking for rows that contain component fields
             var allRows = document.querySelectorAll('.inline-related');
-            rows = Array.from(allRows).filter(row => row.querySelector('textarea[name$="-html_content"]'));
+            rows = Array.from(allRows).filter(row => row.querySelector('textarea[name$="-html_content"], input[name$="-html_content"]'));
         }
 
         rows.forEach(function(row) {
@@ -44,10 +44,10 @@
             var typeSelect = row.querySelector('select[name$="-component_type"]');
             var orderInput = row.querySelector('input[name$="-order"]');
             var enabledInput = row.querySelector('input[name$="-is_enabled"]');
-            var htmlInput = row.querySelector('textarea[name$="-html_content"]');
-            var cssInput = row.querySelector('textarea[name$="-css_code"]');
-            var jsInput = row.querySelector('textarea[name$="-js_code"]');
-            var configInput = row.querySelector('textarea[name$="-config"]');
+            var htmlInput = row.querySelector('textarea[name$="-html_content"], input[name$="-html_content"]');
+            var cssInput = row.querySelector('textarea[name$="-css_code"], input[name$="-css_code"]');
+            var jsInput = row.querySelector('textarea[name$="-js_code"], input[name$="-js_code"]');
+            var configInput = row.querySelector('textarea[name$="-config"], input[name$="-config"]');
 
             var component = {
                 id: 'preview-' + index,
@@ -117,16 +117,27 @@
 
     function updatePreviewFromForm() {
         var data = gatherFormData();
+        // Also build HTML for legacy preview if needed, but primarily we send data object
         var html = buildPreviewHtml(data);
-        updatePreview(html);
+        updatePreview(html, data);
     }
 
-    function updatePreview(content) {
+    function updatePreview(content, data) {
         if (!previewWindow || previewWindow.closed) return;
+        
+        // Send legacy HTML update
         previewWindow.postMessage({
             type: 'preview-update',
             content: content
         }, '*');
+
+        // Send raw data update for React frontend
+        if (data) {
+            previewWindow.postMessage({
+                type: 'preview-update-data',
+                components: JSON.parse(JSON.stringify(data.components))
+            }, '*');
+        }
     }
 
     function openPreviewPopup() {
@@ -141,8 +152,14 @@
             return;
         }
 
+        var previewUrl = '/preview';
+        // If we are on localhost:8000 (Django dev server), try to point to Vite dev server
+        if (window.location.hostname === 'localhost' && window.location.port === '8000') {
+            previewUrl = 'http://localhost:5173/preview';
+        }
+
         previewWindow = window.open(
-            '/admin/preview-popup/',
+            previewUrl,
             'pageLivePreview',
             'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes'
         );
