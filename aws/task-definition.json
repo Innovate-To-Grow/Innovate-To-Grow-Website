@@ -1,0 +1,81 @@
+{
+  "family": "itg-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::394167325273:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::394167325273:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "itg-backend",
+      "image": "394167325273.dkr.ecr.us-west-2.amazonaws.com/itg-backend:latest",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DJANGO_SETTINGS_MODULE",
+          "value": "core.settings.prod"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DJANGO_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DJANGO_SECRET_KEY"
+        },
+        {
+          "name": "DJANGO_ALLOWED_HOSTS",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DJANGO_ALLOWED_HOSTS"
+        },
+        {
+          "name": "DB_NAME",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_NAME"
+        },
+        {
+          "name": "DB_USER",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_USER"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_PASSWORD"
+        },
+        {
+          "name": "DB_HOST",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_HOST"
+        },
+        {
+          "name": "DB_PORT",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_PORT"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/REDIS_URL"
+        },
+        {
+          "name": "CSRF_TRUSTED_ORIGINS",
+          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/CSRF_TRUSTED_ORIGINS"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/itg-backend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')\""],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "essential": true
+    }
+  ]
+}

@@ -20,6 +20,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from authn.forms import EmailAdminAuthenticationForm
 from events.views import (
     EventRegistrationStatusAPIView,
     MembershipEventRegistrationPageView,
@@ -34,6 +35,7 @@ from .views import HealthCheckView
 admin.site.site_header = "Innovate To Grow Admin"
 admin.site.site_title = "I2G Admin"
 admin.site.index_title = "Welcome to I2G Admin"
+admin.site.login_form = EmailAdminAuthenticationForm
 
 urlpatterns = [
     # health check endpoint

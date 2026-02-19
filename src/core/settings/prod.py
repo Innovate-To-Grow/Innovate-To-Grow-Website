@@ -39,46 +39,50 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_SSL_REDIRECT = True
+# SSL termination is handled by ALB, so disable SSL redirect in Django
+SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "DENY"
 
-# Static files settings for production
+# CSRF trusted origins (set to your domain, e.g. https://api.innovatetogrow.com)
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if os.environ.get("CSRF_TRUSTED_ORIGINS") else []
+
+# AWS S3 Storage Configuration
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets")
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+AWS_DEFAULT_ACL = None
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
+}
+
+# Static files on S3 under /static/ prefix
+STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATIC_URL = "/static/"
 
-# Media files
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Media files on S3 under /media/ prefix
+MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
 
-# Cloud Storage Configuration (S3-compatible)
-# -------------------------------------------
-# Uncomment and configure for cloud storage (AWS S3, Cloudflare R2, etc.)
-#
-# STORAGES = {
-#     "default": {
-#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-#         "OPTIONS": {
-#             "bucket_name": os.environ.get("AWS_STORAGE_BUCKET_NAME", ""),
-#             "access_key": os.environ.get("AWS_ACCESS_KEY_ID", ""),
-#             "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-#             "region_name": os.environ.get("AWS_S3_REGION_NAME", "us-east-1"),
-#             # For Cloudflare R2:
-#             # "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL", ""),
-#             # Custom domain for CDN:
-#             # "custom_domain": os.environ.get("AWS_S3_CUSTOM_DOMAIN", ""),
-#         },
-#     },
-#     "staticfiles": {
-#         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-#     },
-# }
-#
-# # Update MEDIA_URL for cloud storage
-# AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "")
-# if AWS_S3_CUSTOM_DOMAIN:
-#     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name": AWS_STORAGE_BUCKET_NAME,
+            "region_name": AWS_S3_REGION_NAME,
+            "location": "media",
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+        "OPTIONS": {
+            "bucket_name": AWS_STORAGE_BUCKET_NAME,
+            "region_name": AWS_S3_REGION_NAME,
+            "location": "static",
+        },
+    },
+}
 
 # Email settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

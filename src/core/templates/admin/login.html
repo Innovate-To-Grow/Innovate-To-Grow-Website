@@ -49,6 +49,46 @@
         .dark .login-title-wrap .login-title {
             color: #a855f7;
         }
+        /* Restore input field styles */
+        .login-box #login-form input[type="text"],
+        .login-box #login-form input[type="email"],
+        .login-box #login-form input[type="password"] {
+            display: block;
+            width: 100%;
+            min-height: 38px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            color: #1f2937;
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .login-box #login-form input[type="text"]:focus,
+        .login-box #login-form input[type="email"]:focus,
+        .login-box #login-form input[type="password"]:focus {
+            outline: 2px solid #9333ea;
+            outline-offset: -2px;
+            border-color: #9333ea;
+        }
+        .login-box #login-form input::placeholder {
+            color: #9ca3af;
+        }
+        .dark .login-box #login-form input[type="text"],
+        .dark .login-box #login-form input[type="email"],
+        .dark .login-box #login-form input[type="password"] {
+            color: #f3f4f6;
+            background-color: #1f2937;
+            border-color: #374151;
+        }
+        .dark .login-box #login-form input::placeholder {
+            color: #6b7280;
+        }
+        .dark .login-box #login-form input:focus {
+            border-color: #a855f7;
+            outline-color: #a855f7;
+        }
     </style>
 {% endblock %}
 
