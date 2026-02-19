@@ -151,9 +151,7 @@ def issue_link(
 
     if channel == VerificationRequest.CHANNEL_EMAIL:
         email_context = dict(context or {})
-        email_context.update(
-            {"verification_link": link, "link": link, "expires_in_minutes": expires_in_minutes}
-        )
+        email_context.update({"verification_link": link, "link": link, "expires_in_minutes": expires_in_minutes})
         default_subject = "Verify your email"
         default_body = (
             "Hi {{ recipient_name }},\n\n"

@@ -92,9 +92,7 @@ class GoogleGmailAccount(AuthoredModel, ProjectControlModel):
     def save(self, *args, **kwargs):
         """Ensure only one account is marked as default."""
         if self.is_default:
-            GoogleGmailAccount.objects.filter(is_default=True).exclude(pk=self.pk).update(
-                is_default=False
-            )
+            GoogleGmailAccount.objects.filter(is_default=True).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
 
     # ------------------------------------------------------------------

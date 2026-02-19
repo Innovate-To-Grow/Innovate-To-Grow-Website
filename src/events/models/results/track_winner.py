@@ -1,0 +1,32 @@
+"""Track winner model."""
+
+from django.db import models
+
+from core.models.base.control import ProjectControlModel
+
+
+class TrackWinner(ProjectControlModel):
+    """Winner for a specific track."""
+
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.CASCADE,
+        related_name="track_winners",
+        help_text="The event this winner belongs to.",
+    )
+    track_name = models.CharField(
+        max_length=255,
+        help_text="Name of the track (matches Track.track_name).",
+    )
+    winner_name = models.CharField(
+        max_length=255,
+        help_text="Name of the winning team/presentation.",
+    )
+
+    def __str__(self):
+        return f"{self.event.event_name} - {self.track_name}: {self.winner_name}"
+
+    class Meta:
+        unique_together = [["event", "track_name"]]
+        verbose_name = "Track Winner"
+        verbose_name_plural = "Track Winners"

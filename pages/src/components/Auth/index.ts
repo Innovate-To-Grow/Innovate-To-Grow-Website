@@ -3,10 +3,9 @@
  */
 
 export { AuthProvider, useAuth, type AuthModalView } from './AuthContext';
-export { AuthModal } from './AuthModal';
-export { ProfileModal } from './ProfileModal';
-export { LoginForm } from './LoginForm';
-export { RegisterForm } from './RegisterForm';
-export { VerifyPending } from './VerifyPending';
-export { VerifyEmailPage } from './VerifyEmailPage';
-
+export { AuthModal } from './modals/AuthModal';
+export { ProfileModal } from './modals/ProfileModal';
+export { LoginForm } from './forms/LoginForm';
+export { RegisterForm } from './forms/RegisterForm';
+export { VerifyPending } from './pages/VerifyPending';
+export { VerifyEmailPage } from './pages/VerifyEmailPage';

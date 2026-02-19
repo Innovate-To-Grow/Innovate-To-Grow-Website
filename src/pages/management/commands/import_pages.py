@@ -15,7 +15,7 @@ import zipfile
 
 from django.core.management.base import BaseCommand, CommandError
 
-from pages.admin.import_export import deserialize_homepage, deserialize_page
+from pages.admin.content.import_export import deserialize_homepage, deserialize_page
 
 
 class Command(BaseCommand):
@@ -71,8 +71,7 @@ class Command(BaseCommand):
             export_version = manifest.get("export_version", "unknown")
             self.stdout.write(
                 self.style.NOTICE(
-                    f"Archive: version={export_version}, entries={len(entries)}, "
-                    f"files={len(zf.namelist())}"
+                    f"Archive: version={export_version}, entries={len(entries)}, files={len(zf.namelist())}"
                 )
             )
 
@@ -114,9 +113,7 @@ class Command(BaseCommand):
                         self.stdout.write(f"  Imported homepage: {homepage.name}")
                     except Exception as e:
                         all_warnings.append(f"Error importing homepage: {e}")
-                        self.stderr.write(
-                            self.style.ERROR(f"  Failed to import homepage: {e}")
-                        )
+                        self.stderr.write(self.style.ERROR(f"  Failed to import homepage: {e}"))
 
                 else:
                     msg = f"Skipped entry with unknown export_type='{export_type}'."
@@ -126,10 +123,7 @@ class Command(BaseCommand):
             # Summary
             self.stdout.write("")
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"Import complete: {imported_pages} page(s), "
-                    f"{imported_homepages} homepage(s)"
-                )
+                self.style.SUCCESS(f"Import complete: {imported_pages} page(s), {imported_homepages} homepage(s)")
             )
             if all_warnings:
                 self.stdout.write(self.style.WARNING("Warnings:"))

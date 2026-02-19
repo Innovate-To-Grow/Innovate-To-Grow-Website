@@ -3,7 +3,7 @@
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'pages/css/visual-editor.css' %}">
+  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 {% endblock %}
 
@@ -45,5 +45,5 @@
     <iframe id="menu-preview-iframe" class="preview-iframe menu-preview-iframe" sandbox="allow-same-origin"></iframe>
   </div>
 
-  <script src="{% static 'pages/js/menu-editor.js' %}"></script>
+  <script src="{% static 'pages/js/menu/menu-editor.js' %}"></script>
 {% endblock %}

@@ -19,7 +19,7 @@ from io import BytesIO
 from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand, CommandError
 
-from pages.admin.import_export import (
+from pages.admin.content.import_export import (
     ZIP_EXPORT_VERSION,
     collect_component_files,
     serialize_homepage,
@@ -35,8 +35,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "slugs",
             nargs="*",
-            help="Page slugs (or homepage names for --type homepage) to export. "
-            "Omit with --all to export everything.",
+            help="Page slugs (or homepage names for --type homepage) to export. Omit with --all to export everything.",
         )
         parser.add_argument(
             "--type",
@@ -122,9 +121,7 @@ class Command(BaseCommand):
                         self.stderr.write(f"  Packed: {archive_path}")
                     except FileNotFoundError:
                         self.stderr.write(
-                            self.style.WARNING(
-                                f"  MISSING: {file_path} (referenced but not found on disk)"
-                            )
+                            self.style.WARNING(f"  MISSING: {file_path} (referenced but not found on disk)")
                         )
 
         # Output
@@ -132,9 +129,7 @@ class Command(BaseCommand):
         if output_path:
             with open(output_path, "wb") as f:
                 f.write(zip_bytes)
-            self.stderr.write(
-                self.style.SUCCESS(f"Exported to {output_path} ({len(zip_bytes)} bytes)")
-            )
+            self.stderr.write(self.style.SUCCESS(f"Exported to {output_path} ({len(zip_bytes)} bytes)"))
         else:
             sys.stdout.buffer.write(zip_bytes)
             self.stderr.write(self.style.SUCCESS(f"Exported {len(zip_bytes)} bytes to stdout"))
@@ -156,7 +151,5 @@ class Command(BaseCommand):
         found_names = {hp.name for hp in homepages}
         for name in slugs:
             if name not in found_names:
-                self.stderr.write(
-                    self.style.WARNING(f"HomePage with name '{name}' not found, skipping.")
-                )
+                self.stderr.write(self.style.WARNING(f"HomePage with name '{name}' not found, skipping."))
         return homepages

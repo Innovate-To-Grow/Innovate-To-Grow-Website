@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { fetchEvent, type EventData } from '../../services/api';
-import { ScheduleTable } from './ScheduleTable';
-import { DataTable } from './DataTable';
-import { SimpleTable } from './SimpleTable';
-import { renderMarkdown } from './markdown';
+import { ScheduleTable } from './tables/ScheduleTable';
+import { DataTable } from './tables/DataTable';
+import { SimpleTable } from './tables/SimpleTable';
+import { renderMarkdown } from './utils/markdown';
 import './EventPage.css';
 
 export const EventPage = () => {

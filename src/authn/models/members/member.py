@@ -11,7 +11,6 @@ from .user_group import MemberGroup
 
 
 class Member(AbstractUser, ProjectControlModel):
-
     # add field for user models
     middle_name = models.CharField(max_length=255, null=True, blank=True, help_text="Middle Name")
 

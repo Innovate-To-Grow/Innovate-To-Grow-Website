@@ -16,17 +16,11 @@ export const PreviewPage = () => {
   const token = searchParams.get('token');
   const objectId = searchParams.get('objectId');
 
+  // Derive missing-param errors without setState in effect
+  const missingParam = !token ? 'Missing preview token.' : !sessionId ? 'Missing session id.' : null;
+
   useEffect(() => {
-    if (!token) {
-      setErrorDetail('Missing preview token.');
-      setIsValidToken(false);
-      return;
-    }
-    if (!sessionId) {
-      setErrorDetail('Missing session id.');
-      setIsValidToken(false);
-      return;
-    }
+    if (missingParam) return;
 
     let cancelled = false;
     const check = async () => {
@@ -39,7 +33,7 @@ export const PreviewPage = () => {
     };
     check();
     return () => { cancelled = true; };
-  }, [token, objectId, sessionId]);
+  }, [token, objectId, sessionId, missingParam]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const applyComponents = useCallback((rawComponents: any[]) => {
@@ -75,6 +69,15 @@ export const PreviewPage = () => {
       }
     };
   }, [isValidToken, sessionId, applyComponents]);
+
+  if (missingParam) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: '#dc2626' }}>
+        <h2>Unauthorized</h2>
+        <p>{missingParam}</p>
+      </div>
+    );
+  }
 
   if (isValidToken === null) {
     return (

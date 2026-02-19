@@ -1,4 +1,5 @@
 import logging
+
 from django.core.cache import cache
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.views.generic import TemplateView

@@ -3,12 +3,12 @@ Compatibility shim for legacy migration imports.
 
 Existing migrations reference `pages.models.page` for the Page model and
 the `validate_nested_slug` validator. The actual implementations live in
-`pages.models.pages.page` and `pages.models.pages.validators`. This module
+`pages.models.pages.content.page` and `pages.models.pages.shared.validators`. This module
 simply re-exports them so migrations continue to work without modification.
 """
 
-from .pages.page import Page  # noqa: F401
-from .pages.page_component import PageComponent  # noqa: F401
-from .pages.validators import validate_nested_slug  # noqa: F401
+from .pages.component.page_component import PageComponent  # noqa: F401
+from .pages.content.page import Page  # noqa: F401
+from .pages.shared.validators import validate_nested_slug  # noqa: F401
 
 __all__ = ["Page", "PageComponent", "validate_nested_slug"]

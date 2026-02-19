@@ -155,16 +155,8 @@ def render_email_layout(
     text_body = _build_plain_text(body_html)
     preheader = text_body.replace("\n", " ").strip()[:140]
 
-    brand_name = (
-        os.environ.get("EMAIL_BRAND_NAME")
-        or getattr(settings, "EMAIL_BRAND_NAME", None)
-        or "Innovate To Grow"
-    )
-    brand_color = (
-        os.environ.get("EMAIL_BRAND_COLOR")
-        or getattr(settings, "EMAIL_BRAND_COLOR", None)
-        or "#1f4e79"
-    )
+    brand_name = os.environ.get("EMAIL_BRAND_NAME") or getattr(settings, "EMAIL_BRAND_NAME", None) or "Innovate To Grow"
+    brand_color = os.environ.get("EMAIL_BRAND_COLOR") or getattr(settings, "EMAIL_BRAND_COLOR", None) or "#1f4e79"
     site_url = getattr(settings, "SITE_URL", "") or os.environ.get("SITE_URL", "")
     support_email = (
         os.environ.get("SUPPORT_EMAIL")
@@ -257,9 +249,7 @@ def _resolve_gmail_account(
 
     if gmail_account_id:
         try:
-            return GoogleGmailAccount.objects.get(
-                pk=gmail_account_id, is_active=True, is_deleted=False
-            )
+            return GoogleGmailAccount.objects.get(pk=gmail_account_id, is_active=True, is_deleted=False)
         except GoogleGmailAccount.DoesNotExist:
             logger.warning("Gmail account %s not found or inactive", gmail_account_id)
             return None

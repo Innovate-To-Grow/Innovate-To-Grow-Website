@@ -21,8 +21,20 @@ MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 
 # Denied extensions (executable / dangerous)
 DENIED_EXTENSIONS = {
-    "exe", "bat", "cmd", "com", "msi", "scr", "pif",
-    "vbs", "vbe", "wsf", "wsh", "ps1", "sh", "bash",
+    "exe",
+    "bat",
+    "cmd",
+    "com",
+    "msi",
+    "scr",
+    "pif",
+    "vbs",
+    "vbe",
+    "wsf",
+    "wsh",
+    "ps1",
+    "sh",
+    "bash",
 }
 
 

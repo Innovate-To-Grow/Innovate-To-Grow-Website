@@ -93,11 +93,7 @@ class ProjectControlModel(models.Model):
             "version",
             "versions",
         }
-        return [
-            f
-            for f in self._meta.get_fields()
-            if f.name not in exclude_fields and f.concrete
-        ]
+        return [f for f in self._meta.get_fields() if f.name not in exclude_fields and f.concrete]
 
     def _serialize_for_version(self):
         """Serialize model data for version storage."""

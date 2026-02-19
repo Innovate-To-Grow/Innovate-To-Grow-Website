@@ -22,6 +22,7 @@ class Command(BaseCommand):
     help = "Resets database and migration files, then recreates everything (DEV ONLY)."
 
     # Default admin credentials
+    # For development only, move this to env vars in production
     DEV_DEFAULT_ADMIN_USERNAME = "hongzhe"
     DEV_DEFAULT_ADMIN_EMAIL = "xiehongzhe04@gmail.com"
     DEV_DEFAULT_ADMIN_PASSWORD = "1"
