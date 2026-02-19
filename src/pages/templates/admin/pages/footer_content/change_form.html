@@ -3,7 +3,7 @@
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'pages/css/visual-editor.css' %}">
+  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 {% endblock %}
 
@@ -89,5 +89,5 @@
     <iframe id="footer-preview-iframe" class="preview-iframe footer-preview-iframe"></iframe>
   </div>
 
-  <script src="{% static 'pages/js/footer-editor.js' %}"></script>
+  <script src="{% static 'pages/js/footer/footer-editor.js' %}"></script>
 {% endblock %}

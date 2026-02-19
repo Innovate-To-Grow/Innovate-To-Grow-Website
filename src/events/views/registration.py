@@ -301,10 +301,14 @@ class EventRegistrationSubmitAPIView(APIView):
             answers_payload = data.get("answers", [])
 
             registration.ticket_option = ticket_option
-            registration.ticket_label = (data.get("ticket_label") or (ticket_option.label if ticket_option else "")).strip()
+            registration.ticket_label = (
+                data.get("ticket_label") or (ticket_option.label if ticket_option else "")
+            ).strip()
             registration.source_email = member.email.lower()
             registration.primary_email_subscribed = bool(data.get("primary_email_subscribed", False))
-            registration.secondary_email_subscribed = bool(data.get("secondary_email_subscribed", False) and secondary_email)
+            registration.secondary_email_subscribed = bool(
+                data.get("secondary_email_subscribed", False) and secondary_email
+            )
             registration.phone_subscribed = bool(data.get("phone_subscribed", False) and phone_number)
 
             # Save answers as full replace for deterministic behavior.
@@ -315,11 +319,7 @@ class EventRegistrationSubmitAPIView(APIView):
                 question_id = answer_payload.get("question_id")
                 if question_id:
                     question = event.questions.filter(id=question_id, is_active=True).first()
-                prompt = (
-                    question.prompt
-                    if question
-                    else (answer_payload.get("question_prompt") or "").strip()
-                )
+                prompt = question.prompt if question else (answer_payload.get("question_prompt") or "").strip()
                 if not prompt:
                     continue
                 answer_text = (answer_payload.get("answer_text") or "").strip()

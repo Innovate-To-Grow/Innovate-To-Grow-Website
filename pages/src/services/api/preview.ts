@@ -1,0 +1,32 @@
+import api from './client';
+import type { PageComponent } from './pages';
+
+// ======================== Preview ========================
+
+export interface PreviewTokenValidationResponse {
+  valid: boolean;
+  detail?: string;
+}
+
+export const validatePreviewToken = async (token: string, objectId?: string): Promise<boolean> => {
+  try {
+    const response = await api.post<PreviewTokenValidationResponse>('/pages/preview/validate-token/', { token, objectId });
+    return response.data.valid;
+  } catch {
+    return false;
+  }
+};
+
+export interface PreviewDataResponse {
+  components: PageComponent[];
+  timestamp: number;
+}
+
+export const fetchPreviewData = async (sessionId: string): Promise<PreviewDataResponse | null> => {
+  try {
+    const response = await api.get<PreviewDataResponse>('/pages/preview/data/', { params: { sessionId } });
+    return response.data;
+  } catch {
+    return null;
+  }
+};

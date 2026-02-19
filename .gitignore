@@ -189,6 +189,9 @@ pages/dist/
 .cursorignore
 .cursorindexingignore
 
+# Cursor Plans
+.cursor/plans/
+
 # Abstra
 .abstra/
 
@@ -218,4 +221,4 @@ Thumbs.db
 # =====================================
 
 # Keep CLAUDE.md in version control
-!/CLAUDE.md
+!/.agent/CLAUDE.md

@@ -18,7 +18,11 @@ from .views import (
 app_name = "events"
 
 urlpatterns = [
-    path("registration/request-link/", EventRegistrationRequestLinkAPIView.as_view(), name="event-registration-request-link"),
+    path(
+        "registration/request-link/",
+        EventRegistrationRequestLinkAPIView.as_view(),
+        name="event-registration-request-link",
+    ),
     path("registration/form/", EventRegistrationFormAPIView.as_view(), name="event-registration-form"),
     path("registration/submit/", EventRegistrationSubmitAPIView.as_view(), name="event-registration-submit"),
     path("registration/verify-otp/", EventRegistrationVerifyOTPAPIView.as_view(), name="event-registration-verify-otp"),

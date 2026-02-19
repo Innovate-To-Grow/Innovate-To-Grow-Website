@@ -1,5 +1,5 @@
 export { EventPage } from './EventPage';
-export { ScheduleTable } from './ScheduleTable';
+export { ScheduleTable } from './tables/ScheduleTable';
 export { WinnersSection } from './WinnersSection';
 
 

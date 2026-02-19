@@ -196,7 +196,9 @@ class Command(BaseCommand):
             js_code=source_component.js_code,
         )
 
-        self.stdout.write(self.style.SUCCESS(f"HomePage 'Legacy Home' ready with {home_page.components.count()} component(s)."))
+        self.stdout.write(
+            self.style.SUCCESS(f"HomePage 'Legacy Home' ready with {home_page.components.count()} component(s).")
+        )
 
     def _seed_footer(self):
         """Load footer fixture if no active footer exists."""

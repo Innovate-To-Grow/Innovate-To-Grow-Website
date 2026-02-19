@@ -9,10 +9,10 @@ Organized into modules by functionality:
 - security: RSAKeypair admin
 """
 
-from .contact import ContactEmailAdmin, ContactPhoneAdmin, MemberContactInfoAdmin
-from .group import I2GMemberGroupAdmin
-from .member import MemberAdmin, MemberProfileAdmin
-from .security import RSAKeypairAdmin
+from .members.contact import ContactEmailAdmin, ContactPhoneAdmin, MemberContactInfoAdmin
+from .members.group import I2GMemberGroupAdmin
+from .members.member import MemberAdmin, MemberProfileAdmin
+from .security.security import RSAKeypairAdmin
 
 __all__ = [
     # Member

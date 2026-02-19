@@ -78,8 +78,7 @@ class MembershipEventsPageView(View):
         member = resolve_member_by_email(email)
         if not member:
             context["error_message"] = (
-                "No member account is associated with this email. "
-                "Please complete membership registration first."
+                "No member account is associated with this email. Please complete membership registration first."
             )
             return render(request, self.template_name, context, status=404)
 
@@ -113,9 +112,7 @@ class MembershipEventsPageView(View):
         registration.status = EventRegistration.STATUS_PENDING
         registration.save(update_fields=["registration_token", "source_email", "status", "updated_at"])
 
-        context["success_message"] = (
-            "Instructions sent. Please check your inbox for the event registration link."
-        )
+        context["success_message"] = "Instructions sent. Please check your inbox for the event registration link."
         context["debug_registration_link"] = link
         return render(request, self.template_name, context, status=200)
 

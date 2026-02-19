@@ -1,17 +1,17 @@
-from .footer_content import FooterContent
-from .google_sheet import GoogleSheet
-from .home_page import HomePage
-from .menu import Menu, MenuPageLink
-from .mixins import (
+from .component.page_component import ComponentDataSource, PageComponent, PageComponentAsset, PageComponentImage
+from .content.home_page import HomePage
+from .content.page import Page
+from .integrations.google_sheet import GoogleSheet
+from .layout.footer_content import FooterContent
+from .layout.menu import Menu, MenuPageLink
+from .shared.mixins import (
     AnalyticsFieldsMixin,
     ComponentPageMixin,
     PublishingFieldsMixin,
     SEOFieldsMixin,
     WorkflowPublishingMixin,
 )
-from .page import Page
-from .page_component import ComponentDataSource, PageComponent, PageComponentAsset, PageComponentImage
-from .validators import validate_nested_slug
+from .shared.validators import validate_nested_slug
 
 __all__ = [
     "FooterContent",

@@ -23,7 +23,9 @@ class GoogleSheetDataView(APIView):
             data = fetch_sheet_values(sheet)
         except GoogleSheetsConfigError:
             logger.exception("Google Sheets configuration error while loading sheet %s.", sheet_id)
-            return Response({"detail": "Google Sheets is not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "Google Sheets is not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         except HttpError:
             logger.exception("Google Sheets API error while loading sheet %s.", sheet_id)
             return Response(
