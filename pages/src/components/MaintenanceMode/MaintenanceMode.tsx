@@ -17,50 +17,6 @@ export const MaintenanceMode = () => {
               </div>
             </div>
 
-            <section className="maintenance-status-card" aria-label="System status">
-              <div className="status-item">
-                <div className="status-logo-wrapper" aria-hidden="true">
-                  <img
-                    className="status-logo status-logo-browser"
-                    src="https://upload.wikimedia.org/wikipedia/commons/8/87/Google_Chrome_icon_%282011%29.png"
-                    alt=""
-                  />
-                </div>
-                <div className="status-text">
-                  <div className="status-title">Your Browser</div>
-                  <div className="status-subtitle status-subtitle-ok">Normal</div>
-                </div>
-              </div>
-
-              <div className="status-item">
-                <div className="status-logo-wrapper" aria-hidden="true">
-                  <img
-                    className="status-logo status-logo-aws"
-                    src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg"
-                    alt=""
-                  />
-                </div>
-                <div className="status-text">
-                  <div className="status-title">Amazon Web Services</div>
-                  <div className="status-subtitle status-subtitle-alert">Always down</div>
-                </div>
-              </div>
-
-              <div className="status-item">
-                <div className="status-logo-wrapper" aria-hidden="true">
-                  <img
-                    className="status-logo status-logo-backend"
-                    src="/assets/images/i2glogo.png"
-                    alt=""
-                  />
-                </div>
-                <div className="status-text">
-                  <div className="status-title">Hongzhe's Backend Code</div>
-                  <div className="status-subtitle status-subtitle-ok">Always working</div>
-                </div>
-              </div>
-            </section>
-
             <section className="maintenance-info" aria-label="Maintenance details">
               <div className="info-block">
                 <h2>What happened?</h2>
