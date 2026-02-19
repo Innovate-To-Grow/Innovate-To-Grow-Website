@@ -10,7 +10,7 @@ export const MaintenanceMode = () => {
             <div className="maintenance-hero">
               <div className="maintenance-title-row">
                   <img 
-                    src="/static/images/ucmlogo.png" 
+                    src="/assets/images/ucmlogo.png" 
                     alt="UC Merced" 
                     className="maintenance-ucm-logo"
                   />
@@ -50,7 +50,7 @@ export const MaintenanceMode = () => {
                 <div className="status-logo-wrapper" aria-hidden="true">
                   <img
                     className="status-logo status-logo-backend"
-                    src="/static/images/i2glogo.png"
+                    src="/assets/images/i2glogo.png"
                     alt=""
                   />
                 </div>

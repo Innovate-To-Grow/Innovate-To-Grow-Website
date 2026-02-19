@@ -192,13 +192,13 @@ export const MainMenu = () => {
             rel="noopener noreferrer"
             aria-label="UC Merced"
           >
-            <img src="/static/images/ucmlogo.png" alt="UC Merced" />
+            <img src="/assets/images/ucmlogo.png" alt="UC Merced" />
           </a>
 
           <a className="site-header-top-logo" href="/" aria-label="Innovate To Grow">
             <img
               className="site-header-top-logo-full"
-              src="/static/images/I2G-fullname-low.png"
+              src="/assets/images/I2G-fullname-low.png"
               alt="Innovate To Grow"
             />
           </a>
@@ -222,7 +222,7 @@ export const MainMenu = () => {
         <div className="site-header-container site-header-bottom-inner">
           <div className="site-header-bottom-left">
             <a className="site-header-badge" href="/" aria-label="Home">
-              <img src="/static/images/i2glogo.png" alt="Innovate To Grow" />
+              <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" />
             </a>
 
             <nav className="site-header-nav" aria-label="Main menu">
@@ -331,7 +331,7 @@ export const MainMenu = () => {
       >
         <div className="header-mobile-top">
           <a href="/" className="header-mobile-brand">
-            <img src="/static/images/i2glogo.png" alt="I2G" className="header-mobile-logo" />
+            <img src="/assets/images/i2glogo.png" alt="I2G" className="header-mobile-logo" />
             <span>Innovate To Grow</span>
           </a>
           <button
@@ -426,7 +426,7 @@ export const MainMenu = () => {
         <div className="header-mobile-footer">
           <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">
             <img 
-              src="/static/images/ucmlogo.png"
+              src="/assets/images/ucmlogo.png"
               alt="UC Merced" 
             />
           </a>
