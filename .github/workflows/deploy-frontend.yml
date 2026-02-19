@@ -1,0 +1,74 @@
+name: Deploy Frontend to AWS Amplify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pages/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pages
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to AWS Amplify
+        env:
+          AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
+          AMPLIFY_BRANCH: main
+        run: |
+          # Create a deployment and get the upload URL + job ID
+          DEPLOY_RESULT=$(aws amplify create-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH")
+
+          JOB_ID=$(echo "$DEPLOY_RESULT" | jq -r '.jobId')
+          UPLOAD_URL=$(echo "$DEPLOY_RESULT" | jq -r '.zipUploadUrl')
+
+          echo "Job ID: $JOB_ID"
+
+          # Zip the build output
+          cd dist
+          zip -r ../build.zip .
+          cd ..
+
+          # Upload the zip to the pre-signed URL
+          curl -T build.zip "$UPLOAD_URL" \
+            -H "Content-Type: application/zip"
+
+          # Start the deployment
+          aws amplify start-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-id "$JOB_ID"
+
+          echo "Deployment started successfully!"
