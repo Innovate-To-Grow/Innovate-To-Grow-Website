@@ -5,11 +5,11 @@
   "cpu": "256",
   "memory": "512",
   "executionRoleArn": "arn:aws:iam::394167325273:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::394167325273:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::394167325273:role/ecsTaskRole",
   "containerDefinitions": [
     {
       "name": "itg-backend",
-      "image": "394167325273.dkr.ecr.us-west-2.amazonaws.com/itg-backend:latest",
+      "image": "394167325273.dkr.ecr.us-west-1.amazonaws.com/itg-backend:latest",
       "portMappings": [
         {
           "containerPort": 8000,
@@ -25,46 +25,46 @@
       "secrets": [
         {
           "name": "DJANGO_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DJANGO_SECRET_KEY"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DJANGO_SECRET_KEY"
         },
         {
           "name": "DJANGO_ALLOWED_HOSTS",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DJANGO_ALLOWED_HOSTS"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DJANGO_ALLOWED_HOSTS"
         },
         {
           "name": "DB_NAME",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_NAME"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_NAME"
         },
         {
           "name": "DB_USER",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_USER"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_USER"
         },
         {
           "name": "DB_PASSWORD",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_PASSWORD"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_PASSWORD"
         },
         {
           "name": "DB_HOST",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_HOST"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_HOST"
         },
         {
           "name": "DB_PORT",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/DB_PORT"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_PORT"
         },
         {
           "name": "REDIS_URL",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/REDIS_URL"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/REDIS_URL"
         },
         {
           "name": "CSRF_TRUSTED_ORIGINS",
-          "valueFrom": "arn:aws:ssm:us-west-2:394167325273:parameter/itg/CSRF_TRUSTED_ORIGINS"
+          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/CSRF_TRUSTED_ORIGINS"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/itg-backend",
-          "awslogs-region": "us-west-2",
+          "awslogs-region": "us-west-1",
           "awslogs-stream-prefix": "ecs"
         }
       },
