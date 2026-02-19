@@ -165,6 +165,38 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* Alert */
+.maintenance-alert {
+  background: rgba(242, 169, 0, 0.1); /* ucm-gold with opacity */
+  border: 1px solid var(--ucm-gold);
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.maintenance-alert-icon {
+  color: var(--ucm-gold);
+  font-size: 1.5rem;
+  margin-top: 0.2rem;
+}
+
+.maintenance-alert-content h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ucm-white);
+}
+
+.maintenance-alert-content p {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
 /* Status card */
 .maintenance-status-card {
   display: grid;

@@ -17,6 +17,16 @@ export const MaintenanceMode = () => {
               </div>
             </div>
 
+            <div className="maintenance-alert">
+              <div className="maintenance-alert-icon">
+                <i className="fa fa-exclamation-triangle" aria-hidden="true"></i>
+              </div>
+              <div className="maintenance-alert-content">
+                <h3>Backend System Unavailable</h3>
+                <p>The backend system is currently temporarily down for scheduled maintenance. We apologize for the inconvenience and appreciate your patience.</p>
+              </div>
+            </div>
+
             <section className="maintenance-info" aria-label="Maintenance details">
               <div className="info-block">
                 <h2>What happened?</h2>
