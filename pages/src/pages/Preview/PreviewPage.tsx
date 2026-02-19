@@ -20,7 +20,7 @@ export const PreviewPage = () => {
   const missingParam = !token ? 'Missing preview token.' : !sessionId ? 'Missing session id.' : null;
 
   useEffect(() => {
-    if (missingParam) return;
+    if (missingParam || !token) return;
 
     let cancelled = false;
     const check = async () => {
