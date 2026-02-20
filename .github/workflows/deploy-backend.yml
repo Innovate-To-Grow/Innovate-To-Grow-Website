@@ -34,8 +34,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ vars.AWS_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ vars.AWS_SESSION_TOKEN || secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -55,11 +56,11 @@ jobs:
 
       - name: Validate required deployment configuration
         env:
-          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          DJANGO_SECRET_KEY: ${{ vars.DJANGO_SECRET_KEY || secrets.DJANGO_SECRET_KEY }}
           DB_HOST: ${{ vars.DB_HOST }}
           DB_NAME: ${{ vars.DB_NAME }}
           DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
         run: |
           missing=()
           for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD; do
@@ -76,17 +77,17 @@ jobs:
         id: task-def
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image }}
-          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          DJANGO_SECRET_KEY: ${{ vars.DJANGO_SECRET_KEY || secrets.DJANGO_SECRET_KEY }}
           DB_ENGINE: ${{ vars.DB_ENGINE }}
           DB_NAME: ${{ vars.DB_NAME }}
           DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
           DB_HOST: ${{ vars.DB_HOST }}
           DB_PORT: ${{ vars.DB_PORT }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          DJANGO_SUPERUSER_USERNAME: ${{ secrets.DJANGO_SUPERUSER_USERNAME }}
-          DJANGO_SUPERUSER_EMAIL: ${{ secrets.DJANGO_SUPERUSER_EMAIL }}
-          DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+          REDIS_URL: ${{ vars.REDIS_URL || secrets.REDIS_URL }}
+          DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
+          DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_PASSWORD: ${{ vars.DJANGO_SUPERUSER_PASSWORD || secrets.DJANGO_SUPERUSER_PASSWORD }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d1fekd6ba7zdu.amplifyapp.com' }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
@@ -102,21 +103,28 @@ jobs:
 
           template_path = "aws/task-definition.json"
           output_path = "rendered-task-definition.json"
+          empty_sentinels = {"__EMPTY__", "__UNSET__", "null", "None"}
+
+          def env_value(name: str, default: str = "") -> str:
+              value = os.environ.get(name, default)
+              if value is None:
+                  return ""
+              return "" if value in empty_sentinels else value
 
           with open(template_path, "r", encoding="utf-8") as f:
               taskdef = json.load(f)
 
-          frontend_url = os.environ.get("FRONTEND_URL", "").strip()
-          api_base_url = os.environ.get("API_BASE_URL", "").strip()
+          frontend_url = env_value("FRONTEND_URL").strip()
+          api_base_url = env_value("API_BASE_URL").strip()
 
-          csrf_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
+          csrf_origins = env_value("CSRF_TRUSTED_ORIGINS").strip()
           if not csrf_origins:
               csrf_values = [x for x in [frontend_url, api_base_url] if x]
               csrf_origins = ",".join(csrf_values)
 
-          cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip() or frontend_url
+          cors_origins = env_value("CORS_ALLOWED_ORIGINS").strip() or frontend_url
 
-          allowed_hosts = os.environ.get("DJANGO_ALLOWED_HOSTS", "").strip()
+          allowed_hosts = env_value("DJANGO_ALLOWED_HOSTS").strip()
           if not allowed_hosts:
               hosts = []
               parsed = urlparse(api_base_url)
@@ -126,22 +134,22 @@ jobs:
               allowed_hosts = ",".join(dict.fromkeys([h for h in hosts if h]))
 
           mapping = {
-              "__DJANGO_SECRET_KEY__": os.environ.get("DJANGO_SECRET_KEY", ""),
+              "__DJANGO_SECRET_KEY__": env_value("DJANGO_SECRET_KEY"),
               "__DJANGO_ALLOWED_HOSTS__": allowed_hosts,
-              "__DB_NAME__": os.environ.get("DB_NAME", ""),
-              "__DB_USER__": os.environ.get("DB_USER", ""),
-              "__DB_PASSWORD__": os.environ.get("DB_PASSWORD", ""),
-              "__DB_HOST__": os.environ.get("DB_HOST", ""),
-              "__DB_PORT__": os.environ.get("DB_PORT", "5432"),
-              "__REDIS_URL__": os.environ.get("REDIS_URL", ""),
+              "__DB_NAME__": env_value("DB_NAME"),
+              "__DB_USER__": env_value("DB_USER"),
+              "__DB_PASSWORD__": env_value("DB_PASSWORD"),
+              "__DB_HOST__": env_value("DB_HOST"),
+              "__DB_PORT__": env_value("DB_PORT", "5432"),
+              "__REDIS_URL__": env_value("REDIS_URL"),
               "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
               "__CORS_ALLOWED_ORIGINS__": cors_origins,
               "__FRONTEND_URL__": frontend_url,
-              "__AWS_STORAGE_BUCKET_NAME__": os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
-              "__AWS_S3_REGION_NAME__": os.environ.get("AWS_S3_REGION_NAME", "us-west-2"),
-              "__DJANGO_SUPERUSER_USERNAME__": os.environ.get("DJANGO_SUPERUSER_USERNAME", ""),
-              "__DJANGO_SUPERUSER_EMAIL__": os.environ.get("DJANGO_SUPERUSER_EMAIL", ""),
-              "__DJANGO_SUPERUSER_PASSWORD__": os.environ.get("DJANGO_SUPERUSER_PASSWORD", ""),
+              "__AWS_STORAGE_BUCKET_NAME__": env_value("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
+              "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
+              "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
+              "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
+              "__DJANGO_SUPERUSER_PASSWORD__": env_value("DJANGO_SUPERUSER_PASSWORD"),
           }
 
           container = taskdef["containerDefinitions"][0]
@@ -153,7 +161,7 @@ jobs:
                   item["value"] = mapping[value]
 
           # Optional DB_ENGINE override; prod defaults to PostgreSQL if unset.
-          db_engine = os.environ.get("DB_ENGINE", "").strip()
+          db_engine = env_value("DB_ENGINE").strip()
           if db_engine:
               container["environment"].append({"name": "DB_ENGINE", "value": db_engine})
 
