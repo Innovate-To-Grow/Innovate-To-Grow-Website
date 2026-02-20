@@ -20,44 +20,54 @@
         {
           "name": "DJANGO_SETTINGS_MODULE",
           "value": "core.settings.prod"
-        }
-      ],
-      "secrets": [
+        },
         {
           "name": "DJANGO_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DJANGO_SECRET_KEY"
+          "value": "__DJANGO_SECRET_KEY__"
         },
         {
           "name": "DJANGO_ALLOWED_HOSTS",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DJANGO_ALLOWED_HOSTS"
+          "value": "__DJANGO_ALLOWED_HOSTS__"
         },
         {
           "name": "DB_NAME",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_NAME"
+          "value": "__DB_NAME__"
         },
         {
           "name": "DB_USER",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_USER"
+          "value": "__DB_USER__"
         },
         {
           "name": "DB_PASSWORD",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_PASSWORD"
+          "value": "__DB_PASSWORD__"
         },
         {
           "name": "DB_HOST",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_HOST"
+          "value": "__DB_HOST__"
         },
         {
           "name": "DB_PORT",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/DB_PORT"
+          "value": "__DB_PORT__"
         },
         {
           "name": "REDIS_URL",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/REDIS_URL"
+          "value": "__REDIS_URL__"
         },
         {
           "name": "CSRF_TRUSTED_ORIGINS",
-          "valueFrom": "arn:aws:ssm:us-west-1:394167325273:parameter/itg/CSRF_TRUSTED_ORIGINS"
+          "value": "__CSRF_TRUSTED_ORIGINS__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_USERNAME",
+          "value": "__DJANGO_SUPERUSER_USERNAME__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_EMAIL",
+          "value": "__DJANGO_SUPERUSER_EMAIL__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_PASSWORD",
+          "value": "__DJANGO_SUPERUSER_PASSWORD__"
         }
       ],
       "logConfiguration": {
