@@ -62,9 +62,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Must run before middlewares that may short-circuit responses (e.g. /health/)
+    # so CORS headers are always added for allowed origins.
+    "corsheaders.middleware.CorsMiddleware",
     "core.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

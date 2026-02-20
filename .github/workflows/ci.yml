@@ -51,6 +51,102 @@ jobs:
       - name: Check Django configuration
         run: python manage.py check
 
+  # Backend Docker Build Validation
+  backend-docker-build:
+    name: Backend Docker Build Test
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: docker build -t itg-backend-ci:${{ github.sha }} src/
+
+      - name: Export backend Docker image
+        run: docker save itg-backend-ci:${{ github.sha }} -o /tmp/itg-backend-ci.tar
+
+      - name: Upload backend image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: itg-backend-ci-image-${{ github.sha }}
+          path: /tmp/itg-backend-ci.tar
+          retention-days: 1
+
+  # Backend Migration Validation (PostgreSQL)
+  backend-db-migration:
+    name: Backend DB Migration Test (PostgreSQL)
+    runs-on: ubuntu-latest
+    needs: [lint, backend-docker-build]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: itg_ci
+          POSTGRES_USER: itg_ci_user
+          POSTGRES_PASSWORD: itg_ci_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Download backend image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: itg-backend-ci-image-${{ github.sha }}
+          path: /tmp
+
+      - name: Load backend Docker image
+        run: docker load -i /tmp/itg-backend-ci.tar
+
+      - name: Check migration files are up to date
+        run: |
+          docker run --rm \
+            --network host \
+            --entrypoint python \
+            -e DJANGO_SETTINGS_MODULE=core.settings.ci \
+            -e DB_NAME=itg_ci \
+            -e DB_USER=itg_ci_user \
+            -e DB_PASSWORD=itg_ci_pass \
+            -e DB_HOST=127.0.0.1 \
+            -e DB_PORT=5432 \
+            itg-backend-ci:${{ github.sha }} \
+            manage.py makemigrations --check --dry-run
+
+      - name: Apply migrations on PostgreSQL
+        run: |
+          docker run --rm \
+            --network host \
+            --entrypoint python \
+            -e DJANGO_SETTINGS_MODULE=core.settings.ci \
+            -e DB_NAME=itg_ci \
+            -e DB_USER=itg_ci_user \
+            -e DB_PASSWORD=itg_ci_pass \
+            -e DB_HOST=127.0.0.1 \
+            -e DB_PORT=5432 \
+            itg-backend-ci:${{ github.sha }} \
+            manage.py migrate --noinput
+
+      - name: Ensure no pending migrations remain
+        run: |
+          docker run --rm \
+            --network host \
+            --entrypoint python \
+            -e DJANGO_SETTINGS_MODULE=core.settings.ci \
+            -e DB_NAME=itg_ci \
+            -e DB_USER=itg_ci_user \
+            -e DB_PASSWORD=itg_ci_pass \
+            -e DB_HOST=127.0.0.1 \
+            -e DB_PORT=5432 \
+            itg-backend-ci:${{ github.sha }} \
+            manage.py migrate --check
+
   # Frontend Build
   frontend-build:
     name: Frontend Build

@@ -180,3 +180,64 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+      - name: Smoke check deployed health endpoint and CORS
+        env:
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d1fekd6ba7zdu.amplifyapp.com' }}
+          API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FRONTEND_URL:-}" ]; then
+            echo "FRONTEND_URL is required for smoke checks."
+            exit 1
+          fi
+
+          if [ -z "${API_BASE_URL:-}" ]; then
+            echo "VITE_API_BASE_URL is required for smoke checks."
+            exit 1
+          fi
+
+          health_url="${API_BASE_URL%/}/health/"
+          headers_file="$(mktemp)"
+          headers_clean="$(mktemp)"
+          body_file="$(mktemp)"
+
+          status_code="$(curl -sS -D "$headers_file" -o "$body_file" \
+            -H "Origin: $FRONTEND_URL" \
+            "$health_url" \
+            -w "%{http_code}")"
+
+          tr -d '\r' < "$headers_file" > "$headers_clean"
+
+          if [ "$status_code" != "200" ]; then
+            echo "Health check failed with status $status_code"
+            echo "Response headers:"
+            cat "$headers_clean"
+            echo "Response body:"
+            cat "$body_file"
+            exit 1
+          fi
+
+          cors_origin="$(awk -F': ' 'tolower($1) == "access-control-allow-origin" {print $2; exit}' "$headers_clean")"
+          if [ "$cors_origin" != "$FRONTEND_URL" ]; then
+            echo "Expected Access-Control-Allow-Origin: $FRONTEND_URL"
+            echo "Actual Access-Control-Allow-Origin: ${cors_origin:-<missing>}"
+            echo "Response headers:"
+            cat "$headers_clean"
+            exit 1
+          fi
+
+          python - <<'PY' "$body_file"
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path, "r", encoding="utf-8") as f:
+              payload = json.load(f)
+
+          if payload.get("status") != "ok":
+              raise SystemExit(f"Unexpected health payload: {payload}")
+          PY
+
+          echo "Health/CORS smoke check passed for $health_url"
