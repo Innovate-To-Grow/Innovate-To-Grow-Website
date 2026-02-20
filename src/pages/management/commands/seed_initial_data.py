@@ -13,7 +13,7 @@ Idempotent: safe to run multiple times.
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
-from pages.models import FooterContent, HomePage, Menu, Page, PageComponent
+from pages.models import FooterContent, HomePage, Menu, Page, PageComponent, PageComponentPlacement
 
 # Menu items matching the old Flask site navigation structure
 MAIN_NAV_ITEMS = [
@@ -186,14 +186,19 @@ class Command(BaseCommand):
             self.stdout.write("Created HomePage 'Legacy Home' (active, published).")
 
         # Create a component with the legacy home content
-        PageComponent.objects.create(
-            name="Legacy Home Content",
-            home_page=home_page,
-            component_type="html",
-            order=0,
-            html_content=source_component.html_content,
-            css_code=source_component.css_code,
-            js_code=source_component.js_code,
+        comp = PageComponent.objects.bulk_create(
+            [
+                PageComponent(
+                    name="Legacy Home Content",
+                    component_type="html",
+                    html_content=source_component.html_content,
+                    css_code=source_component.css_code,
+                    js_code=source_component.js_code,
+                )
+            ]
+        )[0]
+        PageComponentPlacement.objects.bulk_create(
+            [PageComponentPlacement(component=comp, home_page=home_page, order=0)]
         )
 
         self.stdout.write(

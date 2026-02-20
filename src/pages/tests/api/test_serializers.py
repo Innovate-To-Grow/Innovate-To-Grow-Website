@@ -1,13 +1,14 @@
 from django.test import TestCase
 
-from ...models import HomePage, Menu, Page, PageComponent
+from ...models import HomePage, Menu, Page, PageComponent, PageComponentPlacement
 from ...serializers import HomePageSerializer, MenuSerializer, PageSerializer
 
 
 class PageSerializerTest(TestCase):
     def test_serialize_page(self):
         page = Page.objects.create(title="Test", slug="test")
-        PageComponent.objects.create(name="Body", page=page, component_type="html", order=1, html_content="<p>Body</p>")
+        comp = PageComponent.objects.create(name="Body", component_type="html", html_content="<p>Body</p>")
+        PageComponentPlacement.objects.create(component=comp, page=page, order=1)
 
         serializer = PageSerializer(page)
         data = serializer.data
@@ -114,9 +115,10 @@ class HomePageSerializerTest(TestCase):
     def test_serialize_homepage(self):
         """Serialize a published and active home page."""
         hp = HomePage.objects.create(name="Home V1", status="published", is_active=True)
-        PageComponent.objects.create(
-            name="Welcome", home_page=hp, component_type="html", order=1, html_content="<h1>Welcome</h1>"
+        comp = PageComponent.objects.create(
+            name="Welcome", component_type="html", html_content="<h1>Welcome</h1>"
         )
+        PageComponentPlacement.objects.create(component=comp, home_page=hp, order=1)
 
         serializer = HomePageSerializer(hp)
         data = serializer.data

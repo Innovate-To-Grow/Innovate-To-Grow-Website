@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 
-from ...models import ComponentDataSource, PageComponent, PageComponentAsset, PageComponentImage
+from ...models import ComponentDataSource, PageComponent, PageComponentAsset, PageComponentImage, PageComponentPlacement
 
 
 class PageComponentForm(forms.ModelForm):
@@ -32,6 +32,15 @@ class PageComponentAssetInline(TabularInline):
     ordering = ("order",)
 
 
+class PlacementInline(TabularInline):
+    """Inline showing where this component is placed."""
+
+    model = PageComponentPlacement
+    extra = 0
+    fields = ("page", "home_page", "order")
+    ordering = ("order",)
+
+
 @admin.register(ComponentDataSource)
 class ComponentDataSourceAdmin(ModelAdmin):
     list_display = ("source_name", "request_method", "source_url", "auth_mode", "is_enabled")
@@ -48,17 +57,14 @@ class PageComponentAdmin(ModelAdmin):
 
     form = PageComponentForm
     change_form_template = "admin/pages/pagecomponent/change_form.html"
-    list_display = ("name", "component_type", "order", "parent_display", "is_enabled", "updated_at")
-    list_filter = ("component_type", "is_enabled", "page", "home_page")
+    list_display = ("name", "component_type", "parent_display", "is_enabled", "updated_at")
+    list_filter = ("component_type", "is_enabled")
     search_fields = ("name", "html_content", "css_code", "js_code")
-    ordering = ("order", "name")
-    inlines = [PageComponentAssetInline, PageComponentImageInline]
-
-    readonly_fields = ("page", "home_page")
+    ordering = ("name",)
+    inlines = [PlacementInline, PageComponentAssetInline, PageComponentImageInline]
 
     fieldsets = (
-        (None, {"fields": ("name", "component_type", "order", "is_enabled")}),
-        ("Parent (read-only)", {"fields": ("page", "home_page"), "classes": ("collapse",)}),
+        (None, {"fields": ("name", "component_type", "is_enabled")}),
         ("Content", {"fields": ("html_content", "css_code", "js_code", "config")}),
         ("Images", {"fields": ("image", "image_alt", "background_image"), "classes": ("collapse",)}),
         ("Google Sheet", {"fields": ("google_sheet", "google_sheet_style"), "classes": ("collapse",)}),
@@ -66,14 +72,25 @@ class PageComponentAdmin(ModelAdmin):
     )
 
     def parent_display(self, obj):
-        """Show parent page/home page for quick identification."""
-        if obj.page:
-            return f"Page: {obj.page.slug}"
-        if obj.home_page:
-            return f"Home: {obj.home_page.name}"
-        return "Unassigned"
+        """Show parent pages/home pages for quick identification."""
+        placements = obj.placements.select_related("page", "home_page")
+        parts = []
+        for p in placements[:3]:
+            if p.page_id:
+                parts.append(f"Page: {p.page.slug}")
+            if p.home_page_id:
+                parts.append(f"Home: {p.home_page.name}")
+        return ", ".join(parts) if parts else "Unassigned"
 
     parent_display.short_description = "Parent"
+
+
+@admin.register(PageComponentPlacement)
+class PageComponentPlacementAdmin(ModelAdmin):
+    list_display = ("component", "page", "home_page", "order")
+    list_filter = ("page", "home_page")
+    ordering = ("order",)
+    autocomplete_fields = ["component", "page", "home_page"]
 
 
 @admin.register(PageComponentImage)

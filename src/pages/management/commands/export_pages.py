@@ -90,13 +90,11 @@ class Command(BaseCommand):
         for obj in objects:
             if export_type == "page":
                 entry = serialize_page(obj, include_files=True)
-                components_qs = obj.components.order_by("order", "id")
             else:
                 entry = serialize_homepage(obj, include_files=True)
-                components_qs = obj.components.order_by("order", "id")
             entries.append(entry)
             if not no_media:
-                all_file_paths |= collect_component_files(components_qs)
+                all_file_paths |= collect_component_files(obj.components.all())
 
         # Build manifest
         manifest = {

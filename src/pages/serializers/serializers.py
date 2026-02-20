@@ -19,7 +19,6 @@ class PageComponentSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "component_type",
-            "order",
             "is_enabled",
             "html_content",
             "css_file",
@@ -35,7 +34,7 @@ class PageComponentSerializer(serializers.ModelSerializer):
 
 
 class PageSerializer(serializers.ModelSerializer):
-    components = PageComponentSerializer(many=True, read_only=True)
+    components = serializers.SerializerMethodField()
     published = serializers.BooleanField(read_only=True)  # computed from status
 
     class Meta:
@@ -59,9 +58,20 @@ class PageSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "slug", "created_at", "updated_at", "published"]
 
+    def get_components(self, obj):
+        placements = obj.component_placements.select_related(
+            "component"
+        ).order_by("order", "id")
+        result = []
+        for placement in placements:
+            data = PageComponentSerializer(placement.component).data
+            data["order"] = placement.order
+            result.append(data)
+        return result
+
 
 class HomePageSerializer(serializers.ModelSerializer):
-    components = PageComponentSerializer(many=True, read_only=True)
+    components = serializers.SerializerMethodField()
     published = serializers.BooleanField(read_only=True)  # computed from status
 
     class Meta:
@@ -77,6 +87,17 @@ class HomePageSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "published"]
+
+    def get_components(self, obj):
+        placements = obj.component_placements.select_related(
+            "component"
+        ).order_by("order", "id")
+        result = []
+        for placement in placements:
+            data = PageComponentSerializer(placement.component).data
+            data["order"] = placement.order
+            result.append(data)
+        return result
 
 
 class UniformFormSerializer(serializers.ModelSerializer):

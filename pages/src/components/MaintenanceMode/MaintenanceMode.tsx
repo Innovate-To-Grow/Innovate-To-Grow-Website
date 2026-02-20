@@ -26,14 +26,14 @@ export const MaintenanceMode = () => {
               </div>
               <div className="maintenance-alert-content">
                 <h3>Amazon Web Services Unavailable</h3>
-                <p>The system is currently temporarily down for scheduled maintenance. We apologize for the inconvenience and appreciate your patience.</p>
+                <p>The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.</p>
               </div>
             </div>
 
             <section className="maintenance-info" aria-label="Maintenance details">
               <div className="info-block">
                 <h2>What happened?</h2>
-                <p>We are performing scheduled maintenance on this service.</p>
+                <p>We are performing maintenance on this service.</p>
               </div>
               <div className="info-block">
                 <h2>What can I do?</h2>

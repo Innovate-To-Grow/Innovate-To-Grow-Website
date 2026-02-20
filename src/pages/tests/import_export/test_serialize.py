@@ -22,6 +22,7 @@ from ...models import (
     Page,
     PageComponent,
     PageComponentImage,
+    PageComponentPlacement,
     UniformForm,
 )
 
@@ -41,32 +42,30 @@ class SerializePageTest(TestCase):
 
     def test_with_components(self):
         page = Page.objects.create(title="Test", slug="test")
-        PageComponent.objects.create(
-            page=page,
+        comp = PageComponent.objects.create(
             name="Hero",
             component_type="html",
-            order=0,
             html_content="<h1>Hello</h1>",
             css_code="h1 { color: red; }",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         data = serialize_page(page)
 
         self.assertEqual(len(data["components"]), 1)
-        comp = data["components"][0]
-        self.assertEqual(comp["name"], "Hero")
-        self.assertEqual(comp["component_type"], "html")
-        self.assertEqual(comp["html_content"], "<h1>Hello</h1>")
-        self.assertEqual(comp["css_code"], "h1 { color: red; }")
+        comp_data = data["components"][0]
+        self.assertEqual(comp_data["name"], "Hero")
+        self.assertEqual(comp_data["component_type"], "html")
+        self.assertEqual(comp_data["html_content"], "<h1>Hello</h1>")
+        self.assertEqual(comp_data["css_code"], "h1 { color: red; }")
 
     def test_include_files_false_excludes_file_fields(self):
         page = Page.objects.create(title="T", slug="t")
         comp = PageComponent.objects.create(
-            page=page,
             name="C",
             component_type="html",
-            order=0,
             html_content="<p>x</p>",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         # Simulate a file field value
         comp.image.save("hero.png", ContentFile(b"PNG_DATA"), save=False)
         PageComponent.objects.filter(pk=comp.pk).update(image=comp.image.name)
@@ -80,12 +79,11 @@ class SerializePageTest(TestCase):
     def test_include_files_true_includes_file_fields(self):
         page = Page.objects.create(title="T", slug="t")
         comp = PageComponent.objects.create(
-            page=page,
             name="C",
             component_type="html",
-            order=0,
             html_content="<p>x</p>",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         comp.image.save("hero.png", ContentFile(b"PNG_DATA"), save=False)
         PageComponent.objects.filter(pk=comp.pk).update(image=comp.image.name)
         comp.refresh_from_db()
@@ -102,12 +100,11 @@ class SerializePageTest(TestCase):
     def test_gallery_images_serialized(self):
         page = Page.objects.create(title="T", slug="t")
         comp = PageComponent.objects.create(
-            page=page,
             name="Gallery",
             component_type="html",
-            order=0,
             html_content="<div/>",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         PageComponentImage.objects.create(
             component=comp,
             order=0,
@@ -125,28 +122,26 @@ class SerializePageTest(TestCase):
             source_url="/api/data/",
         )
         page = Page.objects.create(title="T", slug="t")
-        PageComponent.objects.create(
-            page=page,
+        comp = PageComponent.objects.create(
             name="Dynamic",
             component_type="html",
-            order=0,
             html_content="<p>d</p>",
             data_source=ds,
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         data = serialize_page(page)
         self.assertEqual(data["components"][0]["data_source_name"], "my-api")
 
     def test_form_ref_serialized(self):
         form = UniformForm.objects.create(name="Contact", slug="contact")
         page = Page.objects.create(title="T", slug="t")
-        PageComponent.objects.create(
-            page=page,
+        comp = PageComponent.objects.create(
             name="Form",
             component_type="form",
-            order=0,
             html_content="",
             form=form,
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         data = serialize_page(page)
         self.assertEqual(data["components"][0]["form_slug"], "contact")
 
@@ -157,14 +152,13 @@ class SerializePageTest(TestCase):
             sheet_name="Sheet1",
         )
         page = Page.objects.create(title="T", slug="google-sheet-serialized")
-        PageComponent.objects.create(
-            page=page,
+        comp = PageComponent.objects.create(
             name="Schedule",
             component_type="google_sheet",
-            order=0,
             google_sheet=google_sheet,
             google_sheet_style="striped",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         data = serialize_page(page)
         self.assertEqual(data["components"][0]["google_sheet_name"], "Event Schedule")
         self.assertEqual(data["components"][0]["google_sheet_style"], "striped")
@@ -180,13 +174,12 @@ class SerializeHomePageTest(TestCase):
 
     def test_with_components(self):
         hp = HomePage.objects.create(name="Home")
-        PageComponent.objects.create(
-            home_page=hp,
+        comp = PageComponent.objects.create(
             name="Welcome",
             component_type="html",
-            order=0,
             html_content="<h1>Welcome</h1>",
         )
+        PageComponentPlacement.objects.create(component=comp, home_page=hp, order=0)
         data = serialize_homepage(hp)
         self.assertEqual(len(data["components"]), 1)
 
@@ -195,12 +188,11 @@ class CollectComponentFilesTest(TestCase):
     def test_collects_all_file_paths(self):
         page = Page.objects.create(title="T", slug="collect-test")
         comp = PageComponent.objects.create(
-            page=page,
             name="C",
             component_type="html",
-            order=0,
             html_content="<p/>",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
         # Save files
         comp.image.save("hero.png", ContentFile(b"IMG"), save=False)
         comp.css_file.save("style.css", ContentFile(b"CSS"), save=False)

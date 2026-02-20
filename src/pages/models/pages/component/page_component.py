@@ -73,8 +73,8 @@ class ComponentDataSource(ProjectControlModel):
 
 class PageComponent(ProjectControlModel):
     """
-    Component/section block that belongs to exactly one of Page or HomePage.
-    Supports HTML + images + forms + optional dynamic data pulled from a server-side endpoint.
+    Component/section block that can be placed on Pages and/or HomePages
+    via PageComponentPlacement. A single component can appear on multiple pages.
     """
 
     class ComponentType(models.TextChoices):
@@ -97,13 +97,6 @@ class PageComponent(ProjectControlModel):
         max_length=32, choices=ComponentType.choices, default=ComponentType.HTML, db_index=True
     )
 
-    # Parent assignment (exactly one)
-    page = models.ForeignKey("pages.Page", on_delete=models.CASCADE, related_name="components", blank=True, null=True)
-    home_page = models.ForeignKey(
-        "pages.HomePage", on_delete=models.CASCADE, related_name="components", blank=True, null=True
-    )
-
-    order = models.PositiveIntegerField(default=0, db_index=True)
     is_enabled = models.BooleanField(default=True, db_index=True)
 
     # Content/code
@@ -162,31 +155,10 @@ class PageComponent(ProjectControlModel):
     )
 
     class Meta:
-        ordering = ["order", "id"]
+        ordering = ["id"]
         verbose_name = "Page Component"
         verbose_name_plural = "Page Components"
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                    (Q(page__isnull=False) & Q(home_page__isnull=True))
-                    | (Q(page__isnull=True) & Q(home_page__isnull=False))
-                ),
-                name="pages_pagecomponent_single_parent",
-            ),
-            models.UniqueConstraint(
-                fields=["page", "order"],
-                condition=Q(page__isnull=False),
-                name="uniq_component_order_per_page",
-            ),
-            models.UniqueConstraint(
-                fields=["home_page", "order"],
-                condition=Q(home_page__isnull=False),
-                name="uniq_component_order_per_homepage",
-            ),
-        ]
         indexes = [
-            models.Index(fields=["page", "is_enabled", "order"]),
-            models.Index(fields=["home_page", "is_enabled", "order"]),
             models.Index(fields=["component_type"]),
             models.Index(fields=["data_source"]),
             models.Index(fields=["form"]),
@@ -195,10 +167,6 @@ class PageComponent(ProjectControlModel):
 
     def clean(self):
         super().clean()
-
-        # Exactly one parent
-        if bool(self.page_id) == bool(self.home_page_id):
-            raise ValidationError("Component must belong to exactly one of page or home_page.")
 
         # Data source must be enabled if set
         if self.data_source_id and not self.data_source.is_enabled:
@@ -228,9 +196,97 @@ class PageComponent(ProjectControlModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         result = super().save(*args, **kwargs)
-        # Invalidate parent page/homepage cache
+        self._invalidate_all_parent_caches()
+        return result
+
+    def _invalidate_all_parent_caches(self):
+        """Invalidate caches for all pages/homepages this component is placed on."""
+        from ..content.home_page import HOMEPAGE_CACHE_KEY
+        from ..content.page import PAGE_CACHE_KEY_PREFIX
+
+        for placement in self.placements.select_related("page", "home_page"):
+            if placement.page_id:
+                cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.slug.{placement.page.slug}")
+            if placement.home_page_id:
+                cache.delete(HOMEPAGE_CACHE_KEY)
+
+    def __str__(self) -> str:
+        return f"{self.component_type}: {self.name or '(unnamed)'}"
+
+
+class PageComponentPlacement(ProjectControlModel):
+    """
+    Through/join table linking a PageComponent to a Page and/or HomePage
+    with a per-parent ordering value.
+    """
+
+    component = models.ForeignKey(
+        PageComponent,
+        on_delete=models.CASCADE,
+        related_name="placements",
+    )
+    page = models.ForeignKey(
+        "pages.Page",
+        on_delete=models.CASCADE,
+        related_name="component_placements",
+        blank=True,
+        null=True,
+    )
+    home_page = models.ForeignKey(
+        "pages.HomePage",
+        on_delete=models.CASCADE,
+        related_name="component_placements",
+        blank=True,
+        null=True,
+    )
+    order = models.PositiveIntegerField(default=0, db_index=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "Component Placement"
+        verbose_name_plural = "Component Placements"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page", "order"],
+                condition=Q(page__isnull=False),
+                name="uniq_placement_order_per_page",
+            ),
+            models.UniqueConstraint(
+                fields=["home_page", "order"],
+                condition=Q(home_page__isnull=False),
+                name="uniq_placement_order_per_homepage",
+            ),
+            models.UniqueConstraint(
+                fields=["component", "page"],
+                condition=Q(page__isnull=False),
+                name="uniq_component_per_page",
+            ),
+            models.UniqueConstraint(
+                fields=["component", "home_page"],
+                condition=Q(home_page__isnull=False),
+                name="uniq_component_per_homepage",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["page", "order"]),
+            models.Index(fields=["home_page", "order"]),
+            models.Index(fields=["component"]),
+        ]
+
+    def clean(self):
+        super().clean()
+        if not self.page_id and not self.home_page_id:
+            raise ValidationError("A placement must be associated with at least a Page or a HomePage.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        result = super().save(*args, **kwargs)
         self._invalidate_parent_cache()
         return result
+
+    def delete(self, *args, **kwargs):
+        self._invalidate_parent_cache()
+        return super().delete(*args, **kwargs)
 
     def _invalidate_parent_cache(self):
         """Invalidate cache for the parent page or home page."""
@@ -243,9 +299,13 @@ class PageComponent(ProjectControlModel):
 
             cache.delete(HOMEPAGE_CACHE_KEY)
 
-    def __str__(self) -> str:
-        parent_label = self.page.slug if self.page_id else self.home_page.name
-        return f"{self.component_type} component for {parent_label} (order {self.order})"
+    def __str__(self):
+        target = []
+        if self.page_id:
+            target.append(f"Page:{self.page.slug}")
+        if self.home_page_id:
+            target.append(f"Home:{self.home_page.name}")
+        return f"{self.component.name} -> {', '.join(target)} (order {self.order})"
 
 
 class PageComponentImage(ProjectControlModel):

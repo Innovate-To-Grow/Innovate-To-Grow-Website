@@ -1,4 +1,10 @@
-from .component.page_component import ComponentDataSource, PageComponent, PageComponentAsset, PageComponentImage
+from .component.page_component import (
+    ComponentDataSource,
+    PageComponent,
+    PageComponentAsset,
+    PageComponentImage,
+    PageComponentPlacement,
+)
 from .content.home_page import HomePage
 from .content.page import Page
 from .integrations.google_sheet import GoogleSheet
@@ -23,6 +29,7 @@ __all__ = [
     "PageComponent",
     "PageComponentImage",
     "PageComponentAsset",
+    "PageComponentPlacement",
     "ComponentDataSource",
     "validate_nested_slug",
     "SEOFieldsMixin",

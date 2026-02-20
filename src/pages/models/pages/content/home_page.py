@@ -24,6 +24,12 @@ HOMEPAGE_CACHE_TIMEOUT = 300  # 5 minutes
 class HomePage(ComponentPageMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
     """Home page model composed of ordered PageComponents (one version active)."""
 
+    components = models.ManyToManyField(
+        "pages.PageComponent",
+        through="pages.PageComponentPlacement",
+        blank=True,
+    )
+
     name = models.CharField(max_length=200, help_text="Internal name to identify this home page version")
     is_active = models.BooleanField(default=False, help_text="Only one home page can be active at a time")
 

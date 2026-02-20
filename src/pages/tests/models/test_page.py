@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from ...models import Menu, MenuPageLink, Page, PageComponent, validate_nested_slug
+from ...models import Menu, MenuPageLink, Page, PageComponent, PageComponentPlacement, validate_nested_slug
 
 
 class PageModelTest(TestCase):
@@ -88,20 +88,24 @@ class PageModelTest(TestCase):
 
 
 class PageComponentTest(TestCase):
-    def test_requires_single_parent(self):
+    def test_allows_any_parent_combination(self):
+        """Test that a PageComponent can be created, and placements can link it to page/homepage."""
         page = Page.objects.create(title="P", slug="p")
         comp = PageComponent(name="Test", component_type="html", html_content="<p>Hi</p>")
 
-        with self.assertRaises(ValidationError):
-            comp.full_clean()
+        # No parent is allowed (component exists without placement)
+        comp.full_clean()
 
-        comp.page = page
-        comp.full_clean()  # no error once a parent is set
+        # Component can be linked to a page via placement
+        comp.save()
+        PageComponentPlacement.objects.create(component=comp, page=page, order=1)
 
     def test_ordering(self):
         page = Page.objects.create(title="Ordered", slug="ordered")
-        c2 = PageComponent.objects.create(name="C2", page=page, component_type="html", order=2, html_content="<p>2</p>")
-        c1 = PageComponent.objects.create(name="C1", page=page, component_type="html", order=1, html_content="<p>1</p>")
+        c1 = PageComponent.objects.create(name="C1", component_type="html", html_content="<p>1</p>")
+        c2 = PageComponent.objects.create(name="C2", component_type="html", html_content="<p>2</p>")
+        PageComponentPlacement.objects.create(component=c2, page=page, order=2)
+        PageComponentPlacement.objects.create(component=c1, page=page, order=1)
 
         ordered = list(page.ordered_components)
         self.assertEqual(ordered, [c1, c2])

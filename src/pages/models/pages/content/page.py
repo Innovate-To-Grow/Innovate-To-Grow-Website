@@ -38,6 +38,12 @@ class Page(
 
     # ------------------------------ Basic Fields ------------------------------
 
+    components = models.ManyToManyField(
+        "pages.PageComponent",
+        through="pages.PageComponentPlacement",
+        blank=True,
+    )
+
     title = models.CharField(max_length=200, help_text="Human readable title of the page.")
     slug = models.CharField(
         max_length=255,

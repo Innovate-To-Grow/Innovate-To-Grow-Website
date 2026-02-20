@@ -7,37 +7,21 @@ from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from unfold.admin import TabularInline
 
-from ...models import PageComponent
+from ...models import PageComponentPlacement
 
 
 class CompactComponentInline(TabularInline):
-    """Compact inline showing only summary fields. Users click Edit to open full editor."""
+    """Inline for managing component placements (which component, in what order)."""
 
-    model = PageComponent
+    model = PageComponentPlacement
     extra = 0
     fields = (
-        "name",
-        "component_type",
-        "google_sheet",
-        "google_sheet_style",
+        "component",
         "order",
-        "is_enabled",
-        "edit_content",
-        "html_content",
-        "css_code",
-        "js_code",
-        "config",
     )
-    readonly_fields = ("edit_content",)
     ordering = ("order", "id")
+    autocomplete_fields = ["component"]
     show_change_link = True
-
-    def edit_content(self, obj):
-        return format_html(
-            '<button type="button" class="button edit-component-btn" style="padding: 4px 12px;">Edit Content</button>'
-        )
-
-    edit_content.short_description = "Content"
 
 
 class WorkflowAdminMixin:
@@ -66,7 +50,7 @@ class WorkflowAdminMixin:
     status_badge.admin_order_field = "status"
 
     def component_count(self, obj):
-        return obj.components.count()
+        return obj.component_placements.count()
 
     component_count.short_description = "Components"
 

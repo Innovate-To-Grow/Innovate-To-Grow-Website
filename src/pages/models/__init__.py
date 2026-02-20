@@ -16,6 +16,7 @@ from .pages import (
     PageComponent,
     PageComponentAsset,
     PageComponentImage,
+    PageComponentPlacement,
     validate_nested_slug,
 )
 from .uniforms import FormSubmission, UniformForm
@@ -26,6 +27,7 @@ __all__ = [
     "PageComponent",
     "PageComponentImage",
     "PageComponentAsset",
+    "PageComponentPlacement",
     "ComponentDataSource",
     "GoogleSheet",
     "HomePage",

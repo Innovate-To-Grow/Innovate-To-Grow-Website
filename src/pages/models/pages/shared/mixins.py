@@ -164,13 +164,19 @@ class ComponentPageMixin(models.Model):
 
     @property
     def ordered_components(self):
-        """Return enabled components ordered for rendering."""
-        return self.components.filter(is_enabled=True).order_by("order", "id")
+        """Return enabled components ordered by placement order."""
+        placements = self.component_placements.filter(
+            component__is_enabled=True
+        ).select_related("component").order_by("order", "id")
+        return [p.component for p in placements]
 
     @property
     def all_components(self):
-        """Return all components (including disabled) ordered."""
-        return self.components.order_by("order", "id")
+        """Return all components (including disabled) ordered by placement order."""
+        placements = self.component_placements.select_related(
+            "component"
+        ).order_by("order", "id")
+        return [p.component for p in placements]
 
 
 # Backward-compatible alias

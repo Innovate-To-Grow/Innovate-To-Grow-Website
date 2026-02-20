@@ -20,6 +20,7 @@ from ...models import (
     HomePage,
     Page,
     PageComponent,
+    PageComponentPlacement,
 )
 
 
@@ -149,15 +150,14 @@ class RoundTripTest(TestCase):
             meta_description="A test page",
             meta_robots="index,follow",
         )
-        PageComponent.objects.create(
-            page=page,
+        comp = PageComponent.objects.create(
             name="Body",
             component_type="html",
-            order=0,
             html_content="<p>Content</p>",
             css_code="p { margin: 0; }",
             js_code="console.log('hi');",
         )
+        PageComponentPlacement.objects.create(component=comp, page=page, order=0)
 
         # Export
         data = serialize_page(page)
@@ -177,13 +177,12 @@ class RoundTripTest(TestCase):
 
     def test_homepage_round_trip(self):
         hp = HomePage.objects.create(name="RT Home")
-        PageComponent.objects.create(
-            home_page=hp,
+        comp = PageComponent.objects.create(
             name="Welcome",
             component_type="html",
-            order=0,
             html_content="<h1>Welcome</h1>",
         )
+        PageComponentPlacement.objects.create(component=comp, home_page=hp, order=0)
 
         data = serialize_homepage(hp)
         data["homepage"]["name"] = "RT Home Copy"

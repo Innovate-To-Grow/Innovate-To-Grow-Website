@@ -18,6 +18,7 @@ from ...models import (
     HomePage,
     Page,
     PageComponent,
+    PageComponentPlacement,
     UniformForm,
 )
 
@@ -52,13 +53,12 @@ class DeserializePageTest(TestCase):
 
     def test_replaces_components(self):
         page = Page.objects.create(title="T", slug="replace-test")
-        PageComponent.objects.create(
-            page=page,
+        old_comp = PageComponent.objects.create(
             name="Old",
             component_type="html",
-            order=0,
             html_content="old",
         )
+        PageComponentPlacement.objects.create(component=old_comp, page=page, order=0)
 
         data = {
             "export_type": "page",

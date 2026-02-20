@@ -23,6 +23,7 @@ from ...models import (
     Page,
     PageComponent,
     PageComponentImage,
+    PageComponentPlacement,
     UniformForm,
 )
 
@@ -37,10 +38,11 @@ ZIP_EXPORT_VERSION = "2.0"
 # ========================
 
 
-def _serialize_component(component, include_files=False):
+def _serialize_component(component, order, include_files=False):
     """Serialize a single PageComponent to a dict.
 
     Args:
+        order: The placement order for this component in its parent context.
         include_files: When True, include storage-relative paths for file fields
                        (css_file, image, background_image, gallery images).
     """
@@ -59,7 +61,7 @@ def _serialize_component(component, include_files=False):
     data = {
         "name": component.name,
         "component_type": component.component_type,
-        "order": component.order,
+        "order": order,
         "is_enabled": component.is_enabled,
         "html_content": component.html_content,
         "css_code": component.css_code,
@@ -89,7 +91,9 @@ def _serialize_component(component, include_files=False):
 
 def serialize_page(page, include_files=False):
     """Serialize a Page + its components + images to an export dict."""
-    components = page.components.order_by("order", "id").prefetch_related("images")
+    placements = page.component_placements.select_related(
+        "component", "component__data_source", "component__form", "component__google_sheet"
+    ).prefetch_related("component__images").order_by("order", "id")
     return {
         "export_version": EXPORT_VERSION,
         "export_type": "page",
@@ -107,13 +111,18 @@ def serialize_page(page, include_files=False):
             "google_site_verification": page.google_site_verification,
             "google_structured_data": page.google_structured_data,
         },
-        "components": [_serialize_component(c, include_files=include_files) for c in components],
+        "components": [
+            _serialize_component(p.component, order=p.order, include_files=include_files)
+            for p in placements
+        ],
     }
 
 
 def serialize_homepage(homepage, include_files=False):
     """Serialize a HomePage + its components + images to an export dict."""
-    components = homepage.components.order_by("order", "id").prefetch_related("images")
+    placements = homepage.component_placements.select_related(
+        "component", "component__data_source", "component__form", "component__google_sheet"
+    ).prefetch_related("component__images").order_by("order", "id")
     return {
         "export_version": EXPORT_VERSION,
         "export_type": "homepage",
@@ -121,7 +130,10 @@ def serialize_homepage(homepage, include_files=False):
         "homepage": {
             "name": homepage.name,
         },
-        "components": [_serialize_component(c, include_files=include_files) for c in components],
+        "components": [
+            _serialize_component(p.component, order=p.order, include_files=include_files)
+            for p in placements
+        ],
     }
 
 
@@ -160,7 +172,7 @@ def _resolve_fk_refs(comp_data, warnings):
 
 
 def _create_components(parent_field, parent, components_data, warnings, file_map=None):
-    """Create PageComponent + PageComponentImage rows for a parent page/homepage.
+    """Create PageComponent + PageComponentPlacement + PageComponentImage rows for a parent.
 
     Args:
         file_map: Optional dict mapping archive paths (``media/{storage_path}``)
@@ -198,10 +210,8 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
         component = PageComponent.objects.bulk_create(
             [
                 PageComponent(
-                    **{parent_field: parent},
                     name=comp_data.get("name", ""),
                     component_type=comp_type,
-                    order=comp_data.get("order", 0),
                     is_enabled=comp_data.get("is_enabled", True),
                     html_content=comp_data.get("html_content", ""),
                     css_code=comp_data.get("css_code", ""),
@@ -221,6 +231,17 @@ def _create_components(parent_field, parent, components_data, warnings, file_map
                 )
             ]
         )[0]
+
+        # Create the placement linking component to parent
+        PageComponentPlacement.objects.bulk_create(
+            [
+                PageComponentPlacement(
+                    component=component,
+                    **{parent_field: parent},
+                    order=comp_data.get("order", 0),
+                )
+            ]
+        )
 
         # Restore file fields from archive
         if file_map is not None:
@@ -307,8 +328,15 @@ def deserialize_page(data, user=None, file_map=None):
             page.updated_by = user
         page.save()
 
-    # Replace all components: hard_delete to avoid unique constraint violations
-    PageComponent.objects.filter(page=page).hard_delete()
+    # Delete placements and orphaned components
+    component_ids = list(
+        PageComponentPlacement.objects.filter(page=page).values_list("component_id", flat=True)
+    )
+    PageComponentPlacement.objects.filter(page=page).hard_delete()
+    PageComponent.objects.filter(
+        id__in=component_ids,
+        placements__isnull=True,
+    ).hard_delete()
 
     # Create new components from import data
     _create_components("page", page, data.get("components", []), warnings, file_map=file_map)
@@ -353,8 +381,15 @@ def deserialize_homepage(data, user=None, file_map=None):
         homepage = HomePage(name=name, status="draft", is_active=False)
         homepage.save()
 
-    # Replace all components
-    PageComponent.objects.filter(home_page=homepage).hard_delete()
+    # Delete placements and orphaned components
+    component_ids = list(
+        PageComponentPlacement.objects.filter(home_page=homepage).values_list("component_id", flat=True)
+    )
+    PageComponentPlacement.objects.filter(home_page=homepage).hard_delete()
+    PageComponent.objects.filter(
+        id__in=component_ids,
+        placements__isnull=True,
+    ).hard_delete()
 
     _create_components("home_page", homepage, data.get("components", []), warnings, file_map=file_map)
 

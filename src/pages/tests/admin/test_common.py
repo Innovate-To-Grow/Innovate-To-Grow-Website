@@ -1,11 +1,10 @@
 """
 Tests for shared admin functionality: WorkflowAdminMixin,
-CompactComponentInline, and PageComponentAdmin readonly fields.
+CompactComponentInline, and PageComponentAdmin.
 
 Covers:
 - WorkflowAdminMixin shared behavior (display names, component counts, badges, save_model)
 - CompactComponentInline configuration
-- PageComponentAdmin readonly fields and fieldsets
 """
 
 from django.contrib.admin.sites import AdminSite
@@ -14,9 +13,8 @@ from django.test import RequestFactory, TestCase
 
 from ...admin.content.home_page import HomePageAdmin
 from ...admin.content.page import PageAdmin
-from ...admin.content.page_component import PageComponentAdmin
 from ...admin.shared.base import CompactComponentInline
-from ...models import HomePage, Page, PageComponent
+from ...models import HomePage, Page, PageComponent, PageComponentPlacement
 
 User = get_user_model()
 
@@ -42,14 +40,17 @@ class WorkflowAdminMixinTest(TestCase):
     def test_component_count_page(self):
         page_admin = PageAdmin(Page, self.site)
         page = Page.objects.create(title="T", slug="comp-count")
-        PageComponent.objects.create(page=page, name="C1", component_type="html", order=1, html_content="<p/>")
-        PageComponent.objects.create(page=page, name="C2", component_type="html", order=2, html_content="<p/>")
+        c1 = PageComponent.objects.create(name="C1", component_type="html", html_content="<p/>")
+        c2 = PageComponent.objects.create(name="C2", component_type="html", html_content="<p/>")
+        PageComponentPlacement.objects.create(component=c1, page=page, order=1)
+        PageComponentPlacement.objects.create(component=c2, page=page, order=2)
         self.assertEqual(page_admin.component_count(page), 2)
 
     def test_component_count_homepage(self):
         hp_admin = HomePageAdmin(HomePage, self.site)
         hp = HomePage.objects.create(name="HP Count")
-        PageComponent.objects.create(home_page=hp, name="C1", component_type="html", order=1, html_content="<p/>")
+        c1 = PageComponent.objects.create(name="C1", component_type="html", html_content="<p/>")
+        PageComponentPlacement.objects.create(component=c1, home_page=hp, order=1)
         self.assertEqual(hp_admin.component_count(hp), 1)
 
     def test_status_badge_draft(self):
@@ -105,27 +106,14 @@ class CompactComponentInlineTest(TestCase):
     """Test CompactComponentInline configuration."""
 
     def test_inline_fields(self):
-        """Verify that inline fields include modal edit + content fields for live preview."""
+        """Verify that inline fields include component and order for placement management."""
         self.assertEqual(
             CompactComponentInline.fields,
             (
-                "name",
-                "component_type",
-                "google_sheet",
-                "google_sheet_style",
+                "component",
                 "order",
-                "is_enabled",
-                "edit_content",
-                "html_content",
-                "css_code",
-                "js_code",
-                "config",
             ),
         )
-
-    def test_inline_has_edit_content_readonly_field(self):
-        """Verify edit_content is configured as readonly helper field."""
-        self.assertIn("edit_content", CompactComponentInline.readonly_fields)
 
     def test_inline_extra_is_zero(self):
         self.assertEqual(CompactComponentInline.extra, 0)
@@ -134,21 +122,4 @@ class CompactComponentInlineTest(TestCase):
         self.assertTrue(CompactComponentInline.show_change_link)
 
     def test_inline_model(self):
-        self.assertEqual(CompactComponentInline.model, PageComponent)
-
-
-class PageComponentAdminReadonlyTest(TestCase):
-    """Test that page and home_page are readonly in PageComponentAdmin."""
-
-    def test_page_and_home_page_are_readonly(self):
-        site = AdminSite()
-        comp_admin = PageComponentAdmin(PageComponent, site)
-        self.assertIn("page", comp_admin.readonly_fields)
-        self.assertIn("home_page", comp_admin.readonly_fields)
-
-    def test_parent_fieldset_exists(self):
-        """There should be a collapsed 'Parent (read-only)' fieldset."""
-        site = AdminSite()
-        comp_admin = PageComponentAdmin(PageComponent, site)
-        fieldset_names = [fs[0] for fs in comp_admin.fieldsets]
-        self.assertIn("Parent (read-only)", fieldset_names)
+        self.assertEqual(CompactComponentInline.model, PageComponentPlacement)
