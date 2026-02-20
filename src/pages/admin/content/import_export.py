@@ -91,9 +91,13 @@ def _serialize_component(component, order, include_files=False):
 
 def serialize_page(page, include_files=False):
     """Serialize a Page + its components + images to an export dict."""
-    placements = page.component_placements.select_related(
-        "component", "component__data_source", "component__form", "component__google_sheet"
-    ).prefetch_related("component__images").order_by("order", "id")
+    placements = (
+        page.component_placements.select_related(
+            "component", "component__data_source", "component__form", "component__google_sheet"
+        )
+        .prefetch_related("component__images")
+        .order_by("order", "id")
+    )
     return {
         "export_version": EXPORT_VERSION,
         "export_type": "page",
@@ -112,17 +116,20 @@ def serialize_page(page, include_files=False):
             "google_structured_data": page.google_structured_data,
         },
         "components": [
-            _serialize_component(p.component, order=p.order, include_files=include_files)
-            for p in placements
+            _serialize_component(p.component, order=p.order, include_files=include_files) for p in placements
         ],
     }
 
 
 def serialize_homepage(homepage, include_files=False):
     """Serialize a HomePage + its components + images to an export dict."""
-    placements = homepage.component_placements.select_related(
-        "component", "component__data_source", "component__form", "component__google_sheet"
-    ).prefetch_related("component__images").order_by("order", "id")
+    placements = (
+        homepage.component_placements.select_related(
+            "component", "component__data_source", "component__form", "component__google_sheet"
+        )
+        .prefetch_related("component__images")
+        .order_by("order", "id")
+    )
     return {
         "export_version": EXPORT_VERSION,
         "export_type": "homepage",
@@ -131,8 +138,7 @@ def serialize_homepage(homepage, include_files=False):
             "name": homepage.name,
         },
         "components": [
-            _serialize_component(p.component, order=p.order, include_files=include_files)
-            for p in placements
+            _serialize_component(p.component, order=p.order, include_files=include_files) for p in placements
         ],
     }
 
@@ -329,9 +335,7 @@ def deserialize_page(data, user=None, file_map=None):
         page.save()
 
     # Delete placements and orphaned components
-    component_ids = list(
-        PageComponentPlacement.objects.filter(page=page).values_list("component_id", flat=True)
-    )
+    component_ids = list(PageComponentPlacement.objects.filter(page=page).values_list("component_id", flat=True))
     PageComponentPlacement.objects.filter(page=page).hard_delete()
     PageComponent.objects.filter(
         id__in=component_ids,

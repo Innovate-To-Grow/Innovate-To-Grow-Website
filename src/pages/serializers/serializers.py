@@ -59,9 +59,7 @@ class PageSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "slug", "created_at", "updated_at", "published"]
 
     def get_components(self, obj):
-        placements = obj.component_placements.select_related(
-            "component"
-        ).order_by("order", "id")
+        placements = obj.component_placements.select_related("component").order_by("order", "id")
         result = []
         for placement in placements:
             data = PageComponentSerializer(placement.component).data
@@ -89,9 +87,7 @@ class HomePageSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at", "published"]
 
     def get_components(self, obj):
-        placements = obj.component_placements.select_related(
-            "component"
-        ).order_by("order", "id")
+        placements = obj.component_placements.select_related("component").order_by("order", "id")
         result = []
         for placement in placements:
             data = PageComponentSerializer(placement.component).data

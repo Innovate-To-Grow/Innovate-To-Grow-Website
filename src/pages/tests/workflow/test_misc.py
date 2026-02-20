@@ -33,9 +33,7 @@ class PageComponentCacheInvalidationTest(TestCase):
         self.assertIsNotNone(cache.get(cache_key))
 
         # Create component + placement -> parent cache invalidated via placement.save()
-        comp = PageComponent.objects.create(
-            name="Comp", component_type="html", html_content="<p>Content</p>"
-        )
+        comp = PageComponent.objects.create(name="Comp", component_type="html", html_content="<p>Content</p>")
         PageComponentPlacement.objects.create(component=comp, page=page, order=1)
         self.assertIsNone(cache.get(cache_key))
 
@@ -48,18 +46,14 @@ class PageComponentCacheInvalidationTest(TestCase):
         self.assertIsNotNone(cache.get(HOMEPAGE_CACHE_KEY))
 
         # Create component + placement -> parent cache invalidated via placement.save()
-        comp = PageComponent.objects.create(
-            name="HP Comp", component_type="html", html_content="<p>Content</p>"
-        )
+        comp = PageComponent.objects.create(name="HP Comp", component_type="html", html_content="<p>Content</p>")
         PageComponentPlacement.objects.create(component=comp, home_page=hp, order=1)
         self.assertIsNone(cache.get(HOMEPAGE_CACHE_KEY))
 
     def test_component_update_invalidates_page_cache(self):
         """Updating a component invalidates the parent Page cache via _invalidate_all_parent_caches."""
         page = Page.objects.create(title="Parent", slug="parent-upd", status="published")
-        comp = PageComponent.objects.create(
-            name="Update Comp", component_type="html", html_content="<p>Old</p>"
-        )
+        comp = PageComponent.objects.create(name="Update Comp", component_type="html", html_content="<p>Old</p>")
         PageComponentPlacement.objects.create(component=comp, page=page, order=1)
         cache_key = f"{PAGE_CACHE_KEY_PREFIX}.slug.parent-upd"
 

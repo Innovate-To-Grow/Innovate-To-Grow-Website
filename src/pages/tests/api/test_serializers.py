@@ -115,9 +115,7 @@ class HomePageSerializerTest(TestCase):
     def test_serialize_homepage(self):
         """Serialize a published and active home page."""
         hp = HomePage.objects.create(name="Home V1", status="published", is_active=True)
-        comp = PageComponent.objects.create(
-            name="Welcome", component_type="html", html_content="<h1>Welcome</h1>"
-        )
+        comp = PageComponent.objects.create(name="Welcome", component_type="html", html_content="<h1>Welcome</h1>")
         PageComponentPlacement.objects.create(component=comp, home_page=hp, order=1)
 
         serializer = HomePageSerializer(hp)

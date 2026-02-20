@@ -125,12 +125,8 @@ class ComponentPageMixinTest(TestCase):
     def test_homepage_all_components(self):
         """HomePage also has all_components via ComponentPageMixin."""
         hp = HomePage.objects.create(name="HP All Test")
-        c1 = PageComponent.objects.create(
-            name="C1", component_type="html", is_enabled=True, html_content="<p>1</p>"
-        )
-        c2 = PageComponent.objects.create(
-            name="C2", component_type="html", is_enabled=False, html_content="<p>2</p>"
-        )
+        c1 = PageComponent.objects.create(name="C1", component_type="html", is_enabled=True, html_content="<p>1</p>")
+        c2 = PageComponent.objects.create(name="C2", component_type="html", is_enabled=False, html_content="<p>2</p>")
         PageComponentPlacement.objects.create(component=c1, home_page=hp, order=1)
         PageComponentPlacement.objects.create(component=c2, home_page=hp, order=2)
         self.assertEqual(len(hp.all_components), 2)
