@@ -58,6 +58,22 @@
           "value": "__CSRF_TRUSTED_ORIGINS__"
         },
         {
+          "name": "CORS_ALLOWED_ORIGINS",
+          "value": "__CORS_ALLOWED_ORIGINS__"
+        },
+        {
+          "name": "FRONTEND_URL",
+          "value": "__FRONTEND_URL__"
+        },
+        {
+          "name": "AWS_STORAGE_BUCKET_NAME",
+          "value": "__AWS_STORAGE_BUCKET_NAME__"
+        },
+        {
+          "name": "AWS_S3_REGION_NAME",
+          "value": "__AWS_S3_REGION_NAME__"
+        },
+        {
           "name": "DJANGO_SUPERUSER_USERNAME",
           "value": "__DJANGO_SUPERUSER_USERNAME__"
         },

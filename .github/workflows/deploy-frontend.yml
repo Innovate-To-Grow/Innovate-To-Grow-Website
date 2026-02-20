@@ -12,7 +12,7 @@ jobs:
     name: Build & Deploy Frontend
     runs-on: ubuntu-latest
     environment:
-      name: AWS Amplify (Prod)
+      name: AWS Amplify - Prod
       url: https://main.d1fekd6ba7zdu.amplifyapp.com
     defaults:
       run:
@@ -35,7 +35,7 @@ jobs:
       - name: Build frontend
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -46,7 +46,7 @@ jobs:
 
       - name: Deploy to AWS Amplify
         env:
-          AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
+          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
           AMPLIFY_BRANCH: main
         run: |
           # Create a deployment and get the upload URL + job ID

@@ -5,13 +5,16 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "aws/task-definition.json"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-1' }}
   ECR_REPOSITORY: itg-backend
-  ECS_CLUSTER: itg-cluster
+  ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-backend-service
+  ECS_TASK_DEFINITION: aws/task-definition.json
   CONTAINER_NAME: itg-backend
 
 jobs:
@@ -28,7 +31,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -45,20 +48,114 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Download current task definition
+      - name: Validate required deployment configuration
+        env:
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          DB_HOST: ${{ vars.DB_HOST }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          DB_USER: ${{ vars.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          aws ecs describe-task-definition \
-            --task-definition itg-backend \
-            --query taskDefinition \
-            > task-definition.json
+          missing=()
+          for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing required config: ${missing[*]}"
+            exit 1
+          fi
 
-      - name: Update ECS task definition with new image
+      - name: Render ECS task definition from template
         id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
+        env:
+          IMAGE_URI: ${{ steps.build-image.outputs.image }}
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          DB_ENGINE: ${{ vars.DB_ENGINE }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          DB_USER: ${{ vars.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ vars.DB_HOST }}
+          DB_PORT: ${{ vars.DB_PORT }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          DJANGO_SUPERUSER_USERNAME: ${{ secrets.DJANGO_SUPERUSER_USERNAME }}
+          DJANGO_SUPERUSER_EMAIL: ${{ secrets.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d1fekd6ba7zdu.amplifyapp.com' }}
+          API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
+          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from urllib.parse import urlparse
+
+          template_path = "aws/task-definition.json"
+          output_path = "rendered-task-definition.json"
+
+          with open(template_path, "r", encoding="utf-8") as f:
+              taskdef = json.load(f)
+
+          frontend_url = os.environ.get("FRONTEND_URL", "").strip()
+          api_base_url = os.environ.get("API_BASE_URL", "").strip()
+
+          csrf_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
+          if not csrf_origins:
+              csrf_values = [x for x in [frontend_url, api_base_url] if x]
+              csrf_origins = ",".join(csrf_values)
+
+          cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip() or frontend_url
+
+          allowed_hosts = os.environ.get("DJANGO_ALLOWED_HOSTS", "").strip()
+          if not allowed_hosts:
+              hosts = []
+              parsed = urlparse(api_base_url)
+              if parsed.hostname:
+                  hosts.append(parsed.hostname)
+              hosts.extend([".cloudfront.net", ".elb.amazonaws.com"])
+              allowed_hosts = ",".join(dict.fromkeys([h for h in hosts if h]))
+
+          mapping = {
+              "__DJANGO_SECRET_KEY__": os.environ.get("DJANGO_SECRET_KEY", ""),
+              "__DJANGO_ALLOWED_HOSTS__": allowed_hosts,
+              "__DB_NAME__": os.environ.get("DB_NAME", ""),
+              "__DB_USER__": os.environ.get("DB_USER", ""),
+              "__DB_PASSWORD__": os.environ.get("DB_PASSWORD", ""),
+              "__DB_HOST__": os.environ.get("DB_HOST", ""),
+              "__DB_PORT__": os.environ.get("DB_PORT", "5432"),
+              "__REDIS_URL__": os.environ.get("REDIS_URL", ""),
+              "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
+              "__CORS_ALLOWED_ORIGINS__": cors_origins,
+              "__FRONTEND_URL__": frontend_url,
+              "__AWS_STORAGE_BUCKET_NAME__": os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
+              "__AWS_S3_REGION_NAME__": os.environ.get("AWS_S3_REGION_NAME", "us-west-2"),
+              "__DJANGO_SUPERUSER_USERNAME__": os.environ.get("DJANGO_SUPERUSER_USERNAME", ""),
+              "__DJANGO_SUPERUSER_EMAIL__": os.environ.get("DJANGO_SUPERUSER_EMAIL", ""),
+              "__DJANGO_SUPERUSER_PASSWORD__": os.environ.get("DJANGO_SUPERUSER_PASSWORD", ""),
+          }
+
+          container = taskdef["containerDefinitions"][0]
+          container["image"] = os.environ["IMAGE_URI"]
+
+          for item in container.get("environment", []):
+              value = item.get("value", "")
+              if value in mapping:
+                  item["value"] = mapping[value]
+
+          # Optional DB_ENGINE override; prod defaults to PostgreSQL if unset.
+          db_engine = os.environ.get("DB_ENGINE", "").strip()
+          if db_engine:
+              container["environment"].append({"name": "DB_ENGINE", "value": db_engine})
+
+          with open(output_path, "w", encoding="utf-8") as f:
+              json.dump(taskdef, f, indent=2)
+          PY
+          echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2

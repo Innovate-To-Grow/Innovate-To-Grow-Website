@@ -52,6 +52,11 @@ X_FRAME_OPTIONS = "DENY"
 CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if os.environ.get(
     "CSRF_TRUSTED_ORIGINS") else []
 
+# CORS for frontend API access from a separate origin (e.g. Amplify domain)
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if os.environ.get(
+    "CORS_ALLOWED_ORIGINS") else []
+CORS_ALLOW_CREDENTIALS = True
+
 # AWS S3 Storage Configuration
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
@@ -135,15 +140,26 @@ LOGGING = {
     },
 }
 
-# Cache settings with Redis
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/1"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-        "KEY_PREFIX": "i2g",
-        "TIMEOUT": 300,  # Default 5-minute timeout
+# Cache settings with Redis (fallback to in-memory cache if REDIS_URL is not provided)
+REDIS_URL = os.environ.get("REDIS_URL", "").strip()
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+            "KEY_PREFIX": "i2g",
+            "TIMEOUT": 300,  # Default 5-minute timeout
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "innovate-to-grow-prod-fallback",
+            "KEY_PREFIX": "i2g",
+            "TIMEOUT": 300,
+        }
+    }

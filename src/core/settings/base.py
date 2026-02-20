@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
     # third party application
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
     "django_ckeditor_5",
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "core.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

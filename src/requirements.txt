@@ -33,6 +33,7 @@ boto3>=1.34.0
 gunicorn>=21.0.0
 psycopg2-binary>=2.9.0  # PostgreSQL adapter
 django-redis>=5.4.0  # Redis cache backend
+django-cors-headers>=4.4.0
 
 # Development Dependencies
 # django-debug-toolbar>=4.0.0
