@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-1' }}
+  AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
   ECR_REPOSITORY: itg-backend
   ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-backend-service
@@ -91,7 +91,7 @@ jobs:
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_PASSWORD: ${{ vars.DJANGO_SUPERUSER_PASSWORD || secrets.DJANGO_SUPERUSER_PASSWORD }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d1fekd6ba7zdu.amplifyapp.com' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d27iyf1haq14j.amplifyapp.com' }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
           CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
@@ -183,7 +183,7 @@ jobs:
 
       - name: Smoke check deployed health endpoint and CORS
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d1fekd6ba7zdu.amplifyapp.com' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://main.d27iyf1haq14j.amplifyapp.com' }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           set -euo pipefail

@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "itg-backend",
-      "image": "394167325273.dkr.ecr.us-west-1.amazonaws.com/itg-backend:latest",
+      "image": "394167325273.dkr.ecr.us-west-2.amazonaws.com/itg-backend:latest",
       "portMappings": [
         {
           "containerPort": 8000,
@@ -90,7 +90,7 @@
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/itg-backend",
-          "awslogs-region": "us-west-1",
+          "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "ecs"
         }
       },

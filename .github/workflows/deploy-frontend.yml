@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: AWS Amplify - Prod
-      url: https://main.d1fekd6ba7zdu.amplifyapp.com
+      url: https://main.d27iyf1haq14j.amplifyapp.com
     defaults:
       run:
         working-directory: pages
@@ -45,7 +45,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-1
+          aws-region: us-west-2
 
       - name: Deploy to AWS Amplify
         env:
