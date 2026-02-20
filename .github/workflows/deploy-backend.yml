@@ -1,12 +1,10 @@
 name: Deploy Backend to AWS ECS
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
-    paths:
-      - "src/**"
-      - "aws/task-definition.json"
-      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 concurrency:
@@ -24,6 +22,9 @@ env:
 jobs:
   deploy:
     name: Build & Deploy Backend
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment:

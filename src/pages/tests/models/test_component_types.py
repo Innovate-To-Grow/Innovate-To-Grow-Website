@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from ...models import GoogleSheet, Page, PageComponent, UniformForm
+from ...models import GoogleSheet, PageComponent, UniformForm
 
 
 class ComponentTypeRestrictionTest(TestCase):
