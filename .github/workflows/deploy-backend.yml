@@ -26,6 +26,9 @@ jobs:
     name: Build & Deploy Backend
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    environment:
+      name: AWS ECS - Prod
+      url: https://d1kms8dniv7dqs.cloudfront.net
 
     steps:
       - name: Checkout code

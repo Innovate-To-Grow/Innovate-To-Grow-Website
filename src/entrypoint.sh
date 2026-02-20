@@ -32,11 +32,54 @@ END
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-echo "Creating superuser if not exists..."
-if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
-    python manage.py createsuperuser --noinput 2>&1 || echo "Superuser already exists or creation skipped."
+echo "Ensuring superuser exists and password is up to date..."
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    python manage.py shell << 'PY'
+import os
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+username = os.environ["DJANGO_SUPERUSER_USERNAME"]
+email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "")
+password = os.environ["DJANGO_SUPERUSER_PASSWORD"]
+
+user, created = User.objects.get_or_create(
+    username=username,
+    defaults={
+        "email": email,
+        "is_staff": True,
+        "is_superuser": True,
+        "is_active": True,
+    },
+)
+
+updated_fields = []
+if email and user.email != email:
+    user.email = email
+    updated_fields.append("email")
+
+if not user.is_staff:
+    user.is_staff = True
+    updated_fields.append("is_staff")
+
+if not user.is_superuser:
+    user.is_superuser = True
+    updated_fields.append("is_superuser")
+
+if not user.is_active:
+    user.is_active = True
+    updated_fields.append("is_active")
+
+# Always sync password from env to support password rotation during deploy.
+user.set_password(password)
+updated_fields.append("password")
+
+user.save()
+action = "Created" if created else "Updated"
+print(f"{action} superuser '{username}' ({', '.join(updated_fields)}).")
+PY
 else
-    echo "Superuser env vars not set, skipping."
+    echo "DJANGO_SUPERUSER_USERNAME or DJANGO_SUPERUSER_PASSWORD not set, skipping."
 fi
 
 echo "Collecting static files..."
