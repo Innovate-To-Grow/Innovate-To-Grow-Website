@@ -222,3 +222,10 @@ Thumbs.db
 
 # Keep CLAUDE.md in version control
 !/.agent/CLAUDE.md
+
+# =====================================
+# AWS Keys
+# =====================================
+
+!/aws/aws_keys/
+!/aws/aws_keys/github-actions-deploy_accessKeys (1).csv
