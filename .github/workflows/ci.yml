@@ -3,7 +3,17 @@ name: CI
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'pages/**'
+      - 'aws/**'
+      - '.github/workflows/**'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'pages/**'
+      - 'aws/**'
+      - '.github/workflows/**'
 
 jobs:
   # ============================================
