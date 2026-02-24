@@ -68,12 +68,14 @@ class MediaUploadView(View):
         if ext in DENIED_EXTENSIONS:
             return JsonResponse({"error": f"File type '.{ext}' is not allowed."}, status=400)
 
-        # Determine content type
+        # Determine content type and update the file object so the storage
+        # backend (e.g. S3) sets the correct Content-Type header.
         content_type = uploaded_file.content_type or ""
         if not content_type or content_type == "application/octet-stream":
             guessed_type, _ = mimetypes.guess_type(uploaded_file.name)
             if guessed_type:
                 content_type = guessed_type
+                uploaded_file.content_type = content_type
 
         # Create MediaAsset
         asset = MediaAsset.objects.create(
@@ -86,6 +88,9 @@ class MediaUploadView(View):
 
         return JsonResponse(
             {
+                # GrapesJS asset manager expects "data" array of URLs for autoAdd
+                "data": [asset.url],
+                # Additional metadata for other consumers
                 "success": True,
                 "url": asset.url,
                 "uuid": str(asset.uuid),

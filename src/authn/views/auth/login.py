@@ -39,7 +39,7 @@ class LoginView(APIView):
                     "member_uuid": str(user.member_uuid),
                     "email": user.email,
                     "username": user.username,
-                    "display_name": profile.display_name or user.username,
+                    "display_name": user.get_full_name() or user.username,
                 },
             },
             status=status.HTTP_200_OK,

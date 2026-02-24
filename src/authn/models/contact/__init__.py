@@ -2,10 +2,9 @@
 Contact information models.
 """
 
-from .contact_info import ContactEmail, ContactPhone, MemberContactInfo
+from .contact_info import ContactEmail, ContactPhone
 
 __all__ = [
     "ContactEmail",
     "ContactPhone",
-    "MemberContactInfo",
 ]

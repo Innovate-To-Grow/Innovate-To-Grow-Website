@@ -2,12 +2,10 @@ from rest_framework import serializers
 
 from ..models import (
     FooterContent,
-    FormSubmission,
     HomePage,
     Menu,
     MenuPageLink,
     Page,
-    UniformForm,
 )
 
 
@@ -56,93 +54,6 @@ class HomePageSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "published"]
-
-
-class UniformFormSerializer(serializers.ModelSerializer):
-    """Serializer for retrieving form definitions."""
-
-    class Meta:
-        model = UniformForm
-        fields = [
-            "id",
-            "form_uuid",
-            "name",
-            "slug",
-            "description",
-            "fields",
-            "submit_button_text",
-            "success_message",
-            "redirect_url",
-            "allow_anonymous",
-            "login_required",
-            "is_active",
-            "published",
-        ]
-        read_only_fields = ["id", "form_uuid", "submission_count"]
-
-
-class FormSubmissionCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating form submissions."""
-
-    class Meta:
-        model = FormSubmission
-        fields = ["form", "data"]
-
-    def validate(self, attrs):
-        """Validate submission data against form field definitions."""
-        form = attrs["form"]
-        data = attrs["data"]
-
-        errors = form.validate_submission_data(data)
-        if errors:
-            raise serializers.ValidationError(errors)
-
-        return attrs
-
-    def create(self, validated_data):
-        """Create submission with metadata from request."""
-        request = self.context.get("request")
-
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            ip_address = x_forwarded_for.split(",")[0].strip()
-        else:
-            ip_address = request.META.get("REMOTE_ADDR")
-
-        submission = FormSubmission.objects.create(
-            form=validated_data["form"],
-            user=request.user if request.user.is_authenticated else None,
-            data=validated_data["data"],
-            ip_address=ip_address,
-            user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            referrer=request.META.get("HTTP_REFERER", ""),
-        )
-
-        submission.form.increment_submission_count()
-
-        return submission
-
-
-class FormSubmissionListSerializer(serializers.ModelSerializer):
-    """Serializer for listing submissions (admin only)."""
-
-    form_name = serializers.CharField(source="form.name", read_only=True)
-    user_display = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FormSubmission
-        fields = [
-            "id",
-            "submission_uuid",
-            "form_name",
-            "user_display",
-            "status",
-            "submitted_at",
-        ]
-
-    def get_user_display(self, obj):
-        """Return username or 'Anonymous'."""
-        return obj.user.username if obj.user else "Anonymous"
 
 
 class MenuSerializer(serializers.ModelSerializer):

@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "django-backend",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["src/manage.py", "runserver"],
+      "port": 8000,
+      "autoPort": false
+    },
+    {
+      "name": "vite-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "pages"],
+      "port": 5173
+    }
+  ]
+}

@@ -5,6 +5,7 @@ Provides shared functionality for admin interfaces across all apps.
 """
 
 from .base import BaseModelAdmin, ReadOnlyModelAdmin
+from .maintenance import SiteMaintenanceControlAdmin  # noqa: F401 - register admin
 from .mixins import (
     ExportMixin,
     ImportExportMixin,

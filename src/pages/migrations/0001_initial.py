@@ -5,7 +5,6 @@ import pages.models.media
 import pages.models.pages.layout.footer_content
 import pages.models.pages.layout.menu
 import pages.models.pages.shared.validators
-import pages.models.uniforms.form
 import uuid
 from django.conf import settings
 from django.db import migrations, models
@@ -804,7 +803,7 @@ class Migration(migrations.Migration):
                 (
                     "fields",
                     models.JSONField(
-                        default=pages.models.uniforms.form.default_form_fields,
+                        default=list,
                         help_text="JSON array of form field definitions with types, labels, validation rules, etc.",
                     ),
                 ),

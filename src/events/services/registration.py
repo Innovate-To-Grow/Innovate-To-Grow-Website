@@ -38,16 +38,11 @@ def resolve_member_by_email(email: str) -> Member | None:
     if member:
         return member
 
-    member = Member.objects.filter(account_email__email_address__iexact=normalized).first()
-    if member:
-        return member
+    contact = ContactEmail.objects.filter(email_address__iexact=normalized, member__isnull=False).first()
+    if contact:
+        return contact.member
 
-    contact = ContactEmail.objects.filter(email_address__iexact=normalized).first()
-    if not contact:
-        return None
-
-    # Fallback: use reverse relation through account_email when possible.
-    return Member.objects.filter(account_email=contact).first()
+    return None
 
 
 @dataclass(frozen=True)

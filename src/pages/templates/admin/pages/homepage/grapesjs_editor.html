@@ -1,4 +1,4 @@
-{% extends "admin/pages/shared_change_form.html" %}
+ple{% extends "admin/pages/shared_change_form.html" %}
 {% load i18n static %}
 
 {% block extrahead %}
@@ -16,16 +16,15 @@
 
 {% block content %}
 {% if original %}
-{# ---- Editing existing page: show GrapesJS ---- #}
+{# ---- Editing existing home page: show GrapesJS ---- #}
 <div id="grapesjs-editor-wrapper">
     <div id="gjs"></div>
 </div>
 
-{# Hidden form fields that GrapesJS writes to on save #}
+{# Hidden form fields #}
 <form id="grapesjs-save-form" method="post" action="" style="display:none;">
     {% csrf_token %}
-    <input type="hidden" name="title" id="gjs-field-title" value="{{ original.title|escapejs }}">
-    <input type="hidden" name="slug" id="gjs-field-slug" value="{{ original.slug|escapejs }}">
+    <input type="hidden" name="name" id="gjs-field-name" value="{{ original.name|escapejs }}">
 </form>
 
 <script>
@@ -34,7 +33,7 @@
 
     var PAGE_ID = '{{ original.pk }}';
     var CSRF_TOKEN = '{{ csrf_token }}';
-    var API_BASE = '/pages/manage/';
+    var API_BASE = '/pages/manage/home/';
     var UPLOAD_URL = '/pages/upload/';
 
     // Initialize GrapesJS
@@ -44,7 +43,7 @@
         width: 'auto',
         fromElement: false,
 
-        // Storage: connect to page manage API
+        // Storage: connect to homepage manage API
         storageManager: {
             type: 'remote',
             stepsBeforeSave: 1,
@@ -172,19 +171,19 @@
     // ---- Toast feedback on save ----
     editor.on('storage:store', function() {
         if (window.adminToast) {
-            window.adminToast('Page saved successfully.', 'success');
+            window.adminToast('Home page saved successfully.', 'success');
         }
     });
 
     editor.on('storage:error:store', function(err) {
         if (window.adminToast) {
-            window.adminToast('Error saving page: ' + (err.message || err), 'error');
+            window.adminToast('Error saving home page: ' + (err.message || err), 'error');
         }
     });
 
     editor.on('storage:error:load', function(err) {
         if (window.adminToast) {
-            window.adminToast('Error loading page data: ' + (err.message || err), 'error');
+            window.adminToast('Error loading home page data: ' + (err.message || err), 'error');
         }
     });
 
@@ -209,7 +208,7 @@
 </script>
 
 {% else %}
-{# ---- Creating new page: show standard Django form ---- #}
+{# ---- Creating new home page: show standard Django form ---- #}
 {{ block.super }}
 {% endif %}
 {% endblock %}

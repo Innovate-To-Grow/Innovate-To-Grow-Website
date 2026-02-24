@@ -1,6 +1,12 @@
 import './MaintenanceMode.css';
 
-export const MaintenanceMode = () => {
+interface MaintenanceModeProps {
+  message?: string;
+}
+
+export const MaintenanceMode = ({ message }: MaintenanceModeProps) => {
+  const displayMessage = message || 'The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.';
+
   return (
     <div className="maintenance-container">
       <div className="maintenance-shell">
@@ -9,9 +15,9 @@ export const MaintenanceMode = () => {
           <div className="maintenance-card">
             <div className="maintenance-hero">
               <div className="maintenance-title-row">
-                  <img 
-                    src="/assets/images/ucmlogo.png" 
-                    alt="UC Merced" 
+                  <img
+                    src="/assets/images/ucmlogo.png"
+                    alt="UC Merced"
                     className="maintenance-ucm-logo"
                   />
                   <div className="maintenance-gear">
@@ -25,8 +31,8 @@ export const MaintenanceMode = () => {
                 <i className="fa fa-exclamation-triangle" aria-hidden="true"></i>
               </div>
               <div className="maintenance-alert-content">
-                <h3>Amazon Web Services Unavailable</h3>
-                <p>The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.</p>
+                <h3>Service Unavailable</h3>
+                <p>{displayMessage}</p>
               </div>
             </div>
 
@@ -50,7 +56,7 @@ export const MaintenanceMode = () => {
             <span className="footer-divider">|</span>
             <a href="https://engineering.ucmerced.edu" target="_blank" rel="noopener noreferrer">School of Engineering</a>
           </div>
-          <p className="maintenance-copyright">© {new Date().getFullYear()} The Regents of the University of California</p>
+          <p className="maintenance-copyright">&copy; {new Date().getFullYear()} The Regents of the University of California</p>
         </footer>
       </div>
     </div>

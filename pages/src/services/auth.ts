@@ -213,21 +213,6 @@ export const getProfile = async (): Promise<ProfileResponse> => {
   return response.data;
 };
 
-export const updateProfile = async (displayName: string): Promise<ProfileResponse> => {
-  const response = await authApi.patch<ProfileResponse>('/authn/profile/', {
-    display_name: displayName,
-  });
-
-  // Update stored user
-  const user = getStoredUser();
-  if (user) {
-    user.display_name = displayName;
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
-
-  return response.data;
-};
-
 export const logout = (): void => {
   clearTokens();
 };

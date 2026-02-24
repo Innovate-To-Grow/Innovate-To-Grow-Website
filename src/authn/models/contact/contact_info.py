@@ -5,6 +5,17 @@ from core.models import ProjectControlModel
 
 
 class ContactEmail(ProjectControlModel):
+    # owner
+    member = models.ForeignKey(
+        "authn.Member",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="contact_emails",
+        help_text="Member this email belongs to",
+        verbose_name="Member",
+    )
+
     # contact email
     email_address = models.EmailField(unique=True, help_text="Email address for contact", verbose_name="Email Address")
 
@@ -60,6 +71,17 @@ class ContactEmail(ProjectControlModel):
 
 
 class ContactPhone(ProjectControlModel):
+    # owner
+    member = models.ForeignKey(
+        "authn.Member",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="contact_phones",
+        help_text="Member this phone belongs to",
+        verbose_name="Member",
+    )
+
     # contact phone number
     phone_number = models.CharField(max_length=20, unique=True, help_text="Contact Phone Number (e.g. +1234567890)")
 
@@ -119,70 +141,3 @@ class ContactPhone(ProjectControlModel):
         return region_dict.get(self.region, self.region)
 
 
-class MemberContactInfo(ProjectControlModel):
-    # foreign key link to user
-    model_user = models.ForeignKey(
-        "authn.Member",
-        on_delete=models.CASCADE,
-        related_name="contact_infos",
-        help_text="Member this contact information belongs to",
-        verbose_name="Member",
-    )
-
-    # contact email
-    contact_email = models.ForeignKey(
-        ContactEmail,
-        on_delete=models.CASCADE,
-        related_name="member_contact_infos",
-        help_text="Contact email address",
-        verbose_name="Contact Email",
-    )
-
-    # contact phone
-    contact_phone = models.ForeignKey(
-        ContactPhone,
-        on_delete=models.CASCADE,
-        related_name="member_contact_infos",
-        help_text="Contact phone number",
-        verbose_name="Contact Phone",
-    )
-
-    class Meta:
-        verbose_name = "Member Contact Info"
-        verbose_name_plural = "Member Contact Infos"
-        ordering = ["-created_at"]
-        # Ensure one member can have multiple contact info entries
-        # but prevent exact duplicates
-        unique_together = [["model_user", "contact_email", "contact_phone"]]
-        indexes = [
-            models.Index(fields=["model_user"]),
-            models.Index(fields=["created_at"]),
-        ]
-
-    def __str__(self):
-        return f"{self.model_user.username} - Member Contact Info"
-
-    # get formatted contact info
-    def get_formatted_contact_info(self):
-        """
-        Return formatted contact information.
-        """
-        email = f"Email: {self.contact_email.email_address}"
-        phone = f"Phone: {self.contact_phone.get_formatted_number()}"
-        return f"{email}\n{phone}"
-
-    # check if both email and phone are subscribed
-    @property
-    def is_fully_subscribed(self):
-        """
-        Check if both email and phone are subscribed to communications.
-        """
-        return self.contact_email.subscribe and self.contact_phone.subscribe
-
-    # check if email is verified
-    @property
-    def is_email_verified(self):
-        """
-        Check if the email address is verified.
-        """
-        return self.contact_email.verified

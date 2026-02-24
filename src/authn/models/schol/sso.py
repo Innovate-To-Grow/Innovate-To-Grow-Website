@@ -10,4 +10,3 @@ class SSOProfile(ProjectControlModel):
 
     # school profile
     pass
-    # add with sso profile

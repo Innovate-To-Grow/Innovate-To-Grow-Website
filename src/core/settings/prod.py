@@ -60,10 +60,17 @@ CORS_ALLOWED_ORIGINS = (
 CORS_ALLOW_CREDENTIALS = True
 
 # AWS S3 Storage Configuration
+# Required env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# (or use IAM role-based auth on EC2/ECS/Lambda)
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+AWS_S3_CUSTOM_DOMAIN = os.environ.get(
+    "AWS_S3_CUSTOM_DOMAIN",
+    f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com",
+)
 AWS_DEFAULT_ACL = None
+AWS_S3_FILE_OVERWRITE = False  # Don't overwrite files with the same name
+AWS_QUERYSTRING_AUTH = False  # Serve media via public URLs (no signed querystring)
 AWS_S3_OBJECT_PARAMETERS = {
     "CacheControl": "max-age=86400",
 }
@@ -82,6 +89,10 @@ STORAGES = {
             "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "region_name": AWS_S3_REGION_NAME,
             "location": "media",
+            "file_overwrite": False,
+            "querystring_auth": False,
+            "default_acl": None,
+            "object_parameters": AWS_S3_OBJECT_PARAMETERS,
         },
     },
     "staticfiles": {
@@ -90,6 +101,9 @@ STORAGES = {
             "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "region_name": AWS_S3_REGION_NAME,
             "location": "static",
+            "querystring_auth": False,
+            "default_acl": None,
+            "object_parameters": AWS_S3_OBJECT_PARAMETERS,
         },
     },
 }

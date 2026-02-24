@@ -13,7 +13,7 @@ from .import_export import deserialize_homepage, serialize_homepage
 
 @admin.register(HomePage)
 class HomePageAdmin(WorkflowAdminMixin, ModelAdmin):
-    change_form_template = "admin/pages/shared_change_form.html"
+    change_form_template = "admin/pages/homepage/grapesjs_editor.html"
     change_list_template = "admin/pages/homepage/change_list.html"
     list_display = ("name", "is_active", "status_badge", "created_at", "updated_at")
     list_filter = ("is_active", "status", "created_at")

@@ -33,7 +33,7 @@ export type {
 } from './events';
 export { fetchEvent } from './events';
 
-export type { HealthCheckResponse } from './health';
+export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth } from './health';
 
 export type { PreviewTokenValidationResponse, PreviewDataResponse } from './preview';

@@ -1,8 +1,6 @@
 from django.urls import path
 
 from .views import (
-    FormSubmissionCreateAPIView,
-    FormSubmissionListAPIView,
     GoogleSheetDataView,
     HomePageAPIView,
     HomePageManageDetailView,
@@ -16,7 +14,6 @@ from .views import (
     PageManagePublishView,
     PageRetrieveAPIView,
     PreviewDataView,
-    UniformFormRetrieveAPIView,
     ValidatePreviewTokenView,
 )
 
@@ -42,10 +39,6 @@ urlpatterns = [
     # media upload and library
     path("upload/", MediaUploadView.as_view(), name="media-upload"),
     path("media/", MediaListView.as_view(), name="media-list"),
-    # forms
-    path("forms/<slug:slug>/", UniformFormRetrieveAPIView.as_view(), name="form-detail"),
-    path("forms/<slug:slug>/submit/", FormSubmissionCreateAPIView.as_view(), name="form-submit"),
-    path("forms/<slug:form_slug>/submissions/", FormSubmissionListAPIView.as_view(), name="form-submissions"),
     # google sheets
     path("google-sheets/<uuid:sheet_id>/", GoogleSheetDataView.as_view(), name="google-sheet-data"),
     # page detail (path: instead of slug: to support nested slugs like legacy/about)
