@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ComponentListRenderer } from '../../components/PageContent/ComponentRenderer';
-import { type PageComponent, validatePreviewToken, fetchPreviewData } from '../../services/api';
+import { GrapesJSRenderer } from '../../components/PageContent/GrapesJSRenderer';
+import { validatePreviewToken, fetchPreviewData } from '../../services/api';
 
 export const PreviewPage = () => {
-  const [components, setComponents] = useState<PageComponent[]>([]);
+  const [html, setHtml] = useState('');
+  const [css, setCss] = useState('');
   const [connected, setConnected] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [errorDetail, setErrorDetail] = useState('');
@@ -16,7 +17,6 @@ export const PreviewPage = () => {
   const token = searchParams.get('token');
   const objectId = searchParams.get('objectId');
 
-  // Derive missing-param errors without setState in effect
   const missingParam = !token ? 'Missing preview token.' : !sessionId ? 'Missing session id.' : null;
 
   useEffect(() => {
@@ -35,19 +35,6 @@ export const PreviewPage = () => {
     return () => { cancelled = true; };
   }, [token, objectId, sessionId, missingParam]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const applyComponents = useCallback((rawComponents: any[]) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mapped = rawComponents.map((c: any) => ({
-      ...c,
-      id: typeof c.id === 'string' ? parseInt(c.id.replace('preview-', '')) || Math.random() : c.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
-    setComponents(mapped);
-    setConnected(true);
-  }, []);
-
   useEffect(() => {
     if (isValidToken !== true || !sessionId) return;
 
@@ -55,7 +42,9 @@ export const PreviewPage = () => {
       const data = await fetchPreviewData(sessionId);
       if (data && data.timestamp > lastTimestamp.current) {
         lastTimestamp.current = data.timestamp;
-        applyComponents(data.components);
+        setHtml(data.html);
+        setCss(data.css);
+        setConnected(true);
       }
     };
 
@@ -68,7 +57,7 @@ export const PreviewPage = () => {
         pollRef.current = null;
       }
     };
-  }, [isValidToken, sessionId, applyComponents]);
+  }, [isValidToken, sessionId]);
 
   if (missingParam) {
     return (
@@ -96,7 +85,7 @@ export const PreviewPage = () => {
     );
   }
 
-  if (!connected && components.length === 0) {
+  if (!connected && !html) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>
         <h2>Waiting for content...</h2>
@@ -107,7 +96,7 @@ export const PreviewPage = () => {
 
   return (
     <div className="preview-container">
-      <ComponentListRenderer components={components} />
+      <GrapesJSRenderer html={html} css={css} slug="preview" />
     </div>
   );
 };

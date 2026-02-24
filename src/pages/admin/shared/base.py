@@ -5,23 +5,6 @@ from django.core.exceptions import ValidationError
 from django.core.signing import TimestampSigner
 from django.http import HttpResponseRedirect
 from django.utils.html import format_html
-from unfold.admin import TabularInline
-
-from ...models import PageComponentPlacement
-
-
-class CompactComponentInline(TabularInline):
-    """Inline for managing component placements (which component, in what order)."""
-
-    model = PageComponentPlacement
-    extra = 0
-    fields = (
-        "component",
-        "order",
-    )
-    ordering = ("order", "id")
-    autocomplete_fields = ["component"]
-    show_change_link = True
 
 
 class WorkflowAdminMixin:
@@ -49,11 +32,6 @@ class WorkflowAdminMixin:
     status_badge.short_description = "Status"
     status_badge.admin_order_field = "status"
 
-    def component_count(self, obj):
-        return obj.component_placements.count()
-
-    component_count.short_description = "Components"
-
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if change:
@@ -79,7 +57,6 @@ class WorkflowAdminMixin:
 
             # Generate preview token signed with object ID
             signer = TimestampSigner()
-            # Ensure we sign the string representation of the UUID
             extra_context["preview_token"] = signer.sign(str(obj.pk))
 
             # Pass frontend URL to template

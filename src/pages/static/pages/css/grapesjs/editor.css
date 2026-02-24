@@ -1,0 +1,86 @@
+/* GrapesJS Editor Overrides for Django Admin (Unfold theme) */
+
+#grapesjs-editor-wrapper {
+    margin: -20px -20px 0 -20px;
+    padding: 0;
+    position: relative;
+    z-index: 10;
+}
+
+/* Ensure GrapesJS panels don't conflict with admin nav */
+.gjs-one-bg {
+    background-color: #1e1e1e !important;
+}
+
+.gjs-two-color {
+    color: #ddd !important;
+}
+
+.gjs-three-bg {
+    background-color: #2c2c2c !important;
+}
+
+.gjs-four-color,
+.gjs-four-color-h:hover {
+    color: #52b5f7 !important;
+}
+
+/* Editor container fills available space */
+#gjs {
+    border: none;
+    border-radius: 0;
+}
+
+/* Make the canvas area more visible */
+.gjs-cv-canvas {
+    background-color: #f5f5f5;
+}
+
+/* Block manager styling */
+.gjs-block {
+    padding: 8px;
+    min-height: 50px;
+    font-size: 12px;
+}
+
+.gjs-block__media {
+    margin-bottom: 4px;
+}
+
+/* Traits panel */
+.gjs-trt-trait {
+    padding: 5px 8px;
+}
+
+.gjs-trt-trait .gjs-label {
+    font-size: 11px;
+    color: #aaa;
+}
+
+/* Style manager */
+.gjs-sm-sector-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Layer panel */
+.gjs-layer-name {
+    font-size: 11px;
+}
+
+/* Right sidebar panels */
+.gjs-pn-views-container {
+    width: 260px;
+}
+
+/* Asset manager modal */
+.gjs-am-assets-cont {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Hide the default Django form when GrapesJS is active */
+#grapesjs-editor-wrapper ~ .module,
+#grapesjs-editor-wrapper ~ fieldset {
+    display: none;
+}

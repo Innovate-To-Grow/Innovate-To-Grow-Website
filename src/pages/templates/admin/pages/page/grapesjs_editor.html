@@ -1,0 +1,200 @@
+{% extends "admin/pages/shared_change_form.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+
+<!-- GrapesJS Core -->
+<link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.13/dist/css/grapes.min.css">
+<script src="https://unpkg.com/grapesjs@0.21.13/dist/grapes.min.js"></script>
+<!-- GrapesJS Preset Webpage (basic blocks, style manager) -->
+<script src="https://unpkg.com/grapesjs-preset-webpage@1.0.3/dist/index.js"></script>
+
+<!-- Editor overrides -->
+<link rel="stylesheet" href="{% static 'pages/css/grapesjs/editor.css' %}">
+{% endblock %}
+
+{% block content %}
+{% if original %}
+{# ---- Editing existing page: show GrapesJS ---- #}
+<div id="grapesjs-editor-wrapper">
+    <div id="gjs"></div>
+</div>
+
+{# Hidden form fields that GrapesJS writes to on save #}
+<form id="grapesjs-save-form" method="post" action="" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="title" id="gjs-field-title" value="{{ original.title|escapejs }}">
+    <input type="hidden" name="slug" id="gjs-field-slug" value="{{ original.slug|escapejs }}">
+</form>
+
+<script>
+(function() {
+    'use strict';
+
+    var PAGE_ID = '{{ original.pk }}';
+    var CSRF_TOKEN = '{{ csrf_token }}';
+    var API_BASE = '/pages/manage/';
+    var UPLOAD_URL = '/pages/upload/';
+
+    // Initialize GrapesJS
+    var editor = grapesjs.init({
+        container: '#gjs',
+        height: '85vh',
+        width: 'auto',
+        fromElement: false,
+
+        // Storage: connect to page manage API
+        storageManager: {
+            type: 'remote',
+            stepsBeforeSave: 1,
+            options: {
+                remote: {
+                    urlLoad: API_BASE + PAGE_ID + '/',
+                    urlStore: API_BASE + PAGE_ID + '/',
+                    headers: {
+                        'X-CSRFToken': CSRF_TOKEN,
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    fetchOptions: function(opts) {
+                        if (opts.method === 'POST' || opts.method === 'PATCH' || opts.method === 'PUT') {
+                            opts.method = 'PATCH';
+                        }
+                        return opts;
+                    },
+                    onStore: function(data, editor) {
+                        return {
+                            grapesjs_json: data,
+                            html: editor.getHtml(),
+                            css: editor.getCss(),
+                        };
+                    },
+                    onLoad: function(result) {
+                        return result.grapesjs_json || {};
+                    },
+                }
+            }
+        },
+
+        // Asset manager: connect to media upload API
+        assetManager: {
+            upload: UPLOAD_URL,
+            uploadName: 'file',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+            credentials: 'same-origin',
+            autoAdd: true,
+            multiUpload: false,
+        },
+
+        // Canvas settings
+        canvas: {
+            styles: [],
+            scripts: [],
+        },
+
+        // Plugins
+        plugins: ['grapesjs-preset-webpage'],
+        pluginsOpts: {
+            'grapesjs-preset-webpage': {
+                blocks: ['link-block', 'quote', 'text-basic'],
+                modalImportTitle: 'Import HTML',
+                modalImportButton: 'Import',
+                modalImportLabel: '',
+            }
+        },
+
+        // Panels: keep defaults from preset
+        panels: {},
+    });
+
+    // ---- Custom layout blocks ----
+    var blockManager = editor.BlockManager;
+
+    blockManager.add('section', {
+        label: 'Section',
+        category: 'Layout',
+        content: '<section class="gjs-section"><div class="gjs-container"></div></section>',
+        attributes: { class: 'fa fa-object-group' },
+    });
+
+    blockManager.add('container', {
+        label: 'Container',
+        category: 'Layout',
+        content: '<div class="gjs-container" style="max-width:1200px;margin:0 auto;padding:0 15px;"></div>',
+        attributes: { class: 'fa fa-square-o' },
+    });
+
+    blockManager.add('columns-2', {
+        label: '2 Columns',
+        category: 'Layout',
+        content: '<div class="gjs-row" style="display:flex;gap:15px;">' +
+                    '<div class="gjs-col" style="flex:1;padding:10px;">Column 1</div>' +
+                    '<div class="gjs-col" style="flex:1;padding:10px;">Column 2</div>' +
+                 '</div>',
+        attributes: { class: 'fa fa-columns' },
+    });
+
+    blockManager.add('columns-3', {
+        label: '3 Columns',
+        category: 'Layout',
+        content: '<div class="gjs-row" style="display:flex;gap:15px;">' +
+                    '<div class="gjs-col" style="flex:1;padding:10px;">Column 1</div>' +
+                    '<div class="gjs-col" style="flex:1;padding:10px;">Column 2</div>' +
+                    '<div class="gjs-col" style="flex:1;padding:10px;">Column 3</div>' +
+                 '</div>',
+        attributes: { class: 'fa fa-th' },
+    });
+
+    blockManager.add('divider', {
+        label: 'Divider',
+        category: 'Layout',
+        content: '<hr style="border:none;border-top:1px solid #ccc;margin:20px 0;">',
+        attributes: { class: 'fa fa-minus' },
+    });
+
+    blockManager.add('image', {
+        label: 'Image',
+        category: 'Media',
+        content: { type: 'image' },
+        attributes: { class: 'fa fa-image' },
+    });
+
+    blockManager.add('video', {
+        label: 'Video',
+        category: 'Media',
+        content: { type: 'video' },
+        attributes: { class: 'fa fa-youtube-play' },
+    });
+
+    // ---- Toast feedback on save ----
+    editor.on('storage:store', function() {
+        if (window.adminToast) {
+            window.adminToast('Page saved successfully.', 'success');
+        }
+    });
+
+    editor.on('storage:error:store', function(err) {
+        if (window.adminToast) {
+            window.adminToast('Error saving page: ' + (err.message || err), 'error');
+        }
+    });
+
+    editor.on('storage:error:load', function(err) {
+        if (window.adminToast) {
+            window.adminToast('Error loading page data: ' + (err.message || err), 'error');
+        }
+    });
+
+    // Expose editor globally for debugging
+    window.gjsEditor = editor;
+})();
+</script>
+
+{% else %}
+{# ---- Creating new page: show standard Django form ---- #}
+{{ block.super }}
+{% endif %}
+{% endblock %}

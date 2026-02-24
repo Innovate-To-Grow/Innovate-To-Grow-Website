@@ -13,7 +13,7 @@ Idempotent: safe to run multiple times.
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
-from pages.models import FooterContent, HomePage, Menu, Page, PageComponent, PageComponentPlacement
+from pages.models import FooterContent, HomePage, Menu, Page
 
 # Menu items matching the old Flask site navigation structure
 MAIN_NAV_ITEMS = [
@@ -155,55 +155,29 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Published {published_count} page(s) for menu."))
 
     def _seed_homepage(self):
-        """Create an active home page from the legacy/home page content."""
-        # Get content from legacy/home page
-        try:
-            legacy_home = Page.objects.get(slug="legacy/home")
-        except Page.DoesNotExist:
-            self.stdout.write(self.style.ERROR("Page 'legacy/home' not found. Cannot create homepage."))
-            return
-
-        source_component = legacy_home.components.first()
-        if not source_component:
-            self.stdout.write(self.style.ERROR("Page 'legacy/home' has no components. Cannot create homepage."))
-            return
-
+        """Create an active home page with default content."""
         home_page = HomePage.objects.filter(name="Legacy Home").first()
         if home_page:
-            # Exists — ensure it has a component
-            if home_page.components.exists():
-                self.stdout.write("HomePage 'Legacy Home' already exists with components, skipping.")
+            if home_page.html:
+                self.stdout.write("HomePage 'Legacy Home' already exists with content, skipping.")
                 return
-            self.stdout.write("HomePage 'Legacy Home' exists but has no components, adding...")
+            self.stdout.write("HomePage 'Legacy Home' exists but has no content, updating...")
+            home_page.html = "<h1>Welcome to Innovate To Grow</h1>"
+            home_page.css = ""
+            home_page.save(update_fields=["html", "css", "updated_at"])
         else:
             # Create the HomePage — must set status=published BEFORE is_active=True
             home_page = HomePage(
                 name="Legacy Home",
                 status="published",
                 is_active=True,
+                html="<h1>Welcome to Innovate To Grow</h1>",
+                css="",
             )
             home_page.save()
             self.stdout.write("Created HomePage 'Legacy Home' (active, published).")
 
-        # Create a component with the legacy home content
-        comp = PageComponent.objects.bulk_create(
-            [
-                PageComponent(
-                    name="Legacy Home Content",
-                    component_type="html",
-                    html_content=source_component.html_content,
-                    css_code=source_component.css_code,
-                    js_code=source_component.js_code,
-                )
-            ]
-        )[0]
-        PageComponentPlacement.objects.bulk_create(
-            [PageComponentPlacement(component=comp, home_page=home_page, order=0)]
-        )
-
-        self.stdout.write(
-            self.style.SUCCESS(f"HomePage 'Legacy Home' ready with {home_page.components.count()} component(s).")
-        )
+        self.stdout.write(self.style.SUCCESS("HomePage 'Legacy Home' ready."))
 
     def _seed_footer(self):
         """Load footer fixture if no active footer exists."""

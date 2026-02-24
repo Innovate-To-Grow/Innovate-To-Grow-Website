@@ -7,20 +7,15 @@ from django.urls import path, reverse
 from unfold.admin import ModelAdmin
 
 from ...models import HomePage
-from ..shared.base import CompactComponentInline, WorkflowAdminMixin
+from ..shared.base import WorkflowAdminMixin
 from .import_export import deserialize_homepage, serialize_homepage
-
-
-class HomePageComponentInline(CompactComponentInline):
-    fk_name = "home_page"
 
 
 @admin.register(HomePage)
 class HomePageAdmin(WorkflowAdminMixin, ModelAdmin):
-    inlines = [HomePageComponentInline]
     change_form_template = "admin/pages/shared_change_form.html"
     change_list_template = "admin/pages/homepage/change_list.html"
-    list_display = ("name", "is_active", "status_badge", "component_count", "created_at", "updated_at")
+    list_display = ("name", "is_active", "status_badge", "created_at", "updated_at")
     list_filter = ("is_active", "status", "created_at")
     search_fields = ("name",)
     readonly_fields = ("status", "published_at", "published_by")
