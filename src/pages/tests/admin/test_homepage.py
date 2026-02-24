@@ -70,10 +70,6 @@ class HomePageAdminWorkflowTest(TestCase):
         badge = self.hp_admin.status_badge(self.hp)
         self.assertIn("Draft", badge)
 
-    def test_component_count(self):
-        count = self.hp_admin.component_count(self.hp)
-        self.assertEqual(count, 0)
-
 
 class HomePageAdminBulkActionsTest(TestCase):
     """Test HomePageAdmin bulk actions."""

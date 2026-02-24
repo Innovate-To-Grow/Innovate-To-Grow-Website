@@ -7,34 +7,11 @@ from ..models import (
     Menu,
     MenuPageLink,
     Page,
-    PageComponent,
     UniformForm,
 )
 
 
-class PageComponentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PageComponent
-        fields = [
-            "id",
-            "name",
-            "component_type",
-            "is_enabled",
-            "html_content",
-            "css_file",
-            "css_code",
-            "js_code",
-            "config",
-            "google_sheet",
-            "google_sheet_style",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "created_at", "updated_at"]
-
-
 class PageSerializer(serializers.ModelSerializer):
-    components = serializers.SerializerMethodField()
     published = serializers.BooleanField(read_only=True)  # computed from status
 
     class Meta:
@@ -43,6 +20,9 @@ class PageSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "slug",
+            "html",
+            "css",
+            "dynamic_config",
             "meta_title",
             "meta_description",
             "meta_keywords",
@@ -52,24 +32,13 @@ class PageSerializer(serializers.ModelSerializer):
             "template_name",
             "status",
             "published",
-            "components",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "slug", "created_at", "updated_at", "published"]
 
-    def get_components(self, obj):
-        placements = obj.component_placements.select_related("component").order_by("order", "id")
-        result = []
-        for placement in placements:
-            data = PageComponentSerializer(placement.component).data
-            data["order"] = placement.order
-            result.append(data)
-        return result
-
 
 class HomePageSerializer(serializers.ModelSerializer):
-    components = serializers.SerializerMethodField()
     published = serializers.BooleanField(read_only=True)  # computed from status
 
     class Meta:
@@ -78,22 +47,15 @@ class HomePageSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "is_active",
+            "html",
+            "css",
+            "dynamic_config",
             "status",
             "published",
-            "components",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at", "published"]
-
-    def get_components(self, obj):
-        placements = obj.component_placements.select_related("component").order_by("order", "id")
-        result = []
-        for placement in placements:
-            data = PageComponentSerializer(placement.component).data
-            data["order"] = placement.order
-            result.append(data)
-        return result
 
 
 class UniformFormSerializer(serializers.ModelSerializer):
@@ -131,7 +93,6 @@ class FormSubmissionCreateSerializer(serializers.ModelSerializer):
         form = attrs["form"]
         data = attrs["data"]
 
-        # Use the form's built-in validation method
         errors = form.validate_submission_data(data)
         if errors:
             raise serializers.ValidationError(errors)
@@ -142,14 +103,12 @@ class FormSubmissionCreateSerializer(serializers.ModelSerializer):
         """Create submission with metadata from request."""
         request = self.context.get("request")
 
-        # Extract client IP
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
             ip_address = x_forwarded_for.split(",")[0].strip()
         else:
             ip_address = request.META.get("REMOTE_ADDR")
 
-        # Create the submission
         submission = FormSubmission.objects.create(
             form=validated_data["form"],
             user=request.user if request.user.is_authenticated else None,
@@ -159,11 +118,7 @@ class FormSubmissionCreateSerializer(serializers.ModelSerializer):
             referrer=request.META.get("HTTP_REFERER", ""),
         )
 
-        # Increment form submission count
         submission.form.increment_submission_count()
-
-        # TODO: Send email notification if enabled
-        # This will be implemented in a separate utility function
 
         return submission
 
@@ -191,13 +146,7 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
 
 
 class MenuSerializer(serializers.ModelSerializer):
-    """
-    Serializer for Menu with JSON items.
-
-    Processes items to:
-    - Inject active HomePage info for 'home' type items
-    - Resolve page slugs to full URLs for 'page' type items
-    """
+    """Serializer for Menu with JSON items."""
 
     items = serializers.SerializerMethodField()
 
@@ -223,7 +172,6 @@ class MenuSerializer(serializers.ModelSerializer):
             }
 
             if item.get("type") == "home":
-                # Inject active home page info
                 home_page = HomePage.get_active()
                 processed_item["url"] = "/"
                 processed_item["page_type"] = "home"
@@ -239,7 +187,6 @@ class MenuSerializer(serializers.ModelSerializer):
                 processed_item["url"] = f"/pages/{page_slug}" if page_slug else "#"
                 processed_item["page_type"] = "page"
 
-                # Try to get page title if not set
                 if not processed_item["title"] and page_slug:
                     try:
                         page = Page.objects.get(slug=page_slug)
@@ -251,7 +198,6 @@ class MenuSerializer(serializers.ModelSerializer):
                 processed_item["url"] = item.get("url", "#")
                 processed_item["page_type"] = "external"
 
-            # Process children recursively
             children = item.get("children", [])
             if children:
                 processed_item["children"] = self._process_items(children)

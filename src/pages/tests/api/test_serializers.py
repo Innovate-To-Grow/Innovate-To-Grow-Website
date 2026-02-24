@@ -1,21 +1,34 @@
 from django.test import TestCase
 
-from ...models import HomePage, Menu, Page, PageComponent, PageComponentPlacement
+from ...models import HomePage, Menu, Page
 from ...serializers import HomePageSerializer, MenuSerializer, PageSerializer
 
 
 class PageSerializerTest(TestCase):
-    def test_serialize_page(self):
-        page = Page.objects.create(title="Test", slug="test")
-        comp = PageComponent.objects.create(name="Body", component_type="html", html_content="<p>Body</p>")
-        PageComponentPlacement.objects.create(component=comp, page=page, order=1)
+    def test_serialize_page_with_html_css(self):
+        page = Page.objects.create(
+            title="Test",
+            slug="test",
+            html="<p>Body</p>",
+            css="p { color: red; }",
+        )
 
         serializer = PageSerializer(page)
         data = serializer.data
         self.assertEqual(data["title"], "Test")
         self.assertEqual(data["slug"], "test")
-        self.assertEqual(len(data["components"]), 1)
-        self.assertEqual(data["components"][0]["html_content"], "<p>Body</p>")
+        self.assertEqual(data["html"], "<p>Body</p>")
+        self.assertEqual(data["css"], "p { color: red; }")
+
+    def test_serialize_page_includes_dynamic_config(self):
+        page = Page.objects.create(
+            title="Dynamic",
+            slug="dynamic",
+            dynamic_config={"sources": [{"name": "events", "url": "/api/events/"}]},
+        )
+        serializer = PageSerializer(page)
+        data = serializer.data
+        self.assertEqual(data["dynamic_config"]["sources"][0]["name"], "events")
 
     def test_serialize_page_includes_status(self):
         """PageSerializer includes status and published fields."""
@@ -112,17 +125,31 @@ class MenuSerializerTest(TestCase):
 
 
 class HomePageSerializerTest(TestCase):
-    def test_serialize_homepage(self):
-        """Serialize a published and active home page."""
-        hp = HomePage.objects.create(name="Home V1", status="published", is_active=True)
-        comp = PageComponent.objects.create(name="Welcome", component_type="html", html_content="<h1>Welcome</h1>")
-        PageComponentPlacement.objects.create(component=comp, home_page=hp, order=1)
+    def test_serialize_homepage_with_html_css(self):
+        """Serialize a published and active home page with html/css fields."""
+        hp = HomePage.objects.create(
+            name="Home V1",
+            status="published",
+            is_active=True,
+            html="<h1>Welcome</h1>",
+            css="h1 { color: blue; }",
+        )
 
         serializer = HomePageSerializer(hp)
         data = serializer.data
         self.assertEqual(data["name"], "Home V1")
         self.assertTrue(data["is_active"])
-        self.assertEqual(len(data["components"]), 1)
+        self.assertEqual(data["html"], "<h1>Welcome</h1>")
+        self.assertEqual(data["css"], "h1 { color: blue; }")
+
+    def test_serialize_homepage_includes_dynamic_config(self):
+        hp = HomePage.objects.create(
+            name="Dynamic Home",
+            dynamic_config={"banner": {"enabled": True}},
+        )
+        serializer = HomePageSerializer(hp)
+        data = serializer.data
+        self.assertEqual(data["dynamic_config"]["banner"]["enabled"], True)
 
     def test_serialize_homepage_includes_status(self):
         """HomePageSerializer includes status and published fields."""

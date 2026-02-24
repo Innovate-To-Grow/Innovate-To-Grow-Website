@@ -7,18 +7,13 @@ from django.urls import path, reverse
 from unfold.admin import ModelAdmin
 
 from ...models import Page
-from ..shared.base import CompactComponentInline, WorkflowAdminMixin
+from ..shared.base import WorkflowAdminMixin
 from .import_export import deserialize_page, serialize_page
-
-
-class PageComponentInline(CompactComponentInline):
-    fk_name = "page"
 
 
 @admin.register(Page)
 class PageAdmin(WorkflowAdminMixin, ModelAdmin):
-    inlines = [PageComponentInline]
-    change_form_template = "admin/pages/shared_change_form.html"
+    change_form_template = "admin/pages/page/grapesjs_editor.html"
     change_list_template = "admin/pages/page/change_list.html"
     list_display = ("title", "slug", "status_badge", "view_count", "updated_at")
     list_filter = ("status", "created_at")

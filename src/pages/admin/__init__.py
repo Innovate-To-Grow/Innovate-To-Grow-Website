@@ -2,9 +2,8 @@
 Pages app admin configuration.
 
 Organized into modules by model:
-- page: Page admin
+- page: Page admin with GrapesJS editor
 - home_page: HomePage admin
-- page_component: PageComponent admin
 - menu: Menu admin
 - footer_content: FooterContent admin
 - media: MediaAsset admin
@@ -15,7 +14,6 @@ Organized into modules by model:
 from .assets.media import MediaAssetAdmin
 from .content.home_page import HomePageAdmin
 from .content.page import PageAdmin
-from .content.page_component import PageComponentAdmin
 from .forms.forms import FormSubmissionAdmin, UniformFormAdmin
 from .integrations.google_sheet import GoogleSheetAdmin
 from .layout.footer_content import FooterContentAdmin
@@ -25,7 +23,6 @@ __all__ = [
     # Pages
     "PageAdmin",
     "HomePageAdmin",
-    "PageComponentAdmin",
     # Layout
     "MenuAdmin",
     "FooterContentAdmin",

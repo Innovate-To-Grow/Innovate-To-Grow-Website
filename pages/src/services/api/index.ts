@@ -5,7 +5,7 @@
 export { default } from './client';
 export { api } from './client';
 
-export type { PageContent, PageComponent, GoogleSheetDataResponse, HomeContent } from './pages';
+export type { PageContent, GoogleSheetDataResponse, HomeContent } from './pages';
 export { fetchPageContent, fetchHomeContent, fetchGoogleSheetData } from './pages';
 
 export type {

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from ...models import HomePage, Page, PageComponent, PageComponentPlacement
+from ...models import HomePage
 
 User = get_user_model()
 
@@ -65,71 +65,6 @@ class HomePageTest(TestCase):
         self.assertIn("My Home", str(hp))
         self.assertIn("Active", str(hp))
         self.assertIn("Published", str(hp))
-
-
-class ComponentPageMixinTest(TestCase):
-    """Test that ComponentPageMixin provides ordered_components/all_components on both models."""
-
-    def test_page_ordered_components_filters_disabled(self):
-        """ordered_components only returns enabled components."""
-        page = Page.objects.create(title="Test", slug="mixin-ordered")
-        c1 = PageComponent.objects.create(
-            name="Enabled", component_type="html", is_enabled=True, html_content="<p>yes</p>"
-        )
-        c2 = PageComponent.objects.create(
-            name="Disabled", component_type="html", is_enabled=False, html_content="<p>no</p>"
-        )
-        PageComponentPlacement.objects.create(component=c1, page=page, order=1)
-        PageComponentPlacement.objects.create(component=c2, page=page, order=2)
-        result = list(page.ordered_components)
-        self.assertEqual(result, [c1])
-
-    def test_page_all_components_includes_disabled(self):
-        """all_components returns all components including disabled."""
-        page = Page.objects.create(title="Test", slug="mixin-all")
-        c1 = PageComponent.objects.create(
-            name="Enabled", component_type="html", is_enabled=True, html_content="<p>yes</p>"
-        )
-        c2 = PageComponent.objects.create(
-            name="Disabled", component_type="html", is_enabled=False, html_content="<p>no</p>"
-        )
-        PageComponentPlacement.objects.create(component=c1, page=page, order=1)
-        PageComponentPlacement.objects.create(component=c2, page=page, order=2)
-        self.assertEqual(len(page.all_components), 2)
-
-    def test_page_ordered_components_respects_order(self):
-        """ordered_components sorts by order then id."""
-        page = Page.objects.create(title="Test", slug="mixin-order")
-        c3 = PageComponent.objects.create(name="Third", component_type="html", html_content="<p>3</p>")
-        c1 = PageComponent.objects.create(name="First", component_type="html", html_content="<p>1</p>")
-        c2 = PageComponent.objects.create(name="Second", component_type="html", html_content="<p>2</p>")
-        PageComponentPlacement.objects.create(component=c3, page=page, order=3)
-        PageComponentPlacement.objects.create(component=c1, page=page, order=1)
-        PageComponentPlacement.objects.create(component=c2, page=page, order=2)
-        self.assertEqual(list(page.ordered_components), [c1, c2, c3])
-
-    def test_homepage_ordered_components(self):
-        """HomePage also has ordered_components via ComponentPageMixin."""
-        hp = HomePage.objects.create(name="HP Mixin Test")
-        c_enabled = PageComponent.objects.create(
-            name="Enabled", component_type="html", is_enabled=True, html_content="<h1>Hi</h1>"
-        )
-        c_disabled = PageComponent.objects.create(
-            name="Disabled", component_type="html", is_enabled=False, html_content="<h1>No</h1>"
-        )
-        PageComponentPlacement.objects.create(component=c_enabled, home_page=hp, order=1)
-        PageComponentPlacement.objects.create(component=c_disabled, home_page=hp, order=0)
-        result = list(hp.ordered_components)
-        self.assertEqual(result, [c_enabled])
-
-    def test_homepage_all_components(self):
-        """HomePage also has all_components via ComponentPageMixin."""
-        hp = HomePage.objects.create(name="HP All Test")
-        c1 = PageComponent.objects.create(name="C1", component_type="html", is_enabled=True, html_content="<p>1</p>")
-        c2 = PageComponent.objects.create(name="C2", component_type="html", is_enabled=False, html_content="<p>2</p>")
-        PageComponentPlacement.objects.create(component=c1, home_page=hp, order=1)
-        PageComponentPlacement.objects.create(component=c2, home_page=hp, order=2)
-        self.assertEqual(len(hp.all_components), 2)
 
 
 class HomePageAuthoredModelTest(TestCase):

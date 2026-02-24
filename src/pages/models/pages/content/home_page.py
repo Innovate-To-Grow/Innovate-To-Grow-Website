@@ -2,7 +2,7 @@
 Home page model for the main landing page.
 
 Supports multiple versions with only one active at a time.
-Content is composed of ordered PageComponent blocks.
+Each version stores its own HTML, CSS, and GrapesJS editor data.
 Includes publishing workflow: Draft -> Review -> Published.
 """
 
@@ -11,7 +11,7 @@ from django.db import models
 
 from core.models import AuthoredModel, ProjectControlModel
 
-from ..shared.mixins import ComponentPageMixin, WorkflowPublishingMixin
+from ..shared.mixins import GrapesJSPageMixin, WorkflowPublishingMixin
 
 # ============================== Cache Configuration ==============================
 
@@ -21,14 +21,8 @@ HOMEPAGE_CACHE_TIMEOUT = 300  # 5 minutes
 # ============================== HomePage Model ==============================
 
 
-class HomePage(ComponentPageMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
-    """Home page model composed of ordered PageComponents (one version active)."""
-
-    components = models.ManyToManyField(
-        "pages.PageComponent",
-        through="pages.PageComponentPlacement",
-        blank=True,
-    )
+class HomePage(GrapesJSPageMixin, WorkflowPublishingMixin, AuthoredModel, ProjectControlModel):
+    """Home page model with GrapesJS visual editor support (one version active)."""
 
     name = models.CharField(max_length=200, help_text="Internal name to identify this home page version")
     is_active = models.BooleanField(default=False, help_text="Only one home page can be active at a time")

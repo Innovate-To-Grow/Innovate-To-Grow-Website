@@ -156,27 +156,18 @@ class WorkflowPublishingMixin(models.Model):
             self.save_version(comment="Review rejected, reverted to draft", user=user)
 
 
-class ComponentPageMixin(models.Model):
-    """Shared component-ordering logic for Page and HomePage."""
+class GrapesJSPageMixin(models.Model):
+    """Fields for GrapesJS visual editor pages."""
+
+    html = models.TextField(blank=True, default="", help_text="Rendered HTML output from GrapesJS.")
+    css = models.TextField(blank=True, default="", help_text="CSS output from GrapesJS.")
+    grapesjs_json = models.JSONField(default=dict, blank=True, help_text="GrapesJS project data for editor loading.")
+    dynamic_config = models.JSONField(
+        default=dict, blank=True, help_text="Dynamic data source configuration for this page."
+    )
 
     class Meta:
         abstract = True
-
-    @property
-    def ordered_components(self):
-        """Return enabled components ordered by placement order."""
-        placements = (
-            self.component_placements.filter(component__is_enabled=True)
-            .select_related("component")
-            .order_by("order", "id")
-        )
-        return [p.component for p in placements]
-
-    @property
-    def all_components(self):
-        """Return all components (including disabled) ordered by placement order."""
-        placements = self.component_placements.select_related("component").order_by("order", "id")
-        return [p.component for p in placements]
 
 
 # Backward-compatible alias

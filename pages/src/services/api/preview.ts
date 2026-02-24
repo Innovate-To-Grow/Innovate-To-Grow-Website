@@ -1,5 +1,4 @@
 import api from './client';
-import type { PageComponent } from './pages';
 
 // ======================== Preview ========================
 
@@ -18,7 +17,8 @@ export const validatePreviewToken = async (token: string, objectId?: string): Pr
 };
 
 export interface PreviewDataResponse {
-  components: PageComponent[];
+  html: string;
+  css: string;
   timestamp: number;
 }
 

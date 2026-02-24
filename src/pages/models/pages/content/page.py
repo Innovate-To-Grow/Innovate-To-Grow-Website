@@ -1,8 +1,8 @@
 """
 Page model for content management.
 
-Stores display content via ordered PageComponent blocks instead of a single
-body field or external URL flag.
+Each page stores its own HTML, CSS, and GrapesJS editor data independently.
+Dynamic data is configured via the dynamic_config JSON field.
 """
 
 import uuid
@@ -12,7 +12,7 @@ from django.db import models
 
 from core.models import AuthoredModel, ProjectControlModel
 
-from ..shared.mixins import AnalyticsFieldsMixin, ComponentPageMixin, SEOFieldsMixin, WorkflowPublishingMixin
+from ..shared.mixins import AnalyticsFieldsMixin, GrapesJSPageMixin, SEOFieldsMixin, WorkflowPublishingMixin
 from ..shared.validators import validate_nested_slug
 
 # ============================== Cache Configuration ==============================
@@ -26,23 +26,17 @@ PAGE_CACHE_TIMEOUT = 300  # 5 minutes
 class Page(
     SEOFieldsMixin,
     AnalyticsFieldsMixin,
-    ComponentPageMixin,
+    GrapesJSPageMixin,
     WorkflowPublishingMixin,
     AuthoredModel,
     ProjectControlModel,
 ):
-    """Content page model composed of ordered PageComponents."""
+    """Content page with GrapesJS visual editor support."""
 
     # Technical identifier
     page_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     # ------------------------------ Basic Fields ------------------------------
-
-    components = models.ManyToManyField(
-        "pages.PageComponent",
-        through="pages.PageComponentPlacement",
-        blank=True,
-    )
 
     title = models.CharField(max_length=200, help_text="Human readable title of the page.")
     slug = models.CharField(
@@ -62,10 +56,7 @@ class Page(
     # -------------------------- Utility Methods ----------------------------
 
     def save(self, *args, **kwargs):
-        """
-        Override save to automatically maintain some redundant fields
-        and invalidate cache.
-        """
+        """Override save to automatically maintain some redundant fields and invalidate cache."""
         # Keep slug_depth updated from slug (number of '/' characters)
         self.slug_depth = self.slug.count("/")
 
@@ -87,19 +78,12 @@ class Page(
         cache.delete(f"{PAGE_CACHE_KEY_PREFIX}.list")
 
     def get_absolute_url(self):
-        """
-        Return the absolute URL path for this page.
-        Returns a frontend-friendly path for the React Router.
-        """
+        """Return the absolute URL path for this page."""
         return f"/pages/{self.slug}"
 
     @classmethod
     def get_published_by_slug(cls, slug):
-        """
-        Retrieve a published page by slug, with caching.
-
-        Returns the Page instance if found and published, otherwise None.
-        """
+        """Retrieve a published page by slug, with caching."""
         cache_key = f"{PAGE_CACHE_KEY_PREFIX}.slug.{slug}"
         cached = cache.get(cache_key)
         if cached is not None:
@@ -112,9 +96,7 @@ class Page(
 
     @property
     def effective_meta_title(self) -> str:
-        """
-        Return the final meta title used for SEO (meta_title or fallback to title).
-        """
+        """Return the final meta title used for SEO (meta_title or fallback to title)."""
         return self.meta_title or self.title
 
     def __str__(self) -> str:
