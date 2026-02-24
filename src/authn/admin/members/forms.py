@@ -31,6 +31,7 @@ class Base64ImageWidget(forms.ClearableFileInput):
         upload = files.get(name)
         if upload:
             import base64
+
             return base64.b64encode(upload.read()).decode("utf-8")
         # Check if the clear checkbox was checked
         checkbox_name = self.clear_checkbox_name(name)

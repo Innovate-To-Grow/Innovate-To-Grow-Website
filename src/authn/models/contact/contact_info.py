@@ -139,5 +139,3 @@ class ContactPhone(ProjectControlModel):
         """
         region_dict = dict(PHONE_REGION_CHOICES)
         return region_dict.get(self.region, self.region)
-
-

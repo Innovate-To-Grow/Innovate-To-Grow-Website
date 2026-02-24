@@ -77,5 +77,3 @@ class ContactPhoneAdmin(ModelAdmin):
     @admin.display(description="Formatted Number")
     def get_formatted_number(self, obj):
         return obj.get_formatted_number()
-
-

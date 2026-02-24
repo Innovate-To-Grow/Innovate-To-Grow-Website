@@ -94,6 +94,7 @@ class Member(AbstractUser, ProjectControlModel):
         profile, created = MemberProfile.objects.get_or_create(model_user=self)
         return profile
 
+
 class MemberProfile(ProjectControlModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
