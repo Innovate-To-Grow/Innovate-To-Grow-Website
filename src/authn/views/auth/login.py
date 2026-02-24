@@ -27,9 +27,6 @@ class LoginView(APIView):
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
 
-        # Get user profile for display name
-        profile = user.get_profile()
-
         return Response(
             {
                 "message": "Login successful.",
