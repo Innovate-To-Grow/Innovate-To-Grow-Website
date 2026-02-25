@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="{% static 'pages/css/component/component-editor.css' %}">
 <script src="{% static 'pages/js/page/page-live-preview.js' %}"></script>
 <script src="{% static 'pages/js/component/component-editor.js' %}"></script>
+<script src="{% static 'pages/js/page/version-diff.js' %}"></script>
+<script src="{% static 'pages/js/page/preview-link.js' %}"></script>
 {% endblock %}
 
 {% block messages %}
@@ -60,6 +62,9 @@
             <span class="workflow-step {% if original.status == 'review' %}active status-review{% else %}inactive{% endif %}">
                 Pending Publish
             </span>
+            <span class="workflow-step {% if original.status == 'scheduled' %}active status-scheduled{% else %}inactive{% endif %}">
+                Scheduled
+            </span>
             <span class="workflow-step {% if original.status == 'published' %}active status-published{% else %}inactive{% endif %}">
                 Published
             </span>
@@ -91,6 +96,24 @@
                 </button>
             {% endif %}
 
+            {% if original.status == "scheduled" %}
+                <div style="margin-bottom: 8px; font-size: 13px; color: #0d6efd;">
+                    Scheduled for: {{ original.scheduled_publish_at|date:"N j, Y g:i A" }}
+                </div>
+                <button type="button" class="workflow-btn btn-publish"
+                        data-confirm="Publish this item now instead of waiting for the scheduled time?"
+                        data-confirm-style="warning"
+                        data-submit-name="_publish">
+                    Publish Now
+                </button>
+                <button type="button" class="workflow-btn btn-unpublish"
+                        data-confirm="Cancel the scheduled publish and revert to draft?"
+                        data-confirm-style="danger"
+                        data-submit-name="_unpublish">
+                    Cancel Schedule
+                </button>
+            {% endif %}
+
             {% if original.status == "published" %}
                 <button type="button" class="workflow-btn btn-unpublish"
                         data-confirm="Unpublish this item? It will no longer be visible to the public."
@@ -98,6 +121,20 @@
                         data-submit-name="_unpublish">
                     Unpublish
                 </button>
+            {% endif %}
+
+            {% if original.status == "draft" or original.status == "review" %}
+                <div class="schedule-publish-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6;">
+                    <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Schedule Publish:</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="datetime-local" name="_schedule_datetime" id="schedule-datetime-input"
+                               style="padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                        <button type="submit" name="_schedule_publish" class="workflow-btn btn-schedule"
+                                style="background: #0d6efd; color: white; padding: 4px 12px; font-size: 12px;">
+                            Schedule
+                        </button>
+                    </div>
+                </div>
             {% endif %}
         </div>
 

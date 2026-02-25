@@ -55,7 +55,7 @@ class AnalyticsFieldsMixin(models.Model):
 
 class WorkflowPublishingMixin(models.Model):
     """
-    Publishing workflow: Draft -> Review -> Published.
+    Publishing workflow: Draft -> Review -> Scheduled -> Published.
 
     Provides status field, workflow transition methods, and audit fields.
     Integrates with ProjectControlModel's versioning system.
@@ -64,6 +64,7 @@ class WorkflowPublishingMixin(models.Model):
     class PublishStatus(models.TextChoices):
         DRAFT = "draft", "Draft"
         REVIEW = "review", "Pending Publish"
+        SCHEDULED = "scheduled", "Scheduled"
         PUBLISHED = "published", "Published"
 
     status = models.CharField(
@@ -102,6 +103,12 @@ class WorkflowPublishingMixin(models.Model):
         help_text="User who submitted for review.",
     )
 
+    scheduled_publish_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Scheduled date/time for automatic publishing.",
+    )
+
     class Meta:
         abstract = True
 
@@ -128,21 +135,35 @@ class WorkflowPublishingMixin(models.Model):
             self.save_version(comment="Submitted for review", user=user)
 
     def publish(self, user=None):
-        """Transition from Review (or Draft) to Published."""
-        if self.status not in (self.PublishStatus.REVIEW, self.PublishStatus.DRAFT):
+        """Transition from Review, Draft, or Scheduled to Published."""
+        if self.status not in (self.PublishStatus.REVIEW, self.PublishStatus.DRAFT, self.PublishStatus.SCHEDULED):
             raise ValueError(f"Cannot publish: current status is '{self.get_status_display()}'.")
         self.status = self.PublishStatus.PUBLISHED
         if not self.published_at:
             self.published_at = timezone.now()
         self.published_by = user
-        self.save(update_fields=["status", "published_at", "published_by", "updated_at"])
+        self.scheduled_publish_at = None
+        self.save(update_fields=["status", "published_at", "published_by", "scheduled_publish_at", "updated_at"])
         if hasattr(self, "save_version"):
             self.save_version(comment="Published", user=user)
+
+    def schedule_publish(self, publish_at, user=None):
+        """Schedule this page to be published at a future date/time."""
+        if self.status not in (self.PublishStatus.DRAFT, self.PublishStatus.REVIEW):
+            raise ValueError(f"Cannot schedule: current status is '{self.get_status_display()}'.")
+        if publish_at <= timezone.now():
+            raise ValueError("Scheduled publish time must be in the future.")
+        self.status = self.PublishStatus.SCHEDULED
+        self.scheduled_publish_at = publish_at
+        self.save(update_fields=["status", "scheduled_publish_at", "updated_at"])
+        if hasattr(self, "save_version"):
+            self.save_version(comment=f"Scheduled for publishing at {publish_at}", user=user)
 
     def unpublish(self, user=None):
         """Revert to Draft from any state."""
         self.status = self.PublishStatus.DRAFT
-        self.save(update_fields=["status", "updated_at"])
+        self.scheduled_publish_at = None
+        self.save(update_fields=["status", "scheduled_publish_at", "updated_at"])
         if hasattr(self, "save_version"):
             self.save_version(comment="Unpublished (reverted to draft)", user=user)
 

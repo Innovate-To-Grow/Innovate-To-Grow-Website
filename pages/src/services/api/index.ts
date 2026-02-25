@@ -36,5 +36,5 @@ export { fetchEvent } from './events';
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth } from './health';
 
-export type { PreviewTokenValidationResponse, PreviewDataResponse } from './preview';
-export { validatePreviewToken, fetchPreviewData } from './preview';
+export type { PreviewTokenValidationResponse, PreviewDataResponse, TokenPreviewResponse } from './preview';
+export { validatePreviewToken, fetchPreviewData, fetchPreviewByToken } from './preview';
