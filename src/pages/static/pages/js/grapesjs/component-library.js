@@ -33,9 +33,9 @@ var gjsComponentLibrary = (function() {
 
     function loadComponents(editor) {
         fetch('/pages/components/', { credentials: 'same-origin' })
-            .then(function(res) { return res.ok ? res.json() : []; })
+            .then(function(res) { return res.ok ? res.json() : { components: [] }; })
             .then(function(data) {
-                savedComponents = data || [];
+                savedComponents = data.components || [];
                 // Register as blocks
                 savedComponents.forEach(function(comp) {
                     editor.BlockManager.add('saved-' + comp.id, {

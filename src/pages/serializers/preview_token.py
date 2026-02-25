@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from rest_framework import serializers
@@ -63,6 +64,9 @@ class PreviewTokenResponseSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_preview_url(self, obj):
+        frontend_url = getattr(settings, "FRONTEND_URL", "")
+        if frontend_url:
+            return f"{frontend_url.rstrip('/')}/preview/{obj.token}"
         request = self.context.get("request")
         if request:
             return request.build_absolute_uri(f"/preview/{obj.token}")
