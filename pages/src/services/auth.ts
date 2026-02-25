@@ -44,6 +44,7 @@ export interface ProfileResponse {
   first_name: string;
   last_name: string;
   display_name: string;
+  organization: string;
   is_active: boolean;
   date_joined: string;
 }
@@ -141,7 +142,10 @@ authApi.interceptors.response.use(
 export const register = async (
   email: string,
   password: string,
-  passwordConfirm: string
+  passwordConfirm: string,
+  firstName?: string,
+  lastName?: string,
+  organization?: string,
 ): Promise<RegisterResponse> => {
   try {
     // Encrypt passwords with RSA public key
@@ -153,6 +157,9 @@ export const register = async (
       password: encryptedPassword,
       password_confirm: encryptedConfirm,
       key_id: keyId,
+      ...(firstName && { first_name: firstName }),
+      ...(lastName && { last_name: lastName }),
+      ...(organization && { organization }),
     });
     return response.data;
   } catch (error) {
@@ -225,6 +232,44 @@ export const updateProfile = async (displayName: string): Promise<ProfileRespons
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   }
 
+  return response.data;
+};
+
+export const updateProfileFields = async (data: {
+  first_name?: string;
+  last_name?: string;
+  display_name?: string;
+  organization?: string;
+}): Promise<ProfileResponse> => {
+  const response = await authApi.patch<ProfileResponse>('/authn/profile/', data);
+
+  // Update stored user display_name if changed
+  if (data.display_name !== undefined) {
+    const user = getStoredUser();
+    if (user) {
+      user.display_name = data.display_name;
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
+  }
+
+  return response.data;
+};
+
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<{ message: string }> => {
+  const { encryptedPassword: encCurrent, keyId } = await encryptPasswordWithCurrentKey(currentPassword);
+  const { encryptedPassword: encNew } = await encryptPasswordWithCurrentKey(newPassword);
+  const { encryptedPassword: encConfirm } = await encryptPasswordWithCurrentKey(confirmPassword);
+
+  const response = await authApi.post<{ message: string }>('/authn/change-password/', {
+    current_password: encCurrent,
+    new_password: encNew,
+    new_password_confirm: encConfirm,
+    key_id: keyId,
+  });
   return response.data;
 };
 

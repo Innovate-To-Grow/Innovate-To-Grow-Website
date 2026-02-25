@@ -2,6 +2,7 @@
 Authn views export.
 """
 
+from .account.change_password import ChangePasswordView
 from .account.profile import ProfileView
 from .auth.login import LoginView
 from .auth.register import RegisterView
@@ -14,5 +15,6 @@ __all__ = [
     "VerifyEmailView",
     "ResendVerificationView",
     "ProfileView",
+    "ChangePasswordView",
     "PublicKeyView",
 ]

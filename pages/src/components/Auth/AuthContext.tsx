@@ -54,7 +54,7 @@ interface AuthContextValue {
 
   // Auth actions
   login: (email: string, password: string) => Promise<LoginResponse>;
-  register: (email: string, password: string, passwordConfirm: string) => Promise<RegisterResponse>;
+  register: (email: string, password: string, passwordConfirm: string, firstName?: string, lastName?: string, organization?: string) => Promise<RegisterResponse>;
   verifyEmail: (token: string) => Promise<VerifyEmailResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -183,12 +183,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = useCallback(async (
     email: string,
     password: string,
-    passwordConfirm: string
+    passwordConfirm: string,
+    firstName?: string,
+    lastName?: string,
+    organization?: string,
   ): Promise<RegisterResponse> => {
     setError(null);
     setIsLoading(true);
     try {
-      const response = await apiRegister(email, password, passwordConfirm);
+      const response = await apiRegister(email, password, passwordConfirm, firstName, lastName, organization);
       setPendingEmail(email);
       setModalView('verify-pending');
       return response;
