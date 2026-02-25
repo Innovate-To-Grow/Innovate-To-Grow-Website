@@ -166,10 +166,8 @@ var gjsA11yChecker = (function() {
             }
         });
 
-        // 7. Missing lang attribute (check if any wrapper has it)
-        var hasLang = body.querySelector('[lang]') !== null;
-        // This is typically set on <html> which we can't check from canvas HTML
-        // So we skip this for in-editor checks
+        // 7. Missing lang attribute — typically set on <html> which we can't
+        // check from canvas HTML, so we skip this for in-editor checks.
 
         // 8. Auto-playing media
         var autoplayMedia = body.querySelectorAll('video[autoplay], audio[autoplay]');

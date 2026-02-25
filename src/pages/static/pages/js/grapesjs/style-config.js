@@ -259,8 +259,21 @@ var gjsStyleConfig = (function() {
     ];
 
     function apply(editor) {
-        // The style manager sectors are set via init config.
-        // Here we can add custom colors to the color picker if the API supports it.
+        // Populate the color picker palette with I2G brand colors
+        try {
+            var config = editor.getConfig();
+            var picker = config && config.colorPicker;
+            if (picker) {
+                var existing = picker.palette || [];
+                var merged = existing.slice();
+                I2G_COLORS.forEach(function(c) {
+                    if (merged.indexOf(c) === -1) merged.push(c);
+                });
+                picker.palette = merged;
+            }
+        } catch (e) {
+            // Color picker API may not be available — non-critical
+        }
     }
 
     return { sectors: sectors, apply: apply };

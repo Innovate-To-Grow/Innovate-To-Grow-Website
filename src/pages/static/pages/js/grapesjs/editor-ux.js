@@ -47,7 +47,6 @@ var gjsEditorUX = (function() {
         }
 
         function updateSaveStatus(state) {
-            var dot = statusBar.querySelector('.gjs-save-dot');
             var text = statusBar.querySelector('.gjs-save-text');
             statusBar.className = 'gjs-save-status gjs-save-' + state;
 
