@@ -262,6 +262,8 @@ def send_notification(
     subject: str = "",
     provider: str | None = None,
     context: dict | None = None,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
 ) -> NotificationLog:
     """
     Send a generic notification (email/SMS) and persist a delivery log.
@@ -286,6 +288,8 @@ def send_notification(
                 body=message,
                 provider=provider,
                 context=context,
+                cc=cc,
+                bcc=bcc,
             )
         else:
             success, provider_name = send_sms(target, message=message, provider=provider)

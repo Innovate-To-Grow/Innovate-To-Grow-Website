@@ -29,6 +29,8 @@ def send_template_email(
     attachments: list[tuple[str, bytes, str]] | None = None,
     gmail_account_id: int | None = None,
     layout_key: str | None = None,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
 ) -> tuple[bool, str]:
     """
     Render an :model:`notify.EmailMessageLayout` by *key* and send it.
@@ -45,6 +47,8 @@ def send_template_email(
             the default active account is used automatically.
         layout_key: Optional ``EmailLayout.key`` to override the layout
             defined on the message template.
+        cc: List of Cc recipient email addresses.
+        bcc: List of Bcc recipient email addresses.
 
     Returns:
         ``(success: bool, provider_name: str)``
@@ -87,6 +91,8 @@ def send_template_email(
         body=html_body,
         gmail_account_id=gmail_account_id,
         attachments=attachments,
+        cc=cc,
+        bcc=bcc,
     )
 
     if success:

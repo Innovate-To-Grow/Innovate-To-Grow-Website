@@ -25,7 +25,7 @@ class GoogleGmailAccount(AuthoredModel, ProjectControlModel):
         unique=True,
         help_text="Google Gmail address (e.g. team@gmail.com)",
     )
-    password = models.TextField(
+    google_app_password = models.TextField(
         help_text="Google App Password (16 characters, spaces ignored)",
     )
     display_name = models.CharField(

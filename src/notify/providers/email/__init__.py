@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import smtplib
 from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
@@ -194,30 +195,6 @@ def render_email_layout(
     return html_body, text_body
 
 
-def _smtp_connection():
-    """Create an SMTP connection from Django settings."""
-    host = getattr(settings, "EMAIL_HOST", None) or os.environ.get("EMAIL_HOST", "smtp.gmail.com")
-    port = getattr(settings, "EMAIL_PORT", None) or int(os.environ.get("EMAIL_PORT", 587))
-    username = getattr(settings, "EMAIL_HOST_USER", None) or os.environ.get("EMAIL_HOST_USER", "")
-    password = getattr(settings, "EMAIL_HOST_PASSWORD", None) or os.environ.get("EMAIL_HOST_PASSWORD", "")
-    use_tls = getattr(settings, "EMAIL_USE_TLS", None)
-    use_ssl = getattr(settings, "EMAIL_USE_SSL", None)
-
-    if use_tls is None:
-        use_tls = True
-    if use_ssl is None:
-        use_ssl = False
-
-    return get_connection(
-        host=host,
-        port=port,
-        username=username or None,
-        password=password or None,
-        use_tls=use_tls,
-        use_ssl=use_ssl,
-    )
-
-
 def _smtp_connection_from_account(account: "GoogleGmailAccount"):
     """Create an SMTP connection from a database GoogleGmailAccount."""
     use_ssl = not account.use_tls and account.smtp_port == 465
@@ -225,10 +202,41 @@ def _smtp_connection_from_account(account: "GoogleGmailAccount"):
         host=account.smtp_host,
         port=account.smtp_port,
         username=account.gmail_address,
-        password=account.password,
+        password=account.google_app_password,
         use_tls=account.use_tls,
         use_ssl=use_ssl,
     )
+
+
+def _smtp_connection_from_env():
+    """
+    Create an SMTP connection from environment variables.
+
+    Falls back to env vars when no GoogleGmailAccount exists in the DB
+    (e.g., fresh deployment). Returns ``(connection, from_address)`` or
+    ``(None, None)`` if the required env vars are not set.
+    """
+    smtp_user = os.environ.get("EMAIL_SMTP_USER", "")
+    smtp_pass = os.environ.get("EMAIL_SMTP_PASS", "")
+    if not smtp_user or not smtp_pass:
+        return None, None
+
+    host = os.environ.get("EMAIL_SMTP_HOST", "smtp.gmail.com")
+    port = int(os.environ.get("EMAIL_SMTP_PORT", "587"))
+    use_tls = port != 465
+    use_ssl = port == 465
+
+    from_address = os.environ.get("DEFAULT_FROM_EMAIL") or getattr(settings, "DEFAULT_FROM_EMAIL", smtp_user)
+
+    connection = get_connection(
+        host=host,
+        port=port,
+        username=smtp_user,
+        password=smtp_pass,
+        use_tls=use_tls,
+        use_ssl=use_ssl,
+    )
+    return connection, from_address
 
 
 def _resolve_gmail_account(
@@ -268,6 +276,8 @@ def send_email(
     layout_key: str | None = None,
     gmail_account_id: int | None = None,
     attachments: list[tuple[str, bytes, str]] | None = None,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
 ) -> tuple[bool, str]:
     """
     Send an email using the configured provider.
@@ -283,6 +293,8 @@ def send_email(
         layout_key: Key to look up an ``EmailLayout`` from the database.
         gmail_account_id: ID of a ``GoogleGmailAccount`` to use for SMTP.
         attachments: List of ``(filename, content_bytes, mimetype)`` tuples.
+        cc: List of Cc recipient email addresses.
+        bcc: List of Bcc recipient email addresses.
 
     Returns:
         ``(success, provider_name)``
@@ -294,24 +306,31 @@ def send_email(
         rendered_subject = _render_template(subject, ctx, autoescape=True)
         rendered_body = _render_template(body, ctx, autoescape=False)
         print(f"[EMAIL][console] To: {target}\nSubject: {rendered_subject}\n\n{rendered_body}")
+        if cc:
+            print(f"[EMAIL][console] Cc: {cc}")
+        if bcc:
+            print(f"[EMAIL][console] Bcc: {bcc}")
         if attachments:
             print(f"[EMAIL][console] Attachments: {[a[0] for a in attachments]}")
         return True, "console"
 
     if provider_name in {"gmail", "smtp"}:
-        # Resolve Gmail account from DB (if available)
+        # Resolve Gmail account from DB, fall back to env vars
         account = _resolve_gmail_account(gmail_account_id)
         if account:
             connection = _smtp_connection_from_account(account)
             from_address = from_email or account.get_from_email()
         else:
-            connection = _smtp_connection()
-            from_address = (
-                from_email
-                or getattr(settings, "DEFAULT_FROM_EMAIL", "")
-                or getattr(settings, "EMAIL_HOST_USER", "")
-                or "noreply@innovatetogrow.com"
-            )
+            connection, env_from = _smtp_connection_from_env()
+            if not connection:
+                logger.error(
+                    "No active Gmail account in the database and EMAIL_SMTP_USER/EMAIL_SMTP_PASS "
+                    "env vars not set. Cannot send email to %s",
+                    target,
+                )
+                return False, provider_name
+            from_address = from_email or env_from
+            logger.info("Using SMTP credentials from environment variables (no DB account found)")
 
         ctx = _normalize_context(context, target)
         rendered_subject = _render_template(subject, ctx, autoescape=True)
@@ -329,20 +348,45 @@ def send_email(
             body=text_body or rendered_body,
             from_email=from_address,
             to=[target],
+            cc=cc or [],
+            bcc=bcc or [],
             connection=connection,
         )
         if html_body:
             message.attach_alternative(html_body, "text/html")
 
-        # Attach files
         if attachments:
             for filename, content, mimetype in attachments:
                 message.attach(filename, content, mimetype)
 
         try:
             message.send()
+        except smtplib.SMTPAuthenticationError:
+            error_msg = "Authentication failed. Check Gmail address and App Password."
+            logger.error("SMTP auth failed sending to %s: %s", target, error_msg)
+            if account:
+                account.mark_used(error=error_msg)
+            return False, provider_name
+        except (smtplib.SMTPConnectError, ConnectionRefusedError):
+            error_msg = "Could not connect to SMTP server."
+            logger.error("SMTP connection failed sending to %s: %s", target, error_msg)
+            if account:
+                account.mark_used(error=error_msg)
+            return False, provider_name
+        except smtplib.SMTPRecipientsRefused:
+            error_msg = "Invalid recipient address."
+            logger.error("SMTP recipients refused for %s: %s", target, error_msg)
+            if account:
+                account.mark_used(error=error_msg)
+            return False, provider_name
+        except smtplib.SMTPException as exc:
+            error_msg = f"SMTP error: {exc}"
+            logger.error("SMTP error sending to %s: %s", target, error_msg)
+            if account:
+                account.mark_used(error=error_msg)
+            return False, provider_name
         except Exception as exc:
-            logger.exception("Failed to send email to %s", target)
+            logger.exception("Unexpected error sending email to %s", target)
             if account:
                 account.mark_used(error=str(exc))
             return False, provider_name

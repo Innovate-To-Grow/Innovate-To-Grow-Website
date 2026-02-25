@@ -18,7 +18,7 @@ from notify.models import GoogleGmailAccount
 class GmailAccountForm(forms.ModelForm):
     """Custom form that masks the password field in the admin."""
 
-    password = forms.CharField(
+    google_app_password = forms.CharField(
         widget=forms.PasswordInput(render_value=True),
         help_text="Google App Password (16 characters, spaces ignored).",
     )
@@ -54,7 +54,7 @@ class GoogleGmailAccountAdmin(ModelAdmin):
             {
                 "fields": (
                     "gmail_address",
-                    "password",
+                    "google_app_password",
                     "display_name",
                     "is_active",
                     "is_default",
@@ -111,7 +111,7 @@ class GoogleGmailAccountAdmin(ModelAdmin):
                     server.starttls()
                 else:
                     server = smtplib.SMTP_SSL(account.smtp_host, account.smtp_port, timeout=10)
-                server.login(account.gmail_address, account.password)
+                server.login(account.gmail_address, account.google_app_password)
                 server.quit()
                 self.message_user(
                     request,
