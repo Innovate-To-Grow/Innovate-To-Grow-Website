@@ -6,7 +6,6 @@ from django.db import models
 
 from core.models import ProjectControlModel
 
-from ..contact.contact_info import MemberContactInfo
 from .user_group import MemberGroup
 
 
@@ -18,9 +17,6 @@ class Member(AbstractUser, ProjectControlModel):
     def member_uuid(self):
         """Return the member's UUID (alias for id from ProjectControlModel)."""
         return self.id
-
-    # member account
-    account_email = models.ForeignKey("authn.ContactEmail", on_delete=models.CASCADE, null=True, blank=True)
 
     # organization
     organization = models.CharField(
@@ -98,23 +94,12 @@ class Member(AbstractUser, ProjectControlModel):
         profile, created = MemberProfile.objects.get_or_create(model_user=self)
         return profile
 
-    # get primary contact info
-    def get_primary_contact_info(self):
-        """
-        Get the user's primary contact information.
-        """
-        contact_info = MemberContactInfo.objects.filter(model_user=self).first()
-        return contact_info
-
 
 class MemberProfile(ProjectControlModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 
-    # user display name
-    display_name = models.TextField(null=True, blank=True, help_text=("User Display Name"), verbose_name="Display Name")
-
-    # user profile image (base64 encoded png 128*128) — legacy, prefer avatar
+    # user profile image (base64 encoded png 128*128)
     profile_image = models.TextField(
         null=True,
         blank=True,
@@ -122,25 +107,11 @@ class MemberProfile(ProjectControlModel):
         verbose_name="Profile Image (Base64 Encoded PNG)",
     )
 
-    # avatar image upload
-    avatar = models.ImageField(
-        upload_to="avatars/",
-        null=True,
-        blank=True,
-        help_text="Upload a profile picture.",
-        verbose_name="Avatar",
-    )
-
     def __str__(self):
         return f"{self.model_user.username} - User Profile"
 
-    # get display name with fallback
     def get_display_name(self):
-        """
-        Return display name if available, otherwise return user's full name.
-        """
-        if self.display_name:
-            return self.display_name
+        """Return the user's full name, falling back to username."""
         return self.model_user.get_full_name() or self.model_user.username
 
     # check if profile image exists

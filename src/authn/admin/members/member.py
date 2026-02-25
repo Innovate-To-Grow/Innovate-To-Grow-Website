@@ -14,12 +14,13 @@ from unfold.admin import StackedInline, TabularInline
 from mobileid.models import Barcode, MobileID
 
 from ...models import (
+    ContactEmail,
+    ContactPhone,
     I2GMemberGroup,
     Member,
-    MemberContactInfo,
     MemberProfile,
 )
-from .forms import MemberImportForm
+from .forms import MemberChangeForm, MemberCreationForm, MemberImportForm, MemberProfileInlineForm
 
 # ============================================================================
 # Inline Admin Classes
@@ -30,23 +31,36 @@ class MemberProfileInline(StackedInline):
     """Inline admin for MemberProfile - displayed within Member admin."""
 
     model = MemberProfile
+    form = MemberProfileInlineForm
     can_delete = False
     verbose_name = "Profile"
     verbose_name_plural = "Profile"
     extra = 0
-    fields = ("display_name", "avatar", "profile_image", "updated_at")
+    max_num = 1
+    fields = ("profile_image", "updated_at")
     readonly_fields = ("updated_at",)
 
 
-class MemberContactInfoInline(TabularInline):
-    """Inline admin for MemberContactInfo - displayed within Member admin."""
+class ContactEmailInline(TabularInline):
+    """Inline admin for ContactEmail - displayed within Member admin."""
 
-    model = MemberContactInfo
+    model = ContactEmail
     extra = 0
-    verbose_name = "Contact Info"
-    verbose_name_plural = "Contact Infos"
-    autocomplete_fields = ["contact_email", "contact_phone"]
-    readonly_fields = ("created_at", "updated_at")
+    verbose_name = "Contact Email"
+    verbose_name_plural = "Contact Emails"
+    fields = ("email_address", "email_type", "verified", "subscribe", "created_at")
+    readonly_fields = ("created_at",)
+
+
+class ContactPhoneInline(TabularInline):
+    """Inline admin for ContactPhone - displayed within Member admin."""
+
+    model = ContactPhone
+    extra = 0
+    verbose_name = "Contact Phone"
+    verbose_name_plural = "Contact Phones"
+    fields = ("phone_number", "region", "verified", "subscribe", "created_at")
+    readonly_fields = ("created_at",)
 
 
 class BarcodeInline(TabularInline):
@@ -83,6 +97,10 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     Custom admin for Member model.
     Extends Django's UserAdmin with additional fields specific to Member.
     """
+
+    # Use Unfold-styled forms for proper password widget rendering
+    form = MemberChangeForm
+    add_form = MemberCreationForm
 
     # List display columns
     list_display = (
@@ -132,7 +150,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             _("Personal Info"),
-            {"fields": ("first_name", "middle_name", "last_name", "email", "account_email", "organization")},
+            {"fields": ("first_name", "middle_name", "last_name", "email", "organization")},
         ),
         (
             _("Member Info"),
@@ -178,7 +196,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     )
 
     # Inline models
-    inlines = [MemberProfileInline, MemberContactInfoInline, BarcodeInline, MobileIDInline]
+    inlines = [MemberProfileInline, ContactEmailInline, ContactPhoneInline, BarcodeInline, MobileIDInline]
 
     # Enable change list template customization
     change_list_template = "admin/authn/member/change_list.html"
@@ -298,15 +316,15 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
 class MemberProfileAdmin(UnfoldModelAdmin):
     """Admin for MemberProfile model."""
 
-    list_display = ("model_user", "display_name", "has_profile_image_display", "updated_at")
+    list_display = ("model_user", "has_profile_image_display", "updated_at")
     list_filter = ("updated_at",)
-    search_fields = ("model_user__username", "model_user__email", "display_name")
+    search_fields = ("model_user__username", "model_user__email")
     readonly_fields = ("updated_at",)
     autocomplete_fields = ["model_user"]
 
     fieldsets = (
         (None, {"fields": ("model_user",)}),
-        (_("Profile Information"), {"fields": ("display_name", "avatar", "profile_image")}),
+        (_("Profile Information"), {"fields": ("profile_image",)}),
         (_("Timestamps"), {"fields": ("updated_at",), "classes": ("collapse",)}),
     )
 

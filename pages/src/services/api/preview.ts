@@ -30,3 +30,26 @@ export const fetchPreviewData = async (sessionId: string): Promise<PreviewDataRe
     return null;
   }
 };
+
+// ======================== Token-Based Preview ========================
+
+export interface TokenPreviewResponse {
+  id: string;
+  title?: string;
+  name?: string;
+  slug?: string;
+  html: string;
+  css: string;
+  dynamic_config?: Record<string, unknown>;
+  status: string;
+  is_preview: boolean;
+}
+
+export const fetchPreviewByToken = async (token: string): Promise<TokenPreviewResponse | null> => {
+  try {
+    const response = await api.get<TokenPreviewResponse>(`/pages/preview/${token}/`);
+    return response.data;
+  } catch {
+    return null;
+  }
+};

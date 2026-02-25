@@ -1,13 +1,13 @@
 """
 Contact information admin configuration.
-Includes ContactEmail, ContactPhone, and MemberContactInfo.
+Includes ContactEmail and ContactPhone.
 """
 
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 
-from ...models import ContactEmail, ContactPhone, MemberContactInfo
+from ...models import ContactEmail, ContactPhone
 
 # ============================================================================
 # Contact Email Admin
@@ -18,14 +18,15 @@ from ...models import ContactEmail, ContactPhone, MemberContactInfo
 class ContactEmailAdmin(ModelAdmin):
     """Admin for ContactEmail model."""
 
-    list_display = ("email_address", "email_type", "verified", "subscribe", "created_at")
+    list_display = ("email_address", "member", "email_type", "verified", "subscribe", "created_at")
     list_filter = ("email_type", "verified", "subscribe", "created_at")
-    search_fields = ("email_address",)
+    search_fields = ("email_address", "member__username", "member__email")
     readonly_fields = ("created_at", "updated_at")
     list_editable = ("verified", "subscribe")
+    autocomplete_fields = ["member"]
 
     fieldsets = (
-        (None, {"fields": ("email_address", "email_type")}),
+        (None, {"fields": ("member", "email_address", "email_type")}),
         (_("Status"), {"fields": ("verified", "subscribe")}),
         (_("Timestamps"), {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
@@ -60,14 +61,15 @@ class ContactEmailAdmin(ModelAdmin):
 class ContactPhoneAdmin(ModelAdmin):
     """Admin for ContactPhone model."""
 
-    list_display = ("phone_number", "region", "get_formatted_number", "subscribe", "created_at")
+    list_display = ("phone_number", "member", "region", "get_formatted_number", "subscribe", "created_at")
     list_filter = ("region", "subscribe", "created_at")
-    search_fields = ("phone_number",)
+    search_fields = ("phone_number", "member__username", "member__email")
     readonly_fields = ("created_at", "updated_at")
     list_editable = ("subscribe",)
+    autocomplete_fields = ["member"]
 
     fieldsets = (
-        (None, {"fields": ("phone_number", "region")}),
+        (None, {"fields": ("member", "phone_number", "region")}),
         (_("Status"), {"fields": ("subscribe",)}),
         (_("Timestamps"), {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
@@ -75,30 +77,3 @@ class ContactPhoneAdmin(ModelAdmin):
     @admin.display(description="Formatted Number")
     def get_formatted_number(self, obj):
         return obj.get_formatted_number()
-
-
-# ============================================================================
-# Member Contact Info Admin
-# ============================================================================
-
-
-@admin.register(MemberContactInfo)
-class MemberContactInfoAdmin(ModelAdmin):
-    """Admin for MemberContactInfo model."""
-
-    list_display = ("model_user", "contact_email", "contact_phone", "is_email_verified", "created_at")
-    list_filter = ("created_at", "contact_email__verified")
-    search_fields = (
-        "model_user__username",
-        "model_user__email",
-        "contact_email__email_address",
-        "contact_phone__phone_number",
-    )
-    readonly_fields = ("created_at", "updated_at")
-    autocomplete_fields = ["model_user", "contact_email", "contact_phone"]
-
-    fieldsets = (
-        (None, {"fields": ("model_user",)}),
-        (_("Contact Details"), {"fields": ("contact_email", "contact_phone")}),
-        (_("Timestamps"), {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
-    )

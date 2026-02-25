@@ -13,7 +13,6 @@ Member = get_user_model()
 class ProfileSerializer(serializers.Serializer):
     """
     Serializer for user profile information.
-    Supports reading user info and updating display_name.
     """
 
     member_uuid = serializers.UUIDField(read_only=True)

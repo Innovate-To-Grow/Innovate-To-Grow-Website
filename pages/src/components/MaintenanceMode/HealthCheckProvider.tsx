@@ -28,21 +28,25 @@ export const HealthCheckProvider = ({
   const [isHealthy, setIsHealthy] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
 
   const performHealthCheck = useCallback(async () => {
-    const healthy = await checkHealth();
+    const result = await checkHealth();
 
     // If we transition from unhealthy to healthy, reload the page.
     // This ensures all independent React roots (MainMenu, Footer)
     // and the main app state are properly re-initialized.
-    if (hasInitialized && !isHealthy && healthy) {
+    if (hasInitialized && !isHealthy && result.isHealthy) {
       window.location.reload();
-      return healthy;
+      return result;
     }
 
-    setIsHealthy(healthy);
+    setIsHealthy(result.isHealthy);
+    setMaintenance(result.maintenance);
+    setMaintenanceMessage(result.maintenanceMessage);
     setIsLoading(false);
-    return healthy;
+    return result;
   }, [isHealthy, hasInitialized]);
 
   // Initial health check
@@ -75,6 +79,8 @@ export const HealthCheckProvider = ({
   const contextValue: HealthCheckContextType = {
     isHealthy,
     isLoading,
+    maintenance,
+    maintenanceMessage,
     checkNow,
   };
 
@@ -116,7 +122,7 @@ export const HealthCheckProvider = ({
   if (!isHealthy) {
     return (
       <HealthCheckContext.Provider value={contextValue}>
-        <MaintenanceMode />
+        <MaintenanceMode message={maintenanceMessage} />
       </HealthCheckContext.Provider>
     );
   }
@@ -128,5 +134,3 @@ export const HealthCheckProvider = ({
     </HealthCheckContext.Provider>
   );
 };
-
-

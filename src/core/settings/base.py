@@ -178,6 +178,7 @@ AUTHENTICATION_BACKENDS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
@@ -196,7 +197,7 @@ SIMPLE_JWT = {
 }
 
 # CKEditor 5 Configuration
-# Used for rich text fields (not for PageComponent code editing which uses Monaco)
+# Used for rich text fields in the admin
 CKEDITOR_5_CONFIGS = {
     "default": {
         "toolbar": [
@@ -260,11 +261,8 @@ UNFOLD = {
                 "items": [
                     {"title": "Pages", "link": "/admin/pages/page/"},
                     {"title": "Home Pages", "link": "/admin/pages/homepage/"},
-                    {"title": "Components", "link": "/admin/pages/pagecomponent/"},
                     {"title": "Google Sheets", "link": "/admin/pages/googlesheet/"},
                     {"title": "Media", "link": "/admin/pages/mediaasset/"},
-                    {"title": "Forms", "link": "/admin/pages/uniformform/"},
-                    {"title": "Submissions", "link": "/admin/pages/formsubmission/"},
                 ],
             },
             {

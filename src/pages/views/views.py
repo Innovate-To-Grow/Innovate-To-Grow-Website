@@ -4,21 +4,17 @@ from django.core.cache import cache
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.views.generic import TemplateView
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import FooterContent, FormSubmission, HomePage, Menu, Page, UniformForm
+from ..models import FooterContent, HomePage, Menu, Page
 from ..serializers import (
     FooterContentSerializer,
-    FormSubmissionCreateSerializer,
-    FormSubmissionListSerializer,
     HomePageSerializer,
     MenuSerializer,
     PageSerializer,
-    UniformFormSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -177,53 +173,6 @@ class PageRetrieveAPIView(RetrieveAPIView):
         cache.set(cache_key, data, timeout=300)
 
         return Response(data)
-
-
-class UniformFormRetrieveAPIView(RetrieveAPIView):
-    """Retrieve a form by slug for rendering."""
-
-    queryset = UniformForm.objects.filter(is_active=True, published=True)
-    serializer_class = UniformFormSerializer
-    lookup_field = "slug"
-    permission_classes = [AllowAny]
-
-
-class FormSubmissionCreateAPIView(CreateAPIView):
-    """Create a form submission."""
-
-    serializer_class = FormSubmissionCreateSerializer
-    permission_classes = [AllowAny]
-
-    def perform_create(self, serializer):
-        """Additional validation and submission limit checking."""
-        form = serializer.validated_data["form"]
-
-        if not form.is_active or not form.published:
-            raise ValidationError("This form is not accepting submissions.")
-
-        if form.login_required and not self.request.user.is_authenticated:
-            raise PermissionDenied("You must be logged in to submit this form.")
-
-        if self.request.user.is_authenticated and form.max_submissions_per_user > 0:
-            user_submission_count = FormSubmission.objects.filter(form=form, user=self.request.user).count()
-
-            if user_submission_count >= form.max_submissions_per_user:
-                raise ValidationError(
-                    f"You have reached the maximum number of submissions ({form.max_submissions_per_user}) for this form."
-                )
-
-        serializer.save()
-
-
-class FormSubmissionListAPIView(ListAPIView):
-    """List submissions for a specific form (admin only)."""
-
-    serializer_class = FormSubmissionListSerializer
-    permission_classes = [IsAdminUser]
-
-    def get_queryset(self):
-        form_slug = self.kwargs["form_slug"]
-        return FormSubmission.objects.filter(form__slug=form_slug)
 
 
 class LayoutAPIView(APIView):

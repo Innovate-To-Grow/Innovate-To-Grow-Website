@@ -11,12 +11,10 @@ import {
   type LoginResponse,
   type RegisterResponse,
   type VerifyEmailResponse,
-  type ProfileResponse,
   login as apiLogin,
   register as apiRegister,
   verifyEmail as apiVerifyEmail,
   getProfile as apiGetProfile,
-  updateProfile as apiUpdateProfile,
   logout as apiLogout,
   getStoredUser,
   isAuthenticated as checkIsAuthenticated,
@@ -58,7 +56,6 @@ interface AuthContextValue {
   verifyEmail: (token: string) => Promise<VerifyEmailResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
-  updateDisplayName: (displayName: string) => Promise<ProfileResponse>;
   clearError: () => void;
 
   // Pending verification email
@@ -79,7 +76,6 @@ const defaultContextValue: AuthContextValue = {
   verifyEmail: async () => { throw new Error('Not implemented'); },
   logout: () => {},
   refreshProfile: async () => {},
-  updateDisplayName: async () => { throw new Error('Not implemented'); },
   clearError: () => {},
   pendingEmail: null,
   setPendingEmail: () => {},
@@ -243,23 +239,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, []);
 
-  const updateDisplayName = useCallback(async (displayName: string): Promise<ProfileResponse> => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const response = await apiUpdateProfile(displayName);
-      setUser(prev => prev ? { ...prev, display_name: displayName } : null);
-      dispatchAuthStateChange();
-      return response;
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const value: AuthContextValue = {
     user,
     isAuthenticated: !!user,
@@ -273,7 +252,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     verifyEmail,
     logout,
     refreshProfile,
-    updateDisplayName,
     clearError,
     pendingEmail,
     setPendingEmail,

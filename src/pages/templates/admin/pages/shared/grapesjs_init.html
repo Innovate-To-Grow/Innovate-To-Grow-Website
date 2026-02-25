@@ -1,0 +1,111 @@
+{# GrapesJS editor body — include in {% block content %} #}
+{# CDN scripts must be loaded via grapesjs_head.html in {% block extrahead %} #}
+
+<div id="grapesjs-editor-wrapper">
+    <div id="gjs"></div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var OBJECT_ID  = '{{ object_id }}';
+    var CSRF_TOKEN = '{{ csrf_token }}';
+    var API_BASE   = '{{ api_base }}';
+    var UPLOAD_URL = '/pages/upload/';
+    var ENTITY     = '{{ entity_label|default:"Page" }}';
+
+    var editor = grapesjs.init({
+        container: '#gjs',
+        height: '85vh',
+        width: 'auto',
+        fromElement: false,
+        storageManager: {
+            type: 'remote',
+            stepsBeforeSave: 1,
+            options: {
+                remote: {
+                    urlLoad:  API_BASE + OBJECT_ID + '/',
+                    urlStore: API_BASE + OBJECT_ID + '/',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    fetchOptions: function(opts) {
+                        if (opts.method === 'POST' || opts.method === 'PATCH' || opts.method === 'PUT') {
+                            opts.method = 'PATCH';
+                        }
+                        return opts;
+                    },
+                    onStore: function(data, ed) {
+                        var payload = { grapesjs_json: data, html: ed.getHtml(), css: ed.getCss() };
+                        if (window._gjsSeoData) {
+                            Object.keys(window._gjsSeoData).forEach(function(k) { payload[k] = window._gjsSeoData[k]; });
+                        }
+                        return payload;
+                    },
+                    onLoad: function(result) {
+                        if (window._gjsLoadSeoData) window._gjsLoadSeoData(result);
+                        return result.grapesjs_json || {};
+                    },
+                }
+            }
+        },
+        assetManager: { upload: UPLOAD_URL, uploadName: 'file', headers: { 'X-CSRFToken': CSRF_TOKEN }, credentials: 'same-origin', autoAdd: true, multiUpload: true },
+        canvas: { styles: ['https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap'], scripts: [] },
+        deviceManager: { devices: [{ name: 'Desktop', width: '' }, { name: 'Tablet', width: '768px', widthMedia: '992px' }, { name: 'Mobile', width: '480px', widthMedia: '480px' }] },
+        plugins: ['grapesjs-preset-webpage','grapesjs-blocks-basic','grapesjs-plugin-forms','grapesjs-tabs','grapesjs-tooltip','grapesjs-typed','grapesjs-navbar','grapesjs-component-countdown','grapesjs-custom-code','grapesjs-plugin-export','grapesjs-style-gradient','grapesjs-style-filter','grapesjs-style-bg','grapesjs-blocks-flexbox','grapesjs-touch','grapesjs-parser-postcss','grapesjs-tui-image-editor','grapesjs-lory-slider'],
+        pluginsOpts: {
+            'grapesjs-preset-webpage': { blocks: ['link-block','quote','text-basic'], modalImportTitle: 'Import HTML', modalImportButton: 'Import', modalImportLabel: '' },
+            'grapesjs-blocks-basic': { blocks: ['column1','column2','column3','column3-7','text','link','image','video','map'], flexGrid: true },
+            'grapesjs-plugin-forms': { blocks: ['form','input','textarea','select','button','label','checkbox','radio'] },
+            'grapesjs-tabs': { tabsBlock: { category: 'Interactive' } },
+            'grapesjs-tooltip': {},
+            'grapesjs-typed': { block: { category: 'Interactive', label: 'Typed Text' } },
+            'grapesjs-navbar': { block: { category: 'Navigation' } },
+            'grapesjs-component-countdown': { block: { category: 'Interactive' } },
+            'grapesjs-custom-code': { blockLabel: 'Custom Code', blockCustomCode: { category: 'Embed' } },
+            'grapesjs-plugin-export': {},
+            'grapesjs-style-gradient': {},
+            'grapesjs-style-filter': {},
+            'grapesjs-style-bg': {},
+            'grapesjs-blocks-flexbox': { flexboxBlock: { category: 'Layout', label: 'Flexbox' } },
+            'grapesjs-touch': {},
+            'grapesjs-parser-postcss': {},
+            'grapesjs-tui-image-editor': { config: { includeUI: { initMenu: 'filter' } } },
+            'grapesjs-lory-slider': { sliderBlock: { category: 'Media' } },
+        },
+        styleManager: (typeof gjsStyleConfig !== 'undefined') ? gjsStyleConfig.sectors : undefined,
+        panels: {},
+    });
+
+    var bm = editor.BlockManager;
+    bm.add('section', { label: 'Section', category: 'Layout', content: '<section class="gjs-section"><div class="gjs-container"></div></section>', attributes: { class: 'fa fa-object-group' } });
+    bm.add('container', { label: 'Container', category: 'Layout', content: '<div class="gjs-container" style="max-width:1200px;margin:0 auto;padding:0 15px;"></div>', attributes: { class: 'fa fa-square-o' } });
+    bm.add('columns-2', { label: '2 Columns', category: 'Layout', content: '<div class="gjs-row" style="display:flex;gap:15px;"><div class="gjs-col" style="flex:1;padding:10px;">Column 1</div><div class="gjs-col" style="flex:1;padding:10px;">Column 2</div></div>', attributes: { class: 'fa fa-columns' } });
+    bm.add('columns-3', { label: '3 Columns', category: 'Layout', content: '<div class="gjs-row" style="display:flex;gap:15px;"><div class="gjs-col" style="flex:1;padding:10px;">Column 1</div><div class="gjs-col" style="flex:1;padding:10px;">Column 2</div><div class="gjs-col" style="flex:1;padding:10px;">Column 3</div></div>', attributes: { class: 'fa fa-th' } });
+    bm.add('divider', { label: 'Divider', category: 'Layout', content: '<hr style="border:none;border-top:1px solid #ccc;margin:20px 0;">', attributes: { class: 'fa fa-minus' } });
+    bm.add('image', { label: 'Image', category: 'Media', content: { type: 'image' }, attributes: { class: 'fa fa-image' } });
+    bm.add('video', { label: 'Video', category: 'Media', content: { type: 'video' }, attributes: { class: 'fa fa-youtube-play' } });
+
+    if (typeof gjsCustomBlocks !== 'undefined') gjsCustomBlocks.register(editor);
+    if (typeof gjsStyleConfig !== 'undefined') gjsStyleConfig.apply(editor);
+    if (typeof gjsEditorUX !== 'undefined') gjsEditorUX.apply(editor, CSRF_TOKEN, ENTITY);
+    if (typeof gjsPageTemplates !== 'undefined') gjsPageTemplates.apply(editor);
+    if (typeof gjsComponentLibrary !== 'undefined') gjsComponentLibrary.apply(editor, CSRF_TOKEN);
+    if (typeof gjsSeoPanel !== 'undefined') gjsSeoPanel.apply(editor, API_BASE, OBJECT_ID, CSRF_TOKEN);
+    if (typeof gjsA11yChecker !== 'undefined') gjsA11yChecker.apply(editor);
+
+    editor.on('storage:store', function() { if (window.adminToast) window.adminToast(ENTITY + ' saved successfully.', 'success'); });
+    editor.on('storage:error:store', function(err) { if (window.adminToast) window.adminToast('Error saving ' + ENTITY.toLowerCase() + ': ' + (err.message || err), 'error'); });
+    editor.on('storage:error:load', function(err) { if (window.adminToast) window.adminToast('Error loading ' + ENTITY.toLowerCase() + ' data: ' + (err.message || err), 'error'); });
+
+    fetch('/pages/media/?type=image&limit=200', { credentials: 'same-origin' })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var assets = (data.assets || []).map(function(a) { return { type: 'image', src: a.url, name: a.name }; });
+            if (assets.length) editor.AssetManager.add(assets);
+        })
+        .catch(function(err) { console.warn('Failed to load media library:', err); });
+
+    window.gjsEditor = editor;
+})();
+</script>

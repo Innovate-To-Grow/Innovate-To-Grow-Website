@@ -1,0 +1,15 @@
+{% extends "admin/pages/shared_change_form.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/pages/shared/grapesjs_head.html" %}
+{% endblock %}
+
+{% block content %}
+{% if original %}
+{% include "admin/pages/shared/grapesjs_init.html" with api_base="/pages/manage/home/" object_id=original.pk entity_label="Home page" %}
+{% else %}
+{{ block.super }}
+{% endif %}
+{% endblock %}

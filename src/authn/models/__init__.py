@@ -4,7 +4,7 @@ Authn app models export.
 Aggregates commonly used models so callers can import from `authn.models`.
 """
 
-from .contact import ContactEmail, ContactPhone, MemberContactInfo
+from .contact import ContactEmail, ContactPhone
 from .members import I2GMemberGroup, Member, MemberGroup, MemberProfile
 from .security import RSAKeypair
 
@@ -17,7 +17,6 @@ __all__ = [
     # Contact
     "ContactEmail",
     "ContactPhone",
-    "MemberContactInfo",
     # Security
     "RSAKeypair",
     # Schol (lazy export to avoid app-start model registration side effects)

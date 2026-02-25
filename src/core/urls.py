@@ -39,7 +39,7 @@ admin.site.login_form = EmailAdminAuthenticationForm
 
 urlpatterns = [
     # health check endpoint
-    path("health/", HealthCheckView.as_view(), name="health-check"),
+    path("healthy/", HealthCheckView.as_view(), name="health-check"),
     # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
     # component preview popup for live editing
