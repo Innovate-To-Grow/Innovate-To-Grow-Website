@@ -14,6 +14,7 @@
     var API_BASE   = '{{ api_base }}';
     var UPLOAD_URL = '/pages/upload/';
     var ENTITY     = '{{ entity_label|default:"Page" }}';
+    var PREVIEW_SESSION_ID = '{{ preview_session_id|default:"" }}';
 
     var editor = grapesjs.init({
         container: '#gjs',
@@ -94,7 +95,22 @@
     if (typeof gjsSeoPanel !== 'undefined') gjsSeoPanel.apply(editor, API_BASE, OBJECT_ID, CSRF_TOKEN);
     if (typeof gjsA11yChecker !== 'undefined') gjsA11yChecker.apply(editor);
 
-    editor.on('storage:store', function() { if (window.adminToast) window.adminToast(ENTITY + ' saved successfully.', 'success'); });
+    editor.on('storage:store', function() {
+        if (window.adminToast) window.adminToast(ENTITY + ' saved successfully.', 'success');
+        // Push to live preview cache on every save
+        if (PREVIEW_SESSION_ID) {
+            fetch('/pages/preview/data/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    sessionId: PREVIEW_SESSION_ID,
+                    html: editor.getHtml(),
+                    css: editor.getCss()
+                })
+            }).catch(function(err) { console.warn('Preview sync failed:', err); });
+        }
+    });
     editor.on('storage:error:store', function(err) { if (window.adminToast) window.adminToast('Error saving ' + ENTITY.toLowerCase() + ': ' + (err.message || err), 'error'); });
     editor.on('storage:error:load', function(err) { if (window.adminToast) window.adminToast('Error loading ' + ENTITY.toLowerCase() + ' data: ' + (err.message || err), 'error'); });
 

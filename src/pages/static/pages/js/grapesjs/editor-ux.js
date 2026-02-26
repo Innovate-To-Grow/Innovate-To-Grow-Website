@@ -26,6 +26,39 @@ var gjsEditorUX = (function() {
         editor.on('component:remove', scheduleSave);
         editor.on('style:change', scheduleSave);
 
+        // =============================================
+        // Live preview sync (1-second debounce)
+        // =============================================
+        var previewTimer = null;
+        var PREVIEW_DELAY = 1000;
+
+        function pushPreviewUpdate() {
+            var btn = document.getElementById('popup-preview-btn');
+            var sessionId = btn && btn.dataset.previewSessionId;
+            if (!sessionId) return;
+
+            fetch('/pages/preview/data/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    html: editor.getHtml(),
+                    css: editor.getCss()
+                })
+            }).catch(function() {});
+        }
+
+        function schedulePreviewPush() {
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(pushPreviewUpdate, PREVIEW_DELAY);
+        }
+
+        editor.on('component:update', schedulePreviewPush);
+        editor.on('component:add', schedulePreviewPush);
+        editor.on('component:remove', schedulePreviewPush);
+        editor.on('style:change', schedulePreviewPush);
+
         editor.on('storage:store', function() {
             updateSaveStatus('saved');
         });

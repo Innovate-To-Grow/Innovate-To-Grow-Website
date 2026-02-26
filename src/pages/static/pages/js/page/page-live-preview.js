@@ -62,16 +62,34 @@
     function pushPreviewData() {
         if (!previewSessionId) return;
 
-        var data = gatherFormData();
         var csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
 
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/pages/preview/data/', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        if (csrfToken) {
-            xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
+        // GrapesJS mode: push editor content directly
+        if (window.gjsEditor) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/pages/preview/data/', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            if (csrfToken) {
+                xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
+            }
+            xhr.send(JSON.stringify({
+                sessionId: previewSessionId,
+                html: window.gjsEditor.getHtml(),
+                css: window.gjsEditor.getCss()
+            }));
+            return;
         }
-        xhr.send(JSON.stringify({
+
+        // Legacy component form mode
+        var data = gatherFormData();
+
+        var xhr2 = new XMLHttpRequest();
+        xhr2.open('POST', '/pages/preview/data/', true);
+        xhr2.setRequestHeader('Content-Type', 'application/json');
+        if (csrfToken) {
+            xhr2.setRequestHeader('X-CSRFToken', csrfToken.value);
+        }
+        xhr2.send(JSON.stringify({
             sessionId: previewSessionId,
             components: data.components
         }));
