@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RouterProvider } from 'react-router-dom';
+import { BrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 import { router } from './router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
@@ -21,16 +21,18 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Mount MainMenu to #menu-root with LayoutProvider and AuthProvider
+// Mount MainMenu to #menu-root with LayoutProvider, AuthProvider, and Router
 const menuRoot = document.getElementById('menu-root');
 if (menuRoot) {
   createRoot(menuRoot).render(
     <StrictMode>
-      <AuthProvider>
-        <LayoutProvider>
-          <MainMenu />
-        </LayoutProvider>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <LayoutProvider>
+            <MainMenu />
+          </LayoutProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </StrictMode>,
   );
 }
