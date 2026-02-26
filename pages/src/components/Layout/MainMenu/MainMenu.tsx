@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
 import { useAuth } from '../../Auth';
@@ -20,6 +21,7 @@ const buildHref = (item: MenuItem) => {
 export const MainMenu = () => {
   const { menu, state } = useMenu();
   const { user, isAuthenticated, openModal, logout } = useAuth();
+  const navigate = useNavigate();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
@@ -282,11 +284,11 @@ export const MainMenu = () => {
                       className="member-dropdown-item"
                       onClick={() => {
                         setIsMemberDropdownOpen(false);
-                        openModal('profile');
+                        navigate('/account');
                       }}
                     >
                       <i className="fa fa-cog" />
-                      <span>Profile</span>
+                      <span>Account</span>
                     </button>
                     <button
                       type="button"
@@ -362,11 +364,11 @@ export const MainMenu = () => {
                   className="header-mobile-action"
                   onClick={() => {
                     setIsMobileOpen(false);
-                    openModal('profile');
+                    navigate('/account');
                   }}
                 >
                   <i className="fa fa-cog" />
-                  Profile
+                  Account
                 </button>
                 <button
                   type="button"

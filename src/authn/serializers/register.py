@@ -14,7 +14,7 @@ Member = get_user_model()
 class RegisterSerializer(serializers.Serializer):
     """
     Serializer for user registration.
-    Only requires email and password.
+    Requires email and password. Optionally accepts first_name, last_name, organization.
     Passwords should be RSA encrypted with the public key.
     """
 
@@ -36,6 +36,24 @@ class RegisterSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
         help_text="Key ID used for encryption (for key rotation handling).",
+    )
+    first_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=150,
+        help_text="User's first name.",
+    )
+    last_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=150,
+        help_text="User's last name.",
+    )
+    organization = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        help_text="Organization or company the user belongs to.",
     )
 
     def validate_email(self, value: str) -> str:
@@ -101,11 +119,21 @@ class RegisterSerializer(serializers.Serializer):
             username = f"{base_username}{counter}"
             counter += 1
 
+        first_name = validated_data.get("first_name", "")
+        last_name = validated_data.get("last_name", "")
+        organization = validated_data.get("organization", "")
+
         member = Member.objects.create_user(
             username=username,
             email=email,
             password=password,
+            first_name=first_name,
+            last_name=last_name,
             is_active=False,  # Inactive until email verified
         )
+
+        if organization:
+            member.organization = organization
+            member.save(update_fields=["organization"])
 
         return member

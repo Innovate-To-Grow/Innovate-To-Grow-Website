@@ -3,6 +3,9 @@ import { useAuth } from '../AuthContext';
 
 export const RegisterForm = () => {
   const { register, error, isLoading, openModal, clearError } = useAuth();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [organization, setOrganization] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -10,6 +13,14 @@ export const RegisterForm = () => {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
+
+    if (!firstName.trim()) {
+      errors.firstName = 'First name is required';
+    }
+
+    if (!lastName.trim()) {
+      errors.lastName = 'Last name is required';
+    }
 
     if (password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
@@ -31,7 +42,7 @@ export const RegisterForm = () => {
     }
 
     try {
-      await register(email, password, passwordConfirm);
+      await register(email, password, passwordConfirm, firstName.trim(), lastName.trim(), organization.trim() || undefined);
     } catch {
       // Error is handled by context
     }
@@ -45,6 +56,72 @@ export const RegisterForm = () => {
           <span>{error}</span>
         </div>
       )}
+
+      <div className="auth-form-row">
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-first-name">
+            First Name
+          </label>
+          <input
+            id="register-first-name"
+            type="text"
+            className={`auth-form-input ${localErrors.firstName ? 'has-error' : ''}`}
+            value={firstName}
+            onChange={(e) => {
+              setFirstName(e.target.value);
+              setLocalErrors((prev) => ({ ...prev, firstName: '' }));
+              clearError();
+            }}
+            placeholder="First name"
+            required
+            autoComplete="given-name"
+          />
+          {localErrors.firstName && (
+            <span className="auth-form-error">{localErrors.firstName}</span>
+          )}
+        </div>
+
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-last-name">
+            Last Name
+          </label>
+          <input
+            id="register-last-name"
+            type="text"
+            className={`auth-form-input ${localErrors.lastName ? 'has-error' : ''}`}
+            value={lastName}
+            onChange={(e) => {
+              setLastName(e.target.value);
+              setLocalErrors((prev) => ({ ...prev, lastName: '' }));
+              clearError();
+            }}
+            placeholder="Last name"
+            required
+            autoComplete="family-name"
+          />
+          {localErrors.lastName && (
+            <span className="auth-form-error">{localErrors.lastName}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="auth-form-group">
+        <label className="auth-form-label" htmlFor="register-organization">
+          Organization <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+        </label>
+        <input
+          id="register-organization"
+          type="text"
+          className="auth-form-input"
+          value={organization}
+          onChange={(e) => {
+            setOrganization(e.target.value);
+            clearError();
+          }}
+          placeholder="Company or organization"
+          autoComplete="organization"
+        />
+      </div>
 
       <div className="auth-form-group">
         <label className="auth-form-label" htmlFor="register-email">
@@ -115,7 +192,7 @@ export const RegisterForm = () => {
       <button
         type="submit"
         className="auth-form-submit"
-        disabled={isLoading || !email || !password || !passwordConfirm}
+        disabled={isLoading || !firstName || !lastName || !email || !password || !passwordConfirm}
       >
         {isLoading ? (
           <>

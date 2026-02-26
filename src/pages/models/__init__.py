@@ -12,6 +12,8 @@ from .pages import (
     Menu,
     MenuPageLink,
     Page,
+    PagePreviewToken,
+    SavedComponent,
     validate_nested_slug,
 )
 
@@ -27,4 +29,8 @@ __all__ = [
     "FooterContent",
     # Media
     "MediaAsset",
+    # Component Library
+    "SavedComponent",
+    # Preview Tokens
+    "PagePreviewToken",
 ]

@@ -66,6 +66,16 @@ class PageManageDetailView(RetrieveUpdateDestroyAPIView):
             return PageManageWriteSerializer
         return PageManageDetailSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        version_num = request.query_params.get("version")
+        if version_num:
+            instance = self.get_object()
+            version_data = instance.get_version(int(version_num))
+            if version_data is None:
+                return Response({"detail": f"Version {version_num} not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(version_data)
+        return super().retrieve(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         page = serializer.save()
         if self.request.user.is_authenticated:
@@ -130,6 +140,16 @@ class HomePageManageDetailView(RetrieveUpdateDestroyAPIView):
         if self.request.method in ("PUT", "PATCH"):
             return HomePageManageWriteSerializer
         return HomePageManageDetailSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        version_num = request.query_params.get("version")
+        if version_num:
+            instance = self.get_object()
+            version_data = instance.get_version(int(version_num))
+            if version_data is None:
+                return Response({"detail": f"Version {version_num} not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(version_data)
+        return super().retrieve(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         homepage = serializer.save()

@@ -322,6 +322,62 @@
   }
 }
 
+/* Form Row (2-column grid for name fields) */
+
+.auth-form-row,
+.account-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Account Page */
+
+.account-page {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.account-page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #003366;
+  margin: 0 0 1.5rem 0;
+}
+
+.account-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.account-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.25rem 0;
+}
+
+.account-readonly-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.account-readonly-group:last-child {
+  margin-bottom: 0;
+}
+
+.account-readonly-value {
+  font-size: 1rem;
+  color: #1f2937;
+  padding: 0.5rem 0;
+}
+
 /* Responsive */
 
 @media (max-width: 480px) {
@@ -336,6 +392,19 @@
   }
 
   .auth-modal-body {
+    padding: 1rem;
+  }
+
+  .auth-form-row,
+  .account-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .account-page {
+    margin: 1rem auto;
+  }
+
+  .account-section {
     padding: 1rem;
   }
 }

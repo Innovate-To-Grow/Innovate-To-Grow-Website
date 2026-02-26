@@ -68,9 +68,9 @@
     font-size: 11px;
 }
 
-/* Right sidebar panels */
+/* Right sidebar panels — wider for more controls */
 .gjs-pn-views-container {
-    width: 260px;
+    width: 300px;
 }
 
 /* Asset manager modal */
@@ -83,4 +83,710 @@
 #grapesjs-editor-wrapper ~ .module,
 #grapesjs-editor-wrapper ~ fieldset {
     display: none;
+}
+
+/* =============================================
+   Save Status Indicator (Phase 5)
+   ============================================= */
+#gjs-save-status {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: #1e1e1e;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 11px;
+    z-index: 100;
+    border-top: 1px solid #333;
+}
+
+#gjs-save-status.saving {
+    color: #f0ad4e;
+}
+
+#gjs-save-status.saved {
+    color: #5cb85c;
+}
+
+#gjs-save-status.error {
+    color: #d9534f;
+}
+
+#gjs-save-status.unsaved {
+    color: #f0ad4e;
+}
+
+/* =============================================
+   Fullscreen Mode (Phase 5)
+   ============================================= */
+.gjs-fullscreen #grapesjs-editor-wrapper {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    margin: 0;
+}
+
+.gjs-fullscreen #gjs {
+    height: 100vh !important;
+}
+
+/* =============================================
+   Zoom Controls (Phase 5)
+   ============================================= */
+.gjs-zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 8px;
+}
+
+.gjs-zoom-controls button {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ddd;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 3px;
+}
+
+.gjs-zoom-controls button:hover {
+    background: #444;
+}
+
+.gjs-zoom-controls .zoom-level {
+    color: #aaa;
+    font-size: 11px;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* =============================================
+   SEO Panel (Phase 8)
+   ============================================= */
+.gjs-seo-panel {
+    background: #2c2c2c;
+    color: #ddd;
+    padding: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.gjs-seo-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #444;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.gjs-seo-score {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #555;
+    color: #fff;
+}
+
+.gjs-seo-score.good {
+    background: #28a745;
+}
+
+.gjs-seo-score.ok {
+    background: #ffc107;
+    color: #333;
+}
+
+.gjs-seo-score.poor {
+    background: #dc3545;
+}
+
+.gjs-seo-body {
+    padding: 12px;
+}
+
+.gjs-seo-field {
+    margin-bottom: 12px;
+}
+
+.gjs-seo-field label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 4px;
+}
+
+.gjs-seo-input {
+    width: 100%;
+    padding: 6px 8px;
+    background: #1e1e1e;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #ddd;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+.gjs-seo-input:focus {
+    border-color: #52b5f7;
+    outline: none;
+}
+
+.gjs-seo-counter {
+    font-size: 10px;
+    color: #888;
+}
+
+.gjs-seo-counter.ok {
+    color: #28a745;
+}
+
+.gjs-seo-counter.over {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* =============================================
+   Accessibility Checker Panel (Phase 9)
+   ============================================= */
+.gjs-a11y-panel {
+    background: #2c2c2c;
+    color: #ddd;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.gjs-a11y-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #444;
+}
+
+.gjs-a11y-title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.gjs-a11y-close {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.gjs-a11y-close:hover {
+    color: #fff;
+}
+
+.gjs-a11y-summary {
+    padding: 8px 12px;
+    border-bottom: 1px solid #444;
+}
+
+.gjs-a11y-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.gjs-a11y-badge.error {
+    background: #dc3545;
+    color: #fff;
+}
+
+.gjs-a11y-badge.warning {
+    background: #ffc107;
+    color: #333;
+}
+
+.gjs-a11y-badge.good {
+    background: #28a745;
+    color: #fff;
+}
+
+.gjs-a11y-body {
+    padding: 0;
+}
+
+.gjs-a11y-issue {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #3a3a3a;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.gjs-a11y-issue:hover {
+    background: #353535;
+}
+
+.gjs-a11y-issue.error .gjs-a11y-issue-icon {
+    color: #dc3545;
+}
+
+.gjs-a11y-issue.warning .gjs-a11y-issue-icon {
+    color: #ffc107;
+}
+
+.gjs-a11y-issue-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.gjs-a11y-issue-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.gjs-a11y-issue-msg {
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.gjs-a11y-issue-el {
+    font-size: 10px;
+    color: #888;
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gjs-a11y-footer {
+    padding: 8px 12px;
+    border-top: 1px solid #444;
+    text-align: center;
+}
+
+.gjs-a11y-recheck {
+    background: #52b5f7;
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.gjs-a11y-recheck:hover {
+    background: #3a9fd8;
+}
+
+.gjs-a11y-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* =============================================
+   Template Gallery Modal (Phase 6)
+   ============================================= */
+.gjs-templates-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    padding: 16px;
+}
+
+.gjs-template-card {
+    background: #2c2c2c;
+    border: 2px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.gjs-template-card:hover {
+    border-color: #52b5f7;
+    transform: translateY(-2px);
+}
+
+.gjs-template-card-preview {
+    height: 140px;
+    background: #1e1e1e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: #555;
+}
+
+.gjs-template-card-name {
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #ddd;
+    text-align: center;
+}
+
+/* =============================================
+   Version Comparison Modal (Phase 10)
+   ============================================= */
+.version-compare-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.version-compare-overlay.active {
+    display: flex;
+}
+
+.version-compare-modal {
+    background: #fff;
+    border-radius: 8px;
+    width: 90vw;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.version-compare-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.version-compare-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.version-compare-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.version-compare-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.version-compare-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.version-pane-label {
+    padding: 8px 12px;
+    background: #f0f0f0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+.version-compare-iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+}
+
+.version-compare-divider {
+    width: 2px;
+    background: #dee2e6;
+}
+
+.version-compare-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    justify-content: flex-end;
+}
+
+.version-compare-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    background: #0d6efd;
+    color: #fff;
+}
+
+.version-compare-btn:hover {
+    background: #0b5ed7;
+}
+
+.version-compare-btn.secondary {
+    background: #6c757d;
+}
+
+.version-compare-btn.secondary:hover {
+    background: #5a6268;
+}
+
+.btn-compare {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-right: 6px;
+}
+
+.btn-compare:hover {
+    background: #0b5ed7;
+}
+
+/* =============================================
+   Share Preview Link Modal (Phase 12)
+   ============================================= */
+.share-preview-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.share-preview-overlay.active {
+    display: flex;
+}
+
+.share-preview-modal {
+    background: #fff;
+    border-radius: 8px;
+    width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.share-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.share-preview-title {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.share-preview-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.share-preview-body {
+    padding: 20px;
+}
+
+.share-preview-field {
+    margin-bottom: 12px;
+}
+
+.share-preview-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.share-preview-field input,
+.share-preview-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.share-preview-btn {
+    padding: 8px 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    background: #f8f9fa;
+}
+
+.share-preview-btn.primary {
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+.share-preview-btn.primary:hover {
+    background: #0b5ed7;
+}
+
+.share-preview-btn.small {
+    padding: 4px 10px;
+    font-size: 11px;
+}
+
+.share-preview-btn.revoke {
+    background: #dc3545;
+    color: #fff;
+    border-color: #dc3545;
+}
+
+.share-preview-btn.revoke:hover {
+    background: #c82333;
+}
+
+.share-preview-result {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f0f9ff;
+    border: 1px solid #b3d7ff;
+    border-radius: 4px;
+}
+
+.share-preview-url-group {
+    display: flex;
+    gap: 8px;
+}
+
+.share-preview-url-group input {
+    flex: 1;
+    padding: 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.share-preview-info {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #666;
+}
+
+.share-preview-divider {
+    height: 1px;
+    background: #dee2e6;
+    margin: 16px 0;
+}
+
+.share-preview-existing h4 {
+    font-size: 13px;
+    margin: 0 0 8px 0;
+    color: #333;
+}
+
+.share-preview-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.share-preview-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.share-preview-item-note {
+    font-size: 13px;
+    font-weight: 500;
+    display: block;
+}
+
+.share-preview-item-expires {
+    font-size: 11px;
+    color: #888;
+    display: block;
+}
+
+.share-preview-loading,
+.share-preview-empty {
+    text-align: center;
+    padding: 12px;
+    color: #888;
+    font-size: 13px;
+}
+
+/* =============================================
+   Status Badge: Scheduled
+   ============================================= */
+.status-indicator.status-scheduled {
+    background: #0d6efd;
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.workflow-step.active.status-scheduled {
+    background: #0d6efd;
+    color: #fff;
 }

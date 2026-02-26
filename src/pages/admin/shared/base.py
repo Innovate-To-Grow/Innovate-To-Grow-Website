@@ -20,7 +20,7 @@ class WorkflowAdminMixin:
         return str(obj)
 
     def status_badge(self, obj):
-        colors = {"draft": "#6c757d", "review": "#f0ad4e", "published": "#5cb85c"}
+        colors = {"draft": "#6c757d", "review": "#f0ad4e", "scheduled": "#0d6efd", "published": "#5cb85c"}
         color = colors.get(obj.status, "#6c757d")
         return format_html(
             '<span style="background:{}; color:white; padding:3px 10px; '
@@ -98,6 +98,31 @@ class WorkflowAdminMixin:
                 self.message_user(request, f'"{name}" review rejected.', messages.WARNING)
             except ValueError as e:
                 self.message_user(request, str(e), messages.ERROR)
+            return HttpResponseRedirect(request.path)
+
+        if "_schedule_publish" in request.POST:
+            schedule_dt = request.POST.get("_schedule_datetime")
+            if schedule_dt:
+                try:
+                    from django.utils import timezone as tz
+                    from django.utils.dateparse import parse_datetime
+
+                    dt = parse_datetime(schedule_dt)
+                    if dt and tz.is_naive(dt):
+                        dt = tz.make_aware(dt)
+                    if dt:
+                        obj.schedule_publish(dt, user=request.user)
+                        self.message_user(
+                            request,
+                            f'"{name}" scheduled for publishing at {dt.strftime("%b %d, %Y %I:%M %p")}.',
+                            messages.SUCCESS,
+                        )
+                    else:
+                        self.message_user(request, "Invalid date/time format.", messages.ERROR)
+                except ValueError as e:
+                    self.message_user(request, str(e), messages.ERROR)
+            else:
+                self.message_user(request, "Please select a date and time.", messages.WARNING)
             return HttpResponseRedirect(request.path)
 
         if "_rollback" in request.POST:

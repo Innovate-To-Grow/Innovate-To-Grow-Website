@@ -1,0 +1,52 @@
+{% load static %}
+{# GrapesJS CDN scripts and CSS — include in {% block extrahead %} #}
+
+{# ---- CDN: GrapesJS Core ---- #}
+<link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.13/dist/css/grapes.min.css">
+<script src="https://unpkg.com/grapesjs@0.21.13/dist/grapes.min.js"></script>
+
+{# ---- CDN: Preset Webpage ---- #}
+<script src="https://unpkg.com/grapesjs-preset-webpage@1.0.3/dist/index.js"></script>
+
+{# ---- CDN: Block & Component Plugins (7) ---- #}
+<script src="https://unpkg.com/grapesjs-blocks-basic@1.0.2/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-plugin-forms@2.0.6/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-tabs@1.0.6/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-tooltip@0.1.8/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-typed@2.0.1/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-navbar@1.0.2/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-component-countdown@1.0.2/dist/index.js"></script>
+
+{# ---- CDN: Code & Embed Plugins (2) ---- #}
+<script src="https://unpkg.com/grapesjs-custom-code@1.0.2/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-plugin-export@1.0.12/dist/index.js"></script>
+
+{# ---- CDN: Style Manager Plugins (4) ---- #}
+<script src="https://unpkg.com/grapesjs-style-gradient@2.0.2/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-style-filter@1.0.2/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-style-bg@2.0.3/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-blocks-flexbox@1.0.2/dist/index.js"></script>
+
+{# ---- CDN: Editor Enhancement Plugins (3) ---- #}
+<script src="https://unpkg.com/grapesjs-touch@0.1.1/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-parser-postcss@1.0.3/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-tui-image-editor@1.0.2/dist/index.js"></script>
+
+{# ---- CDN: Slider Plugin ---- #}
+<script src="https://unpkg.com/grapesjs-lory-slider@1.0.2/dist/index.js"></script>
+
+{# ---- CDN: TOAST UI Image Editor dependency ---- #}
+<link rel="stylesheet" href="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.css">
+<script src="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.js"></script>
+
+{# ---- Editor CSS overrides ---- #}
+<link rel="stylesheet" href="{% static 'pages/css/grapesjs/editor.css' %}">
+
+{# ---- Custom JS modules (loaded before init) ---- #}
+<script src="{% static 'pages/js/grapesjs/custom-blocks.js' %}"></script>
+<script src="{% static 'pages/js/grapesjs/style-config.js' %}"></script>
+<script src="{% static 'pages/js/grapesjs/editor-ux.js' %}"></script>
+<script src="{% static 'pages/js/grapesjs/page-templates.js' %}"></script>
+<script src="{% static 'pages/js/grapesjs/component-library.js' %}"></script>
+<script src="{% static 'pages/js/grapesjs/seo-panel.js' %}"></script>
+<script src="{% static 'pages/js/grapesjs/a11y-checker.js' %}"></script>
