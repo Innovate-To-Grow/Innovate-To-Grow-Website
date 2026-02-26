@@ -29,8 +29,6 @@ from events.views import (
 )
 from pages.views import ComponentPreviewView, LayoutAPIView, PreviewPopupView
 
-from .views import HealthCheckView
-
 # Customize Django Admin
 admin.site.site_header = "Innovate To Grow Admin"
 admin.site.site_title = "I2G Admin"
@@ -38,8 +36,6 @@ admin.site.index_title = "Welcome to I2G Admin"
 admin.site.login_form = EmailAdminAuthenticationForm
 
 urlpatterns = [
-    # health check endpoint
-    path("healthy/", HealthCheckView.as_view(), name="health-check"),
     # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
     # component preview popup for live editing
