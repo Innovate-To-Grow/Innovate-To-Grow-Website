@@ -34,9 +34,7 @@ class HealthCheckMiddleware:
             except Exception as e:
                 health_status["status"] = "error"
                 health_status["database"] = str(e)
-                return HttpResponse(
-                    json.dumps(health_status), content_type="application/json", status=503
-                )
+                return HttpResponse(json.dumps(health_status), content_type="application/json", status=503)
 
             # Check maintenance mode
             try:
@@ -45,9 +43,7 @@ class HealthCheckMiddleware:
                     health_status["status"] = "maintenance"
                     health_status["maintenance"] = True
                     health_status["maintenance_message"] = config.message
-                    return HttpResponse(
-                        json.dumps(health_status), content_type="application/json", status=503
-                    )
+                    return HttpResponse(json.dumps(health_status), content_type="application/json", status=503)
             except Exception:
                 pass
 
