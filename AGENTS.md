@@ -20,6 +20,10 @@ This is a full-stack web application: Django REST Framework backend (`src/`) + R
 - The `staticfiles.W004` warning about `/workspace/pages/public/static` not existing is harmless in dev.
 - The admin login form expects an **email** field (not username) because the custom `Member` model uses email for authentication. The superuser created with `createsuperuser` uses the `--username` flag but logs in with the email provided via `--email`.
 
+### Viewing pages
+
+CMS pages are only viewable through the **Vite frontend** (port 5173, e.g. navigate to `/<slug>`). The Django REST API at `/pages/<slug>/` returns raw JSON consumed by the React app — it is not a user-facing view. When testing or demoing page content, always use the frontend.
+
 ### Standard commands reference
 
 Lint, test, build, and other common commands are documented in `.claude/CLAUDE.md` under "Common Commands".
