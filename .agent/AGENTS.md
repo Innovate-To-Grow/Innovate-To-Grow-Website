@@ -6,9 +6,9 @@ This is a full-stack web application: Django REST Framework backend (`src/`) + R
 
 ### Services
 
-| Service | Command | Port | Notes |
-|---------|---------|------|-------|
-| Django backend | `cd src && DJANGO_SETTINGS_MODULE=core.settings.dev python3 manage.py runserver 0.0.0.0:8000` | 8000 | Must run migrations first |
+| Service | Command | Port | Notes                                        |
+|---------|---------|------|----------------------------------------------|
+| Django backend | `cd src && DJANGO_SETTINGS_MODULE=core.settings.dev python3 manage.py runserver 0.0.0.0:8000` | 8000 | Must run migrations first                    |
 | Vite frontend | `cd pages && npx vite --host 0.0.0.0 --port 5173` | 5173 | Proxies `/api`, `/media`, `/admin` to Django |
 
 ### Key caveats

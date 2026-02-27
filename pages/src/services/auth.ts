@@ -47,6 +47,7 @@ export interface ProfileResponse {
   organization: string;
   is_active: boolean;
   date_joined: string;
+  profile_image?: string;
 }
 
 // ======================== Token Storage ========================
@@ -100,6 +101,10 @@ authApi.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // When sending FormData, remove Content-Type so axios sets multipart boundary
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 });
 
@@ -129,6 +134,7 @@ authApi.interceptors.response.use(
           return authApi(originalRequest);
         } catch {
           clearTokens();
+          window.dispatchEvent(new Event('i2g-auth-state-change'));
         }
       }
     }
@@ -251,6 +257,15 @@ export const updateProfileFields = async (data: {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
     }
   }
+
+  return response.data;
+};
+
+export const uploadProfileImage = async (file: File): Promise<ProfileResponse> => {
+  const formData = new FormData();
+  formData.append('profile_image', file);
+
+  const response = await authApi.patch<ProfileResponse>('/authn/profile/', formData);
 
   return response.data;
 };

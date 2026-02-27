@@ -81,13 +81,13 @@ export const LoginForm = () => {
       </button>
 
       <div className="auth-switch">
-        Don't have an account?{' '}
+        <p>Don't have an account?</p>
         <button
           type="button"
           className="auth-switch-link"
           onClick={() => navigate('/register')}
         >
-          Create one
+          Create Account
         </button>
       </div>
     </form>

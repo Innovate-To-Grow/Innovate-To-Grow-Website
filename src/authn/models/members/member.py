@@ -99,6 +99,15 @@ class MemberProfile(ProjectControlModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 
+    # display name (can differ from first_name + last_name)
+    display_name = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="User display name shown in UI.",
+        verbose_name="Display Name",
+    )
+
     # user profile image (base64 encoded png 128*128)
     profile_image = models.TextField(
         null=True,

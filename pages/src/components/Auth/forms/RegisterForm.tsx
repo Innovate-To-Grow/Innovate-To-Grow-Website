@@ -217,13 +217,13 @@ export const RegisterForm = () => {
       </button>
 
       <div className="auth-switch">
-        Already have an account?{' '}
+        <p>Already have an account?</p>
         <button
           type="button"
           className="auth-switch-link"
           onClick={() => navigate('/login')}
         >
-          Sign in
+          Sign In
         </button>
       </div>
     </form>

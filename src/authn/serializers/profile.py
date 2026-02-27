@@ -50,16 +50,32 @@ class ProfileSerializer(serializers.Serializer):
         Get profile data from the user instance.
         """
         profile = instance.get_profile()
+        display_name = (
+            profile.display_name
+            if profile.display_name
+            else (instance.get_full_name() or instance.username or "")
+        )
+        profile_image = None
+        if profile.profile_image:
+            try:
+                profile_image = (
+                    profile.profile_image
+                    if profile.profile_image.startswith("data:")
+                    else f"data:image/png;base64,{profile.profile_image}"
+                )
+            except (AttributeError, TypeError):
+                profile_image = None
         return {
             "member_uuid": str(instance.member_uuid),
             "email": instance.email,
             "username": instance.username,
-            "first_name": instance.first_name,
-            "last_name": instance.last_name,
-            "display_name": profile.display_name or "",
+            "first_name": instance.first_name or "",
+            "last_name": instance.last_name or "",
+            "display_name": display_name,
             "organization": instance.organization or "",
             "is_active": instance.is_active,
             "date_joined": instance.date_joined.isoformat(),
+            "profile_image": profile_image,
         }
 
     def update(self, instance: Member, validated_data: dict) -> Member:
