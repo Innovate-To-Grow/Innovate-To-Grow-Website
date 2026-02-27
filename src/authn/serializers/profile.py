@@ -51,9 +51,7 @@ class ProfileSerializer(serializers.Serializer):
         """
         profile = instance.get_profile()
         display_name = (
-            profile.display_name
-            if profile.display_name
-            else (instance.get_full_name() or instance.username or "")
+            profile.display_name if profile.display_name else (instance.get_full_name() or instance.username or "")
         )
         profile_image = None
         if profile.profile_image:
