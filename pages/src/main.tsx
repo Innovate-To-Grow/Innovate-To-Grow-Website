@@ -5,7 +5,7 @@ import './index.css';
 import { router } from './router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
 import { HealthCheckProvider } from './components/MaintenanceMode';
-import { AuthProvider, AuthModal, ProfileModal } from './components/Auth';
+import { AuthProvider } from './components/Auth';
 
 // Mount main app to #root with health check and auth
 createRoot(document.getElementById('root')!).render(
@@ -13,9 +13,6 @@ createRoot(document.getElementById('root')!).render(
     <HealthCheckProvider pollingInterval={10000}>
       <AuthProvider>
         <RouterProvider router={router} />
-        {/* Auth modals rendered at app root level */}
-        <AuthModal />
-        <ProfileModal />
       </AuthProvider>
     </HealthCheckProvider>
   </StrictMode>,

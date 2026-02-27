@@ -1,5 +1,30 @@
 /* Auth Modal Styles */
 
+.auth-page {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.auth-page-card {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+}
+
+.auth-page-title {
+  margin: 0 0 1.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #003366;
+}
+
 .auth-modal-overlay {
   position: fixed;
   inset: 0;
@@ -381,6 +406,20 @@
 /* Responsive */
 
 @media (max-width: 480px) {
+  .auth-page {
+    min-height: auto;
+    padding: 1rem 0.5rem;
+  }
+
+  .auth-page-card {
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .auth-page-title {
+    font-size: 1.25rem;
+  }
+
   .auth-modal {
     max-width: 100%;
     margin: 0.5rem;
@@ -408,4 +447,3 @@
     padding: 1rem;
   }
 }
-

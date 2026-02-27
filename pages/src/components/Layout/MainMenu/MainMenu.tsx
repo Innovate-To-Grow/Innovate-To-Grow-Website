@@ -20,7 +20,7 @@ const buildHref = (item: MenuItem) => {
 
 export const MainMenu = () => {
   const { menu, state } = useMenu();
-  const { user, isAuthenticated, openModal, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -308,7 +308,7 @@ export const MainMenu = () => {
               <button
                 type="button"
                 className="member-button"
-                onClick={() => openModal('login')}
+                onClick={() => navigate('/login')}
               >
                 <i className="fa fa-user" />
                 <span>Sign In</span>
@@ -389,7 +389,7 @@ export const MainMenu = () => {
               className="header-mobile-action primary"
               onClick={() => {
                 setIsMobileOpen(false);
-                openModal('login');
+                navigate('/login');
               }}
             >
               <i className="fa fa-user" />

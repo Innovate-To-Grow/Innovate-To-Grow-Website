@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 export const RegisterForm = () => {
-  const { register, error, isLoading, openModal, clearError } = useAuth();
+  const { register, error, isLoading, setPendingEmail, clearError } = useAuth();
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
@@ -42,7 +44,17 @@ export const RegisterForm = () => {
     }
 
     try {
-      await register(email, password, passwordConfirm, firstName.trim(), lastName.trim(), organization.trim() || undefined);
+      const response = await register(
+        email,
+        password,
+        passwordConfirm,
+        firstName.trim(),
+        lastName.trim(),
+        organization.trim() || undefined,
+      );
+      const pending = response.email || email;
+      setPendingEmail(pending);
+      navigate(`/verify-pending?email=${encodeURIComponent(pending)}`, { replace: true });
     } catch {
       // Error is handled by context
     }
@@ -209,7 +221,7 @@ export const RegisterForm = () => {
         <button
           type="button"
           className="auth-switch-link"
-          onClick={() => openModal('login')}
+          onClick={() => navigate('/login')}
         >
           Sign in
         </button>

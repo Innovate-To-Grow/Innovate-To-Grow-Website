@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 export const LoginForm = () => {
-  const { login, error, isLoading, openModal, clearError } = useAuth();
+  const { login, error, isLoading, clearError } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -10,6 +12,7 @@ export const LoginForm = () => {
     e.preventDefault();
     try {
       await login(email, password);
+      navigate('/account', { replace: true });
     } catch {
       // Error is handled by context
     }
@@ -82,7 +85,7 @@ export const LoginForm = () => {
         <button
           type="button"
           className="auth-switch-link"
-          onClick={() => openModal('register')}
+          onClick={() => navigate('/register')}
         >
           Create one
         </button>

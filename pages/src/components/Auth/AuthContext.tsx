@@ -22,21 +22,13 @@ import {
 
 // Custom event names for cross-root communication
 const AUTH_STATE_CHANGE_EVENT = 'i2g-auth-state-change';
-const AUTH_MODAL_EVENT = 'i2g-auth-modal';
 
 // Dispatch auth state change to sync across React roots
 const dispatchAuthStateChange = () => {
   window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGE_EVENT));
 };
 
-// Dispatch modal state change
-const dispatchModalEvent = (view: AuthModalView) => {
-  window.dispatchEvent(new CustomEvent(AUTH_MODAL_EVENT, { detail: { view } }));
-};
-
 // ======================== Types ========================
-
-export type AuthModalView = 'login' | 'register' | 'verify-pending' | 'profile' | null;
 
 interface AuthContextValue {
   // State
@@ -44,11 +36,6 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-
-  // Modal state
-  modalView: AuthModalView;
-  openModal: (view: AuthModalView) => void;
-  closeModal: () => void;
 
   // Auth actions
   login: (email: string, password: string) => Promise<LoginResponse>;
@@ -68,9 +55,6 @@ const defaultContextValue: AuthContextValue = {
   isAuthenticated: false,
   isLoading: true,
   error: null,
-  modalView: null,
-  openModal: () => {},
-  closeModal: () => {},
   login: async () => { throw new Error('Not implemented'); },
   register: async () => { throw new Error('Not implemented'); },
   verifyEmail: async () => { throw new Error('Not implemented'); },
@@ -93,7 +77,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [modalView, setModalView] = useState<AuthModalView>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   // Initialize auth state from localStorage
@@ -128,32 +111,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, []);
 
-  // Listen for modal events from other React roots
-  useEffect(() => {
-    const handleModalEvent = (event: CustomEvent<{ view: AuthModalView }>) => {
-      setModalView(event.detail.view);
-      setError(null);
-    };
-
-    window.addEventListener(AUTH_MODAL_EVENT, handleModalEvent as EventListener);
-
-    return () => {
-      window.removeEventListener(AUTH_MODAL_EVENT, handleModalEvent as EventListener);
-    };
-  }, []);
-
-  const openModal = useCallback((view: AuthModalView) => {
-    setError(null);
-    setModalView(view);
-    dispatchModalEvent(view);
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setError(null);
-    setModalView(null);
-    dispatchModalEvent(null);
-  }, []);
-
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -165,7 +122,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const response = await apiLogin(email, password);
       setUser(response.user);
       dispatchAuthStateChange();
-      closeModal();
       return response;
     } catch (err: unknown) {
       const message = getErrorMessage(err);
@@ -174,7 +130,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [closeModal]);
+  }, []);
 
   const register = useCallback(async (
     email: string,
@@ -189,7 +145,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response = await apiRegister(email, password, passwordConfirm, firstName, lastName, organization);
       setPendingEmail(email);
-      setModalView('verify-pending');
       return response;
     } catch (err: unknown) {
       const message = getErrorMessage(err);
@@ -208,7 +163,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(response.user);
       setPendingEmail(null);
       dispatchAuthStateChange();
-      closeModal();
       return response;
     } catch (err: unknown) {
       const message = getErrorMessage(err);
@@ -217,14 +171,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [closeModal]);
+  }, []);
 
   const logout = useCallback(() => {
     apiLogout();
     setUser(null);
     dispatchAuthStateChange();
-    closeModal();
-  }, [closeModal]);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     if (!checkIsAuthenticated()) return;
@@ -244,9 +197,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isAuthenticated: !!user,
     isLoading,
     error,
-    modalView,
-    openModal,
-    closeModal,
     login,
     register,
     verifyEmail,
@@ -287,4 +237,3 @@ function getErrorMessage(err: unknown): string {
   }
   return 'An unexpected error occurred. Please try again.';
 }
-
