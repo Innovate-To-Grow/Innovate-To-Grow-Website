@@ -18,6 +18,10 @@
   border-top: 4px solid #daa520;
 }
 
+.auth-page-card.wide {
+  max-width: 680px;
+}
+
 /* Auth Page Header */
 
 .auth-page-header {
@@ -569,13 +573,15 @@
 
 /* Responsive */
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .auth-page {
     min-height: auto;
     padding: 1rem 0.5rem;
   }
 
-  .auth-page-card {
+  .auth-page-card,
+  .auth-page-card.wide {
+    max-width: 100%;
     border-radius: 12px;
   }
 
@@ -594,6 +600,10 @@
 
   .auth-form {
     padding: 1.25rem;
+  }
+
+  .auth-form-row {
+    grid-template-columns: 1fr;
   }
 
   .auth-switch {
