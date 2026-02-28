@@ -11,9 +11,14 @@ import {
   type LoginResponse,
   type RegisterResponse,
   type VerifyEmailResponse,
+  type RequestCodeResponse,
+  type VerifyCodeResponse,
   login as apiLogin,
   register as apiRegister,
   verifyEmail as apiVerifyEmail,
+  requestLoginCode as apiRequestLoginCode,
+  verifyLoginCode as apiVerifyLoginCode,
+  verifyEmailCode as apiVerifyEmailCode,
   getProfile as apiGetProfile,
   logout as apiLogout,
   getStoredUser,
@@ -39,8 +44,11 @@ interface AuthContextValue {
 
   // Auth actions
   login: (email: string, password: string) => Promise<LoginResponse>;
+  requestLoginCode: (email: string) => Promise<RequestCodeResponse>;
+  verifyLoginCode: (email: string, code: string) => Promise<VerifyCodeResponse>;
   register: (email: string, password: string, passwordConfirm: string, firstName?: string, lastName?: string, organization?: string) => Promise<RegisterResponse>;
   verifyEmail: (token: string) => Promise<VerifyEmailResponse>;
+  verifyEmailCode: (email: string, code: string) => Promise<VerifyCodeResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
@@ -56,8 +64,11 @@ const defaultContextValue: AuthContextValue = {
   isLoading: true,
   error: null,
   login: async () => { throw new Error('Not implemented'); },
+  requestLoginCode: async () => { throw new Error('Not implemented'); },
+  verifyLoginCode: async () => { throw new Error('Not implemented'); },
   register: async () => { throw new Error('Not implemented'); },
   verifyEmail: async () => { throw new Error('Not implemented'); },
+  verifyEmailCode: async () => { throw new Error('Not implemented'); },
   logout: () => {},
   refreshProfile: async () => {},
   clearError: () => {},
@@ -155,11 +166,61 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, []);
 
+  const requestLoginCode = useCallback(async (email: string): Promise<RequestCodeResponse> => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const response = await apiRequestLoginCode(email);
+      return response;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const verifyLoginCode = useCallback(async (email: string, code: string): Promise<VerifyCodeResponse> => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const response = await apiVerifyLoginCode(email, code);
+      setUser(response.user);
+      dispatchAuthStateChange();
+      return response;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const verifyEmail = useCallback(async (token: string): Promise<VerifyEmailResponse> => {
     setError(null);
     setIsLoading(true);
     try {
       const response = await apiVerifyEmail(token);
+      setUser(response.user);
+      setPendingEmail(null);
+      dispatchAuthStateChange();
+      return response;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const verifyEmailCode = useCallback(async (email: string, code: string): Promise<VerifyCodeResponse> => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const response = await apiVerifyEmailCode(email, code);
       setUser(response.user);
       setPendingEmail(null);
       dispatchAuthStateChange();
@@ -198,8 +259,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isLoading,
     error,
     login,
+    requestLoginCode,
+    verifyLoginCode,
     register,
     verifyEmail,
+    verifyEmailCode,
     logout,
     refreshProfile,
     clearError,

@@ -9,13 +9,13 @@ from rest_framework.views import APIView
 
 from authn.serializers import RegisterSerializer
 from notify.models import VerificationRequest
-from notify.services import RateLimitError, issue_link
+from notify.services import RateLimitError, issue_code
 
 
 class RegisterView(APIView):
     """
     API endpoint for user registration.
-    Creates an inactive user and sends verification email.
+    Creates an inactive user and sends verification code via email.
     """
 
     def post(self, request):
@@ -27,18 +27,20 @@ class RegisterView(APIView):
         # Create the user (inactive until email verified)
         member = serializer.save()
 
-        # Generate verification link using notify service
+        # Generate verification code using notify service
         try:
-            base_url = request.build_absolute_uri("/verify-email")
-            verification, link = issue_link(
+            verification = issue_code(
                 channel=VerificationRequest.CHANNEL_EMAIL,
                 target=member.email,
                 purpose="registration",
-                expires_in_minutes=60,
-                base_url=base_url,
+                code_length=6,
+                expires_in_minutes=10,
+                max_attempts=5,
+                rate_limit_per_hour=5,
+                context={"recipient_name": member.get_full_name() or member.username},
             )
         except RateLimitError:
-            # User created but rate limited - they can request new link later
+            # User created but rate limited - they can request new code later
             return Response(
                 {
                     "message": "Account created. Too many verification requests. Please try again later.",
@@ -49,10 +51,10 @@ class RegisterView(APIView):
 
         return Response(
             {
-                "message": "Registration successful. Please check your email to verify your account.",
+                "message": "Registration successful. Please check your email for the verification code.",
                 "email": member.email,
-                # Include token in dev mode for testing (remove in production)
-                "verification_token": verification.token if settings.DEBUG else None,
+                # Include code in dev mode for testing (remove in production)
+                "verification_code": verification.code if settings.DEBUG else None,
             },
             status=status.HTTP_201_CREATED,
         )

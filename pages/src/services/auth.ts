@@ -27,7 +27,19 @@ export interface LoginResponse {
 export interface RegisterResponse {
   message: string;
   email: string;
-  verification_token?: string; // Only in dev mode
+  verification_code?: string; // Only in dev mode
+}
+
+export interface RequestCodeResponse {
+  message: string;
+  email: string;
+}
+
+export interface VerifyCodeResponse {
+  message: string;
+  access: string;
+  refresh: string;
+  user: User;
 }
 
 export interface VerifyEmailResponse {
@@ -287,6 +299,31 @@ export const changePassword = async (
   });
   return response.data;
 };
+
+// ======================== Passwordless Login (Email Code) ========================
+
+export const requestLoginCode = async (email: string): Promise<RequestCodeResponse> => {
+  const response = await authApi.post<RequestCodeResponse>('/authn/login/request-code/', { email });
+  return response.data;
+};
+
+export const verifyLoginCode = async (email: string, code: string): Promise<VerifyCodeResponse> => {
+  const response = await authApi.post<VerifyCodeResponse>('/authn/login/verify-code/', { email, code });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  return response.data;
+};
+
+// ======================== Code-Based Email Verification ========================
+
+export const verifyEmailCode = async (email: string, code: string): Promise<VerifyCodeResponse> => {
+  const response = await authApi.post<VerifyCodeResponse>('/authn/verify-email-code/', { email, code });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  return response.data;
+};
+
+// ======================== Session ========================
 
 export const logout = (): void => {
   clearTokens();
