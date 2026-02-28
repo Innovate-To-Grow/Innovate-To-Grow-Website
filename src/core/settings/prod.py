@@ -36,6 +36,7 @@ DATABASES = {
 # Production-specific settings
 
 # Security settings
+SECURE_SERVER_HEADER = None  # Remove Server header to avoid version disclosure
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True

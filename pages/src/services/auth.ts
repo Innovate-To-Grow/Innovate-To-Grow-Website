@@ -27,7 +27,19 @@ export interface LoginResponse {
 export interface RegisterResponse {
   message: string;
   email: string;
-  verification_token?: string; // Only in dev mode
+  verification_code?: string; // Only in dev mode
+}
+
+export interface RequestCodeResponse {
+  message: string;
+  email: string;
+}
+
+export interface VerifyCodeResponse {
+  message: string;
+  access: string;
+  refresh: string;
+  user: User;
 }
 
 export interface VerifyEmailResponse {
@@ -47,6 +59,7 @@ export interface ProfileResponse {
   organization: string;
   is_active: boolean;
   date_joined: string;
+  profile_image?: string;
 }
 
 // ======================== Token Storage ========================
@@ -100,6 +113,10 @@ authApi.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // When sending FormData, remove Content-Type so axios sets multipart boundary
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 });
 
@@ -125,10 +142,14 @@ authApi.interceptors.response.use(
             setTokens({ access, refresh: refreshToken }, user);
           }
 
+          // Notify other React roots that auth state has refreshed
+          window.dispatchEvent(new Event('i2g-auth-state-change'));
+
           originalRequest.headers.Authorization = `Bearer ${access}`;
           return authApi(originalRequest);
         } catch {
           clearTokens();
+          window.dispatchEvent(new Event('i2g-auth-state-change'));
         }
       }
     }
@@ -255,6 +276,15 @@ export const updateProfileFields = async (data: {
   return response.data;
 };
 
+export const uploadProfileImage = async (file: File): Promise<ProfileResponse> => {
+  const formData = new FormData();
+  formData.append('profile_image', file);
+
+  const response = await authApi.patch<ProfileResponse>('/authn/profile/', formData);
+
+  return response.data;
+};
+
 export const changePassword = async (
   currentPassword: string,
   newPassword: string,
@@ -273,12 +303,44 @@ export const changePassword = async (
   return response.data;
 };
 
+// ======================== Passwordless Login (Email Code) ========================
+
+export const requestLoginCode = async (email: string): Promise<RequestCodeResponse> => {
+  const response = await authApi.post<RequestCodeResponse>('/authn/login/request-code/', { email });
+  return response.data;
+};
+
+export const verifyLoginCode = async (email: string, code: string): Promise<VerifyCodeResponse> => {
+  const response = await authApi.post<VerifyCodeResponse>('/authn/login/verify-code/', { email, code });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  return response.data;
+};
+
+// ======================== Code-Based Email Verification ========================
+
+export const verifyEmailCode = async (email: string, code: string): Promise<VerifyCodeResponse> => {
+  const response = await authApi.post<VerifyCodeResponse>('/authn/verify-email-code/', { email, code });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  return response.data;
+};
+
+// ======================== Session ========================
+
 export const logout = (): void => {
   clearTokens();
 };
 
 export const isAuthenticated = (): boolean => {
-  return !!getAccessToken();
+  const token = getAccessToken();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' && payload.exp > Date.now() / 1000;
+  } catch {
+    return false;
+  }
 };
 
 export default authApi;

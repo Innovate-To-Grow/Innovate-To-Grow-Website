@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
 import { useAuth } from '../../Auth';
+import { router } from '../../../router';
 import './MainMenu.css';
 
 const buildHref = (item: MenuItem) => {
@@ -21,7 +21,6 @@ const buildHref = (item: MenuItem) => {
 export const MainMenu = () => {
   const { menu, state } = useMenu();
   const { user, isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
@@ -284,7 +283,7 @@ export const MainMenu = () => {
                       className="member-dropdown-item"
                       onClick={() => {
                         setIsMemberDropdownOpen(false);
-                        navigate('/account');
+                        router.navigate('/account');
                       }}
                     >
                       <i className="fa fa-cog" />
@@ -308,7 +307,7 @@ export const MainMenu = () => {
               <button
                 type="button"
                 className="member-button"
-                onClick={() => navigate('/login')}
+                onClick={() => router.navigate('/login')}
               >
                 <i className="fa fa-user" />
                 <span>Sign In</span>
@@ -364,7 +363,7 @@ export const MainMenu = () => {
                   className="header-mobile-action"
                   onClick={() => {
                     setIsMobileOpen(false);
-                    navigate('/account');
+                    router.navigate('/account');
                   }}
                 >
                   <i className="fa fa-cog" />
@@ -389,7 +388,7 @@ export const MainMenu = () => {
               className="header-mobile-action primary"
               onClick={() => {
                 setIsMobileOpen(false);
-                navigate('/login');
+                router.navigate('/login');
               }}
             >
               <i className="fa fa-user" />

@@ -12,8 +12,12 @@ export const RegisterPage = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-page-card">
-        <h1 className="auth-page-title">Create Account</h1>
+      <div className="auth-page-card wide">
+        <div className="auth-page-header">
+          <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
+          <h1 className="auth-page-title">Create Account</h1>
+          <p className="auth-page-subtitle">Join the Innovate to Grow community</p>
+        </div>
         <RegisterForm />
       </div>
     </div>

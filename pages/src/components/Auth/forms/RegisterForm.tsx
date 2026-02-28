@@ -24,6 +24,10 @@ export const RegisterForm = () => {
       errors.lastName = 'Last name is required';
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
     if (password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
     }
@@ -54,7 +58,8 @@ export const RegisterForm = () => {
       );
       const pending = response.email || email;
       setPendingEmail(pending);
-      navigate(`/verify-pending?email=${encodeURIComponent(pending)}`, { replace: true });
+      sessionStorage.setItem('pendingEmail', pending);
+      navigate('/verify-pending', { replace: true });
     } catch {
       // Error is handled by context
     }
@@ -117,88 +122,96 @@ export const RegisterForm = () => {
         </div>
       </div>
 
-      <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="register-organization">
-          Organization <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
-        </label>
-        <input
-          id="register-organization"
-          type="text"
-          className="auth-form-input"
-          value={organization}
-          onChange={(e) => {
-            setOrganization(e.target.value);
-            clearError();
-          }}
-          placeholder="Company or organization"
-          autoComplete="organization"
-        />
+      <div className="auth-form-row">
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-email">
+            Email
+          </label>
+          <input
+            id="register-email"
+            type="email"
+            className={`auth-form-input ${localErrors.email ? 'has-error' : ''}`}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setLocalErrors((prev) => ({ ...prev, email: '' }));
+              clearError();
+            }}
+            placeholder="your@email.com"
+            required
+            autoComplete="email"
+          />
+          {localErrors.email && (
+            <span className="auth-form-error">{localErrors.email}</span>
+          )}
+        </div>
+
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-organization">
+            Organization <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+          </label>
+          <input
+            id="register-organization"
+            type="text"
+            className="auth-form-input"
+            value={organization}
+            onChange={(e) => {
+              setOrganization(e.target.value);
+              clearError();
+            }}
+            placeholder="Company or organization"
+            autoComplete="organization"
+          />
+        </div>
       </div>
 
-      <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="register-email">
-          Email
-        </label>
-        <input
-          id="register-email"
-          type="email"
-          className="auth-form-input"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            clearError();
-          }}
-          placeholder="your@email.com"
-          required
-          autoComplete="email"
-        />
-      </div>
+      <div className="auth-form-row">
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-password">
+            Password
+          </label>
+          <input
+            id="register-password"
+            type="password"
+            className={`auth-form-input ${localErrors.password ? 'has-error' : ''}`}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setLocalErrors((prev) => ({ ...prev, password: '' }));
+              clearError();
+            }}
+            placeholder="At least 8 characters"
+            required
+            autoComplete="new-password"
+            minLength={8}
+          />
+          {localErrors.password && (
+            <span className="auth-form-error">{localErrors.password}</span>
+          )}
+        </div>
 
-      <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="register-password">
-          Password
-        </label>
-        <input
-          id="register-password"
-          type="password"
-          className={`auth-form-input ${localErrors.password ? 'has-error' : ''}`}
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setLocalErrors((prev) => ({ ...prev, password: '' }));
-            clearError();
-          }}
-          placeholder="At least 8 characters"
-          required
-          autoComplete="new-password"
-          minLength={8}
-        />
-        {localErrors.password && (
-          <span className="auth-form-error">{localErrors.password}</span>
-        )}
-      </div>
-
-      <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="register-password-confirm">
-          Confirm Password
-        </label>
-        <input
-          id="register-password-confirm"
-          type="password"
-          className={`auth-form-input ${localErrors.passwordConfirm ? 'has-error' : ''}`}
-          value={passwordConfirm}
-          onChange={(e) => {
-            setPasswordConfirm(e.target.value);
-            setLocalErrors((prev) => ({ ...prev, passwordConfirm: '' }));
-            clearError();
-          }}
-          placeholder="Re-enter your password"
-          required
-          autoComplete="new-password"
-        />
-        {localErrors.passwordConfirm && (
-          <span className="auth-form-error">{localErrors.passwordConfirm}</span>
-        )}
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-password-confirm">
+            Confirm Password
+          </label>
+          <input
+            id="register-password-confirm"
+            type="password"
+            className={`auth-form-input ${localErrors.passwordConfirm ? 'has-error' : ''}`}
+            value={passwordConfirm}
+            onChange={(e) => {
+              setPasswordConfirm(e.target.value);
+              setLocalErrors((prev) => ({ ...prev, passwordConfirm: '' }));
+              clearError();
+            }}
+            placeholder="Re-enter your password"
+            required
+            autoComplete="new-password"
+          />
+          {localErrors.passwordConfirm && (
+            <span className="auth-form-error">{localErrors.passwordConfirm}</span>
+          )}
+        </div>
       </div>
 
       <button
@@ -217,13 +230,13 @@ export const RegisterForm = () => {
       </button>
 
       <div className="auth-switch">
-        Already have an account?{' '}
+        <p>Already have an account?</p>
         <button
           type="button"
           className="auth-switch-link"
           onClick={() => navigate('/login')}
         >
-          Sign in
+          Sign In
         </button>
       </div>
     </form>
