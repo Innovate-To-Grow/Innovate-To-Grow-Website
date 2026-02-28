@@ -410,7 +410,9 @@ class EventRegistrationVerifyOTPAPIView(APIView):
         data = serializer.validated_data
 
         try:
-            context = get_registration_from_token(data["token"], verify_token=True)
+            # The link was already verified when the form was loaded/submitted.
+            # The OTP code provides the authentication for this step.
+            context = get_registration_from_token(data["token"], verify_token=False)
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,

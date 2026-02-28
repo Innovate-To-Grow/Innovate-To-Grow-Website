@@ -18,9 +18,13 @@ class RequestLoginCodeSerializer(serializers.Serializer):
         try:
             member = Member.objects.get(email__iexact=email)
         except Member.DoesNotExist:
-            raise serializers.ValidationError("No account found with this email.")
+            # Use a sentinel member to avoid leaking whether the email exists;
+            # the view will return a generic success message either way.
+            self._member = None
+            return email
         if not member.is_active:
-            raise serializers.ValidationError("Account is not activated.")
+            self._member = None
+            return email
         self._member = member
         return email
 
@@ -40,7 +44,7 @@ class VerifyLoginCodeSerializer(serializers.Serializer):
         try:
             member = Member.objects.get(email__iexact=email)
         except Member.DoesNotExist:
-            raise serializers.ValidationError("No account found with this email.")
+            raise serializers.ValidationError("Invalid credentials.")
         if not member.is_active:
             raise serializers.ValidationError("Account is not activated.")
         self._member = member

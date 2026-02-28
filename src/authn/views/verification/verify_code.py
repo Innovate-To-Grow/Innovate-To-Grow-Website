@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from authn.serializers.verify_code import VerifyEmailCodeSerializer
+from authn.throttles import VerifyRateThrottle
 from notify.models import VerificationRequest
 from notify.services import VerificationError, verify_code
 
@@ -17,6 +18,8 @@ class VerifyEmailCodeView(APIView):
     API endpoint for code-based email verification.
     Activates the user account and returns JWT tokens.
     """
+
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request):
         serializer = VerifyEmailCodeSerializer(data=request.data)

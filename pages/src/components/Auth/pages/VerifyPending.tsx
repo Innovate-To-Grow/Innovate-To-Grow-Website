@@ -14,17 +14,28 @@ export const VerifyPending = () => {
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
   const emailFromQuery = searchParams.get('email');
+  const emailFromSession = sessionStorage.getItem('pendingEmail');
 
   const resolvedEmail = useMemo(
-    () => pendingEmail || emailFromQuery || null,
-    [pendingEmail, emailFromQuery],
+    () => pendingEmail || emailFromQuery || emailFromSession || null,
+    [pendingEmail, emailFromQuery, emailFromSession],
   );
 
   useEffect(() => {
-    if (!pendingEmail && emailFromQuery) {
-      setPendingEmail(emailFromQuery);
+    const source = emailFromQuery || emailFromSession;
+    if (!pendingEmail && source) {
+      setPendingEmail(source);
+      // Clear sessionStorage after consuming it
+      if (emailFromSession) sessionStorage.removeItem('pendingEmail');
     }
-  }, [pendingEmail, emailFromQuery, setPendingEmail]);
+  }, [pendingEmail, emailFromQuery, emailFromSession, setPendingEmail]);
+
+  // Guard: redirect to /register if no email is available
+  useEffect(() => {
+    if (resolvedEmail === null) {
+      navigate('/register', { replace: true });
+    }
+  }, [resolvedEmail, navigate]);
 
   const handleVerify = async (e: FormEvent) => {
     e.preventDefault();
@@ -135,23 +146,23 @@ export const VerifyPending = () => {
               {isResending ? 'Sending...' : "Didn't receive it? Resend"}
             </button>
 
-            <button
-              type="button"
-              className="auth-switch-link"
-              onClick={() => navigate('/login')}
-              style={{ marginTop: '0.5rem' }}
-            >
-              Back to login
-            </button>
+            <div className="auth-switch">
+              <button
+                type="button"
+                className="auth-switch-link"
+                onClick={() => navigate('/login')}
+              >
+                Back to login
+              </button>
 
-            <button
-              type="button"
-              className="auth-switch-link"
-              onClick={() => navigate('/')}
-              style={{ marginTop: '0.25rem', color: '#6b7280' }}
-            >
-              Back to home
-            </button>
+              <button
+                type="button"
+                className="auth-switch-link"
+                onClick={() => navigate('/')}
+              >
+                Back to home
+              </button>
+            </div>
           </div>
         </div>
       </div>

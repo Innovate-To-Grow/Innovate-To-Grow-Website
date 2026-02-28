@@ -24,6 +24,10 @@ export const RegisterForm = () => {
       errors.lastName = 'Last name is required';
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
     if (password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
     }
@@ -54,7 +58,8 @@ export const RegisterForm = () => {
       );
       const pending = response.email || email;
       setPendingEmail(pending);
-      navigate(`/verify-pending?email=${encodeURIComponent(pending)}`, { replace: true });
+      sessionStorage.setItem('pendingEmail', pending);
+      navigate('/verify-pending', { replace: true });
     } catch {
       // Error is handled by context
     }
@@ -119,6 +124,29 @@ export const RegisterForm = () => {
 
       <div className="auth-form-row">
         <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-email">
+            Email
+          </label>
+          <input
+            id="register-email"
+            type="email"
+            className={`auth-form-input ${localErrors.email ? 'has-error' : ''}`}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setLocalErrors((prev) => ({ ...prev, email: '' }));
+              clearError();
+            }}
+            placeholder="your@email.com"
+            required
+            autoComplete="email"
+          />
+          {localErrors.email && (
+            <span className="auth-form-error">{localErrors.email}</span>
+          )}
+        </div>
+
+        <div className="auth-form-group">
           <label className="auth-form-label" htmlFor="register-organization">
             Organization <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
           </label>
@@ -133,25 +161,6 @@ export const RegisterForm = () => {
             }}
             placeholder="Company or organization"
             autoComplete="organization"
-          />
-        </div>
-
-        <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="register-email">
-            Email
-          </label>
-          <input
-            id="register-email"
-            type="email"
-            className="auth-form-input"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              clearError();
-            }}
-            placeholder="your@email.com"
-            required
-            autoComplete="email"
           />
         </div>
       </div>

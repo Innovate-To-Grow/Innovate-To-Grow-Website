@@ -2,7 +2,6 @@
 Registration view for user signup.
 """
 
-from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,7 +28,7 @@ class RegisterView(APIView):
 
         # Generate verification code using notify service
         try:
-            verification = issue_code(
+            issue_code(
                 channel=VerificationRequest.CHANNEL_EMAIL,
                 target=member.email,
                 purpose="registration",
@@ -53,8 +52,6 @@ class RegisterView(APIView):
             {
                 "message": "Registration successful. Please check your email for the verification code.",
                 "email": member.email,
-                # Include code in dev mode for testing (remove in production)
-                "verification_code": verification.code if settings.DEBUG else None,
             },
             status=status.HTTP_201_CREATED,
         )

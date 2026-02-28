@@ -746,3 +746,70 @@
     padding: 1rem;
   }
 }
+
+/* VerifyEmail Page */
+
+.verify-email-page {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.verify-email-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 3rem;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.verify-email-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.verify-email-icon.verifying {
+  color: #003366;
+}
+
+.verify-email-icon.success {
+  color: #22c55e;
+}
+
+.verify-email-icon.error {
+  color: #dc2626;
+}
+
+.verify-email-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.75rem 0;
+}
+
+.verify-email-text {
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+}
+
+.verify-email-button {
+  background: #003366;
+  color: #fff;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.verify-email-button:hover {
+  background: #00254d;
+}

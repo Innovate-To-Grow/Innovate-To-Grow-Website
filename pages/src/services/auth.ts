@@ -142,6 +142,9 @@ authApi.interceptors.response.use(
             setTokens({ access, refresh: refreshToken }, user);
           }
 
+          // Notify other React roots that auth state has refreshed
+          window.dispatchEvent(new Event('i2g-auth-state-change'));
+
           originalRequest.headers.Authorization = `Bearer ${access}`;
           return authApi(originalRequest);
         } catch {
@@ -330,7 +333,14 @@ export const logout = (): void => {
 };
 
 export const isAuthenticated = (): boolean => {
-  return !!getAccessToken();
+  const token = getAccessToken();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' && payload.exp > Date.now() / 1000;
+  } catch {
+    return false;
+  }
 };
 
 export default authApi;

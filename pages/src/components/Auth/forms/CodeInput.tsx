@@ -19,8 +19,11 @@ export const CodeInput = ({ value, onChange, disabled = false, autoFocus = true,
     }
   };
 
-  const handleChange = (index: number, char: string) => {
-    if (!/^\d?$/.test(char)) return;
+  const handleChange = (index: number, inputValue: string) => {
+    // When a digit already exists and a new one is typed, inputValue may be 2 chars.
+    // Strip non-digits and take the last character so the new digit wins.
+    const char = inputValue.replace(/\D/g, '').slice(-1);
+    if (char.length > 1) return; // safety guard
     const newDigits = [...digits];
     newDigits[index] = char;
     const newCode = newDigits.join('');

@@ -286,17 +286,17 @@ function getErrorMessage(err: unknown): string {
     const axiosError = err as { response?: { data?: Record<string, unknown> } };
     if (axiosError.response?.data) {
       const data = axiosError.response.data;
-      // Handle field-specific errors
-      const firstKey = Object.keys(data)[0];
-      if (firstKey) {
-        const value = data[firstKey];
+      const messages: string[] = [];
+      for (const value of Object.values(data)) {
         if (Array.isArray(value)) {
-          return value[0] as string;
-        }
-        if (typeof value === 'string') {
-          return value;
+          for (const item of value) {
+            if (typeof item === 'string') messages.push(item);
+          }
+        } else if (typeof value === 'string') {
+          messages.push(value);
         }
       }
+      if (messages.length > 0) return messages.join(' ');
     }
   }
   return 'An unexpected error occurred. Please try again.';

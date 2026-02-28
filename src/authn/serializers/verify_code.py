@@ -17,7 +17,7 @@ class VerifyEmailCodeSerializer(serializers.Serializer):
     def validate_email(self, value):
         email = value.lower().strip()
         try:
-            member = Member.all_objects.get(email__iexact=email)
+            member = Member.objects.get(email__iexact=email)
         except Member.DoesNotExist:
             raise serializers.ValidationError("No account found with this email.")
         self._member = member

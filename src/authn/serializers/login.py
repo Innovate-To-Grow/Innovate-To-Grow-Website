@@ -53,7 +53,7 @@ class LoginSerializer(serializers.Serializer):
         try:
             member = Member.objects.get(email__iexact=email)
         except Member.DoesNotExist:
-            raise serializers.ValidationError({"email": "No account found with this email."})
+            raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
 
         # Check if account is active
         if not member.is_active:
@@ -62,7 +62,7 @@ class LoginSerializer(serializers.Serializer):
         # Authenticate using username (Django's default backend)
         user = authenticate(username=member.username, password=password)
         if user is None:
-            raise serializers.ValidationError({"password": "Invalid password."})
+            raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
 
         attrs["user"] = user
         return attrs

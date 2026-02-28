@@ -534,8 +534,9 @@
 
 .header-mobile-nav .menu-dropdown {
   position: static;
-  opacity: 1;
-  visibility: visible;
+  opacity: 0;
+  visibility: hidden;
+  display: none;
   transform: none;
   box-shadow: none;
   border-radius: 0;
@@ -548,6 +549,8 @@
 
 .header-mobile-nav .menu-dropdown.is-open {
   display: block;
+  opacity: 1;
+  visibility: visible;
 }
 
 .header-mobile-nav .menu-dropdown-link {
