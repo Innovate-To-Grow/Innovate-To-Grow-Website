@@ -45,10 +45,26 @@ class ProfileView(APIView):
         if request.FILES.get("profile_image"):
             profile = user.get_profile()
             file = request.FILES["profile_image"]
+
+            _MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+            _ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+            if file.size > _MAX_SIZE:
+                return Response(
+                    {"detail": "Profile image must be 5 MB or smaller."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            file_content_type = getattr(file, "content_type", "") or ""
+            if file_content_type not in _ALLOWED_TYPES:
+                return Response(
+                    {"detail": "Profile image must be a JPEG, PNG, GIF, or WebP file."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             content = file.read()
             b64 = base64.b64encode(content).decode("utf-8")
-            content_type = getattr(file, "content_type", "image/png") or "image/png"
-            profile.profile_image = f"data:{content_type};base64,{b64}"
+            profile.profile_image = f"data:{file_content_type};base64,{b64}"
             profile.save(update_fields=["profile_image", "updated_at"])
             serializer = ProfileSerializer(instance=user)
             return Response(serializer.data, status=status.HTTP_200_OK)
