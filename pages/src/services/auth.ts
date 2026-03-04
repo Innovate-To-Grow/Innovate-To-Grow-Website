@@ -32,7 +32,7 @@ export interface RegisterResponse {
 
 export interface RequestCodeResponse {
   message: string;
-  email: string;
+  email?: string;
 }
 
 export interface VerifyCodeResponse {

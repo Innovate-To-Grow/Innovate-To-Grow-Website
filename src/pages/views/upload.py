@@ -12,7 +12,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 
 from ..models import MediaAsset
 
@@ -38,7 +37,7 @@ DENIED_EXTENSIONS = {
 }
 
 
-@method_decorator([csrf_exempt, staff_member_required], name="dispatch")
+@method_decorator([staff_member_required], name="dispatch")
 class MediaUploadView(View):
     """
     Handle media file uploads from the admin interface.
@@ -115,8 +114,11 @@ class MediaListView(View):
 
     def get(self, request):
         """Return list of media assets."""
-        page = int(request.GET.get("page", 1))
-        limit = int(request.GET.get("limit", 50))
+        try:
+            page = max(1, int(request.GET.get("page", 1)))
+            limit = min(200, max(1, int(request.GET.get("limit", 50))))
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid pagination parameters."}, status=400)
         offset = (page - 1) * limit
 
         # Filter by type if specified

@@ -3,6 +3,8 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from authn.throttles import VerifyRateThrottle
+
 from ..serializers import (
     RequestCodeSerializer,
     RequestLinkSerializer,
@@ -26,6 +28,7 @@ class RequestCodeAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = RequestCodeSerializer(data=request.data)
@@ -54,6 +57,7 @@ class RequestLinkAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = RequestLinkSerializer(data=request.data)
@@ -83,6 +87,7 @@ class VerifyCodeAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = VerifyCodeSerializer(data=request.data)
@@ -108,6 +113,7 @@ class VerifyLinkAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def get(self, request, token, *args, **kwargs):
         purpose = request.query_params.get("purpose", "contact_verification")

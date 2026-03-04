@@ -17,6 +17,9 @@ class EventRetrieveAPIViewTest(TestCase):
 
     def setUp(self):
         """Set up test data."""
+        from django.core.cache import cache
+
+        cache.clear()
         self.client = APIClient()
         self.url = reverse("events:event-retrieve")
 

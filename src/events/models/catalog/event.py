@@ -54,6 +54,7 @@ class Event(ProjectControlModel):
     # Publishing
     is_published = models.BooleanField(
         default=False,
+        db_index=True,
         help_text="Whether this event is published and visible.",
     )
 

@@ -5,7 +5,7 @@ from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -70,7 +70,10 @@ class PreviewDataView(APIView):
     Uses Django cache so no DB writes are needed.
     """
 
-    permission_classes = [AllowAny]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAdminUser()]
+        return [AllowAny()]
 
     def get(self, request, *args, **kwargs):
         session_id = request.query_params.get("sessionId")

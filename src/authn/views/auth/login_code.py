@@ -3,6 +3,7 @@ Passwordless login via email verification code.
 """
 
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,6 +20,7 @@ class RequestLoginCodeView(APIView):
     Sends a 6-digit code to the user's email.
     """
 
+    permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
@@ -58,6 +60,7 @@ class VerifyLoginCodeView(APIView):
     API endpoint to verify a login code and return JWT tokens.
     """
 
+    permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
     def post(self, request):

@@ -7,6 +7,7 @@ Includes sync endpoint (POST) for Google Sheets and read endpoint (GET) for fron
 import re
 from datetime import UTC, datetime
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Prefetch
 from django.utils import timezone
@@ -326,18 +327,41 @@ class EventRetrieveAPIView(APIView):
 
     def get(self, request):
         """Retrieve the current event."""
+        cache_key = "event:retrieve:active"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, status=status.HTTP_200_OK)
+
+        prefetch = [
+            Prefetch(
+                "programs",
+                queryset=Program.objects.order_by("order", "id").prefetch_related(
+                    Prefetch(
+                        "tracks",
+                        queryset=Track.objects.order_by("order", "id").prefetch_related(
+                            Prefetch("presentations", queryset=Presentation.objects.order_by("order", "id"))
+                        ),
+                    )
+                ),
+            ),
+            Prefetch("track_winners", queryset=TrackWinner.objects.order_by("created_at", "id")),
+            Prefetch("special_award_winners", queryset=SpecialAward.objects.order_by("created_at", "id")),
+        ]
+
         # Try to get published event first
-        event = Event.objects.filter(is_published=True).first()
+        event = Event.objects.filter(is_published=True).prefetch_related(*prefetch).first()
 
         # If no published event, get the most recent one
         if not event:
-            event = Event.objects.first()
+            event = Event.objects.prefetch_related(*prefetch).first()
 
         if not event:
             return Response({"error": "No event found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = EventReadSerializer(event)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+        cache.set(cache_key, data, timeout=120)
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class EventSheetExportAPIView(APIView):

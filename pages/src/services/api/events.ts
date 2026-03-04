@@ -8,6 +8,7 @@ export interface Presentation {
   team_name: string;
   project_title: string;
   organization: string;
+  abstract?: string | null;
 }
 
 export interface Track {

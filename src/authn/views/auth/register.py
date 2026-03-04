@@ -3,10 +3,12 @@ Registration view for user signup.
 """
 
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authn.serializers import RegisterSerializer
+from authn.throttles import LoginRateThrottle
 from notify.models import VerificationRequest
 from notify.services import RateLimitError, issue_code
 
@@ -16,6 +18,9 @@ class RegisterView(APIView):
     API endpoint for user registration.
     Creates an inactive user and sends verification code via email.
     """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)

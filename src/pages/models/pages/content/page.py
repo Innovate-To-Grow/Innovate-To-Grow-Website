@@ -52,6 +52,9 @@ class Page(
         ordering = ["slug"]
         verbose_name = "Page"
         verbose_name_plural = "Pages"
+        indexes = [
+            models.Index(fields=["slug", "status"], name="page_slug_status_idx"),
+        ]
 
     # -------------------------- Utility Methods ----------------------------
 

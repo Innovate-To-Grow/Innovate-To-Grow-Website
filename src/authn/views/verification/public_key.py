@@ -3,6 +3,7 @@ Public key API for RSA encryption.
 """
 
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -13,6 +14,8 @@ class PublicKeyView(APIView):
     """
     API endpoint to retrieve the current public key for password encryption.
     """
+
+    permission_classes = [AllowAny]
 
     def get(self, request):
         """

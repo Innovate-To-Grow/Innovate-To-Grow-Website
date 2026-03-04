@@ -4,6 +4,7 @@ Email verification view.
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,6 +20,8 @@ class VerifyEmailView(APIView):
     API endpoint for email verification.
     Activates the user account and returns JWT tokens.
     """
+
+    permission_classes = [AllowAny]
 
     def post(self, request):
         token = request.data.get("token")
@@ -87,6 +90,8 @@ class ResendVerificationView(APIView):
     """
     API endpoint to resend verification email.
     """
+
+    permission_classes = [AllowAny]
 
     def post(self, request):
         from notify.services import RateLimitError, issue_code

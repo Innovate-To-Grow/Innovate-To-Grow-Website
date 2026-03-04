@@ -25,7 +25,9 @@ class HomePage(GrapesJSPageMixin, WorkflowPublishingMixin, AuthoredModel, Projec
     """Home page model with GrapesJS visual editor support (one version active)."""
 
     name = models.CharField(max_length=200, help_text="Internal name to identify this home page version")
-    is_active = models.BooleanField(default=False, help_text="Only one home page can be active at a time")
+    is_active = models.BooleanField(
+        default=False, db_index=True, help_text="Only one home page can be active at a time"
+    )
 
     class Meta:
         ordering = ["-created_at"]

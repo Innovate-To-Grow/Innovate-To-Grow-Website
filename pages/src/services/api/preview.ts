@@ -43,6 +43,9 @@ export interface TokenPreviewResponse {
   dynamic_config?: Record<string, unknown>;
   status: string;
   is_preview: boolean;
+  published?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const fetchPreviewByToken = async (token: string): Promise<TokenPreviewResponse | null> => {
