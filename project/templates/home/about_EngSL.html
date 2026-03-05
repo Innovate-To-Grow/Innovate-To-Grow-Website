@@ -1,5 +1,5 @@
 {% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer  %}
+{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -8,91 +8,93 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="Generator" content="Drupal 7 (http://drupal.org)">
     <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
-        href="https://innovatetogrow.ucmerced.edu/rss.xml">
-    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
+          href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/i2glogo.png') }}"
+          type="image/vnd.microsoft.icon">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title>About Engineering Service Learning | Innovate To Grow</title>
     {{ styles() }}
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node">
-    <!-- NAVBAR -->
-    {{ nav() }}
-    <!-- END NAVBAR -->
-    <div id="main" class="clearfix main" role="main">
-        <div class="container">
-            <div id="main-content" class="row main-content">
-                <div id="content" class="mc-content span12">
-                    <div id="content-wrapper" class="content-wrapper">
-                        <div id="content-head" class="row-fluid content-head">
-                            <h1 class="title" id="page-title"> About Engineering Service Learning </h1>
-                            <div class="span12">
-                                <div class="span4"><img alt="UC Merced students walking through campus"
-                                        class="img-polaroid"
-                                        src="{{ url_for('static', filename='images/eng_sl_about.png') }}"
-                                        style="font-size: 13px; font-weight: normal; line-height: 1.538em; width: 100%;" />
-                                </div>
-
-                                <div class="span8">
-                                    <h2><a href="http://engineeringservicelearning.ucmerced.edu/">Engineering Service
-                                            Learning</a></h2>
-
-                                    <p>This UC Merced&rsquo;s cornerstone engineering experience, designed to expose
-                                        first-year students to the power of engineering. Through continuing partnerships
-                                        with local nonprofits, students design meaningful solutions to the challenges
-                                        their partners face. The unique opportunities presented by the Engineering
-                                        Service Learning program are:</p>
-
-                                    <ul>
-                                        <li>Participation by students from all majors and grade levels</li>
-                                        <li>Spans the course of a student&#39;s undergraduate career</li>
-                                        <li>Developing ties to their communities through relationships with local
-                                            nonprofits</li>
-                                    </ul>
-
-                                    <p>We expect more than 300 people this year from industry, the community and K-12
-                                        schools, plus, of course, our UC Merced students and faculty and staff members.
-                                    </p>
-
-                                    <h3><strong>How to Register?</strong></h3>
-
-                                    <p>First, register for the lecture and then register for the corresponding lab,
-                                        which would be your team you are placed within. The lab is more important than
-                                        the lecture. Review the different <a
-                                            href="http://engineeringservicelearning.ucmerced.edu/teams-0">research
-                                            teams</a>.</p>
-
-                                    <p>The CRN for the lecture is 30459 (lower division), or 30463 (upper division).</p>
-
-                                    <p>The class starts as a 1 unit class but if you wish to have a leadership role then
-                                        it turns into 2 units. <a
-                                            href="http://engineeringservicelearning.ucmerced.edu/teams/team-structure">Review
-                                            the process</a>.</p>
-
-                                    <p>Schedule conflicts for the lecture only can be accommodated. Please send lecture
-                                        override requests to esl@ucmerced.edu with the following information.</p>
-
-                                    <ul>
-                                        <li>Name</li>
-                                        <li>Student Id</li>
-                                        <li>ENGR 097 (lower division) or ENGR 197 (upper division)</li>
-                                    </ul>
-
-                                    <p><span class="s1">For current <a
-                                                href="{{ url_for('home.projects_teams') }}">Teams &amp; Student
-                                                Projects</a>.</span></p>
-                                </div>
+<!-- NAVBAR -->
+{{ nav() }}
+<!-- END NAVBAR -->
+<div id="main" class="clearfix main" role="main">
+    <div class="container">
+        <div id="main-content" class="row main-content">
+            <div id="content" class="mc-content span12">
+                <div id="content-wrapper" class="content-wrapper">
+                    <div id="content-head" class="row-fluid content-head">
+                        <h1 class="title" id="page-title"> About Engineering Service Learning </h1>
+                        <div class="span12">
+                            <div class="span4"><img alt="UC Merced students walking through campus"
+                                                    class="img-polaroid"
+                                                    src="{{ url_for('static', filename='images/eng_sl_about.png') }}"
+                                                    style="font-size: 13px; font-weight: normal; line-height: 1.538em; width: 100%;"/>
                             </div>
 
+                            <div class="span8">
+                                <h2><a href="http://engineeringservicelearning.ucmerced.edu/">Engineering Service
+                                    Learning</a></h2>
 
+                                <p>This UC Merced&rsquo;s cornerstone engineering experience, designed to expose
+                                    first-year students to the power of engineering. Through continuing partnerships
+                                    with local nonprofits, students design meaningful solutions to the challenges
+                                    their partners face. The unique opportunities presented by the Engineering
+                                    Service Learning program are:</p>
+
+                                <ul>
+                                    <li>Participation by students from all majors and grade levels</li>
+                                    <li>Spans the course of a student&#39;s undergraduate career</li>
+                                    <li>Developing ties to their communities through relationships with local
+                                        nonprofits
+                                    </li>
+                                </ul>
+
+                                <p>We expect more than 300 people this year from industry, the community and K-12
+                                    schools, plus, of course, our UC Merced students and faculty and staff members.
+                                </p>
+
+                                <h3><strong>How to Register?</strong></h3>
+
+                                <p>First, register for the lecture and then register for the corresponding lab,
+                                    which would be your team you are placed within. The lab is more important than
+                                    the lecture. Review the different <a
+                                            href="http://engineeringservicelearning.ucmerced.edu/teams-0">research
+                                        teams</a>.</p>
+
+                                <p>The CRN for the lecture is 30459 (lower division), or 30463 (upper division).</p>
+
+                                <p>The class starts as a 1 unit class but if you wish to have a leadership role then
+                                    it turns into 2 units. <a
+                                            href="http://engineeringservicelearning.ucmerced.edu/teams/team-structure">Review
+                                        the process</a>.</p>
+
+                                <p>Schedule conflicts for the lecture only can be accommodated. Please send lecture
+                                    override requests to esl@ucmerced.edu with the following information.</p>
+
+                                <ul>
+                                    <li>Name</li>
+                                    <li>Student Id</li>
+                                    <li>ENGR 097 (lower division) or ENGR 197 (upper division)</li>
+                                </ul>
+
+                                <p><span class="s1">For current <a
+                                        href="{{ url_for('home.projects_teams') }}">Teams &amp; Student
+                                                Projects</a>.</span></p>
+                            </div>
                         </div>
+
+
                     </div>
                 </div>
             </div>
         </div>
-        {{ footer() }}
-        {{ scripts() }}
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
 </body>
 
 </html>

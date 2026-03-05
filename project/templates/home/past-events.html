@@ -1,5 +1,5 @@
 {% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer  %}
+{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -8,96 +8,170 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="Generator" content="Drupal 7 (http://drupal.org)">
     <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
-        href="https://innovatetogrow.ucmerced.edu/rss.xml">
-    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
+          href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/i2glogo.png') }}"
+          type="image/vnd.microsoft.icon">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title> Past Events | School of Engineering</title>
     {{ styles() }}
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node">
-    <!-- NAVBAR -->
-    {{ nav() }}
-    <!-- END NAVBAR -->
-    <div id="main" class="clearfix main" role="main">
-        <div class="container">
-            <div id="main-content" class="row main-content">
-                <div id="content" class="mc-content span12">
-                    <div id="content-wrapper" class="content-wrapper">
-                        <div id="content-head" class="row-fluid content-head">
-                            <h1 class="title" id="page-title"> Past Events </h1>
-                            <h3>Innovate to Grow - Projects and Teams database</h3>
+<!-- NAVBAR -->
+{{ nav() }}
+<!-- END NAVBAR -->
+<div id="main" class="clearfix main" role="main">
+    <div class="container">
+        <div id="main-content" class="row main-content">
+            <div id="content" class="mc-content span12">
+                <div id="content-wrapper" class="content-wrapper">
+                    <div id="content-head" class="row-fluid content-head">
+                        <h1 class="title" id="page-title"> Past Events </h1>
+                        <h3>Innovate to Grow - Projects and Teams database</h3>
 
-<p><a href="{{ url_for('home.past_projects') }}">Past Projects</a>: &nbsp; searchable database of final summaries of Innovate to Grow projects since 2012, including industry partner.</p>
+                        <p><a href="{{ url_for('home.past_projects') }}">Past Projects</a>: &nbsp; searchable database
+                            of final summaries of Innovate to Grow projects since 2012, including industry partner.</p>
 
-<p>&nbsp;</p>
+                        <p>&nbsp;</p>
 
-<h3>Innovate to Grow - Event Pages (from 2020 on)</h3>
+                        <h3>Innovate to Grow - Event Pages (from 2020 on)</h3>
 
-<ul>
-    <li><a href="{{ url_for('home.fall_event_2025') }}" target="_blank">Fall 2025&nbsp;Event Page</a></li>
-    <li><a href="{{ url_for('home.spring_event_2025') }}" target="_blank">Spring 2025&nbsp;Event Page</a></li>
-    <li><a href="{{ url_for('home.fall_event_2024') }}" target="_blank">Fall 2024&nbsp;Event Page</a></li>
-    <li><a href="{{ url_for('home.spring_event_2024') }}" target="_blank">Spring 2024&nbsp;Event Page</a></li>
-    <li><a href="{{ url_for('home.fall_event_2023') }}" target="_blank">Fall 2023&nbsp;Event Page</a></li>
-    <li><a href="{{ url_for('home.spring_event_2023') }}" target="_blank">Spring 2023&nbsp;Event Page</a></li>
-    <li><a href="{{ url_for('home.fall_event_2022') }}" target="_blank">Fall 2022&nbsp;Event Page</a></li>
-	<li><a href="{{ url_for('home.spring_event_2022') }}" target="_blank">Spring 2022&nbsp;Event Page</a></li>
-	<li><a href="{{ url_for('home.fall_event_2021') }}" target="_blank">Fall 2021&nbsp;Event Page</a></li>
-	<li><a href="{{ url_for('home.spring_event_2021') }}" target="_blank">Spring 2021 Event Page</a></li>
-	<li><a href="{{ url_for('home.fall_event_post_2020') }}" target="_blank">Fall 2020 Event Page</a></li>
-	<li><a href="{{ url_for('home.past_projects') }}" target="_blank">Spring 2020</a>&nbsp; (Search 2020 in Projects and Teams database)</li>
-</ul>
+                        <ul>
+                            <li><a href="{{ url_for('home.fall_event_2025') }}" target="_blank">Fall 2025&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.spring_event_2025') }}" target="_blank">Spring 2025&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.fall_event_2024') }}" target="_blank">Fall 2024&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.spring_event_2024') }}" target="_blank">Spring 2024&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.fall_event_2023') }}" target="_blank">Fall 2023&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.spring_event_2023') }}" target="_blank">Spring 2023&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.fall_event_2022') }}" target="_blank">Fall 2022&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.spring_event_2022') }}" target="_blank">Spring 2022&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.fall_event_2021') }}" target="_blank">Fall 2021&nbsp;Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.spring_event_2021') }}" target="_blank">Spring 2021 Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.fall_event_post_2020') }}" target="_blank">Fall 2020 Event
+                                Page</a></li>
+                            <li><a href="{{ url_for('home.past_projects') }}" target="_blank">Spring 2020</a>&nbsp;
+                                (Search 2020 in Projects and Teams database)
+                            </li>
+                        </ul>
 
-<p>&nbsp;</p>
+                        <p>&nbsp;</p>
 
-<h3>Innovate to Grow Program Books 2012-2019</h3>
+                        <h3>Innovate to Grow Program Books 2012-2019</h3>
 
-<ul>
-	<li><a href="https://ucmerced.box.com/v/i2g-f19-program" target="_blank">Fall 2019 Program Book</a> (PDF copy)</li>
-	<li><a href="https://issuu.com/ucmsoe/docs/190508_i2gprogramfinal">Spring 2019 Program Book</a><em> (PDF Copy: </em><a href="https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/page/documents/190510_i2gprogramweb.pdf" title="Sp19 Program Book">Sp19 Program Book</a><em>)&nbsp;</em>| <a href="https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/documents/190429_i2gpublicflier_web.jpg" target="_blank">Event Flyer</a></li>
-	<li><a href="https://ucmerced.box.com/v/I2G-F18-Program">Fall 2018 Program Book</a>&nbsp;(PDF Copy)&nbsp;| <a href="https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/documents/i2g_coveroption_-_flyer.pdf">Event Flyer</a>&nbsp;(Capstone and Engineering Service Learning)</li>
-	<li><a href="https://issuu.com/ucmsoe/docs/uc_merced_-_program_innovate_to_gro" target="_blank">Spring 2018 Program book</a>&nbsp;(<em>PDF Copy:</em> <a href="https://ucmerced.box.com/v/i2g-sp18-program" target="_blank">Sp18 Program Book</a>)</li>
-	<li><a href="https://ucmerced.box.com/v/I2G-fall17-program">Fall 2017 Program</a>&nbsp;| <a href="http://ucmerced.box.com/v/fall17-capstone-flyer">Event Flyer</a>&nbsp;(Casptone only)</li>
-	<li><a href="https://issuu.com/ucmsoe/docs/innovate2growprogram_2017_final" id="2017 Program Book" name="2017 Program Book" style="color: rgb(35, 110, 160);" target="_blank">Spring 2017 Program Book</a>&nbsp;(<em>PDF Copy</em>:&nbsp;<a href="https://ucmerced.box.com/v/i2g-sp17-program" target="_blank">Sp17 Program Book</a>)</li>
-	<li><a href="https://ucmerced.box.com/v/fall16-capstone-program">Fall 2016&nbsp;Program</a>&nbsp;(Capstone only)</li>
-	<li><a href="http://issuu.com/ucmsoe/docs/160506_i2g_program_final?e=27644347/42711626" id="2016 Program Book" name="2016 Program Book" style="color: rgb(35, 110, 160);" target="_blank">Spring 2016 Program Book</a>&nbsp;(<em>PDF Copy</em>:&nbsp;<a href="https://ucmerced.box.com/v/I2g-sp16-program" target="_blank">Sp16&nbsp;Program Book</a>)</li>
-	<li><a href="https://issuu.com/ucmsoe/docs/150513_i2g_programfinal">Spring 2015 Program Book</a>&nbsp;(<em>PDF Copy:</em>&nbsp;<a href="https://ucmerced.box.com/v/I2g-sp15-program" target="_blank" title="Sp15 Program Book">Sp15 Program Book</a>)</li>
-</ul>
+                        <ul>
+                            <li><a href="https://ucmerced.box.com/v/i2g-f19-program" target="_blank">Fall 2019 Program
+                                Book</a> (PDF copy)
+                            </li>
+                            <li><a href="https://issuu.com/ucmsoe/docs/190508_i2gprogramfinal">Spring 2019 Program
+                                Book</a><em> (PDF Copy: </em><a
+                                    href="https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/page/documents/190510_i2gprogramweb.pdf"
+                                    title="Sp19 Program Book">Sp19 Program Book</a><em>)&nbsp;</em>| <a
+                                    href="https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/documents/190429_i2gpublicflier_web.jpg"
+                                    target="_blank">Event Flyer</a></li>
+                            <li><a href="https://ucmerced.box.com/v/I2G-F18-Program">Fall 2018 Program Book</a>&nbsp;(PDF
+                                Copy)&nbsp;| <a
+                                        href="https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/documents/i2g_coveroption_-_flyer.pdf">Event
+                                    Flyer</a>&nbsp;(Capstone and Engineering Service Learning)
+                            </li>
+                            <li><a href="https://issuu.com/ucmsoe/docs/uc_merced_-_program_innovate_to_gro"
+                                   target="_blank">Spring 2018 Program book</a>&nbsp;(<em>PDF Copy:</em> <a
+                                    href="https://ucmerced.box.com/v/i2g-sp18-program" target="_blank">Sp18 Program
+                                Book</a>)
+                            </li>
+                            <li><a href="https://ucmerced.box.com/v/I2G-fall17-program">Fall 2017 Program</a>&nbsp;| <a
+                                    href="http://ucmerced.box.com/v/fall17-capstone-flyer">Event Flyer</a>&nbsp;(Casptone
+                                only)
+                            </li>
+                            <li><a href="https://issuu.com/ucmsoe/docs/innovate2growprogram_2017_final"
+                                   id="2017 Program Book" name="2017 Program Book" style="color: rgb(35, 110, 160);"
+                                   target="_blank">Spring 2017 Program Book</a>&nbsp;(<em>PDF Copy</em>:&nbsp;<a
+                                    href="https://ucmerced.box.com/v/i2g-sp17-program" target="_blank">Sp17 Program
+                                Book</a>)
+                            </li>
+                            <li><a href="https://ucmerced.box.com/v/fall16-capstone-program">Fall 2016&nbsp;Program</a>&nbsp;(Capstone
+                                only)
+                            </li>
+                            <li><a href="http://issuu.com/ucmsoe/docs/160506_i2g_program_final?e=27644347/42711626"
+                                   id="2016 Program Book" name="2016 Program Book" style="color: rgb(35, 110, 160);"
+                                   target="_blank">Spring 2016 Program Book</a>&nbsp;(<em>PDF Copy</em>:&nbsp;<a
+                                    href="https://ucmerced.box.com/v/I2g-sp16-program" target="_blank">Sp16&nbsp;Program
+                                Book</a>)
+                            </li>
+                            <li><a href="https://issuu.com/ucmsoe/docs/150513_i2g_programfinal">Spring 2015 Program
+                                Book</a>&nbsp;(<em>PDF Copy:</em>&nbsp;<a
+                                    href="https://ucmerced.box.com/v/I2g-sp15-program" target="_blank"
+                                    title="Sp15 Program Book">Sp15 Program Book</a>)
+                            </li>
+                        </ul>
 
-<ul></ul>
+                        <ul></ul>
 
-<p>&nbsp;</p>
+                        <p>&nbsp;</p>
 
-<h3>Our Teams</h3>
+                        <h3>Our Teams</h3>
 
-<ul>
-	<li>2020&nbsp;Spring Teams:&nbsp;<a href="/teams/capstone-idc-spring2020">Capstone</a>&nbsp;|&nbsp;<a href="/teams/EngSL-Spring2020">EngSL</a>&nbsp;|&nbsp;<a href="/teams/cse-mac-spring2020">MAC</a></li>
-	<li>2019 Fall Teams: <a href="/teams/capstone-idc-fall2019">Capstone</a>&nbsp;|&nbsp;<a href="/teams/EngSL-Fall2019">EngSL</a>&nbsp;|&nbsp;<a href="/teams/cse-mac-fall2019">MAC</a></li>
-	<li>2019&nbsp;Spring&nbsp;Teams:&nbsp;<a href="/teams/capstone-idc-spring2019">Capstone</a>&nbsp;|&nbsp;EngSL |&nbsp;<a href="/teams/cse-mac-spring2019">MAC</a></li>
-	<li>2018 Fall Teams:&nbsp;<a href="/teams/capstone-idc-fall2018">Capstone</a>&nbsp;|&nbsp;EngSL</li>
-	<li>2018 Spring&nbsp;Teams:&nbsp;<a href="/teams/capstone-idc-spring2018">Capstone</a>&nbsp;|&nbsp;EngSL |&nbsp;MAC</li>
-	<li>2017 Fall&nbsp;Teams:&nbsp;<a href="http://teams/capstone-idc-fall2017">Capstone</a> <em>only</em></li>
-	<li>2017 Spring Teams:&nbsp;<a href="/teams/capstone-idc-spring2017">Capstone</a>&nbsp;| EngSL |&nbsp;MAC</li>
-	<li>2016 Fall&nbsp;Teams: <a href="/teams/capstone-idc-fall2016">Capstone</a> <em>only</em></li>
-	<li>2016 Spring Teams:&nbsp;<a href="/teams/capstone-idc-spring2016">Capstone</a>&nbsp;|&nbsp;EngSL |&nbsp;MAC</li>
-	<li>2015 Spring Teams:&nbsp;<a href="/teams/spring2015">Capstone</a>&nbsp;|&nbsp;<a href="/teams/spring2015#2015_ESL%20Teams">EngSL</a>&nbsp;|&nbsp;MAC</li>
-	<li>2014 Spring Teams:&nbsp;<a href="/teams/Spring2014" target="_blank">Capstone</a>, <a href="/teams/Spring2014#2014_ESL%20Teams" target="_blank">EngSL</a>&nbsp;|&nbsp;<a href="https://innovatetogrow.ucmerced.edu/teams/Spring2014#2014%20MAC%20Teams">MAC</a></li>
-	<li>2013 Spring Teams (external site):&nbsp;<a href="https://eng.ucmerced.edu/innovatetogrow/2013-files/projects-2013">Capstone</a> <em>only</em></li>
-	<li>2012 Spring Teams (external site):&nbsp;<a href="http://eng.ucmerced.edu/innovatetogrow/2012" target="_blank">Capstone</a> <em>only</em></li>
-</ul>
+                        <ul>
+                            <li>2020&nbsp;Spring Teams:&nbsp;<a href="/teams/capstone-idc-spring2020">Capstone</a>&nbsp;|&nbsp;<a
+                                    href="/teams/EngSL-Spring2020">EngSL</a>&nbsp;|&nbsp;<a
+                                    href="/teams/cse-mac-spring2020">MAC</a></li>
+                            <li>2019 Fall Teams: <a href="/teams/capstone-idc-fall2019">Capstone</a>&nbsp;|&nbsp;<a
+                                    href="/teams/EngSL-Fall2019">EngSL</a>&nbsp;|&nbsp;<a
+                                    href="/teams/cse-mac-fall2019">MAC</a></li>
+                            <li>2019&nbsp;Spring&nbsp;Teams:&nbsp;<a href="/teams/capstone-idc-spring2019">Capstone</a>&nbsp;|&nbsp;EngSL
+                                |&nbsp;<a href="/teams/cse-mac-spring2019">MAC</a></li>
+                            <li>2018 Fall Teams:&nbsp;<a href="/teams/capstone-idc-fall2018">Capstone</a>&nbsp;|&nbsp;EngSL
+                            </li>
+                            <li>2018 Spring&nbsp;Teams:&nbsp;<a href="/teams/capstone-idc-spring2018">Capstone</a>&nbsp;|&nbsp;EngSL
+                                |&nbsp;MAC
+                            </li>
+                            <li>2017 Fall&nbsp;Teams:&nbsp;<a href="http://teams/capstone-idc-fall2017">Capstone</a>
+                                <em>only</em></li>
+                            <li>2017 Spring Teams:&nbsp;<a href="/teams/capstone-idc-spring2017">Capstone</a>&nbsp;|
+                                EngSL |&nbsp;MAC
+                            </li>
+                            <li>2016 Fall&nbsp;Teams: <a href="/teams/capstone-idc-fall2016">Capstone</a> <em>only</em>
+                            </li>
+                            <li>2016 Spring Teams:&nbsp;<a href="/teams/capstone-idc-spring2016">Capstone</a>&nbsp;|&nbsp;EngSL
+                                |&nbsp;MAC
+                            </li>
+                            <li>2015 Spring Teams:&nbsp;<a href="/teams/spring2015">Capstone</a>&nbsp;|&nbsp;<a
+                                    href="/teams/spring2015#2015_ESL%20Teams">EngSL</a>&nbsp;|&nbsp;MAC
+                            </li>
+                            <li>2014 Spring Teams:&nbsp;<a href="/teams/Spring2014" target="_blank">Capstone</a>, <a
+                                    href="/teams/Spring2014#2014_ESL%20Teams" target="_blank">EngSL</a>&nbsp;|&nbsp;<a
+                                    href="https://innovatetogrow.ucmerced.edu/teams/Spring2014#2014%20MAC%20Teams">MAC</a>
+                            </li>
+                            <li>2013 Spring Teams (external site):&nbsp;<a
+                                    href="https://eng.ucmerced.edu/innovatetogrow/2013-files/projects-2013">Capstone</a>
+                                <em>only</em></li>
+                            <li>2012 Spring Teams (external site):&nbsp;<a
+                                    href="http://eng.ucmerced.edu/innovatetogrow/2012" target="_blank">Capstone</a> <em>only</em>
+                            </li>
+                        </ul>
 
-<p>Additional information for <a href="https://engineeringservicelearning.ucmerced.edu/current-projects">Engineering Service Learning</a>.</p>
+                        <p>Additional information for <a
+                                href="https://engineeringservicelearning.ucmerced.edu/current-projects">Engineering
+                            Service Learning</a>.</p>
 
 
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        {{ footer() }}
-        {{ scripts() }}
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
 </body>
 
 </html>

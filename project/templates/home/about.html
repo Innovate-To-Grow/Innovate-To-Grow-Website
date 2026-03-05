@@ -1,5 +1,5 @@
 {% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer  %}
+{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -8,166 +8,211 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="Generator" content="Drupal 7 (http://drupal.org)">
     <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
-        href="https://innovatetogrow.ucmerced.edu/rss.xml">
-    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
+          href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/i2glogo.png') }}"
+          type="image/vnd.microsoft.icon">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title>About Us | School of Engineering</title>
     {{ styles() }}
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node">
-    <!-- NAVBAR -->
-    {{ nav() }}
-    <!-- END NAVBAR -->
-    <div id="main" class="clearfix main" role="main">
-        <div class="container">
-            <div id="main-content" class="row main-content">
-                <div id="content" class="mc-content span12">
-                    <div id="content-wrapper" class="content-wrapper">
-                        <div id="content-head" class="row-fluid content-head">
+<!-- NAVBAR -->
+{{ nav() }}
+<!-- END NAVBAR -->
+<div id="main" class="clearfix main" role="main">
+    <div class="container">
+        <div id="main-content" class="row main-content">
+            <div id="content" class="mc-content span12">
+                <div id="content-wrapper" class="content-wrapper">
+                    <div id="content-head" class="row-fluid content-head">
+                        <h1 class="title" id="page-title"> Engineering Solutions for Innovative Organizations </h1>
+                        <div id="help" class="clearfix">
+                            <div class="region region-help clearfix">
+                                <div id="block-block-41" class="clearfix block block-block">
+                                    <div class="content">
+                                        <style type="text/css">
+                                            <!-- /*--><![CDATA[/* ><!--*/
+                                            .front h1#page-title {
+                                                display: none;
+                                            }
 
-                            <p><strong>&nbsp;&nbsp;</strong></p>
+                                            /**** Button Spacing ****/
 
-                            <p dir="ltr">Innovate to Grow (I2G) is a unique &ldquo;experiential learning&rdquo; program
-                                that engages external
-                                partner organizations with teams of students who design systems to solve complex,
-                                real-world problems.&nbsp;</p>
+                                            .sb-col {
+                                                flex: 0;
+                                            }
 
-                            <p>At the end of each semester, the work completed by the student teams culminates in the
-                                Innovate to Grow event,
-                                which features student-led research and highlights their project outcomes.&nbsp; The
-                                bi-annual Innovate to Grow
-                                event is a showcase of UC Merced student ingenuity and creativity, and the marquee event
-                                for the School of
-                                Engineering, drawing hundreds of industry leaders, community members, and entrepreneurs
-                                from the Central Valley,
-                                Silicon Valley, Southern California and beyond.&nbsp;&nbsp;&nbsp;</p>
-
-                            <p>Innovate to Grow began in 2012 as the culminating event for the School of
-                                Engineering&rsquo;s Senior Capstone
-                                teams&#39; final report.&nbsp; The Innovate to Grow program has evolved to encompass the
-                                following experiential
-                                learning classes, and threads of our campus&#39; innovation culture:</p>
-
-                            <ul>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation"><a
-                                            href="{{ url_for('home.engineering_capstone') }}">Engineering
-                                            Capstone</a> - CAP (also
-                                        known as Innovation Design Clinic)</p>
-                                </li>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation"><a
-                                            href="https://engineeringservicelearning.ucmerced.edu/">Engineering
-                                            Service Learning</a> - ESL</p>
-                                </li>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation"><a
-                                            href="{{ url_for('home.software_capstone') }}">Software
-                                            Engineering Capstone</a> - CSE (formerly known as Mobile App Challenge, MAC)
-                                    </p>
-                                </li>
-                            </ul>
-
-                            <p>In one year (two semesters) the Innovate to Grow projects, classes, and events involve
-                                approximately 500 students
-                                and 100 teams. The classes that are part of the Innovate to Grow program have grown
-                                since its inception, as our
-                                enrollments in engineering and computer science continue to grow rapidly.&nbsp;</p>
-
-                            <p>Depending on the nature of the project, the amenability for multiple solutions or
-                                competition and the
-                                availability and interest of the industry mentors, a team may be paired 1:1 with a
-                                partner/project, while other
-                                projects have two or more teams competing to produce competitive designs.</p>
-
-                            <p dir="ltr">The projects tackled by the students involve a variety of industries, such as
-                                Agriculture, Food
-                                Processing, Water, Energy, Health Care, Medical Devices, Finance, Transportation,
-                                Construction, Materials, IT,
-                                Networking, and more.</p>
-
-                            <p>Most student innovations are related to projects inspired by industry partners and
-                                community organizations where
-                                success might be measured by:</p>
-
-                            <ul>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">a system or process improvement for the
-                                        partner&rsquo;s operations or
-                                        plant;</p>
-                                </li>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">a prototype or invention that may lead to a product
-                                        or patent application;
-                                    </p>
-                                </li>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">a software application or system improvement;</p>
-                                </li>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">studies and prototypes for government labs or
-                                        nonprofits in the local
-                                        community.</p>
-                                </li>
-                            </ul>
-
-                            <p>Some of those innovations can help, or turn into, small businesses in the
-                                community.&nbsp; The innovation and
-                                entrepreneurial thinking embedded in our culture are signatures of our programs and
-                                highlight the unique student
-                                experience for undergraduate students on our campus.&nbsp;</p>
-
-                            <p>Please see more details if you are interested in partnering with us:</p>
-
-                            <ul>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">You may <a
-                                            href="{{ url_for('home.partnership') }}">sponsor</a> the
-                                        program and events.&nbsp;</p>
-                                </li>
-                            </ul>
-
-                            <ul>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">You may <a
-                                            href="{{ url_for('home.project_submission') }}">propose a
-                                            project</a> that can be
-                                        evaluated for fit in Engineering Capstone, Software Engineering Capstone, or
-                                        Service Learning, or an
-                                        internship, or potentially collaborative research with Faculty at UC
-                                        Merced.&nbsp;</p>
-                                </li>
-                            </ul>
-
-                            <ul>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">You may search all <a
-                                            href="{{ url_for('home.past_projects') }}">past projects</a>
-                                        of Innovate to Grow since
-                                        2012, and <a href="{{ url_for('home.current_projects') }}">current
-                                            student teams and
-                                            projects</a> in this semester Innovate to Grow classes and event.</p>
-                                </li>
-                            </ul>
-
-                            <ul>
-                                <li dir="ltr">
-                                    <p dir="ltr" role="presentation">You may sign up to judge or attend the <a
-                                            href="{{ url_for('home.event') }}">next Innovate to Grow
-                                            event</a>.</p>
-                                </li>
-                            </ul>
-
-                            <p>&nbsp;</p>
+                                            /*--><!]]>*/
+                                        </style>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- /.region -->
                         </div>
                     </div>
+                    <div id="content-body" class="row-fluid content-body">
+                        <div class="region region-content clearfix">
+                            <div id="block-system-main" class="clearfix block block-system">
+                                <div class="content">
+                                    <article id="node-11" class="node node-page clearfix" about="/about"
+                                             typeof="sioc:Item foaf:Document"><span property="dc:title"
+                                                                                    content="Engineering Solutions for Innovative Organizations"
+                                                                                    class="rdf-meta element-hidden"></span>
+                                        <div class="content">
+                                            <div class="field field-name-field-page-body field-type-text-long field-label-hidden">
+                                                <div class="field-items">
+                                                    <div class="field-item even"><h4>Innovate to Grow (I2G) is a unique
+                                                        "experiential learning" program that engages external partner
+                                                        organizations with teams of students who design systems to solve
+                                                        complex, real-world problems.&nbsp;</h4>
+                                                        <p>At the end of each semester, the work completed by the
+                                                            student teams culminates in the Innovate to Grow event,
+                                                            which features student-led research and highlights their
+                                                            project outcomes.&nbsp; The bi-annual Innovate to Grow event
+                                                            is a showcase of UC Merced student ingenuity and creativity,
+                                                            and the marquee event for the School of Engineering, drawing
+                                                            hundreds of industry leaders, community members, and
+                                                            entrepreneurs from the Central Valley, Silicon Valley,
+                                                            Southern California and beyond.&nbsp;&nbsp;&nbsp;</p>
+                                                        <p>Innovate to Grow began in 2012 as the culminating event for
+                                                            the School of Engineering's Senior Capstone teams' final
+                                                            report, originating from an idea first sketched on a napkin
+                                                            by then–Dean Dan Hirleman. Since then, the Innovate to Grow
+                                                            program has evolved to encompass the following experiential
+                                                            learning classes and key threads of our campus's innovation
+                                                            culture:</p>
+                                                        <ul>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation"><a
+                                                                        href="https://i2g.ucmerced.edu/engineering-capstone">Engineering
+                                                                    Capstone</a> - CAP (formerly known as Innovation
+                                                                    Design Clinic)</p>
+                                                            </li>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation"><a
+                                                                        href="https://i2g.ucmerced.edu/software-capstone">Software
+                                                                    Engineering Capstone</a> - CSE (formerly known as
+                                                                    Mobile App Challenge, MAC)</p>
+                                                            </li>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">Civil &amp;
+                                                                    Environmental Engineering Capstone - CEE</p>
+                                                            </li>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation"><a
+                                                                        href="https://engineeringservicelearning.ucmerced.edu/">Engineering
+                                                                    Service Learning</a> - ESL</p>
+                                                            </li>
+                                                        </ul>
+                                                        <p>In one year (two semesters) the Innovate to Grow projects,
+                                                            classes, and events involve approximately 500 students and
+                                                            100 teams. The classes that are part of the Innovate to Grow
+                                                            program have grown since its inception, as our enrollments
+                                                            in engineering and computer science continue to grow
+                                                            rapidly.&nbsp;</p>
+                                                        <p>Depending on the nature of the project, the amenability for
+                                                            multiple solutions or competition and the availability and
+                                                            interest of the industry mentors, a team may be paired 1:1
+                                                            with a partner/project, while other projects have two or
+                                                            more teams competing to produce competitive designs.</p>
+                                                        <p dir="ltr">The projects tackled by the students involve a
+                                                            variety of industries, such as Agriculture, Food Processing,
+                                                            Water, Energy, Health Care, Medical Devices, Finance,
+                                                            Transportation, Construction, Materials, IT, Networking, and
+                                                            more.</p>
+                                                        <p>Most student innovations are related to projects inspired by
+                                                            industry partners and community organizations where success
+                                                            might be measured by:</p>
+                                                        <ul>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">a system or process
+                                                                    improvement for the partner's operations or
+                                                                    plant;</p>
+                                                            </li>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">a prototype or
+                                                                    invention that may lead to a product or patent
+                                                                    application;</p>
+                                                            </li>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">a software application
+                                                                    or system improvement;</p>
+                                                            </li>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">studies and prototypes
+                                                                    for government labs or nonprofits in the local
+                                                                    community.</p>
+                                                            </li>
+                                                        </ul>
+                                                        <p>Some of those innovations can help, or turn into, small
+                                                            businesses in the community.&nbsp; The innovation and
+                                                            entrepreneurial thinking embedded in our culture are
+                                                            signatures of our programs and highlight the unique student
+                                                            experience for undergraduate students on our
+                                                            campus.&nbsp;</p>
+                                                        <p>Please see more details if you are interested in partnering
+                                                            with us:</p>
+                                                        <ul>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">You may <a
+                                                                        href="https://i2g.ucmerced.edu/partnership">sponsor</a>
+                                                                    the program and events.&nbsp;</p>
+                                                            </li>
+                                                        </ul>
+                                                        <ul>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">You may <a
+                                                                        href="https://i2g.ucmerced.edu/project-submission">propose
+                                                                    a project</a> that can be evaluated for fit in
+                                                                    Engineering Capstone, Software Engineering Capstone,
+                                                                    or Service Learning, or an internship, or
+                                                                    potentially collaborative research with Faculty at
+                                                                    UC Merced.&nbsp;</p>
+                                                            </li>
+                                                        </ul>
+                                                        <ul>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">You may search all <a
+                                                                        href="https://i2g.ucmerced.edu/past-projects">past
+                                                                    projects</a> of Innovate to Grow since 2012, and <a
+                                                                        href="https://i2g.ucmerced.edu/current-projects">current
+                                                                    student teams and projects</a> in this semester
+                                                                    Innovate to Grow classes and event.</p>
+                                                            </li>
+                                                        </ul>
+                                                        <ul>
+                                                            <li dir="ltr">
+                                                                <p dir="ltr" role="presentation">You may sign up to
+                                                                    judge or attend the <a
+                                                                            href="https://i2g.ucmerced.edu/event">next
+                                                                        Innovate to Grow event</a>.</p>
+                                                            </li>
+                                                        </ul>
+                                                        <p dir="ltr">For any questions or comments, please&nbsp;send us
+                                                            an email to: <a href="mailto:i2g@ucmerced.edu">i2g@ucmerced.edu</a>
+                                                        </p>
+                                                        <p>&nbsp;</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /.region -->
+                    </div>
                 </div>
+                <!-- /#content-wrap -->
             </div>
-        </div>        
-        {{ footer() }}
-        {{ scripts() }}
+            <!-- /#content -->
+        </div>
+    </div>
+</div>
+{{ footer() }}
+{{ scripts() }}
 </body>
 
 </html>

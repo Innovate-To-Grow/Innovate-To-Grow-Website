@@ -81,7 +81,7 @@ def inject_event():
 import gspread
 from gspread.client import BackoffClient
 
-gc = gspread.service_account(client_factory=BackoffClient)
+gc = gspread.service_account(filename=os.path.join(os.path.dirname(os.path.dirname(__file__)), "service_account.json"), client_factory=BackoffClient)
 sh = gc.open(app.config["CURRENT_SPREADSHEET"])
 
 worksheets = []

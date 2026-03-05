@@ -1,5 +1,5 @@
 {% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer  %}
+{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -8,183 +8,297 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="Generator" content="Drupal 7 (http://drupal.org)">
     <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
-        href="https://innovatetogrow.ucmerced.edu/rss.xml">
-    <link rel="shortcut icon" href="{{url_for('static', filename='images/i2glogo.png') }}" type="image/vnd.microsoft.icon">
+          href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/i2glogo.png') }}"
+          type="image/vnd.microsoft.icon">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
     <title> Attendees | School of Engineering</title>
     {{ styles() }}
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node">
-    <!-- NAVBAR -->
-    {{ nav() }}
-    <!-- END NAVBAR -->
-    <div id="main" class="clearfix main" role="main">
-        <div class="container">
-            <div id="main-content" class="row main-content">
-                <div id="content" class="mc-content span12">
-                    <div id="content-wrapper" class="content-wrapper">
-                        <div id="content-head" class="row-fluid content-head">
-                            <h1 class="title" id="page-title"> Attendees - How to explore and engage </h1> 
-                            <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
+<!-- NAVBAR -->
+{{ nav() }}
+<!-- END NAVBAR -->
+<div id="main" class="clearfix main" role="main">
+    <div class="container">
+        <div id="main-content" class="row main-content">
+            <div id="content" class="mc-content span12">
+                <div id="content-wrapper" class="content-wrapper">
+                    <div id="content-head" class="row-fluid content-head">
+                        <h1 class="title" id="page-title"> Attendees - How to explore and engage </h1>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:18px;"><b>WHEN:&nbsp; &nbsp;</b>See the schedule of the next event - semester.<b>&nbsp; &nbsp; &nbsp;&nbsp;<a href="{{ url_for('home.schedule') }}">SCHEDULE</a>&nbsp; &nbsp; &nbsp;</b></span></p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span
+                                style="font-size:18px;"><b>WHEN:&nbsp; &nbsp;</b>See the schedule of the next event - semester.<b>&nbsp; &nbsp; &nbsp;&nbsp;<a
+                                href="{{ url_for('home.schedule') }}">SCHEDULE</a>&nbsp; &nbsp; &nbsp;</b></span></p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:18px;"><b>IN PERSON Attendees&nbsp;</b></span></p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span
+                                style="font-size:18px;"><b>IN PERSON Attendees&nbsp;</b></span></p>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-family:Arial,Helvetica,sans-serif;">Please **&nbsp;<span style="font-size:14px;">REGISTER&nbsp;** as soon as possible&nbsp;** so we have attendees count and badges ready.</span></span></p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span
+                                style="font-family:Arial,Helvetica,sans-serif;">Please **&nbsp;<span
+                                style="font-size:14px;">REGISTER&nbsp;** as soon as possible&nbsp;** so we have attendees count and badges ready.</span></span>
+                        </p>
 
-<ul>
-	<li data-uw-styling-context="true"><strong data-uw-styling-context="true">Park&nbsp;</strong>in the reserved area&nbsp;(check which parking lot - follow signs).</li>
-	<li data-uw-styling-context="true"><strong data-uw-styling-context="true">Walk or shuttle</strong>&nbsp;to the Expo (check if this semester is Gym or Conference Center).</li>
-	<li data-uw-styling-context="true">Pick up your&nbsp;<strong data-uw-styling-context="true">badge&nbsp;</strong>at the Registration desk.</li>
-	<li data-uw-styling-context="true">Registration and&nbsp;<strong data-uw-styling-context="true">coffee&nbsp;</strong>start at 30 minutes before doors open.</li>
-	<li data-uw-styling-context="true"><strong data-uw-styling-context="true">Expo&nbsp;</strong>doors open at (see schedule of semester) for student posters/demos.</li>
-	<li data-uw-styling-context="true"><strong data-uw-styling-context="true">Lunch&nbsp;</strong>is served in boxes at the Expo.</li>
-	<li data-uw-styling-context="true"><strong data-uw-styling-context="true">Presentations&nbsp;</strong>start promptly!&nbsp;</li>
-	<li data-uw-styling-context="true">Search the room of your desired&nbsp;<strong data-uw-styling-context="true">track&nbsp;</strong>(see the schedule below).</li>
-	<li data-uw-styling-context="true">You may also attend the Award Ceremony and the Reception.</li>
-</ul>
+                        <ul>
+                            <li data-uw-styling-context="true"><strong
+                                    data-uw-styling-context="true">Park&nbsp;</strong>in the reserved area&nbsp;(check
+                                which parking lot - follow signs).
+                            </li>
+                            <li data-uw-styling-context="true"><strong data-uw-styling-context="true">Walk or
+                                shuttle</strong>&nbsp;to the Expo (check if this semester is Gym or Conference Center).
+                            </li>
+                            <li data-uw-styling-context="true">Pick up your&nbsp;<strong data-uw-styling-context="true">badge&nbsp;</strong>at
+                                the Registration desk.
+                            </li>
+                            <li data-uw-styling-context="true">Registration and&nbsp;<strong
+                                    data-uw-styling-context="true">coffee&nbsp;</strong>start at 30 minutes before doors
+                                open.
+                            </li>
+                            <li data-uw-styling-context="true"><strong
+                                    data-uw-styling-context="true">Expo&nbsp;</strong>doors open at (see schedule of
+                                semester) for student posters/demos.
+                            </li>
+                            <li data-uw-styling-context="true"><strong
+                                    data-uw-styling-context="true">Lunch&nbsp;</strong>is served in boxes at the Expo.
+                            </li>
+                            <li data-uw-styling-context="true"><strong data-uw-styling-context="true">Presentations&nbsp;</strong>start
+                                promptly!&nbsp;
+                            </li>
+                            <li data-uw-styling-context="true">Search the room of your desired&nbsp;<strong
+                                    data-uw-styling-context="true">track&nbsp;</strong>(see the schedule below).
+                            </li>
+                            <li data-uw-styling-context="true">You may also attend the Award Ceremony and the
+                                Reception.
+                            </li>
+                        </ul>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:18px;"><b>ZOOM Attendees</b></span></p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span
+                                style="font-size:18px;"><b>ZOOM Attendees</b></span></p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:18px;">You do not need Zoom info prior to he event.&nbsp; </span></p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span
+                                style="font-size:18px;">You do not need Zoom info prior to he event.&nbsp; </span></p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:18px;">Access to Zoom Tracks will be <b>activated on the I2G home page just before the event!</b></span></p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span
+                                style="font-size:18px;">Access to Zoom Tracks will be <b>activated on the I2G home page just before the event!</b></span>
+                        </p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;">&nbsp;</p>
 
-<p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;"><strong>Online Features:</strong></span></span></p>
+                        <p dir="ltr" style="line-height: 1.38; margin-top: 0pt; margin-bottom: 0pt;"><span
+                                style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;"><strong>Online Features:</strong></span></span>
+                        </p>
 
-<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><meta charset="utf-8" /></p>
+                        <p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;">
+                            <meta charset="utf-8"/>
+                        </p>
 
-<ul>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Zoom &quot;Rooms&quot;:&nbsp; consecutive team slots</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Each team will have a slot with a&nbsp;presentation, followed by Q&amp;A (questions live or entered in Zoom chat)</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Judges&nbsp;will ask questions and evaluate the presentation (via online form)</span></span></p>
-	</li>
-</ul>
+                        <ul>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Zoom &quot;Rooms&quot;:&nbsp; consecutive team slots</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Each team will have a slot with a&nbsp;presentation, followed by Q&amp;A (questions live or entered in Zoom chat)</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Judges&nbsp;will ask questions and evaluate the presentation (via online form)</span></span>
+                                </p>
+                            </li>
+                        </ul>
 
-<p><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;"><em><strong>Important notes on Zoom accounts and Rooms:</strong></em></span></span></p>
+                        <p><span style="font-size:14px;"><span
+                                style="font-family:Arial,Helvetica,sans-serif;"><em><strong>Important notes on Zoom accounts and Rooms:</strong></em></span></span>
+                        </p>
 
-<ul>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">If you plan to join a Zoom Room, you will need an authenticated Zoom account: that is, one that is linked to your email address and approved by clicking the email confirmation.&nbsp;</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">If you do not have a confirmed Zoom account, you may <a href="https://zoom.us/freesignup/">sign up here for Zoom</a></span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Depending on registrations and availability in the room, it may take a moment to gain access, so plan to be at&nbsp; <a href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp; and join 10&nbsp;minutes before start.</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Final <strong>links to Zoom rooms&nbsp;</strong>will be available before I2G starts at&nbsp;<a href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You will be able to access an introductory video if you join any room early</span></span></p>
-	</li>
-</ul>
+                        <ul>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">If you plan to join a Zoom Room, you will need an authenticated Zoom account: that is, one that is linked to your email address and approved by clicking the email confirmation.&nbsp;</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">If you do not have a confirmed Zoom account, you may <a
+                                        href="https://zoom.us/freesignup/">sign up here for Zoom</a></span></span></p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Depending on registrations and availability in the room, it may take a moment to gain access, so plan to be at&nbsp; <a
+                                        href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp; and join 10&nbsp;minutes before start.</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Final <strong>links to Zoom rooms&nbsp;</strong>will be available before I2G starts at&nbsp;<a
+                                        href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">You will be able to access an introductory video if you join any room early</span></span>
+                                </p>
+                            </li>
+                        </ul>
 
-<p dir="ltr"><span style="font-size:14px;"><strong style="font-size: 12px; font-family: Arial, Helvetica, sans-serif;">2 Ways to Participate:</strong></span></p>
+                        <p dir="ltr"><span style="font-size:14px;"><strong
+                                style="font-size: 12px; font-family: Arial, Helvetica, sans-serif;">2 Ways to Participate:</strong></span>
+                        </p>
 
-<p dir="ltr"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;"><strong>#1. &nbsp;</strong> &nbsp; If you wish to <strong>INTERACT </strong>(ask questions and <strong>Judge</strong>):</span></span></p>
+                        <p dir="ltr"><span style="font-size:14px;"><span
+                                style="font-family:Arial,Helvetica,sans-serif;"><strong>#1. &nbsp;</strong> &nbsp; If you wish to <strong>INTERACT </strong>(ask questions and <strong>Judge</strong>):</span></span>
+                        </p>
 
-<ul>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Select &quot;Yes&quot; in &quot;Interested in Judging? or select a Judge Ticket*</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You will be contacted for the selection of a Track&nbsp;to join at the live event</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Live event (Friday - 10 minutes before Presentations start):&nbsp; go to&nbsp; <a href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;&nbsp;</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Sign in your Zoom account (users will be allowed in the Zoom Room only if authenticated)</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">If your Zoom Name appears different than your registration name, please indicate your First and Last Name that when you join a Room, to enable identification in Rooms</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Please see <a href="{{ url_for('home.judges') }}">instructions for Judges</a></span></span></p>
-	</li>
-</ul>
+                        <ul>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><b
+                                        id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a
+                                        href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Select &quot;Yes&quot; in &quot;Interested in Judging? or select a Judge Ticket*</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">You will be contacted for the selection of a Track&nbsp;to join at the live event</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Live event (Friday - 10 minutes before Presentations start):&nbsp; go to&nbsp; <a
+                                        href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;&nbsp;</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Sign in your Zoom account (users will be allowed in the Zoom Room only if authenticated)</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">If your Zoom Name appears different than your registration name, please indicate your First and Last Name that when you join a Room, to enable identification in Rooms</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Please see <a
+                                        href="{{ url_for('home.judges') }}">instructions for Judges</a></span></span>
+                                </p>
+                            </li>
+                        </ul>
 
-<p dir="ltr"><span style="font-size:14px;"><strong style="font-size: 12px; font-family: Arial, Helvetica, sans-serif;">#2.</strong><span style="font-family: Arial, Helvetica, sans-serif;"> &nbsp; &nbsp; &nbsp; &nbsp; If you wish to just </span><strong style="font-size: 12px; font-family: Arial, Helvetica, sans-serif;">ATTEND</strong><span style="font-family: Arial, Helvetica, sans-serif;"> (in-out when you wish):</span></span></p>
+                        <p dir="ltr"><span style="font-size:14px;"><strong
+                                style="font-size: 12px; font-family: Arial, Helvetica, sans-serif;">#2.</strong><span
+                                style="font-family: Arial, Helvetica, sans-serif;"> &nbsp; &nbsp; &nbsp; &nbsp; If you wish to just </span><strong
+                                style="font-size: 12px; font-family: Arial, Helvetica, sans-serif;">ATTEND</strong><span
+                                style="font-family: Arial, Helvetica, sans-serif;"> (in-out when you wish):</span></span>
+                        </p>
 
-<ul>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Select &quot;No&quot; in &quot;Interested in Judging? * or select a Visitor ticket</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Live event: join between any time during the event by going to <a href="{{ url_for('home.schedule') }}">{{ url_for('home.schedule', _external=True) }}</a></span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Visit the &ldquo;Zoom Room&rdquo; of interest based on the teams or projects listed (requires Zoom authenticated account), or</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You may find the schedule of tracks at&nbsp; <a href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">You may find a page to search and navigate details of teams and projects</span></span></p>
-	</li>
-</ul>
+                        <ul>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><b
+                                        id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a
+                                        href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Select &quot;No&quot; in &quot;Interested in Judging? * or select a Visitor ticket</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Live event: join between any time during the event by going to <a
+                                        href="{{ url_for('home.schedule') }}">{{ url_for('home.schedule', _external=True) }}</a></span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Visit the &ldquo;Zoom Room&rdquo; of interest based on the teams or projects listed (requires Zoom authenticated account), or</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">You may find the schedule of tracks at&nbsp; <a
+                                        href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">You may find a page to search and navigate details of teams and projects</span></span>
+                                </p>
+                            </li>
+                        </ul>
 
-<p>&nbsp;</p>
+                        <p>&nbsp;</p>
 
-<p dir="ltr"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;"><strong>SUMMARY</strong></span></span></p>
+                        <p dir="ltr"><span style="font-size:14px;"><span
+                                style="font-family:Arial,Helvetica,sans-serif;"><strong>SUMMARY</strong></span></span>
+                        </p>
 
-<ul>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><meta charset="utf-8" /><b id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span></p>
-	</li>
-	<li dir="ltr"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Stay tuned for updates: <a href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;&nbsp;&nbsp;&nbsp;</span></span></li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Prepare with an authenticated Zoom account - with First and Last Name</span></span></p>
-	</li>
-	<li dir="ltr">
-		<p dir="ltr" role="presentation"><span style="font-size:14px;"><span style="font-family:Arial,Helvetica,sans-serif;">Questions:&nbsp; i2g@ucmerced.edu</span></span></p>
-	</li>
-</ul>
+                        <ul>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><meta charset="utf-8"/><b
+                                        id="docs-internal-guid-c0d34390-7fff-ad96-fce4-1c081c3d8d78">REGISTER&nbsp;</b><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">as soon as possible ** see the REGISTER button ** in the&nbsp;<a
+                                        href="{{ url_for('home.event') }}">EVENT</a>&nbsp;page&nbsp;(please use your full name).</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr"><span style="font-size:14px;"><span
+                                    style="font-family:Arial,Helvetica,sans-serif;">Stay tuned for updates: <a
+                                    href="{{ url_for('home.mainpage') }}">{{ url_for('home.mainpage', _external=True) }}</a>&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Prepare with an authenticated Zoom account - with First and Last Name</span></span>
+                                </p>
+                            </li>
+                            <li dir="ltr">
+                                <p dir="ltr" role="presentation"><span style="font-size:14px;"><span
+                                        style="font-family:Arial,Helvetica,sans-serif;">Questions:&nbsp; i2g@ucmerced.edu</span></span>
+                                </p>
+                            </li>
+                        </ul>
 
-<p dir="ltr"><span style="font-size:14px;"><span style="font-family: Arial, Helvetica, sans-serif;">Thank you for participating and ... see you soon!</span></span></p>
+                        <p dir="ltr"><span style="font-size:14px;"><span
+                                style="font-family: Arial, Helvetica, sans-serif;">Thank you for participating and ... see you soon!</span></span>
+                        </p>
 
 
-                        </div>
                     </div>
                 </div>
             </div>
-        </div>        
-        {{ footer() }}
-        {{ scripts() }}
+        </div>
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
 </body>
 
 </html>

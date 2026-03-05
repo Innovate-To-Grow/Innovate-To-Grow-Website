@@ -131,3 +131,16 @@ project/db/data.sqlite3
 
 # .ini files
 *.ini
+
+# IDE
+.idea/
+.vscode/
+
+# Claude Code
+.claude/
+
+# SSH files
+.ssh/
+
+# Service account credentials
+service_account.json
