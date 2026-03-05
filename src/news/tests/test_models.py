@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 
@@ -41,7 +42,7 @@ class NewsArticleModelTest(TestCase):
             source_url="https://example.com/1",
             published_at=timezone.now(),
         )
-        with self.assertRaises(Exception):
+        with self.assertRaises(IntegrityError):
             NewsArticle.objects.create(
                 source_guid="unique-guid",
                 title="Duplicate",

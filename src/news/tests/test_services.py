@@ -48,7 +48,7 @@ class FeedParserTest(TestCase):
         long_text = "A" * 300
         html = f"<p>{long_text}</p>"
         summary = extract_summary(html, max_length=200)
-        self.assertTrue(len(summary) <= 204)  # 200 + "..."
+        self.assertLessEqual(len(summary), 204)  # 200 + "..."
         self.assertTrue(summary.endswith("..."))
 
     def test_parse_pub_date(self):

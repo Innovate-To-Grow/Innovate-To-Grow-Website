@@ -2,6 +2,8 @@
 Change password view for authenticated users.
 """
 
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,6 +12,8 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from authn.serializers import ChangePasswordSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class ChangePasswordView(APIView):
@@ -46,7 +50,7 @@ class ChangePasswordView(APIView):
                 new_access = str(fresh.access_token)
                 new_refresh = str(fresh)
             except TokenError:
-                pass
+                logger.warning("Failed to blacklist refresh token during password change for user %s", request.user.pk)
 
         response_data = {"message": "Password changed successfully."}
         if new_access and new_refresh:

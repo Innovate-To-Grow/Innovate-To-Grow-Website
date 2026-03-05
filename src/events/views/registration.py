@@ -251,7 +251,7 @@ class EventRegistrationSubmitAPIView(APIView):
         data = serializer.validated_data
 
         try:
-            context = get_registration_from_token(data["token"], verify_token=True)
+            context = get_registration_from_token(data["token"], verify_token=False)
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,

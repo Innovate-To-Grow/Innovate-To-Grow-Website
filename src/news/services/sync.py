@@ -50,7 +50,7 @@ def sync_news(feed_url: str | None = None) -> dict:
                     child.text = val
                 raw = ET.tostring(raw_el, encoding="unicode")
             except Exception:
-                pass
+                logger.debug("Failed to serialize raw XML for item: %s", item.get("guid", "unknown"))
 
             defaults = {
                 "title": item["title"][:500],
