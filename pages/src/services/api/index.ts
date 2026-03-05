@@ -38,3 +38,6 @@ export { checkHealth } from './health';
 
 export type { PreviewTokenValidationResponse, PreviewDataResponse, TokenPreviewResponse } from './preview';
 export { validatePreviewToken, fetchPreviewData, fetchPreviewByToken } from './preview';
+
+export type { NewsArticle, PaginatedResponse } from './news';
+export { fetchNews, fetchLatestNews } from './news';

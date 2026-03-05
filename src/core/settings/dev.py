@@ -14,6 +14,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "alica-bridlewise-catatonically.ngrok-free.dev"]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
 # Static files - include frontend static files for preview and custom admin styles
 STATICFILES_DIRS = [
     BASE_DIR / "core" / "static",

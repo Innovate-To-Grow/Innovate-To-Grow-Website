@@ -11,6 +11,7 @@ import {
 } from '../components/Auth';
 import { PreviewPage } from '../pages/Preview/PreviewPage';
 import { TokenPreviewPage } from '../pages/Preview/TokenPreviewPage';
+import { NewsPage } from '../pages/NewsPage';
 
 export const router = createBrowserRouter([
   {
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'event', element: <EventPage /> },
+      { path: 'news', element: <NewsPage /> },
       // Convenience redirects
       { path: 'events', element: <Navigate to="/event" replace /> },
       { path: 'profile', element: <Navigate to="/account" replace /> },

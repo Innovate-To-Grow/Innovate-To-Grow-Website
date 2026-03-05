@@ -12,6 +12,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 from ..models import MediaAsset
 
@@ -37,7 +38,7 @@ DENIED_EXTENSIONS = {
 }
 
 
-@method_decorator([staff_member_required], name="dispatch")
+@method_decorator([csrf_exempt, staff_member_required], name="dispatch")
 class MediaUploadView(View):
     """
     Handle media file uploads from the admin interface.

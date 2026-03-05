@@ -52,6 +52,8 @@ urlpatterns = [
     path("mobileid/", include("mobileid.urls")),
     # events (proxy removes /api prefix)
     path("events/", include("events.urls")),
+    # news
+    path("news/", include("news.urls")),
     # ckeditor 5
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn

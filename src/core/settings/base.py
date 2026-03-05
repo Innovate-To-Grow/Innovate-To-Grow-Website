@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "mobileid.apps.MobileIDConfig",
     "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
+    "news.apps.NewsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -283,6 +284,12 @@ UNFOLD = {
                     {"title": "Ticket Options", "link": "/admin/events/eventticketoption/"},
                     {"title": "Questions", "link": "/admin/events/eventquestion/"},
                     {"title": "Registrations", "link": "/admin/events/eventregistration/"},
+                ],
+            },
+            {
+                "title": "News",
+                "items": [
+                    {"title": "News Articles", "link": "/admin/news/newsarticle/"},
                 ],
             },
             {
