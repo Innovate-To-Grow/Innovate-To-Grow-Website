@@ -10,6 +10,10 @@ export const NewsDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
+  useEffect(() => {
     if (!id) return;
     const load = async () => {
       setLoading(true);
