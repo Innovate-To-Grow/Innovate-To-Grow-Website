@@ -16,7 +16,7 @@ from .scraper import scrape_article
 logger = logging.getLogger(__name__)
 
 
-def sync_news(feed_url: str | None = None) -> dict:
+def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict:
     """Fetch RSS feed and upsert articles. Returns sync stats."""
     created = 0
     updated = 0
@@ -61,7 +61,7 @@ def sync_news(feed_url: str | None = None) -> dict:
                 "author": item["creator"][:255],
                 "published_at": published_at,
                 "raw_payload": raw,
-                "source": "ucmerced",
+                "source": source_key,
             }
 
             article, was_created = NewsArticle.objects.update_or_create(

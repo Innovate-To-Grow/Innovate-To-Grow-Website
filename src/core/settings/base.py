@@ -290,6 +290,8 @@ UNFOLD = {
                 "title": "News",
                 "items": [
                     {"title": "News Articles", "link": "/admin/news/newsarticle/"},
+                    {"title": "Feed Sources", "link": "/admin/news/newsfeedsource/"},
+                    {"title": "Sync Logs", "link": "/admin/news/newssynclog/"},
                 ],
             },
             {

@@ -6,6 +6,7 @@ from core.models import ProjectControlModel
 class NewsFeedSource(ProjectControlModel):
     name = models.CharField(max_length=200)
     feed_url = models.URLField(max_length=1000)
+    source_key = models.SlugField(max_length=100, unique=True, default="ucmerced")
     is_active = models.BooleanField(default=True, db_index=True)
     last_synced_at = models.DateTimeField(null=True, blank=True)
     last_sync_created = models.PositiveIntegerField(default=0)
