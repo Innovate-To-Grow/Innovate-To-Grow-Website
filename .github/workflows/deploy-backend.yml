@@ -174,12 +174,41 @@ jobs:
           echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to ECS
+        id: deploy-ecs
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+      - name: Verify deployment was not rolled back
+        run: |
+          set -euo pipefail
+
+          expected_taskdef="${{ steps.deploy-ecs.outputs.task-definition-arn }}"
+          echo "Expected task definition: $expected_taskdef"
+
+          # Get the primary deployment's task definition
+          active_taskdef="$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)"
+          echo "Active task definition:   $active_taskdef"
+
+          if [ "$active_taskdef" != "$expected_taskdef" ]; then
+            echo "::error::Deployment rolled back! Expected $expected_taskdef but service is running $active_taskdef"
+            echo "Checking recent ECS events for failure details..."
+            aws ecs describe-services \
+              --cluster "$ECS_CLUSTER" \
+              --services "$ECS_SERVICE" \
+              --query 'services[0].events[0:5].message' \
+              --output table
+            exit 1
+          fi
+
+          echo "Deployment verified: service is running the expected task definition."
 
       - name: Smoke check deployed health endpoint and CORS
         env:
@@ -236,7 +265,7 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
               payload = json.load(f)
 
-          if payload.get("status") != "ok":
+          if payload.get("status") not in ("ok", "maintenance"):
               raise SystemExit(f"Unexpected health payload: {payload}")
           PY
 

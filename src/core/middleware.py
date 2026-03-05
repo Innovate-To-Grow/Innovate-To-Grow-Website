@@ -36,14 +36,13 @@ class HealthCheckMiddleware:
                 health_status["database"] = str(e)
                 return HttpResponse(json.dumps(health_status), content_type="application/json", status=503)
 
-            # Check maintenance mode
+            # Check maintenance mode (return 200 so ALB health checks still pass)
             try:
                 config = SiteMaintenanceControl.load()
                 if config.is_maintenance:
                     health_status["status"] = "maintenance"
                     health_status["maintenance"] = True
                     health_status["maintenance_message"] = config.message
-                    return HttpResponse(json.dumps(health_status), content_type="application/json", status=503)
             except Exception:
                 pass
 
