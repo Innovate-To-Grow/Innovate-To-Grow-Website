@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 _HTML_TAG_RE = re.compile(r"<[a-z][\s\S]*>", re.IGNORECASE)
 _HTML_DOC_RE = re.compile(r"<!doctype|<html", re.IGNORECASE)
 _SUBJECT_ENGINE = Engine(autoescape=True)
-_BODY_ENGINE = Engine(autoescape=False)
+_BODY_ENGINE = Engine(autoescape=True)
 
 if TYPE_CHECKING:
     from notify.models import EmailLayout, GoogleGmailAccount

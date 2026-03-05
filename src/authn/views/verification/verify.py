@@ -4,6 +4,7 @@ Email verification view.
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,6 +20,8 @@ class VerifyEmailView(APIView):
     API endpoint for email verification.
     Activates the user account and returns JWT tokens.
     """
+
+    permission_classes = [AllowAny]
 
     def post(self, request):
         token = request.data.get("token")
@@ -88,8 +91,10 @@ class ResendVerificationView(APIView):
     API endpoint to resend verification email.
     """
 
+    permission_classes = [AllowAny]
+
     def post(self, request):
-        from notify.services import RateLimitError, issue_link
+        from notify.services import RateLimitError, issue_code
 
         email = request.data.get("email")
 
@@ -100,11 +105,11 @@ class ResendVerificationView(APIView):
             )
 
         try:
-            member = Member.objects.get(email__iexact=email)
+            member = Member.all_objects.get(email__iexact=email)
         except Member.DoesNotExist:
             # Don't reveal if email exists
             return Response(
-                {"message": "If an account exists with this email, a verification link has been sent."},
+                {"message": "If an account exists with this email, a verification code has been sent."},
                 status=status.HTTP_200_OK,
             )
 
@@ -115,13 +120,15 @@ class ResendVerificationView(APIView):
             )
 
         try:
-            base_url = request.build_absolute_uri("/verify-email")
-            issue_link(
+            issue_code(
                 channel=VerificationRequest.CHANNEL_EMAIL,
                 target=member.email,
                 purpose="registration",
-                expires_in_minutes=60,
-                base_url=base_url,
+                code_length=6,
+                expires_in_minutes=10,
+                max_attempts=5,
+                rate_limit_per_hour=5,
+                context={"recipient_name": member.get_full_name() or member.username},
             )
         except RateLimitError:
             return Response(
@@ -130,6 +137,6 @@ class ResendVerificationView(APIView):
             )
 
         return Response(
-            {"message": "If an account exists with this email, a verification link has been sent."},
+            {"message": "If an account exists with this email, a verification code has been sent."},
             status=status.HTTP_200_OK,
         )

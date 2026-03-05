@@ -65,7 +65,7 @@ class APIKeyAuthenticationTest(TestCase):
 
         with self.assertRaises(AuthenticationFailed) as context:
             auth.authenticate(request)
-        self.assertIn("EVENTS_API_KEY not configured", str(context.exception))
+        self.assertIn("Invalid or missing API key", str(context.exception))
 
     def test_authenticate_header_returns_apikey(self):
         """Test authenticate_header returns 'ApiKey'."""

@@ -5,6 +5,7 @@ A Menu contains a JSON structure of navigation items that can be:
 - Home: Link to the home page
 - Page: Link to an internal Page
 - External: External URL
+- App: Link to an internal app route (e.g. /event, /news)
 - Items can have children (submenus)
 """
 
@@ -18,7 +19,7 @@ def default_menu_items():
     Default menu items structure.
 
     Each item has:
-    - type: 'home' | 'page' | 'external'
+    - type: 'home' | 'page' | 'external' | 'app'
     - title: Display title
     - url: For external links
     - page_slug: For page links
@@ -46,7 +47,8 @@ class Menu(ProjectControlModel):
     # ------------------------------ Menu Items (JSON) ------------------------------
 
     items = models.JSONField(
-        default=default_menu_items, help_text="JSON array of menu items. Each item can be home, page, or external link."
+        default=default_menu_items,
+        help_text="JSON array of menu items. Each item can be home, page, external link, or app route.",
     )
 
     # ------------------------------ Legacy Fields (kept for backward compatibility) ------

@@ -251,7 +251,7 @@ class EventRegistrationSubmitAPIView(APIView):
         data = serializer.validated_data
 
         try:
-            context = get_registration_from_token(data["token"], verify_token=True)
+            context = get_registration_from_token(data["token"], verify_token=False)
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,
@@ -313,12 +313,13 @@ class EventRegistrationSubmitAPIView(APIView):
 
             # Save answers as full replace for deterministic behavior.
             registration.answers.all().delete()
+            active_questions = {str(q.id): q for q in event.questions.filter(is_active=True)}
             normalized_answers = []
             for index, answer_payload in enumerate(answers_payload):
                 question = None
                 question_id = answer_payload.get("question_id")
                 if question_id:
-                    question = event.questions.filter(id=question_id, is_active=True).first()
+                    question = active_questions.get(str(question_id))
                 prompt = question.prompt if question else (answer_payload.get("question_prompt") or "").strip()
                 if not prompt:
                     continue
@@ -410,7 +411,9 @@ class EventRegistrationVerifyOTPAPIView(APIView):
         data = serializer.validated_data
 
         try:
-            context = get_registration_from_token(data["token"], verify_token=True)
+            # The link was already verified when the form was loaded/submitted.
+            # The OTP code provides the authentication for this step.
+            context = get_registration_from_token(data["token"], verify_token=False)
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,

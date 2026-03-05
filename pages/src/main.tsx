@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, RouterProvider } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { router } from './router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
@@ -18,18 +18,17 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Mount MainMenu to #menu-root with LayoutProvider, AuthProvider, and Router
+// Mount MainMenu to #menu-root with AuthProvider and LayoutProvider
+// No BrowserRouter needed — MainMenu uses router.navigate() directly, not <Link> or router hooks
 const menuRoot = document.getElementById('menu-root');
 if (menuRoot) {
   createRoot(menuRoot).render(
     <StrictMode>
-      <BrowserRouter>
-        <AuthProvider>
-          <LayoutProvider>
-            <MainMenu />
-          </LayoutProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <LayoutProvider>
+          <MainMenu />
+        </LayoutProvider>
+      </AuthProvider>
     </StrictMode>,
   );
 }

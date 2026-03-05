@@ -115,8 +115,11 @@ class MediaListView(View):
 
     def get(self, request):
         """Return list of media assets."""
-        page = int(request.GET.get("page", 1))
-        limit = int(request.GET.get("limit", 50))
+        try:
+            page = max(1, int(request.GET.get("page", 1)))
+            limit = min(200, max(1, int(request.GET.get("limit", 50))))
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid pagination parameters."}, status=400)
         offset = (page - 1) * limit
 
         # Filter by type if specified

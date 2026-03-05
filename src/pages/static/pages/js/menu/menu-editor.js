@@ -15,6 +15,12 @@
   
   // Available pages (will be populated via API)
   let availablePages = [];
+
+  // Known internal app routes (not CMS pages)
+  const APP_ROUTES = [
+    { url: '/event', title: 'Events', icon: 'fa-calendar' },
+    { url: '/news', title: 'News', icon: 'fa-newspaper-o' },
+  ];
   
   // Initialize
   async function init() {
@@ -90,7 +96,7 @@
       const itemPath = `${path}[${idx}]`;
       const hasChildren = item.children && item.children.length > 0;
       const typeBadgeClass = `type-${item.type}`;
-      const typeLabel = item.type === 'home' ? 'Home' : item.type === 'page' ? 'Page' : 'External';
+      const typeLabel = item.type === 'home' ? 'Home' : item.type === 'page' ? 'Page' : item.type === 'app' ? 'App' : 'External';
       const isHome = item.type === 'home';
       
       // Type selector - Home type cannot be changed at top level
@@ -101,6 +107,7 @@
           <select onchange="changeItemType('${itemPath}', this.value)">
             <option value="page" ${item.type === 'page' ? 'selected' : ''}>Page</option>
             <option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option>
+            <option value="app" ${item.type === 'app' ? 'selected' : ''}>App Route</option>
           </select>
         </div>
       ` : '';
@@ -164,6 +171,31 @@
             <div class="item-field-checkbox">
               <input type="checkbox" id="newtab-${itemPath}" ${item.open_in_new_tab ? 'checked' : ''} onchange="updateItem('${itemPath}', 'open_in_new_tab', this.checked)">
               <label for="newtab-${itemPath}">New tab</label>
+            </div>
+          </div>
+        `;
+      } else if (item.type === 'app') {
+        const appOptions = APP_ROUTES.map(r =>
+          `<option value="${escapeAttr(r.url)}" ${item.url === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+
+        fieldsHtml = `
+          <div class="item-row">
+            ${typeSelector}
+            <div class="item-field">
+              <label>Title</label>
+              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
+            </div>
+            <div class="item-field">
+              <label>App Route</label>
+              <select onchange="selectAppRoute('${itemPath}', this.value)">
+                <option value="">-- Select App --</option>
+                ${appOptions}
+              </select>
+            </div>
+            <div class="item-field item-field-small">
+              <label>Icon</label>
+              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-calendar" onchange="updateItem('${itemPath}', 'icon', this.value)">
             </div>
           </div>
         `;
@@ -236,7 +268,7 @@
   window.addMenuItem = function(type) {
     const newItem = {
       type: type,
-      title: type === 'home' ? 'Home' : (type === 'page' ? 'New Page Link' : 'New External Link'),
+      title: type === 'home' ? 'Home' : type === 'page' ? 'New Page Link' : type === 'app' ? 'New App Link' : 'New External Link',
       icon: '',
       open_in_new_tab: type === 'external',
       children: []
@@ -244,7 +276,7 @@
     
     if (type === 'page') {
       newItem.page_slug = '';
-    } else if (type === 'external') {
+    } else if (type === 'external' || type === 'app') {
       newItem.url = '';
     }
     
@@ -271,6 +303,23 @@
     syncToJson();
   };
   
+  // Select app route (auto-fills title and icon)
+  window.selectAppRoute = function(path, url) {
+    const item = getItemByPath(path);
+    item.url = url;
+    const route = APP_ROUTES.find(r => r.url === url);
+    if (route) {
+      if (!item.title || item.title === 'New App Link') {
+        item.title = route.title;
+      }
+      if (!item.icon) {
+        item.icon = route.icon;
+      }
+    }
+    renderAll();
+    syncToJson();
+  };
+
   // Update item property
   window.updateItem = function(path, property, value) {
     setItemProperty(path, property, value);
@@ -297,6 +346,10 @@
       item.url = item.url || '';
       delete item.page_slug;
       item.open_in_new_tab = true;
+    } else if (newType === 'app') {
+      item.url = item.url || '';
+      delete item.page_slug;
+      item.open_in_new_tab = false;
     } else if (newType === 'home') {
       delete item.url;
       delete item.page_slug;
@@ -371,6 +424,8 @@
         href = '/';
       } else if (item.type === 'page' && item.page_slug) {
         href = `/${item.page_slug}`;
+      } else if (item.type === 'app' && item.url) {
+        href = item.url;
       } else if (item.type === 'external' && item.url) {
         href = item.url;
         if (item.open_in_new_tab) {
@@ -442,11 +497,11 @@
         <div class="site-header-top">
           <div class="site-header-container site-header-top-inner">
             <a class="ucm-wordmark" href="#" onclick="return false;" aria-label="UC Merced">
-              <img src="/static/images/ucmlogo.png" alt="UC Merced" onerror="this.parentElement.style.display='none'">
+              <img src="/assets/images/ucmlogo.png" alt="UC Merced" onerror="this.parentElement.style.display='none'">
             </a>
             
             <a class="site-header-top-logo" href="#" onclick="return false;" aria-label="Innovate To Grow">
-              <img class="site-header-top-logo-full" src="/static/images/I2G-fullname-low.png" alt="Innovate To Grow" onerror="this.style.display='none'">
+              <img class="site-header-top-logo-full" src="/assets/images/I2G-fullname-low.png" alt="Innovate To Grow" onerror="this.style.display='none'">
             </a>
             
             <div class="site-header-top-links" aria-label="Quick links">
@@ -462,7 +517,7 @@
           <div class="site-header-container site-header-bottom-inner">
             <div class="site-header-bottom-left">
               <a class="site-header-badge" href="#" onclick="return false;" aria-label="Home">
-                <img src="/static/images/i2glogo.png" alt="Innovate To Grow" onerror="this.style.display='none'">
+                <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" onerror="this.style.display='none'">
               </a>
               
               <nav class="site-header-nav" aria-label="Main menu">

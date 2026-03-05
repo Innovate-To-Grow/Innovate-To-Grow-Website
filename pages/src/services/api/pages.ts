@@ -3,7 +3,7 @@ import api from './client';
 // ======================== Page Types ========================
 
 export interface PageContent {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   html: string;
@@ -16,7 +16,7 @@ export interface PageContent {
   canonical_url: string | null;
   meta_robots: string;
   template_name: string;
-  status?: 'draft' | 'review' | 'published';
+  status?: 'draft' | 'review' | 'scheduled' | 'published';
   published: boolean;
   created_at: string;
   updated_at: string;
@@ -30,13 +30,13 @@ export const fetchPageContent = async (slug: string): Promise<PageContent> => {
 // ======================== Home Types ========================
 
 export interface HomeContent {
-  id: number;
+  id: string;
   name: string;
   is_active: boolean;
   html: string;
   css: string;
   dynamic_config: Record<string, unknown>;
-  status?: 'draft' | 'review' | 'published';
+  status?: 'draft' | 'review' | 'scheduled' | 'published';
   published: boolean;
   created_at: string;
   updated_at: string;

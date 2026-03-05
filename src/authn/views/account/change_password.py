@@ -2,18 +2,25 @@
 Change password view for authenticated users.
 """
 
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from authn.serializers import ChangePasswordSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class ChangePasswordView(APIView):
     """
     API endpoint for changing the authenticated user's password.
     POST: Change password with current password verification.
+    Accepts optional `refresh` token in body to blacklist the old session.
     """
 
     permission_classes = [IsAuthenticated]
@@ -30,7 +37,24 @@ class ChangePasswordView(APIView):
         request.user.set_password(new_password)
         request.user.save()
 
-        return Response(
-            {"message": "Password changed successfully."},
-            status=status.HTTP_200_OK,
-        )
+        # Blacklist the provided refresh token so the old session is invalidated
+        refresh_token = request.data.get("refresh")
+        new_access = None
+        new_refresh = None
+        if refresh_token:
+            try:
+                old_token = RefreshToken(refresh_token)
+                old_token.blacklist()
+                # Issue a fresh token pair so the current session continues
+                fresh = RefreshToken.for_user(request.user)
+                new_access = str(fresh.access_token)
+                new_refresh = str(fresh)
+            except TokenError:
+                logger.warning("Failed to blacklist refresh token during password change for user %s", request.user.pk)
+
+        response_data = {"message": "Password changed successfully."}
+        if new_access and new_refresh:
+            response_data["access"] = new_access
+            response_data["refresh"] = new_refresh
+
+        return Response(response_data, status=status.HTTP_200_OK)

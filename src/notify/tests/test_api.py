@@ -2,6 +2,7 @@
 Tests for verification and notification API endpoints.
 """
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -10,10 +11,17 @@ from rest_framework.test import APIClient
 from ..models import NotificationLog, VerificationRequest
 from ..services import issue_link
 
+Member = get_user_model()
+
 
 class NotifyAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.admin = Member.objects.create_superuser(
+            username="notifyadmin",
+            email="notifyadmin@example.com",
+            password="adminpass123",
+        )
 
     def test_request_code_and_verify(self):
         request_url = reverse("notify:request-code")
@@ -71,8 +79,22 @@ class NotifyAPITest(TestCase):
             "subject": "Hello",
             "message": "Test notification",
         }
+        # Requires admin authentication
+        self.client.force_authenticate(user=self.admin)
         resp = self.client.post(send_url, payload, format="json")
+        self.client.force_authenticate(user=None)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
         log = NotificationLog.objects.get(target="notify@example.com")
         self.assertEqual(log.status, NotificationLog.STATUS_SENT)
+
+    def test_send_notification_requires_admin(self):
+        send_url = reverse("notify:send-notification")
+        payload = {
+            "channel": "email",
+            "target": "notify@example.com",
+            "subject": "Hello",
+            "message": "Test notification",
+        }
+        resp = self.client.post(send_url, payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)

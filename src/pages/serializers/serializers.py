@@ -69,9 +69,24 @@ class MenuSerializer(serializers.ModelSerializer):
     def get_items(self, obj):
         """Process menu items with dynamic data injection."""
         raw_items = obj.items or []
-        return self._process_items(raw_items)
+        slugs = self._collect_slugs(raw_items)
+        page_titles = {}
+        if slugs:
+            page_titles = dict(Page.objects.filter(slug__in=slugs).values_list("slug", "title"))
+        return self._process_items(raw_items, page_titles)
 
-    def _process_items(self, items):
+    @staticmethod
+    def _collect_slugs(items):
+        """Recursively collect page slugs that need title lookups."""
+        slugs = set()
+        for item in items:
+            if item.get("type") == "page" and not item.get("title") and item.get("page_slug"):
+                slugs.add(item["page_slug"])
+            for child in item.get("children", []):
+                slugs |= MenuSerializer._collect_slugs([child])
+        return slugs
+
+    def _process_items(self, items, page_titles=None):
         """Recursively process menu items."""
         processed = []
         for item in items:
@@ -99,19 +114,19 @@ class MenuSerializer(serializers.ModelSerializer):
                 processed_item["page_type"] = "page"
 
                 if not processed_item["title"] and page_slug:
-                    try:
-                        page = Page.objects.get(slug=page_slug)
-                        processed_item["title"] = page.title
-                    except Page.DoesNotExist:
-                        pass
+                    processed_item["title"] = (page_titles or {}).get(page_slug, "")
 
             elif item.get("type") == "external":
                 processed_item["url"] = item.get("url", "#")
                 processed_item["page_type"] = "external"
 
+            elif item.get("type") == "app":
+                processed_item["url"] = item.get("url", "#")
+                processed_item["page_type"] = "app"
+
             children = item.get("children", [])
             if children:
-                processed_item["children"] = self._process_items(children)
+                processed_item["children"] = self._process_items(children, page_titles)
             else:
                 processed_item["children"] = []
 

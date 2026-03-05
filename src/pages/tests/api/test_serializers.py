@@ -123,6 +123,30 @@ class MenuSerializerTest(TestCase):
         self.assertEqual(data["items"][0]["url"], "https://google.com")
         self.assertTrue(data["items"][0]["open_in_new_tab"])
 
+    def test_serialize_menu_with_app_item(self):
+        """Menu with app type item serializes correctly."""
+        menu = Menu.objects.create(
+            name="app_nav",
+            display_name="App Nav",
+            items=[
+                {
+                    "type": "app",
+                    "title": "Events",
+                    "url": "/event",
+                    "icon": "fa-calendar",
+                    "open_in_new_tab": False,
+                    "children": [],
+                }
+            ],
+        )
+
+        serializer = MenuSerializer(menu)
+        data = serializer.data
+        self.assertEqual(data["items"][0]["title"], "Events")
+        self.assertEqual(data["items"][0]["url"], "/event")
+        self.assertEqual(data["items"][0]["page_type"], "app")
+        self.assertFalse(data["items"][0]["open_in_new_tab"])
+
 
 class HomePageSerializerTest(TestCase):
     def test_serialize_homepage_with_html_css(self):

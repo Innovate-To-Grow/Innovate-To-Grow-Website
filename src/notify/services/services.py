@@ -196,6 +196,9 @@ def verify_code(
     if not verification:
         raise VerificationError("No verification code found.")
 
+    if verification.status == VerificationRequest.STATUS_VERIFIED:
+        raise VerificationError("Verification code has already been used.")
+
     now = timezone.now()
     if verification.expires_at <= now:
         verification.status = VerificationRequest.STATUS_EXPIRED
@@ -247,7 +250,7 @@ def verify_link(token: str, purpose: str = "contact_verification") -> bool:
         raise VerificationError("Verification link expired.")
 
     if verification.status == VerificationRequest.STATUS_VERIFIED:
-        return True
+        raise VerificationError("Verification link has already been used.")
 
     verification.status = VerificationRequest.STATUS_VERIFIED
     verification.verified_at = now

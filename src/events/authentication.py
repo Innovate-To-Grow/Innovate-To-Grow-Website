@@ -26,9 +26,11 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
         expected_key = getattr(settings, "EVENTS_API_KEY", None)
 
         if not expected_key:
-            raise exceptions.AuthenticationFailed("EVENTS_API_KEY not configured on server.")
+            raise exceptions.AuthenticationFailed("Invalid or missing API key.")
 
-        if api_key != expected_key:
+        import hmac
+
+        if not hmac.compare_digest(api_key, expected_key):
             raise exceptions.AuthenticationFailed("Invalid API key.")
 
         # Return a tuple of (user, token) - we don't need a user, so return None

@@ -54,10 +54,12 @@ INSTALLED_APPS = [
     "mobileid.apps.MobileIDConfig",
     "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
+    "news.apps.NewsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "django_ckeditor_5",
 ]
 
@@ -181,8 +183,9 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_RATES": {"anon": "60/minute", "login": "10/minute", "verify": "10/minute"},
 }
 
 # Simple JWT Configuration
@@ -190,9 +193,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "member_uuid",
+    "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "member_uuid",
 }
 
@@ -281,6 +284,12 @@ UNFOLD = {
                     {"title": "Ticket Options", "link": "/admin/events/eventticketoption/"},
                     {"title": "Questions", "link": "/admin/events/eventquestion/"},
                     {"title": "Registrations", "link": "/admin/events/eventregistration/"},
+                ],
+            },
+            {
+                "title": "News",
+                "items": [
+                    {"title": "News Articles", "link": "/admin/news/newsarticle/"},
                 ],
             },
             {

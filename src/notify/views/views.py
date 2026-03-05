@@ -1,7 +1,9 @@
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from authn.throttles import VerifyRateThrottle
 
 from ..serializers import (
     RequestCodeSerializer,
@@ -26,6 +28,7 @@ class RequestCodeAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = RequestCodeSerializer(data=request.data)
@@ -54,6 +57,7 @@ class RequestLinkAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = RequestLinkSerializer(data=request.data)
@@ -74,7 +78,7 @@ class RequestLinkAPIView(APIView):
         except RateLimitError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-        return Response({"detail": "Verification link sent.", "token": link}, status=status.HTTP_201_CREATED)
+        return Response({"detail": "Verification link sent."}, status=status.HTTP_201_CREATED)
 
 
 class VerifyCodeAPIView(APIView):
@@ -83,6 +87,7 @@ class VerifyCodeAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = VerifyCodeSerializer(data=request.data)
@@ -108,6 +113,7 @@ class VerifyLinkAPIView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [VerifyRateThrottle]
 
     def get(self, request, token, *args, **kwargs):
         purpose = request.query_params.get("purpose", "contact_verification")
@@ -124,7 +130,7 @@ class SendNotificationAPIView(APIView):
     Send a generic notification via email or SMS.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminUser]
 
     def post(self, request, *args, **kwargs):
         serializer = SendNotificationSerializer(data=request.data)

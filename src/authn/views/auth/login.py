@@ -3,11 +3,13 @@ Login view for user authentication.
 """
 
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from authn.serializers import LoginSerializer
+from authn.throttles import LoginRateThrottle
 
 
 class LoginView(APIView):
@@ -15,6 +17,9 @@ class LoginView(APIView):
     API endpoint for user login.
     Returns JWT access and refresh tokens.
     """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)

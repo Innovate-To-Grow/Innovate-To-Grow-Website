@@ -2,6 +2,8 @@
 Registration serializer for user signup.
 """
 
+import re
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -9,6 +11,8 @@ from rest_framework import serializers
 from authn.services import RSADecryptionError, decrypt_password, is_encrypted_password
 
 Member = get_user_model()
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -55,6 +59,16 @@ class RegisterSerializer(serializers.Serializer):
         max_length=255,
         help_text="Organization or company the user belongs to.",
     )
+
+    def validate_first_name(self, value: str) -> str:
+        if _HTML_TAG_RE.search(value):
+            raise serializers.ValidationError("First name must not contain HTML tags.")
+        return value
+
+    def validate_last_name(self, value: str) -> str:
+        if _HTML_TAG_RE.search(value):
+            raise serializers.ValidationError("Last name must not contain HTML tags.")
+        return value
 
     def validate_email(self, value: str) -> str:
         """

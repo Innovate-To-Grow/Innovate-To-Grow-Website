@@ -39,7 +39,7 @@ export interface FooterContentData {
 }
 
 export interface FooterContentResponse {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   content: FooterContentData;
@@ -51,7 +51,7 @@ export interface FooterContentResponse {
 // ======================== Menu Types ========================
 
 export interface MenuItem {
-  type: 'home' | 'page' | 'external';
+  type: 'home' | 'page' | 'external' | 'app';
   title: string;
   url: string;
   page_slug?: string;
@@ -62,10 +62,10 @@ export interface MenuItem {
 }
 
 export interface Menu {
-  id: number;
+  id: string;
   name: string;
   display_name: string;
-  description: string;
+  description: string | null;
   items: MenuItem[];
   created_at: string;
   updated_at: string;

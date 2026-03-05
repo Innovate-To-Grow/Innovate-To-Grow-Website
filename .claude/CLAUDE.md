@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 UC Merced Innovate to Grow (ITG) website with a Django REST Framework backend (`src/`) and React + TypeScript + Vite frontend (`pages/`).
 
-- **Backend**: Django 4.2, DRF 3.15, Python 3.11+, SQLite (dev) / PostgreSQL (prod)
+- **Backend**: Django 5.2, DRF 3.16, Python 3.11+, SQLite (dev) / PostgreSQL (prod)
 - **Frontend**: React 19, TypeScript 5.9, Vite 7, Axios
 - **Auth**: Custom `authn.Member` model (UUIDs, custom fields) with JWT tokens
 
@@ -25,8 +25,8 @@ python manage.py makemigrations               # Create new migrations
 python manage.py createsuperuser              # Create admin user
 
 # Testing
-python manage.py test                         # Run all tests
-python manage.py test pages.tests.test_views  # Run specific test module
+python manage.py test --settings=core.settings.dev                         # Run all tests
+python manage.py test pages.tests.test_views --settings=core.settings.dev  # Run specific test module
 
 # Linting
 ruff check .                                  # Check for issues
@@ -79,7 +79,6 @@ The backend is organized into specialized Django apps:
 - **`notify/`**: Email/SMS verification and notification system
 - **`mobileid/`**: Mobile ID validation integration
 
-
 ### Settings Structure
 
 Django settings are split across three files in `src/core/settings/`:
@@ -92,27 +91,31 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
 
 ### Frontend Architecture
 
-- **`pages/src/services/api.ts`**: Centralized API calls and TypeScript interfaces. Keep backend serializers in sync with these types.
-- **`pages/src/components/`**: Reusable React components organized by feature:
-  - `Layout/`: Site layout components (MainMenu, Footer)
-  - `PageContent/`: Page rendering components
-  - `Event/`: Event display components
-  - `Auth/`: Authentication UI
-  - `MaintenanceMode/`: Maintenance mode handling
+- **`pages/src/services/api/`**: API calls split into modules (`pages.ts`, `layout.ts`, `events.ts`, `preview.ts`, `health.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` is at `pages/src/services/auth.ts`.
+- **`pages/src/components/`**: React components organized by feature (`Layout/`, `PageContent/`, `Event/`, `Auth/`, `MaintenanceMode/`)
 - **`pages/src/router/`**: React Router configuration
 - **Vite proxy**: `/api`, `/media`, `/admin` proxied to backend (localhost:8000)
+- **Three React roots**: `#root` (main app with BrowserRouter), `#menu-root` (MainMenu only, no router), `#footer-root` (Footer only). Auth state syncs across roots via `i2g-auth-state-change` window event.
 
 ### ProjectControlModel (Base Model)
 
 All main models inherit from `core.models.ProjectControlModel`, which provides:
 
-- **UUID primary keys** (not auto-incrementing integers)
+- **UUID primary keys** (not auto-incrementing integers) — `id` is the UUID field
 - **Soft delete**: `delete()` marks as deleted; `hard_delete()` for permanent removal; `restore()` to undelete
 - **Version control**: `save_version()`, `get_versions()`, `rollback()`, `get_version_diff()`
 - **Two managers**: `objects` (excludes soft-deleted) and `all_objects` (includes all)
 - **Timestamps**: `created_at`, `updated_at` (auto-managed)
 
 When querying, use `Model.objects` for normal queries and `Model.all_objects` when you need to include soft-deleted records.
+
+### Authentication & Security
+
+- **Member model**: `Member.id` is the UUID primary key. `member_uuid` is a `@property` alias for `id` — it is NOT a DB column.
+- **JWT config**: `USER_ID_FIELD = "id"` (not `"member_uuid"`), `USER_ID_CLAIM = "member_uuid"`. Token blacklisting is enabled via `rest_framework_simplejwt.token_blacklist`.
+- **Password encryption**: Passwords are RSA-encrypted client-side before transmission. `PublicKeyView` serves the key; `authn/services.py` handles decryption.
+- **DEFAULT_PERMISSION_CLASSES is `IsAuthenticated`**: All DRF views require auth by default. Public views (login, register, verify, pages, events) must explicitly set `permission_classes = [AllowAny]`.
+- **Throttles**: `LoginRateThrottle` (10/min) and `VerifyRateThrottle` (10/min) in `src/authn/throttles.py`. Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 
 ### Admin Interface
 
@@ -123,7 +126,8 @@ The admin uses **django-unfold** for theming and **CKEditor 5** for rich text ed
 - **Dev**: In-memory cache (`LocMemCache`)
 - **Prod**: Redis via `django-redis`
 - **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Page, HomePage, PageComponent, Menu, or FooterContent are saved/deleted
-- **Cache keys**: `"homepage:active"`, `"page:slug:{slug}"`, `"layout:data"`
+- **Cache keys**: `"homepage:active"`, `"page:slug:{slug}"`, `"layout:data"`, `"event:retrieve:active"`
+- **Important**: When adding cache to views, ensure tests call `cache.clear()` in `setUp()` to prevent cross-test pollution.
 
 ### Page Component System
 
@@ -139,7 +143,7 @@ Pages and homepages support dynamic components via `PageComponent` model:
 When modifying API responses:
 
 1. Update Django serializer (`*Serializer` class)
-2. Update TypeScript interface in `pages/src/services/api.ts`
+2. Update TypeScript interface in the corresponding `pages/src/services/api/*.ts` module
 3. Update API function if needed
 4. Run `npm run build` to verify TypeScript compilation
 
@@ -148,7 +152,7 @@ When modifying API responses:
 Special API for Google Apps Script integration:
 
 - **Endpoint**: `/api/events/sync/export/`
-- **Auth**: `X-API-Key` header with `EVENTS_API_KEY`
+- **Auth**: `X-API-Key` header with `EVENTS_API_KEY` (compared via `hmac.compare_digest`)
 - **Modes**: `full` (complete snapshot) or `delta` (changed since watermark)
 - **Documentation**: `docs/events-sheet-sync.md`
 
@@ -192,7 +196,7 @@ Special API for Google Apps Script integration:
 ### TypeScript (Frontend)
 
 - **Functional components** with hooks only (no class components)
-- **API calls**: Centralized in `pages/src/services/api.ts`
+- **API calls**: Centralized in `pages/src/services/api/` (split by domain)
 - **CSS**: Co-locate CSS modules with components (`Component.css`)
 - **Layout primitives**: Use shared components (`Layout/`, `MainMenu`, `Footer`) for consistency
 
@@ -207,7 +211,7 @@ Key ignored rules (see `pyproject.toml`):
 
 ## Testing
 
-- **Backend tests**: `cd src && python manage.py test`
+- **Backend tests**: `cd src && python manage.py test --settings=core.settings.dev`
 - **CI/CD**: GitHub Actions (`lint.yml` + `ci.yml`) runs Ruff check/format, ESLint, TypeScript checks, Django migrations, and `python manage.py test` on pushes to main and all PRs
 - Add tests when:
   - Creating/changing models, serializers, services
