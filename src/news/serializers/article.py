@@ -12,4 +12,15 @@ class NewsArticleSerializer(serializers.ModelSerializer):
 class NewsArticleDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = NewsArticle
-        fields = ["id", "title", "source_url", "summary", "image_url", "author", "published_at", "content", "hero_image_url", "hero_caption"]
+        fields = [
+            "id",
+            "title",
+            "source_url",
+            "summary",
+            "image_url",
+            "author",
+            "published_at",
+            "content",
+            "hero_image_url",
+            "hero_caption",
+        ]

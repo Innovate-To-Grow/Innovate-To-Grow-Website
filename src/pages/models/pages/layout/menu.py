@@ -47,7 +47,8 @@ class Menu(ProjectControlModel):
     # ------------------------------ Menu Items (JSON) ------------------------------
 
     items = models.JSONField(
-        default=default_menu_items, help_text="JSON array of menu items. Each item can be home, page, external link, or app route."
+        default=default_menu_items,
+        help_text="JSON array of menu items. Each item can be home, page, external link, or app route.",
     )
 
     # ------------------------------ Legacy Fields (kept for backward compatibility) ------

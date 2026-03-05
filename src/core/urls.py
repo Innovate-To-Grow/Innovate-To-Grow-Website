@@ -58,7 +58,6 @@ urlpatterns = [
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn
     path("authn/", include("authn.urls")),
-
     # Need to clean up this after the migration
     # legacy membership-compatible event registration routes
     path("membership/events", MembershipEventsPageView.as_view(), name="membership-events"),
