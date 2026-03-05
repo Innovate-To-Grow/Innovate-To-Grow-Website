@@ -1,22 +1,99 @@
+import time
+
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
-from unfold.admin import ModelAdmin
-from unfold.decorators import action
+from django.utils.html import format_html
+from django.utils.timesince import timesince
+from unfold.admin import ModelAdmin, TabularInline
+from unfold.decorators import action, display
 
-from ..models import NewsFeedSource
+from ..models import NewsArticle, NewsFeedSource, NewsSyncLog
 from ..services import sync_news
+
+
+class NewsSyncLogInline(TabularInline):
+    model = NewsSyncLog
+    fields = ("started_at", "duration_seconds", "articles_created", "articles_updated", "errors_text")
+    readonly_fields = ("started_at", "duration_seconds", "articles_created", "articles_updated", "errors_text")
+    ordering = ("-started_at",)
+    extra = 0
+    max_num = 0
+    can_delete = False
 
 
 @admin.register(NewsFeedSource)
 class NewsFeedSourceAdmin(ModelAdmin):
-    list_display = ("name", "feed_url", "is_active", "last_synced_at", "last_sync_created", "last_sync_updated")
+    list_display = (
+        "name",
+        "source_key",
+        "status_badge",
+        "article_count_display",
+        "sync_result_badge",
+        "time_since_sync",
+    )
     list_filter = ("is_active",)
-    search_fields = ("name", "feed_url")
-    readonly_fields = ("last_synced_at", "last_sync_created", "last_sync_updated", "last_sync_errors", "created_at", "updated_at")
+    search_fields = ("name", "feed_url", "source_key")
+    readonly_fields = (
+        "last_synced_at",
+        "last_sync_created",
+        "last_sync_updated",
+        "last_sync_errors",
+        "created_at",
+        "updated_at",
+    )
     actions_list = ["sync_all_feeds"]
     actions_detail = ["sync_this_feed"]
+    inlines = [NewsSyncLogInline]
+
+    fieldsets = (
+        (
+            "Feed Configuration",
+            {
+                "fields": ("name", "source_key", "feed_url", "is_active"),
+            },
+        ),
+        (
+            "Last Sync Status",
+            {
+                "fields": ("last_synced_at", "last_sync_created", "last_sync_updated", "last_sync_errors"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "classes": ("collapse",),
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
+
+    @display(description="Status", label=True)
+    def status_badge(self, obj):
+        if obj.is_active:
+            return "Active", "success"
+        return "Inactive", "danger"
+
+    @display(description="Last Sync", label=True)
+    def sync_result_badge(self, obj):
+        if not obj.last_synced_at:
+            return "Never synced", "info"
+        if obj.last_sync_errors:
+            return "Errors", "warning"
+        return "Success", "success"
+
+    @display(description="Synced")
+    def time_since_sync(self, obj):
+        if not obj.last_synced_at:
+            return "-"
+        return f"{timesince(obj.last_synced_at)} ago"
+
+    @display(description="Articles")
+    def article_count_display(self, obj):
+        count = NewsArticle.objects.filter(source=obj.source_key).count()
+        url = reverse("admin:news_newsarticle_changelist") + f"?source={obj.source_key}"
+        return format_html('<a href="{}">{}</a>', url, count)
 
     @action(description="Sync all active feeds", url_path="sync-all-feeds", icon="sync")
     def sync_all_feeds(self, request):
@@ -59,7 +136,10 @@ class NewsFeedSourceAdmin(ModelAdmin):
         total_errors = []
 
         for source in sources:
-            result = sync_news(feed_url=source.feed_url)
+            start = time.monotonic()
+            result = sync_news(feed_url=source.feed_url, source_key=source.source_key)
+            duration = time.monotonic() - start
+
             total_created += result["created"]
             total_updated += result["updated"]
             total_errors.extend(result["errors"])
@@ -68,8 +148,22 @@ class NewsFeedSourceAdmin(ModelAdmin):
             source.last_sync_created = result["created"]
             source.last_sync_updated = result["updated"]
             source.last_sync_errors = "\n".join(result["errors"]) if result["errors"] else ""
-            source.save(update_fields=[
-                "last_synced_at", "last_sync_created", "last_sync_updated", "last_sync_errors",
-            ])
+            source.save(
+                update_fields=[
+                    "last_synced_at",
+                    "last_sync_created",
+                    "last_sync_updated",
+                    "last_sync_errors",
+                ]
+            )
+
+            NewsSyncLog.objects.create(
+                feed_source=source,
+                started_at=source.last_synced_at,
+                duration_seconds=round(duration, 2),
+                articles_created=result["created"],
+                articles_updated=result["updated"],
+                errors_text="\n".join(result["errors"]) if result["errors"] else "",
+            )
 
         return total_created, total_updated, total_errors

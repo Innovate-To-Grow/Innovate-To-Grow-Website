@@ -11,3 +11,25 @@ class NewsArticleAdmin(ModelAdmin):
     search_fields = ("title", "summary")
     readonly_fields = ("source_guid", "raw_payload", "created_at", "updated_at")
     ordering = ("-published_at",)
+
+    fieldsets = (
+        (
+            "Article",
+            {
+                "fields": ("title", "source", "source_url", "source_guid", "author", "published_at"),
+            },
+        ),
+        (
+            "Content",
+            {
+                "fields": ("summary", "image_url", "hero_image_url", "hero_caption", "content"),
+            },
+        ),
+        (
+            "System",
+            {
+                "classes": ("collapse",),
+                "fields": ("raw_payload", "created_at", "updated_at"),
+            },
+        ),
+    )

@@ -124,6 +124,14 @@ class SyncNewsTest(TestCase):
 
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed")
+    def test_sync_source_key_flows_to_articles(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = SAMPLE_RSS
+        sync_news(source_key="custom-source")
+        for article in NewsArticle.objects.all():
+            self.assertEqual(article.source, "custom-source")
+
+    @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
+    @patch("news.services.sync.fetch_feed")
     def test_sync_updates_existing(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = SAMPLE_RSS
         sync_news()
