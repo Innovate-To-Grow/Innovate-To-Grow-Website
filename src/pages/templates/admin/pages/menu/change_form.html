@@ -3,7 +3,7 @@
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}">
+  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 {% endblock %}
 
@@ -23,6 +23,7 @@
         <button type="button" id="btn-add-home" class="btn-add" onclick="addMenuItem('home')">+ Add Home</button>
         <button type="button" class="btn-add" onclick="addMenuItem('page')">+ Add Page Link</button>
         <button type="button" class="btn-add" onclick="addMenuItem('external')">+ Add External Link</button>
+        <button type="button" class="btn-add" onclick="addMenuItem('app')">+ Add App Route</button>
       </div>
       
       <!-- JSON Toggle -->
@@ -45,5 +46,5 @@
     <iframe id="menu-preview-iframe" class="preview-iframe menu-preview-iframe" sandbox="allow-same-origin"></iframe>
   </div>
 
-  <script src="{% static 'pages/js/menu/menu-editor.js' %}"></script>
+  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=2"></script>
 {% endblock %}

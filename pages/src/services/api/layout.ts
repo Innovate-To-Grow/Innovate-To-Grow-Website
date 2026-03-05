@@ -51,7 +51,7 @@ export interface FooterContentResponse {
 // ======================== Menu Types ========================
 
 export interface MenuItem {
-  type: 'home' | 'page' | 'external';
+  type: 'home' | 'page' | 'external' | 'app';
   title: string;
   url: string;
   page_slug?: string;

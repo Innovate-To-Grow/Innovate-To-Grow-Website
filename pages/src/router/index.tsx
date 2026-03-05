@@ -12,6 +12,7 @@ import {
 import { PreviewPage } from '../pages/Preview/PreviewPage';
 import { TokenPreviewPage } from '../pages/Preview/TokenPreviewPage';
 import { NewsPage } from '../pages/NewsPage';
+import { NewsDetailPage } from '../pages/NewsDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'event', element: <EventPage /> },
       { path: 'news', element: <NewsPage /> },
+      { path: 'news/:id', element: <NewsDetailPage /> },
       // Convenience redirects
       { path: 'events', element: <Navigate to="/event" replace /> },
       { path: 'profile', element: <Navigate to="/account" replace /> },

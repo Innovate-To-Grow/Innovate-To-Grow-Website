@@ -12,6 +12,9 @@ const buildHref = (item: MenuItem) => {
   if (item.type === 'page' && item.page_slug) {
     return `/${item.page_slug}`;
   }
+  if (item.type === 'app') {
+    return item.url || '#';
+  }
   if (item.type === 'external' && item.url) {
     return item.url;
   }

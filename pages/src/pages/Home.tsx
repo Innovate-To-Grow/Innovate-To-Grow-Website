@@ -61,10 +61,8 @@ export const Home = () => {
       {latestNews && (
         <div className="home-latest-news">
           <h2 className="home-latest-news-heading">Latest News</h2>
-          <a
-            href={latestNews.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to={`/news/${latestNews.id}`}
             className="home-news-card"
           >
             {latestNews.image_url && (
@@ -86,7 +84,7 @@ export const Home = () => {
               </time>
               {latestNews.summary && <p className="home-news-card-summary">{latestNews.summary}</p>}
             </div>
-          </a>
+          </Link>
           <Link to="/news" className="home-news-view-all">View all news &rarr;</Link>
         </div>
       )}

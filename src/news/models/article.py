@@ -11,6 +11,9 @@ class NewsArticle(ProjectControlModel):
     summary = models.TextField(blank=True, default="")
     image_url = models.URLField(max_length=1000, blank=True, default="")
     author = models.CharField(max_length=255, blank=True, default="")
+    content = models.TextField(blank=True, default="")
+    hero_image_url = models.URLField(max_length=1000, blank=True, default="")
+    hero_caption = models.CharField(max_length=500, blank=True, default="")
     published_at = models.DateTimeField(db_index=True)
     raw_payload = models.TextField(blank=True, default="")
 

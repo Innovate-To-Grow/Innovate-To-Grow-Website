@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchNews, type NewsArticle, type PaginatedResponse } from '../services/api/news';
 import './NewsPage.css';
 
@@ -56,11 +57,9 @@ export const NewsPage = () => {
       <h1 className="news-page-title">News</h1>
       <div className="news-grid">
         {data.results.map((article) => (
-          <a
+          <Link
             key={article.id}
-            href={article.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
+            to={`/news/${article.id}`}
             className="news-card"
           >
             {article.image_url ? (
@@ -84,7 +83,7 @@ export const NewsPage = () => {
               </time>
               {article.summary && <p className="news-card-summary">{article.summary}</p>}
             </div>
-          </a>
+          </Link>
         ))}
       </div>
       {totalPages > 1 && (

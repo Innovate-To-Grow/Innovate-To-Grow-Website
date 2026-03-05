@@ -1,3 +1,3 @@
-from .article import NewsArticleSerializer
+from .article import NewsArticleDetailSerializer, NewsArticleSerializer
 
-__all__ = ["NewsArticleSerializer"]
+__all__ = ["NewsArticleSerializer", "NewsArticleDetailSerializer"]

@@ -59,3 +59,49 @@ class NewsListAPIViewTest(TestCase):
         self.assertIn("published_at", article)
         self.assertNotIn("raw_payload", article)
         self.assertNotIn("source_guid", article)
+
+
+class NewsDetailAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.article = NewsArticle.objects.create(
+            source_guid="detail-guid-001",
+            title="Detail Test Article",
+            source_url="https://example.com/detail-article",
+            summary="A short summary.",
+            content="<p>Full article content with <strong>HTML</strong>.</p>",
+            author="Test Author",
+            hero_image_url="https://example.com/hero.jpg",
+            hero_caption="Photo credit: Test",
+            published_at=timezone.now(),
+        )
+
+    def test_detail_returns_article(self):
+        resp = self.client.get(f"/news/{self.article.id}/")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["title"], "Detail Test Article")
+        self.assertEqual(data["author"], "Test Author")
+        self.assertIn("<strong>HTML</strong>", data["content"])
+
+    def test_detail_includes_content_field(self):
+        resp = self.client.get(f"/news/{self.article.id}/")
+        data = resp.json()
+        self.assertIn("content", data)
+        self.assertIn("author", data)
+
+    def test_detail_includes_hero_fields(self):
+        resp = self.client.get(f"/news/{self.article.id}/")
+        data = resp.json()
+        self.assertEqual(data["hero_image_url"], "https://example.com/hero.jpg")
+        self.assertEqual(data["hero_caption"], "Photo credit: Test")
+
+    def test_detail_no_auth_required(self):
+        resp = self.client.get(f"/news/{self.article.id}/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_detail_not_found(self):
+        import uuid
+
+        resp = self.client.get(f"/news/{uuid.uuid4()}/")
+        self.assertEqual(resp.status_code, 404)

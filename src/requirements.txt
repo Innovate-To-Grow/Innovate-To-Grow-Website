@@ -35,6 +35,9 @@ psycopg2-binary>=2.9.0  # PostgreSQL adapter
 django-redis>=5.4.0  # Redis cache backend
 django-cors-headers>=4.4.0
 
+# HTML Parsing
+beautifulsoup4>=4.12.0
+
 # Development Only
 # django-debug-toolbar>=4.0.0
 ruff>=0.8.0  # Python linter and formatter

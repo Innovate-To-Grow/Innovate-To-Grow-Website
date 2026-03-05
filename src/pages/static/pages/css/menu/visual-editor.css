@@ -354,6 +354,7 @@
 .type-home { background: #e3f2fd; color: #1565c0; }
 .type-page { background: #e8f5e9; color: #2e7d32; }
 .type-external { background: #fff3e0; color: #ef6c00; }
+.type-app { background: #f3e5f5; color: #7b1fa2; }
 .btn-add-child { background: #e3f2fd; color: #1565c0; }
 .btn-disabled {
   padding: 4px 8px;

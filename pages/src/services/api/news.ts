@@ -6,7 +6,11 @@ export interface NewsArticle {
   source_url: string;
   summary: string;
   image_url: string;
+  author: string;
   published_at: string;
+  content?: string;
+  hero_image_url?: string;
+  hero_caption?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -26,4 +30,9 @@ export const fetchNews = async (page = 1, pageSize = 12): Promise<PaginatedRespo
 export const fetchLatestNews = async (): Promise<NewsArticle | null> => {
   const response = await fetchNews(1, 1);
   return response.results[0] ?? null;
+};
+
+export const fetchNewsDetail = async (id: string): Promise<NewsArticle> => {
+  const response = await api.get<NewsArticle>(`/news/${id}/`);
+  return response.data;
 };

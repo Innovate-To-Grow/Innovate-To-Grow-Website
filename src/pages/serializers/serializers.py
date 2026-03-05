@@ -120,6 +120,10 @@ class MenuSerializer(serializers.ModelSerializer):
                 processed_item["url"] = item.get("url", "#")
                 processed_item["page_type"] = "external"
 
+            elif item.get("type") == "app":
+                processed_item["url"] = item.get("url", "#")
+                processed_item["page_type"] = "app"
+
             children = item.get("children", [])
             if children:
                 processed_item["children"] = self._process_items(children, page_titles)

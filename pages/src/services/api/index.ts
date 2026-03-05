@@ -40,4 +40,4 @@ export type { PreviewTokenValidationResponse, PreviewDataResponse, TokenPreviewR
 export { validatePreviewToken, fetchPreviewData, fetchPreviewByToken } from './preview';
 
 export type { NewsArticle, PaginatedResponse } from './news';
-export { fetchNews, fetchLatestNews } from './news';
+export { fetchNews, fetchLatestNews, fetchNewsDetail } from './news';

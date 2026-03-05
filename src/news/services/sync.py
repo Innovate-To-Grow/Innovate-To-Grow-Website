@@ -11,6 +11,7 @@ from .feed_parser import (
     parse_feed_items,
     parse_pub_date,
 )
+from .scraper import scrape_article
 
 logger = logging.getLogger(__name__)
 
@@ -56,16 +57,36 @@ def sync_news(feed_url: str | None = None) -> dict:
                 "source_url": item["link"][:1000],
                 "summary": extract_summary(item["description"]),
                 "image_url": extract_image_url(item["description"])[:1000],
+                "content": item["description"],
                 "author": item["creator"][:255],
                 "published_at": published_at,
                 "raw_payload": raw,
                 "source": "ucmerced",
             }
 
-            _, was_created = NewsArticle.objects.update_or_create(
+            article, was_created = NewsArticle.objects.update_or_create(
                 source_guid=guid,
                 defaults=defaults,
             )
+
+            # Scrape full page for richer content (hero image, caption, full body)
+            try:
+                scraped = scrape_article(article.source_url)
+                update_fields = []
+                if scraped["hero_image_url"]:
+                    article.hero_image_url = scraped["hero_image_url"][:1000]
+                    update_fields.append("hero_image_url")
+                if scraped["hero_caption"]:
+                    article.hero_caption = scraped["hero_caption"][:500]
+                    update_fields.append("hero_caption")
+                if scraped["body_html"]:
+                    article.content = scraped["body_html"]
+                    update_fields.append("content")
+                if update_fields:
+                    article.save(update_fields=update_fields)
+            except Exception:
+                logger.warning("Failed to scrape %s, using RSS content", article.source_url)
+
             if was_created:
                 created += 1
             else:
