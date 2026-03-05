@@ -5,8 +5,7 @@
             $("#addNewTicket").click(function () {
                 if ($(".tickets-input div:last").length == 0) {
                     var id = 1;
-                }
-                else {
+                } else {
                     var id = parseInt($(".tickets-input div:last").attr("id")) + 1;
                 }
 
@@ -19,8 +18,7 @@
             $("#addNewQuestion").click(function () {
                 if ($(".questions-input div:last").length == 0) {
                     var id = 1;
-                }
-                else {
+                } else {
                     var id = parseInt($(".questions-input div:last").attr("id")) + 1;
                 }
 
@@ -68,77 +66,77 @@
 {% extends 'admin/model/create.html' %}
 
 {% block body %}
-{% call lib.form_tag(form) %}
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.name])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.date])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.time])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.location])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.description])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.live])}}
-    </div>
-</div>
-<div class="row">
-    <div class="form-control-tickets">
-        <div class="col-xs-10">
-            <div class="tickets-label"> Tickets </div>
-            <div class="tickets-input">
-                {% for ticket in form.tickets %}
-                <div id="{{ loop.index }}" class="wrapper">
-                    {{ ticket(class="col-xs-9") }}
-                    <input type="button" value="Remove" class="remove">
-                    <br></br>
-                </div>
-                {% endfor %}
+    {% call lib.form_tag(form) %}
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.name]) }}
             </div>
         </div>
-        <div class="col-xs-2">
-            <button type="button" id="addNewTicket" class="add">Add Ticket</button>
-        </div>
-    </div>
-</div>
-<div class="row">
-    <div class="form-control-questions">
-        <div class="col-xs-10">
-            <div class="questions-label"> Questions </div>
-            <div class="questions-input">
-                {% for question in form.questions %}
-                <div id="{{ loop.index }}" class="wrapper">
-                    {{ question(class="col-xs-9") }}
-                    <input type="button" value="Remove" class="remove">
-                    <br></br>
-                </div>
-                {% endfor %}
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.date]) }}
             </div>
         </div>
-        <div class="col-xs-2">
-            <button type="button" id="addNewQuestion" class="add">Add Question</button>
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.time]) }}
+            </div>
         </div>
-    </div>
-</div>
-<div class="form-buttons">
-    {{ lib.render_form_buttons(return_url) }}
-</div>
-{% endcall %}
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.location]) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.description]) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.live]) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-control-tickets">
+                <div class="col-xs-10">
+                    <div class="tickets-label"> Tickets</div>
+                    <div class="tickets-input">
+                        {% for ticket in form.tickets %}
+                            <div id="{{ loop.index }}" class="wrapper">
+                                {{ ticket(class="col-xs-9") }}
+                                <input type="button" value="Remove" class="remove">
+                                <br></br>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-xs-2">
+                    <button type="button" id="addNewTicket" class="add">Add Ticket</button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-control-questions">
+                <div class="col-xs-10">
+                    <div class="questions-label"> Questions</div>
+                    <div class="questions-input">
+                        {% for question in form.questions %}
+                            <div id="{{ loop.index }}" class="wrapper">
+                                {{ question(class="col-xs-9") }}
+                                <input type="button" value="Remove" class="remove">
+                                <br></br>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-xs-2">
+                    <button type="button" id="addNewQuestion" class="add">Add Question</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-buttons">
+            {{ lib.render_form_buttons(return_url) }}
+        </div>
+    {% endcall %}
 {% endblock %}

@@ -1,22 +1,20 @@
 {% extends 'admin/master.html' %} {% block body %}
-<link rel="stylesheet" href="../../static/admin/selections.css" />
-<form action="{{ url_for('contact.contact') }}" method="post">
-    {{ form.hidden_tag() }} {{ form.subject.label }}
-    <div>
-        {{ form.subject(class="form-group", autocomplete="off", size=50) }}
-    </div>
-    <br />
-    <div class="selections">
-        {{ form.recip_selection.label }} {{
-        form.recip_selection(class="form-group") }}
-    </div>
-    <br />
-    <div class="selections">
-        {{ form.email_selection.label }} {{
-        form.email_selection(class="form-group") }}
-    </div>
-    <br />
-    {{ form.submit(class="form-group", class="btn btn-info") }}
-</form>
+    <link rel="stylesheet" href="../../static/admin/selections.css"/>
+    <form action="{{ url_for('contact.contact') }}" method="post">
+        {{ form.hidden_tag() }} {{ form.subject.label }}
+        <div>
+            {{ form.subject(class="form-group", autocomplete="off", size=50) }}
+        </div>
+        <br/>
+        <div class="selections">
+            {{ form.recip_selection.label }} {{ form.recip_selection(class="form-group") }}
+        </div>
+        <br/>
+        <div class="selections">
+            {{ form.email_selection.label }} {{ form.email_selection(class="form-group") }}
+        </div>
+        <br/>
+        {{ form.submit(class="form-group", class="btn btn-info") }}
+    </form>
 
-{% endblock body%}
+{% endblock body %}

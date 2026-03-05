@@ -9,8 +9,7 @@
             $("#addNewField").click(function () {
                 if ($(".options-input div:last").length == 0) {
                     var id = 1;
-                }
-                else {
+                } else {
                     var id = parseInt($(".options-input div:last").attr("id")) + 1;
                 }
 
@@ -61,43 +60,43 @@
 {% extends 'admin/model/create.html' %}
 
 {% block body %}
-{% call lib.form_tag(form) %}
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.label])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.required])}}
-    </div>
-</div>
-<div class="row">
-    <div class="col-xs-10">
-        {{ lib.render_form_fields([form.field_type])}}
-    </div>
-</div>
-<div class="row">
-    <div class="form-control-options" style="display: none">
-        <div class="col-xs-10">
-            <div class="options-label"> Options </div>
-            <div class="options-input">
-                {% for option in form.options %}
-                <div id="{{ loop.index }}" class="wrapper">
-                    {{ option(class="col-xs-9") }}
-                    <input type="button" value="Remove" class="remove">
-                    <br></br>
-                </div>
-                {% endfor %}
+    {% call lib.form_tag(form) %}
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.label]) }}
             </div>
         </div>
-        <div class="col-xs-2">
-            <button type="button" id="addNewField" class="add">Add Option</button>
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.required]) }}
+            </div>
         </div>
-    </div>
-</div>
-<div class="form-buttons">
-    {{ lib.render_form_buttons(return_url) }}
-</div>
-{% endcall %}
+        <div class="row">
+            <div class="col-xs-10">
+                {{ lib.render_form_fields([form.field_type]) }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-control-options" style="display: none">
+                <div class="col-xs-10">
+                    <div class="options-label"> Options</div>
+                    <div class="options-input">
+                        {% for option in form.options %}
+                            <div id="{{ loop.index }}" class="wrapper">
+                                {{ option(class="col-xs-9") }}
+                                <input type="button" value="Remove" class="remove">
+                                <br></br>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-xs-2">
+                    <button type="button" id="addNewField" class="add">Add Option</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-buttons">
+            {{ lib.render_form_buttons(return_url) }}
+        </div>
+    {% endcall %}
 {% endblock %}
