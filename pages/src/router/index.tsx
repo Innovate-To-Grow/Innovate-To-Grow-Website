@@ -13,6 +13,9 @@ import { PreviewPage } from '../pages/Preview/PreviewPage';
 import { TokenPreviewPage } from '../pages/Preview/TokenPreviewPage';
 import { NewsPage } from '../pages/NewsPage';
 import { NewsDetailPage } from '../pages/NewsDetailPage';
+import { ProjectsPage } from '../pages/ProjectsPage';
+import { PastProjectsPage } from '../pages/PastProjectsPage';
+import { ProjectDetailPage } from '../pages/ProjectDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -23,6 +26,9 @@ export const router = createBrowserRouter([
       { path: 'event', element: <EventPage /> },
       { path: 'news', element: <NewsPage /> },
       { path: 'news/:id', element: <NewsDetailPage /> },
+      { path: 'projects', element: <ProjectsPage /> },
+      { path: 'projects/past', element: <PastProjectsPage /> },
+      { path: 'projects/:id', element: <ProjectDetailPage /> },
       // Convenience redirects
       { path: 'events', element: <Navigate to="/event" replace /> },
       { path: 'profile', element: <Navigate to="/account" replace /> },

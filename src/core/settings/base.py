@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
     "news.apps.NewsConfig",
+    "projects.apps.ProjectsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -292,6 +293,13 @@ UNFOLD = {
                     {"title": "News Articles", "link": "/admin/news/newsarticle/"},
                     {"title": "Feed Sources", "link": "/admin/news/newsfeedsource/"},
                     {"title": "Sync Logs", "link": "/admin/news/newssynclog/"},
+                ],
+            },
+            {
+                "title": "Projects",
+                "items": [
+                    {"title": "Semesters", "link": "/admin/projects/semester/"},
+                    {"title": "Projects", "link": "/admin/projects/project/"},
                 ],
             },
             {

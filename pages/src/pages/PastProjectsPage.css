@@ -1,0 +1,133 @@
+.past-projects-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.past-projects-back {
+  display: inline-block;
+  color: #0f2d52;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  margin-bottom: 1rem;
+}
+
+.past-projects-back:hover {
+  text-decoration: underline;
+}
+
+.past-projects-title {
+  color: #0f2d52;
+  margin: 0 0 2rem;
+  font-size: 2rem;
+}
+
+.semester-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.semester-accordion {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.semester-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: none;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-size: 1rem;
+  text-align: left;
+  transition: background 0.2s;
+  gap: 0.75rem;
+}
+
+.semester-header:hover {
+  background: #e8edf2;
+}
+
+.semester-label {
+  font-weight: 600;
+  color: #0f2d52;
+  flex: 1;
+}
+
+.semester-count {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.semester-chevron {
+  font-size: 0.75rem;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.semester-chevron-open {
+  transform: rotate(90deg);
+}
+
+.semester-body {
+  padding: 1.25rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.semester-empty {
+  color: #666;
+  font-size: 0.9375rem;
+  text-align: center;
+  padding: 1rem 0;
+  margin: 0;
+}
+
+.past-projects-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem 0;
+}
+
+.past-projects-pagination-btn {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #0f2d52;
+  border-radius: 4px;
+  background: #fff;
+  color: #0f2d52;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  transition: background 0.2s, color 0.2s;
+}
+
+.past-projects-pagination-btn:hover:not(:disabled) {
+  background: #0f2d52;
+  color: #fff;
+}
+
+.past-projects-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.past-projects-pagination-info {
+  font-size: 0.9375rem;
+  color: #444;
+}
+
+@media (max-width: 768px) {
+  .past-projects-page {
+    padding: 1rem;
+  }
+
+  .past-projects-title {
+    font-size: 1.5rem;
+  }
+}
