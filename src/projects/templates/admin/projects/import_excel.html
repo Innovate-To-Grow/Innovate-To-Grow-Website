@@ -1,0 +1,53 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Import Projects from Excel{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 0 auto; padding: 2rem 0;">
+  <h1 style="color: #0f2d52; margin-bottom: 0.5rem;">Import Projects from Excel</h1>
+  <p style="color: #666; margin-bottom: 1.5rem;">
+    Upload an Excel file with two sheets: <strong>Semesters</strong> (year, season, label)
+    and <strong>Projects</strong> (year, season, class_code, team_number, team_name,
+    project_title, organization, industry, abstract, student_names, track, presentation_order).
+  </p>
+
+  {% if error %}
+  <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; color: #991b1b;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  {% if stats %}
+  <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; color: #166534;">
+    <strong>Import complete!</strong>
+    <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
+      <li>Semesters created: {{ stats.semesters_created }}</li>
+      <li>Semesters already existing: {{ stats.semesters_existing }}</li>
+      <li>Projects created: {{ stats.projects_created }}</li>
+      <li>Projects updated: {{ stats.projects_updated }}</li>
+      <li>Rows skipped: {{ stats.rows_skipped }}</li>
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem;">
+    {% csrf_token %}
+    <div style="margin-bottom: 1rem;">
+      <label for="excel_file" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #0f2d52;">
+        Excel File (.xlsx)
+      </label>
+      <input type="file" name="excel_file" id="excel_file" accept=".xlsx"
+             style="display: block; width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" required>
+    </div>
+    <button type="submit"
+            style="background: #0f2d52; color: #fff; border: none; padding: 0.625rem 1.5rem; border-radius: 4px; font-size: 0.9375rem; cursor: pointer;">
+      Upload &amp; Import
+    </button>
+    <a href="{% url 'admin:projects_semester_changelist' %}"
+       style="margin-left: 1rem; color: #0f2d52; text-decoration: none; font-size: 0.9375rem;">
+      Cancel
+    </a>
+  </form>
+</div>
+{% endblock %}
