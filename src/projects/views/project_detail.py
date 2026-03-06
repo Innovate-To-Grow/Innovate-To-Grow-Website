@@ -8,5 +8,5 @@ from ..serializers import ProjectDetailSerializer
 class ProjectDetailAPIView(RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = ProjectDetailSerializer
-    queryset = Project.objects.select_related("semester")
+    queryset = Project.objects.filter(semester__is_published=True).select_related("semester")
     lookup_field = "pk"

@@ -187,3 +187,11 @@ class ProjectDetailAPIViewTest(TestCase):
         response = self.client.get(f"/projects/{project.id}/")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_excludes_projects_from_unpublished_semesters(self):
+        sem = Semester.objects.create(year=2025, season=1, is_published=False)
+        project = Project.objects.create(semester=sem, project_title="Draft Project")
+
+        response = self.client.get(f"/projects/{project.id}/")
+
+        self.assertEqual(response.status_code, 404)
