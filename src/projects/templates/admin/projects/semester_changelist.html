@@ -1,8 +1,11 @@
 {% extends "admin/change_list.html" %}
 
 {% block object-tools-items %}
-  <li>
-    <a href="{{ import_url }}" style="background: #0f2d52;">Import Excel</a>
-  </li>
+  <div class="flex flex-row items-center">
+    <a href="{{ import_url }}" class="bg-primary-600 flex items-center gap-2 h-[38px] justify-center -my-1 rounded-full px-4 text-white text-sm font-medium hover:bg-primary-700 transition-colors" title="Import Excel">
+      <span class="material-symbols-outlined text-white !text-[20px]">upload_file</span>
+      Import Excel
+    </a>
+  </div>
   {{ block.super }}
 {% endblock %}
