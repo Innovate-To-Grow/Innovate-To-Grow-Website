@@ -20,6 +20,8 @@
   const APP_ROUTES = [
     { url: '/event', title: 'Events', icon: 'fa-calendar' },
     { url: '/news', title: 'News', icon: 'fa-newspaper-o' },
+    { url: '/projects', title: 'Projects', icon: 'fa-briefcase' },
+    { url: '/past-projects', title: 'Past Projects', icon: 'fa-archive' },
   ];
   
   // Initialize

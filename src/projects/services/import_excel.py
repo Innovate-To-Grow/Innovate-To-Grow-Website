@@ -86,6 +86,9 @@ def import_projects_from_excel(file):
             continue
 
         semester, created = Semester.objects.get_or_create(year=year, season=season)
+        if not semester.is_published:
+            semester.is_published = True
+            semester.save(update_fields=["is_published"])
         semester_cache[(year, season)] = semester
         if created:
             stats["semesters_created"] += 1
@@ -130,6 +133,9 @@ def import_projects_from_excel(file):
         semester = semester_cache.get((year, season))
         if not semester:
             semester, created = Semester.objects.get_or_create(year=year, season=season)
+            if not semester.is_published:
+                semester.is_published = True
+                semester.save(update_fields=["is_published"])
             semester_cache[(year, season)] = semester
             if created:
                 stats["semesters_created"] += 1

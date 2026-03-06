@@ -40,7 +40,7 @@ export const ProjectsPage = () => {
           {error || 'No published projects available.'}
         </div>
         <div className="projects-nav">
-          <Link to="/projects/past" className="projects-nav-link">View Past Projects</Link>
+          <Link to="/past-projects" className="projects-nav-link">View Past Projects</Link>
         </div>
       </div>
     );
@@ -79,7 +79,7 @@ export const ProjectsPage = () => {
       )}
 
       <div className="projects-nav">
-        <Link to="/projects/past" className="projects-nav-link">View Past Projects &rarr;</Link>
+        <Link to="/past-projects" className="projects-nav-link">View Past Projects &rarr;</Link>
       </div>
     </div>
   );

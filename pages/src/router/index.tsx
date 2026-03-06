@@ -27,7 +27,8 @@ export const router = createBrowserRouter([
       { path: 'news', element: <NewsPage /> },
       { path: 'news/:id', element: <NewsDetailPage /> },
       { path: 'projects', element: <ProjectsPage /> },
-      { path: 'projects/past', element: <PastProjectsPage /> },
+      { path: 'past-projects', element: <PastProjectsPage /> },
+      { path: 'projects/past', element: <Navigate to="/past-projects" replace /> },
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       // Convenience redirects
       { path: 'events', element: <Navigate to="/event" replace /> },
