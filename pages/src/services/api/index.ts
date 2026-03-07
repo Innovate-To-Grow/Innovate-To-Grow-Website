@@ -41,3 +41,6 @@ export { validatePreviewToken, fetchPreviewData, fetchPreviewByToken } from './p
 
 export type { NewsArticle, PaginatedResponse } from './news';
 export { fetchNews, fetchLatestNews, fetchNewsDetail } from './news';
+
+export type { ProjectSummary, ProjectDetail, SemesterWithProjects } from './projects';
+export { fetchCurrentProjects, fetchPastProjects, fetchProjectDetail } from './projects';

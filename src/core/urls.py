@@ -54,6 +54,8 @@ urlpatterns = [
     path("events/", include("events.urls")),
     # news
     path("news/", include("news.urls")),
+    # projects
+    path("projects/", include("projects.urls")),
     # ckeditor 5
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn
