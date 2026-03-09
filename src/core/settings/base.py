@@ -23,8 +23,12 @@ load_dotenv(BASE_DIR / ".env")
 # Example: "https://www.innovatetogrow.com" or "http://localhost:5173"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 
-# Google Sheets service account settings
+# Google Sheets — service account credentials (shared by both clients below)
+# Single-line JSON string from the Google Cloud service account key file.
 GOOGLE_SHEETS_CREDENTIALS_JSON = os.environ.get("GOOGLE_SHEETS_CREDENTIALS_JSON", "")
+
+# CMS display client (pages/services/google_sheets.py) — read-only by default.
+# Override GOOGLE_SHEETS_SCOPES if you need write access for the CMS client too.
 GOOGLE_SHEETS_SCOPES = [
     scope.strip()
     for scope in os.environ.get(
@@ -33,6 +37,11 @@ GOOGLE_SHEETS_SCOPES = [
     ).split(",")
     if scope.strip()
 ]
+
+# Membership Sheets client (core/services/google_sheets.py) — always read+write.
+# Set this to the spreadsheet ID from the URL:
+#   https://docs.google.com/spreadsheets/d/<MEMBERSHIP_SPREADSHEET_ID>/edit
+MEMBERSHIP_SPREADSHEET_ID = os.environ.get("MEMBERSHIP_SPREADSHEET_ID", "")
 
 # Application definition
 INSTALLED_APPS = [

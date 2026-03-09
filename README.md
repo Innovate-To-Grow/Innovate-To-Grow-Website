@@ -10,4 +10,3 @@ Official Website of UC Merced Innovate To Grow
 - [Events Sheet Sync](docs/events-sheet-sync.md) — Google Sheets bidirectional sync API (import & export)
 - [Deployment Guide](docs/deployment.md) — Infrastructure, Docker, CI/CD, and environment variables
 - [CMS & Admin Guide](docs/cms-admin-guide.md) — Content management, forms, events, and email broadcasts
-- hi
