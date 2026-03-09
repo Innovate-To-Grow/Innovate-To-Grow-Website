@@ -20,7 +20,6 @@ The sidebar is organized into these sections:
 | **Layout** | Menus, Footer |
 | **Events** | Events, Programs, Tracks, Ticket Options, Questions, Registrations |
 | **Members** | Members, Groups |
-| **MobileID** | Barcodes, Mobile IDs, Transactions |
 
 ---
 

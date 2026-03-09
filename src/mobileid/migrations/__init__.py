@@ -1,2 +1,0 @@
-"""Migrations for mobileid app."""
-

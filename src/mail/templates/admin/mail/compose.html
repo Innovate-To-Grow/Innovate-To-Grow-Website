@@ -1,0 +1,142 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+  &rsaquo; <a href="{% url 'admin:mail_inbox' %}">Inbox</a>
+  &rsaquo; {{ title|truncatechars:50 }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-6 px-4">
+  <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-4">{{ title }}</h1>
+
+  <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-4">
+    Sending as: <strong>{{ account_email }}</strong>
+  </p>
+
+  <form method="post" action="{% url 'admin:mail_send' %}" enctype="multipart/form-data"
+        class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
+    {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 rounded-default p-4 mb-4">
+      <div class="flex items-start gap-2">
+        <span class="material-symbols-outlined text-red-600 dark:text-red-400 !text-[20px] mt-0.5">error</span>
+        <div class="text-sm text-red-800 dark:text-red-300">
+          <strong>Please fix the errors below:</strong>
+          <ul class="mt-1 list-disc list-inside">
+            {% for field, errors in form.errors.items %}
+              {% for error in errors %}
+              <li>{{ field|capfirst }}: {{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- To -->
+    <div class="mb-4">
+      <label for="id_to" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-1">To *</label>
+      {{ form.to }}
+      {% if form.to.help_text %}
+      <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">{{ form.to.help_text }}</p>
+      {% endif %}
+    </div>
+
+    <!-- CC -->
+    <div class="mb-4">
+      <label for="id_cc" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-1">CC</label>
+      {{ form.cc }}
+    </div>
+
+    <!-- BCC -->
+    <div class="mb-4">
+      <label for="id_bcc" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-1">BCC</label>
+      {{ form.bcc }}
+    </div>
+
+    <!-- Subject -->
+    <div class="mb-4">
+      <label for="id_subject" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-1">Subject *</label>
+      {{ form.subject }}
+    </div>
+
+    <!-- Body -->
+    <div class="mb-4">
+      <label for="id_body" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-1">Body *</label>
+      {{ form.body }}
+      {% if form.body.help_text %}
+      <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">{{ form.body.help_text }}</p>
+      {% endif %}
+    </div>
+
+    <!-- Attachments -->
+    <div class="mb-5">
+      <label for="id_attachments" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-1">
+        <span class="flex items-center gap-1.5">
+          <span class="material-symbols-outlined !text-[18px]">attach_file</span>
+          Attachments
+        </span>
+      </label>
+      <input type="file" name="attachments" id="id_attachments" multiple
+             class="block w-full text-sm text-font-default-light dark:text-font-default-dark
+                    file:mr-4 file:py-2 file:px-4 file:rounded-default file:border file:border-base-200
+                    file:dark:border-base-700 file:text-sm file:font-medium file:bg-base-50
+                    file:dark:bg-base-800 file:text-font-default-light file:dark:text-font-default-dark
+                    hover:file:bg-base-100 dark:hover:file:bg-base-700 file:cursor-pointer file:transition-colors">
+    </div>
+
+    <!-- Hidden threading fields -->
+    {{ form.thread_id }}
+    {{ form.in_reply_to }}
+    {{ form.references }}
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3 pt-2 border-t border-base-100 dark:border-base-800">
+      <button type="submit"
+              class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined !text-[18px]">send</span>
+        Send
+      </button>
+      <a href="{% url 'admin:mail_inbox' %}"
+         class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+
+<style>
+  /* Style Django form widgets to match unfold theme */
+  #id_to, #id_cc, #id_bcc, #id_subject {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #fff;
+  }
+  #id_body {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #fff;
+    font-family: monospace;
+  }
+  .dark #id_to, .dark #id_cc, .dark #id_bcc, .dark #id_subject, .dark #id_body {
+    background: #1a1a2e;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+</style>
+{% endblock %}

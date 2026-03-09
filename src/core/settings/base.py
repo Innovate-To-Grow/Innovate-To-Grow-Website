@@ -51,8 +51,7 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
-    "mobileid.apps.MobileIDConfig",
-    "events.apps.EventsConfig",
+"events.apps.EventsConfig",
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
@@ -298,14 +297,6 @@ UNFOLD = {
                 "items": [
                     {"title": "Members", "link": "/admin/authn/member/"},
                     {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
-                ],
-            },
-            {
-                "title": "MobileID",
-                "items": [
-                    {"title": "Barcodes", "link": "/admin/mobileid/barcode/"},
-                    {"title": "Mobile IDs", "link": "/admin/mobileid/mobileid/"},
-                    {"title": "Transactions", "link": "/admin/mobileid/transaction/"},
                 ],
             },
             {

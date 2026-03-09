@@ -24,7 +24,7 @@ def default_menu_items():
     - open_in_new_tab: Boolean
     - children: Nested items (for submenus)
     """
-    return [{"type": "app", "title": "Home", "url": "/", "icon": "", "open_in_new_tab": False, "children": []}]
+    return [{"type": "app", "title": "Home", "url": "/", "icon": "fa-home", "open_in_new_tab": False, "children": []}]
 
 
 class Menu(ProjectControlModel):

@@ -76,7 +76,6 @@ The backend is organized into specialized Django apps:
 - **`pages/`**: CMS for managing Page and HomePage models with components (HTML/CSS/JS blocks)
 - **`authn/`**: Custom authentication with UUID-based Member model and JWT
 - **`events/`**: Event management with registration, presentation schedules, and Google Sheets sync API
-- **`mobileid/`**: Mobile ID validation integration
 
 ### Settings Structure
 

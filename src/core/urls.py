@@ -39,9 +39,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
-    # mobile id domain
-    path("mobileid/", include("mobileid.urls")),
-    # events (proxy removes /api prefix)
+# events (proxy removes /api prefix)
     path("events/", include("events.urls")),
     # news
     path("news/", include("news.urls")),

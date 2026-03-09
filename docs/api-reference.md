@@ -339,45 +339,6 @@ Check registration status for a given token.
 
 ---
 
-## MobileID (`/mobileid/`)
-
-Uses DRF ViewSets with a `DefaultRouter`, providing standard CRUD operations.
-
-### Barcodes — `/mobileid/barcodes/`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/mobileid/barcodes/` | List barcodes |
-| `POST` | `/mobileid/barcodes/` | Create barcode |
-| `GET` | `/mobileid/barcodes/<id>/` | Retrieve barcode |
-| `PUT` | `/mobileid/barcodes/<id>/` | Update barcode |
-| `PATCH` | `/mobileid/barcodes/<id>/` | Partial update |
-| `DELETE` | `/mobileid/barcodes/<id>/` | Delete barcode |
-
-### Mobile IDs — `/mobileid/mobile-ids/`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/mobileid/mobile-ids/` | List mobile IDs |
-| `POST` | `/mobileid/mobile-ids/` | Create mobile ID |
-| `GET` | `/mobileid/mobile-ids/<id>/` | Retrieve mobile ID |
-| `PUT` | `/mobileid/mobile-ids/<id>/` | Update mobile ID |
-| `PATCH` | `/mobileid/mobile-ids/<id>/` | Partial update |
-| `DELETE` | `/mobileid/mobile-ids/<id>/` | Delete mobile ID |
-
-### Transactions — `/mobileid/transactions/`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/mobileid/transactions/` | List transactions |
-| `POST` | `/mobileid/transactions/` | Create transaction |
-| `GET` | `/mobileid/transactions/<id>/` | Retrieve transaction |
-| `PUT` | `/mobileid/transactions/<id>/` | Update transaction |
-| `PATCH` | `/mobileid/transactions/<id>/` | Partial update |
-| `DELETE` | `/mobileid/transactions/<id>/` | Delete transaction |
-
----
-
 ## Legacy Membership Routes
 
 These routes provide backward-compatible event registration pages:

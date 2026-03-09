@@ -28,7 +28,7 @@ Frontend (React SPA) ──▶ AWS Amplify
 
 ### Django Apps
 
-The backend is organized into 5 Django apps plus the `core` project package:
+The backend is organized into 4 Django apps plus the `core` project package:
 
 | App | Purpose | Key Models |
 |-----|---------|------------|
@@ -36,7 +36,6 @@ The backend is organized into 5 Django apps plus the `core` project package:
 | **authn** | Authentication, member management (registration creates active users immediately with JWT tokens) | `Member` (custom user model), `I2GMemberGroup` |
 | **pages** | CMS pages, components, forms, media, layout | `Page`, `HomePage`, `PageComponent`, `UniformForm`, `FormSubmission`, `Menu`, `FooterContent`, `MediaAsset`, `GoogleSheet` |
 | **events** | Event management, Google Sheets sync, registration | `Event`, `Program`, `Track`, `Presentation`, `TrackWinner`, `SpecialAward`, `EventRegistration` |
-| **mobileid** | Mobile ID cards, barcodes, transactions | `Barcode`, `MobileID`, `Transaction` |
 
 ### Inter-App Dependencies
 
@@ -44,8 +43,7 @@ The backend is organized into 5 Django apps plus the `core` project package:
 core ◀── authn ◀── pages
   ▲         ▲
   │         │
-  ├── events (uses authn for registration)
-  └── mobileid (uses authn Member model)
+  └── events (uses authn for registration)
 ```
 
 - All apps inherit from `core.models.ProjectControlModel`.
@@ -85,7 +83,6 @@ All API routes are defined in `src/core/urls.py` and delegated to app-level `url
 | `/pages/` | CMS page endpoints |
 | `/layout/` | Layout data (menus + footer) |
 | `/events/` | Event endpoints |
-| `/mobileid/` | Mobile ID ViewSets |
 | `/membership/` | Legacy event registration routes |
 
 See [API Reference](api-reference.md) for the full endpoint list.
