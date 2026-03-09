@@ -26,24 +26,6 @@ export interface LoginResponse {
 
 export interface RegisterResponse {
   message: string;
-  email: string;
-  verification_code?: string; // Only in dev mode
-}
-
-export interface RequestCodeResponse {
-  message: string;
-  email?: string;
-}
-
-export interface VerifyCodeResponse {
-  message: string;
-  access: string;
-  refresh: string;
-  user: User;
-}
-
-export interface VerifyEmailResponse {
-  message: string;
   access: string;
   refresh: string;
   user: User;
@@ -182,6 +164,11 @@ export const register = async (
       ...(lastName && { last_name: lastName }),
       ...(organization && { organization }),
     });
+
+    // Store tokens and user (registration now returns JWT tokens)
+    const { access, refresh, user } = response.data;
+    setTokens({ access, refresh }, user);
+
     return response.data;
   } catch (error) {
     // Clear key cache on encryption errors (might be stale key)
@@ -215,25 +202,6 @@ export const login = async (email: string, password: string): Promise<LoginRespo
     }
     throw error;
   }
-};
-
-export const verifyEmail = async (token: string): Promise<VerifyEmailResponse> => {
-  const response = await authApi.post<VerifyEmailResponse>('/authn/verify-email/', {
-    token,
-  });
-
-  // Store tokens and user
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-
-  return response.data;
-};
-
-export const resendVerification = async (email: string): Promise<{ message: string }> => {
-  const response = await authApi.post<{ message: string }>('/authn/resend-verification/', {
-    email,
-  });
-  return response.data;
 };
 
 export const getProfile = async (): Promise<ProfileResponse> => {
@@ -303,29 +271,6 @@ export const changePassword = async (
   return response.data;
 };
 
-// ======================== Passwordless Login (Email Code) ========================
-
-export const requestLoginCode = async (email: string): Promise<RequestCodeResponse> => {
-  const response = await authApi.post<RequestCodeResponse>('/authn/login/request-code/', { email });
-  return response.data;
-};
-
-export const verifyLoginCode = async (email: string, code: string): Promise<VerifyCodeResponse> => {
-  const response = await authApi.post<VerifyCodeResponse>('/authn/login/verify-code/', { email, code });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  return response.data;
-};
-
-// ======================== Code-Based Email Verification ========================
-
-export const verifyEmailCode = async (email: string, code: string): Promise<VerifyCodeResponse> => {
-  const response = await authApi.post<VerifyCodeResponse>('/authn/verify-email-code/', { email, code });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  return response.data;
-};
-
 // ======================== Session ========================
 
 export const logout = (): void => {
@@ -344,4 +289,3 @@ export const isAuthenticated = (): boolean => {
 };
 
 export default authApi;
-

@@ -38,6 +38,9 @@ django-cors-headers>=4.4.0
 # HTML Parsing
 beautifulsoup4>=4.12.0
 
+# HTML Sanitization
+bleach>=6.0.0
+
 # Development Only
 # django-debug-toolbar>=4.0.0
 ruff>=0.8.0  # Python linter and formatter

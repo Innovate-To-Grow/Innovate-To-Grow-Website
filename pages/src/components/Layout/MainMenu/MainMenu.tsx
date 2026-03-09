@@ -6,17 +6,11 @@ import { router } from '../../../router';
 import './MainMenu.css';
 
 const buildHref = (item: MenuItem) => {
-  if (item.type === 'home') {
-    return '/';
-  }
-  if (item.type === 'page' && item.page_slug) {
-    return `/${item.page_slug}`;
-  }
   if (item.type === 'app') {
     return item.url || '#';
   }
-  if (item.type === 'external' && item.url) {
-    return item.url;
+  if (item.type === 'external') {
+    return item.url || '#';
   }
   return item.url || '#';
 };

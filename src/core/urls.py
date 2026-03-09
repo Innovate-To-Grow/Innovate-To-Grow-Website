@@ -25,9 +25,8 @@ from events.views import (
     EventRegistrationStatusAPIView,
     MembershipEventRegistrationPageView,
     MembershipEventsPageView,
-    MembershipOTPPageView,
 )
-from pages.views import ComponentPreviewView, LayoutAPIView, PreviewPopupView
+from pages.views import LayoutAPIView
 
 # Customize Django Admin
 admin.site.site_header = "Innovate To Grow Admin"
@@ -36,18 +35,10 @@ admin.site.index_title = "Welcome to I2G Admin"
 admin.site.login_form = EmailAdminAuthenticationForm
 
 urlpatterns = [
-    # admin preview popup for live editing
-    path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
-    # component preview popup for live editing
-    path("admin/component-preview/", ComponentPreviewView.as_view(), name="admin-component-preview"),
     # admin site
     path("admin/", admin.site.urls),
-    # pages
-    path("pages/", include("pages.urls")),
-    # layout (menus, footer) - merged into pages app
+    # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
-    # notify (verification + notifications)
-    path("notify/", include("notify.urls")),
     # mobile id domain
     path("mobileid/", include("mobileid.urls")),
     # events (proxy removes /api prefix)
@@ -69,8 +60,6 @@ urlpatterns = [
         MembershipEventRegistrationPageView.as_view(),
         name="membership-event-registration",
     ),
-    path("membership/otp", MembershipOTPPageView.as_view(), name="membership-event-otp"),
-    path("membership/otp/<str:token>", MembershipOTPPageView.as_view(), name="membership-event-otp-token"),
     path(
         "membership/event-registration/status/<slug:event_slug>/<str:token>",
         EventRegistrationStatusAPIView.as_view(),

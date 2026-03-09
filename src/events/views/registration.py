@@ -4,6 +4,8 @@ API views for event registration flow.
 
 from __future__ import annotations
 
+import uuid
+
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -12,14 +14,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from notify.models import VerificationRequest
-from notify.services import RateLimitError, VerificationError, issue_code, issue_link, verify_code
-
 from ..models import EventRegistration, EventRegistrationAnswer
 from ..serializers import (
     EventRegistrationRequestLinkSerializer,
     EventRegistrationSubmitSerializer,
-    EventRegistrationVerifyOTPSerializer,
 )
 from ..services.registration import (
     EventRegistrationFlowError,
@@ -105,25 +103,8 @@ class EventRegistrationRequestLinkAPIView(APIView):
             defaults={"source_email": email, "status": EventRegistration.STATUS_PENDING},
         )
 
-        try:
-            base_url = request.build_absolute_uri(f"/membership/event-registration/{event.slug}")
-            verification, link = issue_link(
-                channel=VerificationRequest.CHANNEL_EMAIL,
-                target=email,
-                purpose="event_registration_link",
-                expires_in_minutes=60,
-                max_attempts=5,
-                rate_limit_per_hour=5,
-                base_url=base_url,
-                context={
-                    "recipient_name": member.get_full_name() or member.username,
-                    "event_name": event.event_name,
-                },
-            )
-        except RateLimitError as exc:
-            return _error_response("rate_limited", str(exc), http_status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-        registration.registration_token = verification.token
+        token = uuid.uuid4().hex
+        registration.registration_token = token
         registration.source_email = email
         registration.status = EventRegistration.STATUS_PENDING
         registration.save(update_fields=["registration_token", "source_email", "status", "updated_at"])
@@ -133,8 +114,7 @@ class EventRegistrationRequestLinkAPIView(APIView):
                 "status": "sent",
                 "email": email,
                 "event_slug": event.slug,
-                "registration_token": verification.token if settings.DEBUG else None,
-                "registration_link": link if settings.DEBUG else None,
+                "registration_token": token if settings.DEBUG else None,
             },
             status=status.HTTP_200_OK,
         )
@@ -153,7 +133,7 @@ class EventRegistrationFormAPIView(APIView):
             return _error_response("invalid_token", "Token is required.", http_status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            context = get_registration_from_token(token, verify_token=True)
+            context = get_registration_from_token(token)
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,
@@ -236,7 +216,7 @@ class EventRegistrationFormAPIView(APIView):
 
 class EventRegistrationSubmitAPIView(APIView):
     """
-    Submit registration form payload. Starts OTP when needed.
+    Submit registration form payload.
     """
 
     permission_classes = [AllowAny]
@@ -251,7 +231,7 @@ class EventRegistrationSubmitAPIView(APIView):
         data = serializer.validated_data
 
         try:
-            context = get_registration_from_token(data["token"], verify_token=False)
+            context = get_registration_from_token(data["token"])
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,
@@ -347,37 +327,6 @@ class EventRegistrationSubmitAPIView(APIView):
             )
 
             now = timezone.now()
-            if registration.phone_subscribed and phone_number:
-                try:
-                    issue_code(
-                        channel=VerificationRequest.CHANNEL_SMS,
-                        target=phone_number,
-                        purpose="event_phone_verification",
-                        expires_in_minutes=10,
-                        max_attempts=5,
-                        rate_limit_per_hour=5,
-                        context={
-                            "event_name": event.event_name,
-                        },
-                    )
-                except RateLimitError as exc:
-                    return _error_response("rate_limited", str(exc), http_status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-                registration.status = EventRegistration.STATUS_OTP_PENDING
-                registration.phone_verified = False
-                registration.otp_target_phone = phone_number
-                registration.otp_requested_at = now
-                registration.submitted_at = now
-                registration.save()
-
-                return Response(
-                    {
-                        "status": registration.status,
-                        "otp_required": True,
-                    },
-                    status=status.HTTP_200_OK,
-                )
-
             registration.status = EventRegistration.STATUS_COMPLETED
             registration.phone_verified = False
             registration.otp_target_phone = phone_number
@@ -394,73 +343,6 @@ class EventRegistrationSubmitAPIView(APIView):
             )
 
 
-class EventRegistrationVerifyOTPAPIView(APIView):
-    """
-    Verify OTP code for pending event registration.
-    """
-
-    permission_classes = [AllowAny]
-
-    def post(self, request, event_slug: str | None = None, token: str | None = None):
-        serializer_input = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
-        if token and not serializer_input.get("token"):
-            serializer_input["token"] = token
-
-        serializer = EventRegistrationVerifyOTPSerializer(data=serializer_input)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        try:
-            # The link was already verified when the form was loaded/submitted.
-            # The OTP code provides the authentication for this step.
-            context = get_registration_from_token(data["token"], verify_token=False)
-        except EventRegistrationFlowError as exc:
-            return _error_response(
-                exc.code,
-                exc.message,
-                http_status=_error_status_for_registration_flow(exc),
-            )
-
-        if event_slug and context.event.slug != event_slug:
-            return _error_response(
-                "event_not_found",
-                f"No live event found for slug '{event_slug}'.",
-                http_status=status.HTTP_404_NOT_FOUND,
-            )
-        registration = context.registration
-        if not registration.otp_target_phone:
-            return _error_response(
-                "otp_not_requested",
-                "No OTP verification is pending for this registration.",
-                http_status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            verify_code(
-                channel=VerificationRequest.CHANNEL_SMS,
-                target=registration.otp_target_phone,
-                submitted_code=data["code"],
-                purpose="event_phone_verification",
-            )
-        except VerificationError as exc:
-            return _error_response("invalid_otp", str(exc), http_status=status.HTTP_400_BAD_REQUEST)
-
-        registration.phone_verified = True
-        registration.status = EventRegistration.STATUS_COMPLETED
-        registration.otp_verified_at = timezone.now()
-        if registration.submitted_at is None:
-            registration.submitted_at = timezone.now()
-        registration.save(update_fields=["phone_verified", "status", "otp_verified_at", "submitted_at", "updated_at"])
-
-        return Response(
-            {
-                "status": registration.status,
-                "phone_verified": registration.phone_verified,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
 class EventRegistrationStatusAPIView(APIView):
     """
     Read current status for registration token.
@@ -474,7 +356,7 @@ class EventRegistrationStatusAPIView(APIView):
             return _error_response("invalid_token", "Token is required.", http_status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            context = get_registration_from_token(token, verify_token=False)
+            context = get_registration_from_token(token)
         except EventRegistrationFlowError as exc:
             return _error_response(
                 exc.code,

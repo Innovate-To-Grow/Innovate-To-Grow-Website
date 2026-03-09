@@ -29,8 +29,3 @@ class EventRegistrationSubmitSerializer(serializers.Serializer):
     phone_region = serializers.CharField(required=False, allow_blank=True, max_length=20)
     phone_subscribed = serializers.BooleanField(required=False, default=False)
     answers = EventRegistrationAnswerInputSerializer(many=True, required=False)
-
-
-class EventRegistrationVerifyOTPSerializer(serializers.Serializer):
-    token = serializers.CharField()
-    code = serializers.CharField(max_length=12)

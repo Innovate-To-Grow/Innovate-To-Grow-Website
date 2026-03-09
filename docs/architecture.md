@@ -28,31 +28,28 @@ Frontend (React SPA) ──▶ AWS Amplify
 
 ### Django Apps
 
-The backend is organized into 6 Django apps plus the `core` project package:
+The backend is organized into 5 Django apps plus the `core` project package:
 
 | App | Purpose | Key Models |
 |-----|---------|------------|
 | **core** | Project configuration, base models, middleware, health check | `ProjectControlModel`, `ModelVersion` |
-| **authn** | Authentication, member management | `Member` (custom user model), `I2GMemberGroup` |
+| **authn** | Authentication, member management (registration creates active users immediately with JWT tokens) | `Member` (custom user model), `I2GMemberGroup` |
 | **pages** | CMS pages, components, forms, media, layout | `Page`, `HomePage`, `PageComponent`, `UniformForm`, `FormSubmission`, `Menu`, `FooterContent`, `MediaAsset`, `GoogleSheet` |
 | **events** | Event management, Google Sheets sync, registration | `Event`, `Program`, `Track`, `Presentation`, `TrackWinner`, `SpecialAward`, `EventRegistration` |
-| **notify** | Email/SMS verification, broadcast messaging | `GoogleGmailAccount`, `EmailMessageLayout`, `EmailLayout`, `BroadcastMessage` |
 | **mobileid** | Mobile ID cards, barcodes, transactions | `Barcode`, `MobileID`, `Transaction` |
 
 ### Inter-App Dependencies
 
 ```
 core ◀── authn ◀── pages
-  ▲         ▲         ▲
-  │         │         │
+  ▲         ▲
+  │         │
   ├── events (uses authn for registration)
-  ├── notify (sends emails for authn verification, event registration)
   └── mobileid (uses authn Member model)
 ```
 
 - All apps inherit from `core.models.ProjectControlModel`.
 - `authn.Member` is the `AUTH_USER_MODEL` used project-wide.
-- `notify` provides verification code/link services consumed by other apps.
 
 ### Base Model: ProjectControlModel
 
@@ -88,7 +85,6 @@ All API routes are defined in `src/core/urls.py` and delegated to app-level `url
 | `/pages/` | CMS page endpoints |
 | `/layout/` | Layout data (menus + footer) |
 | `/events/` | Event endpoints |
-| `/notify/` | Notification endpoints |
 | `/mobileid/` | Mobile ID ViewSets |
 | `/membership/` | Legacy event registration routes |
 

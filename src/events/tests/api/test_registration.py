@@ -4,9 +4,7 @@ Tests for event registration API + legacy membership-compatible routes.
 
 from __future__ import annotations
 
-from datetime import timedelta
-from types import SimpleNamespace
-from unittest.mock import patch
+import uuid
 
 from django.test import TestCase
 from django.urls import reverse
@@ -16,7 +14,6 @@ from rest_framework.test import APIClient
 
 from authn.models import Member
 from events.models import Event, EventQuestion, EventRegistration, EventTicketOption
-from notify.models import VerificationRequest
 
 
 class EventRegistrationAPITest(TestCase):
@@ -47,19 +44,20 @@ class EventRegistrationAPITest(TestCase):
         self.request_link_url = reverse("events:event-registration-request-link")
         self.form_url = reverse("events:event-registration-form")
         self.submit_url = reverse("events:event-registration-submit")
-        self.verify_otp_url = reverse("events:event-registration-verify-otp")
         self.status_url = reverse("events:event-registration-status")
 
-    def _create_link_token(self, token: str = "tok-123"):
-        VerificationRequest.objects.create(
-            channel=VerificationRequest.CHANNEL_EMAIL,
-            method=VerificationRequest.METHOD_LINK,
-            target=self.member.email,
-            purpose="event_registration_link",
-            token=token,
-            expires_at=timezone.now() + timedelta(hours=1),
-            max_attempts=5,
+    def _create_registration_token(self, token: str | None = None):
+        token = token or uuid.uuid4().hex
+        registration, _ = EventRegistration.objects.get_or_create(
+            event=self.event,
+            member=self.member,
+            defaults={
+                "source_email": self.member.email,
+                "status": EventRegistration.STATUS_PENDING,
+            },
         )
+        registration.registration_token = token
+        registration.save(update_fields=["registration_token", "updated_at"])
         return token
 
     def test_request_link_returns_not_found_for_unknown_member(self):
@@ -67,18 +65,12 @@ class EventRegistrationAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data["code"], "member_not_found")
 
-    @patch("events.views.registration.issue_link")
-    def test_request_link_sends_and_persists_registration_token(self, mock_issue_link):
-        mock_issue_link.return_value = (
-            SimpleNamespace(token="tok-generated"),
-            "https://example.com/membership/event-registration/spring-demo/tok-generated",
-        )
+    def test_request_link_generates_token(self):
         response = self.client.post(self.request_link_url, {"email": self.member.email}, format="json")
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "sent")
         registration = EventRegistration.objects.get(event=self.event, member=self.member)
-        self.assertEqual(registration.registration_token, "tok-generated")
+        self.assertTrue(len(registration.registration_token) > 0)
 
     def test_membership_events_page_get_and_slug_mismatch(self):
         ready = self.client.get("/membership/events")
@@ -93,26 +85,15 @@ class EventRegistrationAPITest(TestCase):
         mismatch = self.client.get("/membership/events/wrong-slug")
         self.assertEqual(mismatch.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch("events.views.membership.issue_link")
-    def test_membership_events_page_post(self, mock_issue_link):
-        mock_issue_link.return_value = (
-            SimpleNamespace(token="tok-legacy"),
-            "https://example.com/membership/event-registration/spring-demo/tok-legacy",
-        )
+    def test_membership_events_page_post(self):
         response = self.client.post(f"/membership/events/{self.event.slug}", {"email": self.member.email})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertContains(response, "Instructions sent")
         registration = EventRegistration.objects.get(event=self.event, member=self.member)
-        self.assertEqual(registration.registration_token, "tok-legacy")
+        self.assertTrue(len(registration.registration_token) > 0)
 
     def test_form_endpoint_with_token(self):
-        token = self._create_link_token("tok-form")
-        EventRegistration.objects.create(
-            event=self.event,
-            member=self.member,
-            registration_token=token,
-            source_email=self.member.email,
-        )
+        token = self._create_registration_token("tok-form")
 
         response = self.client.get(f"{self.form_url}?token={token}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -121,13 +102,7 @@ class EventRegistrationAPITest(TestCase):
         self.assertEqual(len(response.data["schema"]["questions"]), 1)
 
     def test_membership_event_registration_page_get(self):
-        token = self._create_link_token("tok-legacy-form")
-        EventRegistration.objects.create(
-            event=self.event,
-            member=self.member,
-            registration_token=token,
-            source_email=self.member.email,
-        )
+        token = self._create_registration_token("tok-legacy-form")
         path = f"/membership/event-registration/{self.event.slug}/{token}"
 
         get_response = self.client.get(path)
@@ -135,19 +110,8 @@ class EventRegistrationAPITest(TestCase):
         self.assertContains(get_response, self.event.event_name)
         self.assertContains(get_response, "Submit Registration")
 
-    def test_membership_otp_page_get(self):
-        response = self.client.get("/membership/otp/some-token?event_slug=spring-demo")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertContains(response, "Verify Your Phone Number")
-
     def test_submit_rejects_primary_email_change(self):
-        token = self._create_link_token("tok-primary-lock")
-        EventRegistration.objects.create(
-            event=self.event,
-            member=self.member,
-            registration_token=token,
-            source_email=self.member.email,
-        )
+        token = self._create_registration_token("tok-primary-lock")
         payload = {
             "token": token,
             "primary_email": "another@example.com",

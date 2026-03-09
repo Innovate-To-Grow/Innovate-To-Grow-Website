@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from django.utils import timezone
 
 from authn.models import ContactEmail, Member
-from notify.models import VerificationRequest
-from notify.services import VerificationError, verify_link
 
 from ..models import Event, EventRegistration
 
@@ -50,58 +48,33 @@ class RegistrationTokenContext:
     event: Event
     member: Member
     registration: EventRegistration
-    verification: VerificationRequest
 
 
-def get_registration_from_token(token: str, *, verify_token: bool = True) -> RegistrationTokenContext:
+def get_registration_from_token(token: str) -> RegistrationTokenContext:
     normalized_token = token.strip()
     if not normalized_token:
         raise EventRegistrationFlowError("invalid_token", "Token is required.")
 
-    verification = (
-        VerificationRequest.objects.filter(
-            token=normalized_token,
-            method=VerificationRequest.METHOD_LINK,
-            purpose="event_registration_link",
-        )
+    registration = (
+        EventRegistration.objects.filter(registration_token=normalized_token)
         .order_by("-created_at")
         .first()
     )
-    if not verification:
+    if not registration:
         raise EventRegistrationFlowError("invalid_token", "Invalid registration token.")
 
-    if verify_token:
-        try:
-            verify_link(token=normalized_token, purpose="event_registration_link")
-        except VerificationError as exc:
-            raise EventRegistrationFlowError("invalid_token", str(exc)) from exc
-
     event = get_live_event()
-    member = resolve_member_by_email(verification.target)
+    member = registration.member
     if not member:
         raise EventRegistrationFlowError(
             "member_not_found",
-            "No member account is associated with this email. Complete membership registration first.",
+            "No member account is associated with this registration.",
         )
-
-    registration, _ = EventRegistration.objects.get_or_create(
-        event=event,
-        member=member,
-        defaults={
-            "source_email": verification.target.lower(),
-            "status": EventRegistration.STATUS_PENDING,
-        },
-    )
-    if registration.registration_token != normalized_token:
-        registration.registration_token = normalized_token
-        registration.source_email = verification.target.lower()
-        registration.save(update_fields=["registration_token", "source_email", "updated_at"])
 
     return RegistrationTokenContext(
         event=event,
         member=member,
         registration=registration,
-        verification=verification,
     )
 
 

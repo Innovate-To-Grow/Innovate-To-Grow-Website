@@ -73,33 +73,16 @@ Register a new member account. Passwords must be RSA-encrypted.
 }
 ```
 
-**Response** `201`: Registration successful, verification email sent.
-
-### `POST /authn/verify-email/`
-
-Verify email address using the token from the verification email.
-
-- **Auth**: None
-
-**Request body**:
+**Response** `201`: Registration successful, returns JWT tokens directly (user is active immediately).
 ```json
 {
-  "token": "verification-token-string"
-}
-```
-
-**Response** `200`: Email verified, returns user data and JWT tokens.
-
-### `POST /authn/resend-verification/`
-
-Resend the email verification link.
-
-- **Auth**: None
-
-**Request body**:
-```json
-{
-  "email": "user@example.com"
+  "access": "jwt-access-token",
+  "refresh": "jwt-refresh-token",
+  "user": {
+    "member_uuid": "uuid",
+    "email": "user@example.com",
+    "display_name": "Name"
+  }
 }
 ```
 
@@ -348,66 +331,11 @@ Submit an event registration.
 
 - **Auth**: Token-based (via registration link)
 
-### `POST /events/registration/verify-otp/`
-
-Verify an OTP code for event registration.
-
-- **Auth**: None
-
 ### `GET /events/registration/status/`
 
 Check registration status for a given token.
 
 - **Auth**: Token-based
-
----
-
-## Notify — Notifications (`/notify/`)
-
-### `POST /notify/request-code/`
-
-Request a verification code sent via email or SMS.
-
-- **Auth**: None
-
-**Request body**:
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-### `POST /notify/request-link/`
-
-Request a verification link sent via email.
-
-- **Auth**: None
-
-### `POST /notify/verify-code/`
-
-Verify a received code.
-
-- **Auth**: None
-
-**Request body**:
-```json
-{
-  "email": "user@example.com",
-  "code": "123456"
-}
-```
-
-### `GET /notify/verify-link/<token>/`
-
-Verify a link token (clicked from email).
-
-- **Auth**: None (token in URL)
-
-### `POST /notify/send/`
-
-Send a notification (email or SMS). Used internally by other services.
-
-- **Auth**: Staff or internal
 
 ---
 
@@ -459,8 +387,6 @@ These routes provide backward-compatible event registration pages:
 | `GET` | `/membership/events` | Events listing page |
 | `GET` | `/membership/events/<slug>` | Event detail page |
 | `GET` | `/membership/event-registration/<slug>/<token>` | Registration form page |
-| `GET` | `/membership/otp` | OTP entry page |
-| `GET` | `/membership/otp/<token>` | OTP entry with pre-filled token |
 | `GET` | `/membership/event-registration/status/<slug>/<token>` | Registration status check |
 
 ---

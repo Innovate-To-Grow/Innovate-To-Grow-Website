@@ -7,14 +7,13 @@ membership pages while using the new DB-primary registration APIs.
 
 from __future__ import annotations
 
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.http import Http404
 from django.shortcuts import render
 from django.views import View
-
-from notify.models import VerificationRequest
-from notify.services import RateLimitError, issue_link
 
 from ..models import EventRegistration
 from ..services.registration import (
@@ -88,30 +87,13 @@ class MembershipEventsPageView(View):
             defaults={"source_email": email, "status": EventRegistration.STATUS_PENDING},
         )
 
-        try:
-            base_url = request.build_absolute_uri(f"/membership/event-registration/{event.slug}")
-            verification, link = issue_link(
-                channel=VerificationRequest.CHANNEL_EMAIL,
-                target=email,
-                purpose="event_registration_link",
-                expires_in_minutes=60,
-                max_attempts=5,
-                rate_limit_per_hour=5,
-                base_url=base_url,
-                context={
-                    "recipient_name": member.get_full_name() or member.username,
-                    "event_name": event.event_name,
-                },
-            )
-        except RateLimitError as exc:
-            context["error_message"] = str(exc)
-            return render(request, self.template_name, context, status=429)
-
-        registration.registration_token = verification.token
+        token = uuid.uuid4().hex
+        registration.registration_token = token
         registration.source_email = email
         registration.status = EventRegistration.STATUS_PENDING
         registration.save(update_fields=["registration_token", "source_email", "status", "updated_at"])
 
+        link = request.build_absolute_uri(f"/membership/event-registration/{event.slug}/{token}")
         context["success_message"] = "Instructions sent. Please check your inbox for the event registration link."
         context["debug_registration_link"] = link
         return render(request, self.template_name, context, status=200)
@@ -126,7 +108,7 @@ class MembershipEventRegistrationPageView(View):
 
     def get(self, request, event_slug: str, token: str):
         try:
-            context = get_registration_from_token(token, verify_token=True)
+            context = get_registration_from_token(token)
         except EventRegistrationFlowError as exc:
             return render(
                 request,
@@ -212,27 +194,6 @@ class MembershipEventRegistrationPageView(View):
                 "event": event,
                 "event_slug": event_slug,
                 "token": token,
-            },
-            status=200,
-        )
-
-
-class MembershipOTPPageView(View):
-    """
-    Legacy-style OTP page.
-    """
-
-    template_name = "events/membership/otp.html"
-
-    def get(self, request, token: str | None = None):
-        effective_token = (token or request.GET.get("token") or "").strip()
-        event_slug = (request.GET.get("event_slug") or "").strip()
-        return render(
-            request,
-            self.template_name,
-            {
-                "token": effective_token,
-                "event_slug": event_slug,
             },
             status=200,
         )

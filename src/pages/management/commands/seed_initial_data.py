@@ -2,9 +2,7 @@
 Seed initial data for the I2G website.
 
 Creates:
-- Main navigation menu with legacy page links
-- Active home page from the legacy/home page content
-- Publishes pages referenced by the menu
+- Main navigation menu with app routes and external links
 - Loads footer fixture if no active footer exists
 
 Idempotent: safe to run multiple times.
@@ -13,28 +11,29 @@ Idempotent: safe to run multiple times.
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
-from pages.models import FooterContent, HomePage, Menu, Page
+from pages.models import FooterContent, Menu
 
-# Menu items matching the old Flask site navigation structure
+# Menu items matching the site navigation structure
 MAIN_NAV_ITEMS = [
     {
-        "type": "home",
+        "type": "app",
         "title": "Home",
+        "url": "/",
         "icon": "",
         "open_in_new_tab": False,
         "children": [],
     },
     {
-        "type": "page",
+        "type": "app",
         "title": "About",
-        "page_slug": "legacy/about",
+        "url": "/about",
         "icon": "",
         "open_in_new_tab": False,
         "children": [
             {
-                "type": "page",
+                "type": "app",
                 "title": "Engineering Capstone",
-                "page_slug": "legacy/engineering-capstone",
+                "url": "/engineering-capstone",
                 "icon": "",
                 "open_in_new_tab": False,
                 "children": [],
@@ -48,9 +47,9 @@ MAIN_NAV_ITEMS = [
                 "children": [],
             },
             {
-                "type": "page",
+                "type": "app",
                 "title": "Software Eng. Capstone",
-                "page_slug": "legacy/software-capstone",
+                "url": "/software-capstone",
                 "icon": "",
                 "open_in_new_tab": False,
                 "children": [],
@@ -58,67 +57,53 @@ MAIN_NAV_ITEMS = [
         ],
     },
     {
-        "type": "page",
+        "type": "app",
         "title": "Event",
-        "page_slug": "legacy/event",
+        "url": "/event",
         "icon": "",
         "open_in_new_tab": False,
         "children": [],
     },
     {
-        "type": "page",
+        "type": "app",
         "title": "Projects",
-        "page_slug": "legacy/projects",
+        "url": "/projects",
         "icon": "",
         "open_in_new_tab": False,
         "children": [],
     },
     {
-        "type": "page",
+        "type": "app",
         "title": "Partnership",
-        "page_slug": "legacy/partnership",
+        "url": "/partnership",
         "icon": "",
         "open_in_new_tab": False,
         "children": [],
     },
     {
-        "type": "page",
+        "type": "app",
         "title": "Students",
-        "page_slug": "legacy/students",
+        "url": "/students",
         "icon": "",
         "open_in_new_tab": False,
         "children": [],
     },
     {
-        "type": "page",
+        "type": "app",
         "title": "Contact Us",
-        "page_slug": "legacy/contact-us",
+        "url": "/contact-us",
         "icon": "",
         "open_in_new_tab": False,
         "children": [],
     },
-]
-
-# Slugs of pages that must be published for menu links to resolve
-MENU_PAGE_SLUGS = [
-    "legacy/about",
-    "legacy/engineering-capstone",
-    "legacy/software-capstone",
-    "legacy/event",
-    "legacy/projects",
-    "legacy/partnership",
-    "legacy/students",
-    "legacy/contact-us",
 ]
 
 
 class Command(BaseCommand):
-    help = "Seed initial menu, home page, and footer data for the I2G website."
+    help = "Seed initial menu and footer data for the I2G website."
 
     def handle(self, *args, **options):
         self._seed_menu()
-        self._publish_menu_pages()
-        self._seed_homepage()
         self._seed_footer()
         self.stdout.write(self.style.SUCCESS("\nDone."))
 
@@ -136,48 +121,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Created menu: main-nav"))
         else:
             self.stdout.write("Menu 'main-nav' already exists, skipping.")
-
-    def _publish_menu_pages(self):
-        """Publish legacy pages referenced by the menu so titles/URLs resolve."""
-        published_count = 0
-        for slug in MENU_PAGE_SLUGS:
-            try:
-                page = Page.objects.get(slug=slug)
-                if page.status != "published":
-                    page.status = "published"
-                    page.save()
-                    published_count += 1
-                    self.stdout.write(f"  Published: {slug}")
-                else:
-                    self.stdout.write(f"  Already published: {slug}")
-            except Page.DoesNotExist:
-                self.stdout.write(self.style.WARNING(f"  Page not found: {slug}"))
-        self.stdout.write(self.style.SUCCESS(f"Published {published_count} page(s) for menu."))
-
-    def _seed_homepage(self):
-        """Create an active home page with default content."""
-        home_page = HomePage.objects.filter(name="Legacy Home").first()
-        if home_page:
-            if home_page.html:
-                self.stdout.write("HomePage 'Legacy Home' already exists with content, skipping.")
-                return
-            self.stdout.write("HomePage 'Legacy Home' exists but has no content, updating...")
-            home_page.html = "<h1>Welcome to Innovate To Grow</h1>"
-            home_page.css = ""
-            home_page.save(update_fields=["html", "css", "updated_at"])
-        else:
-            # Create the HomePage — must set status=published BEFORE is_active=True
-            home_page = HomePage(
-                name="Legacy Home",
-                status="published",
-                is_active=True,
-                html="<h1>Welcome to Innovate To Grow</h1>",
-                css="",
-            )
-            home_page.save()
-            self.stdout.write("Created HomePage 'Legacy Home' (active, published).")
-
-        self.stdout.write(self.style.SUCCESS("HomePage 'Legacy Home' ready."))
 
     def _seed_footer(self):
         """Load footer fixture if no active footer exists."""

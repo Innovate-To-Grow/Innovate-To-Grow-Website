@@ -52,10 +52,10 @@ INSTALLED_APPS = [
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
     "mobileid.apps.MobileIDConfig",
-    "notify.apps.NotifyConfig",
     "events.apps.EventsConfig",
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
+    "mail.apps.MailConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -186,7 +186,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/minute", "login": "10/minute", "verify": "10/minute"},
+    "DEFAULT_THROTTLE_RATES": {"anon": "60/minute", "login": "10/minute"},
 }
 
 # Simple JWT Configuration
@@ -261,15 +261,6 @@ UNFOLD = {
         "show_search": True,
         "navigation": [
             {
-                "title": "Content Management",
-                "items": [
-                    {"title": "Pages", "link": "/admin/pages/page/"},
-                    {"title": "Home Pages", "link": "/admin/pages/homepage/"},
-                    {"title": "Google Sheets", "link": "/admin/pages/googlesheet/"},
-                    {"title": "Media", "link": "/admin/pages/mediaasset/"},
-                ],
-            },
-            {
                 "title": "Layout",
                 "items": [
                     {"title": "Menus", "link": "/admin/pages/menu/"},
@@ -318,12 +309,13 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Email & Notifications",
+                "title": "Mail",
                 "items": [
-                    {"title": "Gmail Accounts", "link": "/admin/notify/googlegmailaccount/"},
-                    {"title": "Email Templates", "link": "/admin/notify/emailmessagelayout/"},
-                    {"title": "Email Layouts", "link": "/admin/notify/emaillayout/"},
-                    {"title": "Broadcasts", "link": "/admin/notify/broadcastmessage/"},
+                    {"title": "Gmail API Accounts", "link": "/admin/mail/googleaccount/"},
+                    {"title": "Inbox", "link": "/admin/mail/googleaccount/inbox/"},
+                    {"title": "Sent Mail", "link": "/admin/mail/googleaccount/sent/"},
+                    {"title": "Compose", "link": "/admin/mail/googleaccount/compose/"},
+                    {"title": "Email Logs", "link": "/admin/mail/emaillog/"},
                 ],
             },
         ],
