@@ -36,6 +36,8 @@ admin.site.index_title = "Welcome to I2G Admin"
 admin.site.login_form = EmailAdminAuthenticationForm
 
 urlpatterns = [
+    # legacy Flask route redirects (must come before the pages/ include)
+    path("", include("pages.legacy_urls")),
     # admin preview popup for live editing
     path("admin/preview-popup/", PreviewPopupView.as_view(), name="admin-preview-popup"),
     # component preview popup for live editing
