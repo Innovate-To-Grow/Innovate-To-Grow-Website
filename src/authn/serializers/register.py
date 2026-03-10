@@ -8,7 +8,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from authn.services import RSADecryptionError, decrypt_password, is_encrypted_password
+from authn.models.security import EmailAuthChallenge
+from authn.services import (
+    RSADecryptionError,
+    decrypt_password,
+    is_encrypted_password,
+    issue_email_challenge,
+    normalize_email,
+    registration_email_conflicts,
+)
 
 Member = get_user_model()
 
@@ -74,9 +82,11 @@ class RegisterSerializer(serializers.Serializer):
         """
         Check that the email is not already registered.
         """
-        email_lower = value.lower()
-        if Member.objects.filter(email__iexact=email_lower).exists():
+        email_lower = normalize_email(value)
+        pending_member = Member.objects.filter(email__iexact=email_lower, is_active=False).first()
+        if registration_email_conflicts(email_lower, exclude_member_id=pending_member.pk if pending_member else None):
             raise serializers.ValidationError("A user with this email already exists.")
+        self._pending_member = pending_member
         return email_lower
 
     def validate(self, attrs: dict) -> dict:
@@ -120,34 +130,47 @@ class RegisterSerializer(serializers.Serializer):
     def create(self, validated_data: dict) -> Member:
         """
         Create a new user with the validated data.
-        User is created as inactive until email is verified.
+        User is created or updated as inactive until email is verified.
         """
         email = validated_data["email"]
         password = validated_data["_decrypted_password"]
-
-        # Use email as username (or generate a unique one)
-        username = email.split("@")[0]
-        base_username = username
-        counter = 1
-        while Member.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
 
         first_name = validated_data.get("first_name", "")
         last_name = validated_data.get("last_name", "")
         organization = validated_data.get("organization", "")
 
-        member = Member.objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            is_active=True,
-        )
+        member = getattr(self, "_pending_member", None)
+        if member is None:
+            username = email.split("@")[0]
+            base_username = username
+            counter = 1
+            while Member.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
 
-        if organization:
-            member.organization = organization
-            member.save(update_fields=["organization"])
+            member = Member.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                is_active=False,
+            )
+        else:
+            member.email = email
+            member.first_name = first_name
+            member.last_name = last_name
+            member.is_active = False
+            member.set_password(password)
+
+        member.organization = organization or ""
+        update_fields = ["email", "first_name", "last_name", "organization", "is_active", "password", "updated_at"]
+        member.save(update_fields=update_fields)
+
+        issue_email_challenge(
+            member=member,
+            purpose=EmailAuthChallenge.Purpose.REGISTER,
+            target_email=email,
+        )
 
         return member

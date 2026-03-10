@@ -5,7 +5,12 @@ Login serializer for user authentication.
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
-from authn.services import RSADecryptionError, decrypt_password, is_encrypted_password
+from authn.services import (
+    RSADecryptionError,
+    decrypt_password,
+    is_encrypted_password,
+    resolve_auth_email,
+)
 
 Member = get_user_model()
 
@@ -50,10 +55,10 @@ class LoginSerializer(serializers.Serializer):
             password = encrypted_password
 
         # Find user by email
-        try:
-            member = Member.objects.get(email__iexact=email)
-        except Member.DoesNotExist:
+        resolved = resolve_auth_email(email, require_active=False)
+        if resolved is None:
             raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
+        member = resolved.member
 
         # Check if account is active
         if not member.is_active:

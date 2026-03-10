@@ -16,7 +16,7 @@ export const RegisterPage = () => {
         <div className="auth-page-header">
           <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
           <h1 className="auth-page-title">Create Account</h1>
-          <p className="auth-page-subtitle">Join the Innovate to Grow community</p>
+          <p className="auth-page-subtitle">Join the Innovate to Grow community and verify your email</p>
         </div>
         <RegisterForm />
       </div>

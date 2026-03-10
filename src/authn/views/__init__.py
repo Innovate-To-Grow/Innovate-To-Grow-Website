@@ -3,15 +3,41 @@ Authn views export.
 """
 
 from .account.change_password import ChangePasswordView
+from .account.email_code import (
+    AccountEmailsView,
+    ChangePasswordCodeConfirmView,
+    ChangePasswordCodeRequestView,
+    ChangePasswordCodeVerifyView,
+)
 from .account.profile import ProfileView
+from .auth.email_code import (
+    LoginCodeRequestView,
+    LoginCodeVerifyView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+    PasswordResetVerifyView,
+    RegisterResendCodeView,
+    RegisterVerifyCodeView,
+)
 from .auth.login import LoginView
 from .auth.register import RegisterView
 from .verification.public_key import PublicKeyView
 
 __all__ = [
     "RegisterView",
+    "RegisterVerifyCodeView",
+    "RegisterResendCodeView",
     "LoginView",
+    "LoginCodeRequestView",
+    "LoginCodeVerifyView",
     "ProfileView",
+    "AccountEmailsView",
     "ChangePasswordView",
+    "ChangePasswordCodeRequestView",
+    "ChangePasswordCodeVerifyView",
+    "ChangePasswordCodeConfirmView",
+    "PasswordResetRequestView",
+    "PasswordResetVerifyView",
+    "PasswordResetConfirmView",
     "PublicKeyView",
 ]

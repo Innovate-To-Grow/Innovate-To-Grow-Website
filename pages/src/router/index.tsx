@@ -5,6 +5,8 @@ import {
   LoginPage,
   RegisterPage,
   AccountPage,
+  ForgotPasswordPage,
+  VerifyEmailPage,
 } from '../components/Auth';
 import { NewsPage } from '../pages/NewsPage';
 import { NewsDetailPage } from '../pages/NewsDetailPage';
@@ -30,6 +32,8 @@ export const router = createBrowserRouter([
       // Auth pages
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'verify-email', element: <VerifyEmailPage /> },
       // Account management
       { path: 'account', element: <AccountPage /> },
     ],

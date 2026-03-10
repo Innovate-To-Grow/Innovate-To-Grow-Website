@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import {
   getProfile,
+  getAccountEmails,
   updateProfileFields,
   changePassword,
   uploadProfileImage,
@@ -11,7 +12,7 @@ import {
 import '../Auth.css';
 
 export const AccountPage = () => {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, user, requestPasswordChangeCode } = useAuth();
   const navigate = useNavigate();
 
   // Profile state
@@ -42,6 +43,11 @@ export const AccountPage = () => {
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordLocalErrors, setPasswordLocalErrors] = useState<Record<string, string>>({});
+  const [authEmails, setAuthEmails] = useState<string[]>([]);
+  const [codePasswordEmail, setCodePasswordEmail] = useState('');
+  const [codePasswordLoading, setCodePasswordLoading] = useState(false);
+  const [codePasswordMessage, setCodePasswordMessage] = useState<string | null>(null);
+  const [codePasswordError, setCodePasswordError] = useState<string | null>(null);
 
   // Auth guard
   useEffect(() => {
@@ -80,6 +86,28 @@ export const AccountPage = () => {
 
     fetchProfile();
   }, [isAuthenticated, user?.display_name]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchAccountEmails = async () => {
+      try {
+        const data = await getAccountEmails();
+        setAuthEmails(data.emails);
+        if (data.emails.length > 0) {
+          setCodePasswordEmail((current) => current || data.emails[0]);
+        }
+      } catch (err: unknown) {
+        console.error('[AccountPage] Account email fetch failed:', err);
+        if (user?.email) {
+          setAuthEmails([user.email]);
+          setCodePasswordEmail((current) => current || user.email);
+        }
+      }
+    };
+
+    fetchAccountEmails();
+  }, [isAuthenticated, user?.email]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -175,11 +203,29 @@ export const AccountPage = () => {
     }
   };
 
+  const handleCodePasswordRequest = async () => {
+    if (!codePasswordEmail) return;
+    setCodePasswordLoading(true);
+    setCodePasswordMessage(null);
+    setCodePasswordError(null);
+
+    try {
+      const response = await requestPasswordChangeCode(codePasswordEmail);
+      setCodePasswordMessage(response.message);
+      navigate(`/verify-email?flow=change&email=${encodeURIComponent(codePasswordEmail)}`);
+    } catch (err: unknown) {
+      setCodePasswordError(getErrorMessage(err));
+    } finally {
+      setCodePasswordLoading(false);
+    }
+  };
+
   if (!isAuthenticated) return null;
 
   // Use profile data if available, otherwise fall back to user context
   const displayEmail = profile?.email || user?.email;
   const displayUsername = profile?.username || user?.username;
+  const availableAuthEmails = authEmails.length > 0 ? authEmails : (displayEmail ? [displayEmail] : []);
 
   if (profileLoading) {
     return (
@@ -528,6 +574,67 @@ export const AccountPage = () => {
                 </form>
               </>
             )}
+
+            <div className="account-divider" />
+
+            <div className="account-code-password">
+              <h3 className="account-subsection-title">Change Password via Email Code</h3>
+              <p className="auth-help-text">
+                Send a 6-digit code to your primary email or any verified contact email linked to this account.
+              </p>
+
+              {codePasswordMessage && (
+                <div className="auth-alert info">
+                  <i className="fa fa-info-circle auth-alert-icon" />
+                  <span>{codePasswordMessage}</span>
+                </div>
+              )}
+
+              {codePasswordError && (
+                <div className="auth-alert error">
+                  <i className="fa fa-exclamation-circle auth-alert-icon" />
+                  <span>{codePasswordError}</span>
+                </div>
+              )}
+
+              <div className="auth-form-group">
+                <label className="auth-form-label" htmlFor="code-password-email">
+                  Send Code To
+                </label>
+                <select
+                  id="code-password-email"
+                  className="auth-form-input auth-form-select"
+                  value={codePasswordEmail}
+                  onChange={(event) => {
+                    setCodePasswordEmail(event.target.value);
+                    setCodePasswordError(null);
+                  }}
+                  disabled={codePasswordLoading || availableAuthEmails.length === 0}
+                >
+                  {availableAuthEmails.map((email) => (
+                    <option key={email} value={email}>
+                      {email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="auth-form-submit"
+                disabled={codePasswordLoading || !codePasswordEmail}
+                onClick={handleCodePasswordRequest}
+              >
+                {codePasswordLoading ? (
+                  <>
+                    <span className="auth-spinner" />
+                    Sending code...
+                  </>
+                ) : (
+                  'Send Verification Code'
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Sign Out */}
