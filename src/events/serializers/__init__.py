@@ -15,7 +15,6 @@ from .registration import (
     EventRegistrationAnswerInputSerializer,
     EventRegistrationRequestLinkSerializer,
     EventRegistrationSubmitSerializer,
-    EventRegistrationVerifyOTPSerializer,
 )
 from .sync import (
     BasicInfoSerializer,
@@ -41,7 +40,6 @@ __all__ = [
     "EventSheetExportSerializer",
     "EventRegistrationRequestLinkSerializer",
     "EventRegistrationSubmitSerializer",
-    "EventRegistrationVerifyOTPSerializer",
     "EventRegistrationAnswerInputSerializer",
     # Sync serializers
     "PresentationSyncSerializer",

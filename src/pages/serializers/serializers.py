@@ -2,58 +2,8 @@ from rest_framework import serializers
 
 from ..models import (
     FooterContent,
-    HomePage,
     Menu,
-    MenuPageLink,
-    Page,
 )
-
-
-class PageSerializer(serializers.ModelSerializer):
-    published = serializers.BooleanField(read_only=True)  # computed from status
-
-    class Meta:
-        model = Page
-        fields = [
-            "id",
-            "title",
-            "slug",
-            "html",
-            "css",
-            "dynamic_config",
-            "meta_title",
-            "meta_description",
-            "meta_keywords",
-            "og_image",
-            "canonical_url",
-            "meta_robots",
-            "template_name",
-            "status",
-            "published",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "slug", "created_at", "updated_at", "published"]
-
-
-class HomePageSerializer(serializers.ModelSerializer):
-    published = serializers.BooleanField(read_only=True)  # computed from status
-
-    class Meta:
-        model = HomePage
-        fields = [
-            "id",
-            "name",
-            "is_active",
-            "html",
-            "css",
-            "dynamic_config",
-            "status",
-            "published",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "created_at", "updated_at", "published"]
 
 
 class MenuSerializer(serializers.ModelSerializer):
@@ -67,66 +17,34 @@ class MenuSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_items(self, obj):
-        """Process menu items with dynamic data injection."""
+        """Process menu items."""
         raw_items = obj.items or []
-        slugs = self._collect_slugs(raw_items)
-        page_titles = {}
-        if slugs:
-            page_titles = dict(Page.objects.filter(slug__in=slugs).values_list("slug", "title"))
-        return self._process_items(raw_items, page_titles)
+        return self._process_items(raw_items)
 
-    @staticmethod
-    def _collect_slugs(items):
-        """Recursively collect page slugs that need title lookups."""
-        slugs = set()
-        for item in items:
-            if item.get("type") == "page" and not item.get("title") and item.get("page_slug"):
-                slugs.add(item["page_slug"])
-            for child in item.get("children", []):
-                slugs |= MenuSerializer._collect_slugs([child])
-        return slugs
-
-    def _process_items(self, items, page_titles=None):
+    def _process_items(self, items):
         """Recursively process menu items."""
         processed = []
         for item in items:
             processed_item = {
-                "type": item.get("type", "page"),
+                "type": item.get("type", "app"),
                 "title": item.get("title", ""),
                 "icon": item.get("icon", ""),
                 "open_in_new_tab": item.get("open_in_new_tab", False),
             }
 
-            if item.get("type") == "home":
-                home_page = HomePage.get_active()
-                processed_item["url"] = "/"
-                processed_item["page_type"] = "home"
-                if home_page:
-                    processed_item["home_active"] = True
-                    processed_item["home_name"] = home_page.name
-                else:
-                    processed_item["home_active"] = False
-
-            elif item.get("type") == "page":
-                page_slug = item.get("page_slug", "")
-                processed_item["page_slug"] = page_slug
-                processed_item["url"] = f"/pages/{page_slug}" if page_slug else "#"
-                processed_item["page_type"] = "page"
-
-                if not processed_item["title"] and page_slug:
-                    processed_item["title"] = (page_titles or {}).get(page_slug, "")
-
-            elif item.get("type") == "external":
+            if item.get("type") == "external":
                 processed_item["url"] = item.get("url", "#")
-                processed_item["page_type"] = "external"
 
             elif item.get("type") == "app":
                 processed_item["url"] = item.get("url", "#")
-                processed_item["page_type"] = "app"
+
+            else:
+                # Fallback for any unrecognized type
+                processed_item["url"] = item.get("url", "#")
 
             children = item.get("children", [])
             if children:
-                processed_item["children"] = self._process_items(children, page_titles)
+                processed_item["children"] = self._process_items(children)
             else:
                 processed_item["children"] = []
 
@@ -150,23 +68,3 @@ class FooterContentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "slug", "created_at", "updated_at"]
-
-
-class MenuPageLinkSerializer(serializers.ModelSerializer):
-    """Serializer for the legacy Menu-Page link objects."""
-
-    class Meta:
-        model = MenuPageLink
-        fields = [
-            "id",
-            "menu",
-            "page",
-            "order",
-            "custom_title",
-            "css_classes",
-            "icon",
-            "open_in_new_tab",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "created_at", "updated_at"]

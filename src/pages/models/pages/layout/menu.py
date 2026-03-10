@@ -2,16 +2,14 @@
 Menu model for organizing navigation items.
 
 A Menu contains a JSON structure of navigation items that can be:
-- Home: Link to the home page
-- Page: Link to an internal Page
+- App: Link to an internal app route (e.g. /, /event, /news)
 - External: External URL
-- App: Link to an internal app route (e.g. /event, /news)
 - Items can have children (submenus)
 """
 
 from django.db import models
 
-from core.models import OrderedModel, ProjectControlModel
+from core.models import ProjectControlModel
 
 
 def default_menu_items():
@@ -19,15 +17,14 @@ def default_menu_items():
     Default menu items structure.
 
     Each item has:
-    - type: 'home' | 'page' | 'external' | 'app'
+    - type: 'external' | 'app'
     - title: Display title
-    - url: For external links
-    - page_slug: For page links
+    - url: URL for the link
     - icon: Optional icon class
     - open_in_new_tab: Boolean
     - children: Nested items (for submenus)
     """
-    return [{"type": "home", "title": "Home", "icon": "", "open_in_new_tab": False, "children": []}]
+    return [{"type": "app", "title": "Home", "url": "/", "icon": "fa-home", "open_in_new_tab": False, "children": []}]
 
 
 class Menu(ProjectControlModel):
@@ -48,32 +45,10 @@ class Menu(ProjectControlModel):
 
     items = models.JSONField(
         default=default_menu_items,
-        help_text="JSON array of menu items. Each item can be home, page, external link, or app route.",
-    )
-
-    # ------------------------------ Legacy Fields (kept for backward compatibility) ------
-
-    pages = models.ManyToManyField(
-        "pages.Page",
-        through="MenuPageLink",
-        related_name="menus",
-        blank=True,
-        help_text="Legacy: Pages included in this menu.",
+        help_text="JSON array of menu items. Each item can be an external link or app route.",
     )
 
     # ------------------------------ Methods ------------------------------
-
-    def get_pages(self):
-        """
-        Return all pages in order (legacy method).
-        """
-        return self.pages.order_by("menupagelink__order")
-
-    def get_page_links(self):
-        """
-        Return all MenuPageLink objects for this menu in order (legacy method).
-        """
-        return self.menupagelink_set.select_related("page").order_by("order")
 
     def __str__(self) -> str:
         return self.display_name
@@ -83,51 +58,3 @@ class Menu(ProjectControlModel):
         ordering = ["name"]
         verbose_name = "Menu"
         verbose_name_plural = "Menus"
-
-
-class MenuPageLink(ProjectControlModel, OrderedModel):
-    """
-    Through model for Menu-Page relationship.
-
-    Stores the order and additional display options for each page in a menu.
-    """
-
-    menu = models.ForeignKey(Menu, on_delete=models.CASCADE, help_text="The menu this link belongs to.")
-    page = models.ForeignKey("pages.Page", on_delete=models.CASCADE, help_text="The page being linked.")
-
-    # ------------------------------ Display Options ------------------------------
-
-    custom_title = models.CharField(
-        max_length=200, blank=True, null=True, help_text="Override the page title for this menu (optional)."
-    )
-    css_classes = models.CharField(
-        max_length=255, blank=True, null=True, help_text="Additional CSS classes for styling."
-    )
-    icon = models.CharField(
-        max_length=100, blank=True, null=True, help_text="Icon class name (e.g. 'fa-home' for FontAwesome)."
-    )
-    open_in_new_tab = models.BooleanField(default=False, help_text="Whether to open the link in a new browser tab.")
-
-    # ------------------------------ Methods ------------------------------
-
-    @property
-    def display_title(self) -> str:
-        """Return custom_title if set, otherwise page title."""
-        return self.custom_title or self.page.title
-
-    def get_url(self) -> str:
-        """Return the URL for this menu link."""
-        return self.page.get_absolute_url()
-
-    def __str__(self) -> str:
-        return f"[{self.menu.name}] {self.display_title}"
-
-    class Meta:
-        db_table = "pages_menupagelink"
-        ordering = ["menu", "order"]
-        verbose_name = "Menu Page Link"
-        verbose_name_plural = "Menu Page Links"
-        unique_together = [["menu", "page"]]
-        indexes = [
-            models.Index(fields=["menu", "order"], name="pages_menu_menu_id_c18fe0_idx"),
-        ]

@@ -1,11 +1,10 @@
 """
-Tests for event registration submit, OTP verification, and status endpoints.
+Tests for event registration submit and status endpoints.
 """
 
 from __future__ import annotations
 
-from datetime import timedelta
-from unittest.mock import patch
+import uuid
 
 from django.test import TestCase
 from django.urls import reverse
@@ -15,8 +14,6 @@ from rest_framework.test import APIClient
 
 from authn.models import Member
 from events.models import Event, EventQuestion, EventRegistration, EventTicketOption
-from notify.models import VerificationRequest
-from notify.services import VerificationError
 
 
 class EventRegistrationVerifyTest(TestCase):
@@ -45,30 +42,24 @@ class EventRegistrationVerifyTest(TestCase):
             is_active=True,
         )
         self.submit_url = reverse("events:event-registration-submit")
-        self.verify_otp_url = reverse("events:event-registration-verify-otp")
         self.status_url = reverse("events:event-registration-status")
 
-    def _create_link_token(self, token: str = "tok-123"):
-        VerificationRequest.objects.create(
-            channel=VerificationRequest.CHANNEL_EMAIL,
-            method=VerificationRequest.METHOD_LINK,
-            target=self.member.email,
-            purpose="event_registration_link",
-            token=token,
-            expires_at=timezone.now() + timedelta(hours=1),
-            max_attempts=5,
-        )
-        return token
-
-    @patch("events.views.registration.issue_code")
-    def test_submit_with_phone_subscribe_requests_otp(self, mock_issue_code):
-        token = self._create_link_token("tok-otp")
-        EventRegistration.objects.create(
+    def _create_registration_token(self, token: str | None = None):
+        token = token or uuid.uuid4().hex
+        registration, _ = EventRegistration.objects.get_or_create(
             event=self.event,
             member=self.member,
-            registration_token=token,
-            source_email=self.member.email,
+            defaults={
+                "source_email": self.member.email,
+                "status": EventRegistration.STATUS_PENDING,
+            },
         )
+        registration.registration_token = token
+        registration.save(update_fields=["registration_token", "updated_at"])
+        return token
+
+    def test_submit_completes_registration(self):
+        token = self._create_registration_token("tok-submit")
         payload = {
             "token": token,
             "phone_number": "2095551234",
@@ -77,50 +68,19 @@ class EventRegistrationVerifyTest(TestCase):
         }
         response = self.client.post(self.submit_url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data["otp_required"])
+        self.assertFalse(response.data["otp_required"])
 
         registration = EventRegistration.objects.get(event=self.event, member=self.member)
-        self.assertEqual(registration.status, EventRegistration.STATUS_OTP_PENDING)
-        self.assertTrue(registration.otp_target_phone.startswith("+1"))
-        mock_issue_code.assert_called_once()
-
-    def test_verify_otp_failure_and_success(self):
-        token = self._create_link_token("tok-verify")
-        registration = EventRegistration.objects.create(
-            event=self.event,
-            member=self.member,
-            registration_token=token,
-            source_email=self.member.email,
-            status=EventRegistration.STATUS_OTP_PENDING,
-            otp_target_phone="+12095551234",
-            phone_subscribed=True,
-        )
-
-        with patch("events.views.registration.verify_code", side_effect=VerificationError("bad code")):
-            failed = self.client.post(self.verify_otp_url, {"token": token, "code": "000000"}, format="json")
-        self.assertEqual(failed.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(failed.data["code"], "invalid_otp")
-
-        with patch("events.views.registration.verify_code", return_value=True):
-            success = self.client.post(self.verify_otp_url, {"token": token, "code": "123456"}, format="json")
-        self.assertEqual(success.status_code, status.HTTP_200_OK)
-        self.assertTrue(success.data["phone_verified"])
-
-        registration.refresh_from_db()
         self.assertEqual(registration.status, EventRegistration.STATUS_COMPLETED)
-        self.assertTrue(registration.phone_verified)
+        self.assertTrue(registration.otp_target_phone.startswith("+1"))
 
     def test_status_endpoint_and_legacy_status_route(self):
-        token = self._create_link_token("tok-status")
-        EventRegistration.objects.create(
-            event=self.event,
-            member=self.member,
-            registration_token=token,
-            source_email=self.member.email,
-            status=EventRegistration.STATUS_COMPLETED,
-            phone_verified=True,
-            submitted_at=timezone.now(),
-        )
+        token = self._create_registration_token("tok-status")
+        registration = EventRegistration.objects.get(event=self.event, member=self.member)
+        registration.status = EventRegistration.STATUS_COMPLETED
+        registration.phone_verified = True
+        registration.submitted_at = timezone.now()
+        registration.save()
 
         api_response = self.client.get(f"{self.status_url}?token={token}")
         self.assertEqual(api_response.status_code, status.HTTP_200_OK)

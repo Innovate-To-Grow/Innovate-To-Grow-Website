@@ -76,8 +76,6 @@ The backend is organized into specialized Django apps:
 - **`pages/`**: CMS for managing Page and HomePage models with components (HTML/CSS/JS blocks)
 - **`authn/`**: Custom authentication with UUID-based Member model and JWT
 - **`events/`**: Event management with registration, presentation schedules, and Google Sheets sync API
-- **`notify/`**: Email/SMS verification and notification system
-- **`mobileid/`**: Mobile ID validation integration
 
 ### Settings Structure
 
@@ -114,8 +112,8 @@ When querying, use `Model.objects` for normal queries and `Model.all_objects` wh
 - **Member model**: `Member.id` is the UUID primary key. `member_uuid` is a `@property` alias for `id` — it is NOT a DB column.
 - **JWT config**: `USER_ID_FIELD = "id"` (not `"member_uuid"`), `USER_ID_CLAIM = "member_uuid"`. Token blacklisting is enabled via `rest_framework_simplejwt.token_blacklist`.
 - **Password encryption**: Passwords are RSA-encrypted client-side before transmission. `PublicKeyView` serves the key; `authn/services.py` handles decryption.
-- **DEFAULT_PERMISSION_CLASSES is `IsAuthenticated`**: All DRF views require auth by default. Public views (login, register, verify, pages, events) must explicitly set `permission_classes = [AllowAny]`.
-- **Throttles**: `LoginRateThrottle` (10/min) and `VerifyRateThrottle` (10/min) in `src/authn/throttles.py`. Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
+- **DEFAULT_PERMISSION_CLASSES is `IsAuthenticated`**: All DRF views require auth by default. Public views (login, register, pages, events) must explicitly set `permission_classes = [AllowAny]`.
+- **Throttles**: `LoginRateThrottle` (10/min) in `src/authn/throttles.py`. Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 
 ### Admin Interface
 

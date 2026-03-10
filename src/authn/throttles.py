@@ -9,9 +9,3 @@ class LoginRateThrottle(AnonRateThrottle):
     """Throttle for login endpoints: 10 requests per minute."""
 
     scope = "login"
-
-
-class VerifyRateThrottle(AnonRateThrottle):
-    """Throttle for verification endpoints: 10 requests per minute."""
-
-    scope = "verify"

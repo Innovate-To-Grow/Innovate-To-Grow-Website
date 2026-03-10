@@ -2,13 +2,12 @@
 Events app views export.
 """
 
-from .membership import MembershipEventRegistrationPageView, MembershipEventsPageView, MembershipOTPPageView
+from .membership import MembershipEventRegistrationPageView, MembershipEventsPageView
 from .registration import (
     EventRegistrationFormAPIView,
     EventRegistrationRequestLinkAPIView,
     EventRegistrationStatusAPIView,
     EventRegistrationSubmitAPIView,
-    EventRegistrationVerifyOTPAPIView,
     MembershipEventRegistrationAPIView,
 )
 from .views import EventRetrieveAPIView, EventSheetExportAPIView, EventSyncAPIView
@@ -20,10 +19,8 @@ __all__ = [
     "EventRegistrationRequestLinkAPIView",
     "EventRegistrationFormAPIView",
     "EventRegistrationSubmitAPIView",
-    "EventRegistrationVerifyOTPAPIView",
     "EventRegistrationStatusAPIView",
     "MembershipEventRegistrationAPIView",
     "MembershipEventsPageView",
     "MembershipEventRegistrationPageView",
-    "MembershipOTPPageView",
 ]

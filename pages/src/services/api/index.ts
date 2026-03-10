@@ -1,12 +1,9 @@
 // Barrel export - re-exports everything so external imports remain unchanged.
-// Usage: import { fetchPageContent, type PageContent } from '../../services/api';
+// Usage: import { type MenuItem } from '../../services/api';
 //        import api from '../../services/api';
 
 export { default } from './client';
 export { api } from './client';
-
-export type { PageContent, GoogleSheetDataResponse, HomeContent } from './pages';
-export { fetchPageContent, fetchHomeContent, fetchGoogleSheetData } from './pages';
 
 export type {
   FooterLink,
@@ -35,9 +32,6 @@ export { fetchEvent } from './events';
 
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth } from './health';
-
-export type { PreviewTokenValidationResponse, PreviewDataResponse, TokenPreviewResponse } from './preview';
-export { validatePreviewToken, fetchPreviewData, fetchPreviewByToken } from './preview';
 
 export type { NewsArticle, PaginatedResponse } from './news';
 export { fetchNews, fetchLatestNews, fetchNewsDetail } from './news';

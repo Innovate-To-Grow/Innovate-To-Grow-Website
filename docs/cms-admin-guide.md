@@ -20,8 +20,6 @@ The sidebar is organized into these sections:
 | **Layout** | Menus, Footer |
 | **Events** | Events, Programs, Tracks, Ticket Options, Questions, Registrations |
 | **Members** | Members, Groups |
-| **MobileID** | Barcodes, Mobile IDs, Transactions |
-| **Email & Notifications** | Gmail Accounts, Email Templates, Email Layouts, Broadcasts |
 
 ---
 
@@ -215,37 +213,11 @@ Events support a registration flow with:
 
 - **Ticket Options**: Define available ticket types
 - **Questions**: Custom registration form questions
-- **OTP Verification**: Email-based verification for registrants
 - **Status Tracking**: Track registration status per attendee
 
 ### Google Sheets Sync
 
 Events can be synced bidirectionally with Google Sheets. See [Events Sheet Sync](events-sheet-sync.md) for full API documentation.
-
----
-
-## Email System
-
-### Gmail Accounts
-
-Configure Gmail accounts for sending emails. Used by the notification system.
-
-### Email Layouts
-
-Define reusable HTML email wrapper layouts (header, footer, styling).
-
-### Email Templates (Message Layouts)
-
-Create email content templates that are inserted into layouts. Templates can include dynamic variables.
-
-### Broadcasts
-
-Send bulk emails to member groups:
-
-1. Select a **message layout** (template)
-2. Choose an **email layout** (wrapper)
-3. Select target **member groups** or individual recipients
-4. Preview and send
 
 ---
 

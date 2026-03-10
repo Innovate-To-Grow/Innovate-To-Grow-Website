@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 export const RegisterForm = () => {
-  const { register, error, isLoading, setPendingEmail, clearError } = useAuth();
+  const { register, error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -48,7 +48,7 @@ export const RegisterForm = () => {
     }
 
     try {
-      const response = await register(
+      await register(
         email,
         password,
         passwordConfirm,
@@ -56,10 +56,7 @@ export const RegisterForm = () => {
         lastName.trim(),
         organization.trim() || undefined,
       );
-      const pending = response.email || email;
-      setPendingEmail(pending);
-      sessionStorage.setItem('pendingEmail', pending);
-      navigate('/verify-pending', { replace: true });
+      navigate('/account', { replace: true });
     } catch {
       // Error is handled by context
     }

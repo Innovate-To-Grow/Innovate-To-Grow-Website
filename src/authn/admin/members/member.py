@@ -11,8 +11,6 @@ from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin as UnfoldModelAdmin
 from unfold.admin import StackedInline, TabularInline
 
-from mobileid.models import Barcode, MobileID
-
 from ...models import (
     ContactEmail,
     ContactPhone,
@@ -61,29 +59,6 @@ class ContactPhoneInline(TabularInline):
     verbose_name_plural = "Contact Phones"
     fields = ("phone_number", "region", "verified", "subscribe", "created_at")
     readonly_fields = ("created_at",)
-
-
-class BarcodeInline(TabularInline):
-    """Inline admin for Barcode - displayed within Member admin."""
-
-    model = Barcode
-    fk_name = "model_user"
-    extra = 0
-    verbose_name = "Barcode"
-    verbose_name_plural = "Barcodes"
-    fields = ("barcode_type", "barcode", "profile_name", "created_at")
-    readonly_fields = ("created_at",)
-
-
-class MobileIDInline(TabularInline):
-    """Inline admin for MobileID - displayed within Member admin."""
-
-    model = MobileID
-    fk_name = "model_user"
-    extra = 0
-    verbose_name = "Mobile ID"
-    verbose_name_plural = "Mobile IDs"
-    autocomplete_fields = ["user_barcode"]
 
 
 # ============================================================================
@@ -196,7 +171,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     )
 
     # Inline models
-    inlines = [MemberProfileInline, ContactEmailInline, ContactPhoneInline, BarcodeInline, MobileIDInline]
+    inlines = [MemberProfileInline, ContactEmailInline, ContactPhoneInline]
 
     # Enable change list template customization
     change_list_template = "admin/authn/member/change_list.html"

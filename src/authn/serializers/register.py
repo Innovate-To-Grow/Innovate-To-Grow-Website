@@ -143,7 +143,7 @@ class RegisterSerializer(serializers.Serializer):
             password=password,
             first_name=first_name,
             last_name=last_name,
-            is_active=False,  # Inactive until email verified
+            is_active=True,
         )
 
         if organization:

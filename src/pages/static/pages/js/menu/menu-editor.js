@@ -12,12 +12,10 @@
   
   // Current data state
   let menuItems = [];
-  
-  // Available pages (will be populated via API)
-  let availablePages = [];
 
-  // Known internal app routes (not CMS pages)
+  // Known internal app routes
   const APP_ROUTES = [
+    { url: '/', title: 'Home', icon: 'fa-home' },
     { url: '/event', title: 'Events', icon: 'fa-calendar' },
     { url: '/news', title: 'News', icon: 'fa-newspaper-o' },
     { url: '/projects', title: 'Projects', icon: 'fa-briefcase' },
@@ -25,18 +23,7 @@
   ];
   
   // Initialize
-  async function init() {
-    // Load available pages
-    try {
-      const response = await fetch('/api/pages/');
-      if (response.ok) {
-        const data = await response.json();
-        availablePages = data.pages || data || [];
-      }
-    } catch (e) {
-      console.log('Could not load pages list');
-    }
-    
+  function init() {
     // Parse initial data
     if (jsonInput) {
       try {
@@ -47,27 +34,9 @@
         menuItems = [];
       }
     }
-    
-    // Ensure Home item always exists
-    ensureHomeItem();
-    
+
     renderAll();
     updatePreview();
-  }
-  
-  // Ensure Home item exists (required)
-  function ensureHomeItem() {
-    if (!hasHomeItem()) {
-      // Add Home item at the beginning
-      menuItems.unshift({
-        type: 'home',
-        title: 'Home',
-        icon: '',
-        open_in_new_tab: false,
-        children: []
-      });
-      syncToJson();
-    }
   }
   
   // Render all items
@@ -75,17 +44,6 @@
     const container = document.getElementById('menu-items-container');
     container.innerHTML = renderItems(menuItems, 'menuItems', true);
     document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2);
-    
-    // Hide "Add Home" button if Home already exists
-    const addHomeBtn = document.getElementById('btn-add-home');
-    if (addHomeBtn) {
-      addHomeBtn.style.display = hasHomeItem() ? 'none' : 'inline-block';
-    }
-  }
-  
-  // Check if Home item exists in menu
-  function hasHomeItem() {
-    return menuItems.some(item => item.type === 'home');
   }
   
   // Render items recursively
@@ -98,63 +56,22 @@
       const itemPath = `${path}[${idx}]`;
       const hasChildren = item.children && item.children.length > 0;
       const typeBadgeClass = `type-${item.type}`;
-      const typeLabel = item.type === 'home' ? 'Home' : item.type === 'page' ? 'Page' : item.type === 'app' ? 'App' : 'External';
-      const isHome = item.type === 'home';
-      
-      // Type selector - Home type cannot be changed at top level
-      const canChangeType = !(isHome && isTopLevel);
-      const typeSelector = canChangeType ? `
+      const typeLabel = item.type === 'app' ? 'App' : 'External';
+
+      // Type selector
+      const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
           <label>Type</label>
           <select onchange="changeItemType('${itemPath}', this.value)">
-            <option value="page" ${item.type === 'page' ? 'selected' : ''}>Page</option>
             <option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option>
             <option value="app" ${item.type === 'app' ? 'selected' : ''}>App Route</option>
           </select>
         </div>
-      ` : '';
-      
+      `;
+
       let fieldsHtml = '';
-      
-      if (item.type === 'home') {
-        fieldsHtml = `
-          <div class="item-row">
-            <div class="item-field">
-              <label>Title</label>
-              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
-            </div>
-            <div class="item-field item-field-small">
-              <label>Icon (optional)</label>
-              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-home" onchange="updateItem('${itemPath}', 'icon', this.value)">
-            </div>
-          </div>
-        `;
-      } else if (item.type === 'page') {
-        const pageOptions = availablePages.map(p => 
-          `<option value="${escapeAttr(p.slug)}" ${item.page_slug === p.slug ? 'selected' : ''}>${escapeHtml(p.title)} (/${p.slug})</option>`
-        ).join('');
-        
-        fieldsHtml = `
-          <div class="item-row">
-            ${typeSelector}
-            <div class="item-field">
-              <label>Title</label>
-              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
-            </div>
-            <div class="item-field">
-              <label>Page</label>
-              <select onchange="updateItem('${itemPath}', 'page_slug', this.value)">
-                <option value="">-- Select Page --</option>
-                ${pageOptions}
-              </select>
-            </div>
-            <div class="item-field item-field-small">
-              <label>Icon</label>
-              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-file" onchange="updateItem('${itemPath}', 'icon', this.value)">
-            </div>
-          </div>
-        `;
-      } else if (item.type === 'external') {
+
+      if (item.type === 'external') {
         fieldsHtml = `
           <div class="item-row">
             ${typeSelector}
@@ -203,14 +120,13 @@
         `;
       }
       
-      // Home items cannot have children
-      const childrenHtml = (hasChildren && !isHome) ? `
+      const childrenHtml = hasChildren ? `
         <div class="menu-children-container">
           ${renderItems(item.children, `${itemPath}.children`, false)}
         </div>
       ` : '';
-      
-      // Build action buttons - Home item cannot be deleted and cannot have children
+
+      // Build action buttons
       let actionButtons = '';
       if (idx > 0) {
         actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', -1)">↑</button>`;
@@ -218,19 +134,11 @@
       if (idx < items.length - 1) {
         actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', 1)">↓</button>`;
       }
-      // Only non-Home items can have children
-      if (!isHome) {
-        actionButtons += `<button type="button" class="btn-add-child" onclick="addChildItem('${itemPath}')">+ Child</button>`;
-      }
-      // Home item cannot be deleted (only at top level)
-      if (!isHome || !isTopLevel) {
-        actionButtons += `<button type="button" class="btn-delete" onclick="removeItem('${itemPath}')">Delete</button>`;
-      } else {
-        actionButtons += `<span class="btn-disabled" title="Home is required">Required</span>`;
-      }
-      
+      actionButtons += `<button type="button" class="btn-add-child" onclick="addChildItem('${itemPath}')">+ Child</button>`;
+      actionButtons += `<button type="button" class="btn-delete" onclick="removeItem('${itemPath}')">Delete</button>`;
+
       return `
-        <div class="menu-item-card ${hasChildren && !isHome ? 'has-children' : ''}${isHome && isTopLevel ? ' home-required' : ''}">
+        <div class="menu-item-card ${hasChildren ? 'has-children' : ''}">
           <div class="menu-item-card-header">
             <span class="menu-item-card-title">
               <span class="menu-item-type-badge ${typeBadgeClass}">${typeLabel}</span>
@@ -270,18 +178,13 @@
   window.addMenuItem = function(type) {
     const newItem = {
       type: type,
-      title: type === 'home' ? 'Home' : type === 'page' ? 'New Page Link' : type === 'app' ? 'New App Link' : 'New External Link',
+      title: type === 'app' ? 'New App Link' : 'New External Link',
+      url: '',
       icon: '',
       open_in_new_tab: type === 'external',
       children: []
     };
-    
-    if (type === 'page') {
-      newItem.page_slug = '';
-    } else if (type === 'external' || type === 'app') {
-      newItem.url = '';
-    }
-    
+
     menuItems.push(newItem);
     renderAll();
     syncToJson();
@@ -291,16 +194,16 @@
   window.addChildItem = function(parentPath) {
     const parent = getItemByPath(parentPath);
     if (!parent.children) parent.children = [];
-    
+
     parent.children.push({
-      type: 'page',
+      type: 'external',
       title: 'New Child Link',
-      page_slug: '',
+      url: '',
       icon: '',
       open_in_new_tab: false,
       children: []
     });
-    
+
     renderAll();
     syncToJson();
   };
@@ -333,33 +236,21 @@
   window.changeItemType = function(path, newType) {
     const item = getItemByPath(path);
     const oldType = item.type;
-    
+
     if (oldType === newType) return;
-    
+
     // Update type
     item.type = newType;
-    
+
     // Reset type-specific fields
-    if (newType === 'page') {
-      item.page_slug = item.page_slug || '';
-      delete item.url;
-      item.open_in_new_tab = false;
-    } else if (newType === 'external') {
-      item.url = item.url || '';
-      delete item.page_slug;
+    item.url = item.url || '';
+    delete item.page_slug;
+    if (newType === 'external') {
       item.open_in_new_tab = true;
-    } else if (newType === 'app') {
-      item.url = item.url || '';
-      delete item.page_slug;
+    } else {
       item.open_in_new_tab = false;
-    } else if (newType === 'home') {
-      delete item.url;
-      delete item.page_slug;
-      item.open_in_new_tab = false;
-      // Clear children for home type
-      item.children = [];
     }
-    
+
     renderAll();
     syncToJson();
   };
@@ -419,20 +310,11 @@
     }
     
     return items.map(item => {
-      let href = '#';
+      let href = item.url || '#';
       let targetAttr = '';
-      
-      if (item.type === 'home') {
-        href = '/';
-      } else if (item.type === 'page' && item.page_slug) {
-        href = `/${item.page_slug}`;
-      } else if (item.type === 'app' && item.url) {
-        href = item.url;
-      } else if (item.type === 'external' && item.url) {
-        href = item.url;
-        if (item.open_in_new_tab) {
-          targetAttr = ' target="_blank" rel="noopener noreferrer"';
-        }
+
+      if (item.type === 'external' && item.open_in_new_tab) {
+        targetAttr = ' target="_blank" rel="noopener noreferrer"';
       }
       
       const icon = item.icon ? `<i class="fa ${item.icon}"></i> ` : '';
