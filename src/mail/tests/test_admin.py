@@ -7,7 +7,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from mail.forms import ComposeForm, GoogleAccountForm
-from mail.models import EmailLog, GoogleAccount
+from mail.models import EmailLog, GoogleAccount, SESAccount, SESEmailLog
+from mail.services.ses import SESServiceError
 
 Member = get_user_model()
 
@@ -219,6 +220,84 @@ class ComposeFormTest(TestCase):
             }
         )
         self.assertTrue(form.is_valid())
+
+
+@override_settings(
+    ROOT_URLCONF="mail.tests.urls",
+    SES_AWS_ACCESS_KEY_ID="ses-access-key",
+    SES_AWS_SECRET_ACCESS_KEY="ses-secret-key",
+    SES_AWS_REGION="us-west-2",
+)
+class SESAccountAdminTest(TestCase):
+    """Tests for the SES sender admin views."""
+
+    def setUp(self):
+        self.admin_user = Member.objects.create_superuser(
+            username="ses-admin",
+            email="ses-admin@example.com",
+            password="testpass123",
+        )
+        self.client.login(username="ses-admin", password="testpass123")
+        SESAccount.all_objects.all().hard_delete()
+        self.account = SESAccount.objects.create(
+            display_name="Innovate to Grow",
+            is_active=True,
+        )
+
+    def test_changelist_accessible(self):
+        response = self.client.get(reverse("admin:mail_sesaccount_changelist"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Compose SES Email")
+
+    def test_compose_view_accessible(self):
+        response = self.client.get(reverse("admin:mail_ses_compose"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Compose SES Email")
+        self.assertContains(response, "i2g@g.ucmerced.edu")
+
+    @patch("mail.admin.ses_account.SESService")
+    def test_send_action_success(self, mock_service_cls):
+        mock_service = MagicMock()
+        mock_service.send_message.return_value = {"id": "ses-msg-123"}
+        mock_service_cls.return_value = mock_service
+
+        response = self.client.post(
+            reverse("admin:mail_ses_send"),
+            {
+                "to": "recipient@example.com",
+                "subject": "SES Test",
+                "body": "<p>Hello</p>",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SESEmailLog.objects.count(), 1)
+        log = SESEmailLog.objects.first()
+        self.assertEqual(log.status, SESEmailLog.Status.SUCCESS)
+        self.assertEqual(log.recipients, "recipient@example.com")
+        self.assertEqual(log.ses_message_id, "ses-msg-123")
+
+    @patch("mail.admin.ses_account.SESService")
+    def test_send_action_failure(self, mock_service_cls):
+        mock_service = MagicMock()
+        mock_service.send_message.side_effect = SESServiceError("SES down")
+        mock_service_cls.return_value = mock_service
+
+        response = self.client.post(
+            reverse("admin:mail_ses_send"),
+            {
+                "to": "recipient@example.com",
+                "subject": "SES Test",
+                "body": "<p>Hello</p>",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(SESEmailLog.objects.count(), 1)
+        log = SESEmailLog.objects.first()
+        self.assertEqual(log.status, SESEmailLog.Status.FAILED)
+        self.assertContains(response, "Failed to send SES email")
 
     def test_required_fields(self):
         form = ComposeForm(data={})

@@ -112,9 +112,8 @@ STORAGES = {
 }
 
 # Email settings
-# SMTP credentials are stored in the database via GoogleGmailAccount.
-# Only the backend and provider need to be configured here.
-# Set EMAIL_PROVIDER=gmail in your environment to enable Gmail SMTP sending.
+# The admin mail tools use app-level Gmail and SES services instead of Django's
+# EMAIL_BACKEND. These settings remain for any future Django-native email uses.
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_PROVIDER = os.environ.get("EMAIL_PROVIDER", "gmail")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "i2g@g.ucmerced.edu")

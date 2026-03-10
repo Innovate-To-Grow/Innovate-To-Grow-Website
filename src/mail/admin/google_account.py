@@ -302,6 +302,10 @@ class GoogleAccountAdmin(BaseModelAdmin):
             "form": form,
             "compose_mode": "compose",
             "account_email": account.email,
+            "send_url": reverse("admin:mail_send"),
+            "cancel_url": reverse("admin:mail_inbox"),
+            "parent_label": "Inbox",
+            "parent_url": reverse("admin:mail_inbox"),
         }
         return render(request, "admin/mail/compose.html", context)
 
@@ -342,6 +346,10 @@ class GoogleAccountAdmin(BaseModelAdmin):
             "compose_mode": "reply",
             "original_message_id": message_id,
             "account_email": account.email,
+            "send_url": reverse("admin:mail_send"),
+            "cancel_url": reverse("admin:mail_inbox"),
+            "parent_label": "Inbox",
+            "parent_url": reverse("admin:mail_inbox"),
         }
         return render(request, "admin/mail/compose.html", context)
 
@@ -385,6 +393,10 @@ class GoogleAccountAdmin(BaseModelAdmin):
             "compose_mode": "forward",
             "original_message_id": message_id,
             "account_email": account.email,
+            "send_url": reverse("admin:mail_send"),
+            "cancel_url": reverse("admin:mail_inbox"),
+            "parent_label": "Inbox",
+            "parent_url": reverse("admin:mail_inbox"),
         }
         return render(request, "admin/mail/compose.html", context)
 
@@ -409,6 +421,10 @@ class GoogleAccountAdmin(BaseModelAdmin):
                 "form": form,
                 "compose_mode": "compose",
                 "account_email": account.email,
+                "send_url": reverse("admin:mail_send"),
+                "cancel_url": reverse("admin:mail_inbox"),
+                "parent_label": "Inbox",
+                "parent_url": reverse("admin:mail_inbox"),
             }
             return render(request, "admin/mail/compose.html", context)
 

@@ -7,7 +7,7 @@
 <div class="breadcrumbs">
   <a href="{% url 'admin:index' %}">Home</a>
   &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
-  &rsaquo; <a href="{% url 'admin:mail_inbox' %}">Inbox</a>
+  &rsaquo; <a href="{{ parent_url }}">{{ parent_label }}</a>
   &rsaquo; {{ title|truncatechars:50 }}
 </div>
 {% endblock %}
@@ -20,7 +20,7 @@
     Sending as: <strong>{{ account_email }}</strong>
   </p>
 
-  <form method="post" action="{% url 'admin:mail_send' %}" enctype="multipart/form-data"
+  <form method="post" action="{{ send_url }}" enctype="multipart/form-data"
         class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
     {% csrf_token %}
 
@@ -106,7 +106,7 @@
         <span class="material-symbols-outlined !text-[18px]">send</span>
         Send
       </button>
-      <a href="{% url 'admin:mail_inbox' %}"
+      <a href="{{ cancel_url }}"
          class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
         Cancel
       </a>

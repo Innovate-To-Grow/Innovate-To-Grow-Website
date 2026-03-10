@@ -64,9 +64,14 @@ jobs:
           DB_NAME: ${{ vars.DB_NAME }}
           DB_USER: ${{ vars.DB_USER }}
           DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
+          SES_AWS_ACCESS_KEY_ID: ${{ secrets.SES_AWS_ACCESS_KEY_ID }}
+          SES_AWS_SECRET_ACCESS_KEY: ${{ secrets.SES_AWS_SECRET_ACCESS_KEY }}
+          SES_AWS_REGION: ${{ vars.SES_AWS_REGION || secrets.SES_AWS_REGION }}
+          SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL || secrets.SES_FROM_EMAIL }}
+          SES_FROM_NAME: ${{ vars.SES_FROM_NAME || secrets.SES_FROM_NAME }}
         run: |
           missing=()
-          for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD; do
+          for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD SES_AWS_ACCESS_KEY_ID SES_AWS_SECRET_ACCESS_KEY SES_AWS_REGION SES_FROM_EMAIL SES_FROM_NAME; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
@@ -98,6 +103,11 @@ jobs:
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
           AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
+          SES_AWS_ACCESS_KEY_ID: ${{ secrets.SES_AWS_ACCESS_KEY_ID }}
+          SES_AWS_SECRET_ACCESS_KEY: ${{ secrets.SES_AWS_SECRET_ACCESS_KEY }}
+          SES_AWS_REGION: ${{ vars.SES_AWS_REGION || secrets.SES_AWS_REGION }}
+          SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL || secrets.SES_FROM_EMAIL }}
+          SES_FROM_NAME: ${{ vars.SES_FROM_NAME || secrets.SES_FROM_NAME }}
         run: |
           python - <<'PY'
           import json
@@ -150,6 +160,11 @@ jobs:
               "__FRONTEND_URL__": frontend_url,
               "__AWS_STORAGE_BUCKET_NAME__": env_value("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
               "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
+              "__SES_AWS_ACCESS_KEY_ID__": env_value("SES_AWS_ACCESS_KEY_ID"),
+              "__SES_AWS_SECRET_ACCESS_KEY__": env_value("SES_AWS_SECRET_ACCESS_KEY"),
+              "__SES_AWS_REGION__": env_value("SES_AWS_REGION"),
+              "__SES_FROM_EMAIL__": env_value("SES_FROM_EMAIL"),
+              "__SES_FROM_NAME__": env_value("SES_FROM_NAME"),
               "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
               "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
               "__DJANGO_SUPERUSER_PASSWORD__": env_value("DJANGO_SUPERUSER_PASSWORD"),

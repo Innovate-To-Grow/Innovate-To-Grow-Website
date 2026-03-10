@@ -134,7 +134,7 @@ Triggered when CI completes successfully on `main`, or via manual dispatch.
 | `DB_HOST` | PostgreSQL host | `itg-db.xxx.us-west-2.rds.amazonaws.com` |
 | `DB_PORT` | PostgreSQL port | `5432` |
 
-### AWS
+### AWS Deployment
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -143,15 +143,21 @@ Triggered when CI completes successfully on `main`, or via manual dispatch.
 | `AWS_ACCESS_KEY_ID` | IAM access key (set as GitHub secret) | — |
 | `AWS_SECRET_ACCESS_KEY` | IAM secret key (set as GitHub secret) | — |
 
-### Email
+### SES Admin Sender
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `EMAIL_HOST` | SMTP server | `smtp.gmail.com` |
-| `EMAIL_PORT` | SMTP port | `587` |
-| `EMAIL_HOST_USER` | SMTP username | — |
-| `EMAIL_HOST_PASSWORD` | SMTP password | — |
-| `DEFAULT_FROM_EMAIL` | Sender address | `i2g@g.ucmerced.edu` |
+| `SES_AWS_ACCESS_KEY_ID` | IAM access key used only for SES sends from Django Admin | — |
+| `SES_AWS_SECRET_ACCESS_KEY` | IAM secret key used only for SES sends from Django Admin | — |
+| `SES_AWS_REGION` | SES region for `i2g@g.ucmerced.edu` | `us-west-2` |
+| `SES_FROM_EMAIL` | Fixed SES sender identity used by the admin sender | `i2g@g.ucmerced.edu` |
+| `SES_FROM_NAME` | Display name shown in outbound SES mail | `Innovate to Grow` |
+
+### Legacy / Optional Django Email Backend
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEFAULT_FROM_EMAIL` | Django default sender for non-mail-app uses | `i2g@g.ucmerced.edu` |
 
 ### CORS & Security
 

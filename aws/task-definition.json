@@ -74,6 +74,26 @@
           "value": "__AWS_S3_REGION_NAME__"
         },
         {
+          "name": "SES_AWS_ACCESS_KEY_ID",
+          "value": "__SES_AWS_ACCESS_KEY_ID__"
+        },
+        {
+          "name": "SES_AWS_SECRET_ACCESS_KEY",
+          "value": "__SES_AWS_SECRET_ACCESS_KEY__"
+        },
+        {
+          "name": "SES_AWS_REGION",
+          "value": "__SES_AWS_REGION__"
+        },
+        {
+          "name": "SES_FROM_EMAIL",
+          "value": "__SES_FROM_EMAIL__"
+        },
+        {
+          "name": "SES_FROM_NAME",
+          "value": "__SES_FROM_NAME__"
+        },
+        {
           "name": "DJANGO_SUPERUSER_USERNAME",
           "value": "__DJANGO_SUPERUSER_USERNAME__"
         },

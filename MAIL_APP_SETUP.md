@@ -1,6 +1,9 @@
 # Mail App Setup Guide
 
-The `mail` app provides Gmail inbox/outbox/compose/reply/forward functionality directly within Django Admin, using the Gmail API via a Google Service Account with Domain-Wide Delegation.
+The `mail` app provides two separate admin mail tools:
+
+- Gmail inbox/outbox/compose/reply/forward via the Gmail API and Domain-Wide Delegation
+- A dedicated SES compose flow for sending new outbound mail as `i2g@g.ucmerced.edu`
 
 ## Prerequisites
 
@@ -97,3 +100,23 @@ All operations are logged. View at `/admin/mail/emaillog/` or **Email Logs** in 
 - **"Failed to build Gmail service"**: Verify the service account JSON is valid and complete
 - **"403 Forbidden"**: Domain-Wide Delegation is not configured, or the wrong scope was authorized
 - **"401 Unauthorized"**: The service account key may be expired or revoked
+
+## SES Admin Sender
+
+The SES sender is a separate admin entry intended for the new ECS-deployed I2G system.
+
+### Required runtime environment
+
+- `SES_AWS_ACCESS_KEY_ID`
+- `SES_AWS_SECRET_ACCESS_KEY`
+- `SES_AWS_REGION`
+- `SES_FROM_EMAIL`
+- `SES_FROM_NAME`
+
+### Admin usage
+
+1. Go to `/admin/mail/sesaccount/`
+2. Open **Compose SES Email**
+3. Confirm the sender is `i2g@g.ucmerced.edu`
+4. Enter recipients, subject, body, and optional attachments
+5. Send and verify the result in **SES Email Logs**
