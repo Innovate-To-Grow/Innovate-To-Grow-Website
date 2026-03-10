@@ -271,11 +271,17 @@ class SESAccountAdminTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_sesemaillog_changelist"))
         self.assertEqual(SESEmailLog.objects.count(), 1)
+        self.assertEqual(EmailLog.objects.count(), 1)
         log = SESEmailLog.objects.first()
         self.assertEqual(log.status, SESEmailLog.Status.SUCCESS)
         self.assertEqual(log.recipients, "recipient@example.com")
         self.assertEqual(log.ses_message_id, "ses-msg-123")
+        generic_log = EmailLog.objects.first()
+        self.assertEqual(generic_log.status, EmailLog.Status.SUCCESS)
+        self.assertEqual(generic_log.recipients, "recipient@example.com")
+        self.assertEqual(generic_log.gmail_message_id, "ses-msg-123")
 
     @patch("mail.admin.ses_account.SESService")
     def test_send_action_failure(self, mock_service_cls):
@@ -295,9 +301,28 @@ class SESAccountAdminTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(SESEmailLog.objects.count(), 1)
+        self.assertEqual(EmailLog.objects.count(), 1)
         log = SESEmailLog.objects.first()
         self.assertEqual(log.status, SESEmailLog.Status.FAILED)
+        generic_log = EmailLog.objects.first()
+        self.assertEqual(generic_log.status, EmailLog.Status.FAILED)
         self.assertContains(response, "Failed to send SES email")
+
+    def test_sesemaillog_changelist_shows_entries(self):
+        SESEmailLog.objects.create(
+            account=self.account,
+            action=SESEmailLog.Action.SEND,
+            status=SESEmailLog.Status.SUCCESS,
+            ses_message_id="ses-msg-123",
+            subject="SES test subject",
+            recipients="recipient@example.com",
+            performed_by=self.admin_user,
+        )
+
+        response = self.client.get(reverse("admin:mail_sesemaillog_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "SES test subject")
 
     def test_required_fields(self):
         form = ComposeForm(data={})
