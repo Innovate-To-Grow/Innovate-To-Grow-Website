@@ -856,10 +856,36 @@
   padding-left: 24px;
 }
 
+.member-dropdown-item-account {
+  width: calc(100% - 24px);
+  margin: 0 12px 8px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  background: #f0f4f8;
+  border: 1px solid var(--header-navy);
+  border-radius: 6px;
+  color: var(--header-navy);
+  font-size: 13px;
+  font-weight: 600;
+  font-style: normal;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.member-dropdown-item-account:hover {
+  background: #e5eaf0;
+  border-color: var(--header-navy);
+  color: var(--header-navy);
+  padding-left: 14px;
+}
+
 .member-dropdown-item .fa {
   width: 16px;
   text-align: center;
   color: #666;
+}
+
+.member-dropdown-item-account .fa {
+  color: var(--header-navy);
 }
 
 .member-dropdown-item.logout {

@@ -277,7 +277,7 @@ export const MainMenu = () => {
                   <div className="member-dropdown">
                     <button
                       type="button"
-                      className="member-dropdown-item"
+                      className="member-dropdown-item member-dropdown-item-account"
                       onClick={() => {
                         setIsMemberDropdownOpen(false);
                         router.navigate('/account');
