@@ -3,6 +3,12 @@ Authn serializers export.
 """
 
 from .change_password import ChangePasswordSerializer
+from .contact_emails import (
+    ContactEmailCreateSerializer,
+    ContactEmailSerializer,
+    ContactEmailUpdateSerializer,
+    ContactEmailVerifyCodeSerializer,
+)
 from .email_code import (
     AccountEmailsSerializer,
     ChangePasswordCodeConfirmSerializer,
@@ -36,4 +42,8 @@ __all__ = [
     "ChangePasswordCodeRequestSerializer",
     "ChangePasswordCodeVerifySerializer",
     "ChangePasswordCodeConfirmSerializer",
+    "ContactEmailSerializer",
+    "ContactEmailCreateSerializer",
+    "ContactEmailUpdateSerializer",
+    "ContactEmailVerifyCodeSerializer",
 ]

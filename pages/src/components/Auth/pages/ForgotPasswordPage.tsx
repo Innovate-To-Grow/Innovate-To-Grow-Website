@@ -35,16 +35,20 @@ export const ForgotPasswordPage = () => {
         </div>
 
         {infoMessage && (
-          <div className="auth-alert info" style={{ margin: '0 1.5rem' }}>
-            <i className="fa fa-info-circle auth-alert-icon" />
-            <span>{infoMessage}</span>
+          <div className="auth-alert-wrapper">
+            <div className="auth-alert info" role="status">
+              <i className="fa fa-info-circle auth-alert-icon" aria-hidden />
+              <span>{infoMessage}</span>
+            </div>
           </div>
         )}
 
         {error && (
-          <div className="auth-alert error" style={{ margin: '0 1.5rem' }}>
-            <i className="fa fa-exclamation-circle auth-alert-icon" />
-            <span>{error}</span>
+          <div className="auth-alert-wrapper">
+            <div className="auth-alert error" role="alert">
+              <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
+              <span>{error}</span>
+            </div>
           </div>
         )}
 

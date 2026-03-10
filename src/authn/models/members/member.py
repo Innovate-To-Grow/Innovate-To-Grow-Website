@@ -30,6 +30,13 @@ class Member(AbstractUser, ProjectControlModel):
     # user status
     is_active_member = models.BooleanField(default=True, help_text="Designates whether this user is an active member.")
 
+    # email subscription
+    email_subscribe = models.BooleanField(
+        default=True,
+        help_text="Whether the member is subscribed to email communications.",
+        verbose_name="Email Subscribe",
+    )
+
     # assign to a group
     def assign_group(self, group_name: str):
         # handle group not found

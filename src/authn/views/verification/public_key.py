@@ -15,6 +15,7 @@ class PublicKeyView(APIView):
     API endpoint to retrieve the current public key for password encryption.
     """
 
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request):

@@ -3,6 +3,12 @@ Authn views export.
 """
 
 from .account.change_password import ChangePasswordView
+from .account.contact_emails import (
+    ContactEmailDetailView,
+    ContactEmailListCreateView,
+    ContactEmailRequestVerificationView,
+    ContactEmailVerifyCodeView,
+)
 from .account.email_code import (
     AccountEmailsView,
     ChangePasswordCodeConfirmView,
@@ -40,4 +46,8 @@ __all__ = [
     "PasswordResetVerifyView",
     "PasswordResetConfirmView",
     "PublicKeyView",
+    "ContactEmailListCreateView",
+    "ContactEmailDetailView",
+    "ContactEmailRequestVerificationView",
+    "ContactEmailVerifyCodeView",
 ]

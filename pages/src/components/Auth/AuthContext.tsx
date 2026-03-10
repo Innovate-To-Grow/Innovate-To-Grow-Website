@@ -285,22 +285,38 @@ export const useAuth = () => useContext(AuthContext);
 
 // ======================== Helpers ========================
 
+function looksLikeHtml(value: string): boolean {
+  return /^\s*<!DOCTYPE/i.test(value) || /<[a-z][\s\S]*>/i.test(value);
+}
+
+function isSafeMessage(value: string): boolean {
+  return value.length <= 300 && !looksLikeHtml(value);
+}
+
 function getErrorMessage(err: unknown): string {
   if (typeof err === 'object' && err !== null) {
-    const axiosError = err as { response?: { data?: Record<string, unknown> } };
+    const axiosError = err as { response?: { status?: number; data?: Record<string, unknown> } };
     if (axiosError.response?.data) {
       const data = axiosError.response.data;
       const messages: string[] = [];
       for (const value of Object.values(data)) {
         if (Array.isArray(value)) {
           for (const item of value) {
-            if (typeof item === 'string') messages.push(item);
+            if (typeof item === 'string' && isSafeMessage(item)) messages.push(item);
           }
-        } else if (typeof value === 'string') {
+        } else if (typeof value === 'string' && isSafeMessage(value)) {
           messages.push(value);
         }
       }
       if (messages.length > 0) return messages.join(' ');
+
+      const status = axiosError.response.status;
+      if (status && status >= 400 && status < 500) {
+        return 'Request failed. Please check your input and try again.';
+      }
+      if (status && status >= 500) {
+        return 'A server error occurred. Please try again later.';
+      }
     }
   }
   return 'An unexpected error occurred. Please try again.';

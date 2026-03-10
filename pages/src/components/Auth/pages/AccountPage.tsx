@@ -9,6 +9,7 @@ import {
   uploadProfileImage,
   type ProfileResponse,
 } from '../../../services/auth';
+import { EmailCenter } from '../sections/EmailCenter';
 import '../Auth.css';
 
 export const AccountPage = () => {
@@ -436,6 +437,9 @@ export const AccountPage = () => {
               )}
             </form>
           </div>
+
+          {/* Email Center */}
+          {profile && <EmailCenter profile={profile} onProfileUpdate={setProfile} />}
         </div>
 
         <div className="account-column">

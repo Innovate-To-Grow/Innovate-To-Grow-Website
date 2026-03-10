@@ -1,6 +1,16 @@
 import json
 
 from django.http import HttpResponse
+from django.middleware.csrf import CsrfViewMiddleware
+
+
+class CustomCsrfMiddleware(CsrfViewMiddleware):
+    """Skip CSRF check for JWT-based auth API (safe: uses Bearer token, not cookies)."""
+
+    def process_view(self, request, callback, callback_args, callback_kwargs):
+        if request.path.startswith("/authn/"):
+            return None  # Skip CSRF validation for authn API
+        return super().process_view(request, callback, callback_args, callback_kwargs)
 
 
 class HealthCheckMiddleware:

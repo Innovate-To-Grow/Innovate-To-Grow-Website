@@ -23,6 +23,7 @@ from ..helpers import build_auth_success_payload, challenge_error_response
 
 
 class LoginCodeRequestView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
@@ -40,6 +41,7 @@ class LoginCodeRequestView(APIView):
 
 
 class LoginCodeVerifyView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -63,6 +65,7 @@ class LoginCodeVerifyView(APIView):
 
 
 class RegisterVerifyCodeView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -84,6 +87,7 @@ class RegisterVerifyCodeView(APIView):
 
 
 class RegisterResendCodeView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
@@ -101,6 +105,7 @@ class RegisterResendCodeView(APIView):
 
 
 class PasswordResetRequestView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
@@ -118,6 +123,7 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetVerifyView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -133,6 +139,7 @@ class PasswordResetVerifyView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 

@@ -181,23 +181,29 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
         </div>
 
         {localMessage && (
-          <div className="auth-alert info" style={{ margin: '0 1.5rem' }}>
-            <i className="fa fa-info-circle auth-alert-icon" />
-            <span>{localMessage}</span>
+          <div className="auth-alert-wrapper">
+            <div className="auth-alert info" role="status">
+              <i className="fa fa-info-circle auth-alert-icon" aria-hidden />
+              <span>{localMessage}</span>
+            </div>
           </div>
         )}
 
         {localSuccess && (
-          <div className="auth-alert success" style={{ margin: '0 1.5rem' }}>
-            <i className="fa fa-check-circle auth-alert-icon" />
-            <span>{localSuccess}</span>
+          <div className="auth-alert-wrapper">
+            <div className="auth-alert success" role="status">
+              <i className="fa fa-check-circle auth-alert-icon" aria-hidden />
+              <span>{localSuccess}</span>
+            </div>
           </div>
         )}
 
         {error && (
-          <div className="auth-alert error" style={{ margin: '0 1.5rem' }}>
-            <i className="fa fa-exclamation-circle auth-alert-icon" />
-            <span>{error}</span>
+          <div className="auth-alert-wrapper">
+            <div className="auth-alert error" role="alert">
+              <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
+              <span>{error}</span>
+            </div>
           </div>
         )}
 
