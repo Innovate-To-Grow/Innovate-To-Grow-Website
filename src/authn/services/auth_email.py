@@ -32,9 +32,7 @@ def resolve_auth_email(email: str, *, require_active: bool = True) -> ResolvedAu
         return ResolvedAuthEmail(member=member, delivery_email=normalized, source_type="member")
 
     contact = (
-        ContactEmail.objects.select_related("member")
-        .filter(email_address__iexact=normalized, verified=True)
-        .first()
+        ContactEmail.objects.select_related("member").filter(email_address__iexact=normalized, verified=True).first()
     )
     if contact and contact.member and (contact.member.is_active or not require_active):
         return ResolvedAuthEmail(member=contact.member, delivery_email=normalized, source_type="contact")
