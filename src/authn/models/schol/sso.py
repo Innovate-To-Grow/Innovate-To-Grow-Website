@@ -8,5 +8,5 @@ class SSOProfile(ProjectControlModel):
     # foreign key to User
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
-    # school profile
+    # school profile and school sso field
     pass
