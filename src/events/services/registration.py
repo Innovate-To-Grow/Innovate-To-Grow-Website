@@ -55,11 +55,7 @@ def get_registration_from_token(token: str) -> RegistrationTokenContext:
     if not normalized_token:
         raise EventRegistrationFlowError("invalid_token", "Token is required.")
 
-    registration = (
-        EventRegistration.objects.filter(registration_token=normalized_token)
-        .order_by("-created_at")
-        .first()
-    )
+    registration = EventRegistration.objects.filter(registration_token=normalized_token).order_by("-created_at").first()
     if not registration:
         raise EventRegistrationFlowError("invalid_token", "Invalid registration token.")
 
