@@ -56,7 +56,7 @@ export const RegisterForm = () => {
         lastName.trim(),
         organization.trim() || undefined,
       );
-      navigate('/account', { replace: true });
+      navigate(`/verify-email?flow=register&email=${encodeURIComponent(email.trim().toLowerCase())}`, { replace: true });
     } catch {
       // Error is handled by context
     }
@@ -219,7 +219,7 @@ export const RegisterForm = () => {
         {isLoading ? (
           <>
             <span className="auth-spinner" />
-            Creating account...
+            Sending verification code...
           </>
         ) : (
           'Create Account'

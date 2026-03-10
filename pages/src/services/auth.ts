@@ -26,9 +26,20 @@ export interface LoginResponse {
 
 export interface RegisterResponse {
   message: string;
-  access: string;
-  refresh: string;
-  user: User;
+  next_step: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface VerificationTokenResponse {
+  message: string;
+  verification_token: string;
+}
+
+export interface AccountEmailsResponse {
+  emails: string[];
 }
 
 export interface ProfileResponse {
@@ -165,10 +176,6 @@ export const register = async (
       ...(organization && { organization }),
     });
 
-    // Store tokens and user (registration now returns JWT tokens)
-    const { access, refresh, user } = response.data;
-    setTokens({ access, refresh }, user);
-
     return response.data;
   } catch (error) {
     // Clear key cache on encryption errors (might be stale key)
@@ -202,6 +209,57 @@ export const login = async (email: string, password: string): Promise<LoginRespo
     }
     throw error;
   }
+};
+
+export const requestLoginCode = async (email: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/login/request-code/', { email });
+  return response.data;
+};
+
+export const verifyLoginCode = async (email: string, code: string): Promise<LoginResponse> => {
+  const response = await authApi.post<LoginResponse>('/authn/login/verify-code/', { email, code });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  return response.data;
+};
+
+export const verifyRegistrationCode = async (email: string, code: string): Promise<LoginResponse> => {
+  const response = await authApi.post<LoginResponse>('/authn/register/verify-code/', { email, code });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  return response.data;
+};
+
+export const resendRegistrationCode = async (email: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/register/resend-code/', { email });
+  return response.data;
+};
+
+export const requestPasswordReset = async (email: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/password-reset/request-code/', { email });
+  return response.data;
+};
+
+export const verifyPasswordResetCode = async (email: string, code: string): Promise<VerificationTokenResponse> => {
+  const response = await authApi.post<VerificationTokenResponse>('/authn/password-reset/verify-code/', { email, code });
+  return response.data;
+};
+
+export const confirmPasswordReset = async (
+  verificationToken: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<MessageResponse> => {
+  const { encryptedPassword, keyId } = await encryptPasswordWithCurrentKey(newPassword);
+  const { encryptedPassword: encryptedConfirm } = await encryptPasswordWithCurrentKey(confirmPassword);
+
+  const response = await authApi.post<MessageResponse>('/authn/password-reset/confirm/', {
+    verification_token: verificationToken,
+    new_password: encryptedPassword,
+    new_password_confirm: encryptedConfirm,
+    key_id: keyId,
+  });
+  return response.data;
 };
 
 export const getProfile = async (): Promise<ProfileResponse> => {
@@ -266,6 +324,41 @@ export const changePassword = async (
     current_password: encCurrent,
     new_password: encNew,
     new_password_confirm: encConfirm,
+    key_id: keyId,
+  });
+  return response.data;
+};
+
+export const getAccountEmails = async (): Promise<AccountEmailsResponse> => {
+  const response = await authApi.get<AccountEmailsResponse>('/authn/account-emails/');
+  return response.data;
+};
+
+export const requestPasswordChangeCode = async (email: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/change-password/request-code/', { email });
+  return response.data;
+};
+
+export const verifyPasswordChangeCode = async (
+  email: string,
+  code: string,
+): Promise<VerificationTokenResponse> => {
+  const response = await authApi.post<VerificationTokenResponse>('/authn/change-password/verify-code/', { email, code });
+  return response.data;
+};
+
+export const confirmPasswordChange = async (
+  verificationToken: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<MessageResponse> => {
+  const { encryptedPassword, keyId } = await encryptPasswordWithCurrentKey(newPassword);
+  const { encryptedPassword: encryptedConfirm } = await encryptPasswordWithCurrentKey(confirmPassword);
+
+  const response = await authApi.post<MessageResponse>('/authn/change-password/confirm/', {
+    verification_token: verificationToken,
+    new_password: encryptedPassword,
+    new_password_confirm: encryptedConfirm,
     key_id: keyId,
   });
   return response.data;

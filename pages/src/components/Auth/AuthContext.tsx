@@ -10,8 +10,20 @@ import {
   type User,
   type LoginResponse,
   type RegisterResponse,
+  type MessageResponse,
+  type VerificationTokenResponse,
   login as apiLogin,
   register as apiRegister,
+  requestLoginCode as apiRequestLoginCode,
+  verifyLoginCode as apiVerifyLoginCode,
+  verifyRegistrationCode as apiVerifyRegistrationCode,
+  resendRegistrationCode as apiResendRegistrationCode,
+  requestPasswordReset as apiRequestPasswordReset,
+  verifyPasswordResetCode as apiVerifyPasswordResetCode,
+  confirmPasswordReset as apiConfirmPasswordReset,
+  requestPasswordChangeCode as apiRequestPasswordChangeCode,
+  verifyPasswordChangeCode as apiVerifyPasswordChangeCode,
+  confirmPasswordChange as apiConfirmPasswordChange,
   getProfile as apiGetProfile,
   logout as apiLogout,
   getStoredUser,
@@ -38,6 +50,16 @@ interface AuthContextValue {
   // Auth actions
   login: (email: string, password: string) => Promise<LoginResponse>;
   register: (email: string, password: string, passwordConfirm: string, firstName?: string, lastName?: string, organization?: string) => Promise<RegisterResponse>;
+  requestLoginCode: (email: string) => Promise<MessageResponse>;
+  verifyLoginCode: (email: string, code: string) => Promise<LoginResponse>;
+  verifyRegistrationCode: (email: string, code: string) => Promise<LoginResponse>;
+  resendRegistrationCode: (email: string) => Promise<MessageResponse>;
+  requestPasswordReset: (email: string) => Promise<MessageResponse>;
+  verifyPasswordResetCode: (email: string, code: string) => Promise<VerificationTokenResponse>;
+  confirmPasswordReset: (verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
+  requestPasswordChangeCode: (email: string) => Promise<MessageResponse>;
+  verifyPasswordChangeCode: (email: string, code: string) => Promise<VerificationTokenResponse>;
+  confirmPasswordChange: (verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
@@ -50,6 +72,16 @@ const defaultContextValue: AuthContextValue = {
   error: null,
   login: async () => { throw new Error('Not implemented'); },
   register: async () => { throw new Error('Not implemented'); },
+  requestLoginCode: async () => { throw new Error('Not implemented'); },
+  verifyLoginCode: async () => { throw new Error('Not implemented'); },
+  verifyRegistrationCode: async () => { throw new Error('Not implemented'); },
+  resendRegistrationCode: async () => { throw new Error('Not implemented'); },
+  requestPasswordReset: async () => { throw new Error('Not implemented'); },
+  verifyPasswordResetCode: async () => { throw new Error('Not implemented'); },
+  confirmPasswordReset: async () => { throw new Error('Not implemented'); },
+  requestPasswordChangeCode: async () => { throw new Error('Not implemented'); },
+  verifyPasswordChangeCode: async () => { throw new Error('Not implemented'); },
+  confirmPasswordChange: async () => { throw new Error('Not implemented'); },
   logout: () => {},
   refreshProfile: async () => {},
   clearError: () => {},
@@ -104,14 +136,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setError(null);
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<LoginResponse> => {
+  const runWithErrorHandling = useCallback(async <T,>(callback: () => Promise<T>): Promise<T> => {
     setError(null);
     setIsLoading(true);
     try {
-      const response = await apiLogin(email, password);
-      setUser(response.user);
-      dispatchAuthStateChange();
-      return response;
+      return await callback();
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setError(message);
@@ -121,6 +150,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, []);
 
+  const login = useCallback(async (email: string, password: string): Promise<LoginResponse> => {
+    return runWithErrorHandling(async () => {
+      const response = await apiLogin(email, password);
+      setUser(response.user);
+      dispatchAuthStateChange();
+      return response;
+    });
+  }, [runWithErrorHandling]);
+
   const register = useCallback(async (
     email: string,
     password: string,
@@ -129,21 +167,72 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     lastName?: string,
     organization?: string,
   ): Promise<RegisterResponse> => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const response = await apiRegister(email, password, passwordConfirm, firstName, lastName, organization);
+    return runWithErrorHandling(() => apiRegister(email, password, passwordConfirm, firstName, lastName, organization));
+  }, [runWithErrorHandling]);
+
+  const requestLoginCode = useCallback(async (email: string): Promise<MessageResponse> => {
+    return runWithErrorHandling(() => apiRequestLoginCode(email));
+  }, [runWithErrorHandling]);
+
+  const verifyLoginCode = useCallback(async (email: string, code: string): Promise<LoginResponse> => {
+    return runWithErrorHandling(async () => {
+      const response = await apiVerifyLoginCode(email, code);
       setUser(response.user);
       dispatchAuthStateChange();
       return response;
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    });
+  }, [runWithErrorHandling]);
+
+  const verifyRegistrationCode = useCallback(async (email: string, code: string): Promise<LoginResponse> => {
+    return runWithErrorHandling(async () => {
+      const response = await apiVerifyRegistrationCode(email, code);
+      setUser(response.user);
+      dispatchAuthStateChange();
+      return response;
+    });
+  }, [runWithErrorHandling]);
+
+  const resendRegistrationCode = useCallback(async (email: string): Promise<MessageResponse> => {
+    return runWithErrorHandling(() => apiResendRegistrationCode(email));
+  }, [runWithErrorHandling]);
+
+  const requestPasswordReset = useCallback(async (email: string): Promise<MessageResponse> => {
+    return runWithErrorHandling(() => apiRequestPasswordReset(email));
+  }, [runWithErrorHandling]);
+
+  const verifyPasswordResetCode = useCallback(async (
+    email: string,
+    code: string,
+  ): Promise<VerificationTokenResponse> => {
+    return runWithErrorHandling(() => apiVerifyPasswordResetCode(email, code));
+  }, [runWithErrorHandling]);
+
+  const confirmPasswordReset = useCallback(async (
+    verificationToken: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<MessageResponse> => {
+    return runWithErrorHandling(() => apiConfirmPasswordReset(verificationToken, newPassword, confirmPassword));
+  }, [runWithErrorHandling]);
+
+  const requestPasswordChangeCode = useCallback(async (email: string): Promise<MessageResponse> => {
+    return runWithErrorHandling(() => apiRequestPasswordChangeCode(email));
+  }, [runWithErrorHandling]);
+
+  const verifyPasswordChangeCode = useCallback(async (
+    email: string,
+    code: string,
+  ): Promise<VerificationTokenResponse> => {
+    return runWithErrorHandling(() => apiVerifyPasswordChangeCode(email, code));
+  }, [runWithErrorHandling]);
+
+  const confirmPasswordChange = useCallback(async (
+    verificationToken: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<MessageResponse> => {
+    return runWithErrorHandling(() => apiConfirmPasswordChange(verificationToken, newPassword, confirmPassword));
+  }, [runWithErrorHandling]);
 
   const logout = useCallback(() => {
     apiLogout();
@@ -171,6 +260,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     error,
     login,
     register,
+    requestLoginCode,
+    verifyLoginCode,
+    verifyRegistrationCode,
+    resendRegistrationCode,
+    requestPasswordReset,
+    verifyPasswordResetCode,
+    confirmPasswordReset,
+    requestPasswordChangeCode,
+    verifyPasswordChangeCode,
+    confirmPasswordChange,
     logout,
     refreshProfile,
     clearError,

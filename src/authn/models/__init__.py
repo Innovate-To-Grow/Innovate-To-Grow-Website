@@ -6,7 +6,7 @@ Aggregates commonly used models so callers can import from `authn.models`.
 
 from .contact import ContactEmail, ContactPhone
 from .members import I2GMemberGroup, Member, MemberGroup, MemberProfile
-from .security import RSAKeypair
+from .security import EmailAuthChallenge, RSAKeypair
 
 __all__ = [
     # Members
@@ -18,6 +18,7 @@ __all__ = [
     "ContactEmail",
     "ContactPhone",
     # Security
+    "EmailAuthChallenge",
     "RSAKeypair",
     # Schol (lazy export to avoid app-start model registration side effects)
     "SSOProfile",

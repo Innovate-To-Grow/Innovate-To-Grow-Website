@@ -16,7 +16,7 @@ export const LoginPage = () => {
         <div className="auth-page-header">
           <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
           <h1 className="auth-page-title">Welcome to I2G</h1>
-          <p className="auth-page-subtitle">Sign in to your account</p>
+          <p className="auth-page-subtitle">Sign in with an email code or your password</p>
         </div>
         <LoginForm />
       </div>

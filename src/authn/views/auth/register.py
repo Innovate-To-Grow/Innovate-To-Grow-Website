@@ -6,20 +6,21 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from authn.serializers import RegisterSerializer
-from authn.throttles import LoginRateThrottle
+from authn.throttles import EmailCodeRequestThrottle
+
+from ..helpers import challenge_error_response
 
 
 class RegisterView(APIView):
     """
     API endpoint for user registration.
-    Creates an active user and returns JWT tokens immediately.
+    Creates or updates an inactive user and sends a verification code.
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [EmailCodeRequestThrottle]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -27,21 +28,15 @@ class RegisterView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        member = serializer.save()
-
-        refresh = RefreshToken.for_user(member)
+        try:
+            serializer.save()
+        except Exception as exc:  # noqa: BLE001
+            return challenge_error_response(exc)
 
         return Response(
             {
-                "message": "Registration successful.",
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": {
-                    "member_uuid": str(member.id),
-                    "email": member.email,
-                    "username": member.username,
-                    "display_name": member.get_full_name() or member.username,
-                },
+                "message": "Registration started. Check your email for a verification code.",
+                "next_step": "verify_code",
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_202_ACCEPTED,
         )

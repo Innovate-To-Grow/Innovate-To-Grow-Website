@@ -192,7 +192,12 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/minute", "login": "10/minute"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "login": "10/minute",
+        "email_code_request": "10/minute",
+        "email_code_verify": "20/minute",
+    },
 }
 
 # Simple JWT Configuration

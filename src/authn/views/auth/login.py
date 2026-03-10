@@ -6,10 +6,11 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from authn.serializers import LoginSerializer
 from authn.throttles import LoginRateThrottle
+
+from ..helpers import build_auth_success_payload
 
 
 class LoginView(APIView):
@@ -29,20 +30,7 @@ class LoginView(APIView):
 
         user = serializer.validated_data["user"]
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-
         return Response(
-            {
-                "message": "Login successful.",
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": {
-                    "member_uuid": str(user.member_uuid),
-                    "email": user.email,
-                    "username": user.username,
-                    "display_name": user.get_full_name() or user.username,
-                },
-            },
+            build_auth_success_payload(user, "Login successful."),
             status=status.HTTP_200_OK,
         )

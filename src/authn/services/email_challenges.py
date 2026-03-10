@@ -1,0 +1,185 @@
+"""
+Issue, verify, and consume short-lived email auth challenges.
+"""
+
+from __future__ import annotations
+
+import secrets
+from datetime import timedelta
+
+from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction
+from django.utils import timezone
+
+from authn.models.security import EmailAuthChallenge
+
+from .auth_email import normalize_email
+from .auth_mail import AuthEmailError, send_auth_code_email
+
+CHALLENGE_TTL = timedelta(minutes=10)
+RESEND_COOLDOWN = timedelta(seconds=60)
+MAX_CHALLENGES_PER_HOUR = 5
+
+
+class AuthChallengeError(RuntimeError):
+    """Base exception for auth challenge failures."""
+
+
+class AuthChallengeInvalid(AuthChallengeError):
+    """Raised when a code or token is invalid."""
+
+
+class AuthChallengeThrottled(AuthChallengeError):
+    """Raised when a code is requested too frequently."""
+
+
+class AuthChallengeDeliveryError(AuthChallengeError):
+    """Raised when the SES send fails."""
+
+
+def _random_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _random_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def _expire_queryset(queryset):
+    queryset.exclude(status=EmailAuthChallenge.Status.EXPIRED).update(
+        status=EmailAuthChallenge.Status.EXPIRED,
+        updated_at=timezone.now(),
+    )
+
+
+def _get_latest_pending(*, purpose: str, target_email: str):
+    return (
+        EmailAuthChallenge.objects.filter(
+            purpose=purpose,
+            target_email__iexact=target_email,
+            status=EmailAuthChallenge.Status.PENDING,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _assert_within_limit(*, member, purpose: str, target_email: str, now):
+    cutoff = now - timedelta(hours=1)
+    sent_count = EmailAuthChallenge.objects.filter(
+        member=member,
+        purpose=purpose,
+        target_email__iexact=target_email,
+        created_at__gte=cutoff,
+    ).count()
+    if sent_count >= MAX_CHALLENGES_PER_HOUR:
+        raise AuthChallengeThrottled("Too many verification codes requested. Please try again later.")
+
+    latest = _get_latest_pending(purpose=purpose, target_email=target_email)
+    if latest and latest.last_sent_at and now - latest.last_sent_at < RESEND_COOLDOWN:
+        raise AuthChallengeThrottled("Please wait before requesting another code.")
+
+
+@transaction.atomic
+def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAuthChallenge:
+    normalized_email = normalize_email(target_email)
+    now = timezone.now()
+    _assert_within_limit(member=member, purpose=purpose, target_email=normalized_email, now=now)
+
+    _expire_queryset(
+        EmailAuthChallenge.objects.filter(
+            member=member,
+            purpose=purpose,
+            target_email__iexact=normalized_email,
+            status__in=[EmailAuthChallenge.Status.PENDING, EmailAuthChallenge.Status.VERIFIED],
+        )
+    )
+
+    code = _random_code()
+    challenge = EmailAuthChallenge.objects.create(
+        member=member,
+        purpose=purpose,
+        target_email=normalized_email,
+        code_hash=make_password(code),
+        expires_at=now + CHALLENGE_TTL,
+        max_attempts=5,
+        last_sent_at=now,
+    )
+
+    try:
+        send_auth_code_email(purpose=purpose, code=code, email=normalized_email)
+    except AuthEmailError as exc:
+        challenge.status = EmailAuthChallenge.Status.EXPIRED
+        challenge.save(update_fields=["status", "updated_at"])
+        raise AuthChallengeDeliveryError(str(exc)) from exc
+
+    return challenge
+
+
+@transaction.atomic
+def verify_email_code(*, purpose: str, target_email: str, code: str) -> EmailAuthChallenge:
+    normalized_email = normalize_email(target_email)
+    challenge = _get_latest_pending(purpose=purpose, target_email=normalized_email)
+    if challenge is None:
+        raise AuthChallengeInvalid("Verification code is invalid or has expired.")
+
+    if challenge.is_expired:
+        challenge.mark_expired()
+        raise AuthChallengeInvalid("Verification code is invalid or has expired.")
+
+    if challenge.attempts >= challenge.max_attempts:
+        challenge.mark_expired()
+        raise AuthChallengeInvalid("Verification code is invalid or has expired.")
+
+    if not check_password(code, challenge.code_hash):
+        challenge.attempts += 1
+        if challenge.attempts >= challenge.max_attempts:
+            challenge.status = EmailAuthChallenge.Status.EXPIRED
+        challenge.save(update_fields=["attempts", "status", "updated_at"])
+        raise AuthChallengeInvalid("Verification code is invalid or has expired.")
+
+    return challenge
+
+
+@transaction.atomic
+def mark_challenge_verified(challenge: EmailAuthChallenge) -> str:
+    verification_token = _random_token()
+    challenge.status = EmailAuthChallenge.Status.VERIFIED
+    challenge.verified_at = timezone.now()
+    challenge.verification_token_hash = make_password(verification_token)
+    challenge.expires_at = timezone.now() + CHALLENGE_TTL
+    challenge.save(
+        update_fields=[
+            "status",
+            "verified_at",
+            "verification_token_hash",
+            "expires_at",
+            "updated_at",
+        ]
+    )
+    return verification_token
+
+
+def consume_login_or_registration_challenge(challenge: EmailAuthChallenge):
+    challenge.mark_consumed()
+
+
+@transaction.atomic
+def consume_verification_token(*, purpose: str, verification_token: str, member=None) -> EmailAuthChallenge:
+    queryset = EmailAuthChallenge.objects.filter(
+        purpose=purpose,
+        status=EmailAuthChallenge.Status.VERIFIED,
+    ).order_by("-verified_at", "-created_at")
+    if member is not None:
+        queryset = queryset.filter(member=member)
+
+    now = timezone.now()
+    for challenge in queryset:
+        if challenge.expires_at <= now:
+            challenge.mark_expired()
+            continue
+        if challenge.verification_token_hash and check_password(verification_token, challenge.verification_token_hash):
+            challenge.mark_consumed()
+            return challenge
+
+    raise AuthChallengeInvalid("Verification token is invalid or has expired.")
