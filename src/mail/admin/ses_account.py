@@ -9,7 +9,7 @@ from django.utils.html import format_html
 
 from core.admin.base import BaseModelAdmin
 from mail.forms import ComposeForm
-from mail.models import SESAccount, SESEmailLog
+from mail.models import EmailLog, SESAccount, SESEmailLog
 from mail.services.ses import SESService, SESServiceError
 
 
@@ -85,6 +85,16 @@ class SESAccountAdmin(BaseModelAdmin):
             action=SESEmailLog.Action.SEND,
             status=status,
             ses_message_id=message_id,
+            subject=subject[:500] if subject else "",
+            recipients=recipients,
+            error_message=error,
+            performed_by=request.user if request.user.is_authenticated else None,
+        )
+        EmailLog.objects.create(
+            account=None,
+            action=EmailLog.Action.SEND,
+            status=status,
+            gmail_message_id=message_id,
             subject=subject[:500] if subject else "",
             recipients=recipients,
             error_message=error,
@@ -168,4 +178,4 @@ class SESAccountAdmin(BaseModelAdmin):
             account.mark_used(error=error_msg)
             messages.error(request, f"Failed to send SES email: {error_msg}")
 
-        return redirect(reverse("admin:mail_sesaccount_changelist"))
+        return redirect(reverse("admin:mail_sesemaillog_changelist"))
