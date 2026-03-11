@@ -513,6 +513,70 @@
   margin: 0 0 1.25rem 0;
 }
 
+.account-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.account-section-header .account-section-title {
+  margin-bottom: 0;
+}
+
+.account-section-toggle {
+  font-size: 1.25rem;
+  color: #6b7280;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.account-section-header:hover .account-section-toggle {
+  color: #1f2937;
+}
+
+.account-edit-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1.5px solid #003366;
+  color: #003366;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.account-edit-btn:hover:not(:disabled) {
+  background: #f0f4f8;
+}
+
+.account-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.account-edit-btn.auth-form-submit {
+  background: linear-gradient(135deg, #003366 0%, #00254d 100%);
+  color: #fff;
+  border-color: transparent;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  box-shadow: none;
+  margin-top: 0;
+}
+
+.account-edit-btn.auth-form-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #00254d 0%, #001a3a 100%);
+}
+
+.account-details-rows .account-readonly-group {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
 .account-readonly-group {
   display: flex;
   flex-direction: column;
@@ -549,35 +613,6 @@
   gap: 1rem;
 }
 
-.account-password-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-}
-
-.account-password-tab {
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  color: #4b5563;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.account-password-tab.is-active {
-  background: #003366;
-  color: #fff;
-  border-color: #003366;
-}
-
-.account-password-tab:hover:not(.is-active) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
 
 /* Profile Image Upload */
 
@@ -934,5 +969,9 @@
   .auth-inline-links {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .account-details-rows .account-readonly-group {
+    flex-direction: column;
   }
 }

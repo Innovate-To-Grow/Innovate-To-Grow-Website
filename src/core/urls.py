@@ -34,6 +34,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
+    # event
+    path("event/", include("event.urls")),
     # news
     path("news/", include("news.urls")),
     # projects

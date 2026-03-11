@@ -3,6 +3,7 @@ Service layer for managing contact emails (add, verify, delete).
 """
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 
 from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
@@ -26,13 +27,31 @@ def create_contact_email(*, member, email_address: str, email_type: str = "secon
     if registration_email_conflicts(normalized):
         raise AuthChallengeInvalid("This email address is already in use.")
 
-    contact_email = ContactEmail.objects.create(
-        member=member,
-        email_address=normalized,
-        email_type=email_type,
-        subscribe=subscribe,
-        verified=False,
-    )
+    try:
+        # Reclaim a soft-deleted row to avoid unique-constraint violation
+        deleted_qs = ContactEmail.all_objects.filter(email_address__iexact=normalized, is_deleted=True)
+        if deleted_qs.exists():
+            contact_email = deleted_qs.first()
+            contact_email.member = member
+            contact_email.email_type = email_type
+            contact_email.subscribe = subscribe
+            contact_email.verified = False
+            contact_email.is_deleted = False
+            contact_email.deleted_at = None
+            contact_email.save(update_fields=[
+                "member_id", "email_type", "subscribe", "verified",
+                "is_deleted", "deleted_at", "updated_at",
+            ])
+        else:
+            contact_email = ContactEmail.objects.create(
+                member=member,
+                email_address=normalized,
+                email_type=email_type,
+                subscribe=subscribe,
+                verified=False,
+            )
+    except IntegrityError:
+        raise AuthChallengeInvalid("This email address is already in use.")
 
     issue_email_challenge(member=member, purpose=PURPOSE, target_email=normalized)
 
