@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchNewsDetail, type NewsArticle } from '../services/api/news';
+import { fetchNewsDetail, type NewsArticle } from '../../services/api/news';
 import './NewsDetailPage.css';
 
 export const NewsDetailPage = () => {

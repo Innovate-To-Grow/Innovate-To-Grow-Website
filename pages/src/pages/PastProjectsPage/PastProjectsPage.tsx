@@ -4,7 +4,7 @@ import {
   fetchPastProjects,
   type SemesterWithProjects,
   type PaginatedResponse,
-} from '../services/api/projects';
+} from '../../services/api/projects';
 import './PastProjectsPage.css';
 
 export const PastProjectsPage = () => {
@@ -57,7 +57,7 @@ export const PastProjectsPage = () => {
   if (error) {
     return (
       <div className="past-projects-page">
-        <Link to="/projects" className="past-projects-back">&larr; Current Projects</Link>
+        <Link to="/current-projects" className="past-projects-back">&larr; Current Projects</Link>
         <h1 className="past-projects-title">Past Projects</h1>
         <div className="projects-state projects-error">{error}</div>
       </div>
@@ -68,7 +68,7 @@ export const PastProjectsPage = () => {
 
   return (
     <div className="past-projects-page">
-      <Link to="/projects" className="past-projects-back">&larr; Current Projects</Link>
+      <Link to="/current-projects" className="past-projects-back">&larr; Current Projects</Link>
       <h1 className="past-projects-title">Past Projects</h1>
 
       {!data || data.results.length === 0 ? (

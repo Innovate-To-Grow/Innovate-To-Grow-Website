@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchProjectDetail, type ProjectDetail } from '../services/api/projects';
+import { fetchProjectDetail, type ProjectDetail } from '../../services/api/projects';
 import './ProjectDetailPage.css';
 
 export const ProjectDetailPage = () => {
@@ -41,7 +41,7 @@ export const ProjectDetailPage = () => {
   if (error || !project) {
     return (
       <div className="project-detail">
-        <Link to="/projects" className="project-detail-back">&larr; Back to Projects</Link>
+        <Link to="/current-projects" className="project-detail-back">&larr; Back to Projects</Link>
         <div className="projects-state projects-error">{error || 'Project not found.'}</div>
       </div>
     );
@@ -49,7 +49,7 @@ export const ProjectDetailPage = () => {
 
   return (
     <div className="project-detail">
-      <Link to="/projects" className="project-detail-back">&larr; Back to Projects</Link>
+      <Link to="/current-projects" className="project-detail-back">&larr; Back to Projects</Link>
 
       <h1 className="project-detail-title">{project.project_title}</h1>
 

@@ -35,8 +35,9 @@ ruff format .                                 # Format code
 
 # Custom management commands
 python manage.py resetdb --force --confirm RESET_DB   # Reset database (dev only)
-python manage.py export_pages about -o about.zip      # Export page with media
-python manage.py import_pages about.zip               # Import page with media
+python manage.py seed_initial_data                     # Seed menu and footer data
+python manage.py sync_news                             # Sync news from feed sources
+python manage.py test_gmail_connection                 # Test Gmail API connection
 ```
 
 ### Frontend (React + Vite)
@@ -72,9 +73,13 @@ pre-commit run --all-files
 
 The backend is organized into specialized Django apps:
 
-- **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system
-- **`pages/`**: CMS for managing Page and HomePage models with components (HTML/CSS/JS blocks)
-- **`authn/`**: Custom authentication with UUID-based Member model and JWT
+- **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system, middleware
+- **`pages/`**: Layout only — Menu and FooterContent models (CMS pages were removed)
+- **`authn/`**: Auth with Member model, JWT, email verification, contact emails, password reset
+- **`event/`**: Event management (Event, Ticket, Question models)
+- **`news/`**: News articles (NewsArticle, NewsFeedSource, NewsSyncLog) and feed syncing
+- **`projects/`**: Semester and project management (Semester, Project models)
+- **`mail/`**: Email sending via Gmail API and AWS SES (GoogleAccount, SESAccount, EmailLog, SESEmailLog)
 
 ### Settings Structure
 
@@ -88,9 +93,11 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
 
 ### Frontend Architecture
 
-- **`pages/src/services/api/`**: API calls split into modules (`layout.ts`, `health.ts`, `news.ts`, `projects.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` is at `pages/src/services/auth.ts`.
+- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
 - **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `MaintenanceMode/`)
+- **`pages/src/pages/`**: Feature pages organized in folders (each has `index.ts`, `PageName.tsx`, `PageName.css`) — `AboutPage`, `NewsPage`, `NewsDetailPage`, `ProjectsPage`, `PastProjectsPage`, `ProjectDetailPage`, `ProjectSubmissionPage`, `SampleProposalsPage`, `ProjectsHubPage`, `EngineeringCapstonePage`, `SoftwareCapstonePage`, `StudentsPage`, `StudentAgreementPage`, `EventPreparationPage`, `VideoPreparationPage`, `PurchasingReimbursementPage`, `NotFoundPage`
 - **`pages/src/router/`**: React Router configuration
+- **Routes**: `/about`, `/news`, `/news/:id`, `/projects`, `/current-projects`, `/past-projects`, `/projects/:id`, `/project-submission`, `/sample-proposals`, `/engineering-capstone`, `/software-capstone`, `/students`, `/student-agreement`, `/event-preparation`, `/video-preparation`, `/purchasing-reimbursement`, `/login`, `/register`, `/forgot-password`, `/verify-email`, `/account`
 - **Vite proxy**: `/api`, `/media`, `/admin` proxied to backend (localhost:8000)
 - **Three React roots**: `#root` (main app with BrowserRouter), `#menu-root` (MainMenu only, no router), `#footer-root` (Footer only). Auth state syncs across roots via `i2g-auth-state-change` window event.
 
@@ -111,6 +118,9 @@ When querying, use `Model.objects` for normal queries and `Model.all_objects` wh
 - **Member model**: `Member.id` is the UUID primary key. `member_uuid` is a `@property` alias for `id` — it is NOT a DB column.
 - **JWT config**: `USER_ID_FIELD = "id"` (not `"member_uuid"`), `USER_ID_CLAIM = "member_uuid"`. Token blacklisting is enabled via `rest_framework_simplejwt.token_blacklist`.
 - **Password encryption**: Passwords are RSA-encrypted client-side before transmission. `PublicKeyView` serves the key; `authn/services.py` handles decryption.
+- **Email verification**: Registration requires email code verification (`RegisterVerifyCodeView`, `RegisterResendCodeView`). Login supports email code verification (`LoginCodeRequestView`, `LoginCodeVerifyView`).
+- **Password reset**: Email code flow — request (`PasswordResetRequestView`) → verify code (`PasswordResetVerifyView`) → confirm new password (`PasswordResetConfirmView`). Change password also supports email code verification.
+- **Contact emails**: CRUD at `/authn/contact-emails/` with verification (`ContactEmailListCreateView`, `ContactEmailDetailView`, `ContactEmailRequestVerificationView`, `ContactEmailVerifyCodeView`).
 - **DEFAULT_PERMISSION_CLASSES is `IsAuthenticated`**: All DRF views require auth by default. Public views (login, register, pages) must explicitly set `permission_classes = [AllowAny]`.
 - **Throttles**: `LoginRateThrottle` (10/min) in `src/authn/throttles.py`. Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 
@@ -122,18 +132,9 @@ The admin uses **django-unfold** for theming and **CKEditor 5** for rich text ed
 
 - **Dev**: In-memory cache (`LocMemCache`)
 - **Prod**: Redis via `django-redis`
-- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Page, HomePage, PageComponent, Menu, or FooterContent are saved/deleted
-- **Cache keys**: `"homepage:active"`, `"page:slug:{slug}"`, `"layout:data"`
+- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu or FooterContent are saved/deleted
+- **Cache keys**: `"layout:data"`
 - **Important**: When adding cache to views, ensure tests call `cache.clear()` in `setUp()` to prevent cross-test pollution.
-
-### Page Component System
-
-Pages and homepages support dynamic components via `PageComponent` model:
-
-- **Component types**: `html`, `form`, `google_sheet`, `sheet`
-- **Fields**: `html_content`, `css_file`, `css_code`, `js_code`, `config` (JSON)
-- **Ordering**: Components render in `order` field sequence
-- **Admin preview**: Live preview available in Django admin at `/admin/preview-popup/`
 
 ### API Contracts
 
@@ -149,6 +150,16 @@ When modifying API responses:
 - **Endpoint**: `/health-check/` — returns JSON with status and database connectivity
 - Returns HTTP 503 if the database is unreachable
 
+## Adding a New Frontend Page
+
+Three files to touch every time:
+
+1. **Create page folder** `pages/src/pages/<PageName>/` with `PageName.tsx`, `PageName.css`, `index.ts`
+2. **Register route** in `pages/src/router/index.tsx` — add import and route entry
+3. **Register in admin menu editor** — add to `APP_ROUTES` list in `src/pages/app_routes.py` (single source of truth; admin JS reads it automatically)
+
+Use `/add-page` skill for the full checklist and design system tokens.
+
 ## Development Workflow
 
 ### Full-Stack Local Development
@@ -163,7 +174,7 @@ When modifying API responses:
 - **Never edit** existing migrations on `main` branch
 - Generate migrations after model changes: `python manage.py makemigrations`
 - Always commit generated migration files
-- Fixtures in `src/pages/fixtures/` - load with `python manage.py loaddata pages/fixtures/<file>.json`
+- Fixtures in `src/pages/fixtures/` (e.g., `footer_content.json`) — load with `python manage.py loaddata pages/fixtures/<file>.json`
 
 ### Git Workflow
 
@@ -194,8 +205,13 @@ Key ignored rules (see `pyproject.toml`):
 
 - `E501`: Line too long (handled by formatter)
 - `B008`: Function calls in argument defaults (needed for Django)
+- `B904`: raise without `from` in except (existing pattern)
 - `DJ001`: null=True on string fields (existing pattern)
+- `DJ007`: `__all__` not set in `ModelForm` (existing pattern)
+- `DJ012`: Order of model inner classes/methods (existing pattern)
 - `F403/F405`: Star imports (used in Django settings)
+
+**Note**: `known-first-party` in `pyproject.toml` is stale — lists `["core", "authn", "pages", "events", "sheets"]`. Should be `["core", "authn", "pages", "event", "news", "projects", "mail"]`.
 
 ## Testing
 

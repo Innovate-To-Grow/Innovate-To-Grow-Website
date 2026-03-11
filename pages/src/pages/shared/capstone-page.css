@@ -1,0 +1,107 @@
+.capstone-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.capstone-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.capstone-content {
+  overflow: hidden;
+}
+
+.capstone-hero-image {
+  float: right;
+  max-width: 50%;
+  height: auto;
+  margin: 0 0 1rem 1.5rem;
+  border-radius: 8px;
+}
+
+.capstone-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+}
+
+.capstone-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.capstone-text a:hover {
+  text-decoration: underline;
+}
+
+.capstone-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.capstone-nav-btn {
+  padding: 0.625rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.capstone-nav-btn-primary {
+  background: #0f2d52;
+  color: #fff;
+}
+
+.capstone-nav-btn-primary:hover {
+  background: #1a4a7a;
+}
+
+.capstone-nav-btn-accent {
+  background: #daa520;
+  color: #fff;
+}
+
+.capstone-nav-btn-accent:hover {
+  background: #c4941a;
+}
+
+.capstone-contact {
+  text-align: center;
+  color: #444;
+  font-size: 0.9375rem;
+  margin-top: 1.5rem;
+}
+
+.capstone-contact a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.capstone-contact a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .capstone-page {
+    padding: 1rem;
+  }
+
+  .capstone-page-title {
+    font-size: 1.5rem;
+  }
+
+  .capstone-hero-image {
+    float: none;
+    max-width: 100%;
+    margin: 0 0 1.5rem;
+  }
+}

@@ -1,0 +1,1 @@
+export { SoftwareCapstonePage } from './SoftwareCapstonePage';

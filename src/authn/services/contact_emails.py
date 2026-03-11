@@ -38,10 +38,17 @@ def create_contact_email(*, member, email_address: str, email_type: str = "secon
             contact_email.verified = False
             contact_email.is_deleted = False
             contact_email.deleted_at = None
-            contact_email.save(update_fields=[
-                "member_id", "email_type", "subscribe", "verified",
-                "is_deleted", "deleted_at", "updated_at",
-            ])
+            contact_email.save(
+                update_fields=[
+                    "member_id",
+                    "email_type",
+                    "subscribe",
+                    "verified",
+                    "is_deleted",
+                    "deleted_at",
+                    "updated_at",
+                ]
+            )
         else:
             contact_email = ContactEmail.objects.create(
                 member=member,

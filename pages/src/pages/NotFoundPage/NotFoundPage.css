@@ -1,0 +1,41 @@
+.not-found-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6rem 1rem;
+  text-align: center;
+}
+
+.not-found-code {
+  font-size: 6rem;
+  font-weight: 700;
+  color: #0f2d52;
+  opacity: 0.15;
+  margin: 0;
+  line-height: 1;
+}
+
+.not-found-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.not-found-message {
+  font-size: 1.125rem;
+  color: #444;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .not-found-page {
+    padding: 4rem 1rem;
+  }
+
+  .not-found-code {
+    font-size: 4rem;
+  }
+
+  .not-found-title {
+    font-size: 1.5rem;
+  }
+}

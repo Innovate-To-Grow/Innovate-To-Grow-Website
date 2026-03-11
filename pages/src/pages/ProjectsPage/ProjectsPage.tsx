@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchCurrentProjects, type SemesterWithProjects } from '../services/api/projects';
+import { fetchCurrentProjects, type SemesterWithProjects } from '../../services/api/projects';
 import './ProjectsPage.css';
 
 export const ProjectsPage = () => {
