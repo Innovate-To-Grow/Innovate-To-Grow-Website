@@ -75,7 +75,6 @@ The backend is organized into specialized Django apps:
 - **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system
 - **`pages/`**: CMS for managing Page and HomePage models with components (HTML/CSS/JS blocks)
 - **`authn/`**: Custom authentication with UUID-based Member model and JWT
-- **`events/`**: Event management with registration, presentation schedules, and Google Sheets sync API
 
 ### Settings Structure
 
@@ -89,8 +88,8 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
 
 ### Frontend Architecture
 
-- **`pages/src/services/api/`**: API calls split into modules (`pages.ts`, `layout.ts`, `events.ts`, `preview.ts`, `health.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` is at `pages/src/services/auth.ts`.
-- **`pages/src/components/`**: React components organized by feature (`Layout/`, `PageContent/`, `Event/`, `Auth/`, `MaintenanceMode/`)
+- **`pages/src/services/api/`**: API calls split into modules (`layout.ts`, `health.ts`, `news.ts`, `projects.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` is at `pages/src/services/auth.ts`.
+- **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `MaintenanceMode/`)
 - **`pages/src/router/`**: React Router configuration
 - **Vite proxy**: `/api`, `/media`, `/admin` proxied to backend (localhost:8000)
 - **Three React roots**: `#root` (main app with BrowserRouter), `#menu-root` (MainMenu only, no router), `#footer-root` (Footer only). Auth state syncs across roots via `i2g-auth-state-change` window event.
@@ -112,7 +111,7 @@ When querying, use `Model.objects` for normal queries and `Model.all_objects` wh
 - **Member model**: `Member.id` is the UUID primary key. `member_uuid` is a `@property` alias for `id` — it is NOT a DB column.
 - **JWT config**: `USER_ID_FIELD = "id"` (not `"member_uuid"`), `USER_ID_CLAIM = "member_uuid"`. Token blacklisting is enabled via `rest_framework_simplejwt.token_blacklist`.
 - **Password encryption**: Passwords are RSA-encrypted client-side before transmission. `PublicKeyView` serves the key; `authn/services.py` handles decryption.
-- **DEFAULT_PERMISSION_CLASSES is `IsAuthenticated`**: All DRF views require auth by default. Public views (login, register, pages, events) must explicitly set `permission_classes = [AllowAny]`.
+- **DEFAULT_PERMISSION_CLASSES is `IsAuthenticated`**: All DRF views require auth by default. Public views (login, register, pages) must explicitly set `permission_classes = [AllowAny]`.
 - **Throttles**: `LoginRateThrottle` (10/min) in `src/authn/throttles.py`. Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 
 ### Admin Interface
@@ -124,7 +123,7 @@ The admin uses **django-unfold** for theming and **CKEditor 5** for rich text ed
 - **Dev**: In-memory cache (`LocMemCache`)
 - **Prod**: Redis via `django-redis`
 - **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Page, HomePage, PageComponent, Menu, or FooterContent are saved/deleted
-- **Cache keys**: `"homepage:active"`, `"page:slug:{slug}"`, `"layout:data"`, `"event:retrieve:active"`
+- **Cache keys**: `"homepage:active"`, `"page:slug:{slug}"`, `"layout:data"`
 - **Important**: When adding cache to views, ensure tests call `cache.clear()` in `setUp()` to prevent cross-test pollution.
 
 ### Page Component System
@@ -144,15 +143,6 @@ When modifying API responses:
 2. Update TypeScript interface in the corresponding `pages/src/services/api/*.ts` module
 3. Update API function if needed
 4. Run `npm run build` to verify TypeScript compilation
-
-### Events Sheet Sync
-
-Special API for Google Apps Script integration:
-
-- **Endpoint**: `/api/events/sync/export/`
-- **Auth**: `X-API-Key` header with `EVENTS_API_KEY` (compared via `hmac.compare_digest`)
-- **Modes**: `full` (complete snapshot) or `delta` (changed since watermark)
-- **Documentation**: `docs/events-sheet-sync.md`
 
 ### Health Check
 
@@ -230,11 +220,8 @@ Key variables:
 
 - `DJANGO_SETTINGS_MODULE`: Settings module (e.g., `core.settings.dev`)
 - `SECRET_KEY`: Django secret key
-- `EVENTS_API_KEY`: API key for events sheet sync
 - Backend URL for Vite: Set `VITE_BACKEND_URL` if not using default localhost:8000
 
 ## Documentation
 
 - **Setup guide**: `CONTRIBUTING.md` (comprehensive setup and workflow)
-- **Events API**: `docs/events-sheet-sync.md`
-- **Legacy parity**: `docs/event-legacy-parity-plan.md`

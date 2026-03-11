@@ -36,7 +36,7 @@ export const AccountPage = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Password form state
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordMethod, setPasswordMethod] = useState<'direct' | 'code'>('direct');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -438,7 +438,7 @@ export const AccountPage = () => {
             </form>
           </div>
 
-          {/* Email Center */}
+          {/* Subscriptions */}
           {profile && <EmailCenter profile={profile} onProfileUpdate={setProfile} />}
         </div>
 
@@ -469,19 +469,26 @@ export const AccountPage = () => {
 
           {/* Change Password */}
           <div className="account-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showPasswordForm ? '1.25rem' : 0 }}>
-              <h2 className="account-section-title" style={{ margin: 0 }}>Change Password</h2>
+            <h2 className="account-section-title">Change Password</h2>
+
+            <div className="account-password-tabs">
               <button
                 type="button"
-                className="auth-verify-resend"
-                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => setShowPasswordForm(!showPasswordForm)}
+                className={`account-password-tab${passwordMethod === 'direct' ? ' is-active' : ''}`}
+                onClick={() => setPasswordMethod('direct')}
               >
-                {showPasswordForm ? 'Cancel' : 'Change Password'}
+                Direct
+              </button>
+              <button
+                type="button"
+                className={`account-password-tab${passwordMethod === 'code' ? ' is-active' : ''}`}
+                onClick={() => setPasswordMethod('code')}
+              >
+                Via Email Code
               </button>
             </div>
 
-            {showPasswordForm && (
+            {passwordMethod === 'direct' && (
               <>
                 {passwordMessage && (
                   <div className="auth-alert success">
@@ -579,66 +586,65 @@ export const AccountPage = () => {
               </>
             )}
 
-            <div className="account-divider" />
+            {passwordMethod === 'code' && (
+              <>
+                <p className="auth-help-text">
+                  Send a 6-digit code to your primary email or any verified contact email linked to this account.
+                </p>
 
-            <div className="account-code-password">
-              <h3 className="account-subsection-title">Change Password via Email Code</h3>
-              <p className="auth-help-text">
-                Send a 6-digit code to your primary email or any verified contact email linked to this account.
-              </p>
-
-              {codePasswordMessage && (
-                <div className="auth-alert info">
-                  <i className="fa fa-info-circle auth-alert-icon" />
-                  <span>{codePasswordMessage}</span>
-                </div>
-              )}
-
-              {codePasswordError && (
-                <div className="auth-alert error">
-                  <i className="fa fa-exclamation-circle auth-alert-icon" />
-                  <span>{codePasswordError}</span>
-                </div>
-              )}
-
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor="code-password-email">
-                  Send Code To
-                </label>
-                <select
-                  id="code-password-email"
-                  className="auth-form-input auth-form-select"
-                  value={codePasswordEmail}
-                  onChange={(event) => {
-                    setCodePasswordEmail(event.target.value);
-                    setCodePasswordError(null);
-                  }}
-                  disabled={codePasswordLoading || availableAuthEmails.length === 0}
-                >
-                  {availableAuthEmails.map((email) => (
-                    <option key={email} value={email}>
-                      {email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="button"
-                className="auth-form-submit"
-                disabled={codePasswordLoading || !codePasswordEmail}
-                onClick={handleCodePasswordRequest}
-              >
-                {codePasswordLoading ? (
-                  <>
-                    <span className="auth-spinner" />
-                    Sending code...
-                  </>
-                ) : (
-                  'Send Verification Code'
+                {codePasswordMessage && (
+                  <div className="auth-alert info">
+                    <i className="fa fa-info-circle auth-alert-icon" />
+                    <span>{codePasswordMessage}</span>
+                  </div>
                 )}
-              </button>
-            </div>
+
+                {codePasswordError && (
+                  <div className="auth-alert error">
+                    <i className="fa fa-exclamation-circle auth-alert-icon" />
+                    <span>{codePasswordError}</span>
+                  </div>
+                )}
+
+                <div className="auth-form-group">
+                  <label className="auth-form-label" htmlFor="code-password-email">
+                    Send Code To
+                  </label>
+                  <select
+                    id="code-password-email"
+                    className="auth-form-input auth-form-select"
+                    value={codePasswordEmail}
+                    onChange={(event) => {
+                      setCodePasswordEmail(event.target.value);
+                      setCodePasswordError(null);
+                    }}
+                    disabled={codePasswordLoading || availableAuthEmails.length === 0}
+                  >
+                    {availableAuthEmails.map((email) => (
+                      <option key={email} value={email}>
+                        {email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  className="auth-form-submit"
+                  disabled={codePasswordLoading || !codePasswordEmail}
+                  onClick={handleCodePasswordRequest}
+                >
+                  {codePasswordLoading ? (
+                    <>
+                      <span className="auth-spinner" />
+                      Sending code...
+                    </>
+                  ) : (
+                    'Send Verification Code'
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Sign Out */}

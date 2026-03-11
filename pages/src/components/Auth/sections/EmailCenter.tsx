@@ -188,7 +188,7 @@ export const EmailCenter = ({ profile, onProfileUpdate }: EmailCenterProps) => {
 
   return (
     <div className="account-section">
-      <h2 className="account-section-title">Email Center</h2>
+      <h2 className="account-section-title">Subscriptions</h2>
 
       {successMessage && (
         <div className="auth-alert success" style={{ marginBottom: '1rem' }}>

@@ -58,7 +58,6 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
-    "events.apps.EventsConfig",
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
@@ -276,17 +275,6 @@ UNFOLD = {
                 "items": [
                     {"title": "Menus", "link": "/admin/pages/menu/"},
                     {"title": "Footer", "link": "/admin/pages/footercontent/"},
-                ],
-            },
-            {
-                "title": "Events",
-                "items": [
-                    {"title": "Events", "link": "/admin/events/event/"},
-                    {"title": "Programs", "link": "/admin/events/program/"},
-                    {"title": "Tracks", "link": "/admin/events/track/"},
-                    {"title": "Ticket Options", "link": "/admin/events/eventticketoption/"},
-                    {"title": "Questions", "link": "/admin/events/eventquestion/"},
-                    {"title": "Registrations", "link": "/admin/events/eventregistration/"},
                 ],
             },
             {

@@ -549,6 +549,36 @@
   gap: 1rem;
 }
 
+.account-password-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.account-password-tab {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #4b5563;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.account-password-tab.is-active {
+  background: #003366;
+  color: #fff;
+  border-color: #003366;
+}
+
+.account-password-tab:hover:not(.is-active) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
 /* Profile Image Upload */
 
 .profile-image-section {
@@ -640,7 +670,7 @@
   margin: 0.5rem 0 0;
 }
 
-/* Email Center */
+/* Subscriptions (Email Center) */
 
 .email-center-card {
   border: 1px solid #e5e7eb;
