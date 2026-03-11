@@ -11,6 +11,10 @@ from .views import (
     ChangePasswordCodeRequestView,
     ChangePasswordCodeVerifyView,
     ChangePasswordView,
+    ContactEmailDetailView,
+    ContactEmailListCreateView,
+    ContactEmailRequestVerificationView,
+    ContactEmailVerifyCodeView,
     LoginCodeRequestView,
     LoginCodeVerifyView,
     LoginView,
@@ -51,4 +55,17 @@ urlpatterns = [
     path("change-password/request-code/", ChangePasswordCodeRequestView.as_view(), name="change-password-request-code"),
     path("change-password/verify-code/", ChangePasswordCodeVerifyView.as_view(), name="change-password-verify-code"),
     path("change-password/confirm/", ChangePasswordCodeConfirmView.as_view(), name="change-password-confirm"),
+    # Contact Emails (authenticated)
+    path("contact-emails/", ContactEmailListCreateView.as_view(), name="contact-email-list-create"),
+    path("contact-emails/<uuid:pk>/", ContactEmailDetailView.as_view(), name="contact-email-detail"),
+    path(
+        "contact-emails/<uuid:pk>/request-verification/",
+        ContactEmailRequestVerificationView.as_view(),
+        name="contact-email-request-verification",
+    ),
+    path(
+        "contact-emails/<uuid:pk>/verify-code/",
+        ContactEmailVerifyCodeView.as_view(),
+        name="contact-email-verify-code",
+    ),
 ]

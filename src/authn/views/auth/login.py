@@ -19,6 +19,7 @@ class LoginView(APIView):
     Returns JWT access and refresh tokens.
     """
 
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 

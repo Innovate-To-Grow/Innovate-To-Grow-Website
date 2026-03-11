@@ -44,5 +44,6 @@
     <iframe id="menu-preview-iframe" class="preview-iframe menu-preview-iframe" sandbox="allow-same-origin"></iframe>
   </div>
 
-  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=3"></script>
+  <script>window.APP_ROUTES = {{ app_routes_json|safe }};</script>
+  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=5"></script>
 {% endblock %}

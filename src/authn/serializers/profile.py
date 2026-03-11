@@ -42,6 +42,10 @@ class ProfileSerializer(serializers.Serializer):
         max_length=255,
         help_text="Organization or company the user belongs to.",
     )
+    email_subscribe = serializers.BooleanField(
+        required=False,
+        help_text="Whether the member is subscribed to email communications.",
+    )
     is_active = serializers.BooleanField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
 
@@ -71,6 +75,7 @@ class ProfileSerializer(serializers.Serializer):
             "last_name": instance.last_name or "",
             "display_name": display_name,
             "organization": instance.organization or "",
+            "email_subscribe": instance.email_subscribe,
             "is_active": instance.is_active,
             "date_joined": instance.date_joined.isoformat(),
             "profile_image": profile_image,
@@ -88,7 +93,7 @@ class ProfileSerializer(serializers.Serializer):
 
         # Update Member model fields
         member_fields_to_update = []
-        for field in ("first_name", "last_name", "organization"):
+        for field in ("first_name", "last_name", "organization", "email_subscribe"):
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
                 member_fields_to_update.append(field)

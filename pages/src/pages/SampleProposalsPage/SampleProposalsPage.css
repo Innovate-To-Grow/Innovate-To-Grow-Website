@@ -1,0 +1,93 @@
+.proposals-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.proposals-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.proposal-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  background: #fff;
+}
+
+.proposal-card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f2d52;
+}
+
+.proposal-card-body {
+  padding: 1.25rem;
+}
+
+.proposal-field {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 0.25rem;
+}
+
+.proposal-label {
+  font-weight: 600;
+}
+
+.proposal-section-title {
+  color: #0f2d52;
+  font-size: 1.125rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.proposal-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.proposal-footer {
+  color: #444;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.proposal-footer a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.proposal-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .proposals-page {
+    padding: 1rem;
+  }
+
+  .proposals-page-title {
+    font-size: 1.5rem;
+  }
+
+  .proposal-card-header {
+    font-size: 1.1rem;
+    padding: 0.625rem 1rem;
+  }
+
+  .proposal-card-body {
+    padding: 1rem;
+  }
+}

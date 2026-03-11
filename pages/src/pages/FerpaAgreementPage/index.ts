@@ -1,0 +1,1 @@
+export { FerpaAgreementPage } from './FerpaAgreementPage';

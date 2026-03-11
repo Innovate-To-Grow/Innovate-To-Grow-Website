@@ -21,11 +21,6 @@ from django.contrib import admin
 from django.urls import include, path
 
 from authn.forms import EmailAdminAuthenticationForm
-from events.views import (
-    EventRegistrationStatusAPIView,
-    MembershipEventRegistrationPageView,
-    MembershipEventsPageView,
-)
 from pages.views import LayoutAPIView
 
 # Customize Django Admin
@@ -39,8 +34,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
-    # events (proxy removes /api prefix)
-    path("events/", include("events.urls")),
+    # event
+    path("event/", include("event.urls")),
     # news
     path("news/", include("news.urls")),
     # projects
@@ -49,20 +44,6 @@ urlpatterns = [
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # authn
     path("authn/", include("authn.urls")),
-    # Need to clean up this after the migration
-    # legacy membership-compatible event registration routes
-    path("membership/events", MembershipEventsPageView.as_view(), name="membership-events"),
-    path("membership/events/<slug:event_slug>", MembershipEventsPageView.as_view(), name="membership-events-slug"),
-    path(
-        "membership/event-registration/<slug:event_slug>/<str:token>",
-        MembershipEventRegistrationPageView.as_view(),
-        name="membership-event-registration",
-    ),
-    path(
-        "membership/event-registration/status/<slug:event_slug>/<str:token>",
-        EventRegistrationStatusAPIView.as_view(),
-        name="membership-event-registration-status",
-    ),
 ]
 
 if settings.DEBUG:

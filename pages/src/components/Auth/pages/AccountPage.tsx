@@ -5,10 +5,10 @@ import {
   getProfile,
   getAccountEmails,
   updateProfileFields,
-  changePassword,
   uploadProfileImage,
   type ProfileResponse,
 } from '../../../services/auth';
+import { EmailCenter } from '../sections/EmailCenter';
 import '../Auth.css';
 
 export const AccountPage = () => {
@@ -35,19 +35,12 @@ export const AccountPage = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Password form state
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordLocalErrors, setPasswordLocalErrors] = useState<Record<string, string>>({});
   const [authEmails, setAuthEmails] = useState<string[]>([]);
   const [codePasswordEmail, setCodePasswordEmail] = useState('');
   const [codePasswordLoading, setCodePasswordLoading] = useState(false);
   const [codePasswordMessage, setCodePasswordMessage] = useState<string | null>(null);
   const [codePasswordError, setCodePasswordError] = useState<string | null>(null);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
   // Auth guard
   useEffect(() => {
@@ -166,40 +159,6 @@ export const AccountPage = () => {
       setProfileError(message);
     } finally {
       setProfileSaving(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setPasswordMessage(null);
-    setPasswordError(null);
-
-    // Client-side validation
-    const errors: Record<string, string> = {};
-    if (newPassword.length < 8) {
-      errors.newPassword = 'Password must be at least 8 characters';
-    }
-    if (newPassword !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
-    setPasswordLocalErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    setPasswordSaving(true);
-
-    try {
-      await changePassword(currentPassword, newPassword, confirmPassword);
-      setPasswordMessage('Password changed successfully.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      // Optionally close the form on success
-      // setShowPasswordForm(false);
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
-      setPasswordError(message);
-    } finally {
-      setPasswordSaving(false);
     }
   };
 
@@ -395,7 +354,7 @@ export const AccountPage = () => {
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   <button
                     type="submit"
-                    className="auth-form-submit"
+                    className="auth-form-submit account-edit-btn"
                     disabled={profileSaving}
                     style={{ flex: 1 }}
                   >
@@ -410,7 +369,7 @@ export const AccountPage = () => {
                   </button>
                   <button
                     type="button"
-                    className="auth-form-submit"
+                    className="account-edit-btn"
                     onClick={() => {
                       setIsEditingProfile(false);
                       setFirstName(profile?.first_name || '');
@@ -420,7 +379,7 @@ export const AccountPage = () => {
                       setProfileMessage(null);
                       setProfileError(null);
                     }}
-                    style={{ flex: 1, background: '#fff', color: '#003366', border: '1px solid #003366' }}
+                    style={{ flex: 1 }}
                   >
                     Cancel
                   </button>
@@ -428,7 +387,7 @@ export const AccountPage = () => {
               ) : (
                 <button
                   type="button"
-                  className="auth-form-submit"
+                  className="account-edit-btn"
                   onClick={() => setIsEditingProfile(true)}
                 >
                   Edit Profile
@@ -436,204 +395,101 @@ export const AccountPage = () => {
               )}
             </form>
           </div>
+
+          {/* Change Password */}
+          <div className="account-section">
+            <div className="account-section-header" onClick={() => setIsPasswordOpen(!isPasswordOpen)}>
+              <h2 className="account-section-title">Change Password</h2>
+              <span className="account-section-toggle">{isPasswordOpen ? '\u2212' : '+'}</span>
+            </div>
+
+            {isPasswordOpen && (<>
+                <p className="auth-help-text">
+                  Send a 6-digit code to your primary email or any verified contact email linked to this account.
+                </p>
+
+                {codePasswordMessage && (
+                  <div className="auth-alert info">
+                    <i className="fa fa-info-circle auth-alert-icon" />
+                    <span>{codePasswordMessage}</span>
+                  </div>
+                )}
+
+                {codePasswordError && (
+                  <div className="auth-alert error">
+                    <i className="fa fa-exclamation-circle auth-alert-icon" />
+                    <span>{codePasswordError}</span>
+                  </div>
+                )}
+
+                <div className="auth-form-group">
+                  <label className="auth-form-label" htmlFor="code-password-email">
+                    Send Code To
+                  </label>
+                  <select
+                    id="code-password-email"
+                    className="auth-form-input auth-form-select"
+                    value={codePasswordEmail}
+                    onChange={(event) => {
+                      setCodePasswordEmail(event.target.value);
+                      setCodePasswordError(null);
+                    }}
+                    disabled={codePasswordLoading || availableAuthEmails.length === 0}
+                  >
+                    {availableAuthEmails.map((email) => (
+                      <option key={email} value={email}>
+                        {email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  className="auth-form-submit"
+                  disabled={codePasswordLoading || !codePasswordEmail}
+                  onClick={handleCodePasswordRequest}
+                >
+                  {codePasswordLoading ? (
+                    <>
+                      <span className="auth-spinner" />
+                      Sending code...
+                    </>
+                  ) : (
+                    'Send Verification Code'
+                  )}
+                </button>
+            </>)}
+          </div>
         </div>
 
         <div className="account-column">
+          {/* Subscriptions */}
+          {profile && <EmailCenter profile={profile} onProfileUpdate={setProfile} />}
+
           {/* Account Details */}
           <div className="account-section">
             <h2 className="account-section-title">Account Details</h2>
 
-            <div className="account-readonly-group">
-              <span className="auth-form-label">Email</span>
-              <span className="account-readonly-value">{displayEmail}</span>
-            </div>
-
-            <div className="account-readonly-group">
-              <span className="auth-form-label">Username</span>
-              <span className="account-readonly-value">{displayUsername}</span>
-            </div>
-
-            {profile?.date_joined && (
+            <div className="account-details-rows">
               <div className="account-readonly-group">
-                <span className="auth-form-label">Member Since</span>
-                <span className="account-readonly-value">
-                  {new Date(profile.date_joined).toLocaleDateString()}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Change Password */}
-          <div className="account-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showPasswordForm ? '1.25rem' : 0 }}>
-              <h2 className="account-section-title" style={{ margin: 0 }}>Change Password</h2>
-              <button
-                type="button"
-                className="auth-verify-resend"
-                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                onClick={() => setShowPasswordForm(!showPasswordForm)}
-              >
-                {showPasswordForm ? 'Cancel' : 'Change Password'}
-              </button>
-            </div>
-
-            {showPasswordForm && (
-              <>
-                {passwordMessage && (
-                  <div className="auth-alert success">
-                    <i className="fa fa-check-circle auth-alert-icon" />
-                    <span>{passwordMessage}</span>
-                  </div>
-                )}
-
-                {passwordError && (
-                  <div className="auth-alert error">
-                    <i className="fa fa-exclamation-circle auth-alert-icon" />
-                    <span>{passwordError}</span>
-                  </div>
-                )}
-
-                <form className="auth-form" onSubmit={handlePasswordSubmit}>
-                  <div className="auth-form-group">
-                    <label className="auth-form-label" htmlFor="account-current-password">
-                      Current Password
-                    </label>
-                    <input
-                      id="account-current-password"
-                      type="password"
-                      className="auth-form-input"
-                      value={currentPassword}
-                      onChange={(e) => {
-                        setCurrentPassword(e.target.value);
-                        setPasswordError(null);
-                      }}
-                      required
-                      autoComplete="current-password"
-                    />
-                  </div>
-
-                  <div className="auth-form-group">
-                    <label className="auth-form-label" htmlFor="account-new-password">
-                      New Password
-                    </label>
-                    <input
-                      id="account-new-password"
-                      type="password"
-                      className={`auth-form-input ${passwordLocalErrors.newPassword ? 'has-error' : ''}`}
-                      value={newPassword}
-                      onChange={(e) => {
-                        setNewPassword(e.target.value);
-                        setPasswordLocalErrors((prev) => ({ ...prev, newPassword: '' }));
-                      }}
-                      placeholder="At least 8 characters"
-                      required
-                      autoComplete="new-password"
-                      minLength={8}
-                    />
-                    {passwordLocalErrors.newPassword && (
-                      <span className="auth-form-error">{passwordLocalErrors.newPassword}</span>
-                    )}
-                  </div>
-
-                  <div className="auth-form-group">
-                    <label className="auth-form-label" htmlFor="account-confirm-password">
-                      Confirm New Password
-                    </label>
-                    <input
-                      id="account-confirm-password"
-                      type="password"
-                      className={`auth-form-input ${passwordLocalErrors.confirmPassword ? 'has-error' : ''}`}
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        setPasswordLocalErrors((prev) => ({ ...prev, confirmPassword: '' }));
-                      }}
-                      placeholder="Re-enter new password"
-                      required
-                      autoComplete="new-password"
-                    />
-                    {passwordLocalErrors.confirmPassword && (
-                      <span className="auth-form-error">{passwordLocalErrors.confirmPassword}</span>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="auth-form-submit"
-                    disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
-                  >
-                    {passwordSaving ? (
-                      <>
-                        <span className="auth-spinner" />
-                        Changing password...
-                      </>
-                    ) : (
-                      'Change Password'
-                    )}
-                  </button>
-                </form>
-              </>
-            )}
-
-            <div className="account-divider" />
-
-            <div className="account-code-password">
-              <h3 className="account-subsection-title">Change Password via Email Code</h3>
-              <p className="auth-help-text">
-                Send a 6-digit code to your primary email or any verified contact email linked to this account.
-              </p>
-
-              {codePasswordMessage && (
-                <div className="auth-alert info">
-                  <i className="fa fa-info-circle auth-alert-icon" />
-                  <span>{codePasswordMessage}</span>
-                </div>
-              )}
-
-              {codePasswordError && (
-                <div className="auth-alert error">
-                  <i className="fa fa-exclamation-circle auth-alert-icon" />
-                  <span>{codePasswordError}</span>
-                </div>
-              )}
-
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor="code-password-email">
-                  Send Code To
-                </label>
-                <select
-                  id="code-password-email"
-                  className="auth-form-input auth-form-select"
-                  value={codePasswordEmail}
-                  onChange={(event) => {
-                    setCodePasswordEmail(event.target.value);
-                    setCodePasswordError(null);
-                  }}
-                  disabled={codePasswordLoading || availableAuthEmails.length === 0}
-                >
-                  {availableAuthEmails.map((email) => (
-                    <option key={email} value={email}>
-                      {email}
-                    </option>
-                  ))}
-                </select>
+                <span className="auth-form-label">Email</span>
+                <span className="account-readonly-value">{displayEmail}</span>
               </div>
 
-              <button
-                type="button"
-                className="auth-form-submit"
-                disabled={codePasswordLoading || !codePasswordEmail}
-                onClick={handleCodePasswordRequest}
-              >
-                {codePasswordLoading ? (
-                  <>
-                    <span className="auth-spinner" />
-                    Sending code...
-                  </>
-                ) : (
-                  'Send Verification Code'
-                )}
-              </button>
+              <div className="account-readonly-group">
+                <span className="auth-form-label">Username</span>
+                <span className="account-readonly-value">{displayUsername}</span>
+              </div>
+
+              {profile?.date_joined && (
+                <div className="account-readonly-group">
+                  <span className="auth-form-label">Member Since</span>
+                  <span className="account-readonly-value">
+                    {new Date(profile.date_joined).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

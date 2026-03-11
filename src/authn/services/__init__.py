@@ -10,6 +10,12 @@ from .auth_email import (
     resolve_auth_email,
 )
 from .auth_mail import AuthEmailError, send_auth_code_email
+from .contact_emails import (
+    create_contact_email,
+    delete_contact_email,
+    resend_contact_email_verification,
+    verify_contact_email_code,
+)
 from .create_member import CreateMemberService
 from .email_challenges import (
     AuthChallengeDeliveryError,
@@ -58,6 +64,11 @@ __all__ = [
     "AuthChallengeInvalid",
     "AuthChallengeThrottled",
     "AuthChallengeDeliveryError",
+    # Contact emails
+    "create_contact_email",
+    "verify_contact_email_code",
+    "resend_contact_email_verification",
+    "delete_contact_email",
     # RSA Manager
     "get_or_create_auth_keypair",
     "rotate_auth_keypair",

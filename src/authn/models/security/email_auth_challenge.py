@@ -19,6 +19,7 @@ class EmailAuthChallenge(ProjectControlModel):
         LOGIN = "login", "Login"
         PASSWORD_RESET = "password_reset", "Password Reset"
         PASSWORD_CHANGE = "password_change", "Password Change"
+        CONTACT_EMAIL_VERIFY = "contact_email_verify", "Contact Email Verify"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"

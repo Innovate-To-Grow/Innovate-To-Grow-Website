@@ -58,7 +58,7 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
     "pages.apps.PagesConfig",
     "authn.apps.AuthnConfig",
-    "events.apps.EventsConfig",
+    "event.apps.EventConfig",
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
@@ -78,7 +78,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    "core.middleware.CustomCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -281,12 +281,7 @@ UNFOLD = {
             {
                 "title": "Events",
                 "items": [
-                    {"title": "Events", "link": "/admin/events/event/"},
-                    {"title": "Programs", "link": "/admin/events/program/"},
-                    {"title": "Tracks", "link": "/admin/events/track/"},
-                    {"title": "Ticket Options", "link": "/admin/events/eventticketoption/"},
-                    {"title": "Questions", "link": "/admin/events/eventquestion/"},
-                    {"title": "Registrations", "link": "/admin/events/eventregistration/"},
+                    {"title": "Events", "link": "/admin/event/event/"},
                 ],
             },
             {

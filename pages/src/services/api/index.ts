@@ -18,18 +18,6 @@ export type {
 } from './layout';
 export { fetchLayoutData, clearLayoutCache } from './layout';
 
-export type {
-  Presentation,
-  Track,
-  Program,
-  TrackWinner,
-  SpecialAward,
-  ExpoRow,
-  ReceptionRow,
-  EventData,
-} from './events';
-export { fetchEvent } from './events';
-
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth } from './health';
 

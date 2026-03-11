@@ -13,14 +13,8 @@
   // Current data state
   let menuItems = [];
 
-  // Known internal app routes
-  const APP_ROUTES = [
-    { url: '/', title: 'Home', icon: 'fa-home' },
-    { url: '/event', title: 'Events', icon: 'fa-calendar' },
-    { url: '/news', title: 'News', icon: 'fa-newspaper-o' },
-    { url: '/projects', title: 'Projects', icon: 'fa-briefcase' },
-    { url: '/past-projects', title: 'Past Projects', icon: 'fa-archive' },
-  ];
+  // App routes injected from Django backend (see pages/app_routes.py)
+  const APP_ROUTES = window.APP_ROUTES || [];
   
   // Initialize
   function init() {

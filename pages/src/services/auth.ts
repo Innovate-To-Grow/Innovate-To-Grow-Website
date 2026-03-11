@@ -50,9 +50,19 @@ export interface ProfileResponse {
   last_name: string;
   display_name: string;
   organization: string;
+  email_subscribe: boolean;
   is_active: boolean;
   date_joined: string;
   profile_image?: string;
+}
+
+export interface ContactEmail {
+  id: string;
+  email_address: string;
+  email_type: 'primary' | 'secondary' | 'other';
+  subscribe: boolean;
+  verified: boolean;
+  created_at: string;
 }
 
 // ======================== Token Storage ========================
@@ -287,6 +297,7 @@ export const updateProfileFields = async (data: {
   last_name?: string;
   display_name?: string;
   organization?: string;
+  email_subscribe?: boolean;
 }): Promise<ProfileResponse> => {
   const response = await authApi.patch<ProfileResponse>('/authn/profile/', data);
 
@@ -361,6 +372,44 @@ export const confirmPasswordChange = async (
     new_password_confirm: encryptedConfirm,
     key_id: keyId,
   });
+  return response.data;
+};
+
+// ======================== Contact Emails ========================
+
+export const getContactEmails = async (): Promise<ContactEmail[]> => {
+  const response = await authApi.get<ContactEmail[]>('/authn/contact-emails/');
+  return response.data;
+};
+
+export const createContactEmail = async (data: {
+  email_address: string;
+  email_type?: 'secondary' | 'other';
+  subscribe?: boolean;
+}): Promise<ContactEmail> => {
+  const response = await authApi.post<ContactEmail>('/authn/contact-emails/', data);
+  return response.data;
+};
+
+export const updateContactEmail = async (
+  id: string,
+  data: { email_type?: 'secondary' | 'other'; subscribe?: boolean },
+): Promise<ContactEmail> => {
+  const response = await authApi.patch<ContactEmail>(`/authn/contact-emails/${id}/`, data);
+  return response.data;
+};
+
+export const deleteContactEmail = async (id: string): Promise<void> => {
+  await authApi.delete(`/authn/contact-emails/${id}/`);
+};
+
+export const requestContactEmailVerification = async (id: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>(`/authn/contact-emails/${id}/request-verification/`);
+  return response.data;
+};
+
+export const verifyContactEmailCode = async (id: string, code: string): Promise<ContactEmail> => {
+  const response = await authApi.post<ContactEmail>(`/authn/contact-emails/${id}/verify-code/`, { code });
   return response.data;
 };
 

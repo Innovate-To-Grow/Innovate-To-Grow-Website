@@ -19,6 +19,7 @@ class RegisterView(APIView):
     Creates or updates an inactive user and sends a verification code.
     """
 
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
