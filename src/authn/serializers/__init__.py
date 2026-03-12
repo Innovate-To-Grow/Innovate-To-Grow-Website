@@ -14,8 +14,6 @@ from .email_code import (
     ChangePasswordCodeConfirmSerializer,
     ChangePasswordCodeRequestSerializer,
     ChangePasswordCodeVerifySerializer,
-    UnifiedEmailAuthRequestSerializer,
-    UnifiedEmailAuthVerifySerializer,
     LoginCodeRequestSerializer,
     LoginCodeVerifySerializer,
     PasswordResetConfirmSerializer,
@@ -23,6 +21,8 @@ from .email_code import (
     PasswordResetVerifySerializer,
     RegisterResendCodeSerializer,
     RegisterVerifyCodeSerializer,
+    UnifiedEmailAuthRequestSerializer,
+    UnifiedEmailAuthVerifySerializer,
 )
 from .login import LoginSerializer
 from .profile import ProfileSerializer
