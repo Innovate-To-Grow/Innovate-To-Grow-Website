@@ -19,8 +19,10 @@ from authn.services import (
     issue_email_challenge,
     mark_challenge_verified,
     normalize_email,
+    registration_email_conflicts,
     resolve_auth_email,
     verify_email_code,
+    verify_email_code_for_purposes,
 )
 
 Member = get_user_model()
@@ -55,6 +57,16 @@ def _decrypt_new_passwords(attrs: dict, *, user=None) -> str:
         raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
 
     return new_password
+
+
+def _generate_unique_username(email: str) -> str:
+    base_username = email.split("@", 1)[0]
+    username = base_username
+    counter = 1
+    while Member.objects.filter(username=username).exists():
+        username = f"{base_username}{counter}"
+        counter += 1
+    return username
 
 
 class BaseEmailSerializer(serializers.Serializer):
@@ -105,6 +117,80 @@ class LoginCodeRequestSerializer(BaseEmailSerializer):
 
 class LoginCodeVerifySerializer(BaseCodeVerifySerializer):
     purpose = EmailAuthChallenge.Purpose.LOGIN
+
+
+class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
+    def _create_pending_member(self, email: str) -> Member:
+        member = Member(
+            username=_generate_unique_username(email),
+            email=email,
+            is_active=False,
+            first_name="",
+            last_name="",
+            organization="",
+        )
+        member.set_unusable_password()
+        member.save()
+        return member
+
+    def save(self):
+        email = self.validated_data["email"]
+        resolved = resolve_auth_email(email, require_active=True)
+        if resolved is not None:
+            issue_email_challenge(
+                member=resolved.member,
+                purpose=EmailAuthChallenge.Purpose.LOGIN,
+                target_email=resolved.delivery_email,
+            )
+            return {
+                "message": "Check your email for a verification code.",
+                "flow": "login",
+                "next_step": "verify_code",
+            }
+
+        pending_member = Member.objects.filter(email__iexact=email, is_active=False).first()
+        if registration_email_conflicts(email, exclude_member_id=pending_member.pk if pending_member else None):
+            raise serializers.ValidationError({"email": "This email cannot be used for registration."})
+
+        member = pending_member or self._create_pending_member(email)
+        issue_email_challenge(
+            member=member,
+            purpose=EmailAuthChallenge.Purpose.REGISTER,
+            target_email=email,
+        )
+        return {
+            "message": "Check your email for a verification code.",
+            "flow": "register",
+            "next_step": "verify_code",
+        }
+
+
+class UnifiedEmailAuthVerifySerializer(BaseEmailSerializer):
+    code = serializers.CharField(required=True, max_length=6, min_length=6)
+
+    def validate_code(self, value: str) -> str:
+        normalized = value.strip()
+        if not _CODE_RE.match(normalized):
+            raise serializers.ValidationError("Code must be a 6-digit number.")
+        return normalized
+
+    def validate(self, attrs: dict) -> dict:
+        attrs = super().validate(attrs)
+        try:
+            challenge = verify_email_code_for_purposes(
+                purposes=[
+                    EmailAuthChallenge.Purpose.LOGIN,
+                    EmailAuthChallenge.Purpose.REGISTER,
+                ],
+                target_email=attrs["email"],
+                code=attrs["code"],
+            )
+        except AuthChallengeInvalid as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        attrs["challenge"] = challenge
+        attrs["flow"] = "register" if challenge.purpose == EmailAuthChallenge.Purpose.REGISTER else "login"
+        return attrs
 
 
 class RegisterVerifyCodeSerializer(BaseCodeVerifySerializer):

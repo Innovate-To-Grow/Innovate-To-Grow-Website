@@ -15,6 +15,8 @@ from .views import (
     ContactEmailListCreateView,
     ContactEmailRequestVerificationView,
     ContactEmailVerifyCodeView,
+    EmailAuthRequestCodeView,
+    EmailAuthVerifyCodeView,
     LoginCodeRequestView,
     LoginCodeVerifyView,
     LoginView,
@@ -33,6 +35,9 @@ app_name = "authn"
 urlpatterns = [
     # Public key for RSA encryption
     path("public-key/", PublicKeyView.as_view(), name="public-key"),
+    # Unified email auth
+    path("email-auth/request-code/", EmailAuthRequestCodeView.as_view(), name="email-auth-request-code"),
+    path("email-auth/verify-code/", EmailAuthVerifyCodeView.as_view(), name="email-auth-verify-code"),
     # Registration
     path("register/", RegisterView.as_view(), name="register"),
     path("register/verify-code/", RegisterVerifyCodeView.as_view(), name="register-verify-code"),

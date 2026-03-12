@@ -4,10 +4,10 @@ import { LoginForm } from '../forms/LoginForm';
 import '../Auth.css';
 
 export const LoginPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, requiresProfileCompletion } = useAuth();
 
   if (isAuthenticated) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to={requiresProfileCompletion ? '/complete-profile' : '/account'} replace />;
   }
 
   return (
@@ -16,7 +16,7 @@ export const LoginPage = () => {
         <div className="auth-page-header">
           <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
           <h1 className="auth-page-title">Welcome to I2G</h1>
-          <p className="auth-page-subtitle">Sign in with an email code or your password</p>
+          <p className="auth-page-subtitle">Enter your email to sign in or create your account</p>
         </div>
         <LoginForm />
       </div>

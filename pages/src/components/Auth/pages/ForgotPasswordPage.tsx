@@ -4,13 +4,13 @@ import { useAuth } from '../AuthContext';
 import '../Auth.css';
 
 export const ForgotPasswordPage = () => {
-  const { isAuthenticated, requestPasswordReset, error, isLoading, clearError } = useAuth();
+  const { isAuthenticated, requiresProfileCompletion, requestPasswordReset, error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   if (isAuthenticated) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to={requiresProfileCompletion ? '/complete-profile' : '/account'} replace />;
   }
 
   const handleSubmit = async (event: FormEvent) => {

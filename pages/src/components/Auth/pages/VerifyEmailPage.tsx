@@ -4,9 +4,14 @@ import { CodeInput } from '../forms/CodeInput';
 import { useAuth } from '../AuthContext';
 import '../Auth.css';
 
-type VerifyFlow = 'login' | 'register' | 'reset' | 'change';
+type VerifyFlow = 'auth' | 'login' | 'register' | 'reset' | 'change';
 
 const FLOW_META: Record<VerifyFlow, { title: string; subtitle: string; buttonLabel: string }> = {
+  auth: {
+    title: 'Verify Your Email',
+    subtitle: 'Enter the 6-digit code we sent to continue signing in or setting up your account.',
+    buttonLabel: 'Continue',
+  },
   login: {
     title: 'Verify Login',
     subtitle: 'Enter the 6-digit code we sent to finish signing in.',
@@ -30,11 +35,11 @@ const FLOW_META: Record<VerifyFlow, { title: string; subtitle: string; buttonLab
 };
 
 const isVerifyFlow = (value: string | null): value is VerifyFlow => {
-  return value === 'login' || value === 'register' || value === 'reset' || value === 'change';
+  return value === 'auth' || value === 'login' || value === 'register' || value === 'reset' || value === 'change';
 };
 
 export const VerifyEmailPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, requiresProfileCompletion } = useAuth();
   const [searchParams] = useSearchParams();
 
   const flowParam = searchParams.get('flow');
@@ -48,8 +53,8 @@ export const VerifyEmailPage = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if ((flowParam === 'login' || flowParam === 'register') && isAuthenticated) {
-    return <Navigate to="/account" replace />;
+  if ((flowParam === 'auth' || flowParam === 'login' || flowParam === 'register') && isAuthenticated) {
+    return <Navigate to={requiresProfileCompletion ? '/complete-profile' : '/account'} replace />;
   }
 
   return <VerifyEmailPageContent key={`${flowParam}:${email}`} flow={flowParam} email={email} />;
@@ -64,6 +69,8 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
   const {
     error,
     isLoading,
+    requestEmailAuthCode,
+    verifyEmailAuthCode,
     clearError,
     verifyLoginCode,
     verifyRegistrationCode,
@@ -96,6 +103,11 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
     setLocalMessage(null);
     setLocalSuccess(null);
     try {
+      if (flow === 'auth') {
+        const response = await verifyEmailAuthCode(email, code);
+        navigate(response.next_step === 'complete_profile' ? '/complete-profile' : '/account', { replace: true });
+        return;
+      }
       if (flow === 'login') {
         await verifyLoginCode(email, code);
         navigate('/account', { replace: true });
@@ -124,6 +136,11 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
     setLocalMessage(null);
     setLocalSuccess(null);
     try {
+      if (flow === 'auth') {
+        const response = await requestEmailAuthCode(email);
+        setLocalMessage(response.message);
+        return;
+      }
       if (flow === 'login') {
         const response = await requestLoginCode(email);
         setLocalMessage(response.message);
@@ -297,7 +314,9 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
               <button
                 type="button"
                 className="auth-text-link"
-                onClick={() => navigate(flow === 'change' ? '/account' : flow === 'reset' ? '/forgot-password' : '/login')}
+                onClick={() =>
+                  navigate(flow === 'change' ? '/account' : flow === 'reset' ? '/forgot-password' : '/login')
+                }
               >
                 {flow === 'change' ? 'Back to account' : 'Back'}
               </button>

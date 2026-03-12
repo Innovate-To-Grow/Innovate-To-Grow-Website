@@ -17,6 +17,8 @@ from .account.email_code import (
 )
 from .account.profile import ProfileView
 from .auth.email_code import (
+    EmailAuthRequestCodeView,
+    EmailAuthVerifyCodeView,
     LoginCodeRequestView,
     LoginCodeVerifyView,
     PasswordResetConfirmView,
@@ -34,6 +36,8 @@ __all__ = [
     "RegisterVerifyCodeView",
     "RegisterResendCodeView",
     "LoginView",
+    "EmailAuthRequestCodeView",
+    "EmailAuthVerifyCodeView",
     "LoginCodeRequestView",
     "LoginCodeVerifyView",
     "ProfileView",

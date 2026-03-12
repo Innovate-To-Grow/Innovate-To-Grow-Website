@@ -9,9 +9,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from authn.services import AuthChallengeDeliveryError, AuthChallengeThrottled
 
 
-def build_auth_success_payload(member, message: str) -> dict:
+def build_auth_success_payload(
+    member,
+    message: str,
+    *,
+    next_step: str | None = None,
+    requires_profile_completion: bool | None = None,
+) -> dict:
     refresh = RefreshToken.for_user(member)
-    return {
+    payload = {
         "message": message,
         "access": str(refresh.access_token),
         "refresh": str(refresh),
@@ -22,6 +28,11 @@ def build_auth_success_payload(member, message: str) -> dict:
             "display_name": member.get_full_name() or member.username,
         },
     }
+    if next_step is not None:
+        payload["next_step"] = next_step
+    if requires_profile_completion is not None:
+        payload["requires_profile_completion"] = requires_profile_completion
+    return payload
 
 
 def challenge_error_response(exc: Exception) -> Response:

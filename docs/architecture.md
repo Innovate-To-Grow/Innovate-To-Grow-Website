@@ -116,7 +116,7 @@ Each root has its own React tree. Cross-root communication uses `window` custom 
 
 | Context | Purpose |
 |---------|---------|
-| `AuthProvider` | User state, login/register/logout actions, modal control |
+| `AuthProvider` | User state, email-auth actions, profile-completion gating, logout |
 | `LayoutProvider` | Menu and footer data from `/layout/` endpoint |
 | `HealthCheckProvider` | Polls `/health/` every 10s, shows maintenance mode overlay |
 
@@ -141,12 +141,18 @@ Configured in `pages/vite.config.ts`, the dev server proxies these paths to `VIT
 
 ### Authentication Flow
 
-1. Client fetches the RSA public key from `GET /api/authn/public-key/` (cached 5 minutes)
-2. Password is encrypted client-side using Web Crypto API (`RSA-OAEP` + `SHA-256`)
-3. Encrypted password (base64) + `key_id` sent to `POST /api/authn/login/` or `/register/`
-4. Server decrypts with the corresponding private key, validates credentials, returns JWT tokens
-5. Access token stored in memory, refresh token in localStorage
-6. Axios interceptor auto-refreshes expired access tokens using the refresh endpoint
+1. Public auth starts from `/login`, where the client submits only an email to `POST /api/authn/email-auth/request-code/`
+2. Backend decides whether the email should continue as:
+   - login for an active primary email or verified contact email
+   - registration for a new email or pending inactive primary email
+3. Client submits the code to `POST /api/authn/email-auth/verify-code/`
+4. Backend returns JWT tokens plus `next_step`:
+   - `account` for existing users
+   - `complete_profile` for newly verified registrations
+5. Frontend stores tokens in localStorage and keeps the one-session `profile_completion_required` flag in sessionStorage
+6. New users must complete `first_name` and optional `last_name` / `organization` on `/complete-profile` via `PATCH /api/authn/profile/`
+7. Password-based `/authn/login/` and `/authn/register/` remain as compatibility endpoints; when used, passwords are still RSA-encrypted with `GET /api/authn/public-key/`
+8. Axios interceptor auto-refreshes expired access tokens using the refresh endpoint
 
 ### Component Rendering Pipeline
 

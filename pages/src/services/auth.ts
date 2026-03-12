@@ -24,6 +24,17 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface EmailAuthRequestResponse {
+  message: string;
+  flow: 'login' | 'register';
+  next_step: 'verify_code';
+}
+
+export interface EmailAuthVerifyResponse extends LoginResponse {
+  next_step: 'account' | 'complete_profile';
+  requires_profile_completion: boolean;
+}
+
 export interface RegisterResponse {
   message: string;
   next_step: string;
@@ -70,6 +81,23 @@ export interface ContactEmail {
 const ACCESS_TOKEN_KEY = 'i2g_access_token';
 const REFRESH_TOKEN_KEY = 'i2g_refresh_token';
 const USER_KEY = 'i2g_user';
+const PROFILE_COMPLETION_REQUIRED_KEY = 'i2g_profile_completion_required';
+
+export const isProfileCompletionRequired = (): boolean => {
+  return sessionStorage.getItem(PROFILE_COMPLETION_REQUIRED_KEY) === 'true';
+};
+
+export const setProfileCompletionRequired = (required: boolean): void => {
+  if (required) {
+    sessionStorage.setItem(PROFILE_COMPLETION_REQUIRED_KEY, 'true');
+    return;
+  }
+  sessionStorage.removeItem(PROFILE_COMPLETION_REQUIRED_KEY);
+};
+
+export const clearProfileCompletionRequired = (): void => {
+  sessionStorage.removeItem(PROFILE_COMPLETION_REQUIRED_KEY);
+};
 
 export const getAccessToken = (): string | null => {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -99,6 +127,7 @@ export const clearTokens = (): void => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  clearProfileCompletionRequired();
 };
 
 // ======================== Axios Instance ========================
@@ -186,6 +215,7 @@ export const register = async (
       ...(organization && { organization }),
     });
 
+    clearProfileCompletionRequired();
     return response.data;
   } catch (error) {
     // Clear key cache on encryption errors (might be stale key)
@@ -210,6 +240,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
     // Store tokens and user
     const { access, refresh, user } = response.data;
     setTokens({ access, refresh }, user);
+    clearProfileCompletionRequired();
 
     return response.data;
   } catch (error) {
@@ -226,10 +257,24 @@ export const requestLoginCode = async (email: string): Promise<MessageResponse> 
   return response.data;
 };
 
+export const requestEmailAuthCode = async (email: string): Promise<EmailAuthRequestResponse> => {
+  const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', { email });
+  return response.data;
+};
+
 export const verifyLoginCode = async (email: string, code: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/login/verify-code/', { email, code });
   const { access, refresh, user } = response.data;
   setTokens({ access, refresh }, user);
+  clearProfileCompletionRequired();
+  return response.data;
+};
+
+export const verifyEmailAuthCode = async (email: string, code: string): Promise<EmailAuthVerifyResponse> => {
+  const response = await authApi.post<EmailAuthVerifyResponse>('/authn/email-auth/verify-code/', { email, code });
+  const { access, refresh, user, requires_profile_completion: requiresProfileCompletion } = response.data;
+  setTokens({ access, refresh }, user);
+  setProfileCompletionRequired(requiresProfileCompletion);
   return response.data;
 };
 
@@ -237,6 +282,7 @@ export const verifyRegistrationCode = async (email: string, code: string): Promi
   const response = await authApi.post<LoginResponse>('/authn/register/verify-code/', { email, code });
   const { access, refresh, user } = response.data;
   setTokens({ access, refresh }, user);
+  clearProfileCompletionRequired();
   return response.data;
 };
 

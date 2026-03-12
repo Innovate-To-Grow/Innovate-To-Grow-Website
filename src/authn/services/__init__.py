@@ -27,6 +27,7 @@ from .email_challenges import (
     issue_email_challenge,
     mark_challenge_verified,
     verify_email_code,
+    verify_email_code_for_purposes,
 )
 from .import_members import (
     ImportResult,
@@ -57,6 +58,7 @@ __all__ = [
     "AuthEmailError",
     "issue_email_challenge",
     "verify_email_code",
+    "verify_email_code_for_purposes",
     "mark_challenge_verified",
     "consume_verification_token",
     "consume_login_or_registration_challenge",

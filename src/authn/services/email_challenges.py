@@ -5,6 +5,7 @@ Issue, verify, and consume short-lived email auth challenges.
 from __future__ import annotations
 
 import secrets
+from collections.abc import Sequence
 from datetime import timedelta
 
 from django.contrib.auth.hashers import check_password, make_password
@@ -56,6 +57,18 @@ def _get_latest_pending(*, purpose: str, target_email: str):
     return (
         EmailAuthChallenge.objects.filter(
             purpose=purpose,
+            target_email__iexact=target_email,
+            status=EmailAuthChallenge.Status.PENDING,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _get_latest_pending_for_purposes(*, purposes: Sequence[str], target_email: str):
+    return (
+        EmailAuthChallenge.objects.filter(
+            purpose__in=purposes,
             target_email__iexact=target_email,
             status=EmailAuthChallenge.Status.PENDING,
         )
@@ -118,8 +131,13 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
 
 @transaction.atomic
 def verify_email_code(*, purpose: str, target_email: str, code: str) -> EmailAuthChallenge:
+    return verify_email_code_for_purposes(purposes=[purpose], target_email=target_email, code=code)
+
+
+@transaction.atomic
+def verify_email_code_for_purposes(*, purposes: Sequence[str], target_email: str, code: str) -> EmailAuthChallenge:
     normalized_email = normalize_email(target_email)
-    challenge = _get_latest_pending(purpose=purpose, target_email=normalized_email)
+    challenge = _get_latest_pending_for_purposes(purposes=purposes, target_email=normalized_email)
     if challenge is None:
         raise AuthChallengeInvalid("Verification code is invalid or has expired.")
 

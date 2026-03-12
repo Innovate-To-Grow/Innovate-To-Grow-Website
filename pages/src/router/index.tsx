@@ -4,6 +4,7 @@ import {
     LoginPage,
     RegisterPage,
     AccountPage,
+    CompleteProfilePage,
     ForgotPasswordPage,
     VerifyEmailPage,
 } from '../components/Auth';
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
             {path: 'register', element: <RegisterPage/>},
             {path: 'forgot-password', element: <ForgotPasswordPage/>},
             {path: 'verify-email', element: <VerifyEmailPage/>},
+            {path: 'complete-profile', element: <CompleteProfilePage/>},
 
             // Account management
             {path: 'account', element: <AccountPage/>},

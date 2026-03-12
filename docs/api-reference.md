@@ -18,7 +18,7 @@ Most endpoints are open (`AllowAny`). Authenticated endpoints require a JWT Bear
 Authorization: Bearer <access_token>
 ```
 
-Passwords are RSA-encrypted on the client before transmission. See [Architecture — Authentication Flow](architecture.md#authentication-flow).
+Password-based endpoints still use RSA-encrypted payloads when invoked. The primary public flow is now email-code based. See [Architecture — Authentication Flow](architecture.md#authentication-flow).
 
 ### Token Lifecycle
 
@@ -45,7 +45,7 @@ Returns service health status. No authentication required.
 
 ### `GET /authn/public-key/`
 
-Returns the RSA public key for client-side password encryption.
+Returns the RSA public key for password-based compatibility endpoints.
 
 - **Auth**: None
 
@@ -57,9 +57,65 @@ Returns the RSA public key for client-side password encryption.
 }
 ```
 
+### `POST /authn/email-auth/request-code/`
+
+Primary public auth entrypoint. Determines whether the submitted email should continue as login or registration, then sends a verification code.
+
+- **Auth**: None
+
+**Request body**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** `202`:
+```json
+{
+  "message": "Check your email for a verification code.",
+  "flow": "login",
+  "next_step": "verify_code"
+}
+```
+
+`flow` is `login` for active accounts or verified contact emails, and `register` for new or pending primary emails.
+
+### `POST /authn/email-auth/verify-code/`
+
+Verifies the latest pending login-or-registration code for the submitted email, returns JWT tokens, and instructs the frontend where to go next.
+
+- **Auth**: None
+
+**Request body**:
+```json
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+```
+
+**Response** `200`:
+```json
+{
+  "message": "Login successful.",
+  "access": "jwt-access-token",
+  "refresh": "jwt-refresh-token",
+  "user": {
+    "member_uuid": "uuid",
+    "email": "user@example.com",
+    "display_name": "Name"
+  },
+  "next_step": "account",
+  "requires_profile_completion": false
+}
+```
+
+For new registrations, `next_step` is `complete_profile` and `requires_profile_completion` is `true`.
+
 ### `POST /authn/register/`
 
-Register a new member account. Passwords must be RSA-encrypted.
+Legacy password-based registration flow retained for compatibility. New public UI does not call this endpoint.
 
 - **Auth**: None
 
@@ -73,22 +129,17 @@ Register a new member account. Passwords must be RSA-encrypted.
 }
 ```
 
-**Response** `201`: Registration successful, returns JWT tokens directly (user is active immediately).
+**Response** `202`:
 ```json
 {
-  "access": "jwt-access-token",
-  "refresh": "jwt-refresh-token",
-  "user": {
-    "member_uuid": "uuid",
-    "email": "user@example.com",
-    "display_name": "Name"
-  }
+  "message": "Registration started. Check your email for a verification code.",
+  "next_step": "verify_code"
 }
 ```
 
 ### `POST /authn/login/`
 
-Authenticate and receive JWT tokens. Password must be RSA-encrypted.
+Legacy password-based login flow retained for compatibility. New public UI does not call this endpoint.
 
 - **Auth**: None
 
@@ -152,13 +203,16 @@ Retrieve the authenticated user's profile.
 
 ### `PATCH /authn/profile/`
 
-Update the authenticated user's display name.
+Update the authenticated user's profile details or onboarding fields.
 
 - **Auth**: Bearer token required
 
 **Request body**:
 ```json
 {
+  "first_name": "New",
+  "last_name": "Member",
+  "organization": "Innovate To Grow",
   "display_name": "New Name"
 }
 ```
