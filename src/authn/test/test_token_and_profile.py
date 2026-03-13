@@ -115,7 +115,7 @@ class GenerateUniqueUsernameTests(SimpleTestCase):
     def test_returns_local_part_with_hex_suffix(self):
         result = generate_unique_username("alice@example.com")
         self.assertTrue(result.startswith("alice_"))
-        suffix = result[len("alice_"):]
+        suffix = result[len("alice_") :]
         self.assertEqual(len(suffix), 8)
         int(suffix, 16)  # should not raise for valid hex
 

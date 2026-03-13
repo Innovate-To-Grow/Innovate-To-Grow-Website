@@ -5,7 +5,7 @@ from unfold.admin import ModelAdmin
 from ...app_routes import APP_ROUTES
 from ...models import SiteSettings
 
-_ROUTE_CHOICES = [(r["url"], f'{r["title"]}  ({r["url"]})') for r in APP_ROUTES]
+_ROUTE_CHOICES = [(r["url"], f"{r['title']}  ({r['url']})") for r in APP_ROUTES]
 
 
 class SiteSettingsForm(forms.ModelForm):
@@ -26,13 +26,16 @@ class SiteSettingsAdmin(ModelAdmin):
     list_display = ("__str__", "homepage_mode", "homepage_route_display")
 
     fieldsets = (
-        ("Homepage", {
-            "fields": ("homepage_route", "homepage_mode"),
-            "description": (
-                "Choose which page visitors see at the root URL (/). "
-                'When set to "Home", the homepage_mode controls which variant is shown.'
-            ),
-        }),
+        (
+            "Homepage",
+            {
+                "fields": ("homepage_route", "homepage_mode"),
+                "description": (
+                    "Choose which page visitors see at the root URL (/). "
+                    'When set to "Home", the homepage_mode controls which variant is shown.'
+                ),
+            },
+        ),
     )
 
     def homepage_route_display(self, obj):

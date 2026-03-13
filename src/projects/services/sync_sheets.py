@@ -173,7 +173,13 @@ def sync_all_project_sheets() -> dict:
                 sheet_type=source.sheet_type,
                 semester_filter=source.semester_filter,
             )
-            for key in ("semesters_created", "semesters_existing", "projects_created", "projects_updated", "rows_skipped"):
+            for key in (
+                "semesters_created",
+                "semesters_existing",
+                "projects_created",
+                "projects_updated",
+                "rows_skipped",
+            ):
                 combined[key] += stats[key]
             combined["sources_synced"] += 1
         except Exception as exc:

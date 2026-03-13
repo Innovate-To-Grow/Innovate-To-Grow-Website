@@ -32,23 +32,78 @@ class ParseYearSemesterTests(TestCase):
 
 
 CURRENT_EVENT_ROWS = [
-    ["Track", "Order", "Year-Semester", "Class", "Team#", "TeamName",
-     "Project Title", "Organization", "Industry", "Abstract", "Student Names", "NameTitle"],
-    ["1", "1", "2025-2 Fall", "ENGR 120", "T01", "Alpha",
-     "Project Alpha", "Acme Corp", "Tech", "An abstract", "Alice, Bob", "Dr. Smith"],
-    ["1", "2", "2025-2 Fall", "ENGR 120", "T02", "Beta",
-     "Project Beta", "Beta Inc", "Health", "Another abstract", "Charlie", ""],
-    ["2", "1", "2025-1 Spring", "ME 150", "T03", "Gamma",
-     "Project Gamma", "Gamma LLC", "Energy", "Third abstract", "Dave, Eve", ""],
+    [
+        "Track",
+        "Order",
+        "Year-Semester",
+        "Class",
+        "Team#",
+        "TeamName",
+        "Project Title",
+        "Organization",
+        "Industry",
+        "Abstract",
+        "Student Names",
+        "NameTitle",
+    ],
+    [
+        "1",
+        "1",
+        "2025-2 Fall",
+        "ENGR 120",
+        "T01",
+        "Alpha",
+        "Project Alpha",
+        "Acme Corp",
+        "Tech",
+        "An abstract",
+        "Alice, Bob",
+        "Dr. Smith",
+    ],
+    [
+        "1",
+        "2",
+        "2025-2 Fall",
+        "ENGR 120",
+        "T02",
+        "Beta",
+        "Project Beta",
+        "Beta Inc",
+        "Health",
+        "Another abstract",
+        "Charlie",
+        "",
+    ],
+    [
+        "2",
+        "1",
+        "2025-1 Spring",
+        "ME 150",
+        "T03",
+        "Gamma",
+        "Project Gamma",
+        "Gamma LLC",
+        "Energy",
+        "Third abstract",
+        "Dave, Eve",
+        "",
+    ],
 ]
 
 PAST_PROJECTS_ROWS = [
-    ["Year-Semester", "Class", "Team#", "TeamName", "Project Title",
-     "Organization", "Industry", "Abstract", "Student Names"],
-    ["2023-2 Fall", "ENGR 120", "T01", "Delta",
-     "Project Delta", "Delta Co", "Finance", "Past abstract", "Frank"],
-    ["2023-1 Spring", "ME 150", "T02", "Epsilon",
-     "Project Epsilon", "Epsilon Ltd", "Bio", "Another past", "Grace"],
+    [
+        "Year-Semester",
+        "Class",
+        "Team#",
+        "TeamName",
+        "Project Title",
+        "Organization",
+        "Industry",
+        "Abstract",
+        "Student Names",
+    ],
+    ["2023-2 Fall", "ENGR 120", "T01", "Delta", "Project Delta", "Delta Co", "Finance", "Past abstract", "Frank"],
+    ["2023-1 Spring", "ME 150", "T02", "Epsilon", "Project Epsilon", "Epsilon Ltd", "Bio", "Another past", "Grace"],
 ]
 
 
@@ -138,10 +193,18 @@ class SyncSkipsInvalidRowsTests(TestCase):
     @patch("projects.services.sync_sheets.fetch_raw_values")
     def test_skips_rows_without_title(self, mock_fetch):
         mock_fetch.return_value = [
-            ["Year-Semester", "Class", "Team#", "TeamName", "Project Title",
-             "Organization", "Industry", "Abstract", "Student Names"],
-            ["2025-2 Fall", "ENGR 120", "T01", "Alpha", "",
-             "Acme", "Tech", "Abstract", "Alice"],
+            [
+                "Year-Semester",
+                "Class",
+                "Team#",
+                "TeamName",
+                "Project Title",
+                "Organization",
+                "Industry",
+                "Abstract",
+                "Student Names",
+            ],
+            ["2025-2 Fall", "ENGR 120", "T01", "Alpha", "", "Acme", "Tech", "Abstract", "Alice"],
         ]
         stats = sync_from_sheet("x", "A:I", "past-projects")
         self.assertEqual(stats["rows_skipped"], 1)
@@ -150,10 +213,18 @@ class SyncSkipsInvalidRowsTests(TestCase):
     @patch("projects.services.sync_sheets.fetch_raw_values")
     def test_skips_rows_with_invalid_semester(self, mock_fetch):
         mock_fetch.return_value = [
-            ["Year-Semester", "Class", "Team#", "TeamName", "Project Title",
-             "Organization", "Industry", "Abstract", "Student Names"],
-            ["bad-value", "ENGR 120", "T01", "Alpha", "Project X",
-             "Acme", "Tech", "Abstract", "Alice"],
+            [
+                "Year-Semester",
+                "Class",
+                "Team#",
+                "TeamName",
+                "Project Title",
+                "Organization",
+                "Industry",
+                "Abstract",
+                "Student Names",
+            ],
+            ["bad-value", "ENGR 120", "T01", "Alpha", "Project X", "Acme", "Tech", "Abstract", "Alice"],
         ]
         stats = sync_from_sheet("x", "A:I", "past-projects")
         self.assertEqual(stats["rows_skipped"], 1)

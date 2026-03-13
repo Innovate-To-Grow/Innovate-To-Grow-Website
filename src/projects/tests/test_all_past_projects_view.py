@@ -18,20 +18,35 @@ class AllPastProjectsAPIViewTests(TestCase):
 
         # Create projects
         self.current_project = Project.objects.create(
-            semester=self.current, project_title="Current Project", team_number="T01",
-            class_code="ENGR 120", team_name="Alpha", organization="Acme",
+            semester=self.current,
+            project_title="Current Project",
+            team_number="T01",
+            class_code="ENGR 120",
+            team_name="Alpha",
+            organization="Acme",
         )
         self.past_project1 = Project.objects.create(
-            semester=self.past1, project_title="Past Project 1", team_number="T01",
-            class_code="ENGR 120", team_name="Beta", organization="Beta Inc",
-            abstract="An abstract", student_names="Alice",
+            semester=self.past1,
+            project_title="Past Project 1",
+            team_number="T01",
+            class_code="ENGR 120",
+            team_name="Beta",
+            organization="Beta Inc",
+            abstract="An abstract",
+            student_names="Alice",
         )
         self.past_project2 = Project.objects.create(
-            semester=self.past2, project_title="Past Project 2", team_number="T02",
-            class_code="ME 150", team_name="Gamma", industry="Tech",
+            semester=self.past2,
+            project_title="Past Project 2",
+            team_number="T02",
+            class_code="ME 150",
+            team_name="Gamma",
+            industry="Tech",
         )
         self.unpub_project = Project.objects.create(
-            semester=self.unpublished, project_title="Unpub Project", team_number="T01",
+            semester=self.unpublished,
+            project_title="Unpub Project",
+            team_number="T01",
         )
 
     def test_returns_flat_list(self):
