@@ -54,16 +54,10 @@ export const MainMenu = () => {
 
   const toggleMobileMenu = () => setIsMobileOpen(prev => !prev);
 
-  const handleToggle = (index: number, hasChildren: boolean, event: MouseEvent) => {
+  const handleToggle = (_index: number, hasChildren: boolean, _event: MouseEvent) => {
     if (!hasChildren) return;
-
-    const isMobile = window.innerWidth <= 992;
-    if (!isMobile) {
-      return;
-    }
-
-    event.preventDefault();
-    setOpenItemIndex(prev => (prev === index ? null : index));
+    // On desktop, dropdowns use hover (mouseEnter/mouseLeave)
+    // On mobile, dropdowns are auto-expanded via CSS — let the link navigate normally
   };
 
   const handleMouseEnter = (index: number, hasChildren: boolean) => {

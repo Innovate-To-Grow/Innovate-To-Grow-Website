@@ -529,14 +529,14 @@
 }
 
 .header-mobile-nav .menu-bar-arrow {
-  color: #888;
+  display: none;
 }
 
 .header-mobile-nav .menu-dropdown {
   position: static;
-  opacity: 0;
-  visibility: hidden;
-  display: none;
+  display: block;
+  opacity: 1;
+  visibility: visible;
   transform: none;
   box-shadow: none;
   border-radius: 0;
@@ -545,12 +545,6 @@
   padding: 0;
   background: #f5f7fa;
   min-width: 100%;
-}
-
-.header-mobile-nav .menu-dropdown.is-open {
-  display: block;
-  opacity: 1;
-  visibility: visible;
 }
 
 .header-mobile-nav .menu-dropdown-link {

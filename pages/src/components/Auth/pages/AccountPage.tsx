@@ -3,7 +3,6 @@ import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../AuthContext';
 import {
     getProfile,
-    getAccountEmails,
     updateProfileFields,
     uploadProfileImage,
     type ProfileResponse,
@@ -12,7 +11,7 @@ import {EmailCenter} from '../sections/EmailCenter';
 import '../Auth.css';
 
 export const AccountPage = () => {
-    const {isAuthenticated, logout, user, requestPasswordChangeCode, requiresProfileCompletion} = useAuth();
+    const {isAuthenticated, logout, user, requiresProfileCompletion} = useAuth();
     const navigate = useNavigate();
 
     // Profile state
@@ -33,14 +32,6 @@ export const AccountPage = () => {
     const [profileMessage, setProfileMessage] = useState<string | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
-
-    // Password form state
-    const [authEmails, setAuthEmails] = useState<string[]>([]);
-    const [codePasswordEmail, setCodePasswordEmail] = useState('');
-    const [codePasswordLoading, setCodePasswordLoading] = useState(false);
-    const [codePasswordMessage, setCodePasswordMessage] = useState<string | null>(null);
-    const [codePasswordError, setCodePasswordError] = useState<string | null>(null);
-    const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
     // Auth guard
     useEffect(() => {
@@ -83,28 +74,6 @@ export const AccountPage = () => {
 
         fetchProfile();
     }, [isAuthenticated, requiresProfileCompletion, user?.display_name]);
-
-    useEffect(() => {
-        if (!isAuthenticated || requiresProfileCompletion) return;
-
-        const fetchAccountEmails = async () => {
-            try {
-                const data = await getAccountEmails();
-                setAuthEmails(data.emails);
-                if (data.emails.length > 0) {
-                    setCodePasswordEmail((current) => current || data.emails[0]);
-                }
-            } catch (err: unknown) {
-                console.error('[AccountPage] Account email fetch failed:', err);
-                if (user?.email) {
-                    setAuthEmails([user.email]);
-                    setCodePasswordEmail((current) => current || user.email);
-                }
-            }
-        };
-
-        fetchAccountEmails();
-    }, [isAuthenticated, requiresProfileCompletion, user?.email]);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -166,29 +135,11 @@ export const AccountPage = () => {
         }
     };
 
-    const handleCodePasswordRequest = async () => {
-        if (!codePasswordEmail) return;
-        setCodePasswordLoading(true);
-        setCodePasswordMessage(null);
-        setCodePasswordError(null);
-
-        try {
-            const response = await requestPasswordChangeCode(codePasswordEmail);
-            setCodePasswordMessage(response.message);
-            navigate(`/verify-email?flow=change&email=${encodeURIComponent(codePasswordEmail)}`);
-        } catch (err: unknown) {
-            setCodePasswordError(getErrorMessage(err));
-        } finally {
-            setCodePasswordLoading(false);
-        }
-    };
-
     if (!isAuthenticated || requiresProfileCompletion) return null;
 
     // Use profile data if available, otherwise fall back to user context
     const displayEmail = profile?.email || user?.email;
     const displayUsername = profile?.username || user?.username;
-    const availableAuthEmails = authEmails.length > 0 ? authEmails : (displayEmail ? [displayEmail] : []);
 
     if (profileLoading) {
         return (
@@ -402,72 +353,6 @@ export const AccountPage = () => {
                         </form>
                     </div>
 
-                    {/* Change Password */}
-                    <div className="account-section">
-                        <div className="account-section-header" onClick={() => setIsPasswordOpen(!isPasswordOpen)}>
-                            <h2 className="account-section-title">Change Password</h2>
-                            <span className="account-section-toggle">{isPasswordOpen ? '\u2212' : '+'}</span>
-                        </div>
-
-                        {isPasswordOpen && (<>
-                            <p className="auth-help-text">
-                                Send a 6-digit code to your primary email or any verified contact email linked to this
-                                account.
-                            </p>
-
-                            {codePasswordMessage && (
-                                <div className="auth-alert info">
-                                    <i className="fa fa-info-circle auth-alert-icon"/>
-                                    <span>{codePasswordMessage}</span>
-                                </div>
-                            )}
-
-                            {codePasswordError && (
-                                <div className="auth-alert error">
-                                    <i className="fa fa-exclamation-circle auth-alert-icon"/>
-                                    <span>{codePasswordError}</span>
-                                </div>
-                            )}
-
-                            <div className="auth-form-group">
-                                <label className="auth-form-label" htmlFor="code-password-email">
-                                    Send Code To
-                                </label>
-                                <select
-                                    id="code-password-email"
-                                    className="auth-form-input auth-form-select"
-                                    value={codePasswordEmail}
-                                    onChange={(event) => {
-                                        setCodePasswordEmail(event.target.value);
-                                        setCodePasswordError(null);
-                                    }}
-                                    disabled={codePasswordLoading || availableAuthEmails.length === 0}
-                                >
-                                    {availableAuthEmails.map((email) => (
-                                        <option key={email} value={email}>
-                                            {email}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <button
-                                type="button"
-                                className="auth-form-submit"
-                                disabled={codePasswordLoading || !codePasswordEmail}
-                                onClick={handleCodePasswordRequest}
-                            >
-                                {codePasswordLoading ? (
-                                    <>
-                                        <span className="auth-spinner"/>
-                                        Sending code...
-                                    </>
-                                ) : (
-                                    'Send Verification Code'
-                                )}
-                            </button>
-                        </>)}
-                    </div>
                 </div>
 
                 <div className="account-column">

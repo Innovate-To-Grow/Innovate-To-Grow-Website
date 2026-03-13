@@ -1,23 +1,35 @@
 from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin
+from unfold.widgets import UnfoldAdminTextInputWidget
 
 from ...app_routes import APP_ROUTES
 from ...models import SiteSettings
 
-_ROUTE_CHOICES = [(r["url"], f"{r['title']}  ({r['url']})") for r in APP_ROUTES]
+_ROUTE_CHOICES = [(r["url"], f"{r['title']} ({r['url']})") for r in APP_ROUTES]
+_VALID_ROUTES = {route["url"] for route in APP_ROUTES}
 
 
 class SiteSettingsForm(forms.ModelForm):
-    homepage_route = forms.ChoiceField(
-        choices=_ROUTE_CHOICES,
+    homepage_route = forms.CharField(
         required=False,
-        help_text='Which page to render at "/". Select "Home" to use the built-in homepage with mode variants.',
+        widget=UnfoldAdminTextInputWidget(
+            attrs={
+                "placeholder": "/",
+            }
+        ),
+        help_text='Which page to render at "/". Enter a registered route such as "/" or "/about".',
     )
 
     class Meta:
         model = SiteSettings
         fields = "__all__"
+
+    def clean_homepage_route(self):
+        route = (self.cleaned_data.get("homepage_route") or "/").strip()
+        if route not in _VALID_ROUTES:
+            raise forms.ValidationError("Enter a valid registered route, such as /, /about, or /news.")
+        return route
 
 
 @admin.register(SiteSettings)
