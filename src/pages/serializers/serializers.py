@@ -32,12 +32,12 @@ class MenuSerializer(serializers.ModelSerializer):
                 "open_in_new_tab": item.get("open_in_new_tab", False),
             }
 
-            # All menu item types (app, external, home) store their URL the same way.
-            processed_item["url"] = item.get("url", "#")
-
-            # Home type items include the page they render at "/"
+            # Home type always links to "/"
             if item.get("type") == "home":
+                processed_item["url"] = "/"
                 processed_item["homepage_page"] = item.get("homepage_page", "")
+            else:
+                processed_item["url"] = item.get("url", "#")
 
             children = item.get("children", [])
             if children:
