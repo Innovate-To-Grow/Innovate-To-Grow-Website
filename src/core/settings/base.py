@@ -30,7 +30,8 @@ SES_AWS_REGION = os.environ.get("SES_AWS_REGION", "us-west-2")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "i2g@g.ucmerced.edu")
 SES_FROM_NAME = os.environ.get("SES_FROM_NAME", "Innovate to Grow")
 
-# Google Sheets service account settings
+# Google Sheets settings
+# Preferred: service account credentials (production)
 GOOGLE_SHEETS_CREDENTIALS_JSON = os.environ.get("GOOGLE_SHEETS_CREDENTIALS_JSON", "")
 GOOGLE_SHEETS_SCOPES = [
     scope.strip()
@@ -40,6 +41,8 @@ GOOGLE_SHEETS_SCOPES = [
     ).split(",")
     if scope.strip()
 ]
+# Fallback: API key for public read-only access (dev)
+GOOGLE_SHEETS_API_KEY = os.environ.get("GOOGLE_SHEETS_API_KEY", "")
 
 # Application definition
 INSTALLED_APPS = [
@@ -78,7 +81,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "core.middleware.CustomCsrfMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -268,14 +271,17 @@ UNFOLD = {
     "SITE_ICON": lambda request: static("images/i2glogo.png"),
     "SITE_LOGO": lambda request: static("images/i2glogo.png"),
     "THEME": "light",  # Force light theme only (disable dark mode)
-    "SIDEBAR": {
+        "SIDEBAR": {
         "show_search": True,
         "navigation": [
             {
-                "title": "Layout",
+                "title": "Site Settings",
                 "items": [
+                    {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
+                    {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
                     {"title": "Menus", "link": "/admin/pages/menu/"},
                     {"title": "Footer", "link": "/admin/pages/footercontent/"},
+                    {"title": "Sheet Sources", "link": "/admin/pages/googlesheetsource/"},
                 ],
             },
             {

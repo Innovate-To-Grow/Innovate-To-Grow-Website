@@ -3,6 +3,7 @@ Admin configuration for GoogleAccount with custom inbox/compose/reply views.
 """
 
 import logging
+import re
 
 from django.contrib import admin, messages
 from django.http import HttpResponse
@@ -570,9 +571,12 @@ class GoogleAccountAdmin(BaseModelAdmin):
             filename, data = service.get_attachment(message_id, attachment_id)
             import mimetypes
 
-            content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            # Sanitize filename: strip quotes, newlines, and path separators to
+            # prevent header injection and path traversal in Content-Disposition.
+            safe_filename = re.sub(r'["\r\n/\\]', "_", filename)
+            content_type = mimetypes.guess_type(safe_filename)[0] or "application/octet-stream"
             response = HttpResponse(data, content_type=content_type)
-            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response["Content-Disposition"] = f'attachment; filename="{safe_filename}"'
             return response
         except GmailServiceError as exc:
             messages.error(request, f"Failed to download attachment: {exc}")

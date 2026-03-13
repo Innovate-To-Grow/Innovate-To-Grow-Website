@@ -7,6 +7,7 @@ import {
 import { checkHealth } from '../../services/api';
 import { MaintenanceMode } from './MaintenanceMode';
 import { HealthCheckContext, type HealthCheckContextType } from './context';
+import './HealthCheckProvider.css';
 
 interface HealthCheckProviderProps {
   children: ReactNode;
@@ -84,42 +85,10 @@ export const HealthCheckProvider = ({
     checkNow,
   };
 
-  // Wait for initial health check before rendering anything
-  if (!hasInitialized) {
-    return (
-      <HealthCheckContext.Provider value={contextValue}>
-        <div
-          className="health-check-loading"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '100vh',
-            backgroundColor: '#f9f9f9',
-          }}
-        >
-          <div style={{ textAlign: 'center', color: '#666' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                border: '3px solid #e0e0e0',
-                borderTopColor: '#1a365d',
-                borderRadius: '50%',
-                margin: '0 auto 1rem',
-                animation: 'spin 1s linear infinite',
-              }}
-            />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <p>Loading...</p>
-          </div>
-        </div>
-      </HealthCheckContext.Provider>
-    );
-  }
-
-  // Show maintenance mode when service is down
-  if (!isHealthy) {
+  // Render optimistically: show children while checking, only block on confirmed failure.
+  // Before initialization completes or when healthy, render children normally.
+  // Only show maintenance screen when the health check has completed and returned unhealthy.
+  if (hasInitialized && !isHealthy) {
     return (
       <HealthCheckContext.Provider value={contextValue}>
         <MaintenanceMode message={maintenanceMessage} />
@@ -127,7 +96,6 @@ export const HealthCheckProvider = ({
     );
   }
 
-  // Service is healthy, render children
   return (
     <HealthCheckContext.Provider value={contextValue}>
       {children}

@@ -1,25 +1,19 @@
-import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from 'react';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
 import { useAuth } from '../../Auth';
 import { router } from '../../../router';
 import './MainMenu.css';
 
-const buildHref = (item: MenuItem) => {
-  if (item.type === 'app') {
-    return item.url || '#';
-  }
-  if (item.type === 'external') {
-    return item.url || '#';
-  }
-  return item.url || '#';
-};
+const buildHref = (item: MenuItem) => item.url || '#';
 
 export const MainMenu = () => {
   const { menu, state } = useMenu();
   const { user, isAuthenticated, logout } = useAuth();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const isMobileOpenRef = useRef(isMobileOpen);
+  isMobileOpenRef.current = isMobileOpen;
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
   const currentDate = useMemo(() => {
     const date = new Date();
@@ -39,14 +33,14 @@ export const MainMenu = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 992 && isMobileOpen) {
+      if (window.innerWidth > 992 && isMobileOpenRef.current) {
         setIsMobileOpen(false);
       }
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isMobileOpen]);
+  }, []);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -99,6 +93,7 @@ export const MainMenu = () => {
             const accessibilityProps = hasChildren
               ? {
                   'aria-haspopup': 'menu' as const,
+                  'aria-expanded': isOpen,
                 }
               : {};
 
@@ -190,7 +185,7 @@ export const MainMenu = () => {
             rel="noopener noreferrer"
             aria-label="UC Merced"
           >
-            <img src="/assets/images/ucmlogo.png" alt="UC Merced" />
+            <img src="/assets/images/ucmlogo.png" alt="UC Merced" width={230} height={57} />
           </a>
 
           <a className="site-header-top-logo" href="/" aria-label="Innovate To Grow">
@@ -198,6 +193,8 @@ export const MainMenu = () => {
               className="site-header-top-logo-full"
               src="/assets/images/I2G-fullname-low.png"
               alt="Innovate To Grow"
+              width={2084}
+              height={750}
             />
           </a>
 
@@ -220,7 +217,7 @@ export const MainMenu = () => {
         <div className="site-header-container site-header-bottom-inner">
           <div className="site-header-bottom-left">
             <a className="site-header-badge" href="/" aria-label="Home">
-              <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" />
+              <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" width={2038} height={2039} />
             </a>
 
             <nav className="site-header-nav" aria-label="Main menu">
@@ -329,7 +326,7 @@ export const MainMenu = () => {
       >
         <div className="header-mobile-top">
           <a href="/" className="header-mobile-brand">
-            <img src="/assets/images/i2glogo.png" alt="I2G" className="header-mobile-logo" />
+            <img src="/assets/images/i2glogo.png" alt="I2G" className="header-mobile-logo" width={2038} height={2039} />
             <span>Innovate To Grow</span>
           </a>
           <button
@@ -423,9 +420,11 @@ export const MainMenu = () => {
 
         <div className="header-mobile-footer">
           <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">
-            <img 
+            <img
               src="/assets/images/ucmlogo.png"
-              alt="UC Merced" 
+              alt="UC Merced"
+              width={230}
+              height={57}
             />
           </a>
         </div>

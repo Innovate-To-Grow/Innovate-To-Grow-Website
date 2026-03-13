@@ -1,4 +1,7 @@
 import api from './client';
+import type { PaginatedResponse } from './types';
+
+export type { PaginatedResponse } from './types';
 
 export interface ProjectSummary {
   id: string;
@@ -7,6 +10,21 @@ export interface ProjectSummary {
   organization: string;
   industry: string;
   class_code: string;
+}
+
+export interface ProjectTableRow {
+  id: string;
+  semester_label: string;
+  class_code: string;
+  team_number: string;
+  team_name: string;
+  project_title: string;
+  organization: string;
+  industry: string;
+  abstract: string;
+  student_names: string;
+  track: number | null;
+  presentation_order: number | null;
 }
 
 export interface ProjectDetail {
@@ -32,15 +50,26 @@ export interface SemesterWithProjects {
   projects: ProjectSummary[];
 }
 
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
+export interface SemesterWithFullProjects {
+  id: string;
+  year: number;
+  season: number;
+  label: string;
+  projects: ProjectTableRow[];
 }
 
 export const fetchCurrentProjects = async (): Promise<SemesterWithProjects> => {
   const response = await api.get<SemesterWithProjects>('/projects/current/');
+  return response.data;
+};
+
+export const fetchCurrentProjectsFull = async (): Promise<SemesterWithFullProjects> => {
+  const response = await api.get<SemesterWithFullProjects>('/projects/current/');
+  return response.data;
+};
+
+export const fetchAllPastProjects = async (): Promise<ProjectTableRow[]> => {
+  const response = await api.get<ProjectTableRow[]>('/projects/past-all/');
   return response.data;
 };
 

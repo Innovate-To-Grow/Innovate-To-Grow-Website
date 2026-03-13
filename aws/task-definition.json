@@ -104,6 +104,14 @@
         {
           "name": "DJANGO_SUPERUSER_PASSWORD",
           "value": "__DJANGO_SUPERUSER_PASSWORD__"
+        },
+        {
+          "name": "GOOGLE_SHEETS_CREDENTIALS_JSON",
+          "value": "__GOOGLE_SHEETS_CREDENTIALS_JSON__"
+        },
+        {
+          "name": "GOOGLE_SHEETS_API_KEY",
+          "value": "__GOOGLE_SHEETS_API_KEY__"
         }
       ],
       "logConfiguration": {

@@ -3,7 +3,6 @@ URL configuration for authn app.
 """
 
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     AccountEmailsView,
@@ -25,6 +24,7 @@ from .views import (
     PasswordResetVerifyView,
     ProfileView,
     PublicKeyView,
+    PublicTokenRefreshView,
     RegisterResendCodeView,
     RegisterVerifyCodeView,
     RegisterView,
@@ -47,7 +47,7 @@ urlpatterns = [
     path("login/request-code/", LoginCodeRequestView.as_view(), name="login-request-code"),
     path("login/verify-code/", LoginCodeVerifyView.as_view(), name="login-verify-code"),
     # Token refresh
-    path("refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path("refresh/", PublicTokenRefreshView.as_view(), name="token-refresh"),
     # Password reset
     path("password-reset/request-code/", PasswordResetRequestView.as_view(), name="password-reset-request-code"),
     path("password-reset/verify-code/", PasswordResetVerifyView.as_view(), name="password-reset-verify-code"),

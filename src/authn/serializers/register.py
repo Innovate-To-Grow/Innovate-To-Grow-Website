@@ -4,6 +4,7 @@ Registration serializer for user signup.
 
 import re
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -17,6 +18,7 @@ from authn.services import (
     normalize_email,
     registration_email_conflicts,
 )
+from authn.utils import generate_unique_username
 
 Member = get_user_model()
 
@@ -105,7 +107,9 @@ class RegisterSerializer(serializers.Serializer):
             except RSADecryptionError as e:
                 raise serializers.ValidationError({"password": f"Failed to decrypt password: {e}"})
         else:
-            # Allow plain passwords for development/testing (not recommended for production)
+            # Block plaintext passwords in production
+            if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
+                raise serializers.ValidationError({"password": "Encrypted password required."})
             password = encrypted_password
             password_confirm = encrypted_confirm
 
@@ -141,12 +145,7 @@ class RegisterSerializer(serializers.Serializer):
 
         member = getattr(self, "_pending_member", None)
         if member is None:
-            username = email.split("@")[0]
-            base_username = username
-            counter = 1
-            while Member.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
+            username = generate_unique_username(email)
 
             member = Member.objects.create_user(
                 username=username,

@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { FooterContentResponse, Menu } from '../../../services/api';
+import type { HomepageMode } from '../../../services/api/layout';
 
 export type LayoutLoadState = 'loading' | 'ready' | 'error';
 
@@ -7,6 +8,8 @@ export interface LayoutContextValue {
   state: LayoutLoadState;
   menus: Menu[];
   footer: FooterContentResponse | null;
+  homepage_mode?: HomepageMode;
+  homepage_route?: string;
   error: string | null;
 }
 

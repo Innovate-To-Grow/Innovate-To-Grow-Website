@@ -69,8 +69,8 @@ class GoogleAccount(ProjectControlModel):
 
     @classmethod
     def get_active(cls):
-        """Return the active non-deleted account, or None."""
-        return cls.objects.filter(is_active=True, is_deleted=False).first()
+        """Return the active account, or None."""
+        return cls.objects.filter(is_active=True).first()
 
     def mark_used(self, error=""):
         """Update operational metadata after a Gmail API call."""
@@ -206,8 +206,8 @@ class SESAccount(ProjectControlModel):
 
     @classmethod
     def get_active(cls):
-        """Return the active non-deleted SES sender, or None."""
-        return cls.objects.filter(is_active=True, is_deleted=False).first()
+        """Return the active SES sender, or None."""
+        return cls.objects.filter(is_active=True).first()
 
     def mark_used(self, error=""):
         """Update operational metadata after an SES API call."""

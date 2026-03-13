@@ -1,0 +1,46 @@
+.schedule-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.schedule-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.schedule-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.schedule-page-section {
+  margin-top: 2rem;
+}
+
+.schedule-page-section-title {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 0 0 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .schedule-page {
+    padding: 1rem;
+  }
+
+  .schedule-page-title {
+    font-size: 1.5rem;
+  }
+
+  .schedule-page-section-title {
+    font-size: 1.125rem;
+  }
+}

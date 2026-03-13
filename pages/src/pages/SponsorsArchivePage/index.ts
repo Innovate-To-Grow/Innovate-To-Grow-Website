@@ -1,0 +1,1 @@
+export {SponsorsArchivePage} from './SponsorsArchivePage';

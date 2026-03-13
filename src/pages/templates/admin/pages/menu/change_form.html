@@ -20,15 +20,20 @@
       <div id="menu-items-container" class="menu-items-container"></div>
       
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="btn-add" onclick="addMenuItem('external')">+ Add External Link</button>
+        <button type="button" class="btn-add" onclick="addMenuItem('home')">+ Add Home</button>
         <button type="button" class="btn-add" onclick="addMenuItem('app')">+ Add App Route</button>
+        <button type="button" class="btn-add" onclick="addMenuItem('external')">+ Add External Link</button>
       </div>
-      
+
       <!-- JSON Toggle -->
       <div class="json-toggle">
         <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
         <div id="json-raw-view" class="json-raw-view">
-          <textarea id="json-editor" readonly></textarea>
+          <textarea id="json-editor"></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button type="button" class="json-toggle-btn" onclick="copyJson()">Copy JSON</button>
+            <button type="button" class="json-toggle-btn" onclick="applyJson()">Apply JSON</button>
+          </div>
         </div>
       </div>
     </div>
@@ -37,13 +42,7 @@
 
 {% block after_related_objects %}
   {{ block.super }}
-  
-  <!-- Preview -->
-  <div class="preview-wrapper menu-preview-wrapper">
-    <p class="preview-title">Menu Preview (Real-time)</p>
-    <iframe id="menu-preview-iframe" class="preview-iframe menu-preview-iframe" sandbox="allow-same-origin"></iframe>
-  </div>
 
   <script>window.APP_ROUTES = {{ app_routes_json|safe }};</script>
-  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=5"></script>
+  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=6"></script>
 {% endblock %}

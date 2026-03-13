@@ -21,8 +21,10 @@ export { fetchLayoutData, clearLayoutCache } from './layout';
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth } from './health';
 
-export type { NewsArticle, PaginatedResponse } from './news';
+export type { PaginatedResponse } from './types';
+
+export type { NewsArticle } from './news';
 export { fetchNews, fetchLatestNews, fetchNewsDetail } from './news';
 
-export type { ProjectSummary, ProjectDetail, SemesterWithProjects } from './projects';
-export { fetchCurrentProjects, fetchPastProjects, fetchProjectDetail } from './projects';
+export type { ProjectSummary, ProjectDetail, ProjectTableRow, SemesterWithProjects, SemesterWithFullProjects } from './projects';
+export { fetchCurrentProjects, fetchCurrentProjectsFull, fetchAllPastProjects, fetchPastProjects, fetchProjectDetail } from './projects';

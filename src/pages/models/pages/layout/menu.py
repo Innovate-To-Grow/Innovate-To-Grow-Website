@@ -48,6 +48,11 @@ class Menu(ProjectControlModel):
         help_text="JSON array of menu items. Each item can be an external link or app route.",
     )
 
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Only active menus are served to the frontend.",
+    )
+
     # ------------------------------ Methods ------------------------------
 
     def __str__(self) -> str:

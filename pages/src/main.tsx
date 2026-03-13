@@ -12,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HealthCheckProvider pollingInterval={10000}>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <LayoutProvider>
+          <RouterProvider router={router} />
+        </LayoutProvider>
       </AuthProvider>
     </HealthCheckProvider>
   </StrictMode>,

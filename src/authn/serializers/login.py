@@ -2,6 +2,7 @@
 Login serializer for user authentication.
 """
 
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
@@ -51,7 +52,9 @@ class LoginSerializer(serializers.Serializer):
             except RSADecryptionError as e:
                 raise serializers.ValidationError({"password": f"Failed to decrypt password: {e}"})
         else:
-            # Allow plain passwords for development/testing (not recommended for production)
+            # Block plaintext passwords in production
+            if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
+                raise serializers.ValidationError({"password": "Encrypted password required."})
             password = encrypted_password
 
         # Find user by email

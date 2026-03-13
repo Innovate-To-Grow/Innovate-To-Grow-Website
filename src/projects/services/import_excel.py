@@ -168,5 +168,6 @@ def import_projects_from_excel(file):
 
     # Clear cached project data
     cache.delete("projects:current")
+    cache.delete("projects:past-all")
 
     return stats

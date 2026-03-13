@@ -168,10 +168,10 @@ authApi.interceptors.response.use(
             refresh: refreshToken,
           });
 
-          const { access } = response.data;
+          const { access, refresh: newRefresh } = response.data;
           const user = getStoredUser();
           if (user) {
-            setTokens({ access, refresh: refreshToken }, user);
+            setTokens({ access, refresh: newRefresh ?? refreshToken }, user);
           }
 
           // Notify other React roots that auth state has refreshed
@@ -302,6 +302,7 @@ export const verifyPasswordResetCode = async (email: string, code: string): Prom
 };
 
 export const confirmPasswordReset = async (
+  email: string,
   verificationToken: string,
   newPassword: string,
   confirmPassword: string,
@@ -310,6 +311,7 @@ export const confirmPasswordReset = async (
   const { encryptedPassword: encryptedConfirm } = await encryptPasswordWithCurrentKey(confirmPassword);
 
   const response = await authApi.post<MessageResponse>('/authn/password-reset/confirm/', {
+    email,
     verification_token: verificationToken,
     new_password: encryptedPassword,
     new_password_confirm: encryptedConfirm,

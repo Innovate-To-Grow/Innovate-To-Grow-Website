@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -7,6 +8,7 @@ from news.models import NewsArticle
 
 class NewsListAPIViewTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         now = timezone.now()
         for i in range(15):
@@ -63,6 +65,7 @@ class NewsListAPIViewTest(TestCase):
 
 class NewsDetailAPIViewTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.article = NewsArticle.objects.create(
             source_guid="detail-guid-001",

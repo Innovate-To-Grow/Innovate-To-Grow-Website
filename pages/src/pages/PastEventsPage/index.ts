@@ -1,0 +1,1 @@
+export { PastEventsPage } from './PastEventsPage';

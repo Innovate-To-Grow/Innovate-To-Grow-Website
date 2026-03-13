@@ -1,6 +1,9 @@
+import json
+
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
+from ...app_routes import APP_ROUTES
 from ...models import FooterContent
 
 
@@ -18,3 +21,13 @@ class FooterContentAdmin(ModelAdmin):
         ("Footer Content", {"fields": ("content",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["app_routes_json"] = json.dumps(APP_ROUTES)
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def add_view(self, request, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["app_routes_json"] = json.dumps(APP_ROUTES)
+        return super().add_view(request, form_url, extra_context)

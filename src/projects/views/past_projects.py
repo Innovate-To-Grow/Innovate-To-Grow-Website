@@ -13,13 +13,10 @@ class PastProjectsAPIView(ListAPIView):
     pagination_class = PastProjectsPageNumberPagination
 
     def get_queryset(self):
-        current = Semester.objects.filter(is_published=True).first()
+        current_pk_qs = Semester.objects.filter(is_published=True).values("pk")[:1]
 
-        qs = Semester.objects.filter(is_published=True).prefetch_related(
-            Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number"))
+        return (
+            Semester.objects.filter(is_published=True)
+            .exclude(pk__in=current_pk_qs)
+            .prefetch_related(Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number")))
         )
-
-        if current:
-            qs = qs.exclude(pk=current.pk)
-
-        return qs

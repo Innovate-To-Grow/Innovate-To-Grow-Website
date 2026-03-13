@@ -1,0 +1,155 @@
+.sdt-container {
+  margin: 2rem 0;
+}
+
+.sdt-loading,
+.sdt-error {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.sdt-error {
+  color: #b30000;
+}
+
+.sdt-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sdt-search {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  min-width: 250px;
+}
+
+.sdt-search:focus {
+  outline: none;
+  border-color: #0f2d52;
+}
+
+.sdt-count {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.sdt-table-wrap {
+  overflow-x: auto;
+}
+
+.sdt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.sdt-th {
+  background: #f8f9fa;
+  color: #0f2d52;
+  padding: 0.625rem 0.5rem;
+  text-align: left;
+  border-bottom: 2px solid #e0e0e0;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sdt-th:hover {
+  background: #eef1f5;
+}
+
+.sdt-sorted-asc::after {
+  content: ' \25B2';
+  font-size: 0.625rem;
+}
+
+.sdt-sorted-desc::after {
+  content: ' \25BC';
+  font-size: 0.625rem;
+}
+
+.sdt-th-expand {
+  width: 2rem;
+  cursor: default;
+}
+
+.sdt-td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  color: #444;
+  vertical-align: top;
+}
+
+.sdt-td-expand {
+  text-align: center;
+  cursor: pointer;
+  color: #0f2d52;
+  font-size: 0.75rem;
+}
+
+.sdt-row-expanded .sdt-td {
+  color: #0f2d52;
+  font-weight: 600;
+}
+
+.sdt-detail-row .sdt-detail-cell {
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sdt-detail-section {
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.sdt-detail-section strong {
+  color: #0f2d52;
+}
+
+.sdt-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.sdt-page-btn {
+  background: #0f2d52;
+  color: #fff;
+  border: none;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.sdt-page-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.sdt-page-info {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .sdt-search {
+    min-width: 100%;
+  }
+
+  .sdt-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

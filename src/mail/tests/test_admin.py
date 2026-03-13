@@ -155,6 +155,27 @@ class GoogleAccountAdminTest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
 
+    @patch("mail.admin.google_account.GmailService")
+    def test_attachment_download_sanitizes_filename(self, mock_service_cls):
+        """S8 fix: Content-Disposition filename is sanitized to remove injection chars."""
+        mock_service = MagicMock()
+        mock_service.get_attachment.return_value = (
+            '"evil\r\n/file\\name.pdf"',
+            b"%PDF-1.5 fake content",
+        )
+        mock_service_cls.return_value = mock_service
+
+        url = reverse("admin:mail_attachment", args=["msg1", "att1"])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        disposition = response["Content-Disposition"]
+        # Verify dangerous characters were replaced with underscores
+        self.assertNotIn('"evil', disposition.split("filename=")[1].strip('"'))
+        self.assertNotIn("\r", disposition)
+        self.assertNotIn("\n", disposition)
+        self.assertNotIn("/", disposition.split("filename=")[1])
+        self.assertNotIn("\\", disposition.split("filename=")[1])
+
     def test_emaillog_changelist_accessible(self):
         url = reverse("admin:mail_emaillog_changelist")
         response = self.client.get(url)

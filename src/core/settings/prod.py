@@ -27,6 +27,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
+        "CONN_MAX_AGE": 60,
         "OPTIONS": {
             "sslmode": "require",
         },
@@ -35,14 +36,30 @@ DATABASES = {
 
 # Production-specific settings
 
+# Require RSA-encrypted passwords — block plaintext fallback in production
+REQUIRE_ENCRYPTED_PASSWORDS = True
+
+# Passphrase for encrypting RSA private keys at rest (set via environment variable)
+RSA_KEY_PASSPHRASE = os.environ.get("RSA_KEY_PASSPHRASE")
+
 # Security settings
+#
+# SSL / HSTS architecture:
+#   - AWS ALB terminates TLS and forwards requests over HTTP to Django.
+#   - SECURE_SSL_REDIRECT is False because ALB already redirects HTTP -> HTTPS
+#     at the load-balancer level; Django never sees a plain-HTTP request.
+#   - SECURE_PROXY_SSL_HEADER trusts the X-Forwarded-Proto header set by ALB
+#     so Django can tell the original request was HTTPS.
+#   - HSTS headers (SECURE_HSTS_*) are set by Django on every response so
+#     browsers enforce HTTPS for the configured duration. The domain is
+#     intended for the HSTS preload list (SECURE_HSTS_PRELOAD = True).
+#
 SECURE_SERVER_HEADER = None  # Remove Server header to avoid version disclosure
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
-# SSL termination is handled by ALB, so disable SSL redirect in Django
-SECURE_SSL_REDIRECT = False
+SECURE_SSL_REDIRECT = False  # ALB handles HTTP -> HTTPS redirect
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True

@@ -4,6 +4,8 @@ Django development settings for core project.
 This file contains settings specific to the development environment.
 """
 
+import os
+
 from .base import *
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -12,7 +14,13 @@ SECRET_KEY = "django-insecure-p+tt4i0o$9t!o1707ibkya=&-vlid7@88cz=gcc$*7h$$l1*ai
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "alica-bridlewise-catatonically.ngrok-free.dev"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+extra = os.environ.get("EXTRA_ALLOWED_HOSTS", "")
+if extra:
+    ALLOWED_HOSTS += [h.strip() for h in extra.split(",") if h.strip()]
+
+# Password encryption not required in development (allows plain passwords for testing)
+REQUIRE_ENCRYPTED_PASSWORDS = False
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",

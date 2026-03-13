@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   fetchLayoutData,
   type LayoutData,
@@ -30,12 +30,14 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
     loadLayout();
   }, []);
 
-  const value: LayoutContextValue = {
+  const value: LayoutContextValue = useMemo(() => ({
     state,
     menus: layoutData?.menus ?? [],
     footer: layoutData?.footer ?? null,
+    homepage_mode: layoutData?.homepage_mode,
+    homepage_route: layoutData?.homepage_route,
     error,
-  };
+  }), [state, layoutData, error]);
 
   return (
     <LayoutContext.Provider value={value}>

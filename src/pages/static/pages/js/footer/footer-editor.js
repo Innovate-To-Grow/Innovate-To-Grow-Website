@@ -5,6 +5,9 @@
 (function() {
   // CSS paths
   const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
+
+  // App routes injected from Django backend (see pages/app_routes.py)
+  const APP_ROUTES = window.APP_ROUTES || [];
   
   // DOM elements (initialized in init())
   let jsonInput = null;
@@ -87,8 +90,9 @@
   }
   
   // ===== CTA Buttons =====
-  window.addCtaButton = function() {
-    footerData.cta_buttons.push({ label: 'New Button', href: '#', style: 'blue' });
+  window.addCtaButton = function(type) {
+    type = type || 'external';
+    footerData.cta_buttons.push({ type: type, label: 'New Button', href: type === 'app' ? '' : '#', style: 'blue' });
     renderCtaButtons();
     syncToJson();
   };
@@ -101,37 +105,85 @@
   
   function renderCtaButtons() {
     const container = document.getElementById('cta-list');
-    container.innerHTML = footerData.cta_buttons.map((btn, idx) => `
-      <div class="item-card">
-        <div class="item-card-header">
-          <span class="item-card-title">Button ${idx + 1}</span>
-          <div class="item-card-actions">
-            <button type="button" class="btn-delete" onclick="removeCtaButton(${idx})">Delete</button>
-          </div>
+    container.innerHTML = footerData.cta_buttons.map((btn, idx) => {
+      const btnType = btn.type || 'external';
+
+      const typeSelector = `
+        <div class="item-field" style="max-width: 120px;">
+          <label>Type</label>
+          <select onchange="changeCtaType(${idx}, this.value)">
+            <option value="external" ${btnType === 'external' ? 'selected' : ''}>External</option>
+            <option value="app" ${btnType === 'app' ? 'selected' : ''}>App Route</option>
+          </select>
         </div>
-        <div class="item-row">
+      `;
+
+      let urlField;
+      if (btnType === 'app') {
+        const appOptions = APP_ROUTES.map(r =>
+          `<option value="${escapeAttr(r.url)}" ${btn.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+        urlField = `
           <div class="item-field">
-            <label>Label</label>
-            <input type="text" value="${escapeAttr(btn.label)}" onchange="updateCtaButton(${idx}, 'label', this.value)">
-          </div>
-          <div class="item-field">
-            <label>URL</label>
-            <input type="text" value="${escapeAttr(btn.href)}" onchange="updateCtaButton(${idx}, 'href', this.value)">
-          </div>
-          <div class="item-field" style="max-width: 120px;">
-            <label>Style</label>
-            <select onchange="updateCtaButton(${idx}, 'style', this.value)">
-              <option value="blue" ${btn.style === 'blue' ? 'selected' : ''}>Blue</option>
-              <option value="gold" ${btn.style === 'gold' ? 'selected' : ''}>Gold</option>
+            <label>App Route</label>
+            <select onchange="selectCtaAppRoute(${idx}, this.value)">
+              <option value="">-- Select Page --</option>
+              ${appOptions}
             </select>
           </div>
+        `;
+      } else {
+        urlField = `
+          <div class="item-field">
+            <label>URL</label>
+            <input type="text" value="${escapeAttr(btn.href)}" placeholder="https://example.com" onchange="updateCtaButton(${idx}, 'href', this.value)">
+          </div>
+        `;
+      }
+
+      return `
+        <div class="item-card">
+          <div class="item-card-header">
+            <span class="item-card-title">Button ${idx + 1}</span>
+            <div class="item-card-actions">
+              <button type="button" class="btn-delete" onclick="removeCtaButton(${idx})">Delete</button>
+            </div>
+          </div>
+          <div class="item-row">
+            ${typeSelector}
+            <div class="item-field">
+              <label>Label</label>
+              <input type="text" value="${escapeAttr(btn.label)}" onchange="updateCtaButton(${idx}, 'label', this.value)">
+            </div>
+            ${urlField}
+            <div class="item-field" style="max-width: 120px;">
+              <label>Style</label>
+              <select onchange="updateCtaButton(${idx}, 'style', this.value)">
+                <option value="blue" ${btn.style === 'blue' ? 'selected' : ''}>Blue</option>
+                <option value="gold" ${btn.style === 'gold' ? 'selected' : ''}>Gold</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
-  
+
   window.updateCtaButton = function(idx, field, value) {
     footerData.cta_buttons[idx][field] = value;
+    syncToJson();
+  };
+
+  window.changeCtaType = function(idx, newType) {
+    const btn = footerData.cta_buttons[idx];
+    btn.type = newType;
+    btn.href = newType === 'app' ? '' : '#';
+    renderCtaButtons();
+    syncToJson();
+  };
+
+  window.selectCtaAppRoute = function(idx, url) {
+    footerData.cta_buttons[idx].href = url;
     syncToJson();
   };
   
@@ -266,42 +318,99 @@
   }
   
   // ===== Footer Links =====
-  window.addFooterLink = function() {
-    footerData.footer_links.push({ label: 'New Link', href: '#', target: '_blank', rel: 'noopener' });
+  window.addFooterLink = function(type) {
+    type = type || 'external';
+    footerData.footer_links.push({ type: type, label: 'New Link', href: type === 'app' ? '' : '#', target: type === 'external' ? '_blank' : '', rel: type === 'external' ? 'noopener' : '' });
     renderFooterLinks();
     syncToJson();
   };
-  
+
   window.removeFooterLink = function(idx) {
     footerData.footer_links.splice(idx, 1);
     renderFooterLinks();
     syncToJson();
   };
-  
+
   window.updateFooterLink = function(idx, field, value) {
     footerData.footer_links[idx][field] = value;
     syncToJson();
   };
-  
+
+  window.changeFooterLinkType = function(idx, newType) {
+    const link = footerData.footer_links[idx];
+    link.type = newType;
+    link.href = newType === 'app' ? '' : '#';
+    link.target = newType === 'external' ? '_blank' : '';
+    link.rel = newType === 'external' ? 'noopener' : '';
+    renderFooterLinks();
+    syncToJson();
+  };
+
+  window.selectFooterLinkAppRoute = function(idx, url) {
+    const link = footerData.footer_links[idx];
+    link.href = url;
+    const route = APP_ROUTES.find(r => r.url === url);
+    if (route && (!link.label || link.label === 'New Link')) {
+      link.label = route.title;
+    }
+    renderFooterLinks();
+    syncToJson();
+  };
+
   function renderFooterLinks() {
     const container = document.getElementById('footer-links-list');
-    container.innerHTML = footerData.footer_links.map((link, idx) => `
-      <div class="item-card">
-        <div class="item-row">
+    container.innerHTML = footerData.footer_links.map((link, idx) => {
+      const linkType = link.type || 'external';
+
+      const typeSelector = `
+        <div class="item-field" style="max-width: 120px;">
+          <label>Type</label>
+          <select onchange="changeFooterLinkType(${idx}, this.value)">
+            <option value="external" ${linkType === 'external' ? 'selected' : ''}>External</option>
+            <option value="app" ${linkType === 'app' ? 'selected' : ''}>App Route</option>
+          </select>
+        </div>
+      `;
+
+      let urlField;
+      if (linkType === 'app') {
+        const appOptions = APP_ROUTES.map(r =>
+          `<option value="${escapeAttr(r.url)}" ${link.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+        urlField = `
           <div class="item-field">
-            <label>Label</label>
-            <input type="text" value="${escapeAttr(link.label)}" onchange="updateFooterLink(${idx}, 'label', this.value)">
+            <label>App Route</label>
+            <select onchange="selectFooterLinkAppRoute(${idx}, this.value)">
+              <option value="">-- Select Page --</option>
+              ${appOptions}
+            </select>
           </div>
+        `;
+      } else {
+        urlField = `
           <div class="item-field">
             <label>URL</label>
-            <input type="text" value="${escapeAttr(link.href)}" onchange="updateFooterLink(${idx}, 'href', this.value)">
+            <input type="text" value="${escapeAttr(link.href)}" placeholder="https://example.com" onchange="updateFooterLink(${idx}, 'href', this.value)">
           </div>
-          <div class="item-card-actions" style="align-self: flex-end; padding-bottom: 4px;">
-            <button type="button" class="btn-delete" onclick="removeFooterLink(${idx})">Delete</button>
+        `;
+      }
+
+      return `
+        <div class="item-card">
+          <div class="item-row">
+            ${typeSelector}
+            <div class="item-field">
+              <label>Label</label>
+              <input type="text" value="${escapeAttr(link.label)}" onchange="updateFooterLink(${idx}, 'label', this.value)">
+            </div>
+            ${urlField}
+            <div class="item-card-actions" style="align-self: flex-end; padding-bottom: 4px;">
+              <button type="button" class="btn-delete" onclick="removeFooterLink(${idx})">Delete</button>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
   
   // Toggle JSON view

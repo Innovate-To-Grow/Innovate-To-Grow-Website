@@ -1,5 +1,6 @@
 import logging
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.core.cache import cache
 
@@ -15,6 +16,17 @@ from .scraper import scrape_article
 
 logger = logging.getLogger(__name__)
 
+_SCRAPER_MAX_WORKERS = 4
+
+
+def _scrape_one(article_id, source_url: str) -> tuple:
+    """Scrape a single article page. Returns (article_id, scraped_dict | None)."""
+    try:
+        return article_id, scrape_article(source_url)
+    except Exception:
+        logger.warning("Failed to scrape %s, using RSS content", source_url)
+        return article_id, None
+
 
 def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict:
     """Fetch RSS feed and upsert articles. Returns sync stats."""
@@ -28,6 +40,9 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
     except Exception as e:
         logger.exception("Failed to fetch/parse RSS feed")
         return {"created": 0, "updated": 0, "errors": [str(e)]}
+
+    # Phase 1: Parse feed items and create/update article rows from RSS data.
+    articles_to_scrape: list[tuple] = []  # (article_id, source_url)
 
     for item in items:
         try:
@@ -69,23 +84,7 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
                 defaults=defaults,
             )
 
-            # Scrape full page for richer content (hero image, caption, full body)
-            try:
-                scraped = scrape_article(article.source_url)
-                update_fields = []
-                if scraped["hero_image_url"]:
-                    article.hero_image_url = scraped["hero_image_url"][:1000]
-                    update_fields.append("hero_image_url")
-                if scraped["hero_caption"]:
-                    article.hero_caption = scraped["hero_caption"][:500]
-                    update_fields.append("hero_caption")
-                if scraped["body_html"]:
-                    article.content = scraped["body_html"]
-                    update_fields.append("content")
-                if update_fields:
-                    article.save(update_fields=update_fields)
-            except Exception:
-                logger.warning("Failed to scrape %s, using RSS content", article.source_url)
+            articles_to_scrape.append((article.pk, article.source_url))
 
             if was_created:
                 created += 1
@@ -95,6 +94,37 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
         except Exception as e:
             logger.exception("Error syncing item: %s", item.get("guid", "unknown"))
             errors.append(f"Error syncing {item.get('guid', 'unknown')}: {e}")
+
+    # Phase 2: Scrape full pages in parallel for richer content.
+    if articles_to_scrape:
+        with ThreadPoolExecutor(max_workers=_SCRAPER_MAX_WORKERS) as executor:
+            futures = {executor.submit(_scrape_one, art_id, url): art_id for art_id, url in articles_to_scrape}
+            for future in as_completed(futures):
+                try:
+                    article_id, scraped = future.result()
+                except Exception:
+                    logger.exception("Unexpected error in scrape worker")
+                    continue
+
+                if scraped is None:
+                    continue
+
+                try:
+                    article = NewsArticle.objects.get(pk=article_id)
+                    update_fields = []
+                    if scraped["hero_image_url"]:
+                        article.hero_image_url = scraped["hero_image_url"][:1000]
+                        update_fields.append("hero_image_url")
+                    if scraped["hero_caption"]:
+                        article.hero_caption = scraped["hero_caption"][:500]
+                        update_fields.append("hero_caption")
+                    if scraped["body_html"]:
+                        article.content = scraped["body_html"]
+                        update_fields.append("content")
+                    if update_fields:
+                        article.save(update_fields=update_fields)
+                except NewsArticle.DoesNotExist:
+                    logger.warning("Article %s disappeared before scrape update", article_id)
 
     cache.delete("news:list")
     return {"created": created, "updated": updated, "errors": errors}

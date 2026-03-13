@@ -1,3 +1,4 @@
+import os
 import uuid
 
 from cryptography.hazmat.backends import default_backend
@@ -33,9 +34,22 @@ class RSAKeypair(ProjectControlModel):
     private_key_pem = models.TextField(blank=True, help_text="Private key in PEM format.")
 
     @classmethod
+    def _get_key_encryption_algorithm(cls) -> serialization.KeySerializationEncryption:
+        """
+        Return encryption algorithm for private key serialization.
+        Uses BestAvailableEncryption if RSA_KEY_PASSPHRASE env var is set,
+        otherwise NoEncryption (suitable for development).
+        """
+        passphrase = os.environ.get("RSA_KEY_PASSPHRASE", "").strip()
+        if passphrase:
+            return serialization.BestAvailableEncryption(passphrase.encode("utf-8"))
+        return serialization.NoEncryption()
+
+    @classmethod
     def generate_keypair(cls, key_size: int = 2048):
         """
         Generate a new RSA keypair and return (public_pem, private_pem).
+        If RSA_KEY_PASSPHRASE is set, the private key is encrypted at rest.
         """
         private_key = rsa.generate_private_key(
             public_exponent=65537,
@@ -46,7 +60,7 @@ class RSAKeypair(ProjectControlModel):
         private_pem = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
+            encryption_algorithm=cls._get_key_encryption_algorithm(),
         ).decode("utf-8")
 
         public_pem = (

@@ -16,77 +16,6 @@
   margin: 0 0 2rem;
 }
 
-.projects-state {
-  text-align: center;
-  font-size: 1.125rem;
-  color: #0f2d52;
-  padding: 3rem 0;
-}
-
-.projects-error {
-  color: #b30000;
-}
-
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-.project-card {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.2s, transform 0.2s;
-  background: #fff;
-}
-
-.project-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.project-card-body {
-  padding: 1.25rem;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.project-card-title {
-  font-size: 1.125rem;
-  color: #0f2d52;
-  margin: 0 0 0.5rem;
-  line-height: 1.4;
-}
-
-.project-card-team {
-  font-size: 0.9375rem;
-  color: #444;
-  margin: 0 0 0.25rem;
-}
-
-.project-card-org {
-  font-size: 0.875rem;
-  color: #666;
-  margin: 0 0 0.5rem;
-}
-
-.project-card-industry {
-  display: inline-block;
-  margin-top: auto;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.8125rem;
-  color: #0f2d52;
-  background: #e8edf2;
-  border-radius: 4px;
-  align-self: flex-start;
-}
-
 .projects-nav {
   display: flex;
   justify-content: center;
@@ -118,7 +47,4 @@
     font-size: 1.5rem;
   }
 
-  .projects-grid {
-    grid-template-columns: 1fr;
-  }
 }

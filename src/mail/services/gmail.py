@@ -28,6 +28,7 @@ from email.mime.text import MIMEText
 import bleach
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.http import BatchHttpRequest
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,9 @@ class GmailService:
         """
         List messages with optional search query and label filter.
 
+        Uses BatchHttpRequest to fetch message metadata in a single
+        round-trip instead of one API call per message.
+
         Returns dict with 'messages' (list of message summaries) and
         'next_page_token' for pagination.
         """
@@ -164,10 +168,35 @@ class GmailService:
         messages = response.get("messages", [])
         next_page_token = response.get("nextPageToken")
 
-        # Fetch summary data for each message
+        if not messages:
+            return {"messages": [], "next_page_token": next_page_token}
+
+        # Batch-fetch metadata for all messages in one round-trip
+        fetched: dict[str, dict] = {}
+        batch_errors: list[str] = []
+
+        def _on_message_response(request_id, response, exception):
+            if exception is not None:
+                batch_errors.append(str(exception))
+                logger.warning("Batch get failed for message %s: %s", request_id, exception)
+            else:
+                fetched[request_id] = response
+
+        batch: BatchHttpRequest = service.new_batch_http_request(callback=_on_message_response)
+        for msg_stub in messages:
+            msg_id = msg_stub["id"]
+            batch.add(
+                service.users().messages().get(userId="me", id=msg_id, format="metadata"),
+                request_id=msg_id,
+            )
+        batch.execute()
+
+        # Build summaries preserving the original list order
         summaries = []
         for msg_stub in messages:
-            msg = service.users().messages().get(userId="me", id=msg_stub["id"], format="metadata").execute()
+            msg = fetched.get(msg_stub["id"])
+            if msg is None:
+                continue
             headers = self._parse_headers(msg)
             summaries.append(
                 {

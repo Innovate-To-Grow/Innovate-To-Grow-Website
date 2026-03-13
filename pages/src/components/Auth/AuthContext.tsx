@@ -4,6 +4,7 @@ import {
     useState,
     useEffect,
     useCallback,
+    useMemo,
     type ReactNode,
 } from 'react';
 import {
@@ -65,7 +66,7 @@ interface AuthContextValue {
     resendRegistrationCode: (email: string) => Promise<MessageResponse>;
     requestPasswordReset: (email: string) => Promise<MessageResponse>;
     verifyPasswordResetCode: (email: string, code: string) => Promise<VerificationTokenResponse>;
-    confirmPasswordReset: (verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
+    confirmPasswordReset: (email: string, verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
     requestPasswordChangeCode: (email: string) => Promise<MessageResponse>;
     verifyPasswordChangeCode: (email: string, code: string) => Promise<VerificationTokenResponse>;
     confirmPasswordChange: (verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
@@ -277,11 +278,12 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
     }, [runWithErrorHandling]);
 
     const confirmPasswordReset = useCallback(async (
+        email: string,
         verificationToken: string,
         newPassword: string,
         confirmPassword: string,
     ): Promise<MessageResponse> => {
-        return runWithErrorHandling(() => apiConfirmPasswordReset(verificationToken, newPassword, confirmPassword));
+        return runWithErrorHandling(() => apiConfirmPasswordReset(email, verificationToken, newPassword, confirmPassword));
     }, [runWithErrorHandling]);
 
     const requestPasswordChangeCode = useCallback(async (email: string): Promise<MessageResponse> => {
@@ -329,7 +331,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
         }
     }, []);
 
-    const value: AuthContextValue = {
+    const value: AuthContextValue = useMemo(() => ({
         user,
         isAuthenticated: !!user,
         requiresProfileCompletion,
@@ -353,7 +355,30 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
         refreshProfile,
         clearProfileCompletionRequirement,
         clearError,
-    };
+    }), [
+        user,
+        requiresProfileCompletion,
+        isLoading,
+        error,
+        login,
+        register,
+        requestEmailAuthCode,
+        verifyEmailAuthCode,
+        requestLoginCode,
+        verifyLoginCode,
+        verifyRegistrationCode,
+        resendRegistrationCode,
+        requestPasswordReset,
+        verifyPasswordResetCode,
+        confirmPasswordReset,
+        requestPasswordChangeCode,
+        verifyPasswordChangeCode,
+        confirmPasswordChange,
+        logout,
+        refreshProfile,
+        clearProfileCompletionRequirement,
+        clearError,
+    ]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

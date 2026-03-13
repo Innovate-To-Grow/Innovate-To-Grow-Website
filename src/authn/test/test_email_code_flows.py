@@ -293,6 +293,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         confirm_response = self.client.post(
             "/authn/password-reset/confirm/",
             {
+                "email": self.alias.email_address,
                 "verification_token": token,
                 "new_password": "NewStrongPass123!",
                 "new_password_confirm": "NewStrongPass123!",
@@ -395,3 +396,74 @@ class EmailCodeAuthFlowTests(APITestCase):
             format="json",
         )
         self.assertEqual(new_code_response.status_code, 200)
+
+    @patch("authn.services.email_challenges.send_auth_code_email")
+    @patch("authn.services.email_challenges._random_code", return_value="777777")
+    def test_password_reset_confirm_requires_matching_email(self, _mock_code, _mock_send):
+        """Correct token but wrong email → 400 'No eligible account found' (S10 fix)."""
+        # Request + verify code for member
+        self.client.post(
+            "/authn/password-reset/request-code/",
+            {"email": self.member.email},
+            format="json",
+        )
+        verify_response = self.client.post(
+            "/authn/password-reset/verify-code/",
+            {"email": self.member.email, "code": "777777"},
+            format="json",
+        )
+        self.assertEqual(verify_response.status_code, 200)
+        token = verify_response.data["verification_token"]
+
+        # Try to confirm with a non-existent email
+        confirm_response = self.client.post(
+            "/authn/password-reset/confirm/",
+            {
+                "email": "nobody@example.com",
+                "verification_token": token,
+                "new_password": "ResetPass123!",
+                "new_password_confirm": "ResetPass123!",
+            },
+            format="json",
+        )
+        self.assertEqual(confirm_response.status_code, 400)
+        self.assertIn("No eligible account found", str(confirm_response.data))
+
+    @patch("authn.services.email_challenges.send_auth_code_email")
+    @patch("authn.services.email_challenges._random_code", return_value="888888")
+    def test_password_reset_confirm_rejects_other_users_token(self, _mock_code, _mock_send):
+        """Member B's email + member A's token → 400 'Verification token is invalid' (S10 fix)."""
+        other_member = Member.objects.create_user(
+            username="other-reset",
+            email="other-reset@example.com",
+            password="OtherPass123!",
+            is_active=True,
+        )
+
+        # Request + verify code for self.member (member A)
+        self.client.post(
+            "/authn/password-reset/request-code/",
+            {"email": self.member.email},
+            format="json",
+        )
+        verify_response = self.client.post(
+            "/authn/password-reset/verify-code/",
+            {"email": self.member.email, "code": "888888"},
+            format="json",
+        )
+        self.assertEqual(verify_response.status_code, 200)
+        token_a = verify_response.data["verification_token"]
+
+        # Try to use member A's token with member B's email
+        confirm_response = self.client.post(
+            "/authn/password-reset/confirm/",
+            {
+                "email": other_member.email,
+                "verification_token": token_a,
+                "new_password": "ResetPass123!",
+                "new_password_confirm": "ResetPass123!",
+            },
+            format="json",
+        )
+        self.assertEqual(confirm_response.status_code, 400)
+        self.assertIn("Verification token is invalid", str(confirm_response.data))

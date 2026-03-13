@@ -1,4 +1,7 @@
 import api from './client';
+import type { PaginatedResponse } from './types';
+
+export type { PaginatedResponse } from './types';
 
 export interface NewsArticle {
   id: string;
@@ -11,13 +14,6 @@ export interface NewsArticle {
   content?: string;
   hero_image_url?: string;
   hero_caption?: string;
-}
-
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
 }
 
 export const fetchNews = async (page = 1, pageSize = 12): Promise<PaginatedResponse<NewsArticle>> => {

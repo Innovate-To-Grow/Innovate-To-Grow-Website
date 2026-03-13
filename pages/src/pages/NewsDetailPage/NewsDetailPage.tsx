@@ -53,7 +53,13 @@ export const NewsDetailPage = () => {
 
       {article.hero_image_url && (
         <figure className="news-detail-hero">
-          <img src={article.hero_image_url} alt={article.title} />
+          <img
+            src={article.hero_image_url}
+            alt={article.title}
+            width={1200}
+            height={630}
+            loading="lazy"
+          />
           {article.hero_caption && (
             <figcaption className="news-detail-hero-caption">{article.hero_caption}</figcaption>
           )}

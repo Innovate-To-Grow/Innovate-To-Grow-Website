@@ -1,0 +1,91 @@
+.ack-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.ack-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.ack-page-lead {
+  color: #0f2d52;
+  font-size: 1.1875rem;
+  font-weight: 600;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.ack-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+}
+
+.ack-page-section {
+  margin-top: 2.5rem;
+}
+
+.ack-page-section-title {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 0 0 1.5rem;
+}
+
+.ack-page-placeholder {
+  background: #f8f9fa;
+  border: 2px dashed #d0d0d0;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.ack-page-placeholder .ack-page-text {
+  color: #888;
+  font-style: italic;
+  margin: 0;
+}
+
+.ack-page-link {
+  color: #0f2d52;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ack-page-link:hover {
+  text-decoration: underline;
+}
+
+.ack-page-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.ack-page-text a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .ack-page {
+    padding: 1rem;
+  }
+
+  .ack-page-title {
+    font-size: 1.5rem;
+  }
+
+  .ack-page-lead {
+    font-size: 1.0625rem;
+  }
+
+  .ack-page-section-title {
+    font-size: 1.125rem;
+  }
+}

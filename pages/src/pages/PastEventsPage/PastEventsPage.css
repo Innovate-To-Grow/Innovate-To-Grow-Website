@@ -1,0 +1,74 @@
+.past-events-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.past-events-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.past-events-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.past-events-page-section {
+  margin-top: 2rem;
+}
+
+.past-events-page-section-title {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 0 0 1.5rem;
+}
+
+.past-events-page-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.past-events-page-list-item {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.past-events-page-list-item:first-child {
+  border-top: 1px solid #e0e0e0;
+}
+
+.past-events-page-link {
+  display: block;
+  padding: 0.875rem 1rem;
+  color: #0f2d52;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.past-events-page-link:hover {
+  background-color: #f8f9fa;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .past-events-page {
+    padding: 1rem;
+  }
+
+  .past-events-page-title {
+    font-size: 1.5rem;
+  }
+
+  .past-events-page-section-title {
+    font-size: 1.125rem;
+  }
+}

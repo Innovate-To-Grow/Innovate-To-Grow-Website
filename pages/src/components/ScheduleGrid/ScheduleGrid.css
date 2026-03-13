@@ -1,0 +1,108 @@
+.sg-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.sg-loading,
+.sg-error {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.sg-error {
+  color: #b30000;
+}
+
+.sg-class-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sg-class-title {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  font-size: 1.125rem;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sg-table-wrap {
+  overflow-x: auto;
+}
+
+.sg-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sg-th {
+  background: #f8f9fa;
+  padding: 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.sg-th-time {
+  color: #002856;
+  min-width: 60px;
+}
+
+.sg-th-room {
+  color: #002856;
+  font-weight: normal;
+}
+
+.sg-th-track {
+  font-weight: 700;
+}
+
+.sg-td-time {
+  background: #f8f9fa;
+  color: #002856;
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.sg-td-cell {
+  padding: 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+  min-width: 120px;
+  vertical-align: top;
+}
+
+.sg-team-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: block;
+  margin: 0 auto;
+}
+
+.sg-team-btn:hover {
+  text-decoration: underline;
+}
+
+.sg-org {
+  display: block;
+  color: #666;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .sg-class-title {
+    font-size: 1rem;
+  }
+}

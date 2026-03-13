@@ -5,6 +5,33 @@
   box-sizing: border-box;
 }
 
+.page-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  color: #666;
+  font-size: 1rem;
+  gap: 1rem;
+}
+
+.page-loader::before {
+  content: '';
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #0f2d52;
+  border-radius: 50%;
+  animation: page-spin 0.8s linear infinite;
+}
+
+@keyframes page-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 768px) {
   .app-layout {
     padding: 8px 0;

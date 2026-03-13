@@ -50,22 +50,49 @@
       const itemPath = `${path}[${idx}]`;
       const hasChildren = item.children && item.children.length > 0;
       const typeBadgeClass = `type-${item.type}`;
-      const typeLabel = item.type === 'app' ? 'App' : 'External';
+      const typeLabel = item.type === 'home' ? 'Home' : item.type === 'app' ? 'App' : 'External';
 
       // Type selector
       const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
           <label>Type</label>
           <select onchange="changeItemType('${itemPath}', this.value)">
-            <option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option>
+            <option value="home" ${item.type === 'home' ? 'selected' : ''}>Home</option>
             <option value="app" ${item.type === 'app' ? 'selected' : ''}>App Route</option>
+            <option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option>
           </select>
         </div>
       `;
 
       let fieldsHtml = '';
 
-      if (item.type === 'external') {
+      if (item.type === 'home') {
+        // Home type: always links to "/", with a page selector for what renders there
+        const homePageOptions = APP_ROUTES.filter(r => r.url !== '/').map(r =>
+          `<option value="${escapeAttr(r.url)}" ${item.homepage_page === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+
+        fieldsHtml = `
+          <div class="item-row">
+            ${typeSelector}
+            <div class="item-field">
+              <label>Title</label>
+              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
+            </div>
+            <div class="item-field">
+              <label>Homepage Page</label>
+              <select onchange="updateItem('${itemPath}', 'homepage_page', this.value)">
+                <option value="" ${!item.homepage_page ? 'selected' : ''}>Default Home</option>
+                ${homePageOptions}
+              </select>
+            </div>
+            <div class="item-field item-field-small">
+              <label>Icon</label>
+              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-home" onchange="updateItem('${itemPath}', 'icon', this.value)">
+            </div>
+          </div>
+        `;
+      } else if (item.type === 'external') {
         fieldsHtml = `
           <div class="item-row">
             ${typeSelector}
@@ -172,12 +199,15 @@
   window.addMenuItem = function(type) {
     const newItem = {
       type: type,
-      title: type === 'app' ? 'New App Link' : 'New External Link',
-      url: '',
+      title: type === 'home' ? 'Home' : type === 'app' ? 'New App Link' : 'New External Link',
+      url: type === 'home' ? '/' : '',
       icon: '',
       open_in_new_tab: type === 'external',
       children: []
     };
+    if (type === 'home') {
+      newItem.homepage_page = '';
+    }
 
     menuItems.push(newItem);
     renderAll();
@@ -237,12 +267,22 @@
     item.type = newType;
 
     // Reset type-specific fields
-    item.url = item.url || '';
     delete item.page_slug;
-    if (newType === 'external') {
-      item.open_in_new_tab = true;
-    } else {
+    if (newType === 'home') {
+      item.url = '/';
       item.open_in_new_tab = false;
+      item.homepage_page = '';
+      if (!item.title || item.title === 'New External Link' || item.title === 'New App Link') {
+        item.title = 'Home';
+      }
+    } else if (newType === 'external') {
+      item.url = item.url || '';
+      item.open_in_new_tab = true;
+      delete item.homepage_page;
+    } else {
+      item.url = item.url || '';
+      item.open_in_new_tab = false;
+      delete item.homepage_page;
     }
 
     renderAll();
@@ -283,6 +323,47 @@
   // Toggle JSON view
   window.toggleJsonView = function() {
     document.getElementById('json-raw-view').classList.toggle('show');
+  };
+
+  // Copy JSON to clipboard
+  window.copyJson = function() {
+    const editor = document.getElementById('json-editor');
+    const btn = event && event.target;
+    editor.select();
+    try {
+      // Use execCommand as fallback for non-HTTPS contexts
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(editor.value);
+      } else {
+        document.execCommand('copy');
+      }
+      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy JSON'; }, 1200); }
+    } catch (e) {
+      if (btn) { btn.textContent = 'Select & Ctrl+C'; setTimeout(() => { btn.textContent = 'Copy JSON'; }, 2000); }
+    }
+  };
+
+  // Apply JSON from textarea
+  window.applyJson = function() {
+    const editor = document.getElementById('json-editor');
+    const btn = event && event.target;
+    var text = editor.value.trim();
+    if (!text) return;
+    try {
+      var parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) {
+        if (btn) { btn.textContent = 'Error: must be a JSON array'; btn.style.color = '#dc3545'; }
+        setTimeout(() => { if (btn) { btn.textContent = 'Apply JSON'; btn.style.color = ''; } }, 2000);
+        return;
+      }
+      menuItems = parsed;
+      renderAll();
+      syncToJson();
+      if (btn) { btn.textContent = 'Applied!'; setTimeout(() => { btn.textContent = 'Apply JSON'; }, 1200); }
+    } catch (e) {
+      if (btn) { btn.textContent = 'Invalid JSON'; btn.style.color = '#dc3545'; }
+      setTimeout(() => { if (btn) { btn.textContent = 'Apply JSON'; btn.style.color = ''; } }, 2000);
+    }
   };
   
   // Helper functions

@@ -1,0 +1,1 @@
+export { SponsorAcknowledgementPage } from './SponsorAcknowledgementPage';

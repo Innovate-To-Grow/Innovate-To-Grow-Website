@@ -170,7 +170,7 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
     setLocalSuccess(null);
     try {
       if (flow === 'reset') {
-        const response = await confirmPasswordReset(verificationToken, newPassword, confirmPassword);
+        const response = await confirmPasswordReset(email, verificationToken, newPassword, confirmPassword);
         setLocalSuccess(response.message);
         window.setTimeout(() => navigate('/login', { replace: true }), 900);
         return;

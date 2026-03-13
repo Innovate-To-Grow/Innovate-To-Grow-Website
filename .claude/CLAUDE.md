@@ -74,7 +74,7 @@ pre-commit run --all-files
 The backend is organized into specialized Django apps:
 
 - **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system, middleware
-- **`pages/`**: Layout only — Menu and FooterContent models (CMS pages were removed)
+- **`pages/`**: Layout (Menu, FooterContent) + Google Sheets data proxy (GoogleSheetSource, SiteSettings). Serves sheets data at `/sheets/<slug>/`
 - **`authn/`**: Auth with Member model, JWT, email verification, contact emails, password reset
 - **`event/`**: Event management (Event, Ticket, Question models)
 - **`news/`**: News articles (NewsArticle, NewsFeedSource, NewsSyncLog) and feed syncing
@@ -93,11 +93,11 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
 
 ### Frontend Architecture
 
-- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
+- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`, `sheets.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
 - **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `MaintenanceMode/`)
-- **`pages/src/pages/`**: Feature pages organized in folders (each has `index.ts`, `PageName.tsx`, `PageName.css`) — `AboutPage`, `NewsPage`, `NewsDetailPage`, `ProjectsPage`, `PastProjectsPage`, `ProjectDetailPage`, `ProjectSubmissionPage`, `SampleProposalsPage`, `ProjectsHubPage`, `EngineeringCapstonePage`, `SoftwareCapstonePage`, `StudentsPage`, `StudentAgreementPage`, `EventPreparationPage`, `VideoPreparationPage`, `PurchasingReimbursementPage`, `NotFoundPage`
+- **`pages/src/pages/`**: 35+ feature pages organized in folders (each has `index.ts`, `PageName.tsx`, `PageName.css`). Key categories: Home, About/Partnership/Sponsorship, News, Projects (current/past/detail/submission), Events (event/schedule/archive/past-events), Students (agreement/preparation), Judges/Attendees/Judging, FAQ/Contact/Privacy/FERPA, NotFoundPage
 - **`pages/src/router/`**: React Router configuration
-- **Routes**: `/about`, `/news`, `/news/:id`, `/projects`, `/current-projects`, `/past-projects`, `/projects/:id`, `/project-submission`, `/sample-proposals`, `/engineering-capstone`, `/software-capstone`, `/students`, `/student-agreement`, `/event-preparation`, `/video-preparation`, `/purchasing-reimbursement`, `/login`, `/register`, `/forgot-password`, `/verify-email`, `/account`
+- **Routes**: See `pages/src/router/index.tsx` for full list. Key routes include `/` (home), `/about`, `/news`, `/news/:id`, `/projects`, `/current-projects`, `/past-projects`, `/projects/:id`, `/event`, `/schedule`, `/events/:eventSlug`, `/judges`, `/attendees`, `/judging`, `/sponsorship`, `/faqs`, `/contact-us`, `/privacy`, `/ferpa`, plus auth routes (`/login`, `/register`, `/forgot-password`, `/verify-email`, `/complete-profile`, `/account`). Many legacy URLs redirect to canonical paths.
 - **Vite proxy**: `/api`, `/media`, `/admin` proxied to backend (localhost:8000)
 - **Three React roots**: `#root` (main app with BrowserRouter), `#menu-root` (MainMenu only, no router), `#footer-root` (Footer only). Auth state syncs across roots via `i2g-auth-state-change` window event.
 
@@ -132,8 +132,8 @@ The admin uses **django-unfold** for theming and **CKEditor 5** for rich text ed
 
 - **Dev**: In-memory cache (`LocMemCache`)
 - **Prod**: Redis via `django-redis`
-- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu or FooterContent are saved/deleted
-- **Cache keys**: `"layout:data"`
+- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu, FooterContent, or GoogleSheetSource are saved/deleted
+- **Cache keys**: `"layout:data"`, `"sheets:<slug>:data"`
 - **Important**: When adding cache to views, ensure tests call `cache.clear()` in `setUp()` to prevent cross-test pollution.
 
 ### API Contracts

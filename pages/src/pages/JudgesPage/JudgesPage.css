@@ -1,0 +1,82 @@
+.judges-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.judges-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.judges-page-section {
+  margin-bottom: 2rem;
+}
+
+.judges-section-header {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 2rem 0 1rem;
+}
+
+.judges-page-subtitle {
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.judges-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.judges-page-text strong {
+  color: #333;
+}
+
+.judges-page-list {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.judges-page-list li {
+  margin-bottom: 0.5rem;
+}
+
+.judges-page-list a,
+.judges-page-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.judges-page-list a:hover,
+.judges-page-text a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .judges-page {
+    padding: 1rem;
+  }
+
+  .judges-page-title {
+    font-size: 1.5rem;
+  }
+
+  .judges-section-header {
+    font-size: 1.125rem;
+  }
+
+  .judges-page-subtitle {
+    font-size: 1.125rem;
+  }
+}

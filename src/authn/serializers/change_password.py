@@ -2,6 +2,7 @@
 Change password serializer for authenticated users.
 """
 
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
@@ -55,6 +56,9 @@ class ChangePasswordSerializer(serializers.Serializer):
             except RSADecryptionError as e:
                 raise serializers.ValidationError({"current_password": f"Failed to decrypt password: {e}"})
         else:
+            # Block plaintext passwords in production
+            if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
+                raise serializers.ValidationError({"current_password": "Encrypted password required."})
             current_password = encrypted_current
             new_password = encrypted_new
             new_password_confirm = encrypted_confirm

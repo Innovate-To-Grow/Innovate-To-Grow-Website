@@ -1,0 +1,58 @@
+.judging-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.judging-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.judging-page-section {
+  margin-bottom: 2rem;
+}
+
+.judging-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.judging-page-text strong {
+  color: #333;
+}
+
+.judging-page-list {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.judging-page-list li {
+  margin-bottom: 0.5rem;
+}
+
+.judging-page-list a,
+.judging-page-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.judging-page-list a:hover,
+.judging-page-text a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .judging-page {
+    padding: 1rem;
+  }
+
+  .judging-page-title {
+    font-size: 1.5rem;
+  }
+}

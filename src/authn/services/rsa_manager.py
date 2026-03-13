@@ -5,6 +5,7 @@ Manages RSA keypairs for authentication encryption with automatic daily rotation
 """
 
 import base64
+import os
 from datetime import timedelta
 
 from cryptography.hazmat.backends import default_backend
@@ -31,12 +32,15 @@ def get_or_create_auth_keypair() -> RSAKeypair:
     """
     Get the active authentication keypair, creating one if it doesn't exist.
     Automatically rotates the key if it's older than KEY_ROTATION_INTERVAL.
+    Uses get_or_create to prevent race conditions under concurrent requests.
     """
-    keypair = RSAKeypair.objects.filter(name=AUTH_KEY_NAME, is_active=True).first()
+    keypair, _created = RSAKeypair.objects.get_or_create(
+        name=AUTH_KEY_NAME,
+        is_active=True,
+        defaults={},
+    )
 
-    if keypair is None:
-        # Create a new keypair
-        keypair = RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
+    if _created:
         return keypair
 
     # Check if rotation is needed
@@ -92,10 +96,11 @@ def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> 
         else:
             keypair = get_or_create_auth_keypair()
 
-        # Load private key
+        # Load private key (pass passphrase if RSA_KEY_PASSPHRASE is set)
+        passphrase = os.environ.get("RSA_KEY_PASSPHRASE", "").strip()
         private_key = serialization.load_pem_private_key(
             keypair.private_key_pem.encode("utf-8"),
-            password=None,
+            password=passphrase.encode("utf-8") if passphrase else None,
             backend=default_backend(),
         )
 

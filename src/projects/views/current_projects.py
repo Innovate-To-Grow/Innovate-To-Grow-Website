@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import Project, Semester
-from ..serializers import SemesterWithProjectsSerializer
+from ..serializers import SemesterWithFullProjectsSerializer
 
 
 class CurrentProjectsAPIView(APIView):
@@ -26,6 +26,6 @@ class CurrentProjectsAPIView(APIView):
         if not semester:
             return Response({"detail": "No published projects found."}, status=404)
 
-        data = SemesterWithProjectsSerializer(semester).data
+        data = SemesterWithFullProjectsSerializer(semester).data
         cache.set(cache_key, data, timeout=300)
         return Response(data)

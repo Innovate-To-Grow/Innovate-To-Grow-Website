@@ -96,10 +96,14 @@ class Member(AbstractUser, ProjectControlModel):
     # get user profile
     def get_profile(self):
         """
-        Get or create the user's profile.
+        Return the user's profile without creating one on read.
+
+        Returns the existing MemberProfile or an unsaved instance with defaults.
         """
-        profile, created = MemberProfile.objects.get_or_create(model_user=self)
-        return profile
+        try:
+            return self.memberprofile
+        except MemberProfile.DoesNotExist:
+            return MemberProfile(model_user=self)
 
 
 class MemberProfile(ProjectControlModel):

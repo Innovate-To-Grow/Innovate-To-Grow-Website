@@ -1,0 +1,84 @@
+.attendees-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.attendees-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.attendees-page-section {
+  margin-bottom: 2rem;
+}
+
+.attendees-page-section-title {
+  color: #0f2d52;
+  font-size: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.attendees-page-subtitle {
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.attendees-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.attendees-page-text strong {
+  color: #333;
+}
+
+.attendees-page-list {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.attendees-page-list li {
+  margin-bottom: 0.5rem;
+}
+
+.attendees-page-list a,
+.attendees-page-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.attendees-page-list a:hover,
+.attendees-page-text a:hover {
+  text-decoration: underline;
+}
+
+.attendees-page-closing {
+  font-weight: 600;
+  color: #0f2d52;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .attendees-page {
+    padding: 1rem;
+  }
+
+  .attendees-page-title {
+    font-size: 1.5rem;
+  }
+
+  .attendees-page-section-title {
+    font-size: 1.25rem;
+  }
+
+  .attendees-page-subtitle {
+    font-size: 1.125rem;
+  }
+}

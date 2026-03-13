@@ -56,7 +56,7 @@ jobs:
         run: python manage.py migrate
 
       - name: Run Django tests
-        run: python manage.py test
+        run: python manage.py test --settings=core.settings.dev
 
       - name: Check Django configuration
         run: python manage.py check

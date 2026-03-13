@@ -34,6 +34,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
+    # sheets (Google Sheets data proxy)
+    path("sheets/", include("pages.urls")),
     # event
     path("event/", include("event.urls")),
     # news

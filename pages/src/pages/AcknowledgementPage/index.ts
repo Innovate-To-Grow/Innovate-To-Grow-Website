@@ -1,0 +1,1 @@
+export { AcknowledgementPage } from './AcknowledgementPage';

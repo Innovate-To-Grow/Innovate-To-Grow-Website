@@ -192,7 +192,7 @@ def consume_verification_token(*, purpose: str, verification_token: str, member=
         queryset = queryset.filter(member=member)
 
     now = timezone.now()
-    for challenge in queryset:
+    for challenge in queryset[:10]:
         if challenge.expires_at <= now:
             challenge.mark_expired()
             continue

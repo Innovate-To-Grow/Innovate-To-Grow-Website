@@ -9,13 +9,14 @@ from ...models import Menu
 
 @admin.register(Menu)
 class MenuAdmin(ModelAdmin):
-    list_display = ("name", "items_count", "created_at")
+    list_display = ("name", "is_active", "items_count", "created_at")
+    list_filter = ("is_active",)
     search_fields = ("name",)
     readonly_fields = ("created_at", "updated_at")
     change_form_template = "admin/pages/menu/change_form.html"
 
     fieldsets = (
-        (None, {"fields": ("name", "description")}),
+        (None, {"fields": ("name", "description", "is_active")}),
         ("Menu Items", {"fields": ("items",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )

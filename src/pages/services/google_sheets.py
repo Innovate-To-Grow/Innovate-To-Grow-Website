@@ -1,99 +1,116 @@
-import json
-from functools import lru_cache
+import logging
 
-from django.conf import settings
 from django.core.cache import cache
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
+
+from core.services.google_sheets import GoogleSheetsConfigError
+from core.services.google_sheets import fetch_raw_values as _fetch_raw_values
+from core.services.google_sheets import normalize_values as _normalize_values
+
+logger = logging.getLogger(__name__)
+
+# Re-export for any existing consumers
+__all__ = ["GoogleSheetsConfigError", "fetch_source_data"]
 
 
-class GoogleSheetsConfigError(RuntimeError):
-    """Raised when Google Sheets credentials or scopes are misconfigured."""
+def _parse_current_rows(headers: list[str], rows: list[list[str]], semester_filter: str) -> list[dict]:
+    """Parse rows from a current/archive event sheet (12-column layout)."""
+    parsed = []
+    for row in rows:
+        if semester_filter and len(row) > 2 and row[2] != semester_filter:
+            continue
+        parsed.append(
+            {
+                "Track": row[0] if len(row) > 0 else "",
+                "Order": row[1] if len(row) > 1 else "",
+                "Year-Semester": row[2] if len(row) > 2 else "",
+                "Class": row[3] if len(row) > 3 else "",
+                "Team#": row[4] if len(row) > 4 else "",
+                "TeamName": row[5] if len(row) > 5 else "",
+                "Project Title": row[6] if len(row) > 6 else "",
+                "Organization": row[7] if len(row) > 7 else "",
+                "Industry": row[8] if len(row) > 8 else "",
+                "Abstract": row[9] if len(row) > 9 else "",
+                "Student Names": row[10] if len(row) > 10 else "",
+                "NameTitle": row[11] if len(row) > 11 else "",
+            }
+        )
+    return parsed
 
 
-def _build_sheet_range(sheet_name: str, range_a1: str) -> str:
-    cleaned_range = (range_a1 or "").strip()
-    if cleaned_range:
-        return f"{sheet_name}!{cleaned_range}"
-    return sheet_name
+def _parse_past_rows(headers: list[str], rows: list[list[str]]) -> list[dict]:
+    """Parse rows from the past-projects sheet (9-column layout)."""
+    parsed = []
+    for row in rows:
+        parsed.append(
+            {
+                "Track": "",
+                "Order": "",
+                "Year-Semester": row[0] if len(row) > 0 else "",
+                "Class": row[1] if len(row) > 1 else "",
+                "Team#": row[2] if len(row) > 2 else "",
+                "TeamName": row[3] if len(row) > 3 else "",
+                "Project Title": row[4] if len(row) > 4 else "",
+                "Organization": row[5] if len(row) > 5 else "",
+                "Industry": row[6] if len(row) > 6 else "",
+                "Abstract": row[7] if len(row) > 7 else "",
+                "Student Names": row[8] if len(row) > 8 else "",
+                "NameTitle": "",
+            }
+        )
+    return parsed
 
 
-def _normalize_values(values: list[list[object]]) -> tuple[list[str], list[list[str]]]:
-    if not values:
-        return [], []
-
-    headers = [str(cell) for cell in values[0]]
-    header_len = len(headers)
-
-    rows: list[list[str]] = []
-    for value_row in values[1:]:
-        row = [str(cell) for cell in value_row]
-        if header_len:
-            if len(row) < header_len:
-                row.extend([""] * (header_len - len(row)))
-            elif len(row) > header_len:
-                row = row[:header_len]
-        rows.append(row)
-
-    while rows and not any(cell.strip() for cell in rows[-1]):
-        rows.pop()
-
-    return headers, rows
+def _parse_track_infos(headers: list[str], rows: list[list[str]]) -> list[dict]:
+    """Parse track info rows (3 columns: name, room, zoomLink)."""
+    parsed = []
+    for row in rows:
+        parsed.append(
+            {
+                "name": row[0] if len(row) > 0 else "",
+                "room": row[1] if len(row) > 1 else "",
+                "zoomLink": row[2] if len(row) > 2 else "",
+            }
+        )
+    return parsed
 
 
-@lru_cache(maxsize=1)
-def _build_sheets_client(credentials_json: str, scopes: tuple[str, ...]):
-    try:
-        credentials_info = json.loads(credentials_json)
-    except json.JSONDecodeError as exc:
-        raise GoogleSheetsConfigError("GOOGLE_SHEETS_CREDENTIALS_JSON is not valid JSON.") from exc
+def fetch_source_data(source) -> dict:
+    """
+    Fetch, parse, and cache data for a GoogleSheetSource.
 
-    try:
-        credentials = Credentials.from_service_account_info(credentials_info, scopes=list(scopes))
-    except Exception as exc:  # noqa: BLE001
-        raise GoogleSheetsConfigError("Failed to build Google service account credentials.") from exc
-
-    return build("sheets", "v4", credentials=credentials, cache_discovery=False)
-
-
-def _get_sheets_client():
-    credentials_json = getattr(settings, "GOOGLE_SHEETS_CREDENTIALS_JSON", "")
-    scopes = tuple(getattr(settings, "GOOGLE_SHEETS_SCOPES", []))
-
-    if not credentials_json:
-        raise GoogleSheetsConfigError("GOOGLE_SHEETS_CREDENTIALS_JSON is not configured.")
-    if not scopes:
-        raise GoogleSheetsConfigError("GOOGLE_SHEETS_SCOPES is not configured.")
-
-    return _build_sheets_client(credentials_json, scopes)
-
-
-def fetch_sheet_values(google_sheet) -> dict[str, list]:
-    """Fetch and cache Google Sheet values as table headers and rows."""
-    range_ref = _build_sheet_range(google_sheet.sheet_name, google_sheet.range_a1)
-    updated_marker = google_sheet.updated_at.isoformat() if google_sheet.updated_at else "none"
-    cache_key = f"google_sheet:{google_sheet.id}:{range_ref}:{updated_marker}"
+    Returns a dict with slug, title, sheet_type, rows, and track_infos.
+    """
+    cache_key = f"sheets:{source.slug}:data"
 
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
-    sheets_client = _get_sheets_client()
-    response = (
-        sheets_client.spreadsheets()
-        .values()
-        .get(
-            spreadsheetId=google_sheet.spreadsheet_id,
-            range=range_ref,
-        )
-        .execute()
-    )
+    # Fetch main sheet data
+    raw_values = _fetch_raw_values(source.spreadsheet_id, source.range_a1)
+    headers, rows = _normalize_values(raw_values)
 
-    headers, rows = _normalize_values(response.get("values", []))
+    # Parse based on sheet type
+    if source.sheet_type == "past-projects":
+        parsed_rows = _parse_past_rows(headers, rows)
+    else:
+        parsed_rows = _parse_current_rows(headers, rows, source.semester_filter)
+
+    # Fetch track info if configured
+    track_infos = []
+    if source.tracks_sheet_name:
+        tracks_sid = source.tracks_spreadsheet_id or source.spreadsheet_id
+        track_values = _fetch_raw_values(tracks_sid, source.tracks_sheet_name)
+        track_headers, track_rows = _normalize_values(track_values)
+        track_infos = _parse_track_infos(track_headers, track_rows)
+
     payload = {
-        "headers": headers,
-        "rows": rows,
+        "slug": source.slug,
+        "title": source.title,
+        "sheet_type": source.sheet_type,
+        "rows": parsed_rows,
+        "track_infos": track_infos,
     }
 
-    cache.set(cache_key, payload, timeout=google_sheet.cache_ttl_seconds)
+    cache.set(cache_key, payload, timeout=source.cache_ttl_seconds)
     return payload

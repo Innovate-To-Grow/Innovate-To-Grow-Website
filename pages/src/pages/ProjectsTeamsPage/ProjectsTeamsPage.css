@@ -1,0 +1,32 @@
+.projects-teams-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.projects-teams-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.projects-teams-page-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.projects-teams-page-section {
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .projects-teams-page {
+    padding: 1rem;
+  }
+
+  .projects-teams-page-title {
+    font-size: 1.5rem;
+  }
+}

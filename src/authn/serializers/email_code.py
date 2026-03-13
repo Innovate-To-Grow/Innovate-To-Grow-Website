@@ -4,6 +4,7 @@ Serializers for email-code auth flows.
 
 import re
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -24,6 +25,7 @@ from authn.services import (
     verify_email_code,
     verify_email_code_for_purposes,
 )
+from authn.utils import generate_unique_username
 
 Member = get_user_model()
 
@@ -42,6 +44,9 @@ def _decrypt_new_passwords(attrs: dict, *, user=None) -> str:
         except RSADecryptionError as exc:
             raise serializers.ValidationError({"new_password": f"Failed to decrypt password: {exc}"}) from exc
     else:
+        # Block plaintext passwords in production
+        if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
+            raise serializers.ValidationError({"new_password": "Encrypted password required."})
         new_password = encrypted_new
         confirm_password = encrypted_confirm
 
@@ -60,13 +65,7 @@ def _decrypt_new_passwords(attrs: dict, *, user=None) -> str:
 
 
 def _generate_unique_username(email: str) -> str:
-    base_username = email.split("@", 1)[0]
-    username = base_username
-    counter = 1
-    while Member.objects.filter(username=username).exists():
-        username = f"{base_username}{counter}"
-        counter += 1
-    return username
+    return generate_unique_username(email)
 
 
 class BaseEmailSerializer(serializers.Serializer):
@@ -234,19 +233,30 @@ class PasswordResetVerifySerializer(BaseCodeVerifySerializer):
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
     verification_token = serializers.CharField(required=True)
     new_password = serializers.CharField(write_only=True, required=True)
     new_password_confirm = serializers.CharField(write_only=True, required=True)
     key_id = serializers.CharField(required=False, allow_blank=True)
 
+    def validate_email(self, value: str) -> str:
+        return normalize_email(value)
+
     def validate(self, attrs: dict) -> dict:
-        attrs["decrypted_new_password"] = _decrypt_new_passwords(attrs)
+        # Resolve the member from email so the token is bound to a specific user
+        email = attrs["email"]
+        resolved = resolve_auth_email(email, require_active=True)
+        if resolved is None:
+            raise serializers.ValidationError({"email": "No eligible account found for this email."})
+        attrs["resolved_member"] = resolved.member
+        attrs["decrypted_new_password"] = _decrypt_new_passwords(attrs, user=resolved.member)
         return attrs
 
     def save(self):
         challenge = consume_verification_token(
             purpose=EmailAuthChallenge.Purpose.PASSWORD_RESET,
             verification_token=self.validated_data["verification_token"],
+            member=self.validated_data["resolved_member"],
         )
         member = challenge.member
         member.set_password(self.validated_data["decrypted_new_password"])

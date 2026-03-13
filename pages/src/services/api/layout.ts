@@ -51,12 +51,13 @@ export interface FooterContentResponse {
 // ======================== Menu Types ========================
 
 export interface MenuItem {
-  type: 'external' | 'app';
+  type: 'external' | 'app' | 'home';
   title: string;
   url: string;
   icon?: string | null;
   open_in_new_tab: boolean;
   children: MenuItem[];
+  homepage_page?: string;
 }
 
 export interface Menu {
@@ -71,9 +72,13 @@ export interface Menu {
 
 // ======================== Layout ========================
 
+export type HomepageMode = 'pre-event' | 'during-semester' | 'during-event' | 'post-event';
+
 export interface LayoutData {
   menus: Menu[];
   footer: FooterContentResponse | null;
+  homepage_mode?: HomepageMode;
+  homepage_route?: string;
 }
 
 let layoutCache: Promise<LayoutData> | null = null;

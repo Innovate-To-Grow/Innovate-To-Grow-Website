@@ -14,6 +14,19 @@ from authn.serializers import ProfileSerializer
 
 logger = logging.getLogger(__name__)
 
+# Magic-byte signatures for allowed image formats
+_ALLOWED_SIGNATURES = {
+    b"\x89PNG": "png",
+    b"\xff\xd8\xff": "jpeg",
+    b"GIF8": "gif",
+    b"RIFF": "webp",
+}
+
+
+def _validate_image_bytes(data: bytes) -> bool:
+    """Validate that file content starts with a known image magic-byte signature."""
+    return any(data.startswith(sig) for sig in _ALLOWED_SIGNATURES)
+
 
 class ProfileView(APIView):
     """
@@ -63,6 +76,11 @@ class ProfileView(APIView):
                 )
 
             content = file.read()
+            if not _validate_image_bytes(content[:32]):
+                return Response(
+                    {"detail": "File content does not match an allowed image type (JPEG, PNG, GIF, WebP)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             b64 = base64.b64encode(content).decode("utf-8")
             profile.profile_image = f"data:{file_content_type};base64,{b64}"
             profile.save(update_fields=["profile_image", "updated_at"])

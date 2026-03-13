@@ -15,6 +15,9 @@ class NewsSyncLog(models.Model):
 
     class Meta:
         ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["feed_source", "-started_at"], name="news_synclog_source_started"),
+        ]
 
     def __str__(self):
         return f"{self.feed_source.name} - {self.started_at:%Y-%m-%d %H:%M}"

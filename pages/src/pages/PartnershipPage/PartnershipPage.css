@@ -1,0 +1,13 @@
+.partnership-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+.partnership-page-title { color: #0f2d52; font-size: 2rem; margin: 0 0 2rem; }
+.partnership-section-title { color: #0f2d52; font-size: 1.5rem; margin: 0 0 0.75rem; }
+.partnership-text { color: #444; font-size: 1rem; line-height: 1.7; margin: 0 0 0.75rem; }
+.partnership-list { color: #444; font-size: 1rem; line-height: 1.7; margin: 0.5rem 0 1.5rem 1.5rem; }
+.partnership-list li { margin-bottom: 0.5rem; }
+.partnership-list a, .partnership-text a { color: #0f2d52; text-decoration: none; }
+.partnership-list a:hover, .partnership-text a:hover { text-decoration: underline; }
+@media (max-width: 768px) {
+  .partnership-page { padding: 1rem; }
+  .partnership-page-title { font-size: 1.5rem; }
+  .partnership-section-title { font-size: 1.25rem; }
+}

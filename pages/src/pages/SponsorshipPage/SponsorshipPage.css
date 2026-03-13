@@ -1,0 +1,11 @@
+.sponsorship-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+.sponsorship-page-title { color: #0f2d52; font-size: 2rem; margin: 0 0 2rem; }
+.sponsorship-section-title { color: #0f2d52; font-size: 1.5rem; margin: 2rem 0 0.75rem; }
+.sponsorship-text { color: #444; font-size: 1rem; line-height: 1.7; margin: 0 0 0.75rem; }
+.sponsorship-text a { color: #0f2d52; text-decoration: none; }
+.sponsorship-text a:hover { text-decoration: underline; }
+@media (max-width: 768px) {
+  .sponsorship-page { padding: 1rem; }
+  .sponsorship-page-title { font-size: 1.5rem; }
+  .sponsorship-section-title { font-size: 1.25rem; }
+}
