@@ -13,36 +13,46 @@ interface UseSheetsDataResult {
   error: string | null;
 }
 
+interface SheetsDataState {
+  slug: string;
+  rows: SheetRow[];
+  trackInfos: TrackInfo[];
+  error: string | null;
+}
+
 export function useSheetsData({slug}: UseSheetsDataOptions): UseSheetsDataResult {
-  const [rows, setRows] = useState<SheetRow[]>([]);
-  const [trackInfos, setTrackInfos] = useState<TrackInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<SheetsDataState>({
+    slug: '',
+    rows: [],
+    trackInfos: [],
+    error: null,
+  });
 
   useEffect(() => {
     if (!slug) {
-      setRows([]);
-      setTrackInfos([]);
-      setLoading(false);
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     fetchSheetsData(slug)
       .then((data) => {
         if (cancelled) return;
-        setRows(data.rows);
-        setTrackInfos(data.track_infos);
+        setState({
+          slug,
+          rows: data.rows,
+          trackInfos: data.track_infos,
+          error: null,
+        });
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setState({
+          slug,
+          rows: [],
+          trackInfos: [],
+          error: err instanceof Error ? err.message : 'Failed to load data',
+        });
       });
 
     return () => {
@@ -50,5 +60,18 @@ export function useSheetsData({slug}: UseSheetsDataOptions): UseSheetsDataResult
     };
   }, [slug]);
 
-  return {rows, trackInfos, loading, error};
+  if (!slug) {
+    return {rows: [], trackInfos: [], loading: false, error: null};
+  }
+
+  if (state.slug !== slug) {
+    return {rows: [], trackInfos: [], loading: true, error: null};
+  }
+
+  return {
+    rows: state.rows,
+    trackInfos: state.trackInfos,
+    loading: false,
+    error: state.error,
+  };
 }

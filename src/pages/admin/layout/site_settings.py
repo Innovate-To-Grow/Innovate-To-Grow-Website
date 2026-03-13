@@ -40,7 +40,7 @@ class SiteSettingsAdmin(ModelAdmin):
         route_map = {r["url"]: r["title"] for r in APP_ROUTES}
         title = route_map.get(obj.homepage_route, obj.homepage_route)
         if obj.homepage_route == "/":
-            return f"Home (default)"
+            return "Home (default)"
         return f"{title} ({obj.homepage_route})"
 
     homepage_route_display.short_description = "Homepage"

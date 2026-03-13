@@ -1,7 +1,7 @@
-import React, {Suspense} from 'react';
+import React from 'react';
 import {createBrowserRouter, Navigate} from 'react-router-dom';
 import {Layout} from '../components/Layout';
-import {useLayout} from '../components/Layout/LayoutProvider/context';
+import {HomepageResolver} from './HomepageResolver';
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('../components/Auth/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -83,37 +83,13 @@ const PAGE_REGISTRY: Record<string, React.LazyExoticComponent<React.ComponentTyp
     '/acknowledgement': AcknowledgementPage,
 };
 
-/** Renders the admin-selected page at "/" or falls back to HomePage. */
-const HomepageResolver = () => {
-    const {homepage_route, state} = useLayout();
-
-    if (state === 'loading') {
-        return null;
-    }
-
-    if (!homepage_route || homepage_route === '/') {
-        return <HomePage/>;
-    }
-
-    const PageComponent = PAGE_REGISTRY[homepage_route];
-    if (!PageComponent) {
-        return <HomePage/>;
-    }
-
-    return (
-        <Suspense fallback={null}>
-            <PageComponent/>
-        </Suspense>
-    );
-};
-
 export const router = createBrowserRouter([
     {
         path: '/',
         element: <Layout/>,
         children: [
             // homepage — resolved dynamically from SiteSettings.homepage_route
-            {index: true, element: <HomepageResolver/>},
+            {index: true, element: <HomepageResolver homePage={HomePage} pageRegistry={PAGE_REGISTRY}/>},
 
             // news pages
             {path: 'news', element: <NewsPage/>},

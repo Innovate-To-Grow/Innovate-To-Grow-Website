@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 
-from pages.models import FooterContent, GoogleSheetSource, Menu, SiteSettings
+from pages.models import FooterContent, GoogleSheetSource, Menu
 from pages.services.google_sheets import GoogleSheetsConfigError
 
 Member = get_user_model()

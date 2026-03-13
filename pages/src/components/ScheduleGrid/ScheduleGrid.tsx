@@ -61,17 +61,25 @@ export const ScheduleGrid = ({
     return map;
   }, [rows]);
 
+  const classOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let nextOffset = 0;
+
+    for (const cls of classes) {
+      offsets.push(nextOffset);
+      nextOffset += cls.trackCount;
+    }
+
+    return offsets;
+  }, [classes]);
+
   if (loading) return <div className="sg-loading">Loading schedule...</div>;
   if (error) return <div className="sg-error">{error}</div>;
 
-  // Calculate track offset for each class (for looking up trackInfos)
-  let trackOffset = 0;
-
   return (
     <div className="sg-container">
-      {classes.map((cls) => {
-        const startOffset = trackOffset;
-        trackOffset += cls.trackCount;
+      {classes.map((cls, classIndex) => {
+        const startOffset = classOffsets[classIndex] ?? 0;
         const accent = cls.accentColor || '#002856';
         const times: string[] = [];
         let t = cls.startTime;

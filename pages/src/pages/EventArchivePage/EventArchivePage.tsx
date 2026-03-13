@@ -63,7 +63,13 @@ export const EventArchivePage = () => {
 
       <section className="ea-section">
         <h2 className="ea-section-title">Projects &amp; Teams</h2>
-        <SheetsDataTable rows={rows} loading={loading} error={error} initialSearch={teamSearch} />
+        <SheetsDataTable
+          key={teamSearch || 'all-projects'}
+          rows={rows}
+          loading={loading}
+          error={error}
+          initialSearch={teamSearch}
+        />
       </section>
     </div>
   );

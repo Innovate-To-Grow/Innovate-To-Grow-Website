@@ -33,8 +33,6 @@ export function usePastProjectsData(): UsePastProjectsDataResult {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     fetchAllPastProjects()
       .then((projects) => {

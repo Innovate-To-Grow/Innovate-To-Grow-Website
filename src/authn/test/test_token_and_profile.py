@@ -1,7 +1,5 @@
 """Tests for token refresh, image magic-byte validation, profile GET, and username generation."""
 
-from io import BytesIO
-
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile

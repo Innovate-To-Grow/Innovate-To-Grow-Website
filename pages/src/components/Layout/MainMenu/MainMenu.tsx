@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
 import { useAuth } from '../../Auth';
@@ -12,8 +12,6 @@ export const MainMenu = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const isMobileOpenRef = useRef(isMobileOpen);
-  isMobileOpenRef.current = isMobileOpen;
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
   const currentDate = useMemo(() => {
     const date = new Date();
@@ -33,7 +31,7 @@ export const MainMenu = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 992 && isMobileOpenRef.current) {
+      if (window.innerWidth > 992) {
         setIsMobileOpen(false);
       }
     };

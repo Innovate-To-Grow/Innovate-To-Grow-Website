@@ -33,8 +33,6 @@ export function useCurrentProjectsData(): UseCurrentProjectsDataResult {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     fetchCurrentProjectsFull()
       .then((semester) => {

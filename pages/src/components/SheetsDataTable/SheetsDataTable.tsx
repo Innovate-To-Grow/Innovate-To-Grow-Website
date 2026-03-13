@@ -1,4 +1,4 @@
-import {useState, useEffect, useMemo} from 'react';
+import {useState, useMemo} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import type {SheetRow} from '../../services/api/sheets';
 import './SheetsDataTable.css';
@@ -35,16 +35,7 @@ const DEFAULT_COLUMNS: ColumnDef[] = [
 export const SheetsDataTable = ({rows, loading, error, columns: columnsProp, initialSearch}: SheetsDataTableProps) => {
   const columns = columnsProp || DEFAULT_COLUMNS;
   const [searchParams] = useSearchParams();
-  const [search, setSearch] = useState(() => searchParams.get('value') || '');
-
-  // Sync from controlled initialSearch prop when it changes
-  useEffect(() => {
-    if (initialSearch !== undefined) {
-      setSearch(initialSearch);
-      setPage(0);
-      setExpandedIdx(null);
-    }
-  }, [initialSearch]);
+  const [search, setSearch] = useState(() => initialSearch ?? (searchParams.get('value') || ''));
   const [sortField, setSortField] = useState<SortField>(columns[0]?.key || 'Track');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
