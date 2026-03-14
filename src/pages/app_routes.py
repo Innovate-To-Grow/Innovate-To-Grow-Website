@@ -6,7 +6,6 @@ CMS pages are loaded dynamically from the database in the menu editor.
 """
 
 APP_ROUTES = [
-    {"url": "/", "title": "Home"},
     {"url": "/news", "title": "News"},
     {"url": "/current-projects", "title": "Current Projects"},
     {"url": "/past-projects", "title": "Past Projects"},

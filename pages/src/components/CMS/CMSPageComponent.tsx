@@ -26,6 +26,7 @@ import './page-styles/JudgesPage.css';
 import './page-styles/AttendeesPage.css';
 import './page-styles/ProjectSubmissionPage.css';
 import './page-styles/SponsorAcknowledgementPage.css';
+import './page-styles/HomePage.css';
 
 export const CMSPageComponent: React.FC = () => {
   const location = useLocation();

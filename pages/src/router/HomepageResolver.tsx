@@ -3,24 +3,29 @@ import type {ComponentType, LazyExoticComponent} from 'react';
 import {useLayout} from '../components/Layout/LayoutProvider/context';
 
 interface HomepageResolverProps {
-  homePage: LazyExoticComponent<ComponentType>;
   pageRegistry: Record<string, LazyExoticComponent<ComponentType> | ComponentType>;
 }
 
-export const HomepageResolver = ({homePage: HomePage, pageRegistry}: HomepageResolverProps) => {
+export const HomepageResolver = ({pageRegistry}: HomepageResolverProps) => {
   const {homepage_route, state} = useLayout();
 
   if (state === 'loading') {
     return null;
   }
 
-  if (!homepage_route || homepage_route === '/') {
-    return <HomePage />;
-  }
-
-  const PageComponent = pageRegistry[homepage_route];
+  const route = homepage_route || '/';
+  const PageComponent = pageRegistry[route];
   if (!PageComponent) {
-    return <HomePage />;
+    // Fallback to root CMS page if configured route not found
+    const RootPage = pageRegistry['/'];
+    if (RootPage) {
+      return (
+        <Suspense fallback={null}>
+          <RootPage />
+        </Suspense>
+      );
+    }
+    return null;
   }
 
   return (

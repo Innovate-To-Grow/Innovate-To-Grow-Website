@@ -19,12 +19,12 @@ export async function fetchCMSPage(
   route: string,
   preview = false,
 ): Promise<CMSPageResponse> {
-  // Strip leading slash for the URL path
+  // Strip leading slash for the URL path; root "/" becomes empty string
   const path = route.replace(/^\//, '');
   const params = new URLSearchParams();
   if (preview) params.set('preview', 'true');
   const qs = params.toString();
-  const url = `/cms/pages/${path}/${qs ? `?${qs}` : ''}`;
+  const url = `/cms/pages/${path}${path ? '/' : ''}${qs ? `?${qs}` : ''}`;
   const response = await api.get<CMSPageResponse>(url);
   return response.data;
 }
