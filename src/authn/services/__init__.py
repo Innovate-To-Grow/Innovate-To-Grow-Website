@@ -16,6 +16,7 @@ from .contact_emails import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
+from .contact_phones import create_contact_phone, delete_contact_phone
 from .create_member import CreateMemberService
 from .email_challenges import (
     AuthChallengeDeliveryError,
@@ -71,6 +72,9 @@ __all__ = [
     "verify_contact_email_code",
     "resend_contact_email_verification",
     "delete_contact_email",
+    # Contact phones
+    "create_contact_phone",
+    "delete_contact_phone",
     # RSA Manager
     "get_or_create_auth_keypair",
     "rotate_auth_keypair",

@@ -74,11 +74,14 @@ export interface Menu {
 
 export type HomepageMode = 'pre-event' | 'during-semester' | 'during-event' | 'post-event';
 
+import type { SheetsDataResponse } from './sheets';
+
 export interface LayoutData {
   menus: Menu[];
   footer: FooterContentResponse | null;
   homepage_mode?: HomepageMode;
   homepage_route?: string;
+  sheets_data?: Record<string, SheetsDataResponse>;
 }
 
 let layoutCache: Promise<LayoutData> | null = null;

@@ -8,6 +8,7 @@ import {
     type ProfileResponse,
 } from '../../../services/auth';
 import {EmailCenter} from '../sections/EmailCenter';
+import {PhoneCenter} from '../sections/PhoneCenter';
 import '../Auth.css';
 
 export const AccountPage = () => {
@@ -139,7 +140,6 @@ export const AccountPage = () => {
 
     // Use profile data if available, otherwise fall back to user context
     const displayEmail = profile?.email || user?.email;
-    const displayUsername = profile?.username || user?.username;
 
     if (profileLoading) {
         return (
@@ -359,6 +359,9 @@ export const AccountPage = () => {
                     {/* Subscriptions */}
                     {profile && <EmailCenter profile={profile} onProfileUpdate={setProfile}/>}
 
+                    {/* Phone Numbers */}
+                    {profile && <PhoneCenter/>}
+
                     {/* Account Details */}
                     <div className="account-section">
                         <h2 className="account-section-title">Account Details</h2>
@@ -367,11 +370,6 @@ export const AccountPage = () => {
                             <div className="account-readonly-group">
                                 <span className="auth-form-label">Email</span>
                                 <span className="account-readonly-value">{displayEmail}</span>
-                            </div>
-
-                            <div className="account-readonly-group">
-                                <span className="auth-form-label">Username</span>
-                                <span className="account-readonly-value">{displayUsername}</span>
                             </div>
 
                             {profile?.date_joined && (

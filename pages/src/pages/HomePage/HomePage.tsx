@@ -75,7 +75,14 @@ const DuringSemesterContent = () => (
 
 /** During/post event: show schedule grid + data table */
 const EventContent = ({label}: {label: string}) => {
-  const {rows, trackInfos, loading, error} = useSheetsData({slug: 'current-event'});
+  const {sheets_data} = useLayout();
+  const prefetched = sheets_data?.['current-event'];
+  const fetched = useSheetsData({slug: prefetched ? '' : 'current-event'});
+
+  const rows = prefetched ? prefetched.rows : fetched.rows;
+  const trackInfos = prefetched ? prefetched.track_infos : fetched.trackInfos;
+  const loading = prefetched ? false : fetched.loading;
+  const error = prefetched ? null : fetched.error;
   const [searchFilter, setSearchFilter] = useState('');
 
   const handleTeamClick = (teamPrefix: string) => {

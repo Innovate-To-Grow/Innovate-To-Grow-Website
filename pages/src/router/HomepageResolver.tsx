@@ -4,7 +4,7 @@ import {useLayout} from '../components/Layout/LayoutProvider/context';
 
 interface HomepageResolverProps {
   homePage: LazyExoticComponent<ComponentType>;
-  pageRegistry: Record<string, LazyExoticComponent<ComponentType>>;
+  pageRegistry: Record<string, LazyExoticComponent<ComponentType> | ComponentType>;
 }
 
 export const HomepageResolver = ({homePage: HomePage, pageRegistry}: HomepageResolverProps) => {

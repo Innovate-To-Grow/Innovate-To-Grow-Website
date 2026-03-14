@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
+    "cms.apps.CmsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -74,6 +75,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django.middleware.gzip.GZipMiddleware",
     # Must run before middlewares that may short-circuit responses (e.g. /health/)
     # so CORS headers are always added for allowed origins.
     "corsheaders.middleware.CorsMiddleware",
@@ -274,6 +276,12 @@ UNFOLD = {
     "SIDEBAR": {
         "show_search": True,
         "navigation": [
+            {
+                "title": "CMS",
+                "items": [
+                    {"title": "Pages", "link": "/admin/cms/cmspage/"},
+                ],
+            },
             {
                 "title": "Site Settings",
                 "items": [

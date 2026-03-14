@@ -423,6 +423,44 @@ export const confirmPasswordChange = async (
   return response.data;
 };
 
+// ======================== Contact Phones ========================
+
+export interface ContactPhone {
+  id: string;
+  phone_number: string;
+  region: string;
+  region_display: string;
+  subscribe: boolean;
+  verified: boolean;
+  created_at: string;
+}
+
+export const getContactPhones = async (): Promise<ContactPhone[]> => {
+  const response = await authApi.get<ContactPhone[]>('/authn/contact-phones/');
+  return response.data;
+};
+
+export const createContactPhone = async (data: {
+  phone_number: string;
+  region: string;
+  subscribe?: boolean;
+}): Promise<ContactPhone> => {
+  const response = await authApi.post<ContactPhone>('/authn/contact-phones/', data);
+  return response.data;
+};
+
+export const updateContactPhone = async (
+  id: string,
+  data: { subscribe: boolean },
+): Promise<ContactPhone> => {
+  const response = await authApi.patch<ContactPhone>(`/authn/contact-phones/${id}/`, data);
+  return response.data;
+};
+
+export const deleteContactPhone = async (id: string): Promise<void> => {
+  await authApi.delete(`/authn/contact-phones/${id}/`);
+};
+
 // ======================== Contact Emails ========================
 
 export const getContactEmails = async (): Promise<ContactEmail[]> => {

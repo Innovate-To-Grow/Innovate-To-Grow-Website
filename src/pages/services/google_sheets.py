@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from django.core.cache import cache
 
@@ -10,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 # Re-export for any existing consumers
 __all__ = ["GoogleSheetsConfigError", "fetch_source_data"]
+
+# Stale data is kept 6x longer than the fresh TTL so users never see a cold-cache fetch
+_STALE_TTL_MULTIPLIER = 6
 
 
 def _parse_current_rows(headers: list[str], rows: list[list[str]], semester_filter: str) -> list[dict]:
@@ -74,29 +78,16 @@ def _parse_track_infos(headers: list[str], rows: list[list[str]]) -> list[dict]:
     return parsed
 
 
-def fetch_source_data(source) -> dict:
-    """
-    Fetch, parse, and cache data for a GoogleSheetSource.
-
-    Returns a dict with slug, title, sheet_type, rows, and track_infos.
-    """
-    cache_key = f"sheets:{source.slug}:data"
-
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    # Fetch main sheet data
+def _build_payload(source) -> dict:
+    """Fetch from Google Sheets API and build the parsed payload."""
     raw_values = _fetch_raw_values(source.spreadsheet_id, source.range_a1)
     headers, rows = _normalize_values(raw_values)
 
-    # Parse based on sheet type
     if source.sheet_type == "past-projects":
         parsed_rows = _parse_past_rows(headers, rows)
     else:
         parsed_rows = _parse_current_rows(headers, rows, source.semester_filter)
 
-    # Fetch track info if configured
     track_infos = []
     if source.tracks_sheet_name:
         tracks_sid = source.tracks_spreadsheet_id or source.spreadsheet_id
@@ -104,7 +95,7 @@ def fetch_source_data(source) -> dict:
         track_headers, track_rows = _normalize_values(track_values)
         track_infos = _parse_track_infos(track_headers, track_rows)
 
-    payload = {
+    return {
         "slug": source.slug,
         "title": source.title,
         "sheet_type": source.sheet_type,
@@ -112,5 +103,48 @@ def fetch_source_data(source) -> dict:
         "track_infos": track_infos,
     }
 
-    cache.set(cache_key, payload, timeout=source.cache_ttl_seconds)
+
+def _background_refresh(source, cache_key: str, stale_key: str, ttl: int) -> None:
+    """Refresh cache in a background thread."""
+    try:
+        payload = _build_payload(source)
+        cache.set(cache_key, payload, timeout=ttl)
+        cache.set(stale_key, payload, timeout=ttl * _STALE_TTL_MULTIPLIER)
+    except Exception:  # noqa: BLE001
+        logger.warning("Background refresh failed for sheets:%s", source.slug)
+
+
+def fetch_source_data(source) -> dict:
+    """
+    Fetch, parse, and cache data for a GoogleSheetSource.
+
+    Uses a stale-while-revalidate strategy:
+    - Fresh cache hit → return immediately
+    - Stale cache hit → return stale data, trigger background refresh
+    - Full miss → synchronous fetch (fallback)
+    """
+    cache_key = f"sheets:{source.slug}:data"
+    stale_key = f"sheets:{source.slug}:stale"
+    ttl = source.cache_ttl_seconds
+
+    # 1. Fresh cache → return immediately
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    # 2. Stale cache → serve stale, refresh in background
+    stale = cache.get(stale_key)
+    if stale is not None:
+        thread = threading.Thread(
+            target=_background_refresh,
+            args=(source, cache_key, stale_key, ttl),
+            daemon=True,
+        )
+        thread.start()
+        return stale
+
+    # 3. Full miss → synchronous fetch
+    payload = _build_payload(source)
+    cache.set(cache_key, payload, timeout=ttl)
+    cache.set(stale_key, payload, timeout=ttl * _STALE_TTL_MULTIPLIER)
     return payload

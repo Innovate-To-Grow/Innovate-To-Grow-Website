@@ -14,9 +14,15 @@
   --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
-.site-header {
-  position: relative;
+/* Sticky on #menu-root (direct child of body) so the bottom bar
+   sticks at viewport top once the 64px top bar scrolls away. */
+#menu-root {
+  position: sticky;
+  top: -64px;
   z-index: 1000;
+}
+
+.site-header {
   font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -115,9 +121,6 @@
   background: var(--header-bg);
   border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
 }
 
 
@@ -684,13 +687,6 @@
   /* Hide the white menubar entirely on small widths */
   .site-header-bottom {
     display: none;
-  }
-
-  /* Keep the top bar sticky on small screens (since the menubar is hidden) */
-  .site-header-top {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
   }
 
   .site-header-date {

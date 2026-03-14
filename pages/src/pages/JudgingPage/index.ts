@@ -1,1 +1,0 @@
-export { JudgingPage } from './JudgingPage';

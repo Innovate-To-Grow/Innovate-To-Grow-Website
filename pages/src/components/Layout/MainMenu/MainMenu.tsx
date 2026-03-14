@@ -259,7 +259,7 @@ export const MainMenu = () => {
                   onClick={() => setIsMemberDropdownOpen(prev => !prev)}
                 >
                   <i className="fa fa-user-circle" />
-                  <span className="member-name">{user?.display_name || user?.username || 'Member'}</span>
+                  <span className="member-name">{user?.email || 'Member'}</span>
                   <i className="fa fa-angle-down member-arrow" />
                 </button>
                 {isMemberDropdownOpen && (
@@ -341,7 +341,7 @@ export const MainMenu = () => {
             <>
               <div className="header-mobile-member-info">
                 <i className="fa fa-user-circle" />
-                <span>{user?.display_name || user?.username || 'Member'}</span>
+                <span>{user?.email || 'Member'}</span>
               </div>
               <div className="header-mobile-member-actions">
                 <button

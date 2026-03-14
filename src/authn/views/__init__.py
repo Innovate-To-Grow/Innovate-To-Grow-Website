@@ -9,6 +9,7 @@ from .account.contact_emails import (
     ContactEmailRequestVerificationView,
     ContactEmailVerifyCodeView,
 )
+from .account.contact_phones import ContactPhoneDetailView, ContactPhoneListCreateView
 from .account.email_code import (
     AccountEmailsView,
     ChangePasswordCodeConfirmView,
@@ -55,5 +56,7 @@ __all__ = [
     "ContactEmailDetailView",
     "ContactEmailRequestVerificationView",
     "ContactEmailVerifyCodeView",
+    "ContactPhoneListCreateView",
+    "ContactPhoneDetailView",
     "PublicTokenRefreshView",
 ]

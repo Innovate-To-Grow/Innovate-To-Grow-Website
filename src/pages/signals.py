@@ -21,3 +21,4 @@ def invalidate_layout_cache(sender, instance, **kwargs):
 def invalidate_sheet_cache(sender, instance, **kwargs):
     """Clear sheet data cache when a GoogleSheetSource is saved or deleted."""
     cache.delete(f"sheets:{instance.slug}:data")
+    cache.delete(f"sheets:{instance.slug}:stale")

@@ -11,6 +11,20 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+              return 'react-vendor';
+            }
+            if (id.includes('node_modules/react-router')) {
+              return 'router';
+            }
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': {

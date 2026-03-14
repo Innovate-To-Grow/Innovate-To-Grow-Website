@@ -1,0 +1,712 @@
+/* ==========================================================================
+   CMS Block Styling
+   Provides consistent styling for all CMS-rendered blocks using the same
+   design tokens as the original hardcoded page components.
+   ========================================================================== */
+
+/* --- Default page wrapper (fallback when no page_css_class is set) --- */
+.cms-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* --- Loading & error states --- */
+.cms-page-loading {
+  min-height: 200px;
+}
+
+.cms-page-error {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  color: #444;
+}
+
+/* ==========================================================================
+   Rich Text Block (.cms-rich-text)
+   Used by: AboutPage, SponsorshipPage, EngSLPage, and many others
+   ========================================================================== */
+
+.cms-rich-text .section-title {
+  color: #0f2d52;
+  font-size: 1.5rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.cms-rich-text .section-title:first-child {
+  margin-top: 0;
+}
+
+.cms-rich-text h1.section-title {
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-rich-text p {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.cms-rich-text strong {
+  color: #333;
+}
+
+.cms-rich-text ul,
+.cms-rich-text ol {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.cms-rich-text li {
+  margin-bottom: 0.5rem;
+}
+
+.cms-rich-text ol li {
+  margin-bottom: 0.75rem;
+}
+
+.cms-rich-text ol ul {
+  margin: 0.5rem 0 0 1.5rem;
+  list-style-type: disc;
+}
+
+.cms-rich-text ol ul li {
+  margin-bottom: 0.25rem;
+}
+
+.cms-rich-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.cms-rich-text a:hover {
+  text-decoration: underline;
+}
+
+.cms-rich-text h2 {
+  color: #0f2d52;
+  font-size: 1.5rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.cms-rich-text h3 {
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.cms-rich-text h4 {
+  color: #0f2d52;
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.cms-rich-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.cms-rich-text th,
+.cms-rich-text td {
+  border: 1px solid #ccc;
+  padding: 0.75rem;
+  vertical-align: top;
+  color: #444;
+}
+
+.cms-rich-text th {
+  background: #f8f9fa;
+  color: #0f2d52;
+  font-weight: 600;
+  text-align: left;
+}
+
+.cms-rich-text table ul {
+  margin: 0 0 0 1.25rem;
+  padding: 0;
+}
+
+.cms-rich-text table li {
+  margin-bottom: 0.25rem;
+}
+
+/* ==========================================================================
+   Section Group Block (.cms-section-group)
+   Used by: EventPreparationPage, VideoPreparationPage, PrivacyPolicyPage,
+            SponsorAcknowledgementPage, FerpaAgreementPage, StudentAgreementPage
+   ========================================================================== */
+
+.cms-section-group .section-title {
+  color: #0f2d52;
+  font-size: 1.5rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.cms-section-group .section-title:first-child,
+.cms-section-group h1.section-title {
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-section-group section {
+  margin-bottom: 2rem;
+}
+
+.cms-section-group section h2 {
+  color: #0f2d52;
+  font-size: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.cms-section-group section h3 {
+  color: #0f2d52;
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.cms-section-group section h4 {
+  color: #0f2d52;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.cms-section-group p {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.cms-section-group strong {
+  color: #333;
+}
+
+.cms-section-group ul,
+.cms-section-group ol {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.cms-section-group li {
+  margin-bottom: 0.5rem;
+}
+
+.cms-section-group ol li {
+  margin-bottom: 0.75rem;
+}
+
+.cms-section-group ol ul {
+  margin: 0.5rem 0 0 1.5rem;
+  list-style-type: disc;
+}
+
+.cms-section-group ol ul li {
+  margin-bottom: 0.25rem;
+}
+
+.cms-section-group a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.cms-section-group a:hover {
+  text-decoration: underline;
+}
+
+.cms-section-group table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.cms-section-group th,
+.cms-section-group td {
+  border: 1px solid #ccc;
+  padding: 0.75rem;
+  vertical-align: top;
+  color: #444;
+}
+
+.cms-section-group th {
+  background: #f8f9fa;
+  color: #0f2d52;
+  font-weight: 600;
+  text-align: left;
+}
+
+.cms-section-group table ul {
+  margin: 0 0 0 1.25rem;
+  padding: 0;
+}
+
+.cms-section-group table li {
+  margin-bottom: 0.25rem;
+}
+
+/* Red emphasis text (used in student/event-prep pages) */
+.cms-section-group .student-important {
+  color: #c00;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   FAQ List Block (.cms-faq-list)
+   Uses existing FaqPage.css classes: .faq-page-title, .faq-question, .faq-content
+   ========================================================================== */
+
+.cms-faq-list .faq-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-faq-list .faq-question {
+  color: #0f2d52;
+  font-size: 1.25rem;
+  font-style: italic;
+  margin: 2rem 0 0.75rem;
+}
+
+.cms-faq-list p {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+}
+
+.cms-faq-list ul {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.5rem 0 1.5rem 1.5rem;
+}
+
+.cms-faq-list li {
+  margin-bottom: 0.5rem;
+}
+
+.cms-faq-list a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.cms-faq-list a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Link List Block (.cms-link-list)
+   Used by: PartnershipPage, PastEventsPage, PurchasingReimbursementPage, StudentsPage
+   ========================================================================== */
+
+.cms-link-list .section-title {
+  color: #0f2d52;
+  font-size: 1.5rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.cms-link-list .section-title:first-child {
+  margin-top: 0;
+}
+
+.cms-link-list h1.section-title {
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-link-list-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cms-link-list-items li {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.cms-link-list-items a {
+  color: #0f2d52;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cms-link-list-items a:hover {
+  text-decoration: underline;
+}
+
+/* Bordered list style (for past events) */
+.cms-link-list-bordered {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cms-link-list-bordered li {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.cms-link-list-bordered li:first-child {
+  border-top: 1px solid #e0e0e0;
+}
+
+.cms-link-list-bordered a {
+  display: block;
+  padding: 0.875rem 1rem;
+  color: #0f2d52;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.cms-link-list-bordered a:hover {
+  background-color: #f8f9fa;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Navigation Grid Block (.cms-navigation-grid)
+   Uses existing ProjectsHubPage.css classes
+   ========================================================================== */
+
+.cms-navigation-grid .projects-hub-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-navigation-grid .projects-hub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cms-navigation-grid .projects-hub-item {
+  color: #444;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.cms-navigation-grid .projects-hub-link {
+  color: #0f2d52;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cms-navigation-grid .projects-hub-link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Contact Info Block (.cms-contact-info)
+   Uses existing ContactUsPage.css classes
+   ========================================================================== */
+
+.cms-contact-info .contact-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-contact-info .contact-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+}
+
+.cms-contact-info a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.cms-contact-info a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Image + Text Block (.cms-image-text)
+   Uses existing capstone-page.css classes
+   ========================================================================== */
+
+.cms-image-text .section-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-image-text .capstone-content {
+  overflow: hidden;
+}
+
+.cms-image-text .capstone-hero-image {
+  float: right;
+  max-width: 50%;
+  height: auto;
+  margin: 0 0 1rem 1.5rem;
+  border-radius: 8px;
+}
+
+.cms-image-text p {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+}
+
+.cms-image-text a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.cms-image-text a:hover {
+  text-decoration: underline;
+}
+
+/* Capstone nav buttons (at bottom of capstone pages) */
+.cms-image-text .capstone-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.cms-image-text .capstone-nav-btn {
+  padding: 0.625rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.cms-image-text .capstone-nav-btn-primary {
+  background: #0f2d52;
+  color: #fff;
+}
+
+.cms-image-text .capstone-nav-btn-primary:hover {
+  background: #1a4a7a;
+}
+
+.cms-image-text .capstone-nav-btn-accent {
+  background: #daa520;
+  color: #fff;
+}
+
+.cms-image-text .capstone-nav-btn-accent:hover {
+  background: #c4941a;
+}
+
+.cms-image-text .capstone-contact {
+  text-align: center;
+  color: #444;
+  font-size: 0.9375rem;
+  margin-top: 1.5rem;
+}
+
+/* ==========================================================================
+   Proposal Cards Block (.cms-proposal-cards)
+   Uses existing SampleProposalsPage.css classes
+   ========================================================================== */
+
+.cms-proposal-cards .proposals-page-title {
+  color: #0f2d52;
+  font-size: 2rem;
+  margin: 0 0 2rem;
+}
+
+.cms-proposal-cards .proposal-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  background: #fff;
+}
+
+.cms-proposal-cards .proposal-card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f2d52;
+}
+
+.cms-proposal-cards .proposal-card-body {
+  padding: 1.25rem;
+}
+
+.cms-proposal-cards .proposal-field {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 0.25rem;
+}
+
+.cms-proposal-cards .proposal-label {
+  font-weight: 600;
+}
+
+.cms-proposal-cards .proposal-section-title {
+  color: #0f2d52;
+  font-size: 1.125rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.cms-proposal-cards .proposal-text {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.cms-proposal-cards .proposal-footer {
+  color: #444;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.cms-proposal-cards .proposal-footer a {
+  color: #0f2d52;
+  text-decoration: none;
+}
+
+.cms-proposal-cards .proposal-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .cms-page {
+    padding: 1rem;
+  }
+
+  /* Rich text */
+  .cms-rich-text h1.section-title {
+    font-size: 1.5rem;
+  }
+
+  .cms-rich-text .section-title {
+    font-size: 1.25rem;
+  }
+
+  .cms-rich-text h3 {
+    font-size: 1.125rem;
+  }
+
+  .cms-rich-text table {
+    font-size: 0.875rem;
+  }
+
+  .cms-rich-text th,
+  .cms-rich-text td {
+    padding: 0.5rem;
+  }
+
+  /* Section group */
+  .cms-section-group h1.section-title,
+  .cms-section-group .section-title:first-child {
+    font-size: 1.5rem;
+  }
+
+  .cms-section-group section h2 {
+    font-size: 1.25rem;
+  }
+
+  .cms-section-group section h3 {
+    font-size: 1.125rem;
+  }
+
+  .cms-section-group table {
+    font-size: 0.875rem;
+  }
+
+  .cms-section-group th,
+  .cms-section-group td {
+    padding: 0.5rem;
+  }
+
+  /* FAQ */
+  .cms-faq-list .faq-page-title {
+    font-size: 1.5rem;
+  }
+
+  .cms-faq-list .faq-question {
+    font-size: 1.125rem;
+  }
+
+  /* Link list */
+  .cms-link-list h1.section-title {
+    font-size: 1.5rem;
+  }
+
+  .cms-link-list .section-title {
+    font-size: 1.25rem;
+  }
+
+  /* Navigation grid */
+  .cms-navigation-grid .projects-hub-page-title {
+    font-size: 1.5rem;
+  }
+
+  .cms-navigation-grid .projects-hub-item {
+    font-size: 1rem;
+  }
+
+  /* Contact info */
+  .cms-contact-info .contact-page-title {
+    font-size: 1.5rem;
+  }
+
+  /* Image text */
+  .cms-image-text .section-title {
+    font-size: 1.5rem;
+  }
+
+  .cms-image-text .capstone-hero-image {
+    float: none;
+    max-width: 100%;
+    margin: 0 0 1.5rem;
+  }
+
+  /* Proposal cards */
+  .cms-proposal-cards .proposals-page-title {
+    font-size: 1.5rem;
+  }
+
+  .cms-proposal-cards .proposal-card-header {
+    font-size: 1.1rem;
+    padding: 0.625rem 1rem;
+  }
+
+  .cms-proposal-cards .proposal-card-body {
+    padding: 1rem;
+  }
+}

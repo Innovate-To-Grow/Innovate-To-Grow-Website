@@ -110,11 +110,9 @@ class ContactPhone(ProjectControlModel):
         ]
 
     def __str__(self):
-        # truncate contact phone info tostring
         region_display = self.get_region_display_name()
-        str_contact_phone = f"+{self.region.split('-')[0] if '-' in self.region else self.region} {self.phone_number} ({region_display})"
+        str_contact_phone = f"{self.phone_number} ({region_display})"
 
-        # append subscribe info to string
         if self.subscribe:
             str_contact_phone += " - Subscribed"
         if self.verified:
@@ -122,15 +120,11 @@ class ContactPhone(ProjectControlModel):
 
         return str_contact_phone
 
-    # get formatted phone number
     def get_formatted_number(self):
         """
-        Return a formatted phone number with country code.
-        Extracts the numeric country code from region (handles '1-US', '1-CA' format).
+        Return the stored phone number (already in international E.164 format).
         """
-        # Extract numeric country code (handle '1-US', '1-CA' format)
-        country_code = self.region.split("-")[0] if "-" in self.region else self.region
-        return f"+{country_code}{self.phone_number}"
+        return self.phone_number
 
     # get region display name
     def get_region_display_name(self):

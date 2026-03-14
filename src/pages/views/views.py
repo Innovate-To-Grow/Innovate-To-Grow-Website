@@ -5,11 +5,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import FooterContent, Menu, SiteSettings
+from ..models import FooterContent, GoogleSheetSource, Menu, SiteSettings
 from ..serializers import (
     FooterContentSerializer,
     MenuSerializer,
 )
+from ..services.google_sheets import fetch_source_data
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,16 @@ class LayoutAPIView(APIView):
             "homepage_mode": settings.homepage_mode,
             "homepage_route": homepage_route,
         }
+
+        # Inline current-event sheets data to eliminate a sequential API call
+        if settings.homepage_mode in ("during-event", "post-event"):
+            try:
+                source = GoogleSheetSource.objects.get(slug="current-event", is_active=True)
+                data["sheets_data"] = {"current-event": fetch_source_data(source)}
+            except GoogleSheetSource.DoesNotExist:
+                pass
+            except Exception:  # noqa: BLE001
+                logger.warning("Failed to prefetch current-event sheets data for layout")
 
         cache.set(cache_key, data, timeout=600)
 
