@@ -25,11 +25,7 @@ class MenuAdmin(ModelAdmin):
 
     def _get_editor_context(self):
         """Build context with app routes and CMS pages for the menu editor."""
-        cms_pages = list(
-            CMSPage.objects.filter(status="published")
-            .order_by("title")
-            .values("route", "title")
-        )
+        cms_pages = list(CMSPage.objects.filter(status="published").order_by("title").values("route", "title"))
         cms_routes = [{"url": p["route"], "title": p["title"]} for p in cms_pages]
         return {
             "app_routes_json": json.dumps(APP_ROUTES),

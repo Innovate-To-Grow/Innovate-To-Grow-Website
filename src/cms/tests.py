@@ -345,25 +345,27 @@ class CMSImportTest(TestCase):
         """Import creates a new page with blocks."""
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        bundle = self._make_bundle([
-            {
-                "slug": "new-page",
-                "route": "/new-page",
-                "title": "New Page",
-                "meta_description": "A new page",
-                "page_css_class": "new-page",
-                "status": "draft",
-                "sort_order": 0,
-                "blocks": [
-                    {
-                        "block_type": "rich_text",
-                        "sort_order": 0,
-                        "admin_label": "Content",
-                        "data": {"body_html": "<p>Hello</p>"},
-                    }
-                ],
-            }
-        ])
+        bundle = self._make_bundle(
+            [
+                {
+                    "slug": "new-page",
+                    "route": "/new-page",
+                    "title": "New Page",
+                    "meta_description": "A new page",
+                    "page_css_class": "new-page",
+                    "status": "draft",
+                    "sort_order": 0,
+                    "blocks": [
+                        {
+                            "block_type": "rich_text",
+                            "sort_order": 0,
+                            "admin_label": "Content",
+                            "data": {"body_html": "<p>Hello</p>"},
+                        }
+                    ],
+                }
+            ]
+        )
         f = SimpleUploadedFile("import.json", bundle, content_type="application/json")
 
         response = self.client.post(
@@ -395,21 +397,23 @@ class CMSImportTest(TestCase):
             data={"body_html": "<p>Old</p>"},
         )
 
-        bundle = self._make_bundle([
-            {
-                "slug": "existing",
-                "route": "/existing",
-                "title": "New Title",
-                "status": "draft",
-                "blocks": [
-                    {
-                        "block_type": "faq_list",
-                        "sort_order": 0,
-                        "data": {"items": [{"question": "Q?", "answer_html": "A."}]},
-                    }
-                ],
-            }
-        ])
+        bundle = self._make_bundle(
+            [
+                {
+                    "slug": "existing",
+                    "route": "/existing",
+                    "title": "New Title",
+                    "status": "draft",
+                    "blocks": [
+                        {
+                            "block_type": "faq_list",
+                            "sort_order": 0,
+                            "data": {"items": [{"question": "Q?", "answer_html": "A."}]},
+                        }
+                    ],
+                }
+            ]
+        )
         f = SimpleUploadedFile("import.json", bundle, content_type="application/json")
 
         response = self.client.post(
@@ -430,14 +434,16 @@ class CMSImportTest(TestCase):
         """Invalid block type produces an error."""
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        bundle = self._make_bundle([
-            {
-                "slug": "bad-type",
-                "route": "/bad-type",
-                "title": "Bad Type",
-                "blocks": [{"block_type": "nonexistent_type", "sort_order": 0, "data": {}}],
-            }
-        ])
+        bundle = self._make_bundle(
+            [
+                {
+                    "slug": "bad-type",
+                    "route": "/bad-type",
+                    "title": "Bad Type",
+                    "blocks": [{"block_type": "nonexistent_type", "sort_order": 0, "data": {}}],
+                }
+            ]
+        )
         f = SimpleUploadedFile("import.json", bundle, content_type="application/json")
 
         response = self.client.post(
@@ -453,14 +459,16 @@ class CMSImportTest(TestCase):
         """Dry run returns results but creates nothing."""
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        bundle = self._make_bundle([
-            {
-                "slug": "dry-run",
-                "route": "/dry-run",
-                "title": "Dry Run",
-                "blocks": [],
-            }
-        ])
+        bundle = self._make_bundle(
+            [
+                {
+                    "slug": "dry-run",
+                    "route": "/dry-run",
+                    "title": "Dry Run",
+                    "blocks": [],
+                }
+            ]
+        )
         f = SimpleUploadedFile("import.json", bundle, content_type="application/json")
 
         response = self.client.post(
