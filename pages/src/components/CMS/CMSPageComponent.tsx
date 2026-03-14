@@ -46,8 +46,9 @@ export const CMSPageComponent: React.FC = () => {
   if (error === 'not_found' || !page) {
     return (
       <div className="not-found-page">
-        <h1>404</h1>
-        <p>Page not found.</p>
+        <p className="not-found-code">404</p>
+        <h1 className="not-found-title">Page not found</h1>
+        <p className="not-found-message">The page you're looking for doesn't exist or has been moved.</p>
       </div>
     );
   }

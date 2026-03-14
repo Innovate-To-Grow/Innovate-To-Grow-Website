@@ -1,8 +1,11 @@
 .not-found-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 6rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
   text-align: center;
+  padding: 2rem 1rem;
 }
 
 .not-found-code {
