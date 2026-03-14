@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
 import { useAuth } from '../../Auth';
@@ -54,7 +54,7 @@ export const MainMenu = () => {
 
   const toggleMobileMenu = () => setIsMobileOpen(prev => !prev);
 
-  const handleToggle = (_index: number, hasChildren: boolean, _event: MouseEvent) => {
+  const handleToggle = (_index: number, hasChildren: boolean) => {
     if (!hasChildren) return;
     // On desktop, dropdowns use hover (mouseEnter/mouseLeave)
     // On mobile, dropdowns are auto-expanded via CSS — let the link navigate normally
@@ -102,7 +102,7 @@ export const MainMenu = () => {
                   {...accessibilityProps}
                   target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
                   rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                  onClick={(e) => hasChildren ? handleToggle(index, hasChildren, e) : undefined}
+                  onClick={() => hasChildren ? handleToggle(index, hasChildren) : undefined}
                 >
                   {item.icon && <i className={`fa ${item.icon}`}></i>}
                   <span>{item.title}</span>
