@@ -13,7 +13,6 @@ const ForgotPasswordPage = React.lazy(() => import('../components/Auth/pages/For
 const VerifyEmailPage = React.lazy(() => import('../components/Auth/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
 
 // Content pages (lazy) — only non-CMS pages
-const HomePage = React.lazy(() => import('../pages/HomePage').then(m => ({default: m.HomePage})));
 const NewsPage = React.lazy(() => import('../pages/NewsPage').then(m => ({default: m.NewsPage})));
 const NewsDetailPage = React.lazy(() => import('../pages/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
 const ProjectsPage = React.lazy(() => import('../pages/ProjectsPage').then(m => ({default: m.ProjectsPage})));
@@ -29,6 +28,7 @@ const EventArchivePage = React.lazy(() => import('../pages/EventArchivePage').th
 // Map route paths to their page components for dynamic homepage resolution.
 // CMS-managed routes use CMSPageComponent; data-driven routes use their own components.
 const PAGE_REGISTRY: Record<string, React.LazyExoticComponent<React.ComponentType> | React.FC> = {
+    '/': CMSPageComponent,
     '/about': CMSPageComponent,
     '/news': NewsPage,
     '/faqs': CMSPageComponent,
@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
         element: <Layout/>,
         children: [
             // homepage — resolved dynamically from SiteSettings.homepage_route
-            {index: true, element: <HomepageResolver homePage={HomePage} pageRegistry={PAGE_REGISTRY}/>},
+            {index: true, element: <HomepageResolver pageRegistry={PAGE_REGISTRY}/>},
 
             // news pages
             {path: 'news', element: <NewsPage/>},

@@ -52,8 +52,8 @@ class SiteSettingsAdmin(ModelAdmin):
             {
                 "fields": ("homepage_route", "homepage_mode"),
                 "description": (
-                    "Choose which page visitors see at the root URL (/). "
-                    'When set to "Home", the homepage_mode controls which variant is shown.'
+                    "Choose which CMS page or app route visitors see at the root URL (/). "
+                    "The homepage_mode controls event-related data prefetching (schedule, projects)."
                 ),
             },
         ),
@@ -63,13 +63,10 @@ class SiteSettingsAdmin(ModelAdmin):
         """Show the page title for the selected route."""
         route_map = {r["url"]: r["title"] for r in APP_ROUTES}
         # Also check CMS pages
-        if obj.homepage_route and obj.homepage_route not in route_map:
-            cms_page = CMSPage.objects.filter(route=obj.homepage_route, status="published").values("title").first()
-            if cms_page:
-                route_map[obj.homepage_route] = cms_page["title"]
+        cms_page = CMSPage.objects.filter(route=obj.homepage_route, status="published").values("title").first()
+        if cms_page:
+            route_map[obj.homepage_route] = cms_page["title"]
         title = route_map.get(obj.homepage_route, obj.homepage_route)
-        if obj.homepage_route == "/":
-            return "Home (default)"
         return f"{title} ({obj.homepage_route})"
 
     homepage_route_display.short_description = "Homepage"
