@@ -35,7 +35,6 @@ class MenuSerializer(serializers.ModelSerializer):
             # Home type always links to "/"
             if item.get("type") == "home":
                 processed_item["url"] = "/"
-                processed_item["homepage_page"] = item.get("homepage_page", "")
             else:
                 processed_item["url"] = item.get("url", "#")
 

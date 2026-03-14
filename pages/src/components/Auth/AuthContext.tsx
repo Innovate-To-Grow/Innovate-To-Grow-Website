@@ -322,10 +322,16 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
         if (!checkIsAuthenticated()) return;
         try {
             const profile = await apiGetProfile();
-            setUser(prev => prev ? {
-                ...prev,
-                display_name: profile.display_name,
-            } : null);
+            setUser(prev => {
+                if (!prev) return null;
+                const nextUser = {
+                    ...prev,
+                    display_name: profile.display_name,
+                    profile_image: profile.profile_image,
+                };
+                localStorage.setItem('i2g_user', JSON.stringify(nextUser));
+                return nextUser;
+            });
         } catch {
             // Silently fail - user might be logged out
         }

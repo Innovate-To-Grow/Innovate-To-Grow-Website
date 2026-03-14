@@ -10,6 +10,7 @@ export interface User {
   email: string;
   username: string;
   display_name?: string;
+  profile_image?: string;
 }
 
 export interface AuthTokens {
@@ -366,6 +367,12 @@ export const uploadProfileImage = async (file: File): Promise<ProfileResponse> =
   formData.append('profile_image', file);
 
   const response = await authApi.patch<ProfileResponse>('/authn/profile/', formData);
+
+  const user = getStoredUser();
+  if (user) {
+    user.profile_image = response.data.profile_image;
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
 
   return response.data;
 };

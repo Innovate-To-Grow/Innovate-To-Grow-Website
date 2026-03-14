@@ -3,7 +3,7 @@
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}?v=3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 {% endblock %}
 
@@ -43,6 +43,9 @@
 {% block after_related_objects %}
   {{ block.super }}
 
-  <script>window.APP_ROUTES = {{ app_routes_json|safe }};</script>
-  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=6"></script>
+  <script>
+    window.APP_ROUTES = {{ app_routes_json|safe }};
+    window.CMS_ROUTES = {{ cms_routes_json|safe }};
+  </script>
+  <script src="{% static 'pages/js/menu/menu-editor.js' %}?v=7"></script>
 {% endblock %}

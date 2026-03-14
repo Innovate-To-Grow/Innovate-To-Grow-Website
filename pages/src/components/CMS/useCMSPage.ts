@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { type CMSPageResponse, fetchCMSPage } from '../../services/api/cms';
+import {
+  type CMSPageResponse,
+  fetchCMSPage,
+  fetchCMSPreview,
+} from '../../services/api/cms';
 
 interface UseCMSPageResult {
   page: CMSPageResponse | null;
@@ -13,11 +17,20 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
   const [error, setError] = useState<string | null>(null);
   const currentRoute = useRef(route);
 
+  // Check for preview token in URL
+  const previewToken = new URLSearchParams(window.location.search).get(
+    'cms_preview_token',
+  );
+
   useEffect(() => {
     let cancelled = false;
     currentRoute.current = route;
 
-    fetchCMSPage(route, preview)
+    const fetcher = previewToken
+      ? fetchCMSPreview(previewToken)
+      : fetchCMSPage(route, preview);
+
+    fetcher
       .then((data) => {
         if (!cancelled) {
           setPage(data);
@@ -37,7 +50,7 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
     return () => {
       cancelled = true;
     };
-  }, [route, preview]);
+  }, [route, preview, previewToken]);
 
   return { page, loading, error };
 }

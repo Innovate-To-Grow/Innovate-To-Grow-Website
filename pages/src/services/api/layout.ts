@@ -57,7 +57,6 @@ export interface MenuItem {
   icon?: string | null;
   open_in_new_tab: boolean;
   children: MenuItem[];
-  homepage_page?: string;
 }
 
 export interface Menu {

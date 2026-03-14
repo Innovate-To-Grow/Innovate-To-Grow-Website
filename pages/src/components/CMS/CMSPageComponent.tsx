@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { NotFoundPage } from '../../pages/NotFoundPage';
 import { BlockRenderer } from './BlockRenderer';
 import { useCMSPage } from './useCMSPage';
 
@@ -44,13 +45,7 @@ export const CMSPageComponent: React.FC = () => {
   }
 
   if (error === 'not_found' || !page) {
-    return (
-      <div className="not-found-page">
-        <p className="not-found-code">404</p>
-        <h1 className="not-found-title">Page not found</h1>
-        <p className="not-found-message">The page you're looking for doesn't exist or has been moved.</p>
-      </div>
-    );
+    return <NotFoundPage />;
   }
 
   if (error) {

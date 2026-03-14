@@ -13,8 +13,10 @@
   // Current data state
   let menuItems = [];
 
-  // App routes injected from Django backend (see pages/app_routes.py)
+  // Routes injected from Django backend
   const APP_ROUTES = window.APP_ROUTES || [];
+  const CMS_ROUTES = window.CMS_ROUTES || [];
+  const ALL_ROUTES = [...APP_ROUTES, ...CMS_ROUTES];
   
   // Initialize
   function init() {
@@ -49,16 +51,18 @@
     return items.map((item, idx) => {
       const itemPath = `${path}[${idx}]`;
       const hasChildren = item.children && item.children.length > 0;
-      const typeBadgeClass = `type-${item.type}`;
-      const typeLabel = item.type === 'home' ? 'Home' : item.type === 'app' ? 'App' : 'External';
+      const isCmsPage = item.type === 'app' && CMS_ROUTES.some(r => r.url === item.url);
+      const typeBadgeClass = isCmsPage ? 'type-cms' : `type-${item.type}`;
+      const typeLabel = item.type === 'home' ? 'Home' : item.type === 'external' ? 'External' : isCmsPage ? 'CMS Page' : 'App';
 
       // Type selector
+      const appLabel = isCmsPage ? 'CMS Page' : 'App Route';
       const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
           <label>Type</label>
           <select onchange="changeItemType('${itemPath}', this.value)">
             <option value="home" ${item.type === 'home' ? 'selected' : ''}>Home</option>
-            <option value="app" ${item.type === 'app' ? 'selected' : ''}>App Route</option>
+            <option value="app" ${item.type === 'app' ? 'selected' : ''}>${appLabel}</option>
             <option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option>
           </select>
         </div>
@@ -67,11 +71,7 @@
       let fieldsHtml = '';
 
       if (item.type === 'home') {
-        // Home type: always links to "/", with a page selector for what renders there
-        const homePageOptions = APP_ROUTES.filter(r => r.url !== '/').map(r =>
-          `<option value="${escapeAttr(r.url)}" ${item.homepage_page === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-        ).join('');
-
+        // Home type: always links to "/". Homepage page is configured in Site Settings.
         fieldsHtml = `
           <div class="item-row">
             ${typeSelector}
@@ -79,12 +79,9 @@
               <label>Title</label>
               <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
             </div>
-            <div class="item-field">
-              <label>Homepage Page</label>
-              <select onchange="updateItem('${itemPath}', 'homepage_page', this.value)">
-                <option value="" ${!item.homepage_page ? 'selected' : ''}>Default Home</option>
-                ${homePageOptions}
-              </select>
+            <div class="item-field" style="flex: 0; white-space: nowrap;">
+              <label>URL</label>
+              <span style="color: #666; font-size: 13px; padding: 6px 0; display: block;">/ (homepage)</span>
             </div>
             <div class="item-field item-field-small">
               <label>Icon</label>
@@ -118,6 +115,15 @@
         const appOptions = APP_ROUTES.map(r =>
           `<option value="${escapeAttr(r.url)}" ${item.url === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
         ).join('');
+        const cmsOptions = CMS_ROUTES.map(r =>
+          `<option value="${escapeAttr(r.url)}" ${item.url === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+
+        // Show warning if URL doesn't match any known route
+        const knownUrl = !item.url || ALL_ROUTES.some(r => r.url === item.url);
+        const warningHtml = !knownUrl
+          ? `<span style="color:#dc3545;font-size:12px;margin-left:4px;" title="This URL does not match any known route or CMS page">&#9888; Unknown route</span>`
+          : '';
 
         fieldsHtml = `
           <div class="item-row">
@@ -127,10 +133,11 @@
               <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
             </div>
             <div class="item-field">
-              <label>App Route</label>
+              <label>Route${warningHtml}</label>
               <select onchange="selectAppRoute('${itemPath}', this.value)">
-                <option value="">-- Select App --</option>
-                ${appOptions}
+                <option value="">-- Select Route --</option>
+                ${appOptions ? `<optgroup label="App Routes">${appOptions}</optgroup>` : ''}
+                ${cmsOptions ? `<optgroup label="CMS Pages">${cmsOptions}</optgroup>` : ''}
               </select>
             </div>
             <div class="item-field item-field-small">
@@ -205,15 +212,12 @@
       open_in_new_tab: type === 'external',
       children: []
     };
-    if (type === 'home') {
-      newItem.homepage_page = '';
-    }
 
     menuItems.push(newItem);
     renderAll();
     syncToJson();
   };
-  
+
   // Add child item
   window.addChildItem = function(parentPath) {
     const parent = getItemByPath(parentPath);
@@ -236,7 +240,7 @@
   window.selectAppRoute = function(path, url) {
     const item = getItemByPath(path);
     item.url = url;
-    const route = APP_ROUTES.find(r => r.url === url);
+    const route = ALL_ROUTES.find(r => r.url === url);
     if (route) {
       if (!item.title || item.title === 'New App Link') {
         item.title = route.title;
@@ -268,21 +272,19 @@
 
     // Reset type-specific fields
     delete item.page_slug;
+    delete item.homepage_page;
     if (newType === 'home') {
       item.url = '/';
       item.open_in_new_tab = false;
-      item.homepage_page = '';
       if (!item.title || item.title === 'New External Link' || item.title === 'New App Link') {
         item.title = 'Home';
       }
     } else if (newType === 'external') {
       item.url = item.url || '';
       item.open_in_new_tab = true;
-      delete item.homepage_page;
     } else {
       item.url = item.url || '';
       item.open_in_new_tab = false;
-      delete item.homepage_page;
     }
 
     renderAll();

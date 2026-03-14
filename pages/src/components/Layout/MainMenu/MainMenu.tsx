@@ -9,10 +9,11 @@ const buildHref = (item: MenuItem) => item.url || '#';
 
 export const MainMenu = () => {
   const { menu, state } = useMenu();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, refreshProfile } = useAuth();
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
+  const [hasSyncedMemberProfile, setHasSyncedMemberProfile] = useState(false);
   const currentDate = useMemo(() => {
     const date = new Date();
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -39,6 +40,18 @@ export const MainMenu = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHasSyncedMemberProfile(false);
+      return;
+    }
+
+    if (!user?.profile_image && !hasSyncedMemberProfile) {
+      setHasSyncedMemberProfile(true);
+      void refreshProfile();
+    }
+  }, [hasSyncedMemberProfile, isAuthenticated, refreshProfile, user?.profile_image]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -247,7 +260,7 @@ export const MainMenu = () => {
 
           {/* Member Section */}
           <div 
-            className="site-header-member"
+            className={`site-header-member${isAuthenticated ? ' is-authenticated' : ''}${isMemberDropdownOpen ? ' is-open' : ''}`}
             onMouseEnter={() => isAuthenticated && setIsMemberDropdownOpen(true)}
             onMouseLeave={() => setIsMemberDropdownOpen(false)}
           >
@@ -256,9 +269,18 @@ export const MainMenu = () => {
                 <button
                   type="button"
                   className="member-button authenticated"
+                  aria-expanded={isMemberDropdownOpen}
                   onClick={() => setIsMemberDropdownOpen(prev => !prev)}
                 >
-                  <i className="fa fa-user-circle" />
+                  {user?.profile_image ? (
+                    <img
+                      src={user.profile_image}
+                      alt=""
+                      className="member-avatar"
+                    />
+                  ) : (
+                    <i className="fa fa-user-circle" />
+                  )}
                   <span className="member-name">{user?.email || 'Member'}</span>
                   <i className="fa fa-angle-down member-arrow" />
                 </button>
@@ -340,7 +362,15 @@ export const MainMenu = () => {
           {isAuthenticated ? (
             <>
               <div className="header-mobile-member-info">
-                <i className="fa fa-user-circle" />
+                {user?.profile_image ? (
+                  <img
+                    src={user.profile_image}
+                    alt=""
+                    className="header-mobile-member-avatar"
+                  />
+                ) : (
+                  <i className="fa fa-user-circle" />
+                )}
                 <span>{user?.email || 'Member'}</span>
               </div>
               <div className="header-mobile-member-actions">
@@ -352,7 +382,6 @@ export const MainMenu = () => {
                     router.navigate('/account');
                   }}
                 >
-                  <i className="fa fa-cog" />
                   Account
                 </button>
                 <button
@@ -363,7 +392,6 @@ export const MainMenu = () => {
                     logout();
                   }}
                 >
-                  <i className="fa fa-sign-out" />
                   Sign Out
                 </button>
               </div>

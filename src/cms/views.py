@@ -12,6 +12,23 @@ from .serializers import CMSPageSerializer
 logger = logging.getLogger(__name__)
 
 
+class CMSPreviewFetchView(APIView):
+    """Fetch cached preview data by token.
+
+    GET /cms/preview/<token>/
+    The token acts as auth — anyone with a valid token can fetch the data.
+    Tokens expire after 10 minutes.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        data = cache.get(f"cms:preview:{token}")
+        if data is None:
+            return Response({"detail": "Preview expired or not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(data)
+
+
 class CMSPageView(APIView):
     """Retrieve a CMS page by its route path.
 

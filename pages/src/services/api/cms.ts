@@ -28,3 +28,10 @@ export async function fetchCMSPage(
   const response = await api.get<CMSPageResponse>(url);
   return response.data;
 }
+
+export async function fetchCMSPreview(
+  token: string,
+): Promise<CMSPageResponse> {
+  const response = await api.get<CMSPageResponse>(`/cms/preview/${token}/`);
+  return response.data;
+}

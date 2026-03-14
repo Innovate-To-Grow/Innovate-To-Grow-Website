@@ -3,6 +3,8 @@ import json
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
+from cms.models import CMSPage
+
 from ...app_routes import APP_ROUTES
 from ...models import Menu
 
@@ -21,14 +23,25 @@ class MenuAdmin(ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
 
+    def _get_editor_context(self):
+        """Build context with app routes and CMS pages for the menu editor."""
+        cms_pages = list(
+            CMSPage.objects.filter(status="published")
+            .order_by("title")
+            .values("route", "title")
+        )
+        cms_routes = [{"url": p["route"], "title": p["title"]} for p in cms_pages]
+        return {
+            "app_routes_json": json.dumps(APP_ROUTES),
+            "cms_routes_json": json.dumps(cms_routes),
+        }
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
-        extra_context = extra_context or {}
-        extra_context["app_routes_json"] = json.dumps(APP_ROUTES)
+        extra_context = {**(extra_context or {}), **self._get_editor_context()}
         return super().change_view(request, object_id, form_url, extra_context)
 
     def add_view(self, request, form_url="", extra_context=None):
-        extra_context = extra_context or {}
-        extra_context["app_routes_json"] = json.dumps(APP_ROUTES)
+        extra_context = {**(extra_context or {}), **self._get_editor_context()}
         return super().add_view(request, form_url, extra_context)
 
     def items_count(self, obj):

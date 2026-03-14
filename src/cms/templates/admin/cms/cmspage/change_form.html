@@ -1,0 +1,76 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}">
+  <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}">
+{% endblock %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+
+  <!-- Visual Block Editor -->
+  <div class="visual-editor-wrapper">
+    <div class="visual-editor-header">
+      <h3>Content Blocks</h3>
+    </div>
+
+    <div class="visual-editor-content">
+      <!-- Block List (JS-rendered) -->
+      <div id="cms-blocks-container" class="cms-blocks-container"></div>
+
+      <!-- Add Block -->
+      <div class="cms-add-block-wrapper">
+        <select id="cms-add-block-type">
+          <option value="">-- Select block type --</option>
+        </select>
+        <button type="button" class="btn-add-block" onclick="addBlock()">+ Add Block</button>
+      </div>
+
+      <!-- JSON Toggle -->
+      <div class="json-toggle" style="margin-top: 20px;">
+        <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+        <div id="json-raw-view" class="json-raw-view">
+          <textarea id="json-editor" placeholder="Block data as JSON array..."></textarea>
+          <div class="json-editor-actions">
+            <button type="button" class="btn-apply-json" onclick="applyJson()">Apply JSON</button>
+            <button type="button" class="btn-apply-json" onclick="copyJson()">Copy JSON</button>
+            <span class="json-editor-hint">Edit the raw JSON and click Apply to update the visual editor</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden field for form submission -->
+  <textarea id="id_blocks_json" name="blocks_json" style="display:none;"></textarea>
+{% endblock %}
+
+{% block after_related_objects %}
+  {{ block.super }}
+
+  <!-- Preview -->
+  <div class="cms-preview-wrapper" id="cms-preview-wrapper" style="display:none;">
+    <div class="cms-preview-header">
+      <p class="cms-preview-title">Live Preview</p>
+      <div class="cms-preview-actions">
+        <button type="button" onclick="refreshPreview()">Refresh</button>
+        <button type="button" onclick="togglePreview()">Hide Preview</button>
+      </div>
+    </div>
+    <iframe id="cms-preview-iframe" class="cms-preview-iframe"></iframe>
+    <div class="cms-preview-status" id="cms-preview-status">Preview will update as you edit.</div>
+  </div>
+  <div style="margin-top: 12px;">
+    <button type="button" class="btn-add-block" id="cms-show-preview-btn" onclick="togglePreview()" style="background:#2e7d32;">Show Live Preview</button>
+  </div>
+
+  <!-- Inject data for JS -->
+  <script>
+    window.CMS_BLOCK_SCHEMAS = {{ block_schemas_json|safe }};
+    window.CMS_BLOCK_TYPE_CHOICES = {{ block_type_choices_json|safe }};
+    window.CMS_INITIAL_BLOCKS = {{ initial_blocks_json|safe }};
+  </script>
+  <script src="{% static 'cms/js/cms-block-editor.js' %}?v=1"></script>
+{% endblock %}

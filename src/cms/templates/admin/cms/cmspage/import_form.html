@@ -1,0 +1,88 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px;">
+  <h1 style="margin-bottom: 16px;">{{ title }}</h1>
+
+  <p style="color: #666; margin-bottom: 24px;">
+    Upload a CMS export JSON file to import pages. Use "Preview Import" to see what will happen before executing.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="margin-bottom: 16px;">
+      <label for="json_file" style="display: block; font-weight: 600; margin-bottom: 6px;">JSON File</label>
+      <input type="file" name="json_file" id="json_file" accept=".json" style="font-size: 14px;">
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" name="action" value="dry_run"
+        style="padding: 8px 20px; background: #666; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;">
+        Preview Import
+      </button>
+      <button type="submit" name="action" value="execute"
+        style="padding: 8px 20px; background: #1565c0; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;"
+        onclick="return confirm('This will create or update pages. Continue?');">
+        Execute Import
+      </button>
+    </div>
+  </form>
+
+  {% if has_results %}
+  <div style="margin-top: 32px;">
+    <h2 style="margin-bottom: 12px;">
+      {% if is_dry_run %}Import Preview (Dry Run){% else %}Import Results{% endif %}
+    </h2>
+
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="background: #f5f5f5; text-align: left;">
+          <th style="padding: 8px 12px; border-bottom: 2px solid #ddd;">Slug</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #ddd;">Title</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #ddd;">Action</th>
+          <th style="padding: 8px 12px; border-bottom: 2px solid #ddd;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{{ r.slug }}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{{ r.title }}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">
+            {% if r.action == "create" %}
+            <span style="background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">CREATE</span>
+            {% elif r.action == "update" %}
+            <span style="background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">UPDATE</span>
+            {% endif %}
+          </td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">
+            {% if r.errors %}
+            <span style="color: #dc3545;">
+              {% for err in r.errors %}{{ err }}<br>{% endfor %}
+            </span>
+            {% elif r.success %}
+            <span style="color: #2e7d32;">OK</span>
+            {% elif is_dry_run %}
+            <span style="color: #666;">Ready</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if is_dry_run %}
+    <p style="margin-top: 16px; color: #666; font-style: italic;">
+      This is a preview. No changes have been made. Click "Execute Import" to apply.
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div style="margin-top: 24px;">
+    <a href="{% url 'admin:cms_cmspage_changelist' %}" style="color: #1565c0;">&larr; Back to CMS Pages</a>
+  </div>
+</div>
+{% endblock %}
