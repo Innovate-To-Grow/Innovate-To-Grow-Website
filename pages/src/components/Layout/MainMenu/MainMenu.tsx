@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { type MenuItem } from '../../../services/api';
 import { useMenu } from '../LayoutProvider/context';
 import { useAuth } from '../../Auth';
@@ -13,7 +13,7 @@ export const MainMenu = () => {
   const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
-  const [hasSyncedMemberProfile, setHasSyncedMemberProfile] = useState(false);
+  const hasSyncedMemberProfile = useRef(false);
   const currentDate = useMemo(() => {
     const date = new Date();
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -43,15 +43,15 @@ export const MainMenu = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setHasSyncedMemberProfile(false);
+      hasSyncedMemberProfile.current = false;
       return;
     }
 
-    if (!user?.profile_image && !hasSyncedMemberProfile) {
-      setHasSyncedMemberProfile(true);
+    if (!user?.profile_image && !hasSyncedMemberProfile.current) {
+      hasSyncedMemberProfile.current = true;
       void refreshProfile();
     }
-  }, [hasSyncedMemberProfile, isAuthenticated, refreshProfile, user?.profile_image]);
+  }, [isAuthenticated, refreshProfile, user?.profile_image]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
