@@ -1,3 +1,4 @@
 from .event import EventAdmin
+from .registration import EventRegistrationAdmin
 
-__all__ = ["EventAdmin"]
+__all__ = ["EventAdmin", "EventRegistrationAdmin"]
