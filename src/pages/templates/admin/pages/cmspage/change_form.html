@@ -5,6 +5,7 @@
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'pages/css/menu/visual-editor.css' %}">
   <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}">
+  <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
 {% endblock %}
 
 {% block after_field_sets %}
@@ -71,6 +72,11 @@
     window.CMS_BLOCK_SCHEMAS = {{ block_schemas_json|safe }};
     window.CMS_BLOCK_TYPE_CHOICES = {{ block_type_choices_json|safe }};
     window.CMS_INITIAL_BLOCKS = {{ initial_blocks_json|safe }};
+    window.CMS_ROUTE_EDITOR = {
+      checkUrl: "{{ route_check_url|escapejs }}",
+      pageId: "{{ current_page_id|escapejs }}",
+    };
   </script>
   <script src="{% static 'cms/js/cms-block-editor.js' %}?v=1"></script>
+  <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}

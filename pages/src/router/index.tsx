@@ -18,48 +18,11 @@ const NewsDetailPage = React.lazy(() => import('../pages/NewsDetailPage').then(m
 const ProjectsPage = React.lazy(() => import('../pages/ProjectsPage').then(m => ({default: m.ProjectsPage})));
 const PastProjectsPage = React.lazy(() => import('../pages/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
 const ProjectDetailPage = React.lazy(() => import('../pages/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
-const NotFoundPage = React.lazy(() => import('../pages/NotFoundPage').then(m => ({default: m.NotFoundPage})));
 const EventPage = React.lazy(() => import('../pages/EventPage').then(m => ({default: m.EventPage})));
 const SchedulePage = React.lazy(() => import('../pages/SchedulePage').then(m => ({default: m.SchedulePage})));
 const ProjectsTeamsPage = React.lazy(() => import('../pages/ProjectsTeamsPage').then(m => ({default: m.ProjectsTeamsPage})));
 const AcknowledgementPage = React.lazy(() => import('../pages/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
 const EventArchivePage = React.lazy(() => import('../pages/EventArchivePage').then(m => ({default: m.EventArchivePage})));
-
-// Map route paths to their page components for dynamic homepage resolution.
-// CMS-managed routes use CMSPageComponent; data-driven routes use their own components.
-const PAGE_REGISTRY: Record<string, React.LazyExoticComponent<React.ComponentType> | React.FC> = {
-    '/': CMSPageComponent,
-    '/about': CMSPageComponent,
-    '/news': NewsPage,
-    '/faqs': CMSPageComponent,
-    '/contact-us': CMSPageComponent,
-    '/privacy': CMSPageComponent,
-    '/ferpa': CMSPageComponent,
-    '/engineering-capstone': CMSPageComponent,
-    '/software-capstone': CMSPageComponent,
-    '/about-engsl': CMSPageComponent,
-    '/projects': CMSPageComponent,
-    '/current-projects': ProjectsPage,
-    '/past-projects': PastProjectsPage,
-    '/project-submission': CMSPageComponent,
-    '/sample-proposals': CMSPageComponent,
-    '/projects-teams': ProjectsTeamsPage,
-    '/students': CMSPageComponent,
-    '/student-agreement': CMSPageComponent,
-    '/event-preparation': CMSPageComponent,
-    '/video-preparation': CMSPageComponent,
-    '/purchasing-reimbursement': CMSPageComponent,
-    '/event': EventPage,
-    '/schedule': SchedulePage,
-    '/past-events': CMSPageComponent,
-    '/judges': CMSPageComponent,
-    '/attendees': CMSPageComponent,
-    '/judging': CMSPageComponent,
-    '/partnership': CMSPageComponent,
-    '/sponsorship': CMSPageComponent,
-    '/sponsor-acknowledgement': CMSPageComponent,
-    '/acknowledgement': AcknowledgementPage,
-};
 
 export const router = createBrowserRouter([
     {
@@ -67,7 +30,7 @@ export const router = createBrowserRouter([
         element: <Layout/>,
         children: [
             // homepage — resolved dynamically from SiteSettings.homepage_route
-            {index: true, element: <HomepageResolver pageRegistry={PAGE_REGISTRY}/>},
+            {index: true, element: <HomepageResolver/>},
 
             // news pages
             {path: 'news', element: <NewsPage/>},
@@ -124,8 +87,6 @@ export const router = createBrowserRouter([
             {path: 'I2G-project-sponsor-acknowledgement', element: <Navigate to="/sponsor-acknowledgement" replace/>},
             {path: '2014-sponsors', element: <Navigate to="/sponsors/2014" replace/>},
             {path: '2015-sponsors', element: <Navigate to="/sponsors/2015" replace/>},
-            {path: 'home-post-event', element: <Navigate to="/" replace/>},
-            {path: 'home-during-event', element: <Navigate to="/" replace/>},
             {path: '2025-fall-event', element: <Navigate to="/events/2025-fall" replace/>},
             {path: '2025-spring-event', element: <Navigate to="/events/2025-spring" replace/>},
             {path: '2024-fall-event', element: <Navigate to="/events/2024-fall" replace/>},
@@ -151,8 +112,18 @@ export const router = createBrowserRouter([
             // Account management
             {path: 'account', element: <AccountPage/>},
 
-            // Catch-all 404
-            {path: '*', element: <NotFoundPage/>},
+            // Django admin — bypass React Router so the request hits the backend
+            {
+                path: 'admin/*',
+                element: null,
+                loader: () => {
+                    window.location.href = window.location.pathname + window.location.search;
+                    return null;
+                },
+            },
+
+            // Catch-all CMS route
+            {path: '*', element: <CMSPageComponent/>},
         ],
     },
 ]);

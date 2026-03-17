@@ -28,6 +28,7 @@ def invalidate_sheet_cache(sender, instance, **kwargs):
 def invalidate_cms_page_cache(sender, instance, **kwargs):
     """Clear CMS page cache when a CMSPage is saved or deleted."""
     cache.delete(f"cms:page:{instance.route}")
+    cache.delete("layout:data")
 
 
 @receiver([post_save, post_delete], sender=CMSBlock)

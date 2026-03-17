@@ -1,12 +1,15 @@
 import type { CMSBlock } from '../../services/api/cms';
 import { ContactInfoBlock } from './blocks/ContactInfoBlock';
 import { FaqListBlock } from './blocks/FaqListBlock';
+import { GoogleSheetBlock } from './blocks/GoogleSheetBlock';
 import { ImageTextBlock } from './blocks/ImageTextBlock';
 import { LinkListBlock } from './blocks/LinkListBlock';
 import { NavigationGridBlock } from './blocks/NavigationGridBlock';
 import { ProposalCardsBlock } from './blocks/ProposalCardsBlock';
 import { RichTextBlock } from './blocks/RichTextBlock';
+import { ScheduleGridBlock } from './blocks/ScheduleGridBlock';
 import { SectionGroupBlock } from './blocks/SectionGroupBlock';
+import { TableBlock } from './blocks/TableBlock';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type BlockComponent = React.FC<{ data: any }>;
@@ -20,6 +23,9 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   image_text: ImageTextBlock,
   section_group: SectionGroupBlock,
   proposal_cards: ProposalCardsBlock,
+  google_sheet: GoogleSheetBlock,
+  schedule_grid: ScheduleGridBlock,
+  table: TableBlock,
 };
 
 interface BlockRendererProps {

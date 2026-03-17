@@ -29,7 +29,7 @@ CMS pages are the primary way to manage content on the website. Each page has a 
 1. Go to **CMS > CMS Pages** and click **Add CMS Page**
 2. Fill in the required fields:
    - **Slug** — Stable identifier for import/export. Use lowercase with hyphens (e.g., `about-us`). Do not change after publishing.
-   - **Route** — The URL path where this page will appear (e.g., `/about`). Must start with `/`. Must be unique.
+   - **Route** — Use the path editor to build the URL path where this page will appear (for example `/about` or `/event/live`). Paths are normalized to a leading slash with no trailing slash, and route conflicts are flagged while you edit.
    - **Title** — Page title shown in the browser tab
 3. Set **Status** to control visibility (see lifecycle below)
 4. Add content blocks in the visual editor
@@ -134,20 +134,15 @@ Use the visual editor to manage these sections. A "Raw JSON" toggle is available
 
 ## Site Settings
 
-Go to **Site Settings > Home Page** to configure the homepage behavior.
+Go to **Site Settings > Home Page** to configure which CMS page appears at `/`.
 
-### Homepage Mode
+### Homepage Page
 
-| Mode | When to Use | Effect |
-|------|-------------|--------|
-| `pre-event` | Before an event | Homepage shows pre-event content |
-| `during-semester` | During a regular semester | Homepage shows semester content |
-| `during-event` | During a live event | Homepage shows event content; layout API prefetches sheet data |
-| `post-event` | After an event | Homepage shows post-event content |
+Select a published CMS page as the active homepage. This is useful for switching between pages such as `During Event`, `Post-Event`, or other seasonal homepage variants without changing the root URL.
 
-### Homepage Route
+### Effective Homepage Route
 
-The **Homepage Route** field determines which page is displayed at `/`. Set it to a CMS page route (e.g., `/about`) or a data-driven page route (e.g., `/event`). The frontend's `HomepageResolver` reads this value from the layout API and renders the corresponding page.
+The **Effective Homepage Route** shows the actual CMS route currently rendered at `/`. If no homepage page is selected, the published `/` page is used as the fallback.
 
 ---
 

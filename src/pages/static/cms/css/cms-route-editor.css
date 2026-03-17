@@ -1,0 +1,94 @@
+.cms-route-editor {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #d7deea;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.cms-route-editor-header {
+  margin-bottom: 0.75rem;
+}
+
+.cms-route-editor-title {
+  margin: 0 0 0.25rem;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cms-route-editor-help {
+  margin: 0;
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.cms-route-preview {
+  margin: 0 0 1rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #123a73;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+}
+
+.cms-route-segments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cms-route-segment-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cms-route-slash {
+  color: #123a73;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cms-route-segment-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #c6d2e3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.cms-route-remove,
+.cms-route-add {
+  border: 1px solid #c6d2e3;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0.5rem 0.75rem;
+}
+
+.cms-route-remove:hover,
+.cms-route-add:hover {
+  background: #eef4ff;
+}
+
+.cms-route-status {
+  margin-top: 0.75rem;
+  font-size: 12px;
+  min-height: 18px;
+}
+
+.cms-route-status.is-valid {
+  color: #0d7a43;
+}
+
+.cms-route-status.is-conflict {
+  color: #b42318;
+}
+
+.cms-route-status.is-invalid {
+  color: #9a3412;
+}

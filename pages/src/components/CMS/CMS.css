@@ -604,6 +604,48 @@
 }
 
 /* ==========================================================================
+   Sheet-backed Blocks (.cms-sheet-block / .cms-table-block)
+   ========================================================================== */
+
+.cms-sheet-block,
+.cms-table-block {
+  margin: 0 0 2.5rem;
+}
+
+.cms-sheet-block-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  margin: 0 0 1.25rem;
+}
+
+.cms-table-block-wrap {
+  overflow-x: auto;
+}
+
+.cms-table-block-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--itg-color-white);
+}
+
+.cms-table-block-table th,
+.cms-table-block-table td {
+  border: 1px solid var(--itg-color-border-table);
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  padding: 0.75rem 0.875rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cms-table-block-table th {
+  background: var(--itg-color-bg-light);
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+/* ==========================================================================
    Responsive Breakpoints
    ========================================================================== */
 
@@ -712,5 +754,15 @@
 
   .cms-proposal-cards .proposal-card-body {
     padding: 1rem;
+  }
+
+  .cms-sheet-block-title {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .cms-table-block-table th,
+  .cms-table-block-table td {
+    font-size: var(--itg-font-size-table-mobile);
+    padding: 0.5rem;
   }
 }
