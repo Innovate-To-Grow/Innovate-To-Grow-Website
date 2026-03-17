@@ -192,4 +192,3 @@ Please add or update automated tests when you:
 - **Security reports:** Please do **not** open public issues for security vulnerabilities. Email the maintainers or the UC Merced ITG team privately.
 
 Thank you for helping build the Innovate to Grow platform!
-

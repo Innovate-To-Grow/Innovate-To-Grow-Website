@@ -46,5 +46,3 @@ export const useFooter = (): { footer: FooterContentResponse | null; state: Layo
   const { footer, state, error } = useLayout();
   return { footer, state, error };
 };
-
-

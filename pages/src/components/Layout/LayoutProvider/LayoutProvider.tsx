@@ -46,4 +46,3 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
     </LayoutContext.Provider>
   );
 };
-

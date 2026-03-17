@@ -56,7 +56,7 @@ class Base64ImageWidget(forms.ClearableFileInput):
                 '<p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-1">Current image:</p>'
                 '<img src="data:image/png;base64,{}" alt="Profile preview"'
                 ' style="max-width:96px;max-height:96px;border-radius:6px;'
-                "border:1px solid #e5e7eb;object-fit:cover\""
+                'border:1px solid #e5e7eb;object-fit:cover"'
                 " />"
                 "</div>",
                 value,

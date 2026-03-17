@@ -9,16 +9,16 @@
 
 {% block after_field_sets %}
   {{ block.super }}
-  
+
   <!-- Visual Editor -->
   <div class="visual-editor-wrapper">
     <div class="visual-editor-header">
       <h3>Menu Items Editor</h3>
     </div>
-    
+
     <div class="visual-editor-content">
       <div id="menu-items-container" class="menu-items-container"></div>
-      
+
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button type="button" class="btn-add" onclick="addMenuItem('home')">+ Add Home</button>
         <button type="button" class="btn-add" onclick="addMenuItem('app')">+ Add App Route</button>

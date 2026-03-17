@@ -36,7 +36,7 @@ export const fetchPublicKey = async (): Promise<{ publicKey: string; keyId: stri
 
   // Fetch new key from server
   const response = await axios.get<PublicKeyResponse>(`${API_BASE_URL}/authn/public-key/`);
-  
+
   // Cache the key
   cachedKey = {
     publicKey: response.data.public_key,
@@ -65,7 +65,7 @@ const pemToPublicKey = async (pem: string): Promise<CryptoKey> => {
     .replace(/-----BEGIN PUBLIC KEY-----/, '')
     .replace(/-----END PUBLIC KEY-----/, '')
     .replace(/\s/g, '');
-  
+
   const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
 
   // Import the key
@@ -125,4 +125,3 @@ export const encryptPasswordWithCurrentKey = async (
   const encryptedPassword = await encryptPassword(password, publicKey);
   return { encryptedPassword, keyId };
 };
-

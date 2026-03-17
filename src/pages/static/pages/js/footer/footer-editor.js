@@ -8,12 +8,12 @@
 
   // App routes injected from Django backend (see pages/app_routes.py)
   const APP_ROUTES = window.APP_ROUTES || [];
-  
+
   // DOM elements (initialized in init())
   let jsonInput = null;
   let iframe = null;
   let errorBox = null;
-  
+
   // Current data state
   let footerData = {
     cta_buttons: [],
@@ -23,14 +23,14 @@
     copyright: '',
     footer_links: []
   };
-  
+
   // Initialize
   function init() {
     // Get DOM elements after DOM is ready
     jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
     iframe = document.getElementById('footer-preview-iframe');
     errorBox = document.getElementById('footer-preview-error');
-    
+
     if (jsonInput) {
       try {
         const parsed = JSON.parse(jsonInput.value || '{}');
@@ -39,7 +39,7 @@
         console.error('Failed to parse initial JSON:', e);
       }
     }
-    
+
     // Set up tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -49,37 +49,37 @@
         document.getElementById('section-' + btn.dataset.tab).classList.add('active');
       });
     });
-    
+
     // Set up input listeners
     document.getElementById('contact-html-input').addEventListener('input', (e) => {
       footerData.contact_html = e.target.value;
       syncToJson();
     });
-    
+
     document.getElementById('copyright-input').addEventListener('input', (e) => {
       footerData.copyright = e.target.value;
       syncToJson();
     });
-    
+
     // Set up JSON editor events
     setupJsonEditorEvents();
-    
+
     renderAll();
     updatePreview();
   }
-  
+
   // Render all sections
   function renderAll() {
     renderCtaButtons();
     renderColumns();
     renderSocialLinks();
     renderFooterLinks();
-    
+
     document.getElementById('contact-html-input').value = footerData.contact_html || '';
     document.getElementById('copyright-input').value = footerData.copyright || '';
     document.getElementById('json-editor').value = JSON.stringify(footerData, null, 2);
   }
-  
+
   // Sync to hidden JSON field
   function syncToJson() {
     if (jsonInput) {
@@ -88,7 +88,7 @@
     document.getElementById('json-editor').value = JSON.stringify(footerData, null, 2);
     updatePreview();
   }
-  
+
   // ===== CTA Buttons =====
   window.addCtaButton = function(type) {
     type = type || 'external';
@@ -96,13 +96,13 @@
     renderCtaButtons();
     syncToJson();
   };
-  
+
   window.removeCtaButton = function(idx) {
     footerData.cta_buttons.splice(idx, 1);
     renderCtaButtons();
     syncToJson();
   };
-  
+
   function renderCtaButtons() {
     const container = document.getElementById('cta-list');
     container.innerHTML = footerData.cta_buttons.map((btn, idx) => {
@@ -186,43 +186,43 @@
     footerData.cta_buttons[idx].href = url;
     syncToJson();
   };
-  
+
   // ===== Columns =====
   window.addColumn = function() {
     footerData.columns.push({ title: 'New Column', links: [], body_html: '' });
     renderColumns();
     syncToJson();
   };
-  
+
   window.removeColumn = function(idx) {
     footerData.columns.splice(idx, 1);
     renderColumns();
     syncToJson();
   };
-  
+
   window.addColumnLink = function(colIdx) {
     footerData.columns[colIdx].links = footerData.columns[colIdx].links || [];
     footerData.columns[colIdx].links.push({ label: 'New Link', href: '#', target: '_blank', rel: 'noopener' });
     renderColumns();
     syncToJson();
   };
-  
+
   window.removeColumnLink = function(colIdx, linkIdx) {
     footerData.columns[colIdx].links.splice(linkIdx, 1);
     renderColumns();
     syncToJson();
   };
-  
+
   window.updateColumn = function(idx, field, value) {
     footerData.columns[idx][field] = value;
     syncToJson();
   };
-  
+
   window.updateColumnLink = function(colIdx, linkIdx, field, value) {
     footerData.columns[colIdx].links[linkIdx][field] = value;
     syncToJson();
   };
-  
+
   function renderColumns() {
     const container = document.getElementById('columns-list');
     container.innerHTML = footerData.columns.map((col, idx) => `
@@ -257,7 +257,7 @@
       </div>
     `).join('');
   }
-  
+
   // ===== Social Links =====
   window.addSocialLink = function() {
     footerData.social_links.push({
@@ -270,18 +270,18 @@
     renderSocialLinks();
     syncToJson();
   };
-  
+
   window.removeSocialLink = function(idx) {
     footerData.social_links.splice(idx, 1);
     renderSocialLinks();
     syncToJson();
   };
-  
+
   window.updateSocialLink = function(idx, field, value) {
     footerData.social_links[idx][field] = value;
     syncToJson();
   };
-  
+
   function renderSocialLinks() {
     const container = document.getElementById('social-list');
     const iconOptions = [
@@ -292,7 +292,7 @@
       { value: 'fa fa-youtube', label: 'YouTube' },
       { value: 'fa fa-github', label: 'GitHub' }
     ];
-    
+
     container.innerHTML = footerData.social_links.map((link, idx) => `
       <div class="item-card">
         <div class="item-card-header">
@@ -316,7 +316,7 @@
       </div>
     `).join('');
   }
-  
+
   // ===== Footer Links =====
   window.addFooterLink = function(type) {
     type = type || 'external';
@@ -412,27 +412,27 @@
       `;
     }).join('');
   }
-  
+
   // Toggle JSON view
   window.toggleJsonView = function() {
     document.getElementById('json-raw-view').classList.toggle('show');
   };
-  
+
   // Apply JSON changes from the editor
   window.applyJsonChanges = function() {
     console.log('applyJsonChanges called');
-    
+
     const jsonEditor = document.getElementById('json-editor');
     const jsonErrorBox = document.getElementById('json-error');
-    
+
     if (!jsonEditor) {
       console.error('JSON editor element not found');
       alert('Error: JSON editor element not found');
       return;
     }
-    
+
     console.log('JSON editor value:', jsonEditor.value);
-    
+
     if (!jsonEditor.value || !jsonEditor.value.trim()) {
       if (jsonErrorBox) {
         jsonErrorBox.textContent = 'Please enter JSON content';
@@ -440,10 +440,10 @@
       }
       return;
     }
-    
+
     try {
       let parsed = JSON.parse(jsonEditor.value);
-      
+
       // Handle Django fixture format: [{"model": "...", "fields": {"content": {...}}}]
       if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].fields) {
         console.log('Detected Django fixture format, extracting content');
@@ -453,18 +453,18 @@
           parsed = parsed[0].fields;
         }
       }
-      
+
       // Handle wrapped format: {"content": {...}}
       if (parsed.content && typeof parsed.content === 'object' && !parsed.cta_buttons) {
         console.log('Detected wrapped content format, extracting');
         parsed = parsed.content;
       }
-      
+
       // Validate structure
       if (typeof parsed !== 'object' || parsed === null) {
         throw new Error('JSON must be an object');
       }
-      
+
       // Merge with default structure to ensure all fields exist
       footerData = {
         cta_buttons: parsed.cta_buttons || [],
@@ -474,32 +474,32 @@
         copyright: parsed.copyright || '',
         footer_links: parsed.footer_links || []
       };
-      
+
       // Update the JSON editor to show the cleaned format
       jsonEditor.value = JSON.stringify(footerData, null, 2);
-      
+
       // Re-query jsonInput in case it wasn't found during init
       if (!jsonInput) {
         jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
       }
-      
+
       // Update the hidden form field
       if (jsonInput) {
         jsonInput.value = JSON.stringify(footerData);
       } else {
         console.warn('Hidden JSON input field not found, changes may not be saved');
       }
-      
+
       // Re-render all visual editor sections
       renderAll();
       updatePreview();
-      
+
       // Clear error and show success
       if (jsonErrorBox) {
         jsonErrorBox.textContent = '';
         jsonErrorBox.className = 'json-error';
       }
-      
+
       // Flash success feedback
       jsonEditor.style.borderColor = '#28a745';
       if (jsonErrorBox) {
@@ -519,9 +519,9 @@
           jsonErrorBox.style.color = '';
         }
       }, 2000);
-      
+
       console.log('JSON applied successfully, footerData:', footerData);
-      
+
     } catch (e) {
       console.error('JSON parse error:', e);
       if (jsonErrorBox) {
@@ -531,13 +531,13 @@
       jsonEditor.style.borderColor = '#dc3545';
     }
   };
-  
+
   // Real-time JSON validation as user types
   function setupJsonEditorEvents() {
     const jsonEditor = document.getElementById('json-editor');
     const jsonErrorBox = document.getElementById('json-error');
     const applyBtn = document.querySelector('.btn-apply-json');
-    
+
     if (jsonEditor) {
       jsonEditor.addEventListener('input', function() {
         try {
@@ -552,7 +552,7 @@
           this.style.borderColor = '';
         }
       });
-      
+
       // Allow Ctrl+Enter to apply changes
       jsonEditor.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -561,7 +561,7 @@
         }
       });
     }
-    
+
     // Also add click event listener as backup for the Apply button
     if (applyBtn) {
       applyBtn.addEventListener('click', function(e) {
@@ -570,18 +570,18 @@
       });
     }
   }
-  
+
   // Helper functions
   function escapeHtml(val) {
     const div = document.createElement('div');
     div.textContent = val || '';
     return div.innerHTML;
   }
-  
+
   function escapeAttr(val) {
     return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
-  
+
   // ===== Preview =====
   function renderFooterHtml(content) {
     // Check if content is effectively empty
@@ -593,7 +593,7 @@
       (content.copyright && content.copyright.trim()) ||
       (content.footer_links && content.footer_links.length > 0)
     );
-    
+
     if (!hasContent) {
       return '<div style="color:#666;font-style:italic;padding:40px;text-align:center;background:#f5f5f5;border-radius:4px;">No footer content yet. Add some content using the editor above.</div>';
     }
@@ -610,30 +610,30 @@
     // Footer columns - using new structure matching Footer.tsx
     const columns = (content.columns || []).map((col, idx, arr) => {
       const isAddressColumn = idx === arr.length - 1;
-      
+
       // Links
-      const links = (col.links || []).map(link => 
+      const links = (col.links || []).map(link =>
         `<li><a href="${escapeAttr(link.href)}" target="${escapeAttr(link.target || '_blank')}" rel="${escapeAttr(link.rel || 'noopener')}" onclick="return false;">${escapeHtml(link.label)}</a></li>`
       ).join('');
       const linkList = links ? `<ul>${links}</ul>` : '';
-      
+
       // Body HTML
       const body = col.body_html ? `<div class="footer-column__body">${col.body_html}</div>` : '';
-      
+
       // Social icons (only in last column)
       const social = (isAddressColumn && (content.social_links || []).length) ? `
         <div class="socialIcons">
           <ul class="fa-ul inline">
-            ${(content.social_links || []).map(s => 
+            ${(content.social_links || []).map(s =>
               `<li class="fa-li"><a href="${escapeAttr(s.href)}" target="${escapeAttr(s.target || '_blank')}" rel="${escapeAttr(s.rel || 'noopener')}" aria-label="${escapeAttr(s.aria_label)}" onclick="return false;"><i class="${escapeAttr(s.icon_class)}"></i></a></li>`
             ).join('')}
           </ul>
         </div>
       ` : '';
-      
+
       const title = col.title ? `<h2>${escapeHtml(col.title)}</h2>` : '';
       const columnClass = `footer-column${isAddressColumn ? ' footer-column--address' : ''}`;
-      
+
       return `<div class="${columnClass}">${title}${linkList}${body}${social}</div>`;
     }).join('');
 
@@ -649,15 +649,15 @@
     ` : '';
 
     // Footer bottom bar
-    const footerLinks = (content.footer_links || []).map(l => 
+    const footerLinks = (content.footer_links || []).map(l =>
       `<li><a href="${escapeAttr(l.href)}" target="${escapeAttr(l.target || '_blank')}" rel="${escapeAttr(l.rel || 'noopener')}" onclick="return false;">${escapeHtml(l.label)}</a></li>`
     ).join('');
     const copyright = content.copyright ? `<li>${escapeHtml(content.copyright)}</li>` : '';
-    
+
     const hasFooterLinks = (content.footer_links || []).length > 0;
     const hasCopyright = Boolean(content.copyright);
     const shouldShowFooterBottom = hasFooterLinks || hasCopyright;
-    
+
     const footerBottomBlock = shouldShowFooterBottom ? `
       <div class="footer-bottom">
         <div class="footer-container">
@@ -676,18 +676,18 @@
       </footer>
     `;
   }
-  
+
   function updatePreview() {
     if (!iframe) return;
-    
+
     try {
       const footerHtml = renderFooterHtml(footerData);
-      
+
       // Inline CSS to ensure it works in the iframe
       const inlineCSS = `
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #fff; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
-        
+
         .site-footer { background: #e5e6ea; color: #0b2653; width: 100%; margin-top: auto; }
         .footer-main { padding: 48px 0 60px; }
         .footer-container { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
@@ -699,19 +699,19 @@
         .footer-column a:hover { color: #04122d; text-decoration: underline; }
         .footer-column__body { color: #0b2653; font-size: 14px; line-height: 1.6; }
         .footer-column--address p { margin: 4px 0; color: #0b2653; }
-        
+
         .socialIcons { margin-top: 20px; }
         .socialIcons .fa-ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
         .socialIcons .fa-li { position: static; margin: 0; padding: 0; }
         .socialIcons a { width: 40px; height: 40px; border-radius: 50%; background: #0b2653; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; text-decoration: none; transition: transform 0.2s ease, background 0.2s ease; }
         .socialIcons a:hover { background: #061432; transform: translateY(-2px); }
-        
+
         .footer-bottom { background: #0b1f3f; border-top: 6px solid #d3a437; padding: 18px 0; }
         .footer-meta { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 28px; color: #fff; }
         .footer-meta li { font-size: 13px; color: #fff; }
         .footer-meta a { color: inherit; text-decoration: none; font-weight: 500; }
         .footer-meta a:hover { opacity: 0.75; }
-        
+
         .home-cta-row { background: transparent; padding: 24px 0; }
         .sb-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; width: 100%; max-width: 960px; margin: 0 auto; padding: 0 20px; }
         .sb-col { display: flex; justify-content: center; }
@@ -722,7 +722,7 @@
         .btn--invert-blue:hover { background: #0b2653; color: #fff; }
         .i2gHome { font-size: 14px; line-height: 1.6; color: #0b2653; }
       `;
-      
+
       const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -735,25 +735,25 @@
   ${footerHtml}
 </body>
 </html>`;
-      
+
       const doc = iframe.contentDocument || iframe.contentWindow.document;
       doc.open();
       doc.write(fullHtml);
       doc.close();
-      
+
       setTimeout(() => {
         try {
           const height = Math.max(doc.body.scrollHeight, doc.body.offsetHeight, doc.documentElement.scrollHeight);
           iframe.style.height = Math.max(height + 20, 300) + 'px';
         } catch (e) {}
       }, 150);
-      
+
       if (errorBox) errorBox.textContent = '';
     } catch (err) {
       if (errorBox) errorBox.textContent = 'Preview error: ' + err.message;
     }
   }
-  
+
   // Run on load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

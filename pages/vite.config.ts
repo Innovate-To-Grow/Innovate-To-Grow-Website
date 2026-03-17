@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
-  
+
   // Backend API URL - defaults to localhost:8000 for development
   const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:8000'
 

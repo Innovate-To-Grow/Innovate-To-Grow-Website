@@ -1,34 +1,62 @@
-# Pre-commit hooks for code style checking
+# Pre-commit hooks for all code style checks
 # Install: pip install pre-commit && pre-commit install
+# Manual run: pre-commit run --all-files
 
 repos:
-  # Python linting with Ruff
+  # ── Python: Ruff linter + formatter ──
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+    rev: v0.11.13
     hooks:
       - id: ruff
-        args: [--fix]
+        name: ruff lint (Python)
+        args: [--fix, --exit-non-zero-on-fix]
         files: ^src/
       - id: ruff-format
+        name: ruff format (Python)
         files: ^src/
 
-  # General file checks
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+  # ── Django: check for missing migrations ──
+  - repo: local
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-json
-      - id: check-added-large-files
+      - id: django-migrations-check
+        name: django migrations check
+        entry: bash -c 'cd src && python manage.py makemigrations --check --dry-run --settings=core.settings.dev'
+        language: system
+        pass_filenames: false
+        files: ^src/.*models.*\.py$
 
-  # Frontend linting (ESLint)
+  # ── Frontend: ESLint ──
   - repo: local
     hooks:
       - id: eslint
-        name: ESLint
-        entry: bash -c 'cd pages && npm run lint'
+        name: eslint (TypeScript/React)
+        entry: bash -c 'args=(); for f in "$@"; do args+=("${f#pages/}"); done; cd pages && npx eslint "${args[@]}"' --
         language: system
-        files: ^pages/.*\.(ts|tsx|js|jsx)$
-        pass_filenames: false
+        files: ^pages/src/.*\.(ts|tsx)$
+        types: [file]
 
+  # ── Frontend: TypeScript type check ──
+  - repo: local
+    hooks:
+      - id: tsc-check
+        name: tsc type check
+        entry: bash -c 'cd pages && npx tsc --noEmit'
+        language: system
+        pass_filenames: false
+        files: ^pages/src/.*\.(ts|tsx)$
+        types: [file]
+
+  # ── General file checks ──
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: (^pages/node_modules/|tsconfig.*\.json$)
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: detect-private-key

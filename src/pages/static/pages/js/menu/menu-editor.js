@@ -5,11 +5,11 @@
 (function() {
   // CSS paths - use the same CSS as frontend
   const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
-  
+
   // Get the hidden JSON input
   let jsonInput = document.getElementById('id_items') || document.querySelector('textarea[name="items"]');
   const iframe = document.getElementById('menu-preview-iframe');
-  
+
   // Current data state
   let menuItems = [];
 
@@ -17,7 +17,7 @@
   const APP_ROUTES = window.APP_ROUTES || [];
   const CMS_ROUTES = window.CMS_ROUTES || [];
   const ALL_ROUTES = [...APP_ROUTES, ...CMS_ROUTES];
-  
+
   // Initialize
   function init() {
     // Parse initial data
@@ -34,20 +34,20 @@
     renderAll();
     updatePreview();
   }
-  
+
   // Render all items
   function renderAll() {
     const container = document.getElementById('menu-items-container');
     container.innerHTML = renderItems(menuItems, 'menuItems', true);
     document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2);
   }
-  
+
   // Render items recursively
   function renderItems(items, path, isTopLevel = true) {
     if (!items || items.length === 0) {
       return '<p style="color: #999; font-style: italic;">No menu items yet. Add items using the buttons below.</p>';
     }
-    
+
     return items.map((item, idx) => {
       const itemPath = `${path}[${idx}]`;
       const hasChildren = item.children && item.children.length > 0;
@@ -147,7 +147,7 @@
           </div>
         `;
       }
-      
+
       const childrenHtml = hasChildren ? `
         <div class="menu-children-container">
           ${renderItems(item.children, `${itemPath}.children`, false)}
@@ -182,7 +182,7 @@
       `;
     }).join('');
   }
-  
+
   // Sync to hidden JSON field
   function syncToJson() {
     if (jsonInput) {
@@ -191,17 +191,17 @@
     document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2);
     updatePreview();
   }
-  
+
   // Get item by path
   function getItemByPath(path) {
     return eval(path);
   }
-  
+
   // Set item property by path
   function setItemProperty(path, property, value) {
     eval(`${path}.${property} = ${JSON.stringify(value)}`);
   }
-  
+
   // Add menu item
   window.addMenuItem = function(type) {
     const newItem = {
@@ -235,7 +235,7 @@
     renderAll();
     syncToJson();
   };
-  
+
   // Select app route (auto-fills title and icon)
   window.selectAppRoute = function(path, url) {
     const item = getItemByPath(path);
@@ -259,7 +259,7 @@
     renderAll();
     syncToJson();
   };
-  
+
   // Change item type
   window.changeItemType = function(path, newType) {
     const item = getItemByPath(path);
@@ -290,7 +290,7 @@
     renderAll();
     syncToJson();
   };
-  
+
   // Remove item
   window.removeItem = function(path) {
     const match = path.match(/(.+)\[(\d+)\]$/);
@@ -303,7 +303,7 @@
       syncToJson();
     }
   };
-  
+
   // Move item up or down
   window.moveItem = function(path, direction) {
     const match = path.match(/(.+)\[(\d+)\]$/);
@@ -312,7 +312,7 @@
       const index = parseInt(match[2]);
       const parent = eval(parentPath);
       const newIndex = index + direction;
-      
+
       if (newIndex >= 0 && newIndex < parent.length) {
         const item = parent.splice(index, 1)[0];
         parent.splice(newIndex, 0, item);
@@ -321,7 +321,7 @@
       }
     }
   };
-  
+
   // Toggle JSON view
   window.toggleJsonView = function() {
     document.getElementById('json-raw-view').classList.toggle('show');
@@ -367,25 +367,25 @@
       setTimeout(() => { if (btn) { btn.textContent = 'Apply JSON'; btn.style.color = ''; } }, 2000);
     }
   };
-  
+
   // Helper functions
   function escapeHtml(val) {
     const div = document.createElement('div');
     div.textContent = val || '';
     return div.innerHTML;
   }
-  
+
   function escapeAttr(val) {
     return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
-  
+
   // ===== Preview =====
   // Render menu items recursively with proper structure matching frontend
   function renderMenuItemsHtml(items, level) {
     if (!items || items.length === 0) {
       return '';
     }
-    
+
     return items.map(item => {
       let href = item.url || '#';
       let targetAttr = '';
@@ -393,10 +393,10 @@
       if (item.type === 'external' && item.open_in_new_tab) {
         targetAttr = ' target="_blank" rel="noopener noreferrer"';
       }
-      
+
       const icon = item.icon ? `<i class="fa ${item.icon}"></i> ` : '';
       const hasChildren = item.children && item.children.length > 0;
-      
+
       if (level === 0) {
         // Top-level items - use new menu-bar classes
         let childrenHtml = '';
@@ -407,7 +407,7 @@
             </div>
           `;
         }
-        
+
         return `
           <li class="menu-bar-item${hasChildren ? ' has-children is-open' : ''}">
             <a href="${escapeAttr(href)}" class="menu-bar-link"${targetAttr} onclick="return false;">
@@ -427,7 +427,7 @@
             </div>
           `;
         }
-        
+
         return `
           <li class="menu-dropdown-item${hasChildren ? ' has-children' : ''}">
             <a href="${escapeAttr(href)}" class="menu-dropdown-link"${targetAttr} onclick="return false;">
@@ -440,18 +440,18 @@
       }
     }).join('');
   }
-  
+
   function renderMenuHtml(items) {
     if (!items || items.length === 0) {
       return '<div style="color:#666;font-style:italic;padding:20px;text-align:center;">No menu items</div>';
     }
-    
+
     // Get current date for display
     const date = new Date();
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
     const currentDate = `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-    
+
     return `
       <header class="site-header" role="banner">
         <!-- Top blue bar -->
@@ -460,11 +460,11 @@
             <a class="ucm-wordmark" href="#" onclick="return false;" aria-label="UC Merced">
               <img src="/assets/images/ucmlogo.png" alt="UC Merced" onerror="this.parentElement.style.display='none'">
             </a>
-            
+
             <a class="site-header-top-logo" href="#" onclick="return false;" aria-label="Innovate To Grow">
               <img class="site-header-top-logo-full" src="/assets/images/I2G-fullname-low.png" alt="Innovate To Grow" onerror="this.style.display='none'">
             </a>
-            
+
             <div class="site-header-top-links" aria-label="Quick links">
               <a href="#" onclick="return false;">Directory</a>
               <a href="#" onclick="return false;">Apply</a>
@@ -472,7 +472,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- White menu bar -->
         <div class="site-header-bottom">
           <div class="site-header-container site-header-bottom-inner">
@@ -480,14 +480,14 @@
               <a class="site-header-badge" href="#" onclick="return false;" aria-label="Home">
                 <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" onerror="this.style.display='none'">
               </a>
-              
+
               <nav class="site-header-nav" aria-label="Main menu">
                 <ul class="menu-bar-list">
                   ${renderMenuItemsHtml(items, 0)}
                 </ul>
               </nav>
             </div>
-            
+
             <div class="site-header-date" aria-label="Current date">
               ${currentDate}
             </div>
@@ -496,13 +496,13 @@
       </header>
     `;
   }
-  
+
   function updatePreview() {
     if (!iframe) return;
-    
+
     try {
       const menuHtml = renderMenuHtml(menuItems);
-      
+
       // Inline CSS to ensure it works in the iframe
       const inlineCSS = `
         :root {
@@ -514,13 +514,13 @@
           --dropdown-bg: #f5f5f5;
           --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
-        
+
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; }
-        
+
         .site-header { position: relative; z-index: 1000; }
         .site-header-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-        
+
         /* Top bar */
         .site-header-top { background: var(--header-navy-dark); border-bottom: 4px solid var(--header-gold); }
         .site-header-top-inner { height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
@@ -531,7 +531,7 @@
         .site-header-top-links { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
         .site-header-top-links a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; }
         .site-header-top-links a:hover { text-decoration: underline; }
-        
+
         /* Bottom menu bar */
         .site-header-bottom { background: var(--header-bg); border-bottom: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
         .site-header-bottom-inner { height: 47px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
@@ -540,7 +540,7 @@
         .site-header-badge img { width: 38px; height: 38px; border-radius: 50%; display: block; object-fit: cover; border: 2px solid var(--header-gold); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
         .site-header-nav { flex: 1; display: flex; justify-content: flex-start; min-width: 0; }
         .site-header-date { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: var(--header-text); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; opacity: 0.7; }
-        
+
         /* Menu items */
         .menu-bar-list { display: flex; align-items: center; list-style: none; margin: 0; padding: 0; gap: 28px; }
         .menu-bar-item { position: relative; }
@@ -548,7 +548,7 @@
         .menu-bar-link::after { content: ''; position: absolute; bottom: 4px; left: 0; right: 0; height: 2px; background: var(--header-gold); transform: scaleX(0); transition: transform 0.25s ease; }
         .menu-bar-link:hover::after, .menu-bar-item.is-open > .menu-bar-link::after { transform: scaleX(1); }
         .menu-bar-arrow { font-size: 11px; opacity: 0.6; margin-left: 2px; }
-        
+
         /* Dropdowns */
         .menu-dropdown { position: absolute; top: 100%; left: 0; min-width: 220px; background: var(--dropdown-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 12px 0; margin-top: 8px; z-index: 1100; }
         .menu-dropdown.is-open { display: block; }
@@ -560,7 +560,7 @@
         .menu-dropdown-nested { position: absolute; top: 0; left: 100%; min-width: 200px; background: var(--header-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 8px 0; z-index: 1101; display: none; }
         .menu-dropdown-item.has-children:hover > .menu-dropdown-nested { display: block; }
       `;
-      
+
       const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -573,12 +573,12 @@
   ${menuHtml}
 </body>
 </html>`;
-      
+
       const doc = iframe.contentDocument || iframe.contentWindow.document;
       doc.open();
       doc.write(fullHtml);
       doc.close();
-      
+
       // Adjust iframe height
       setTimeout(() => {
         try {
@@ -586,12 +586,12 @@
           iframe.style.height = Math.max(height + 20, 200) + 'px';
         } catch (e) {}
       }, 150);
-      
+
     } catch (err) {
       console.error('Preview error:', err);
     }
   }
-  
+
   // Run on load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

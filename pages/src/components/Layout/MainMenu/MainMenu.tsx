@@ -259,7 +259,7 @@ export const MainMenu = () => {
           </div>
 
           {/* Member Section */}
-          <div 
+          <div
             className={`site-header-member${isAuthenticated ? ' is-authenticated' : ''}${isMemberDropdownOpen ? ' is-open' : ''}`}
             onMouseEnter={() => isAuthenticated && setIsMemberDropdownOpen(true)}
             onMouseLeave={() => setIsMemberDropdownOpen(false)}
@@ -326,14 +326,14 @@ export const MainMenu = () => {
       </div>
 
       {/* Mobile Menu Overlay */}
-      <div 
+      <div
         className={`header-mobile-overlay ${isMobileOpen ? 'is-open' : ''}`}
         onClick={toggleMobileMenu}
         aria-hidden="true"
       />
 
       {/* Mobile Menu Panel */}
-      <div 
+      <div
         id="mobile-menu"
         className={`header-mobile-menu ${isMobileOpen ? 'is-open' : ''}`}
         aria-label="Mobile menu"
@@ -412,25 +412,25 @@ export const MainMenu = () => {
         </div>
 
         <div className="header-mobile-actions">
-          <a 
-            href="https://directory.ucmerced.edu/" 
-            target="_blank" 
+          <a
+            href="https://directory.ucmerced.edu/"
+            target="_blank"
             rel="noopener noreferrer"
             className="header-mobile-action"
           >
             Directory
           </a>
-          <a 
-            href="https://admissions.ucmerced.edu/first-year/apply?button" 
-            target="_blank" 
+          <a
+            href="https://admissions.ucmerced.edu/first-year/apply?button"
+            target="_blank"
             rel="noopener noreferrer"
             className="header-mobile-action primary"
           >
             Apply Now
           </a>
-          <a 
-            href="http://giving.ucmerced.edu/" 
-            target="_blank" 
+          <a
+            href="http://giving.ucmerced.edu/"
+            target="_blank"
             rel="noopener noreferrer"
             className="header-mobile-action"
           >
