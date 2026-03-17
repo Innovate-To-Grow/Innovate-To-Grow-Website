@@ -41,19 +41,17 @@ class LayoutAPIView(APIView):
         data = {
             "menus": menu_serializer.data,
             "footer": footer_data,
-            "homepage_mode": settings.homepage_mode,
-            "homepage_route": settings.homepage_route,
+            "homepage_route": settings.get_homepage_route(),
         }
 
-        # Inline current-event sheets data to eliminate a sequential API call
-        if settings.homepage_mode in ("during-event", "post-event"):
-            try:
-                source = GoogleSheetSource.objects.get(slug="current-event", is_active=True)
-                data["sheets_data"] = {"current-event": fetch_source_data(source)}
-            except GoogleSheetSource.DoesNotExist:
-                pass
-            except Exception:  # noqa: BLE001
-                logger.warning("Failed to prefetch current-event sheets data for layout")
+        # Prefetch commonly used event sheet data for CMS-driven homepages.
+        try:
+            source = GoogleSheetSource.objects.get(slug="current-event", is_active=True)
+            data["sheets_data"] = {"current-event": fetch_source_data(source)}
+        except GoogleSheetSource.DoesNotExist:
+            pass
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to prefetch current-event sheets data for layout")
 
         cache.set(cache_key, data, timeout=600)
 

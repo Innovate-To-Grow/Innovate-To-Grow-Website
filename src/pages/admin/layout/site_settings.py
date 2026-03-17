@@ -2,29 +2,15 @@ from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from ...app_routes import APP_ROUTES
 from ...models import CMSPage, SiteSettings
 
 
-def _build_homepage_choices():
-    """Build grouped choices: App Routes + published CMS pages."""
-    app_choices = [(r["url"], f"{r['title']} ({r['url']})") for r in APP_ROUTES]
-    cms_choices = [
-        (p["route"], f"{p['title']} ({p['route']})")
-        for p in CMSPage.objects.filter(status="published").order_by("title").values("route", "title")
-    ]
-    choices = [("", "-- Select Homepage --")]
-    if app_choices:
-        choices.append(("App Routes", app_choices))
-    if cms_choices:
-        choices.append(("CMS Pages", cms_choices))
-    return choices
-
-
 class SiteSettingsForm(forms.ModelForm):
-    homepage_route = forms.ChoiceField(
+    homepage_page = forms.ModelChoiceField(
+        queryset=CMSPage.objects.none(),
         required=False,
-        help_text='Which page to render at "/". Select "/" (Home) for the default homepage.',
+        empty_label="Use the published / page",
+        help_text='Select the published CMS page to render at "/".',
     )
 
     class Meta:
@@ -33,41 +19,53 @@ class SiteSettingsForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["homepage_route"].choices = _build_homepage_choices()
+        queryset = CMSPage.objects.filter(status="published").order_by("title")
 
-    def clean_homepage_route(self):
-        return (self.cleaned_data.get("homepage_route") or "/").strip()
+        current_page_id = getattr(self.instance, "homepage_page_id", None)
+        if current_page_id:
+            queryset = queryset | CMSPage.all_objects.filter(pk=current_page_id)
+
+        self.fields["homepage_page"].queryset = queryset.distinct()
+
+    def clean_homepage_page(self):
+        page = self.cleaned_data.get("homepage_page")
+        if page and (page.status != "published" or page.is_deleted):
+            raise forms.ValidationError("Homepage must be a published CMS page.")
+        return page
 
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(ModelAdmin):
     form = SiteSettingsForm
-    list_display = ("__str__", "homepage_mode", "homepage_route_display")
+    list_display = ("__str__", "homepage_page_display", "homepage_route_display")
+    readonly_fields = ("homepage_route_display",)
 
     fieldsets = (
         (
             "Homepage",
             {
-                "fields": ("homepage_route", "homepage_mode"),
+                "fields": ("homepage_page", "homepage_route_display"),
                 "description": (
-                    "Choose which CMS page or app route visitors see at the root URL (/). "
-                    "The homepage_mode controls event-related data prefetching (schedule, projects)."
+                    "Choose which published CMS page visitors see at the root URL (/). "
+                    'If nothing is selected, the published "/" page is used as the fallback homepage.'
                 ),
             },
         ),
     )
 
-    def homepage_route_display(self, obj):
-        """Show the page title for the selected route."""
-        route_map = {r["url"]: r["title"] for r in APP_ROUTES}
-        # Also check CMS pages
-        cms_page = CMSPage.objects.filter(route=obj.homepage_route, status="published").values("title").first()
-        if cms_page:
-            route_map[obj.homepage_route] = cms_page["title"]
-        title = route_map.get(obj.homepage_route, obj.homepage_route)
-        return f"{title} ({obj.homepage_route})"
+    def homepage_page_display(self, obj):
+        page = CMSPage.all_objects.filter(pk=obj.homepage_page_id).first() if obj.homepage_page_id else None
+        if not page:
+            return "Fallback to /"
+        return f"{page.title} ({page.route})"
 
-    homepage_route_display.short_description = "Homepage"
+    homepage_page_display.short_description = "Homepage Page"
+
+    def homepage_route_display(self, obj):
+        """Show the effective route visitors will see at /."""
+        return obj.get_homepage_route()
+
+    homepage_route_display.short_description = "Effective Homepage Route"
 
     def has_add_permission(self, request):
         return not SiteSettings.objects.exists()

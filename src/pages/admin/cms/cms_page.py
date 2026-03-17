@@ -1,12 +1,14 @@
 import json
 import logging
 
+from django import forms
 from django.contrib import admin, messages
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
-from django.urls import path
+from django.urls import path, reverse
 from django.utils import timezone
 from unfold.admin import ModelAdmin
 
@@ -14,12 +16,38 @@ from pages.management.commands.cms_seed import SEED_PAGES as SEED_PAGES_PHASE1
 from pages.management.commands.cms_seed_batch_ab import SEED_PAGES as SEED_PAGES_AB
 from pages.management.commands.cms_seed_batch_cd import SEED_PAGES as SEED_PAGES_CD
 from pages.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
+from pages.models.pages.cms.cms_page import normalize_cms_route, validate_cms_route
 
 logger = logging.getLogger(__name__)
 
 
+class CMSPageAdminForm(forms.ModelForm):
+    def clean_route(self):
+        route = validate_cms_route(self.cleaned_data.get("route"))
+        conflict = CMSPage.all_objects.filter(route=route).exclude(pk=self.instance.pk).first()
+        if conflict:
+            raise forms.ValidationError(f'Route "{route}" is already used by "{conflict.title}".')
+        return route
+
+    class Meta:
+        model = CMSPage
+        fields = "__all__"
+        widgets = {
+            # Use a single-line input so styling matches the title field
+            "meta_description": forms.TextInput(),
+            "route": forms.TextInput(
+                attrs={
+                    "data-role": "cms-route-source",
+                    "autocomplete": "off",
+                    "spellcheck": "false",
+                }
+            ),
+        }
+
+
 @admin.register(CMSPage)
 class CMSPageAdmin(ModelAdmin):
+    form = CMSPageAdminForm
     change_form_template = "admin/pages/cmspage/change_form.html"
     list_display = ("title", "route", "status", "block_count", "updated_at")
     list_filter = ("status",)
@@ -69,6 +97,11 @@ class CMSPageAdmin(ModelAdmin):
     def get_urls(self):
         custom_urls = [
             path("preview/", self.admin_site.admin_view(self.preview_store_view), name="pages_cmspage_preview"),
+            path(
+                "route-conflict/",
+                self.admin_site.admin_view(self.route_conflict_view),
+                name="pages_cmspage_route_conflict",
+            ),
             path("import/", self.admin_site.admin_view(self.import_view), name="pages_cmspage_import"),
             path("import-all/", self.admin_site.admin_view(self.import_all_view), name="pages_cmspage_import_all"),
         ]
@@ -87,6 +120,8 @@ class CMSPageAdmin(ModelAdmin):
         ctx = {
             "block_schemas_json": json.dumps(BLOCK_SCHEMAS),
             "block_type_choices_json": json.dumps(BLOCK_TYPE_CHOICES),
+            "route_check_url": reverse("admin:pages_cmspage_route_conflict"),
+            "current_page_id": str(obj.pk) if obj else "",
         }
         if obj:
             blocks = obj.blocks.filter(is_deleted=False).order_by("sort_order")
@@ -172,6 +207,47 @@ class CMSPageAdmin(ModelAdmin):
         token = uuid.uuid4().hex
         cache.set(f"cms:preview:{token}", data, timeout=600)
         return JsonResponse({"token": token})
+
+    def route_conflict_view(self, request):
+        route = request.GET.get("route", "")
+        page_id = request.GET.get("page_id")
+        normalized_route = normalize_cms_route(route)
+
+        try:
+            normalized_route = validate_cms_route(normalized_route)
+        except ValidationError as exc:
+            return JsonResponse(
+                {
+                    "normalized_route": normalized_route,
+                    "has_conflict": False,
+                    "is_valid": False,
+                    "message": exc.messages[0],
+                }
+            )
+
+        conflict_qs = CMSPage.all_objects.filter(route=normalized_route)
+        if page_id:
+            conflict_qs = conflict_qs.exclude(pk=page_id)
+
+        conflict = conflict_qs.values("title", "status").first()
+        if conflict:
+            return JsonResponse(
+                {
+                    "normalized_route": normalized_route,
+                    "has_conflict": True,
+                    "is_valid": True,
+                    "message": f'Already used by "{conflict["title"]}" ({conflict["status"]}).',
+                }
+            )
+
+        return JsonResponse(
+            {
+                "normalized_route": normalized_route,
+                "has_conflict": False,
+                "is_valid": True,
+                "message": "",
+            }
+        )
 
     # ===== Export =====
 

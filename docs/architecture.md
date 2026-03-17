@@ -100,7 +100,7 @@ The frontend has two rendering paths:
 | `/projects-teams` | ProjectsTeamsPage | Google Sheets |
 | `/acknowledgement` | AcknowledgementPage | Static/CMS |
 
-The homepage route is dynamic — `HomepageResolver` reads `homepage_route` from the layout API and renders the corresponding page component from a `PAGE_REGISTRY`.
+The homepage route is dynamic — `HomepageResolver` reads `homepage_route` from the layout API and renders that CMS page at `/` without redirecting. Unmatched frontend routes fall through to CMS page lookup before showing a 404.
 
 ### API Services Layer
 

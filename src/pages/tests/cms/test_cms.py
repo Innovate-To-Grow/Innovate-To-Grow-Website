@@ -29,8 +29,17 @@ class CMSPageModelTest(TestCase):
         self.assertEqual(page.blocks.count(), 1)
         self.assertEqual(block.block_type, "rich_text")
 
-    def test_route_must_start_with_slash(self):
-        page = CMSPage(slug="bad", route="no-slash", title="Bad")
+    def test_route_is_normalized_on_save(self):
+        page = CMSPage.objects.create(
+            slug="normalized-route",
+            route="//event//live/",
+            title="Normalized Route",
+            status="draft",
+        )
+        self.assertEqual(page.route, "/event/live")
+
+    def test_route_rejects_invalid_segments(self):
+        page = CMSPage(slug="bad-route", route="/bad route", title="Bad Route")
         with self.assertRaises(ValidationError):
             page.full_clean()
 

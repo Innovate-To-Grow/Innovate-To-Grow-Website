@@ -28,9 +28,13 @@ import './page-styles/ProjectSubmissionPage.css';
 import './page-styles/SponsorAcknowledgementPage.css';
 import './page-styles/HomePage.css';
 
-export const CMSPageComponent: React.FC = () => {
+interface CMSPageComponentProps {
+  routeOverride?: string;
+}
+
+export const CMSPageComponent: React.FC<CMSPageComponentProps> = ({routeOverride}) => {
   const location = useLocation();
-  const route = location.pathname;
+  const route = routeOverride || location.pathname;
   const preview = new URLSearchParams(location.search).has('cms_preview');
 
   const { page, loading, error } = useCMSPage(route, preview);

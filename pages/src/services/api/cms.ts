@@ -15,12 +15,18 @@ export interface CMSPageResponse {
   blocks: CMSBlock[];
 }
 
+export function normalizeCMSRoute(route: string): string {
+  const segments = route.split('/').filter(Boolean);
+  return segments.length > 0 ? `/${segments.join('/')}` : '/';
+}
+
 export async function fetchCMSPage(
   route: string,
   preview = false,
 ): Promise<CMSPageResponse> {
+  const normalizedRoute = normalizeCMSRoute(route);
   // Strip leading slash for the URL path; root "/" becomes empty string
-  const path = route.replace(/^\//, '');
+  const path = normalizedRoute.replace(/^\//, '');
   const params = new URLSearchParams();
   if (preview) params.set('preview', 'true');
   const qs = params.toString();

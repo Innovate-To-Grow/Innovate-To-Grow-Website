@@ -3,7 +3,7 @@
 from django.core.cache import cache
 from django.test import TestCase
 
-from pages.models import FooterContent, GoogleSheetSource, Menu, SiteSettings
+from pages.models import CMSPage, FooterContent, GoogleSheetSource, Menu, SiteSettings
 
 
 class CacheInvalidationSignalTests(TestCase):
@@ -31,8 +31,20 @@ class CacheInvalidationSignalTests(TestCase):
     def test_site_settings_save_clears_layout_cache(self):
         cache.set("layout:data", {"cached": True})
         settings = SiteSettings.load()
-        settings.homepage_mode = "during-event"
+        settings.homepage_page = None
         settings.save()
+        self.assertIsNone(cache.get("layout:data"))
+
+    def test_cms_page_save_clears_layout_cache(self):
+        cache.set("layout:data", {"cached": True})
+        page = CMSPage.objects.create(
+            slug="layout-home",
+            route="/layout-home",
+            title="Layout Home",
+            status="published",
+        )
+        page.title = "Updated Layout Home"
+        page.save()
         self.assertIsNone(cache.get("layout:data"))
 
     def test_sheet_source_save_clears_sheet_cache(self):

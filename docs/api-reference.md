@@ -100,14 +100,18 @@ In development (`REQUIRE_ENCRYPTED_PASSWORDS = False`), plaintext passwords are 
 {
   "menus": [{"name", "display_name", "items": [...]}],
   "footer": {"name", "content": {...}},
-  "site_settings": {"homepage_mode", "homepage_route"},
-  "prefetched_sheets": {...}   // only during event modes
+  "homepage_route": "/home-during-event",
+  "sheets_data": {
+    "current-event": {...}
+  }
 }
 ```
 
-The response is cached for 600 seconds. Cache is invalidated when Menu, FooterContent, or SiteSettings are saved in the admin.
+The response is cached for 600 seconds. Cache is invalidated when Menu, FooterContent, SiteSettings, or CMSPage records that affect the selected homepage are updated.
 
-When `homepage_mode` is `"during-event"` or `"during-semester"`, the response includes `prefetched_sheets` with data from active Google Sheet sources, so the frontend can display event/project data without additional API calls.
+`homepage_route` is derived from the selected homepage CMS page in Site Settings. If no page is selected or the selected page is unavailable, the published `/` page is used as the fallback homepage.
+
+When an active `current-event` sheet source exists, the response includes `sheets_data.current-event` so CMS-driven homepages can render schedule and project blocks without an extra sequential fetch.
 
 ---
 

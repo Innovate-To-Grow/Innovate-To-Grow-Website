@@ -34,7 +34,6 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
     state,
     menus: layoutData?.menus ?? [],
     footer: layoutData?.footer ?? null,
-    homepage_mode: layoutData?.homepage_mode,
     homepage_route: layoutData?.homepage_route,
     sheets_data: layoutData?.sheets_data,
     error,

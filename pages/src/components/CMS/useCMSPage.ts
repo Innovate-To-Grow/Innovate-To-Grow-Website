@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   type CMSPageResponse,
   fetchCMSPage,
@@ -11,11 +11,18 @@ interface UseCMSPageResult {
   error: string | null;
 }
 
+interface CMSPageState {
+  route: string;
+  page: CMSPageResponse | null;
+  error: string | null;
+}
+
 export function useCMSPage(route: string, preview = false): UseCMSPageResult {
-  const [page, setPage] = useState<CMSPageResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const currentRoute = useRef(route);
+  const [state, setState] = useState<CMSPageState>({
+    route: '',
+    page: null,
+    error: null,
+  });
 
   // Check for preview token in URL
   const previewToken = new URLSearchParams(window.location.search).get(
@@ -24,7 +31,6 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
 
   useEffect(() => {
     let cancelled = false;
-    currentRoute.current = route;
 
     const fetcher = previewToken
       ? fetchCMSPreview(previewToken)
@@ -33,17 +39,21 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
     fetcher
       .then((data) => {
         if (!cancelled) {
-          setPage(data);
-          setLoading(false);
-          setError(null);
+          setState({
+            route,
+            page: data,
+            error: null,
+          });
         }
       })
       .catch((err) => {
         if (!cancelled) {
           const status = err?.response?.status;
-          setError(status === 404 ? 'not_found' : 'error');
-          setPage(null);
-          setLoading(false);
+          setState({
+            route,
+            page: null,
+            error: status === 404 ? 'not_found' : 'error',
+          });
         }
       });
 
@@ -52,5 +62,9 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
     };
   }, [route, preview, previewToken]);
 
-  return { page, loading, error };
+  if (state.route !== route) {
+    return { page: null, loading: true, error: null };
+  }
+
+  return { page: state.page, loading: false, error: state.error };
 }
