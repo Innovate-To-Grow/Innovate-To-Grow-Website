@@ -22,6 +22,7 @@ load_dotenv(BASE_DIR / ".env")
 # If set, the "Open Live Preview" button in admin will link to this URL + /preview
 # Example: "https://www.innovatetogrow.com" or "http://localhost:5173"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
+BACKEND_URL = os.environ.get("BACKEND_URL", "")
 
 # SES admin sender configuration
 SES_AWS_ACCESS_KEY_ID = os.environ.get("SES_AWS_ACCESS_KEY_ID", "")
@@ -295,6 +296,7 @@ UNFOLD = {
                 "title": "Events",
                 "items": [
                     {"title": "Events", "link": "/admin/event/event/"},
+                    {"title": "Registrations", "link": "/admin/event/eventregistration/"},
                 ],
             },
             {

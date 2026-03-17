@@ -23,6 +23,7 @@ const SchedulePage = React.lazy(() => import('../pages/SchedulePage').then(m => 
 const ProjectsTeamsPage = React.lazy(() => import('../pages/ProjectsTeamsPage').then(m => ({default: m.ProjectsTeamsPage})));
 const AcknowledgementPage = React.lazy(() => import('../pages/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
 const EventArchivePage = React.lazy(() => import('../pages/EventArchivePage').then(m => ({default: m.EventArchivePage})));
+const EventRegistrationPage = React.lazy(() => import('../pages/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
 
 export const router = createBrowserRouter([
     {
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
 
             // event pages
             {path: 'event', element: <EventPage/>},
+            {path: 'event-registration', element: <EventRegistrationPage/>},
             {path: 'events/:eventSlug', element: <EventArchivePage/>},
             {path: 'schedule', element: <SchedulePage/>},
             {path: 'projects-teams', element: <ProjectsTeamsPage/>},
