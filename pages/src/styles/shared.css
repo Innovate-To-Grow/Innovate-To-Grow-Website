@@ -1,0 +1,572 @@
+/* ==========================================================================
+   ITG Shared Design Tokens & Utility Classes
+   Single source of truth for colors, typography, spacing, and common patterns
+   used by both dedicated pages (src/pages/) and CMS pages (components/CMS/).
+   ========================================================================== */
+
+:root {
+  /* --- Colors --- */
+  --itg-color-primary: #0f2d52;
+  --itg-color-primary-hover: #1a4a7a;
+  --itg-color-text: #444;
+  --itg-color-text-dark: #333;
+  --itg-color-text-secondary: #666;
+  --itg-color-bg-light: #f8f9fa;
+  --itg-color-bg-page: #f9f9f9;
+  --itg-color-white: #fff;
+  --itg-color-border: #e0e0e0;
+  --itg-color-border-table: #ccc;
+  --itg-color-accent-gold: #daa520;
+  --itg-color-accent-gold-hover: #c4941a;
+  --itg-color-accent-bright: #FFBF3C;
+  --itg-color-error: #c00;
+  --itg-color-error-light: #b30000;
+
+  /* --- Typography --- */
+  --itg-font-size-hero: 2.5rem;
+  --itg-font-size-h1: 2rem;
+  --itg-font-size-h2: 1.5rem;
+  --itg-font-size-h3: 1.25rem;
+  --itg-font-size-h4: 1.1rem;
+  --itg-font-size-lead: 1.1875rem;
+  --itg-font-size-subtitle: 1.125rem;
+  --itg-font-size-body: 1rem;
+  --itg-font-size-meta: 0.9375rem;
+  --itg-font-size-small: 0.875rem;
+  --itg-font-size-label: 0.8125rem;
+  --itg-line-height-body: 1.7;
+  --itg-line-height-meta: 1.6;
+  --itg-line-height-heading: 1.3;
+  --itg-line-height-card: 1.4;
+  --itg-line-height-summary: 1.5;
+
+  /* --- Mobile Typography --- */
+  --itg-font-size-hero-mobile: 1.75rem;
+  --itg-font-size-h1-mobile: 1.5rem;
+  --itg-font-size-h2-mobile: 1.25rem;
+  --itg-font-size-h3-mobile: 1.125rem;
+  --itg-font-size-h4-mobile: 1rem;
+  --itg-font-size-lead-mobile: 1.0625rem;
+  --itg-font-size-table-mobile: 0.875rem;
+
+  /* --- Layout --- */
+  --itg-page-max-width: 1200px;
+  --itg-page-narrow-width: 900px;
+  --itg-page-padding: 2rem 1rem;
+  --itg-page-padding-mobile: 1rem;
+  --itg-section-gap: 2rem;
+  --itg-list-indent: 1.5rem;
+
+  /* --- Border Radius --- */
+  --itg-radius-card: 8px;
+  --itg-radius-button: 4px;
+  --itg-radius-image: 8px;
+
+  /* --- Transitions --- */
+  --itg-transition-fast: 0.2s;
+  --itg-transition-link: 0.15s;
+
+  /* --- Shadows --- */
+  --itg-shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.itg-page {
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+.itg-page-narrow {
+  max-width: var(--itg-page-narrow-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.itg-page-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  margin: 0 0 2rem;
+}
+
+.itg-section-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  margin: 2rem 0 0.75rem;
+}
+
+.itg-subsection-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 1.5rem 0 0.75rem;
+}
+
+.itg-text {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1rem;
+}
+
+.itg-lead {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-lead);
+  font-weight: 600;
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1.5rem;
+}
+
+.itg-subtitle {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-subtitle);
+  margin: 0 0 2rem;
+}
+
+/* ==========================================================================
+   Section Header (boxed style used by event, schedule, acknowledgement, etc.)
+   ========================================================================== */
+
+.itg-section-header {
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--itg-radius-button);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 0 0 1.5rem;
+}
+
+/* ==========================================================================
+   Links
+   ========================================================================== */
+
+.itg-link {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.itg-link:hover {
+  text-decoration: underline;
+}
+
+.itg-back-link {
+  display: inline-block;
+  color: var(--itg-color-primary);
+  text-decoration: none;
+  font-size: var(--itg-font-size-meta);
+  margin-bottom: 1.5rem;
+}
+
+.itg-back-link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.itg-btn {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-meta);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.itg-btn-primary {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-primary:hover {
+  background: var(--itg-color-primary-hover);
+}
+
+.itg-btn-outline {
+  background: var(--itg-color-white);
+  border: 1px solid var(--itg-color-primary);
+  color: var(--itg-color-primary);
+}
+
+.itg-btn-outline:hover:not(:disabled) {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-outline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.itg-btn-accent {
+  background: var(--itg-color-accent-gold);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-accent:hover {
+  background: var(--itg-color-accent-gold-hover);
+}
+
+.itg-btn-bright {
+  background: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+.itg-btn-bright:hover {
+  opacity: 0.85;
+}
+
+.itg-btn-lg {
+  padding: 0.75rem 2rem;
+  font-size: var(--itg-font-size-body);
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.itg-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
+  overflow: hidden;
+  background: var(--itg-color-white);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow var(--itg-transition-fast), transform var(--itg-transition-fast);
+}
+
+.itg-card:hover {
+  box-shadow: var(--itg-shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Meta Box (detail pages)
+   ========================================================================== */
+
+.itg-meta-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--itg-color-bg-light);
+  border-radius: var(--itg-radius-card);
+  margin-bottom: 2rem;
+}
+
+.itg-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.itg-meta-label {
+  font-size: var(--itg-font-size-label);
+  color: var(--itg-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.itg-meta-value {
+  font-size: var(--itg-font-size-body);
+  color: var(--itg-color-primary);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Notice / Info Box
+   ========================================================================== */
+
+.itg-notice {
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
+  padding: 1.5rem;
+  margin: 2rem 0;
+}
+
+/* ==========================================================================
+   Placeholder (empty state)
+   ========================================================================== */
+
+.itg-placeholder {
+  background: var(--itg-color-bg-light);
+  border: 2px dashed #d0d0d0;
+  border-radius: var(--itg-radius-card);
+  padding: 2rem;
+  text-align: center;
+}
+
+.itg-placeholder .itg-text {
+  color: #888;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Pagination
+   ========================================================================== */
+
+.itg-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem 0;
+}
+
+.itg-pagination-info {
+  font-size: var(--itg-font-size-meta);
+  color: var(--itg-color-text);
+}
+
+/* ==========================================================================
+   Loading State
+   ========================================================================== */
+
+.itg-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  gap: 1rem;
+}
+
+.itg-loading::before {
+  content: '';
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--itg-color-border);
+  border-top-color: var(--itg-color-primary);
+  border-radius: 50%;
+  animation: itg-spin 0.8s linear infinite;
+}
+
+@keyframes itg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Error State
+   ========================================================================== */
+
+.itg-error {
+  color: var(--itg-color-error-light);
+}
+
+/* ==========================================================================
+   Rich Content (shared between CMS rich text and dedicated page content)
+   ========================================================================== */
+
+.itg-content p {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 0.75rem;
+}
+
+.itg-content strong {
+  color: var(--itg-color-text-dark);
+}
+
+.itg-content ul,
+.itg-content ol {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0.5rem 0 0.75rem var(--itg-list-indent);
+}
+
+.itg-content li {
+  margin-bottom: 0.5rem;
+}
+
+.itg-content ol li {
+  margin-bottom: 0.75rem;
+}
+
+.itg-content ol ul {
+  margin: 0.5rem 0 0 var(--itg-list-indent);
+  list-style-type: disc;
+}
+
+.itg-content ol ul li {
+  margin-bottom: 0.25rem;
+}
+
+.itg-content a {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.itg-content a:hover {
+  text-decoration: underline;
+}
+
+.itg-content h2 {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  margin: 2rem 0 0.75rem;
+}
+
+.itg-content h3 {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 1.5rem 0 0.75rem;
+}
+
+.itg-content h4 {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* --- Tables --- */
+.itg-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: var(--itg-font-size-meta);
+  line-height: var(--itg-line-height-meta);
+}
+
+.itg-content th,
+.itg-content td {
+  border: 1px solid var(--itg-color-border-table);
+  padding: 0.75rem;
+  vertical-align: top;
+  color: var(--itg-color-text);
+}
+
+.itg-content th {
+  background: var(--itg-color-bg-light);
+  color: var(--itg-color-primary);
+  font-weight: 600;
+  text-align: left;
+}
+
+.itg-content table ul {
+  margin: 0 0 0 1.25rem;
+  padding: 0;
+}
+
+.itg-content table li {
+  margin-bottom: 0.25rem;
+}
+
+/* --- Important text (red emphasis) --- */
+.itg-important {
+  color: var(--itg-color-error);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Navigation Row (flex row of links/buttons)
+   ========================================================================== */
+
+.itg-nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+/* ==========================================================================
+   Grid Layouts
+   ========================================================================== */
+
+.itg-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .itg-page,
+  .itg-page-narrow {
+    padding: var(--itg-page-padding-mobile);
+  }
+
+  .itg-page-title {
+    font-size: var(--itg-font-size-h1-mobile);
+  }
+
+  .itg-section-title {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .itg-subsection-title {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .itg-section-header {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .itg-lead {
+    font-size: var(--itg-font-size-lead-mobile);
+  }
+
+  .itg-btn-lg {
+    padding: 0.5rem 1.25rem;
+    font-size: var(--itg-font-size-small);
+  }
+
+  .itg-grid-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .itg-meta-box {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .itg-content table {
+    font-size: var(--itg-font-size-table-mobile);
+  }
+
+  .itg-content th,
+  .itg-content td {
+    padding: 0.5rem;
+  }
+
+  .itg-content h2 {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .itg-content h3 {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+}
+
+@media (max-width: 480px) {
+  .itg-meta-box {
+    grid-template-columns: 1fr;
+  }
+}

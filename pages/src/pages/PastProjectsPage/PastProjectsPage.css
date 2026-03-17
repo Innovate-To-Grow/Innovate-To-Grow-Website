@@ -1,14 +1,14 @@
 .past-projects-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .past-projects-back {
   display: inline-block;
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
-  font-size: 0.9375rem;
+  font-size: var(--itg-font-size-meta);
   margin-bottom: 1rem;
 }
 
@@ -17,17 +17,17 @@
 }
 
 .past-projects-title {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   margin: 0 0 2rem;
-  font-size: 2rem;
+  font-size: var(--itg-font-size-h1);
 }
 
 @media (max-width: 768px) {
   .past-projects-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .past-projects-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 }

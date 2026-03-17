@@ -1,12 +1,12 @@
 .engsl-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .engsl-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -19,7 +19,7 @@
   flex: 0 0 300px;
   min-height: 200px;
   background: #e9ecef;
-  border-radius: 8px;
+  border-radius: var(--itg-radius-card);
 }
 
 .engsl-text-content {
@@ -27,13 +27,13 @@
 }
 
 .engsl-section-title {
-  color: #0f2d52;
-  font-size: 1.5rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
   margin: 0 0 0.75rem;
 }
 
 .engsl-section-title a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -42,23 +42,23 @@
 }
 
 .engsl-subsection-title {
-  color: #0f2d52;
-  font-size: 1.25rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
   margin: 1.5rem 0 0.75rem;
 }
 
 .engsl-text {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 0.75rem;
 }
 
 .engsl-list {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
-  margin: 0.5rem 0 1.5rem 1.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0.5rem 0 1.5rem var(--itg-list-indent);
 }
 
 .engsl-list li {
@@ -67,7 +67,7 @@
 
 .engsl-list a,
 .engsl-text a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -78,11 +78,11 @@
 
 @media (max-width: 768px) {
   .engsl-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .engsl-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .engsl-content {
@@ -96,6 +96,6 @@
   }
 
   .engsl-section-title {
-    font-size: 1.25rem;
+    font-size: var(--itg-font-size-h2-mobile);
   }
 }

@@ -1,30 +1,30 @@
 .proposals-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .proposals-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
 .proposal-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
   overflow: hidden;
   margin-bottom: 2rem;
-  background: #fff;
+  background: var(--itg-color-white);
 }
 
 .proposal-card-header {
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--itg-color-bg-light);
+  border-bottom: 1px solid var(--itg-color-border);
   padding: 0.75rem 1.25rem;
-  font-size: 1.25rem;
+  font-size: var(--itg-font-size-h3);
   font-weight: 600;
-  color: #0f2d52;
+  color: var(--itg-color-primary);
 }
 
 .proposal-card-body {
@@ -32,9 +32,9 @@
 }
 
 .proposal-field {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin-bottom: 0.25rem;
 }
 
@@ -43,29 +43,29 @@
 }
 
 .proposal-section-title {
-  color: #0f2d52;
-  font-size: 1.125rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-subtitle);
   margin: 1.5rem 0 0.5rem;
 }
 
 .proposal-text {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0;
 }
 
 .proposal-footer {
-  color: #444;
-  font-size: 0.9375rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
+  line-height: var(--itg-line-height-body);
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--itg-color-border);
 }
 
 .proposal-footer a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -75,15 +75,15 @@
 
 @media (max-width: 768px) {
   .proposals-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .proposals-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .proposal-card-header {
-    font-size: 1.1rem;
+    font-size: var(--itg-font-size-h4);
     padding: 0.625rem 1rem;
   }
 

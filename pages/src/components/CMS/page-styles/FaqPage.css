@@ -1,12 +1,12 @@
 .faq-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .faq-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -14,24 +14,24 @@
 }
 
 .faq-question {
-  color: #0f2d52;
-  font-size: 1.25rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
   font-style: italic;
   margin: 2rem 0 0.75rem;
 }
 
 .faq-text {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 1rem;
 }
 
 .faq-list {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
-  margin: 0.5rem 0 1.5rem 1.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0.5rem 0 1.5rem var(--itg-list-indent);
 }
 
 .faq-list li {
@@ -40,7 +40,7 @@
 
 .faq-list a,
 .faq-text a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -51,14 +51,14 @@
 
 @media (max-width: 768px) {
   .faq-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .faq-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .faq-question {
-    font-size: 1.125rem;
+    font-size: var(--itg-font-size-h3-mobile);
   }
 }

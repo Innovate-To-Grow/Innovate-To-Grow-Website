@@ -1,14 +1,14 @@
 /* ==========================================================================
    CMS Block Styling
-   Provides consistent styling for all CMS-rendered blocks using the same
-   design tokens as the original hardcoded page components.
+   Uses shared design tokens from styles/shared.css for consistency with
+   dedicated page components in src/pages/.
    ========================================================================== */
 
 /* --- Default page wrapper (fallback when no page_css_class is set) --- */
 .cms-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 /* --- Loading & error states --- */
@@ -17,10 +17,10 @@
 }
 
 .cms-page-error {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
-  color: #444;
+  padding: var(--itg-page-padding);
+  color: var(--itg-color-text);
 }
 
 /* ==========================================================================
@@ -29,8 +29,8 @@
    ========================================================================== */
 
 .cms-rich-text .section-title {
-  color: #0f2d52;
-  font-size: 1.5rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
   margin: 2rem 0 0.75rem;
 }
 
@@ -39,27 +39,27 @@
 }
 
 .cms-rich-text h1.section-title {
-  font-size: 2rem;
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
 .cms-rich-text p {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 0.75rem;
 }
 
 .cms-rich-text strong {
-  color: #333;
+  color: var(--itg-color-text-dark);
 }
 
 .cms-rich-text ul,
 .cms-rich-text ol {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
-  margin: 0.5rem 0 0.75rem 1.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0.5rem 0 0.75rem var(--itg-list-indent);
 }
 
 .cms-rich-text li {
@@ -71,7 +71,7 @@
 }
 
 .cms-rich-text ol ul {
-  margin: 0.5rem 0 0 1.5rem;
+  margin: 0.5rem 0 0 var(--itg-list-indent);
   list-style-type: disc;
 }
 
@@ -80,12 +80,12 @@
 }
 
 .cms-rich-text a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
 .cms-rich-text a.submission-button {
-  color: #fff;
+  color: var(--itg-color-white);
 }
 
 .cms-rich-text a:hover {
@@ -93,20 +93,20 @@
 }
 
 .cms-rich-text h2 {
-  color: #0f2d52;
-  font-size: 1.5rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
   margin: 2rem 0 0.75rem;
 }
 
 .cms-rich-text h3 {
-  color: #0f2d52;
-  font-size: 1.25rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
   margin: 1.5rem 0 0.75rem;
 }
 
 .cms-rich-text h4 {
-  color: #0f2d52;
-  font-size: 1.1rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
   margin: 1.5rem 0 0.5rem;
 }
 
@@ -114,21 +114,21 @@
   width: 100%;
   border-collapse: collapse;
   margin: 1rem 0;
-  font-size: 0.9375rem;
-  line-height: 1.6;
+  font-size: var(--itg-font-size-meta);
+  line-height: var(--itg-line-height-meta);
 }
 
 .cms-rich-text th,
 .cms-rich-text td {
-  border: 1px solid #ccc;
+  border: 1px solid var(--itg-color-border-table);
   padding: 0.75rem;
   vertical-align: top;
-  color: #444;
+  color: var(--itg-color-text);
 }
 
 .cms-rich-text th {
-  background: #f8f9fa;
-  color: #0f2d52;
+  background: var(--itg-color-bg-light);
+  color: var(--itg-color-primary);
   font-weight: 600;
   text-align: left;
 }
@@ -149,14 +149,14 @@
    ========================================================================== */
 
 .cms-section-group .section-title {
-  color: #0f2d52;
-  font-size: 1.5rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
   margin: 2rem 0 0.75rem;
 }
 
 .cms-section-group .section-title:first-child,
 .cms-section-group h1.section-title {
-  font-size: 2rem;
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -165,41 +165,41 @@
 }
 
 .cms-section-group section h2 {
-  color: #0f2d52;
-  font-size: 1.5rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
   margin: 0 0 0.75rem;
 }
 
 .cms-section-group section h3 {
-  color: #0f2d52;
-  font-size: 1.25rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
   margin: 1.5rem 0 0.75rem;
 }
 
 .cms-section-group section h4 {
-  color: #0f2d52;
-  font-size: 1.1rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
   font-weight: 600;
   margin: 1.5rem 0 0.5rem;
 }
 
 .cms-section-group p {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 0.75rem;
 }
 
 .cms-section-group strong {
-  color: #333;
+  color: var(--itg-color-text-dark);
 }
 
 .cms-section-group ul,
 .cms-section-group ol {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
-  margin: 0.5rem 0 0.75rem 1.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0.5rem 0 0.75rem var(--itg-list-indent);
 }
 
 .cms-section-group li {
@@ -211,7 +211,7 @@
 }
 
 .cms-section-group ol ul {
-  margin: 0.5rem 0 0 1.5rem;
+  margin: 0.5rem 0 0 var(--itg-list-indent);
   list-style-type: disc;
 }
 
@@ -220,7 +220,7 @@
 }
 
 .cms-section-group a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -232,21 +232,21 @@
   width: 100%;
   border-collapse: collapse;
   margin: 1rem 0;
-  font-size: 0.9375rem;
-  line-height: 1.6;
+  font-size: var(--itg-font-size-meta);
+  line-height: var(--itg-line-height-meta);
 }
 
 .cms-section-group th,
 .cms-section-group td {
-  border: 1px solid #ccc;
+  border: 1px solid var(--itg-color-border-table);
   padding: 0.75rem;
   vertical-align: top;
-  color: #444;
+  color: var(--itg-color-text);
 }
 
 .cms-section-group th {
-  background: #f8f9fa;
-  color: #0f2d52;
+  background: var(--itg-color-bg-light);
+  color: var(--itg-color-primary);
   font-weight: 600;
   text-align: left;
 }
@@ -262,7 +262,7 @@
 
 /* Red emphasis text (used in student/event-prep pages) */
 .cms-section-group .student-important {
-  color: #c00;
+  color: var(--itg-color-error);
   font-weight: 700;
 }
 
@@ -272,30 +272,30 @@
    ========================================================================== */
 
 .cms-faq-list .faq-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
 .cms-faq-list .faq-question {
-  color: #0f2d52;
-  font-size: 1.25rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
   font-style: italic;
   margin: 2rem 0 0.75rem;
 }
 
 .cms-faq-list p {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 1rem;
 }
 
 .cms-faq-list ul {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
-  margin: 0.5rem 0 1.5rem 1.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0.5rem 0 1.5rem var(--itg-list-indent);
 }
 
 .cms-faq-list li {
@@ -303,7 +303,7 @@
 }
 
 .cms-faq-list a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -317,8 +317,8 @@
    ========================================================================== */
 
 .cms-link-list .section-title {
-  color: #0f2d52;
-  font-size: 1.5rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
   margin: 2rem 0 0.75rem;
 }
 
@@ -327,7 +327,7 @@
 }
 
 .cms-link-list h1.section-title {
-  font-size: 2rem;
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -341,13 +341,13 @@
 }
 
 .cms-link-list-items li {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
 }
 
 .cms-link-list-items a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   font-weight: 600;
   text-decoration: none;
 }
@@ -364,24 +364,24 @@
 }
 
 .cms-link-list-bordered li {
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--itg-color-border);
 }
 
 .cms-link-list-bordered li:first-child {
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--itg-color-border);
 }
 
 .cms-link-list-bordered a {
   display: block;
   padding: 0.875rem 1rem;
-  color: #0f2d52;
-  font-size: 1rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
   text-decoration: none;
-  transition: background-color 0.15s;
+  transition: background-color var(--itg-transition-link);
 }
 
 .cms-link-list-bordered a:hover {
-  background-color: #f8f9fa;
+  background-color: var(--itg-color-bg-light);
   text-decoration: underline;
 }
 
@@ -391,8 +391,8 @@
    ========================================================================== */
 
 .cms-navigation-grid .projects-hub-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -403,14 +403,14 @@
 }
 
 .cms-navigation-grid .projects-hub-item {
-  color: #444;
-  font-size: 1.125rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-subtitle);
+  line-height: var(--itg-line-height-body);
   margin: 0;
 }
 
 .cms-navigation-grid .projects-hub-link {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   font-weight: 600;
   text-decoration: none;
 }
@@ -425,20 +425,20 @@
    ========================================================================== */
 
 .cms-contact-info .contact-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
 .cms-contact-info .contact-text {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 1rem;
 }
 
 .cms-contact-info a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -452,8 +452,8 @@
    ========================================================================== */
 
 .cms-image-text .section-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -466,18 +466,18 @@
   max-width: 50%;
   height: auto;
   margin: 0 0 1rem 1.5rem;
-  border-radius: 8px;
+  border-radius: var(--itg-radius-image);
 }
 
 .cms-image-text p {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 1rem;
 }
 
 .cms-image-text a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -493,39 +493,39 @@
   justify-content: center;
   margin-top: 2.5rem;
   padding-top: 2rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--itg-color-border);
 }
 
 .cms-image-text .capstone-nav-btn {
   padding: 0.625rem 1.5rem;
-  border-radius: 4px;
-  font-size: 0.9375rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-meta);
   text-decoration: none;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
 }
 
 .cms-image-text .capstone-nav-btn-primary {
-  background: #0f2d52;
-  color: #fff;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
 }
 
 .cms-image-text .capstone-nav-btn-primary:hover {
-  background: #1a4a7a;
+  background: var(--itg-color-primary-hover);
 }
 
 .cms-image-text .capstone-nav-btn-accent {
-  background: #daa520;
-  color: #fff;
+  background: var(--itg-color-accent-gold);
+  color: var(--itg-color-white);
 }
 
 .cms-image-text .capstone-nav-btn-accent:hover {
-  background: #c4941a;
+  background: var(--itg-color-accent-gold-hover);
 }
 
 .cms-image-text .capstone-contact {
   text-align: center;
-  color: #444;
-  font-size: 0.9375rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
   margin-top: 1.5rem;
 }
 
@@ -535,26 +535,26 @@
    ========================================================================== */
 
 .cms-proposal-cards .proposals-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
 .cms-proposal-cards .proposal-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
   overflow: hidden;
   margin-bottom: 2rem;
-  background: #fff;
+  background: var(--itg-color-white);
 }
 
 .cms-proposal-cards .proposal-card-header {
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--itg-color-bg-light);
+  border-bottom: 1px solid var(--itg-color-border);
   padding: 0.75rem 1.25rem;
-  font-size: 1.25rem;
+  font-size: var(--itg-font-size-h3);
   font-weight: 600;
-  color: #0f2d52;
+  color: var(--itg-color-primary);
 }
 
 .cms-proposal-cards .proposal-card-body {
@@ -562,9 +562,9 @@
 }
 
 .cms-proposal-cards .proposal-field {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin-bottom: 0.25rem;
 }
 
@@ -573,29 +573,29 @@
 }
 
 .cms-proposal-cards .proposal-section-title {
-  color: #0f2d52;
-  font-size: 1.125rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-subtitle);
   margin: 1.5rem 0 0.5rem;
 }
 
 .cms-proposal-cards .proposal-text {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0;
 }
 
 .cms-proposal-cards .proposal-footer {
-  color: #444;
-  font-size: 0.9375rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
+  line-height: var(--itg-line-height-body);
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--itg-color-border);
 }
 
 .cms-proposal-cards .proposal-footer a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -609,24 +609,24 @@
 
 @media (max-width: 768px) {
   .cms-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   /* Rich text */
   .cms-rich-text h1.section-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-rich-text .section-title {
-    font-size: 1.25rem;
+    font-size: var(--itg-font-size-h2-mobile);
   }
 
   .cms-rich-text h3 {
-    font-size: 1.125rem;
+    font-size: var(--itg-font-size-h3-mobile);
   }
 
   .cms-rich-text table {
-    font-size: 0.875rem;
+    font-size: var(--itg-font-size-table-mobile);
   }
 
   .cms-rich-text th,
@@ -637,19 +637,19 @@
   /* Section group */
   .cms-section-group h1.section-title,
   .cms-section-group .section-title:first-child {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-section-group section h2 {
-    font-size: 1.25rem;
+    font-size: var(--itg-font-size-h2-mobile);
   }
 
   .cms-section-group section h3 {
-    font-size: 1.125rem;
+    font-size: var(--itg-font-size-h3-mobile);
   }
 
   .cms-section-group table {
-    font-size: 0.875rem;
+    font-size: var(--itg-font-size-table-mobile);
   }
 
   .cms-section-group th,
@@ -659,39 +659,39 @@
 
   /* FAQ */
   .cms-faq-list .faq-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-faq-list .faq-question {
-    font-size: 1.125rem;
+    font-size: var(--itg-font-size-h3-mobile);
   }
 
   /* Link list */
   .cms-link-list h1.section-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-link-list .section-title {
-    font-size: 1.25rem;
+    font-size: var(--itg-font-size-h2-mobile);
   }
 
   /* Navigation grid */
   .cms-navigation-grid .projects-hub-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-navigation-grid .projects-hub-item {
-    font-size: 1rem;
+    font-size: var(--itg-font-size-body);
   }
 
   /* Contact info */
   .cms-contact-info .contact-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   /* Image text */
   .cms-image-text .section-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-image-text .capstone-hero-image {
@@ -702,11 +702,11 @@
 
   /* Proposal cards */
   .cms-proposal-cards .proposals-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .cms-proposal-cards .proposal-card-header {
-    font-size: 1.1rem;
+    font-size: var(--itg-font-size-h4);
     padding: 0.625rem 1rem;
   }
 

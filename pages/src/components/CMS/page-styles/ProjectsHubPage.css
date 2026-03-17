@@ -1,12 +1,12 @@
 .projects-hub-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .projects-hub-page-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
@@ -17,14 +17,14 @@
 }
 
 .projects-hub-item {
-  color: #444;
-  font-size: 1.125rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-subtitle);
+  line-height: var(--itg-line-height-body);
   margin: 0;
 }
 
 .projects-hub-link {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   font-weight: 600;
   text-decoration: none;
 }
@@ -40,44 +40,44 @@
   justify-content: center;
   margin-top: 2.5rem;
   padding-top: 2rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--itg-color-border);
 }
 
 .projects-hub-nav-btn {
   padding: 0.625rem 1.5rem;
-  border-radius: 4px;
-  font-size: 0.9375rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-meta);
   text-decoration: none;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
 }
 
 .projects-hub-nav-btn-primary {
-  background: #0f2d52;
-  color: #fff;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
 }
 
 .projects-hub-nav-btn-primary:hover {
-  background: #1a4a7a;
+  background: var(--itg-color-primary-hover);
 }
 
 .projects-hub-nav-btn-accent {
-  background: #daa520;
-  color: #fff;
+  background: var(--itg-color-accent-gold);
+  color: var(--itg-color-white);
 }
 
 .projects-hub-nav-btn-accent:hover {
-  background: #c4941a;
+  background: var(--itg-color-accent-gold-hover);
 }
 
 .projects-hub-contact {
   text-align: center;
-  color: #444;
-  font-size: 0.9375rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
   margin-top: 1.5rem;
 }
 
 .projects-hub-contact a {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
 }
 
@@ -87,14 +87,14 @@
 
 @media (max-width: 768px) {
   .projects-hub-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .projects-hub-page-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .projects-hub-item {
-    font-size: 1rem;
+    font-size: var(--itg-font-size-body);
   }
 }

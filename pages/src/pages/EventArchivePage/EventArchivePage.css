@@ -1,7 +1,7 @@
 .ea-page {
-  max-width: 1200px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .ea-header {
@@ -10,9 +10,9 @@
 
 .ea-back-link {
   display: inline-block;
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   text-decoration: none;
-  font-size: 0.9375rem;
+  font-size: var(--itg-font-size-meta);
   margin-bottom: 0.75rem;
 }
 
@@ -21,21 +21,21 @@
 }
 
 .ea-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 0 0 0.5rem;
 }
 
 .ea-subtitle {
-  color: #666;
-  font-size: 1.0625rem;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-lead-mobile);
   margin: 0;
 }
 
 .ea-text {
-  color: #444;
-  font-size: 1rem;
-  line-height: 1.7;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
   margin: 0 0 1rem;
 }
 
@@ -44,25 +44,25 @@
 }
 
 .ea-section-title {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  color: #0f2d52;
-  font-size: 1.25rem;
+  border-radius: var(--itg-radius-button);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
   margin: 0 0 1.5rem;
 }
 
 @media (max-width: 768px) {
   .ea-page {
-    padding: 1rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .ea-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .ea-section-title {
-    font-size: 1.125rem;
+    font-size: var(--itg-font-size-h3-mobile);
   }
 }

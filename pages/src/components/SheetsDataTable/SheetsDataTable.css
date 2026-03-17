@@ -6,11 +6,11 @@
 .sdt-error {
   padding: 2rem;
   text-align: center;
-  color: #666;
+  color: var(--itg-color-text-secondary);
 }
 
 .sdt-error {
-  color: #b30000;
+  color: var(--itg-color-error-light);
 }
 
 .sdt-controls {
@@ -24,20 +24,20 @@
 
 .sdt-search {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 0.9375rem;
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-meta);
   min-width: 250px;
 }
 
 .sdt-search:focus {
   outline: none;
-  border-color: #0f2d52;
+  border-color: var(--itg-color-primary);
 }
 
 .sdt-count {
-  color: #666;
-  font-size: 0.875rem;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
 }
 
 .sdt-table-wrap {
@@ -47,15 +47,15 @@
 .sdt-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--itg-font-size-small);
 }
 
 .sdt-th {
-  background: #f8f9fa;
-  color: #0f2d52;
+  background: var(--itg-color-bg-light);
+  color: var(--itg-color-primary);
   padding: 0.625rem 0.5rem;
   text-align: left;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--itg-color-border);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -82,37 +82,37 @@
 
 .sdt-td {
   padding: 0.5rem;
-  border-bottom: 1px solid #e0e0e0;
-  color: #444;
+  border-bottom: 1px solid var(--itg-color-border);
+  color: var(--itg-color-text);
   vertical-align: top;
 }
 
 .sdt-td-expand {
   text-align: center;
   cursor: pointer;
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   font-size: 0.75rem;
 }
 
 .sdt-row-expanded .sdt-td {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   font-weight: 600;
 }
 
 .sdt-detail-row .sdt-detail-cell {
   padding: 1rem 1.5rem;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--itg-color-bg-light);
+  border-bottom: 1px solid var(--itg-color-border);
 }
 
 .sdt-detail-section {
-  color: #444;
-  line-height: 1.6;
+  color: var(--itg-color-text);
+  line-height: var(--itg-line-height-meta);
   margin-bottom: 0.5rem;
 }
 
 .sdt-detail-section strong {
-  color: #0f2d52;
+  color: var(--itg-color-primary);
 }
 
 .sdt-pagination {
@@ -124,13 +124,13 @@
 }
 
 .sdt-page-btn {
-  background: #0f2d52;
-  color: #fff;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
   border: none;
   padding: 0.4rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--itg-radius-button);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--itg-font-size-small);
 }
 
 .sdt-page-btn:disabled {
@@ -139,8 +139,8 @@
 }
 
 .sdt-page-info {
-  color: #666;
-  font-size: 0.875rem;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
 }
 
 @media (max-width: 768px) {

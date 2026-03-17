@@ -5,27 +5,27 @@
   justify-content: center;
   min-height: 60vh;
   text-align: center;
-  padding: 2rem 1rem;
+  padding: var(--itg-page-padding);
 }
 
 .not-found-code {
   font-size: 6rem;
   font-weight: 700;
-  color: #0f2d52;
+  color: var(--itg-color-primary);
   opacity: 0.15;
   margin: 0;
   line-height: 1;
 }
 
 .not-found-title {
-  color: #0f2d52;
-  font-size: 2rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
   margin: 1rem 0 0.75rem;
 }
 
 .not-found-message {
-  font-size: 1.125rem;
-  color: #444;
+  font-size: var(--itg-font-size-subtitle);
+  color: var(--itg-color-text);
   margin: 0;
 }
 
@@ -39,6 +39,6 @@
   }
 
   .not-found-title {
-    font-size: 1.5rem;
+    font-size: var(--itg-font-size-h1-mobile);
   }
 }

@@ -1,3 +1,5 @@
+@import './styles/shared.css';
+
 * {
   box-sizing: border-box;
 }
@@ -10,8 +12,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #333;
-  background-color: #f9f9f9;
+  color: var(--itg-color-text-dark);
+  background-color: var(--itg-color-bg-page);
 }
 
 /* Root containers - Adjusted to fit template structure */

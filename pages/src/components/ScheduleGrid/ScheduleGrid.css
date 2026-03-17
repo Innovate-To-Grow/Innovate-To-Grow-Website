@@ -8,26 +8,26 @@
 .sg-error {
   padding: 2rem;
   text-align: center;
-  color: #666;
+  color: var(--itg-color-text-secondary);
 }
 
 .sg-error {
-  color: #b30000;
+  color: var(--itg-color-error-light);
 }
 
 .sg-class-section {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
   overflow: hidden;
 }
 
 .sg-class-title {
   margin: 0;
   padding: 0.75rem 1rem;
-  background: #f8f9fa;
-  font-size: 1.125rem;
+  background: var(--itg-color-bg-light);
+  font-size: var(--itg-font-size-subtitle);
   text-align: center;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--itg-color-border);
 }
 
 .sg-table-wrap {
@@ -40,21 +40,21 @@
 }
 
 .sg-th {
-  background: #f8f9fa;
+  background: var(--itg-color-bg-light);
   padding: 0.5rem;
   text-align: center;
-  border-bottom: 1px solid #e0e0e0;
-  font-size: 0.875rem;
+  border-bottom: 1px solid var(--itg-color-border);
+  font-size: var(--itg-font-size-small);
   white-space: nowrap;
 }
 
 .sg-th-time {
-  color: #002856;
+  color: var(--itg-color-primary);
   min-width: 60px;
 }
 
 .sg-th-room {
-  color: #002856;
+  color: var(--itg-color-primary);
   font-weight: normal;
 }
 
@@ -63,19 +63,19 @@
 }
 
 .sg-td-time {
-  background: #f8f9fa;
-  color: #002856;
+  background: var(--itg-color-bg-light);
+  color: var(--itg-color-primary);
   padding: 0.5rem;
   text-align: center;
-  font-size: 0.875rem;
-  border-bottom: 1px solid #e0e0e0;
+  font-size: var(--itg-font-size-small);
+  border-bottom: 1px solid var(--itg-color-border);
   white-space: nowrap;
 }
 
 .sg-td-cell {
   padding: 0.5rem;
   text-align: center;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--itg-color-border);
   min-width: 120px;
   vertical-align: top;
 }
@@ -85,7 +85,7 @@
   border: none;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: var(--itg-font-size-small);
   display: block;
   margin: 0 auto;
 }
@@ -96,13 +96,13 @@
 
 .sg-org {
   display: block;
-  color: #666;
+  color: var(--itg-color-text-secondary);
   font-size: 0.75rem;
   margin-top: 0.25rem;
 }
 
 @media (max-width: 768px) {
   .sg-class-title {
-    font-size: 1rem;
+    font-size: var(--itg-font-size-body);
   }
 }
