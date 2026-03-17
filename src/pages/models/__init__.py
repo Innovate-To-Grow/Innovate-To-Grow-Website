@@ -5,10 +5,16 @@ Aggregates commonly used models so callers can import from `pages.models`.
 """
 
 from .pages import (
+    BLOCK_SCHEMAS,
+    BLOCK_TYPE_CHOICES,
+    BLOCK_TYPE_KEYS,
+    CMSBlock,
+    CMSPage,
     FooterContent,
     GoogleSheetSource,
     Menu,
     SiteSettings,
+    validate_block_data,
 )
 
 __all__ = [
@@ -17,4 +23,11 @@ __all__ = [
     "FooterContent",
     "GoogleSheetSource",
     "SiteSettings",
+    # CMS
+    "CMSPage",
+    "CMSBlock",
+    "BLOCK_TYPE_CHOICES",
+    "BLOCK_TYPE_KEYS",
+    "BLOCK_SCHEMAS",
+    "validate_block_data",
 ]

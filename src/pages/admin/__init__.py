@@ -1,11 +1,12 @@
 """
 Pages app admin configuration.
 
-Organized into modules by model:
-- menu: Menu admin
-- footer_content: FooterContent admin
+Organized into modules by feature:
+- layout/: Menu, FooterContent, GoogleSheetSource, SiteSettings admin
+- cms/: CMSPage admin (block editor, import/export, preview)
 """
 
+from .cms import CMSPageAdmin
 from .layout.footer_content import FooterContentAdmin
 from .layout.google_sheet_source import GoogleSheetSourceAdmin
 from .layout.menu import MenuAdmin
@@ -17,4 +18,6 @@ __all__ = [
     "FooterContentAdmin",
     "GoogleSheetSourceAdmin",
     "SiteSettingsAdmin",
+    # CMS
+    "CMSPageAdmin",
 ]

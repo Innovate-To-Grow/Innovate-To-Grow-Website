@@ -2,9 +2,13 @@
 
 .visual-editor-wrapper {
   margin: 20px 0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
   background: #fff;
+}
+.dark .visual-editor-wrapper {
+  border-color: #374151;
+  background: #111827;
 }
 
 .visual-editor-header {
@@ -12,9 +16,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #79aec8;
+  background: #7c3aed;
   color: #fff;
-  border-radius: 4px 4px 0 0;
+  border-radius: 6px 6px 0 0;
 }
 
 .visual-editor-header h3 {
@@ -39,7 +43,7 @@
 
 .visual-editor-tabs button.active {
   background: #fff;
-  color: #79aec8;
+  color: #7c3aed;
 }
 
 .visual-editor-content {
@@ -69,6 +73,10 @@
   padding-bottom: 8px;
   border-bottom: 1px solid #eee;
 }
+.dark .section-title {
+  color: #e5e7eb;
+  border-bottom-color: #374151;
+}
 
 .item-list {
   margin-bottom: 16px;
@@ -77,9 +85,13 @@
 .item-card {
   background: #f9f9f9;
   border: 1px solid #e5e5e5;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 12px;
   margin-bottom: 8px;
+}
+.dark .item-card {
+  background: #1f2937;
+  border-color: #374151;
 }
 
 .item-card-header {
@@ -141,8 +153,16 @@
 }
 
 .item-field input:focus, .item-field select:focus, .item-field textarea:focus {
-  border-color: #79aec8;
+  border-color: #7c3aed;
   outline: none;
+}
+.dark .item-field input, .dark .item-field select, .dark .item-field textarea {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark .item-field input:focus, .dark .item-field select:focus, .dark .item-field textarea:focus {
+  border-color: #9333ea;
 }
 
 .item-field-small {
@@ -162,16 +182,18 @@
 
 .btn-add {
   padding: 8px 16px;
-  background: #417690;
+  background: #7c3aed;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
 }
 
 .btn-add:hover {
-  background: #205067;
+  background: #6d28d9;
 }
 
 /* Links inside columns */
@@ -328,7 +350,7 @@
   position: relative;
 }
 .menu-item-card.has-children {
-  border-left: 3px solid #79aec8;
+  border-left: 3px solid #7c3aed;
 }
 .menu-item-card-header {
   display: flex;

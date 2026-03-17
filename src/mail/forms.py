@@ -13,7 +13,16 @@ class GoogleAccountForm(forms.ModelForm):
     """Form for creating/editing Gmail API accounts with JSON validation."""
 
     service_account_json = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 10, "class": "vLargeTextField"}),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 10,
+                "class": (
+                    "w-full border border-base-200 dark:border-base-700 bg-white dark:bg-base-900"
+                    " text-font-default-light dark:text-font-default-dark rounded-default px-3 py-2 text-sm"
+                    " font-mono"
+                ),
+            }
+        ),
         help_text="Paste the full service account JSON key from Google Cloud Console.",
     )
 
@@ -42,27 +51,32 @@ class GoogleAccountForm(forms.ModelForm):
 class ComposeForm(forms.Form):
     """Form for composing, replying to, or forwarding emails."""
 
+    _input_classes = (
+        "w-full border border-base-200 dark:border-base-700 bg-white dark:bg-base-900"
+        " text-font-default-light dark:text-font-default-dark rounded-default px-3 py-2 text-sm"
+    )
+
     to = forms.CharField(
         max_length=1000,
-        widget=forms.TextInput(attrs={"class": "vTextField", "placeholder": "recipient@example.com"}),
+        widget=forms.TextInput(attrs={"class": _input_classes, "placeholder": "recipient@example.com"}),
         help_text="Comma-separated email addresses.",
     )
     cc = forms.CharField(
         max_length=1000,
         required=False,
-        widget=forms.TextInput(attrs={"class": "vTextField", "placeholder": "cc@example.com"}),
+        widget=forms.TextInput(attrs={"class": _input_classes, "placeholder": "cc@example.com"}),
     )
     bcc = forms.CharField(
         max_length=1000,
         required=False,
-        widget=forms.TextInput(attrs={"class": "vTextField", "placeholder": "bcc@example.com"}),
+        widget=forms.TextInput(attrs={"class": _input_classes, "placeholder": "bcc@example.com"}),
     )
     subject = forms.CharField(
         max_length=500,
-        widget=forms.TextInput(attrs={"class": "vTextField"}),
+        widget=forms.TextInput(attrs={"class": _input_classes}),
     )
     body = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 15, "class": "vLargeTextField"}),
+        widget=forms.Textarea(attrs={"rows": 15, "class": _input_classes + " font-mono"}),
         help_text="HTML content is supported.",
     )
     attachments = forms.FileField(

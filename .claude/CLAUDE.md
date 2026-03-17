@@ -74,8 +74,9 @@ pre-commit run --all-files
 The backend is organized into specialized Django apps:
 
 - **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system, middleware
-- **`pages/`**: Layout (Menu, FooterContent) + Google Sheets data proxy (GoogleSheetSource, SiteSettings). Serves sheets data at `/sheets/<slug>/`
-- **`authn/`**: Auth with Member model, JWT, email verification, contact emails, password reset
+- **`pages/`**: Layout (Menu, FooterContent), Google Sheets data proxy (GoogleSheetSource), SiteSettings, and block-based CMS (CMSPage, CMSBlock). CMS pages have a route, status (draft/published/archived), and ordered content blocks. Block types: hero, rich_text, faq_list, link_list, cta_group, image_text, notice, contact_info, google_sheet, section_group, table, numbered_list, proposal_cards, navigation_grid, schedule_grid. CMS API at `/cms/pages/<route>/` and preview at `/cms/preview/<token>/`. Sheets data at `/sheets/<slug>/`
+- **`cms/`**: Migration-only stub (models moved to `pages`). Kept in `INSTALLED_APPS` for migration history
+- **`authn/`**: Auth with Member model, JWT, email verification, contact emails/phones, password reset
 - **`event/`**: Event management (Event, Ticket, Question models)
 - **`news/`**: News articles (NewsArticle, NewsFeedSource, NewsSyncLog) and feed syncing
 - **`projects/`**: Semester and project management (Semester, Project models)
@@ -93,11 +94,13 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
 
 ### Frontend Architecture
 
-- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`, `sheets.ts`). TypeScript interfaces live alongside their API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
-- **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `MaintenanceMode/`)
-- **`pages/src/pages/`**: 35+ feature pages organized in folders (each has `index.ts`, `PageName.tsx`, `PageName.css`). Key categories: Home, About/Partnership/Sponsorship, News, Projects (current/past/detail/submission), Events (event/schedule/archive/past-events), Students (agreement/preparation), Judges/Attendees/Judging, FAQ/Contact/Privacy/FERPA, NotFoundPage
-- **`pages/src/router/`**: React Router configuration
-- **Routes**: See `pages/src/router/index.tsx` for full list. Key routes include `/` (home), `/about`, `/news`, `/news/:id`, `/projects`, `/current-projects`, `/past-projects`, `/projects/:id`, `/event`, `/schedule`, `/events/:eventSlug`, `/judges`, `/attendees`, `/judging`, `/sponsorship`, `/faqs`, `/contact-us`, `/privacy`, `/ferpa`, plus auth routes (`/login`, `/register`, `/forgot-password`, `/verify-email`, `/complete-profile`, `/account`). Many legacy URLs redirect to canonical paths.
+- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`, `sheets.ts`, `cms.ts`). TypeScript interfaces in `types.ts` and alongside API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
+- **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `CMS/`, `MaintenanceMode/`)
+- **`pages/src/components/CMS/`**: CMS rendering system. `CMSPageComponent` fetches page data by route and renders blocks via `BlockRenderer`. Per-page CSS in `page-styles/`. The `useCMSPage` hook handles data fetching.
+- **`pages/src/pages/`**: Data-driven pages with dedicated React components (each has `index.ts`, `PageName.tsx`, `PageName.css`): NewsPage, NewsDetailPage, ProjectsPage, PastProjectsPage, ProjectDetailPage, EventPage, SchedulePage, EventArchivePage, ProjectsTeamsPage, AcknowledgementPage, HomePage, NotFoundPage
+- **`pages/src/router/`**: React Router configuration. `HomepageResolver` dynamically resolves the homepage based on `SiteSettings.homepage_route` from the layout API.
+- **CMS vs dedicated pages**: Most content routes (about, faqs, contact-us, privacy, students, judges, sponsorship, etc.) use `CMSPageComponent` which renders CMS-managed content from the backend. Only data-driven routes (news, projects, events) have dedicated React components.
+- **Routes**: See `pages/src/router/index.tsx` for full list. Key data-driven routes: `/news`, `/news/:id`, `/current-projects`, `/past-projects`, `/projects/:id`, `/event`, `/schedule`, `/events/:eventSlug`, `/projects-teams`, `/acknowledgement`. CMS routes: `/about`, `/projects`, `/faqs`, `/contact-us`, `/privacy`, `/ferpa`, `/judges`, `/attendees`, `/judging`, `/sponsorship`, `/students`, and more. Auth routes: `/login`, `/register`, `/forgot-password`, `/verify-email`, `/complete-profile`, `/account`. Many legacy URLs redirect to canonical paths.
 - **Vite proxy**: `/api`, `/media`, `/admin` proxied to backend (localhost:8000)
 - **Three React roots**: `#root` (main app with BrowserRouter), `#menu-root` (MainMenu only, no router), `#footer-root` (Footer only). Auth state syncs across roots via `i2g-auth-state-change` window event.
 
@@ -126,14 +129,14 @@ When querying, use `Model.objects` for normal queries and `Model.all_objects` wh
 
 ### Admin Interface
 
-The admin uses **django-unfold** for theming and **CKEditor 5** for rich text editing. Configuration is in `src/core/settings/base.py` under `UNFOLD`. Custom admin templates live in `src/core/templates/unfold/helpers/`.
+The admin uses **django-unfold** for theming and **CKEditor 5** for rich text editing. Configuration is in `src/core/settings/base.py` under `UNFOLD`. Custom admin templates live in `src/core/templates/unfold/helpers/`. CMS admin is at `/admin/pages/cmspage/`.
 
 ### Caching
 
 - **Dev**: In-memory cache (`LocMemCache`)
 - **Prod**: Redis via `django-redis`
-- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu, FooterContent, or GoogleSheetSource are saved/deleted
-- **Cache keys**: `"layout:data"`, `"sheets:<slug>:data"`
+- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu, FooterContent, GoogleSheetSource, CMSPage, or CMSBlock are saved/deleted
+- **Cache keys**: `"layout:data"`, `"sheets:<slug>:data"`, `"cms:page:<route>"`, `"cms:preview:<token>"`
 - **Important**: When adding cache to views, ensure tests call `cache.clear()` in `setUp()` to prevent cross-test pollution.
 
 ### API Contracts
@@ -152,13 +155,17 @@ When modifying API responses:
 
 ## Adding a New Frontend Page
 
-Three files to touch every time:
+**For CMS-managed pages** (static content like about, FAQ, etc.):
+
+1. **Add route** in `pages/src/router/index.tsx` — use `CMSPageComponent` as the element
+2. **Create CMS page** in Django admin — set the route to match, add content blocks, publish
+3. **Optionally add page-specific CSS** in `pages/src/components/CMS/page-styles/` — the `page_css_class` field on CMSPage maps to the wrapper div class
+
+**For data-driven pages** (pages with their own API calls, e.g., news, projects):
 
 1. **Create page folder** `pages/src/pages/<PageName>/` with `PageName.tsx`, `PageName.css`, `index.ts`
 2. **Register route** in `pages/src/router/index.tsx` — add import and route entry
-3. **Register in admin menu editor** — add to `APP_ROUTES` list in `src/pages/app_routes.py` (single source of truth; admin JS reads it automatically)
-
-Use `/add-page` skill for the full checklist and design system tokens.
+3. **Register in admin menu editor** — add to `APP_ROUTES` list in `src/pages/app_routes.py` (only for non-CMS pages; CMS pages are loaded dynamically from the database in the menu editor)
 
 ## Development Workflow
 
@@ -211,7 +218,7 @@ Key ignored rules (see `pyproject.toml`):
 - `DJ012`: Order of model inner classes/methods (existing pattern)
 - `F403/F405`: Star imports (used in Django settings)
 
-**Note**: `known-first-party` in `pyproject.toml` is stale — lists `["core", "authn", "pages", "events", "sheets"]`. Should be `["core", "authn", "pages", "event", "news", "projects", "mail"]`.
+**Note**: `cms` is a migration-only stub — no linting needed. `known-first-party` lists `["core", "authn", "pages", "event", "news", "projects", "mail"]`.
 
 ## Testing
 
@@ -236,7 +243,7 @@ Key variables:
 
 - `DJANGO_SETTINGS_MODULE`: Settings module (e.g., `core.settings.dev`)
 - `SECRET_KEY`: Django secret key
-- Backend URL for Vite: Set `VITE_BACKEND_URL` if not using default localhost:8000
+- API base URL for Vite: Set `VITE_API_BASE_URL` if not using default `/api` proxy
 
 ## Documentation
 

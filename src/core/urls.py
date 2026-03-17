@@ -45,7 +45,7 @@ urlpatterns = [
     # ckeditor 5
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # cms
-    path("cms/", include("cms.urls")),
+    path("cms/", include("pages.cms_urls")),
     # authn
     path("authn/", include("authn.urls")),
 ]

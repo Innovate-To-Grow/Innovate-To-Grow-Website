@@ -3,207 +3,6 @@
 
 {% block title %}Import Members - {{ site_title|default:_('Django site admin') }}{% endblock %}
 
-{% block extrahead %}
-{{ block.super }}
-<style>
-    .import-container {
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
-    }
-    
-    .import-form {
-        background: var(--body-bg, #fff);
-        border: 1px solid var(--hairline-color, #e8e8e8);
-        border-radius: 8px;
-        padding: 24px;
-        margin-bottom: 20px;
-    }
-    
-    .form-row {
-        margin-bottom: 16px;
-    }
-    
-    .form-row label {
-        display: block;
-        font-weight: bold;
-        margin-bottom: 6px;
-        color: var(--body-fg, #333);
-    }
-    
-    .form-row .help {
-        display: block;
-        font-size: 0.85em;
-        color: var(--body-quiet-color, #666);
-        margin-top: 4px;
-    }
-    
-    .form-row input[type="file"],
-    .form-row input[type="password"] {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid var(--hairline-color, #ccc);
-        border-radius: 4px;
-        font-size: 14px;
-    }
-    
-    .form-row input[type="checkbox"] {
-        margin-right: 8px;
-    }
-    
-    .submit-row {
-        display: flex;
-        gap: 12px;
-        margin-top: 24px;
-        padding-top: 16px;
-        border-top: 1px solid var(--hairline-color, #e8e8e8);
-    }
-    
-    .submit-row input[type="submit"] {
-        background: var(--primary, #417690);
-        color: white;
-        border: none;
-        padding: 10px 24px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    
-    .submit-row input[type="submit"]:hover {
-        background: var(--primary-fg, #205067);
-    }
-    
-    .submit-row .cancel-link {
-        padding: 10px 24px;
-        color: var(--body-fg, #666);
-        text-decoration: none;
-    }
-    
-    .template-download {
-        background: var(--darkened-bg, #f8f8f8);
-        border: 1px dashed var(--hairline-color, #ccc);
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    
-    .template-download a {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--primary, #417690);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 4px;
-        text-decoration: none;
-        font-weight: 500;
-    }
-    
-    .template-download a:hover {
-        background: var(--primary-fg, #205067);
-    }
-    
-    .template-download p {
-        margin-top: 12px;
-        color: var(--body-quiet-color, #666);
-        font-size: 0.9em;
-    }
-    
-    .import-results {
-        background: var(--body-bg, #fff);
-        border: 1px solid var(--hairline-color, #e8e8e8);
-        border-radius: 8px;
-        padding: 24px;
-    }
-    
-    .import-results h3 {
-        margin-top: 0;
-        color: var(--body-fg, #333);
-    }
-    
-    .results-summary {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 16px;
-        margin-bottom: 20px;
-    }
-    
-    .result-card {
-        background: var(--darkened-bg, #f8f8f8);
-        padding: 16px;
-        border-radius: 6px;
-        text-align: center;
-    }
-    
-    .result-card .count {
-        font-size: 2em;
-        font-weight: bold;
-        color: var(--primary, #417690);
-    }
-    
-    .result-card.created .count { color: #28a745; }
-    .result-card.updated .count { color: #17a2b8; }
-    .result-card.skipped .count { color: #ffc107; }
-    .result-card.errors .count { color: #dc3545; }
-    
-    .result-card .label {
-        font-size: 0.9em;
-        color: var(--body-quiet-color, #666);
-        margin-top: 4px;
-    }
-    
-    .error-list {
-        background: #fff3cd;
-        border: 1px solid #ffc107;
-        border-radius: 6px;
-        padding: 16px;
-        margin-top: 16px;
-    }
-    
-    .error-list h4 {
-        margin: 0 0 12px 0;
-        color: #856404;
-    }
-    
-    .error-list ul {
-        margin: 0;
-        padding-left: 20px;
-        color: #856404;
-    }
-    
-    .instructions {
-        background: var(--darkened-bg, #f8f8f8);
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .instructions h4 {
-        margin-top: 0;
-        color: var(--body-fg, #333);
-    }
-    
-    .instructions ul {
-        margin: 0;
-        padding-left: 20px;
-    }
-    
-    .instructions li {
-        margin-bottom: 8px;
-        color: var(--body-quiet-color, #666);
-    }
-    
-    .instructions code {
-        background: var(--body-bg, #fff);
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 0.9em;
-    }
-</style>
-{% endblock %}
-
 {% block breadcrumbs %}
 <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
@@ -214,64 +13,66 @@
 {% endblock %}
 
 {% block content %}
-<div class="import-container">
-    <h1>Import Members from Excel</h1>
-    
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Import Members from Excel</h1>
+
     <!-- Template Download Section -->
-    <div class="template-download">
-        <a href="{% url 'admin:authn_member_import_template' %}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7,10 12,15 17,10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
+    <div class="bg-base-50 dark:bg-base-800 border border-dashed border-base-300 dark:border-base-600 rounded-default p-5 mb-6 text-center">
+        <a href="{% url 'admin:authn_member_import_template' %}"
+           class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors inline-flex items-center gap-2">
+            <span class="material-symbols-outlined !text-[18px]">download</span>
             Download Import Template
         </a>
-        <p>Download the Excel template, fill in member information, then upload</p>
+        <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-3">
+            Download the Excel template, fill in member information, then upload
+        </p>
     </div>
-    
+
     <!-- Instructions -->
-    <div class="instructions">
-        <h4>Import Instructions</h4>
-        <ul>
-            <li><strong>Required fields:</strong> <code>username</code> or <code>email</code></li>
-            <li><strong>Optional fields:</strong> <code>first_name</code>, <code>last_name</code>, <code>middle_name</code>, <code>organization</code>, <code>groups</code></li>
+    <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6">
+        <h4 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3">Import Instructions</h4>
+        <ul class="list-disc list-inside text-sm text-font-subtle-light dark:text-font-subtle-dark space-y-1.5">
+            <li><strong>Required fields:</strong> <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">username</code> or <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">email</code></li>
+            <li><strong>Optional fields:</strong> <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">first_name</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">last_name</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">middle_name</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">organization</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">groups</code></li>
             <li><strong>Groups:</strong> Separate multiple groups with commas</li>
-            <li><strong>Boolean values:</strong> Use <code>TRUE</code> / <code>FALSE</code> or <code>yes</code> / <code>no</code></li>
+            <li><strong>Boolean values:</strong> Use <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">TRUE</code> / <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">FALSE</code> or <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">yes</code> / <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">no</code></li>
             <li>If username already exists, that row will be skipped</li>
         </ul>
     </div>
-    
+
     {% if result %}
     <!-- Import Results -->
-    <div class="import-results">
-        <h3>Import Results</h3>
-        
-        <div class="results-summary">
-            <div class="result-card created">
-                <div class="count">{{ result.created_count }}</div>
-                <div class="label">Created</div>
+    <div class="border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 rounded-default p-6 mb-6">
+        <h3 class="text-lg font-semibold text-font-default-light dark:text-font-default-dark mb-4">Import Results</h3>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ result.created_count }}</div>
+                <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Created</div>
             </div>
-            <div class="result-card updated">
-                <div class="count">{{ result.updated_count }}</div>
-                <div class="label">Updated</div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ result.updated_count }}</div>
+                <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Updated</div>
             </div>
-            <div class="result-card skipped">
-                <div class="count">{{ result.skipped_count }}</div>
-                <div class="label">Skipped</div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ result.skipped_count }}</div>
+                <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Skipped</div>
             </div>
             {% if result.errors %}
-            <div class="result-card errors">
-                <div class="count">{{ result.errors|length }}</div>
-                <div class="label">Errors</div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ result.errors|length }}</div>
+                <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Errors</div>
             </div>
             {% endif %}
         </div>
-        
+
         {% if result.errors %}
-        <div class="error-list">
-            <h4>Error Details</h4>
-            <ul>
+        <div class="border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 rounded-default p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400 !text-[20px]">warning</span>
+                <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Error Details</span>
+            </div>
+            <ul class="list-disc list-inside text-sm text-yellow-800 dark:text-yellow-300">
                 {% for error in result.errors %}
                 <li>{{ error }}</li>
                 {% endfor %}
@@ -280,47 +81,62 @@
         {% endif %}
     </div>
     {% endif %}
-    
+
     <!-- Import Form -->
-    <form method="post" enctype="multipart/form-data" class="import-form">
+    <form method="post" enctype="multipart/form-data"
+          class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
         {% csrf_token %}
-        
-        <div class="form-row">
-            <label for="id_excel_file">{{ form.excel_file.label }}</label>
+
+        <div class="mb-5">
+            <label for="id_excel_file" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-2">
+                <span class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined !text-[18px]">description</span>
+                    {{ form.excel_file.label }}
+                </span>
+            </label>
             {{ form.excel_file }}
             {% if form.excel_file.help_text %}
-            <span class="help">{{ form.excel_file.help_text }}</span>
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">{{ form.excel_file.help_text }}</p>
             {% endif %}
             {% if form.excel_file.errors %}
-            <ul class="errorlist">
+            <ul class="mt-1">
                 {% for error in form.excel_file.errors %}
-                <li>{{ error }}</li>
+                <li class="text-xs text-red-600 dark:text-red-400">{{ error }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
         </div>
-        
-        <div class="form-row">
-            <label for="id_set_password">{{ form.set_password.label }}</label>
+
+        <div class="mb-5">
+            <label for="id_set_password" class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-2">
+                {{ form.set_password.label }}
+            </label>
             {{ form.set_password }}
             {% if form.set_password.help_text %}
-            <span class="help">{{ form.set_password.help_text }}</span>
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">{{ form.set_password.help_text }}</p>
             {% endif %}
         </div>
-        
-        <div class="form-row">
-            <label>
+
+        <div class="mb-5">
+            <label class="flex items-center gap-2 cursor-pointer">
                 {{ form.send_welcome_email }}
-                {{ form.send_welcome_email.label }}
+                <span class="text-sm font-medium text-font-default-light dark:text-font-default-dark">{{ form.send_welcome_email.label }}</span>
             </label>
             {% if form.send_welcome_email.help_text %}
-            <span class="help">{{ form.send_welcome_email.help_text }}</span>
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1 ml-6">{{ form.send_welcome_email.help_text }}</p>
             {% endif %}
         </div>
-        
-        <div class="submit-row">
-            <input type="submit" value="Start Import" />
-            <a href="{% url 'admin:authn_member_changelist' %}" class="cancel-link">Cancel</a>
+
+        <div class="flex items-center gap-3 pt-4 border-t border-base-100 dark:border-base-800">
+            <button type="submit"
+                    class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">upload</span>
+                Start Import
+            </button>
+            <a href="{% url 'admin:authn_member_changelist' %}"
+               class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+                Cancel
+            </a>
         </div>
     </form>
 </div>

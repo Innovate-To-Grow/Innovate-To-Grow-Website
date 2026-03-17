@@ -2,10 +2,8 @@ from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from cms.models import CMSPage
-
 from ...app_routes import APP_ROUTES
-from ...models import SiteSettings
+from ...models import CMSPage, SiteSettings
 
 
 def _build_homepage_choices():

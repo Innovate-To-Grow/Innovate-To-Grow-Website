@@ -65,7 +65,6 @@ INSTALLED_APPS = [
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
-    "cms.apps.CmsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -279,7 +278,7 @@ UNFOLD = {
             {
                 "title": "CMS",
                 "items": [
-                    {"title": "Pages", "link": "/admin/cms/cmspage/"},
+                    {"title": "Pages", "link": "/admin/pages/cmspage/"},
                 ],
             },
             {

@@ -3,10 +3,8 @@ import json
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from cms.models import CMSPage
-
 from ...app_routes import APP_ROUTES
-from ...models import Menu
+from ...models import CMSPage, Menu
 
 
 @admin.register(Menu)
