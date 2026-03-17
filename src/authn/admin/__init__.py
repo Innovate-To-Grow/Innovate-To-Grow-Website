@@ -11,6 +11,7 @@ Organized into modules by functionality:
 
 from .members.contact import ContactEmailAdmin, ContactPhoneAdmin
 from .members.group import I2GMemberGroupAdmin
+from .members.invitation import AdminInvitationAdmin
 from .members.member import MemberAdmin, MemberProfileAdmin
 from .security.security import RSAKeypairAdmin
 
@@ -23,6 +24,8 @@ __all__ = [
     # Contact
     "ContactEmailAdmin",
     "ContactPhoneAdmin",
+    # Invitation
+    "AdminInvitationAdmin",
     # Security
     "RSAKeypairAdmin",
 ]

@@ -21,6 +21,13 @@ class SiteMaintenanceControl(models.Model):
         verbose_name="Maintenance Message",
         help_text="Message displayed to users during maintenance.",
     )
+    bypass_password = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        verbose_name="Bypass Password",
+        help_text="Password that allows authorized users to bypass maintenance mode. Leave blank to disable bypass.",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

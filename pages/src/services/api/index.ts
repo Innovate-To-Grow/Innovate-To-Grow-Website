@@ -19,7 +19,7 @@ export type {
 export { fetchLayoutData, clearLayoutCache } from './layout';
 
 export type { HealthCheckResponse, HealthStatus } from './health';
-export { checkHealth } from './health';
+export { checkHealth, bypassMaintenance } from './health';
 
 export type { PaginatedResponse } from './types';
 

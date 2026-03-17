@@ -1,11 +1,37 @@
+import { useState, type FormEvent } from 'react';
 import './MaintenanceMode.css';
 
 interface MaintenanceModeProps {
   message?: string;
+  maintenance?: boolean;
+  onBypass?: (password: string) => Promise<boolean>;
 }
 
-export const MaintenanceMode = ({ message }: MaintenanceModeProps) => {
+export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceModeProps) => {
   const displayMessage = message || 'The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.';
+
+  const [showForm, setShowForm] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!password.trim() || !onBypass) return;
+
+    setError('');
+    setLoading(true);
+    try {
+      const success = await onBypass(password);
+      if (!success) {
+        setError('Incorrect password.');
+      }
+    } catch {
+      setError('Failed to verify. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="maintenance-container">
@@ -55,7 +81,38 @@ export const MaintenanceMode = ({ message }: MaintenanceModeProps) => {
             <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">UC Merced</a>
             <span className="footer-divider">|</span>
             <a href="https://engineering.ucmerced.edu" target="_blank" rel="noopener noreferrer">School of Engineering</a>
+            {maintenance && onBypass && (
+              <>
+                <span className="footer-divider">|</span>
+                <button
+                  type="button"
+                  className="bypass-toggle-link"
+                  onClick={() => setShowForm(!showForm)}
+                >
+                  Bypass with Password
+                </button>
+              </>
+            )}
           </div>
+
+          {showForm && maintenance && onBypass && (
+            <form className="bypass-form" onSubmit={handleSubmit}>
+              <input
+                type="password"
+                className="bypass-input"
+                placeholder="Enter bypass password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoFocus
+                disabled={loading}
+              />
+              <button type="submit" className="bypass-submit" disabled={loading || !password.trim()}>
+                {loading ? 'Verifying...' : 'Enter'}
+              </button>
+              {error && <span className="bypass-error">{error}</span>}
+            </form>
+          )}
+
           <p className="maintenance-copyright">&copy; {new Date().getFullYear()} The Regents of the University of California</p>
         </footer>
       </div>

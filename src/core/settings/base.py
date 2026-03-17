@@ -317,6 +317,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Members", "link": "/admin/authn/member/"},
                     {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
+                    {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
                 ],
             },
             {

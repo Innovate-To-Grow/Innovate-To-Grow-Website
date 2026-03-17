@@ -35,6 +35,7 @@ from .import_members import (
     generate_template_excel,
     import_members_from_excel,
 )
+from .invitation_mail import InvitationEmailError, send_admin_invitation_email
 from .rsa_manager import (
     RSADecryptionError,
     decrypt_password,
@@ -82,4 +83,7 @@ __all__ = [
     "decrypt_password",
     "is_encrypted_password",
     "RSADecryptionError",
+    # Invitation email
+    "send_admin_invitation_email",
+    "InvitationEmailError",
 ]

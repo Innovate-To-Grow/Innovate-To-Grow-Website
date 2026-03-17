@@ -21,6 +21,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from authn.forms import EmailAdminAuthenticationForm
+from core.views import MaintenanceBypassView
 from pages.views import LayoutAPIView
 
 # Customize Django Admin
@@ -32,6 +33,8 @@ admin.site.login_form = EmailAdminAuthenticationForm
 urlpatterns = [
     # admin site
     path("admin/", admin.site.urls),
+    # maintenance bypass
+    path("maintenance/bypass/", MaintenanceBypassView.as_view(), name="maintenance-bypass"),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
     # sheets (Google Sheets data proxy)

@@ -7,7 +7,7 @@ from core.models import SiteMaintenanceControl
 @admin.register(SiteMaintenanceControl)
 class SiteMaintenanceControlAdmin(ModelAdmin):
     list_display = ("__str__", "is_maintenance", "updated_at")
-    fields = ("is_maintenance", "message", "updated_at")
+    fields = ("is_maintenance", "message", "bypass_password", "updated_at")
     readonly_fields = ("updated_at",)
 
     def has_add_permission(self, request):

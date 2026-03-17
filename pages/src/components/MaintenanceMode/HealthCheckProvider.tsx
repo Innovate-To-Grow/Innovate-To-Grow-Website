@@ -4,10 +4,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { checkHealth } from '../../services/api';
+import { bypassMaintenance, checkHealth } from '../../services/api';
 import { MaintenanceMode } from './MaintenanceMode';
 import { HealthCheckContext, type HealthCheckContextType } from './context';
 import './HealthCheckProvider.css';
+
+const BYPASS_KEY = 'maintenance-bypass';
 
 interface HealthCheckProviderProps {
   children: ReactNode;
@@ -31,6 +33,9 @@ export const HealthCheckProvider = ({
   const [hasInitialized, setHasInitialized] = useState(false);
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [isBypassed, setIsBypassed] = useState(
+    () => sessionStorage.getItem(BYPASS_KEY) === 'true'
+  );
 
   const performHealthCheck = useCallback(async () => {
     const result = await checkHealth();
@@ -39,8 +44,15 @@ export const HealthCheckProvider = ({
     // This ensures all independent React roots (MainMenu, Footer)
     // and the main app state are properly re-initialized.
     if (hasInitialized && !isHealthy && result.isHealthy) {
+      sessionStorage.removeItem(BYPASS_KEY);
       window.location.reload();
       return result;
+    }
+
+    // If maintenance mode was turned off while bypassed, clear bypass
+    if (result.isHealthy && isBypassed) {
+      setIsBypassed(false);
+      sessionStorage.removeItem(BYPASS_KEY);
     }
 
     setIsHealthy(result.isHealthy);
@@ -48,7 +60,7 @@ export const HealthCheckProvider = ({
     setMaintenanceMessage(result.maintenanceMessage);
     setIsLoading(false);
     return result;
-  }, [isHealthy, hasInitialized]);
+  }, [isHealthy, hasInitialized, isBypassed]);
 
   // Initial health check
   useEffect(() => {
@@ -60,22 +72,33 @@ export const HealthCheckProvider = ({
     return () => clearTimeout(timeoutId);
   }, [performHealthCheck, initialDelay]);
 
-  // Polling when service is down
+  // Polling when service is down (and not bypassed)
   useEffect(() => {
     if (!hasInitialized) return;
     if (isHealthy) return;
+    if (isBypassed) return;
 
     const intervalId = setInterval(async () => {
       await performHealthCheck();
     }, pollingInterval);
 
     return () => clearInterval(intervalId);
-  }, [isHealthy, hasInitialized, pollingInterval, performHealthCheck]);
+  }, [isHealthy, hasInitialized, isBypassed, pollingInterval, performHealthCheck]);
 
   const checkNow = useCallback(async () => {
     setIsLoading(true);
     await performHealthCheck();
   }, [performHealthCheck]);
+
+  const handleBypass = useCallback(async (password: string): Promise<boolean> => {
+    const result = await bypassMaintenance(password);
+    if (result.success) {
+      setIsBypassed(true);
+      sessionStorage.setItem(BYPASS_KEY, 'true');
+      return true;
+    }
+    return false;
+  }, []);
 
   const contextValue: HealthCheckContextType = {
     isHealthy,
@@ -88,10 +111,14 @@ export const HealthCheckProvider = ({
   // Render optimistically: show children while checking, only block on confirmed failure.
   // Before initialization completes or when healthy, render children normally.
   // Only show maintenance screen when the health check has completed and returned unhealthy.
-  if (hasInitialized && !isHealthy) {
+  if (hasInitialized && !isHealthy && !isBypassed) {
     return (
       <HealthCheckContext.Provider value={contextValue}>
-        <MaintenanceMode message={maintenanceMessage} />
+        <MaintenanceMode
+          message={maintenanceMessage}
+          maintenance={maintenance}
+          onBypass={handleBypass}
+        />
       </HealthCheckContext.Provider>
     );
   }

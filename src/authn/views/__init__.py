@@ -30,6 +30,7 @@ from .auth.email_code import (
 )
 from .auth.login import LoginView
 from .auth.register import RegisterView
+from .invitation import AcceptInvitationView
 from .token import PublicTokenRefreshView
 from .verification.public_key import PublicKeyView
 
@@ -59,4 +60,5 @@ __all__ = [
     "ContactPhoneListCreateView",
     "ContactPhoneDetailView",
     "PublicTokenRefreshView",
+    "AcceptInvitationView",
 ]

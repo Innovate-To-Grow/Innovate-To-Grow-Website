@@ -5,7 +5,7 @@ Aggregates commonly used models so callers can import from `authn.models`.
 """
 
 from .contact import ContactEmail, ContactPhone
-from .members import I2GMemberGroup, Member, MemberGroup, MemberProfile
+from .members import AdminInvitation, I2GMemberGroup, Member, MemberGroup, MemberProfile
 from .security import EmailAuthChallenge, RSAKeypair
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "MemberProfile",
     "MemberGroup",
     "I2GMemberGroup",
+    "AdminInvitation",
     # Contact
     "ContactEmail",
     "ContactPhone",

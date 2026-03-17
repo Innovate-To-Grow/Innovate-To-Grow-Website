@@ -5,6 +5,7 @@ URL configuration for authn app.
 from django.urls import path
 
 from .views import (
+    AcceptInvitationView,
     AccountEmailsView,
     ChangePasswordCodeConfirmView,
     ChangePasswordCodeRequestView,
@@ -78,4 +79,6 @@ urlpatterns = [
     # Contact Phones (authenticated)
     path("contact-phones/", ContactPhoneListCreateView.as_view(), name="contact-phone-list-create"),
     path("contact-phones/<uuid:pk>/", ContactPhoneDetailView.as_view(), name="contact-phone-detail"),
+    # Admin invitation acceptance (public)
+    path("invite/<str:token>/", AcceptInvitationView.as_view(), name="accept-invitation"),
 ]
