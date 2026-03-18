@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: AWS Amplify - Prod
-      url: https://i2g.ucmerced.edu
+      url: https://test.i2g.ucmerced.edu
     defaults:
       run:
         working-directory: pages
