@@ -147,3 +147,8 @@ class SemesterAdmin(ModelAdmin):
         extra_context["sync_sheets_url"] = reverse("admin:projects_sync_sheets")
         extra_context["publish_all_url"] = reverse("admin:projects_publish_all")
         return super().changelist_view(request, extra_context=extra_context)
+
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        cache.delete("projects:current")
+        cache.delete("projects:past-all")

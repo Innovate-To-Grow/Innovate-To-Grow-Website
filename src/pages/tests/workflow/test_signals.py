@@ -68,10 +68,12 @@ class CacheInvalidationSignalTests(TestCase):
                 is_active=True,
             )
         cache.set("sheets:sig-sheet:data", {"cached": True})
+        cache.set("layout:data", {"cached": True})
         with self.captureOnCommitCallbacks(execute=True):
             source.title = "Updated"
             source.save()
         self.assertIsNone(cache.get("sheets:sig-sheet:data"))
+        self.assertIsNone(cache.get("layout:data"))
 
     def test_sheet_source_delete_clears_sheet_cache(self):
         source = GoogleSheetSource.objects.create(
@@ -83,6 +85,8 @@ class CacheInvalidationSignalTests(TestCase):
             is_active=True,
         )
         cache.set("sheets:del-sheet:data", {"cached": True})
+        cache.set("layout:data", {"cached": True})
         with self.captureOnCommitCallbacks(execute=True):
             source.delete()
         self.assertIsNone(cache.get("sheets:del-sheet:data"))
+        self.assertIsNone(cache.get("layout:data"))

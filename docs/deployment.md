@@ -68,7 +68,7 @@ Vite proxies `/api/*`, `/media/*`, `/admin/*`, and `/static/*` to `http://localh
 | `DJANGO_SUPERUSER_EMAIL` | Admin email | `""` |
 | `RSA_KEY_PASSPHRASE` | Passphrase for RSA key encryption at rest | Blank (required in prod) |
 | `FRONTEND_URL` | Frontend domain for admin live preview links | `""` |
-| `REDIS_URL` | Redis connection URL for caching | Falls back to LocMemCache |
+| `REDIS_URL` | Redis connection URL for caching | Falls back to FileBasedCache in-container; Redis is recommended for multi-instance deployments |
 | `VITE_API_BASE_URL` | Backend API URL for frontend build | `/api` (dev proxy) |
 
 ### AWS S3 Storage

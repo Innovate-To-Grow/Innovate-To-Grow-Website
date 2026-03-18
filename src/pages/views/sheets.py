@@ -60,6 +60,8 @@ class SheetsRefreshView(APIView):
             return Response({"detail": "Sheet source not found."}, status=status.HTTP_404_NOT_FOUND)
 
         cache.delete(f"sheets:{source.slug}:data")
+        cache.delete(f"sheets:{source.slug}:stale")
+        cache.delete("layout:data")
 
         try:
             data = fetch_source_data(source)

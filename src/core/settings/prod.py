@@ -174,7 +174,7 @@ LOGGING = {
     },
 }
 
-# Cache settings with Redis (fallback to in-memory cache if REDIS_URL is not provided)
+# Cache settings with Redis (fallback to file-based cache if REDIS_URL is not provided)
 REDIS_URL = os.environ.get("REDIS_URL", "").strip()
 if REDIS_URL:
     CACHES = {
@@ -189,10 +189,12 @@ if REDIS_URL:
         }
     }
 else:
+    # FileBasedCache is shared across gunicorn workers in a single container.
+    # Redis is still recommended for multi-instance deployments.
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "innovate-to-grow-prod-fallback",
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": os.environ.get("DJANGO_CACHE_DIR", "/tmp/innovate-to-grow-cache"),
             "KEY_PREFIX": "i2g",
             "TIMEOUT": 300,
         }

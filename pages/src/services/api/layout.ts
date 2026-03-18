@@ -78,23 +78,11 @@ export interface LayoutData {
   sheets_data?: Record<string, SheetsDataResponse>;
 }
 
-let layoutCache: Promise<LayoutData> | null = null;
-
 export const fetchLayoutData = async (): Promise<LayoutData> => {
-  if (layoutCache) {
-    return layoutCache;
-  }
-
-  layoutCache = api.get<LayoutData>('/layout/').then(
-    response => response.data,
-    error => {
-      layoutCache = null;
-      throw error;
-    }
-  );
-  return layoutCache;
+  const response = await api.get<LayoutData>('/layout/');
+  return response.data;
 };
 
 export const clearLayoutCache = () => {
-  layoutCache = null;
+  // Request caching now lives in LayoutProvider's revalidation flow.
 };

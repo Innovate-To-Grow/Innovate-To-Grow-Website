@@ -30,6 +30,7 @@ def invalidate_sheet_cache(sender, instance, **kwargs):
     def _clear():
         cache.delete(f"sheets:{slug}:data")
         cache.delete(f"sheets:{slug}:stale")
+        cache.delete("layout:data")
 
     transaction.on_commit(_clear)
 

@@ -174,7 +174,16 @@ class SheetsRefreshViewTests(TestCase):
     def test_refresh_clears_cache_and_returns_fresh_data(self, mock_fetch):
         # Pre-populate cache
         cache.set("sheets:refresh-sheet:data", {"old": True})
-        mock_fetch.return_value = {"slug": "refresh-sheet", "rows": [], "fresh": True}
+        cache.set("sheets:refresh-sheet:stale", {"old": True})
+        cache.set("layout:data", {"old": True})
+
+        def fake_fetch(source):
+            self.assertIsNone(cache.get("sheets:refresh-sheet:data"))
+            self.assertIsNone(cache.get("sheets:refresh-sheet:stale"))
+            self.assertIsNone(cache.get("layout:data"))
+            return {"slug": "refresh-sheet", "rows": [], "fresh": True}
+
+        mock_fetch.side_effect = fake_fetch
 
         self.client.force_login(self.admin_user)
         response = self.client.post("/sheets/refresh-sheet/refresh/")

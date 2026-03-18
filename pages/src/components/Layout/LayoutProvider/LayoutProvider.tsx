@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  startTransition,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   fetchLayoutData,
   type LayoutData,
@@ -9,25 +17,102 @@ interface LayoutProviderProps {
   children: ReactNode;
 }
 
+interface RefreshLayoutOptions {
+  force?: boolean;
+}
+
+const LAYOUT_REVALIDATE_MS = 60_000;
+
 export const LayoutProvider = ({ children }: LayoutProviderProps) => {
   const [layoutData, setLayoutData] = useState<LayoutData | null>(null);
   const [state, setState] = useState<LayoutLoadState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const lastLoadedAtRef = useRef(0);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const isUnmountedRef = useRef(false);
+
+  const refreshLayout = useEffectEvent(async ({force = false}: RefreshLayoutOptions = {}) => {
+    const now = Date.now();
+    const isStale = !lastLoadedAtRef.current || now - lastLoadedAtRef.current >= LAYOUT_REVALIDATE_MS;
+
+    if (!force && !isStale) {
+      return;
+    }
+
+    if (inFlightRef.current) {
+      await inFlightRef.current;
+      return;
+    }
+
+    if (!layoutData) {
+      startTransition(() => {
+        setState('loading');
+        setError(null);
+      });
+    }
+
+    const request = fetchLayoutData()
+      .then((data) => {
+        if (isUnmountedRef.current) {
+          return;
+        }
+
+        lastLoadedAtRef.current = Date.now();
+        startTransition(() => {
+          setLayoutData(data);
+          setError(null);
+          setState('ready');
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to load layout data', err);
+
+        if (isUnmountedRef.current || layoutData) {
+          return;
+        }
+
+        startTransition(() => {
+          setError('Layout data is currently unavailable.');
+          setState('error');
+        });
+      })
+      .finally(() => {
+        inFlightRef.current = null;
+      });
+
+    inFlightRef.current = request;
+    await request;
+  });
 
   useEffect(() => {
-    const loadLayout = async () => {
-      try {
-        const data = await fetchLayoutData();
-        setLayoutData(data);
-        setState('ready');
-      } catch (err) {
-        console.error('Failed to load layout data', err);
-        setError('Layout data is currently unavailable.');
-        setState('error');
+    isUnmountedRef.current = false;
+    void refreshLayout({force: true});
+
+    const handleFocus = () => {
+      void refreshLayout({force: true});
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshLayout({force: true});
       }
     };
 
-    loadLayout();
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshLayout();
+      }
+    }, LAYOUT_REVALIDATE_MS);
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isUnmountedRef.current = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const value: LayoutContextValue = useMemo(() => ({
