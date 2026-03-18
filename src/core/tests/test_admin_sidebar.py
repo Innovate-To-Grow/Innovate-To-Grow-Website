@@ -5,7 +5,7 @@ from django.test import SimpleTestCase
 class AdminSidebarNavigationTest(SimpleTestCase):
     def test_ses_navigation_includes_ses_entries(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
-        ses_section = next(section for section in navigation if section["title"] == "Amazon SES")
+        ses_section = next(section for section in navigation if section["title"] == "Amazon Simple Email Service")
         item_titles = {item["title"] for item in ses_section["items"]}
 
         self.assertIn("SES Mail Senders", item_titles)
