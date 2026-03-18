@@ -6,6 +6,7 @@ from django.contrib import admin, messages
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import path, reverse
@@ -204,9 +205,10 @@ class CMSPageAdmin(ModelAdmin):
                 data=data,
             )
 
-        # Clear cache after all blocks are saved to prevent race conditions
-        # where a concurrent request re-caches partial/stale block data.
-        cache.delete(f"cms:page:{page.route}")
+        # Defer cache clear until after transaction commits so concurrent
+        # requests don't re-cache stale data from the uncommitted state.
+        route = page.route
+        transaction.on_commit(lambda: cache.delete(f"cms:page:{route}"))
 
     # ===== Preview store endpoint =====
 
@@ -416,6 +418,9 @@ class CMSPageAdmin(ModelAdmin):
                             admin_label=bd.get("admin_label", ""),
                             data=bd.get("data", {}),
                         )
+                    # Clear page cache after blocks are created
+                    _route = page.route
+                    transaction.on_commit(lambda r=_route: cache.delete(f"cms:page:{r}"))
                     result["success"] = True
                 except Exception as e:
                     result["errors"].append(str(e))
@@ -427,6 +432,7 @@ class CMSPageAdmin(ModelAdmin):
             error_count = sum(1 for r in results if r.get("errors"))
             if success_count:
                 messages.success(request, f"Successfully imported {success_count} page(s).")
+                transaction.on_commit(lambda: cache.delete("layout:data"))
             if error_count:
                 messages.warning(request, f"{error_count} page(s) had errors.")
 
@@ -513,6 +519,8 @@ class CMSPageAdmin(ModelAdmin):
                             admin_label=bd.get("admin_label", ""),
                             data=bd.get("data", {}),
                         )
+                    _route = page.route
+                    transaction.on_commit(lambda r=_route: cache.delete(f"cms:page:{r}"))
                     result["success"] = True
                 except Exception as e:
                     result["errors"].append(str(e))
@@ -524,6 +532,7 @@ class CMSPageAdmin(ModelAdmin):
             error_count = sum(1 for r in results if r.get("errors"))
             if success_count:
                 messages.success(request, f"Successfully imported {success_count} seed page(s).")
+                transaction.on_commit(lambda: cache.delete("layout:data"))
             if error_count:
                 messages.warning(request, f"{error_count} page(s) had errors.")
 
