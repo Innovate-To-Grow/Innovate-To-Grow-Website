@@ -34,7 +34,16 @@ class CMSPageAdminForm(forms.ModelForm):
         fields = "__all__"
         widgets = {
             # Use a single-line input so styling matches the title field
-            "meta_description": forms.TextInput(),
+            "meta_description": forms.TextInput(
+                attrs={
+                    "class": (
+                        "border border-base-200 bg-white font-medium min-w-20 "
+                        "placeholder-base-400 rounded-default shadow-xs text-font-default-light text-sm "
+                        "focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600 "
+                        "h-[38px] w-full max-w-2xl block"
+                    )
+                }
+            ),
             "route": forms.TextInput(
                 attrs={
                     "data-role": "cms-route-source",
@@ -117,11 +126,16 @@ class CMSPageAdmin(ModelAdmin):
     # ===== Context injection for visual editor =====
 
     def _get_editor_context(self, obj=None):
+        from django.conf import settings as django_settings
+
+        frontend_url = getattr(django_settings, "FRONTEND_URL", "") or ""
         ctx = {
             "block_schemas_json": json.dumps(BLOCK_SCHEMAS),
             "block_type_choices_json": json.dumps(BLOCK_TYPE_CHOICES),
             "route_check_url": reverse("admin:pages_cmspage_route_conflict"),
             "current_page_id": str(obj.pk) if obj else "",
+            "current_page_route": obj.route if obj else "",
+            "frontend_url": frontend_url.rstrip("/"),
         }
         if obj:
             blocks = obj.blocks.filter(is_deleted=False).order_by("sort_order")

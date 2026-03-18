@@ -1,7 +1,8 @@
+import json
 import logging
 
 from django.core.cache import cache
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -9,6 +10,8 @@ from pages.models import CMSPage
 from pages.serializers.cms import CMSPageSerializer
 
 logger = logging.getLogger(__name__)
+
+_LIVE_PREVIEW_TTL = 600  # 10 minutes
 
 
 class CMSPreviewFetchView(APIView):
@@ -21,6 +24,38 @@ class CMSPreviewFetchView(APIView):
         if data is None:
             return Response({"detail": "Preview not found or expired."}, status=404)
         return Response(data)
+
+
+class CMSLivePreviewView(APIView):
+    """Store and retrieve live-preview page data keyed by page UUID.
+
+    POST (staff-only): admin JS pushes the current editor state here on every edit.
+    GET  (public):     preview tab polls this endpoint to render the latest state.
+    """
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAdminUser()]
+        return [AllowAny()]
+
+    def get(self, request, page_id):
+        cached = cache.get(f"cms:live-preview:{page_id}")
+        if cached is not None:
+            return Response(cached)
+
+        page = CMSPage.objects.prefetch_related("blocks").filter(pk=page_id).first()
+        if page is None:
+            return Response({"detail": "Page not found."}, status=404)
+        return Response(CMSPageSerializer(page).data)
+
+    def post(self, request, page_id):
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return Response({"detail": "Invalid JSON."}, status=400)
+
+        cache.set(f"cms:live-preview:{page_id}", data, timeout=_LIVE_PREVIEW_TTL)
+        return Response({"ok": True})
 
 
 class CMSPageView(APIView):

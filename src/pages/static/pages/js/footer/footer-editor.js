@@ -8,6 +8,13 @@
 
   // App routes injected from Django backend (see pages/app_routes.py)
   const APP_ROUTES = window.APP_ROUTES || [];
+  // Published CMS routes injected from Django backend
+  const CMS_ROUTES = window.CMS_ROUTES || [];
+
+  function isCmsRoute(url) {
+    if (!url) return false;
+    return CMS_ROUTES.some(r => r.url === url);
+  }
 
   // DOM elements (initialized in init())
   let jsonInput = null;
@@ -92,7 +99,7 @@
   // ===== CTA Buttons =====
   window.addCtaButton = function(type) {
     type = type || 'external';
-    footerData.cta_buttons.push({ type: type, label: 'New Button', href: type === 'app' ? '' : '#', style: 'blue' });
+    footerData.cta_buttons.push({ type: type, label: 'New Button', href: (type === 'app' || type === 'cms') ? '' : '#', style: 'blue' });
     renderCtaButtons();
     syncToJson();
   };
@@ -106,7 +113,7 @@
   function renderCtaButtons() {
     const container = document.getElementById('cta-list');
     container.innerHTML = footerData.cta_buttons.map((btn, idx) => {
-      const btnType = btn.type || 'external';
+      const btnType = (btn.type === 'app' && isCmsRoute(btn.href)) ? 'cms' : (btn.type || 'external');
 
       const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
@@ -114,6 +121,7 @@
           <select onchange="changeCtaType(${idx}, this.value)">
             <option value="external" ${btnType === 'external' ? 'selected' : ''}>External</option>
             <option value="app" ${btnType === 'app' ? 'selected' : ''}>App Route</option>
+            <option value="cms" ${btnType === 'cms' ? 'selected' : ''}>CMS Page</option>
           </select>
         </div>
       `;
@@ -129,6 +137,19 @@
             <select onchange="selectCtaAppRoute(${idx}, this.value)">
               <option value="">-- Select Page --</option>
               ${appOptions}
+            </select>
+          </div>
+        `;
+      } else if (btnType === 'cms') {
+        const cmsOptions = CMS_ROUTES.map(r =>
+          `<option value="${escapeAttr(r.url)}" ${btn.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+        urlField = `
+          <div class="item-field">
+            <label>CMS Page</label>
+            <select onchange="selectCtaCmsRoute(${idx}, this.value)">
+              <option value="">-- Select Page --</option>
+              ${cmsOptions}
             </select>
           </div>
         `;
@@ -177,13 +198,30 @@
   window.changeCtaType = function(idx, newType) {
     const btn = footerData.cta_buttons[idx];
     btn.type = newType;
-    btn.href = newType === 'app' ? '' : '#';
+    btn.href = (newType === 'app' || newType === 'cms') ? '' : '#';
     renderCtaButtons();
     syncToJson();
   };
 
   window.selectCtaAppRoute = function(idx, url) {
-    footerData.cta_buttons[idx].href = url;
+    const btn = footerData.cta_buttons[idx];
+    btn.href = url;
+    const route = APP_ROUTES.find(r => r.url === url);
+    if (route && (!btn.label || btn.label === 'New Button')) {
+      btn.label = route.title;
+    }
+    renderCtaButtons();
+    syncToJson();
+  };
+
+  window.selectCtaCmsRoute = function(idx, url) {
+    const btn = footerData.cta_buttons[idx];
+    btn.href = url;
+    const route = CMS_ROUTES.find(r => r.url === url);
+    if (route && (!btn.label || btn.label === 'New Button')) {
+      btn.label = route.title;
+    }
+    renderCtaButtons();
     syncToJson();
   };
 
@@ -320,7 +358,7 @@
   // ===== Footer Links =====
   window.addFooterLink = function(type) {
     type = type || 'external';
-    footerData.footer_links.push({ type: type, label: 'New Link', href: type === 'app' ? '' : '#', target: type === 'external' ? '_blank' : '', rel: type === 'external' ? 'noopener' : '' });
+    footerData.footer_links.push({ type: type, label: 'New Link', href: (type === 'app' || type === 'cms') ? '' : '#', target: type === 'external' ? '_blank' : '', rel: type === 'external' ? 'noopener' : '' });
     renderFooterLinks();
     syncToJson();
   };
@@ -339,7 +377,7 @@
   window.changeFooterLinkType = function(idx, newType) {
     const link = footerData.footer_links[idx];
     link.type = newType;
-    link.href = newType === 'app' ? '' : '#';
+    link.href = (newType === 'app' || newType === 'cms') ? '' : '#';
     link.target = newType === 'external' ? '_blank' : '';
     link.rel = newType === 'external' ? 'noopener' : '';
     renderFooterLinks();
@@ -357,10 +395,21 @@
     syncToJson();
   };
 
+  window.selectFooterLinkCmsRoute = function(idx, url) {
+    const link = footerData.footer_links[idx];
+    link.href = url;
+    const route = CMS_ROUTES.find(r => r.url === url);
+    if (route && (!link.label || link.label === 'New Link')) {
+      link.label = route.title;
+    }
+    renderFooterLinks();
+    syncToJson();
+  };
+
   function renderFooterLinks() {
     const container = document.getElementById('footer-links-list');
     container.innerHTML = footerData.footer_links.map((link, idx) => {
-      const linkType = link.type || 'external';
+      const linkType = (link.type === 'app' && isCmsRoute(link.href)) ? 'cms' : (link.type || 'external');
 
       const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
@@ -368,6 +417,7 @@
           <select onchange="changeFooterLinkType(${idx}, this.value)">
             <option value="external" ${linkType === 'external' ? 'selected' : ''}>External</option>
             <option value="app" ${linkType === 'app' ? 'selected' : ''}>App Route</option>
+            <option value="cms" ${linkType === 'cms' ? 'selected' : ''}>CMS Page</option>
           </select>
         </div>
       `;
@@ -383,6 +433,19 @@
             <select onchange="selectFooterLinkAppRoute(${idx}, this.value)">
               <option value="">-- Select Page --</option>
               ${appOptions}
+            </select>
+          </div>
+        `;
+      } else if (linkType === 'cms') {
+        const cmsOptions = CMS_ROUTES.map(r =>
+          `<option value="${escapeAttr(r.url)}" ${link.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+        ).join('');
+        urlField = `
+          <div class="item-field">
+            <label>CMS Page</label>
+            <select onchange="selectFooterLinkCmsRoute(${idx}, this.value)">
+              <option value="">-- Select Page --</option>
+              ${cmsOptions}
             </select>
           </div>
         `;

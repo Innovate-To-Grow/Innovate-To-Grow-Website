@@ -1,9 +1,13 @@
 .cms-route-editor {
-  margin-top: 0.75rem;
+  /* Add breathing room so the editor border doesn't visually merge
+     with the outer Unfold fieldset/card border. */
+  margin: 0.75rem;
   padding: 1rem;
-  border: 1px solid #d7deea;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  background: #f8fafc;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  box-sizing: border-box;
 }
 
 .cms-route-editor-header {
@@ -26,8 +30,8 @@
   margin: 0 0 1rem;
   padding: 0.625rem 0.75rem;
   border-radius: 8px;
-  background: #eef4ff;
-  color: #123a73;
+  background: rgba(0, 51, 102, 0.06);
+  color: #0b1f3f;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 13px;
 }
@@ -55,14 +59,19 @@
   flex: 1;
   min-width: 0;
   padding: 0.625rem 0.75rem;
-  border: 1px solid #c6d2e3;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
 }
 
+.cms-route-segment-input:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.6);
+  outline-offset: 1px;
+}
+
 .cms-route-remove,
 .cms-route-add {
-  border: 1px solid #c6d2e3;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
   cursor: pointer;

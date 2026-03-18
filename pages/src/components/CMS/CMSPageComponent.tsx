@@ -37,23 +37,24 @@ export const CMSPageComponent: React.FC<CMSPageComponentProps> = ({routeOverride
   const route = routeOverride || location.pathname;
   const preview = new URLSearchParams(location.search).has('cms_preview');
 
-  const { page, loading, error } = useCMSPage(route, preview);
+  const { page, loading, error, isLivePreview } = useCMSPage(route, preview);
 
   useEffect(() => {
     if (page?.title) {
-      document.title = `${page.title} | Innovate to Grow`;
+      const suffix = isLivePreview ? ' [Live Preview]' : '';
+      document.title = `${page.title}${suffix} | Innovate to Grow`;
     }
-  }, [page?.title]);
+  }, [page?.title, isLivePreview]);
 
   if (loading) {
     return <div className="cms-page-loading" />;
   }
 
-  if (error === 'not_found' || !page) {
+  if (!isLivePreview && (error === 'not_found' || !page)) {
     return <NotFoundPage />;
   }
 
-  if (error) {
+  if (!isLivePreview && error) {
     return (
       <div className="cms-page-error">
         <p>Something went wrong loading this page.</p>
@@ -62,8 +63,16 @@ export const CMSPageComponent: React.FC<CMSPageComponentProps> = ({routeOverride
   }
 
   return (
-    <div className={page.page_css_class || 'cms-page'}>
-      <BlockRenderer blocks={page.blocks} />
-    </div>
+    <>
+      {isLivePreview && (
+        <div className="cms-live-preview-banner">
+          <span className="cms-live-preview-banner-dot" />
+          This page is being live-edited in the CMS admin
+        </div>
+      )}
+      <div className={page?.page_css_class || 'cms-page'}>
+        {page && <BlockRenderer blocks={page.blocks} />}
+      </div>
+    </>
   );
 };

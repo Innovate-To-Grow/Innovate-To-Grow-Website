@@ -233,12 +233,32 @@
 .cms-block-field textarea {
   min-height: 80px;
   resize: vertical;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 13px;
 }
 
 .cms-block-field textarea.html-field {
-  min-height: 120px;
+  min-height: 360px;
+}
+
+/* CodeMirror integration for HTML fields */
+.cms-block-field .CodeMirror {
+  height: 380px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+}
+
+.cms-block-field .CodeMirror-focused {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+.cms-block-field .CodeMirror-gutters {
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
 }
 
 .cms-block-field .field-hint {

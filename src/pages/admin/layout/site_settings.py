@@ -26,6 +26,17 @@ class SiteSettingsForm(forms.ModelForm):
             queryset = queryset | CMSPage.all_objects.filter(pk=current_page_id)
 
         self.fields["homepage_page"].queryset = queryset.distinct()
+        # Match Unfold styling of other form controls (e.g., Title input)
+        self.fields["homepage_page"].widget.attrs.update(
+            {
+                "class": (
+                    "border border-base-200 bg-white font-medium min-w-20 "
+                    "placeholder-base-400 rounded-default shadow-xs text-font-default-light text-sm "
+                    "focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600 "
+                    "h-[38px] w-full max-w-2xl block"
+                )
+            }
+        )
 
     def clean_homepage_page(self):
         page = self.cleaned_data.get("homepage_page")

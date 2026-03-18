@@ -9,8 +9,8 @@
 
   let blocks = [];
   let collapsedSet = new Set();
-  let previewVisible = false;
-  let previewTimer = null;
+  let livePreviewActive = false;
+  let livePreviewTimer = null;
 
   // ===== Helpers =====
   function escapeHtml(val) {
@@ -84,6 +84,54 @@
     var jsonEditor = document.getElementById('json-editor');
     if (jsonEditor) {
       jsonEditor.value = JSON.stringify(blocks, null, 2);
+    }
+
+    // Enhance HTML fields with a real code editor (syntax highlighting)
+    initHtmlCodeEditors(container);
+  }
+
+  function initHtmlCodeEditors(container) {
+    if (!container) return;
+    if (!window.CodeMirror || typeof window.CodeMirror.fromTextArea !== 'function') {
+      // Fallback: just ensure reasonable height
+      var fallbacks = container.querySelectorAll('textarea.html-field');
+      for (var i = 0; i < fallbacks.length; i++) {
+        fallbacks[i].style.minHeight = '360px';
+      }
+      return;
+    }
+
+    var textareas = container.querySelectorAll('textarea.html-field');
+    for (var t = 0; t < textareas.length; t++) {
+      var ta = textareas[t];
+      if (ta._cmInstance) continue;
+
+      var cm = window.CodeMirror.fromTextArea(ta, {
+        mode: 'htmlmixed',
+        lineNumbers: true,
+        lineWrapping: true,
+        tabSize: 2,
+        indentUnit: 2,
+        viewportMargin: Infinity,
+      });
+      ta._cmInstance = cm;
+
+      cm.setSize(null, 380);
+
+      // Keep existing onchange="updateBlockData(...)" behavior by updating the underlying textarea
+      // and dispatching a change event.
+      cm.on('change', function (instance) {
+        var textarea = instance.getTextArea();
+        textarea.value = instance.getValue();
+        try {
+          textarea.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (e) {
+          // IE11-ish fallback (unlikely, but safe)
+          var evt = document.createEvent('Event');
+          evt.initEvent('change', true, true);
+          textarea.dispatchEvent(evt);
+        }
+      });
     }
   }
 
@@ -474,8 +522,68 @@
     if (hidden) {
       hidden.value = JSON.stringify(blocks);
     }
-    schedulePreviewUpdate();
+    scheduleLivePreviewSync();
   }
+
+  // ===== Live Preview =====
+  function gatherPageData() {
+    var routeEl = document.getElementById('id_route');
+    var titleEl = document.getElementById('id_title');
+    var slugEl = document.getElementById('id_slug');
+    var cssClassEl = document.getElementById('id_page_css_class');
+    var metaDescEl = document.getElementById('id_meta_description');
+
+    return {
+      slug: slugEl ? slugEl.value : '',
+      route: routeEl ? routeEl.value : (window.CMS_ROUTE_EDITOR && window.CMS_ROUTE_EDITOR.pageRoute) || '/',
+      title: titleEl ? titleEl.value : '',
+      page_css_class: cssClassEl ? cssClassEl.value : '',
+      meta_description: metaDescEl ? metaDescEl.value : '',
+      blocks: blocks.map(function (b, i) {
+        return { block_type: b.block_type, sort_order: i, data: b.data };
+      }),
+    };
+  }
+
+  function postLivePreview(callback) {
+    var config = window.CMS_ROUTE_EDITOR || {};
+    var pageId = config.pageId;
+    if (!pageId) return;
+
+    var csrfToken = '';
+    var csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfEl) csrfToken = csrfEl.value;
+
+    fetch('/cms/live-preview/' + pageId + '/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(gatherPageData()),
+      credentials: 'same-origin',
+    })
+      .then(function () { if (callback) callback(); })
+      .catch(function () { /* silently ignore */ });
+  }
+
+  function scheduleLivePreviewSync() {
+    if (!livePreviewActive) return;
+    if (livePreviewTimer) clearTimeout(livePreviewTimer);
+    livePreviewTimer = setTimeout(function () { postLivePreview(); }, 500);
+  }
+
+  window.openLivePreview = function () {
+    var config = window.CMS_ROUTE_EDITOR || {};
+    var pageId = config.pageId;
+    if (!pageId) { alert('Save the page first before previewing.'); return; }
+
+    livePreviewActive = true;
+
+    postLivePreview(function () {
+      var route = gatherPageData().route || '/';
+      if (route.charAt(0) !== '/') route = '/' + route;
+      var base = (config.frontendUrl || '').replace(/\/+$/, '') || window.location.origin;
+      window.open(base + route + '?cms_live_preview=' + pageId, '_blank');
+    });
+  };
 
   // ===== Global Actions =====
   window.addBlock = function () {
@@ -662,90 +770,6 @@
       syncToJson();
     } catch (e) {
       alert('Invalid JSON: ' + e.message);
-    }
-  };
-
-  // ===== Preview =====
-  function schedulePreviewUpdate() {
-    if (!previewVisible) return;
-    if (previewTimer) clearTimeout(previewTimer);
-    previewTimer = setTimeout(function () {
-      doPreviewUpdate();
-    }, 800);
-  }
-
-  function doPreviewUpdate() {
-    var statusEl = document.getElementById('cms-preview-status');
-
-    // Gather page data from form fields
-    var routeEl = document.getElementById('id_route');
-    var titleEl = document.getElementById('id_title');
-    var cssClassEl = document.getElementById('id_page_css_class');
-    var metaDescEl = document.getElementById('id_meta_description');
-
-    var route = routeEl ? routeEl.value : '/';
-    var previewData = {
-      slug: 'preview',
-      route: route,
-      title: titleEl ? titleEl.value : 'Preview',
-      page_css_class: cssClassEl ? cssClassEl.value : '',
-      meta_description: metaDescEl ? metaDescEl.value : '',
-      blocks: blocks.map(function (b, i) {
-        return {
-          block_type: b.block_type,
-          sort_order: i,
-          data: b.data,
-        };
-      }),
-    };
-
-    if (statusEl) statusEl.textContent = 'Updating preview...';
-
-    var csrfToken = '';
-    var csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (csrfEl) csrfToken = csrfEl.value;
-
-    fetch('/admin/cms/cmspage/preview/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken,
-      },
-      body: JSON.stringify(previewData),
-      credentials: 'same-origin',
-    })
-      .then(function (resp) { return resp.json(); })
-      .then(function (result) {
-        if (result.token) {
-          var iframe = document.getElementById('cms-preview-iframe');
-          if (iframe) {
-            iframe.src = route + '?cms_preview_token=' + result.token;
-          }
-          if (statusEl) statusEl.textContent = 'Preview updated.';
-        } else {
-          if (statusEl) statusEl.textContent = 'Preview error: ' + (result.detail || 'unknown');
-        }
-      })
-      .catch(function (err) {
-        if (statusEl) statusEl.textContent = 'Preview error: ' + err.message;
-      });
-  }
-
-  window.refreshPreview = function () {
-    doPreviewUpdate();
-  };
-
-  window.togglePreview = function () {
-    var wrapper = document.getElementById('cms-preview-wrapper');
-    var btn = document.getElementById('cms-show-preview-btn');
-    if (!wrapper) return;
-
-    previewVisible = !previewVisible;
-    wrapper.style.display = previewVisible ? 'block' : 'none';
-    if (btn) btn.style.display = previewVisible ? 'none' : '';
-
-    if (previewVisible) {
-      doPreviewUpdate();
     }
   };
 

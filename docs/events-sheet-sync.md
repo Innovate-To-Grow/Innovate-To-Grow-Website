@@ -35,7 +35,7 @@ The backend auto-detects which method to use: service account credentials take p
 
 ### GoogleSheetSource Model
 
-Sheet connections are configured in the Django admin under **Site Settings > Sheet Sources**. Each source maps a slug to a spreadsheet range.
+Sheet connections are configured in the Django admin under **Content Management System > Sheet Sources**. Each source maps a slug to a spreadsheet range.
 
 | Field | Purpose |
 |-------|---------|

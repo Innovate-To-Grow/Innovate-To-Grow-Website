@@ -278,19 +278,19 @@ UNFOLD = {
         "show_search": True,
         "navigation": [
             {
-                "title": "CMS",
+                "title": "Content Management System",
                 "items": [
+                    {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
                     {"title": "Pages", "link": "/admin/pages/cmspage/"},
+                    {"title": "Sheet Sources", "link": "/admin/pages/googlesheetsource/"},
+                    {"title": "Menus", "link": "/admin/pages/menu/"},
+                    {"title": "Footer", "link": "/admin/pages/footercontent/"},
                 ],
             },
             {
                 "title": "Site Settings",
                 "items": [
-                    {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
-                    {"title": "Menus", "link": "/admin/pages/menu/"},
-                    {"title": "Footer", "link": "/admin/pages/footercontent/"},
-                    {"title": "Sheet Sources", "link": "/admin/pages/googlesheetsource/"},
                 ],
             },
             {
@@ -324,16 +324,21 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Mail",
+                "title": "Amazon SES",
+                "items": [
+                    {"title": "SES Mail Senders", "link": "/admin/mail/sesaccount/"},
+                    {"title": "SES Compose", "link": "/admin/mail/sesaccount/compose/"},
+                    {"title": "SES Email Logs", "link": "/admin/mail/sesemaillog/"},
+                ],
+            },
+            {
+                "title": "Gmail",
                 "items": [
                     {"title": "Gmail API Accounts", "link": "/admin/mail/googleaccount/"},
                     {"title": "Inbox", "link": "/admin/mail/googleaccount/inbox/"},
                     {"title": "Sent Mail", "link": "/admin/mail/googleaccount/sent/"},
                     {"title": "Compose", "link": "/admin/mail/googleaccount/compose/"},
-                    {"title": "SES Mail Senders", "link": "/admin/mail/sesaccount/"},
-                    {"title": "SES Compose", "link": "/admin/mail/sesaccount/compose/"},
                     {"title": "Email Logs", "link": "/admin/mail/emaillog/"},
-                    {"title": "SES Email Logs", "link": "/admin/mail/sesemaillog/"},
                 ],
             },
         ],

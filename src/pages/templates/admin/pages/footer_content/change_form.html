@@ -30,6 +30,7 @@
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="btn-add" onclick="addCtaButton('external')">+ Add External Link</button>
           <button type="button" class="btn-add" onclick="addCtaButton('app')">+ Add App Route</button>
+          <button type="button" class="btn-add" onclick="addCtaButton('cms')">+ Add CMS Page</button>
         </div>
 
         <h4 class="section-title" style="margin-top: 20px;">Contact Info</h4>
@@ -66,6 +67,7 @@
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="btn-add" onclick="addFooterLink('external')">+ Add External Link</button>
           <button type="button" class="btn-add" onclick="addFooterLink('app')">+ Add App Route</button>
+          <button type="button" class="btn-add" onclick="addFooterLink('cms')">+ Add CMS Page</button>
         </div>
       </div>
 
@@ -95,6 +97,9 @@
     <iframe id="footer-preview-iframe" class="preview-iframe footer-preview-iframe"></iframe>
   </div>
 
-  <script>window.APP_ROUTES = {{ app_routes_json|safe }};</script>
-  <script src="{% static 'pages/js/footer/footer-editor.js' %}?v=2"></script>
+  <script>
+    window.APP_ROUTES = {{ app_routes_json|safe }};
+    window.CMS_ROUTES = {{ cms_routes_json|safe }};
+  </script>
+  <script src="{% static 'pages/js/footer/footer-editor.js' %}?v=3"></script>
 {% endblock %}

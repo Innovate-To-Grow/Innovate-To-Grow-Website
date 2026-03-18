@@ -11,7 +11,8 @@ Navigate to `/admin/` and log in with your staff account. The admin uses the Inn
 | Section | What It Contains |
 |---------|-----------------|
 | CMS | CMS Pages |
-| Site Settings | Home Page, Site Maintenance Control, Menus, Footer, Sheet Sources |
+| Site Settings | Home Page, Site Maintenance Control |
+| Content Management System | Home Page, Pages, Sheet Sources, Menus, Footer |
 | Events | Events |
 | News | News Articles, Feed Sources, Sync Logs |
 | Projects | Semesters, Projects |
@@ -96,7 +97,7 @@ Blocks are the building units of CMS pages. Each block has a type, a sort order,
 
 ## Menus
 
-Menus control the site navigation. Go to **Site Settings > Menus** to manage them.
+Menus control the site navigation. Go to **Content Management System > Menus** to manage them.
 
 ### Menu Items
 
@@ -118,7 +119,7 @@ The menu editor provides a visual interface with dropdowns for app routes and CM
 
 ## Footer
 
-Go to **Site Settings > Footer** to manage footer content. Only one active footer is allowed (singleton).
+Go to **Content Management System > Footer** to manage footer content. Only one active footer is allowed (singleton).
 
 The footer content is a JSON structure with:
 - **CTA Buttons** — Call-to-action buttons displayed at the top of the footer
@@ -148,7 +149,7 @@ The **Effective Homepage Route** shows the actual CMS route currently rendered a
 
 ## Google Sheet Sources
 
-Go to **Site Settings > Sheet Sources** to connect Google Sheets for display on the site.
+Go to **Content Management System > Sheet Sources** to connect Google Sheets for display on the site.
 
 Each source needs:
 1. **Slug** — Identifies the source in API calls and block references

@@ -41,3 +41,10 @@ export async function fetchCMSPreview(
   const response = await api.get<CMSPageResponse>(`/cms/preview/${token}/`);
   return response.data;
 }
+
+export async function fetchCMSLivePreview(
+  pageId: string,
+): Promise<CMSPageResponse> {
+  const response = await api.get<CMSPageResponse>(`/cms/live-preview/${pageId}/`);
+  return response.data;
+}
