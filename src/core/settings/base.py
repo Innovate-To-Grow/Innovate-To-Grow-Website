@@ -324,7 +324,7 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Amazon SES",
+                "title": "Amazon Simple Email Service",
                 "items": [
                     {"title": "SES Mail Senders", "link": "/admin/mail/sesaccount/"},
                     {"title": "SES Compose", "link": "/admin/mail/sesaccount/compose/"},

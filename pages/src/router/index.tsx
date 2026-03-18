@@ -115,12 +115,16 @@ export const router = createBrowserRouter([
             // Account management
             {path: 'account', element: <AccountPage/>},
 
-            // Django admin — bypass React Router so the request hits the backend
+            // Django admin — always jump to the backend admin origin to avoid SPA redirect loops
             {
                 path: 'admin/*',
                 element: null,
-                loader: () => {
-                    window.location.replace(window.location.pathname + window.location.search);
+                loader: ({ request, params }) => {
+                    const currentUrl = new URL(request.url);
+                    const backendBase = (import.meta.env.VITE_BACKEND_URL || currentUrl.origin).replace(/\/$/, '');
+                    const adminPath = params['*'] ? `/admin/${params['*']}` : '/admin/';
+
+                    window.location.replace(`${backendBase}${adminPath}${currentUrl.search}${currentUrl.hash}`);
                     return null;
                 },
             },
