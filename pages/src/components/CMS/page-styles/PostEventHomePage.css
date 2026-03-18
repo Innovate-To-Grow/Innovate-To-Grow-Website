@@ -2,13 +2,14 @@
 .post-event-home-page {
   max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: var(--itg-page-padding);
+  padding: 0 1rem 2rem;
 }
 
 /* Hero banner — full width, break out of page container */
 .peh-hero {
   width: 100vw;
   margin-left: calc(-50vw + 50%);
+  margin-top: -10px;
   margin-bottom: 2rem;
   overflow: hidden;
 }
@@ -181,7 +182,11 @@
 
 @media (max-width: 768px) {
   .post-event-home-page {
-    padding: var(--itg-page-padding-mobile);
+    padding: 0 1rem 1rem;
+  }
+
+  .peh-hero {
+    margin-top: -8px;
   }
 
   .peh-two-col {
@@ -201,5 +206,11 @@
 
   .peh-btn-row {
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .peh-hero {
+    margin-top: -5px;
   }
 }
