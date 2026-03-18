@@ -152,4 +152,20 @@
     flex-direction: column;
     align-items: stretch;
   }
+
+  .sdt-table {
+    font-size: var(--itg-font-size-table-mobile);
+  }
+
+  .sdt-th {
+    padding: 0.5rem 0.4rem;
+  }
+
+  .sdt-td {
+    padding: 0.4rem;
+  }
+
+  .sdt-detail-row .sdt-detail-cell {
+    padding: 0.75rem 1rem;
+  }
 }

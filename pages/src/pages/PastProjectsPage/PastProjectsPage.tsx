@@ -23,7 +23,6 @@ export const PastProjectsPage = () => {
   return (
     <div className="past-projects-page">
       <header className="past-projects-hero">
-        <p className="past-projects-eyebrow">Projects</p>
         <h1 className="past-projects-title">Past Projects</h1>
         <p className="past-projects-lead">
           {sharedMode

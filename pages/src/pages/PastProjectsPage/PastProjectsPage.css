@@ -1,7 +1,7 @@
 .past-projects-page {
-  max-width: min(1280px, calc(100% - 32px));
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 0 3rem;
+  padding: var(--itg-page-padding);
 }
 
 .past-projects-hero {
@@ -10,19 +10,10 @@
   margin-bottom: 1.5rem;
 }
 
-.past-projects-eyebrow {
-  margin: 0;
-  color: var(--itg-color-accent-gold);
-  font-size: var(--itg-font-size-label);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
 .past-projects-title {
   color: var(--itg-color-primary);
   margin: 0;
-  font-size: clamp(2.2rem, 4vw, 3rem);
+  font-size: var(--itg-font-size-h1);
 }
 
 .past-projects-lead {
@@ -44,12 +35,11 @@
 
 @media (max-width: 768px) {
   .past-projects-page {
-    width: min(100% - 24px, 100%);
-    padding: 1.25rem 0 2rem;
+    padding: var(--itg-page-padding-mobile);
   }
 
   .past-projects-title {
-    font-size: var(--itg-font-size-hero-mobile);
+    font-size: var(--itg-font-size-h1-mobile);
   }
 
   .past-projects-lead {

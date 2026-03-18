@@ -19,7 +19,6 @@ export const ProjectsPage = () => {
   return (
     <div className="projects-page">
       <header className="projects-page-hero">
-        <p className="projects-page-eyebrow">Projects</p>
         <h1 className="projects-page-title">Current Projects</h1>
         <p className="projects-page-lead">
           Browse the current Innovate to Grow projects, search by team or organization, and expand rows to view abstracts and student names.

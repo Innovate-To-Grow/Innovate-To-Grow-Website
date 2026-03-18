@@ -347,4 +347,26 @@
     width: 100%;
     justify-content: center;
   }
+
+  .project-grid-table thead th,
+  .project-grid-table td {
+    padding: 0.6rem 0.5rem;
+    font-size: var(--itg-font-size-table-mobile);
+  }
+
+  .project-grid-card-header {
+    padding: 1rem 1rem 0;
+  }
+
+  .project-grid-card-title {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .project-grid-table-shell {
+    padding: 0.75rem 0.5rem 1rem;
+  }
+
+  .project-grid-table-wrap {
+    border-radius: 8px;
+  }
 }
