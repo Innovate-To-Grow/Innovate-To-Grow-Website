@@ -246,11 +246,12 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
             if form.is_valid():
                 excel_file = form.cleaned_data["excel_file"]
                 default_password = form.cleaned_data.get("set_password") or None
+                update_existing = form.cleaned_data.get("update_existing", False)
 
                 result = import_members_from_excel(
                     file=excel_file,
                     default_password=default_password,
-                    update_existing=False,
+                    update_existing=update_existing,
                 )
 
                 context["result"] = result
@@ -259,6 +260,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
                     self.message_user(
                         request,
                         f"Import complete: {result.created_count} created, "
+                        f"{result.updated_count} updated, "
                         f"{result.skipped_count} skipped"
                         + (f", {len(result.errors)} error(s)" if result.errors else ""),
                         level="success" if not result.errors else "warning",

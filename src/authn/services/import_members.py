@@ -1,20 +1,29 @@
 """
 Service for importing members from Excel files.
+
+Expected Excel layout:
+    First Name, Last Name, When Started, Last Updated,
+    Primary Email, Primary Verified, Primary Subscribed,
+    Secondary Email, Secondary Verified, Secondary Subscribed,
+    Secondary Expired, Secondary Bounced,
+    Phone Number, Phone number subscribed, Phone number verified,
+    Organization (optional)
 """
 
 import secrets
 import string
 from dataclasses import dataclass
+from datetime import datetime
 
-from django.contrib.auth.models import Group
 from django.db import transaction
+from django.utils import timezone
 
 try:
     from openpyxl import load_workbook
 except ImportError:
     load_workbook = None
 
-from ..models import Member, MemberGroup
+from ..models import ContactEmail, ContactPhone, Member
 
 
 @dataclass
@@ -41,63 +50,57 @@ def generate_random_password(length: int = 12) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
+# Column header normalization map
+HEADER_MAP = {
+    "first name": "first_name",
+    "first_name": "first_name",
+    "firstname": "first_name",
+    "last name": "last_name",
+    "last_name": "last_name",
+    "lastname": "last_name",
+    "when started": "when_started",
+    "when_started": "when_started",
+    "date joined": "when_started",
+    "date_joined": "when_started",
+    "last updated": "last_updated",
+    "last_updated": "last_updated",
+    "primary email": "primary_email",
+    "primary_email": "primary_email",
+    "email": "primary_email",
+    "primary verified": "primary_verified",
+    "primary_verified": "primary_verified",
+    "primary subscribed": "primary_subscribed",
+    "primary_subscribed": "primary_subscribed",
+    "secondary email": "secondary_email",
+    "secondary_email": "secondary_email",
+    "secondary verified": "secondary_verified",
+    "secondary_verified": "secondary_verified",
+    "secondary subscribed": "secondary_subscribed",
+    "secondary_subscribed": "secondary_subscribed",
+    "secondary expired": "secondary_expired",
+    "secondary_expired": "secondary_expired",
+    "secondary bounced": "secondary_bounced",
+    "secondary_bounced": "secondary_bounced",
+    "phone number": "phone_number",
+    "phone_number": "phone_number",
+    "phone": "phone_number",
+    "phone number subscribed": "phone_subscribed",
+    "phone_number_subscribed": "phone_subscribed",
+    "phone number verified": "phone_verified",
+    "phone_number_verified": "phone_verified",
+    "organization": "organization",
+    "organization (optional)": "organization",
+    "company": "organization",
+    "org": "organization",
+}
+
+
 def normalize_header(header: str) -> str:
     """Normalize column header to standard field name."""
     if not header:
         return ""
-
     header = str(header).strip().lower()
-
-    # Map common variations to standard field names
-    header_map = {
-        # Username
-        "username": "username",
-        "user": "username",
-        "user_name": "username",
-        # Email
-        "email": "email",
-        "e-mail": "email",
-        "email_address": "email",
-        # First name
-        "first_name": "first_name",
-        "firstname": "first_name",
-        "first name": "first_name",
-        # Middle name
-        "middle_name": "middle_name",
-        "middlename": "middle_name",
-        "middle name": "middle_name",
-        # Last name
-        "last_name": "last_name",
-        "lastname": "last_name",
-        "last name": "last_name",
-        # Full name (will be split)
-        "name": "full_name",
-        "full_name": "full_name",
-        "fullname": "full_name",
-        "full name": "full_name",
-        # Groups
-        "group": "groups",
-        "groups": "groups",
-        "role": "groups",
-        "roles": "groups",
-        # Is staff
-        "is_staff": "is_staff",
-        "staff": "is_staff",
-        # Is active
-        "is_active": "is_active",
-        "active": "is_active",
-        # Is active member
-        "is_active_member": "is_active_member",
-        "active_member": "is_active_member",
-        "active member": "is_active_member",
-        # Organization
-        "organization": "organization",
-        "company": "organization",
-        "org": "organization",
-        "organisation": "organization",
-    }
-
-    return header_map.get(header, header)
+    return HEADER_MAP.get(header, header)
 
 
 def parse_boolean(value) -> bool:
@@ -106,24 +109,43 @@ def parse_boolean(value) -> bool:
         return value
     if value is None:
         return False
-
     str_val = str(value).strip().lower()
     return str_val in ("true", "yes", "1", "y", "active")
 
 
-def split_full_name(full_name: str) -> tuple[str, str, str]:
-    """Split full name into first, middle, last name."""
-    if not full_name:
-        return "", "", ""
+def parse_date(value):
+    """Parse date value from Excel cell. Returns timezone-aware datetime or None."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if timezone.is_naive(value):
+            return timezone.make_aware(value)
+        return value
+    str_val = str(value).strip()
+    if not str_val:
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M:%S"):
+        try:
+            dt = datetime.strptime(str_val, fmt)
+            return timezone.make_aware(dt)
+        except ValueError:
+            continue
+    return None
 
-    parts = full_name.strip().split()
 
-    if len(parts) == 1:
-        return parts[0], "", ""
-    elif len(parts) == 2:
-        return parts[0], "", parts[1]
-    else:
-        return parts[0], " ".join(parts[1:-1]), parts[-1]
+def _generate_unique_username(email: str) -> str:
+    """Generate a unique username from email address."""
+    base = email.split("@")[0].lower()
+    base = "".join(c for c in base if c.isalnum() or c in "._-")
+    if not base:
+        base = "user"
+
+    username = base
+    counter = 2
+    while Member.all_objects.filter(username=username).exists():
+        username = f"{base}_{counter}"
+        counter += 1
+    return username
 
 
 def import_members_from_excel(
@@ -134,22 +156,18 @@ def import_members_from_excel(
     """
     Import members from an Excel file.
 
-    Expected columns (flexible naming):
-    - username (required)
-    - email (required)
-    - first_name / name
-    - middle_name
-    - last_name
-    - organization
-    - groups (comma-separated)
-    - is_staff
-    - is_active
-    - is_active_member
+    Expected columns:
+        First Name, Last Name, When Started, Last Updated,
+        Primary Email, Primary Verified, Primary Subscribed,
+        Secondary Email, Secondary Verified, Secondary Subscribed,
+        Secondary Expired, Secondary Bounced,
+        Phone Number, Phone number subscribed, Phone number verified,
+        Organization (optional)
 
     Args:
         file: Uploaded Excel file
         default_password: Password to set for new users (generates random if None)
-        update_existing: Whether to update existing users (by username or email)
+        update_existing: Whether to update existing users (matched by primary email)
 
     Returns:
         ImportResult with counts and any errors
@@ -160,41 +178,51 @@ def import_members_from_excel(
     result = ImportResult(success=True)
 
     try:
-        # Load workbook
         wb = load_workbook(filename=file, read_only=True, data_only=True)
         ws = wb.active
 
-        # Get headers from first row
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
             return ImportResult(success=False, errors=["Excel file is empty"])
 
         headers = [normalize_header(h) for h in rows[0]]
 
-        # Validate required columns
-        if "username" not in headers and "email" not in headers:
-            return ImportResult(success=False, errors=["Excel file must contain a username or email column"])
+        if "primary_email" not in headers:
+            return ImportResult(
+                success=False,
+                errors=["Excel file must contain a 'Primary Email' column"],
+            )
 
-        # Process data rows
-        with transaction.atomic():
-            for row_num, row in enumerate(rows[1:], start=2):
-                if not any(row):  # Skip empty rows
-                    continue
+        for row_num, row in enumerate(rows[1:], start=2):
+            if not any(row):
+                continue
 
-                row_data = dict(zip(headers, row, strict=False))
-                row_result = _process_member_row(row_num, row_data, default_password, update_existing)
+            row_data = dict(zip(headers, row, strict=False))
 
-                if row_result["status"] == "created":
-                    result.created_count += 1
-                elif row_result["status"] == "updated":
-                    result.updated_count += 1
-                elif row_result["status"] == "skipped":
-                    result.skipped_count += 1
+            # Use nested atomic() as savepoint so a single row failure
+            # does not abort the entire import (needed for PostgreSQL).
+            try:
+                with transaction.atomic():
+                    row_result = _process_member_row(row_num, row_data, default_password, update_existing)
+            except Exception as e:
+                row_result = {
+                    "row": row_num,
+                    "status": "skipped",
+                    "email": str(row_data.get("primary_email", "")),
+                    "error": str(e),
+                }
 
-                if row_result.get("error"):
-                    result.errors.append(f"Row {row_num}: {row_result['error']}")
+            if row_result["status"] == "created":
+                result.created_count += 1
+            elif row_result["status"] == "updated":
+                result.updated_count += 1
+            elif row_result["status"] == "skipped":
+                result.skipped_count += 1
 
-                result.details.append(row_result)
+            if row_result.get("error"):
+                result.errors.append(f"Row {row_num}: {row_result['error']}")
+
+            result.details.append(row_result)
 
         wb.close()
 
@@ -211,128 +239,193 @@ def _process_member_row(
     default_password: str | None,
     update_existing: bool,
 ) -> dict:
-    """Process a single row and create/update member."""
+    """Process a single row and create/update member with contact info."""
     result = {
         "row": row_num,
         "status": "skipped",
-        "username": None,
         "email": None,
         "error": None,
     }
 
-    try:
-        # Extract and clean data
-        username = str(row_data.get("username", "")).strip() if row_data.get("username") else None
-        email = str(row_data.get("email", "")).strip() if row_data.get("email") else None
+    # Extract primary email (required)
+    primary_email = str(row_data.get("primary_email", "")).strip() if row_data.get("primary_email") else None
+    if not primary_email:
+        result["error"] = "Missing primary email"
+        return result
 
-        # Handle full_name if present
-        if "full_name" in row_data and row_data["full_name"]:
-            first, middle, last = split_full_name(str(row_data["full_name"]))
-            first_name = first
-            middle_name = middle
-            last_name = last
-        else:
-            first_name = str(row_data.get("first_name", "")).strip() if row_data.get("first_name") else ""
-            middle_name = str(row_data.get("middle_name", "")).strip() if row_data.get("middle_name") else ""
-            last_name = str(row_data.get("last_name", "")).strip() if row_data.get("last_name") else ""
+    result["email"] = primary_email
 
-        # Get organization
-        organization = str(row_data.get("organization", "")).strip() if row_data.get("organization") else ""
+    # Extract member fields
+    first_name = str(row_data.get("first_name", "")).strip() if row_data.get("first_name") else ""
+    last_name = str(row_data.get("last_name", "")).strip() if row_data.get("last_name") else ""
+    organization = str(row_data.get("organization", "")).strip() if row_data.get("organization") else ""
+    date_joined = parse_date(row_data.get("when_started"))
 
-        # Generate username from email if not provided
-        if not username and email:
-            username = email.split("@")[0]
+    # Primary email contact info
+    primary_verified = parse_boolean(row_data.get("primary_verified"))
+    primary_subscribed = parse_boolean(row_data.get("primary_subscribed"))
 
-        if not username:
-            result["error"] = "Missing username"
-            return result
+    # Secondary email
+    secondary_email = str(row_data.get("secondary_email", "")).strip() if row_data.get("secondary_email") else None
+    secondary_verified = parse_boolean(row_data.get("secondary_verified"))
+    secondary_subscribed = parse_boolean(row_data.get("secondary_subscribed"))
 
-        result["username"] = username
-        result["email"] = email
+    # Phone
+    phone_number = str(row_data.get("phone_number", "")).strip() if row_data.get("phone_number") else None
+    # Normalize phone: convert int/float from Excel to string
+    if phone_number and phone_number.replace(".", "").replace("-", "").replace("+", "").isdigit():
+        phone_number = phone_number.split(".")[0]  # strip trailing .0 from Excel numeric
+    phone_subscribed = parse_boolean(row_data.get("phone_subscribed"))
+    phone_verified = parse_boolean(row_data.get("phone_verified"))
 
-        # Check if user exists
-        existing_member = None
-        if Member.objects.filter(username=username).exists():
-            existing_member = Member.objects.get(username=username)
-        elif email and Member.objects.filter(email=email).exists():
-            existing_member = Member.objects.get(email=email)
+    # Check if member exists by email
+    existing_member = Member.objects.filter(email=primary_email).first()
 
-        if existing_member:
-            if update_existing:
-                # Update existing member
-                if email:
-                    existing_member.email = email
-                if first_name:
-                    existing_member.first_name = first_name
-                if middle_name:
-                    existing_member.middle_name = middle_name
-                if last_name:
-                    existing_member.last_name = last_name
-                if organization:
-                    existing_member.organization = organization
-
-                # Update boolean fields if provided
-                if "is_active" in row_data:
-                    existing_member.is_active = parse_boolean(row_data["is_active"])
-                if "is_active_member" in row_data:
-                    existing_member.is_active_member = parse_boolean(row_data["is_active_member"])
-                if "is_staff" in row_data:
-                    existing_member.is_staff = parse_boolean(row_data["is_staff"])
-
-                existing_member.save()
-
-                # Handle groups
-                _update_member_groups(existing_member, row_data.get("groups"))
-
-                result["status"] = "updated"
-            else:
-                result["status"] = "skipped"
-                result["error"] = "User already exists"
-        else:
-            # Create new member
-            password = default_password or generate_random_password()
-
-            member = Member.objects.create_user(
-                username=username,
-                email=email or "",
-                password=password,
+    if existing_member:
+        if update_existing:
+            _update_existing_member(
+                existing_member,
                 first_name=first_name,
-                middle_name=middle_name,
                 last_name=last_name,
                 organization=organization,
-                is_active=parse_boolean(row_data.get("is_active", True)),
-                is_active_member=parse_boolean(row_data.get("is_active_member", True)),
-                is_staff=parse_boolean(row_data.get("is_staff", False)),
+                primary_verified=primary_verified,
+                primary_subscribed=primary_subscribed,
+                secondary_email=secondary_email,
+                secondary_verified=secondary_verified,
+                secondary_subscribed=secondary_subscribed,
+                phone_number=phone_number,
+                phone_subscribed=phone_subscribed,
+                phone_verified=phone_verified,
+            )
+            result["status"] = "updated"
+        else:
+            result["status"] = "skipped"
+            result["error"] = f"Member with email {primary_email} already exists"
+    else:
+        # Create new member
+        password = default_password or generate_random_password()
+        username = _generate_unique_username(primary_email)
+
+        member = Member.objects.create_user(
+            username=username,
+            email=primary_email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            organization=organization,
+            email_subscribe=primary_subscribed,
+            is_active=True,
+            is_active_member=True,
+        )
+
+        # Set date_joined if provided
+        if date_joined:
+            Member.objects.filter(pk=member.pk).update(date_joined=date_joined)
+
+        # Create primary ContactEmail
+        ContactEmail.objects.create(
+            member=member,
+            email_address=primary_email,
+            email_type="primary",
+            verified=primary_verified,
+            subscribe=primary_subscribed,
+        )
+
+        # Create secondary ContactEmail if provided
+        if secondary_email:
+            ContactEmail.objects.create(
+                member=member,
+                email_address=secondary_email,
+                email_type="secondary",
+                verified=secondary_verified,
+                subscribe=secondary_subscribed,
             )
 
-            # Handle groups
-            _update_member_groups(member, row_data.get("groups"))
+        # Create ContactPhone if provided
+        if phone_number:
+            ContactPhone.objects.create(
+                member=member,
+                phone_number=phone_number,
+                region="US",
+                subscribe=phone_subscribed,
+                verified=phone_verified,
+            )
 
-            result["status"] = "created"
-            result["password"] = password if not default_password else None
-
-    except Exception as e:
-        result["error"] = str(e)
+        result["status"] = "created"
 
     return result
 
 
-def _update_member_groups(member: Member, groups_str) -> None:
-    """Update member's groups from comma-separated string."""
-    if not groups_str:
-        return
+def _update_existing_member(
+    member,
+    *,
+    first_name,
+    last_name,
+    organization,
+    primary_verified,
+    primary_subscribed,
+    secondary_email,
+    secondary_verified,
+    secondary_subscribed,
+    phone_number,
+    phone_subscribed,
+    phone_verified,
+):
+    """Update an existing member and their contact info."""
+    if first_name:
+        member.first_name = first_name
+    if last_name:
+        member.last_name = last_name
+    if organization:
+        member.organization = organization
+    member.email_subscribe = primary_subscribed
+    member.save()
 
-    group_names = [g.strip() for g in str(groups_str).split(",") if g.strip()]
+    # Update or create primary ContactEmail
+    ContactEmail.objects.update_or_create(
+        member=member,
+        email_address=member.email,
+        defaults={
+            "email_type": "primary",
+            "verified": primary_verified,
+            "subscribe": primary_subscribed,
+        },
+    )
 
-    for group_name in group_names:
-        # Check if it's a valid I2G group
-        if group_name in MemberGroup.GROUP_CHOICES:
-            group, _ = Group.objects.get_or_create(name=group_name)
-            member.groups.add(group)
+    # Handle secondary email
+    if secondary_email:
+        # Remove old secondary emails that don't match
+        member.contact_emails.filter(email_type="secondary").exclude(email_address=secondary_email).delete()
+        ContactEmail.objects.update_or_create(
+            member=member,
+            email_address=secondary_email,
+            defaults={
+                "email_type": "secondary",
+                "verified": secondary_verified,
+                "subscribe": secondary_subscribed,
+            },
+        )
+    else:
+        member.contact_emails.filter(email_type="secondary").delete()
+
+    # Handle phone
+    if phone_number:
+        existing_phone = member.contact_phones.first()
+        if existing_phone:
+            existing_phone.phone_number = phone_number
+            existing_phone.subscribe = phone_subscribed
+            existing_phone.verified = phone_verified
+            existing_phone.save()
         else:
-            # Try to find or create custom group
-            group, _ = Group.objects.get_or_create(name=group_name)
-            member.groups.add(group)
+            ContactPhone.objects.create(
+                member=member,
+                phone_number=phone_number,
+                region="US",
+                subscribe=phone_subscribed,
+                verified=phone_verified,
+            )
+    else:
+        member.contact_phones.all().delete()
 
 
 def generate_template_excel() -> bytes:
@@ -349,21 +442,25 @@ def generate_template_excel() -> bytes:
     ws = wb.active
     ws.title = "Members"
 
-    # Define headers
     headers = [
-        ("username", "Username (Required)", 20),
-        ("email", "Email (Required)", 30),
         ("first_name", "First Name", 15),
-        ("middle_name", "Middle Name", 15),
         ("last_name", "Last Name", 15),
-        ("organization", "Organization", 25),
-        ("groups", "Groups (comma-separated)", 30),
-        ("is_active", "Is Active", 12),
-        ("is_active_member", "Active Member", 14),
-        ("is_staff", "Is Staff", 12),
+        ("when_started", "When Started", 15),
+        ("last_updated", "Last Updated", 15),
+        ("primary_email", "Primary Email", 30),
+        ("primary_verified", "Primary Verified", 16),
+        ("primary_subscribed", "Primary Subscribed", 18),
+        ("secondary_email", "Secondary Email", 30),
+        ("secondary_verified", "Secondary Verified", 18),
+        ("secondary_subscribed", "Secondary Subscribed", 20),
+        ("secondary_expired", "Secondary Expired", 18),
+        ("secondary_bounced", "Secondary Bounced", 18),
+        ("phone_number", "Phone Number", 18),
+        ("phone_subscribed", "Phone number subscribed", 22),
+        ("phone_verified", "Phone number verified", 22),
+        ("organization", "Organization (optional)", 25),
     ]
 
-    # Style definitions
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_alignment = Alignment(horizontal="center", vertical="center")
@@ -371,7 +468,6 @@ def generate_template_excel() -> bytes:
         left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin")
     )
 
-    # Write headers
     for col, (_field, label, width) in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=label)
         cell.font = header_font
@@ -380,57 +476,64 @@ def generate_template_excel() -> bytes:
         cell.border = thin_border
         ws.column_dimensions[cell.column_letter].width = width
 
-    # Add example row
     example_data = [
-        "johndoe",
-        "john.doe@example.com",
         "John",
-        "",
         "Doe",
-        "UC Merced",
-        "Visitor - Attendee",
+        "2024-01-15",
+        "2024-06-01",
+        "john.doe@example.com",
         "TRUE",
+        "TRUE",
+        "john.d@gmail.com",
+        "FALSE",
+        "FALSE",
+        "FALSE",
+        "FALSE",
+        "+12095551234",
         "TRUE",
         "FALSE",
+        "UC Merced",
     ]
 
     for col, value in enumerate(example_data, 1):
         cell = ws.cell(row=2, column=col, value=value)
         cell.border = thin_border
 
-    # Add instructions sheet
     ws_help = wb.create_sheet(title="Instructions")
     instructions = [
         ("Field Descriptions", ""),
         ("", ""),
-        ("username", "Username, required field, used for login"),
-        ("email", "Email address, required field"),
-        ("first_name", "First name"),
-        ("middle_name", "Middle name (if any)"),
-        ("last_name", "Last name"),
-        ("organization", "Organization or company name"),
-        ("groups", "User groups, separate multiple groups with commas"),
-        ("is_active", "Whether account is active (TRUE/FALSE)"),
-        ("is_active_member", "Whether user is an active member (TRUE/FALSE)"),
-        ("is_staff", "Whether user has staff permissions (TRUE/FALSE)"),
+        ("First Name", "Member's first name"),
+        ("Last Name", "Member's last name"),
+        ("When Started", "Date the member joined (YYYY-MM-DD or MM/DD/YYYY)"),
+        ("Last Updated", "Last update date (informational only, not imported)"),
+        ("Primary Email", "Primary email address (REQUIRED - used as login email)"),
+        ("Primary Verified", "Whether the primary email is verified (TRUE/FALSE)"),
+        ("Primary Subscribed", "Whether the primary email is subscribed (TRUE/FALSE)"),
+        ("Secondary Email", "Secondary/alternate email address (optional)"),
+        ("Secondary Verified", "Whether the secondary email is verified (TRUE/FALSE)"),
+        ("Secondary Subscribed", "Whether the secondary email is subscribed (TRUE/FALSE)"),
+        ("Secondary Expired", "Whether the secondary email has expired (informational only)"),
+        ("Secondary Bounced", "Whether the secondary email has bounced (informational only)"),
+        ("Phone Number", "Phone number in E.164 format, e.g. +12095551234 (optional)"),
+        ("Phone number subscribed", "Whether the phone is subscribed (TRUE/FALSE)"),
+        ("Phone number verified", "Whether the phone is verified (TRUE/FALSE)"),
+        ("Organization (optional)", "Organization or company name"),
         ("", ""),
-        ("Available Groups", ""),
-        ("", "I2G Project Client - Mentor"),
-        ("", "Judge"),
-        ("", "Visitor - Attendee"),
-        ("", "Family & Friends of I2G Student"),
-        ("", "Student (NON-I2G)"),
-        ("", "Faculty & Staff"),
+        ("Notes", ""),
+        ("", "Username is auto-generated from the primary email address"),
+        ("", "A random password is generated unless a default is specified"),
+        ("", "Existing members (matched by primary email) can be updated if the option is enabled"),
+        ("", "'Last Updated', 'Secondary Expired', and 'Secondary Bounced' are informational and not stored"),
     ]
 
     for row, (col1, col2) in enumerate(instructions, 1):
         ws_help.cell(row=row, column=1, value=col1)
         ws_help.cell(row=row, column=2, value=col2)
 
-    ws_help.column_dimensions["A"].width = 20
-    ws_help.column_dimensions["B"].width = 50
+    ws_help.column_dimensions["A"].width = 25
+    ws_help.column_dimensions["B"].width = 60
 
-    # Save to bytes
     output = BytesIO()
     wb.save(output)
     output.seek(0)

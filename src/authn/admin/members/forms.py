@@ -116,11 +116,11 @@ class MemberImportForm(forms.Form):
         ),
     )
 
-    send_welcome_email = forms.BooleanField(
-        label="Send Welcome Email",
+    update_existing = forms.BooleanField(
+        label="Update Existing Members",
         required=False,
         initial=False,
-        help_text="Send welcome email to users after import (requires email service configuration)",
+        help_text="If a member with the same primary email already exists, update their info instead of skipping",
     )
 
     def clean_excel_file(self):

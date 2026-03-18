@@ -30,13 +30,32 @@
 
     <!-- Instructions -->
     <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6">
-        <h4 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3">Import Instructions</h4>
+        <h4 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3">Expected Excel Columns</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-font-subtle-light dark:text-font-subtle-dark mb-4">
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">First Name</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Last Name</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">When Started</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Last Updated</code> <span class="text-xs opacity-60">(not imported)</span></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs font-bold">Primary Email</code> <span class="text-xs text-red-500">required</span></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Primary Verified</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Primary Subscribed</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Email</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Verified</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Subscribed</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Expired</code> <span class="text-xs opacity-60">(not imported)</span></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Bounced</code> <span class="text-xs opacity-60">(not imported)</span></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone Number</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone number subscribed</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone number verified</code></div>
+            <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Organization (optional)</code></div>
+        </div>
         <ul class="list-disc list-inside text-sm text-font-subtle-light dark:text-font-subtle-dark space-y-1.5">
-            <li><strong>Required fields:</strong> <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">username</code> or <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">email</code></li>
-            <li><strong>Optional fields:</strong> <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">first_name</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">last_name</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">middle_name</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">organization</code>, <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">groups</code></li>
-            <li><strong>Groups:</strong> Separate multiple groups with commas</li>
+            <li><strong>Primary Email</strong> is the only required field</li>
+            <li>Username is <strong>auto-generated</strong> from the primary email address</li>
+            <li>A random password is generated unless a default is specified</li>
             <li><strong>Boolean values:</strong> Use <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">TRUE</code> / <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">FALSE</code> or <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">yes</code> / <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">no</code></li>
-            <li>If username already exists, that row will be skipped</li>
+            <li>Existing members (matched by primary email) are skipped unless "Update Existing" is enabled</li>
+            <li><strong>Last Updated</strong>, <strong>Secondary Expired</strong>, and <strong>Secondary Bounced</strong> columns are accepted but not stored</li>
         </ul>
     </div>
 
@@ -119,11 +138,11 @@
 
         <div class="mb-5">
             <label class="flex items-center gap-2 cursor-pointer">
-                {{ form.send_welcome_email }}
-                <span class="text-sm font-medium text-font-default-light dark:text-font-default-dark">{{ form.send_welcome_email.label }}</span>
+                {{ form.update_existing }}
+                <span class="text-sm font-medium text-font-default-light dark:text-font-default-dark">{{ form.update_existing.label }}</span>
             </label>
-            {% if form.send_welcome_email.help_text %}
-            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1 ml-6">{{ form.send_welcome_email.help_text }}</p>
+            {% if form.update_existing.help_text %}
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1 ml-6">{{ form.update_existing.help_text }}</p>
             {% endif %}
         </div>
 
