@@ -1,7 +1,7 @@
 .event-reg-page {
-  max-width: 640px;
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
-  padding: 2rem 1rem 3rem;
+  padding: var(--itg-page-padding);
 }
 
 .event-reg-title {
@@ -302,4 +302,10 @@
 
 @keyframes event-reg-spin {
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .event-reg-page {
+    padding: var(--itg-page-padding-mobile);
+  }
 }
