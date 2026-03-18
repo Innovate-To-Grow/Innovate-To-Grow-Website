@@ -4,7 +4,6 @@
 
 {% block extrastyle %}
     {{ block.super }}
-    {{ form.media }}
     <style>
         .login-box {
             background-color: white;
@@ -49,10 +48,9 @@
         .dark .login-title-wrap .login-title {
             color: #a855f7;
         }
-        /* Restore input field styles */
+        /* Input field styles */
         .login-box #login-form input[type="text"],
-        .login-box #login-form input[type="email"],
-        .login-box #login-form input[type="password"] {
+        .login-box #login-form input[type="email"] {
             display: block;
             width: 100%;
             min-height: 38px;
@@ -66,8 +64,7 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
         .login-box #login-form input[type="text"]:focus,
-        .login-box #login-form input[type="email"]:focus,
-        .login-box #login-form input[type="password"]:focus {
+        .login-box #login-form input[type="email"]:focus {
             outline: 2px solid #9333ea;
             outline-offset: -2px;
             border-color: #9333ea;
@@ -76,8 +73,7 @@
             color: #9ca3af;
         }
         .dark .login-box #login-form input[type="text"],
-        .dark .login-box #login-form input[type="email"],
-        .dark .login-box #login-form input[type="password"] {
+        .dark .login-box #login-form input[type="email"] {
             color: #f3f4f6;
             background-color: #1f2937;
             border-color: #374151;
@@ -88,6 +84,82 @@
         .dark .login-box #login-form input:focus {
             border-color: #a855f7;
             outline-color: #a855f7;
+        }
+        /* Code input */
+        .code-input {
+            font-size: 1.5rem !important;
+            letter-spacing: 0.35em;
+            text-align: center;
+            font-weight: 600;
+        }
+        /* Message */
+        .login-message {
+            padding: 0.625rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+        }
+        .login-message--info {
+            background-color: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .dark .login-message--info {
+            background-color: #1e3a5f;
+            color: #93c5fd;
+            border-color: #1e40af;
+        }
+        .login-message--error {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .dark .login-message--error {
+            background-color: #451a1a;
+            color: #fca5a5;
+            border-color: #991b1b;
+        }
+        /* Secondary links */
+        .login-links {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.75rem;
+            font-size: 0.8125rem;
+        }
+        .login-links a,
+        .login-links button {
+            color: #9333ea;
+            text-decoration: none;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: inherit;
+        }
+        .login-links a:hover,
+        .login-links button:hover {
+            text-decoration: underline;
+        }
+        .dark .login-links a,
+        .dark .login-links button {
+            color: #a855f7;
+        }
+        /* Email hint */
+        .login-email-hint {
+            font-size: 0.8125rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+        .login-email-hint strong {
+            color: #1f2937;
+        }
+        .dark .login-email-hint {
+            color: #9ca3af;
+        }
+        .dark .login-email-hint strong {
+            color: #f3f4f6;
         }
     </style>
 {% endblock %}
@@ -100,7 +172,11 @@
     <div class="login-box">
         <div class="login-header">
             <div class="login-title-wrap">
-                <span class="login-subtitle">{% translate "Welcome back to" %}</span>
+                {% if step == "code" %}
+                    <span class="login-subtitle">{% translate "Enter verification code" %}</span>
+                {% else %}
+                    <span class="login-subtitle">{% translate "Welcome back to" %}</span>
+                {% endif %}
                 <span class="login-title">{{ site_title|default:_('Django site admin') }}</span>
             </div>
             <img src="{% static 'images/i2glogo.png' %}" alt="Innovate To Grow" class="login-logo">
@@ -108,39 +184,97 @@
 
         {% include "unfold/helpers/messages.html" %}
 
+        {# Display message (info) #}
+        {% if message %}
+            <div class="login-message login-message--info">{{ message }}</div>
+        {% endif %}
+
+        {# Display error #}
+        {% if error %}
+            <div class="login-message login-message--error">{{ error }}</div>
+        {% endif %}
+
+        {# Display form errors #}
         {% if form.errors or form.non_field_errors %}
-            <div class="flex flex-col gap-4 mb-8 *:mb-0">
-                {% include "unfold/helpers/messages/errornote.html" with errors=form.errors %}
-
-                {% include "unfold/helpers/messages/error.html" with errors=form.non_field_errors %}
-
-                {% if user.is_authenticated %}
-                    {% blocktranslate trimmed asvar message %}
-                        You are authenticated as {{ username }}, but are not authorized to
-                        access this page. Would you like to login to a different account?
-                    {% endblocktranslate %}
-
-                    {% include "unfold/helpers/messages/error.html" with error=message %}
-                {% endif %}
+            <div class="flex flex-col gap-4 mb-4 *:mb-0">
+                {% for field_errors in form.errors.values %}
+                    {% for err in field_errors %}
+                        <div class="login-message login-message--error">{{ err }}</div>
+                    {% endfor %}
+                {% endfor %}
+                {% for err in form.non_field_errors %}
+                    <div class="login-message login-message--error">{{ err }}</div>
+                {% endfor %}
             </div>
         {% endif %}
 
-        {% block login_before %}{% endblock %}
+        {% if step == "code" %}
+            {# ── Step 2: Verification code ── #}
+            <p class="login-email-hint">
+                {% translate "We sent a 6-digit code to" %} <strong>{{ email }}</strong>
+            </p>
 
-        <form action="{{ app_path }}" method="post" id="login-form">
-            {% csrf_token %}
+            <form action="{{ request.get_full_path }}" method="post" id="login-form">
+                {% csrf_token %}
 
-            {% include "unfold/helpers/field.html" with field=form.username %}
+                <div class="mb-4">
+                    <label for="id_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {{ form.code.label }}
+                    </label>
+                    <input type="text"
+                           name="code"
+                           id="id_code"
+                           class="code-input"
+                           maxlength="6"
+                           minlength="6"
+                           inputmode="numeric"
+                           pattern="[0-9]{6}"
+                           autocomplete="one-time-code"
+                           placeholder="000000"
+                           autofocus
+                           required>
+                </div>
 
-            {% include "unfold/helpers/field.html" with field=form.password %}
+                <div class="flex flex-col gap-3">
+                    {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                        {% translate 'Verify and sign in' %}
+                    {% endcomponent %}
+                </div>
+            </form>
 
-            <div class="flex flex-col gap-3 mt-6">
-                {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
-                    {% translate 'Log in' %}
-                {% endcomponent %}
+            <div class="login-links">
+                <a href="?step=email">{% translate "Use a different email" %}</a>
+                <form action="{{ request.get_full_path }}" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="resend">
+                    <button type="submit">{% translate "Resend code" %}</button>
+                </form>
             </div>
-        </form>
 
-        {% block login_after %}{% endblock %}
+        {% else %}
+            {# ── Step 1: Email entry ── #}
+            <form action="{{ request.get_full_path }}" method="post" id="login-form">
+                {% csrf_token %}
+
+                <div class="mb-4">
+                    <label for="id_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {{ form.email.label }}
+                    </label>
+                    <input type="email"
+                           name="email"
+                           id="id_email"
+                           placeholder="{% translate 'Email' %}"
+                           autofocus
+                           required
+                           {% if form.email.value %}value="{{ form.email.value }}"{% endif %}>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                        {% translate 'Send verification code' %}
+                    {% endcomponent %}
+                </div>
+            </form>
+        {% endif %}
     </div>
 {% endblock %}

@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from authn.forms import EmailAdminAuthenticationForm
+from authn.views.admin_login import AdminLoginView
 from core.views import MaintenanceBypassView
 from pages.views import LayoutAPIView
 
@@ -28,9 +28,10 @@ from pages.views import LayoutAPIView
 admin.site.site_header = "Innovate To Grow Admin"
 admin.site.site_title = "I2G Admin"
 admin.site.index_title = "Welcome to I2G Admin"
-admin.site.login_form = EmailAdminAuthenticationForm
 
 urlpatterns = [
+    # custom admin login (before admin.site.urls to override default)
+    path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
     # admin site
     path("admin/", admin.site.urls),
     # maintenance bypass

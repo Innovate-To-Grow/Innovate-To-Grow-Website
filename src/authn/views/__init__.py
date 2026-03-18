@@ -17,6 +17,7 @@ from .account.email_code import (
     ChangePasswordCodeVerifyView,
 )
 from .account.profile import ProfileView
+from .admin_login import AdminLoginView
 from .auth.email_code import (
     EmailAuthRequestCodeView,
     EmailAuthVerifyCodeView,
@@ -61,4 +62,5 @@ __all__ = [
     "ContactPhoneDetailView",
     "PublicTokenRefreshView",
     "AcceptInvitationView",
+    "AdminLoginView",
 ]

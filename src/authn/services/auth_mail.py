@@ -39,6 +39,11 @@ _PURPOSE_COPY = {
         "heading": "Verify connected email",
         "body": "Use this code to verify a new email address linked to your Innovate to Grow account.",
     },
+    EmailAuthChallenge.Purpose.ADMIN_LOGIN: {
+        "subject": "Your I2G Admin login code",
+        "heading": "Admin login verification code",
+        "body": "Use this code to sign in to the Innovate to Grow admin panel.",
+    },
 }
 
 
