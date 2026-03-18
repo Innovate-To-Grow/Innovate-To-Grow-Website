@@ -4,13 +4,13 @@
 {% block object-tools-items %}
 {{ block.super }}
 {% if current_page_id %}
-<li>
+<li class="border border-base-200 select-none max-lg:-mt-px max-lg:first:rounded-t-default max-lg:last:rounded-b-default min-lg:-ml-px min-lg:first:rounded-l-default min-lg:last:rounded-r-default hover:text-primary-600 dark:border-base-700 dark:hover:text-primary-500">
   <a href="javascript:void(0)"
      onclick="openLivePreview(); return false;"
      title="Open a live-updating preview in a new tab"
      class="cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
     <span class="material-symbols-outlined">visibility</span>
-    Live Preview
+    Preview
   </a>
 </li>
 {% endif %}

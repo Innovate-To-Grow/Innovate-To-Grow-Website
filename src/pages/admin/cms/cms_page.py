@@ -204,6 +204,10 @@ class CMSPageAdmin(ModelAdmin):
                 data=data,
             )
 
+        # Clear cache after all blocks are saved to prevent race conditions
+        # where a concurrent request re-caches partial/stale block data.
+        cache.delete(f"cms:page:{page.route}")
+
     # ===== Preview store endpoint =====
 
     def preview_store_view(self, request):

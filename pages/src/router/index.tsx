@@ -70,6 +70,7 @@ export const router = createBrowserRouter([
             {path: 'schedule', element: <SchedulePage/>},
             {path: 'projects-teams', element: <ProjectsTeamsPage/>},
             {path: 'past-events', element: <CMSPageComponent/>},
+            {path: 'post-event-home', element: <CMSPageComponent/>},
             {path: 'acknowledgement', element: <AcknowledgementPage/>},
 
             // student pages

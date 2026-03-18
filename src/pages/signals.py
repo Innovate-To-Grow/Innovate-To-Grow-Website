@@ -3,7 +3,7 @@ Signal handlers for cache invalidation when layout or CMS content is updated.
 """
 
 from django.core.cache import cache
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import CMSBlock, CMSPage, FooterContent, GoogleSheetSource, Menu, SiteSettings
@@ -24,10 +24,27 @@ def invalidate_sheet_cache(sender, instance, **kwargs):
     cache.delete(f"sheets:{instance.slug}:stale")
 
 
+@receiver(pre_save, sender=CMSPage)
+def stash_old_cms_route(sender, instance, **kwargs):
+    """Remember the old route before save so we can clear its cache in post_save."""
+    if instance.pk:
+        try:
+            old = CMSPage.all_objects.filter(pk=instance.pk).values_list("route", flat=True).first()
+            instance._old_route = old
+        except Exception:
+            instance._old_route = None
+    else:
+        instance._old_route = None
+
+
 @receiver([post_save, post_delete], sender=CMSPage)
 def invalidate_cms_page_cache(sender, instance, **kwargs):
     """Clear CMS page cache when a CMSPage is saved or deleted."""
     cache.delete(f"cms:page:{instance.route}")
+    # Also clear old route cache if route was changed
+    old_route = getattr(instance, "_old_route", None)
+    if old_route and old_route != instance.route:
+        cache.delete(f"cms:page:{old_route}")
     cache.delete("layout:data")
 
 

@@ -27,6 +27,7 @@ import './page-styles/AttendeesPage.css';
 import './page-styles/ProjectSubmissionPage.css';
 import './page-styles/SponsorAcknowledgementPage.css';
 import './page-styles/HomePage.css';
+import './page-styles/PostEventHomePage.css';
 
 interface CMSPageComponentProps {
   routeOverride?: string;
