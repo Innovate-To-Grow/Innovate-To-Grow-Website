@@ -706,6 +706,11 @@
     order: 2;
     margin-left: auto;
   }
+
+  .header-mobile-actions,
+  .header-mobile-footer {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {

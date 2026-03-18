@@ -36,10 +36,6 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true,
         },
-        '/admin': {
-          target: backendUrl,
-          changeOrigin: true,
-        },
         '/static': {
           target: backendUrl,
           changeOrigin: true,
