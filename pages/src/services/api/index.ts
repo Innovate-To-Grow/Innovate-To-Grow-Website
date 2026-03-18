@@ -26,8 +26,25 @@ export type { PaginatedResponse } from './types';
 export type { NewsArticle } from './news';
 export { fetchNews, fetchLatestNews, fetchNewsDetail } from './news';
 
-export type { ProjectSummary, ProjectDetail, ProjectTableRow, SemesterWithProjects, SemesterWithFullProjects } from './projects';
-export { fetchCurrentProjects, fetchCurrentProjectsFull, fetchAllPastProjects, fetchPastProjects, fetchProjectDetail } from './projects';
+export type {
+  PastProjectShare,
+  ProjectDetail,
+  ProjectGridRow,
+  ProjectSummary,
+  ProjectTableRow,
+  SemesterWithFullProjects,
+  SemesterWithProjects,
+} from './projects';
+export {
+  createPastProjectShare,
+  fetchAllPastProjects,
+  fetchCurrentProjects,
+  fetchCurrentProjectsFull,
+  fetchPastProjectShare,
+  fetchPastProjects,
+  fetchProjectDetail,
+  toProjectGridRow,
+} from './projects';
 
 export type { TicketOption, QuestionOption, Registration, RegistrationEvent, RegistrationTicket, RegistrationAnswer, EventRegistrationOptions } from './events';
 export { fetchRegistrationOptions, createRegistration, fetchMyTickets, resendTicketEmail } from './events';

@@ -202,6 +202,7 @@ REST_FRAMEWORK = {
         "login": "10/minute",
         "email_code_request": "10/minute",
         "email_code_verify": "20/minute",
+        "past_project_share": "10/minute",
     },
 }
 

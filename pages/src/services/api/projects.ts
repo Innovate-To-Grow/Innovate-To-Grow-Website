@@ -27,6 +27,18 @@ export interface ProjectTableRow {
   presentation_order: number | null;
 }
 
+export interface ProjectGridRow {
+  semester_label: string;
+  class_code: string;
+  team_number: string;
+  team_name: string;
+  project_title: string;
+  organization: string;
+  industry: string;
+  abstract: string;
+  student_names: string;
+}
+
 export interface ProjectDetail {
   id: string;
   project_title: string;
@@ -58,6 +70,25 @@ export interface SemesterWithFullProjects {
   projects: ProjectTableRow[];
 }
 
+export interface PastProjectShare {
+  id: string;
+  rows: ProjectGridRow[];
+  share_url: string;
+  created_at: string;
+}
+
+export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
+  semester_label: project.semester_label,
+  class_code: project.class_code,
+  team_number: project.team_number,
+  team_name: project.team_name,
+  project_title: project.project_title,
+  organization: project.organization,
+  industry: project.industry,
+  abstract: project.abstract,
+  student_names: project.student_names,
+});
+
 export const fetchCurrentProjects = async (): Promise<SemesterWithProjects> => {
   const response = await api.get<SemesterWithProjects>('/projects/current/');
   return response.data;
@@ -85,5 +116,15 @@ export const fetchPastProjects = async (
 
 export const fetchProjectDetail = async (id: string): Promise<ProjectDetail> => {
   const response = await api.get<ProjectDetail>(`/projects/${id}/`);
+  return response.data;
+};
+
+export const createPastProjectShare = async (rows: ProjectGridRow[]): Promise<PastProjectShare> => {
+  const response = await api.post<PastProjectShare>('/projects/past-shares/', {rows});
+  return response.data;
+};
+
+export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
+  const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
   return response.data;
 };

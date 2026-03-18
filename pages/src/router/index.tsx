@@ -41,6 +41,7 @@ export const router = createBrowserRouter([
             {path: 'projects', element: <CMSPageComponent/>},
             {path: 'current-projects', element: <ProjectsPage/>},
             {path: 'past-projects', element: <PastProjectsPage/>},
+            {path: 'past-projects/:shareId', element: <PastProjectsPage/>},
             {path: 'projects/past', element: <Navigate to="/past-projects" replace/>},
             {path: 'projects/:id', element: <ProjectDetailPage/>},
             {path: 'sample-proposals', element: <CMSPageComponent/>},
