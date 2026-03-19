@@ -12,9 +12,10 @@ Expected Excel layout:
 
 import secrets
 import string
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
+from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
@@ -34,14 +35,8 @@ class ImportResult:
     created_count: int = 0
     updated_count: int = 0
     skipped_count: int = 0
-    errors: list[str] = None
-    details: list[dict] = None
-
-    def __post_init__(self):
-        if self.errors is None:
-            self.errors = []
-        if self.details is None:
-            self.details = []
+    errors: list[str] = field(default_factory=list)
+    details: list[dict] = field(default_factory=list)
 
 
 def generate_random_password(length: int = 12) -> str:
@@ -113,6 +108,20 @@ def parse_boolean(value) -> bool:
     return str_val in ("true", "yes", "1", "y", "active")
 
 
+# Date formats to try (order matters — more specific first)
+_DATE_FORMATS = [
+    "%Y-%m-%d %I:%M %p",  # 2023-03-31 00:01 AM
+    "%Y-%m-%d %I:%M:%S %p",  # 2023-03-31 00:01:00 AM
+    "%Y-%m-%d %H:%M:%S",  # 2023-03-31 00:01:00
+    "%Y-%m-%d %H:%M",  # 2023-03-31 00:01
+    "%Y-%m-%d",  # 2023-03-31
+    "%m/%d/%Y %I:%M:%S %p",  # 03/31/2023 12:01:00 AM
+    "%m/%d/%Y %H:%M:%S",  # 03/31/2023 00:01:00
+    "%m/%d/%Y",  # 03/31/2023
+    "%m/%d/%y",  # 03/31/23
+]
+
+
 def parse_date(value):
     """Parse date value from Excel cell. Returns timezone-aware datetime or None."""
     if value is None:
@@ -124,7 +133,7 @@ def parse_date(value):
     str_val = str(value).strip()
     if not str_val:
         return None
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M:%S"):
+    for fmt in _DATE_FORMATS:
         try:
             dt = datetime.strptime(str_val, fmt)
             return timezone.make_aware(dt)
@@ -133,19 +142,66 @@ def parse_date(value):
     return None
 
 
-def _generate_unique_username(email: str) -> str:
-    """Generate a unique username from email address."""
+def _clean_phone(value) -> str | None:
+    """Clean phone number value from Excel (may come as float/int)."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    # Strip trailing .0 from Excel numeric cells
+    if s.endswith(".0"):
+        s = s[:-2]
+    return s or None
+
+
+def _generate_unique_username(email: str, taken: set[str]) -> str:
+    """Generate a unique username from email, checking against an in-memory set."""
     base = email.split("@")[0].lower()
-    base = "".join(c for c in base if c.isalnum() or c in "._-")
-    if not base:
-        base = "user"
+    base = "".join(c for c in base if c.isalnum() or c in "._-") or "user"
 
     username = base
     counter = 2
-    while Member.all_objects.filter(username=username).exists():
+    while username in taken:
         username = f"{base}_{counter}"
         counter += 1
+    taken.add(username)
     return username
+
+
+# ---------------------------------------------------------------------------
+# Parse a single row into a dict (pure data, no DB calls)
+# ---------------------------------------------------------------------------
+
+
+def _parse_row(row_num: int, row_data: dict) -> dict:
+    """Parse and validate a single Excel row into a clean dict."""
+    primary_email = str(row_data.get("primary_email", "")).strip() if row_data.get("primary_email") else None
+    secondary_email = str(row_data.get("secondary_email", "")).strip() if row_data.get("secondary_email") else None
+
+    return {
+        "row": row_num,
+        "primary_email": primary_email,
+        "first_name": str(row_data.get("first_name", "")).strip() if row_data.get("first_name") else "",
+        "last_name": str(row_data.get("last_name", "")).strip() if row_data.get("last_name") else "",
+        "organization": str(row_data.get("organization", "")).strip() if row_data.get("organization") else "",
+        "date_joined": parse_date(row_data.get("when_started")),
+        "primary_verified": parse_boolean(row_data.get("primary_verified")),
+        "primary_subscribed": parse_boolean(row_data.get("primary_subscribed")),
+        "secondary_email": secondary_email,
+        "secondary_verified": parse_boolean(row_data.get("secondary_verified")),
+        "secondary_subscribed": parse_boolean(row_data.get("secondary_subscribed")),
+        "phone_number": _clean_phone(row_data.get("phone_number")),
+        "phone_subscribed": parse_boolean(row_data.get("phone_subscribed")),
+        "phone_verified": parse_boolean(row_data.get("phone_verified")),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Main import function (bulk-optimised)
+# ---------------------------------------------------------------------------
+
+BATCH_SIZE = 500
 
 
 def import_members_from_excel(
@@ -156,21 +212,8 @@ def import_members_from_excel(
     """
     Import members from an Excel file.
 
-    Expected columns:
-        First Name, Last Name, When Started, Last Updated,
-        Primary Email, Primary Verified, Primary Subscribed,
-        Secondary Email, Secondary Verified, Secondary Subscribed,
-        Secondary Expired, Secondary Bounced,
-        Phone Number, Phone number subscribed, Phone number verified,
-        Organization (optional)
-
-    Args:
-        file: Uploaded Excel file
-        default_password: Password to set for new users (generates random if None)
-        update_existing: Whether to update existing users (matched by primary email)
-
-    Returns:
-        ImportResult with counts and any errors
+    Optimised for large files (1000+ rows) by using bulk_create and
+    pre-loading lookups into memory instead of per-row DB queries.
     """
     if load_workbook is None:
         return ImportResult(success=False, errors=["openpyxl library not installed. Please run: pip install openpyxl"])
@@ -178,53 +221,159 @@ def import_members_from_excel(
     result = ImportResult(success=True)
 
     try:
+        # ------------------------------------------------------------------
+        # 1. Parse Excel into memory
+        # ------------------------------------------------------------------
         wb = load_workbook(filename=file, read_only=True, data_only=True)
         ws = wb.active
+        raw_rows = list(ws.iter_rows(values_only=True))
+        wb.close()
 
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
+        if not raw_rows:
             return ImportResult(success=False, errors=["Excel file is empty"])
 
-        headers = [normalize_header(h) for h in rows[0]]
-
+        headers = [normalize_header(h) for h in raw_rows[0]]
         if "primary_email" not in headers:
-            return ImportResult(
-                success=False,
-                errors=["Excel file must contain a 'Primary Email' column"],
-            )
+            return ImportResult(success=False, errors=["Excel file must contain a 'Primary Email' column"])
 
-        for row_num, row in enumerate(rows[1:], start=2):
+        parsed_rows = []
+        seen_in_file: set[str] = set()  # dedup within the file itself
+        for row_num, row in enumerate(raw_rows[1:], start=2):
             if not any(row):
                 continue
-
             row_data = dict(zip(headers, row, strict=False))
+            parsed = _parse_row(row_num, row_data)
 
-            # Use nested atomic() as savepoint so a single row failure
-            # does not abort the entire import (needed for PostgreSQL).
-            try:
-                with transaction.atomic():
-                    row_result = _process_member_row(row_num, row_data, default_password, update_existing)
-            except Exception as e:
-                row_result = {
-                    "row": row_num,
-                    "status": "skipped",
-                    "email": str(row_data.get("primary_email", "")),
-                    "error": str(e),
-                }
-
-            if row_result["status"] == "created":
-                result.created_count += 1
-            elif row_result["status"] == "updated":
-                result.updated_count += 1
-            elif row_result["status"] == "skipped":
+            if not parsed["primary_email"]:
                 result.skipped_count += 1
+                result.errors.append(f"Row {row_num}: Missing primary email")
+                continue
 
-            if row_result.get("error"):
-                result.errors.append(f"Row {row_num}: {row_result['error']}")
+            email_key = parsed["primary_email"].lower()
+            if email_key in seen_in_file:
+                result.skipped_count += 1
+                result.errors.append(f"Row {row_num}: Duplicate email in file ({parsed['primary_email']})")
+                continue
+            seen_in_file.add(email_key)
+            parsed_rows.append(parsed)
 
-            result.details.append(row_result)
+        if not parsed_rows:
+            return result
 
-        wb.close()
+        # ------------------------------------------------------------------
+        # 2. Pre-load existing DB state for fast lookups
+        # ------------------------------------------------------------------
+        existing_emails = {e.lower() for e in Member.objects.values_list("email", flat=True)}
+        taken_usernames = set(Member.all_objects.values_list("username", flat=True))
+        existing_contact_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
+        existing_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
+
+        # ------------------------------------------------------------------
+        # 3. Hash password once (most expensive single operation)
+        # ------------------------------------------------------------------
+        hashed_pw = make_password(default_password or generate_random_password())
+
+        # ------------------------------------------------------------------
+        # 4. Build object lists (no DB calls)
+        # ------------------------------------------------------------------
+        members_to_create: list[Member] = []
+        emails_to_create: list[ContactEmail] = []
+        phones_to_create: list[ContactPhone] = []
+        rows_to_update: list[dict] = []
+
+        # Track contact addresses claimed by this import to avoid dupes
+        claimed_contact_emails: set[str] = set(existing_contact_emails)
+        claimed_phones: set[str] = set(existing_phones)
+
+        now = timezone.now()
+
+        for p in parsed_rows:
+            email_key = p["primary_email"].lower()
+
+            if email_key in existing_emails:
+                if update_existing:
+                    rows_to_update.append(p)
+                else:
+                    result.skipped_count += 1
+                    result.errors.append(f"Row {p['row']}: Member with email {p['primary_email']} already exists")
+                continue
+
+            # ---- Build Member instance (UUID generated in Python) ----
+            username = _generate_unique_username(p["primary_email"], taken_usernames)
+            member = Member(
+                username=username,
+                email=Member.objects.normalize_email(p["primary_email"]),
+                password=hashed_pw,
+                first_name=p["first_name"],
+                last_name=p["last_name"],
+                organization=p["organization"],
+                email_subscribe=p["primary_subscribed"],
+                is_active=True,
+                is_active_member=True,
+                date_joined=p["date_joined"] or now,
+            )
+            members_to_create.append(member)
+            existing_emails.add(email_key)
+
+            # ---- Primary ContactEmail ----
+            if email_key not in claimed_contact_emails:
+                emails_to_create.append(
+                    ContactEmail(
+                        member=member,
+                        email_address=p["primary_email"],
+                        email_type="primary",
+                        verified=p["primary_verified"],
+                        subscribe=p["primary_subscribed"],
+                    )
+                )
+                claimed_contact_emails.add(email_key)
+
+            # ---- Secondary ContactEmail ----
+            if p["secondary_email"]:
+                sec_key = p["secondary_email"].lower()
+                if sec_key not in claimed_contact_emails:
+                    emails_to_create.append(
+                        ContactEmail(
+                            member=member,
+                            email_address=p["secondary_email"],
+                            email_type="secondary",
+                            verified=p["secondary_verified"],
+                            subscribe=p["secondary_subscribed"],
+                        )
+                    )
+                    claimed_contact_emails.add(sec_key)
+
+            # ---- ContactPhone ----
+            if p["phone_number"] and p["phone_number"] not in claimed_phones:
+                phones_to_create.append(
+                    ContactPhone(
+                        member=member,
+                        phone_number=p["phone_number"],
+                        region="US",
+                        subscribe=p["phone_subscribed"],
+                        verified=p["phone_verified"],
+                    )
+                )
+                claimed_phones.add(p["phone_number"])
+
+            result.created_count += 1
+
+        # ------------------------------------------------------------------
+        # 5. Bulk-insert everything in one transaction
+        # ------------------------------------------------------------------
+        with transaction.atomic():
+            if members_to_create:
+                Member.objects.bulk_create(members_to_create, batch_size=BATCH_SIZE)
+            if emails_to_create:
+                ContactEmail.objects.bulk_create(emails_to_create, batch_size=BATCH_SIZE)
+            if phones_to_create:
+                ContactPhone.objects.bulk_create(phones_to_create, batch_size=BATCH_SIZE)
+
+        # ------------------------------------------------------------------
+        # 6. Handle updates (row-by-row, typically far fewer)
+        # ------------------------------------------------------------------
+        if rows_to_update:
+            _bulk_update_members(rows_to_update, result, claimed_contact_emails, claimed_phones)
 
     except Exception as e:
         result.success = False
@@ -233,199 +382,105 @@ def import_members_from_excel(
     return result
 
 
-def _process_member_row(
-    row_num: int,
-    row_data: dict,
-    default_password: str | None,
-    update_existing: bool,
-) -> dict:
-    """Process a single row and create/update member with contact info."""
-    result = {
-        "row": row_num,
-        "status": "skipped",
-        "email": None,
-        "error": None,
-    }
-
-    # Extract primary email (required)
-    primary_email = str(row_data.get("primary_email", "")).strip() if row_data.get("primary_email") else None
-    if not primary_email:
-        result["error"] = "Missing primary email"
-        return result
-
-    result["email"] = primary_email
-
-    # Extract member fields
-    first_name = str(row_data.get("first_name", "")).strip() if row_data.get("first_name") else ""
-    last_name = str(row_data.get("last_name", "")).strip() if row_data.get("last_name") else ""
-    organization = str(row_data.get("organization", "")).strip() if row_data.get("organization") else ""
-    date_joined = parse_date(row_data.get("when_started"))
-
-    # Primary email contact info
-    primary_verified = parse_boolean(row_data.get("primary_verified"))
-    primary_subscribed = parse_boolean(row_data.get("primary_subscribed"))
-
-    # Secondary email
-    secondary_email = str(row_data.get("secondary_email", "")).strip() if row_data.get("secondary_email") else None
-    secondary_verified = parse_boolean(row_data.get("secondary_verified"))
-    secondary_subscribed = parse_boolean(row_data.get("secondary_subscribed"))
-
-    # Phone
-    phone_number = str(row_data.get("phone_number", "")).strip() if row_data.get("phone_number") else None
-    # Normalize phone: convert int/float from Excel to string
-    if phone_number and phone_number.replace(".", "").replace("-", "").replace("+", "").isdigit():
-        phone_number = phone_number.split(".")[0]  # strip trailing .0 from Excel numeric
-    phone_subscribed = parse_boolean(row_data.get("phone_subscribed"))
-    phone_verified = parse_boolean(row_data.get("phone_verified"))
-
-    # Check if member exists by email
-    existing_member = Member.objects.filter(email=primary_email).first()
-
-    if existing_member:
-        if update_existing:
-            _update_existing_member(
-                existing_member,
-                first_name=first_name,
-                last_name=last_name,
-                organization=organization,
-                primary_verified=primary_verified,
-                primary_subscribed=primary_subscribed,
-                secondary_email=secondary_email,
-                secondary_verified=secondary_verified,
-                secondary_subscribed=secondary_subscribed,
-                phone_number=phone_number,
-                phone_subscribed=phone_subscribed,
-                phone_verified=phone_verified,
-            )
-            result["status"] = "updated"
-        else:
-            result["status"] = "skipped"
-            result["error"] = f"Member with email {primary_email} already exists"
-    else:
-        # Create new member
-        password = default_password or generate_random_password()
-        username = _generate_unique_username(primary_email)
-
-        member = Member.objects.create_user(
-            username=username,
-            email=primary_email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            organization=organization,
-            email_subscribe=primary_subscribed,
-            is_active=True,
-            is_active_member=True,
-        )
-
-        # Set date_joined if provided
-        if date_joined:
-            Member.objects.filter(pk=member.pk).update(date_joined=date_joined)
-
-        # Create primary ContactEmail
-        ContactEmail.objects.create(
-            member=member,
-            email_address=primary_email,
-            email_type="primary",
-            verified=primary_verified,
-            subscribe=primary_subscribed,
-        )
-
-        # Create secondary ContactEmail if provided
-        if secondary_email:
-            ContactEmail.objects.create(
-                member=member,
-                email_address=secondary_email,
-                email_type="secondary",
-                verified=secondary_verified,
-                subscribe=secondary_subscribed,
-            )
-
-        # Create ContactPhone if provided
-        if phone_number:
-            ContactPhone.objects.create(
-                member=member,
-                phone_number=phone_number,
-                region="US",
-                subscribe=phone_subscribed,
-                verified=phone_verified,
-            )
-
-        result["status"] = "created"
-
-    return result
+# ---------------------------------------------------------------------------
+# Update path (row-by-row with savepoints)
+# ---------------------------------------------------------------------------
 
 
-def _update_existing_member(
-    member,
-    *,
-    first_name,
-    last_name,
-    organization,
-    primary_verified,
-    primary_subscribed,
-    secondary_email,
-    secondary_verified,
-    secondary_subscribed,
-    phone_number,
-    phone_subscribed,
-    phone_verified,
+def _bulk_update_members(
+    rows: list[dict],
+    result: ImportResult,
+    claimed_contact_emails: set[str],
+    claimed_phones: set[str],
 ):
-    """Update an existing member and their contact info."""
-    if first_name:
-        member.first_name = first_name
-    if last_name:
-        member.last_name = last_name
-    if organization:
-        member.organization = organization
-    member.email_subscribe = primary_subscribed
+    """Update existing members. Uses per-row savepoints for safety."""
+    # Pre-fetch all members to update in one query
+    emails = [r["primary_email"] for r in rows]
+    member_map = {m.email.lower(): m for m in Member.objects.filter(email__in=emails)}
+
+    for p in rows:
+        member = member_map.get(p["primary_email"].lower())
+        if not member:
+            result.skipped_count += 1
+            continue
+
+        try:
+            with transaction.atomic():
+                _update_single_member(member, p, claimed_contact_emails, claimed_phones)
+            result.updated_count += 1
+        except Exception as e:
+            result.skipped_count += 1
+            result.errors.append(f"Row {p['row']}: {e}")
+
+
+def _update_single_member(member, p, claimed_contact_emails, claimed_phones):
+    """Update one member and their contact info."""
+    if p["first_name"]:
+        member.first_name = p["first_name"]
+    if p["last_name"]:
+        member.last_name = p["last_name"]
+    if p["organization"]:
+        member.organization = p["organization"]
+    member.email_subscribe = p["primary_subscribed"]
     member.save()
 
-    # Update or create primary ContactEmail
-    ContactEmail.objects.update_or_create(
-        member=member,
-        email_address=member.email,
-        defaults={
-            "email_type": "primary",
-            "verified": primary_verified,
-            "subscribe": primary_subscribed,
-        },
-    )
-
-    # Handle secondary email
-    if secondary_email:
-        # Remove old secondary emails that don't match
-        member.contact_emails.filter(email_type="secondary").exclude(email_address=secondary_email).delete()
+    # Primary ContactEmail
+    email_key = member.email.lower()
+    if email_key not in claimed_contact_emails:
         ContactEmail.objects.update_or_create(
             member=member,
-            email_address=secondary_email,
-            defaults={
-                "email_type": "secondary",
-                "verified": secondary_verified,
-                "subscribe": secondary_subscribed,
-            },
+            email_address=member.email,
+            defaults={"email_type": "primary", "verified": p["primary_verified"], "subscribe": p["primary_subscribed"]},
         )
+        claimed_contact_emails.add(email_key)
+    else:
+        ContactEmail.objects.filter(member=member, email_address=member.email).update(
+            verified=p["primary_verified"], subscribe=p["primary_subscribed"]
+        )
+
+    # Secondary ContactEmail
+    if p["secondary_email"]:
+        sec_key = p["secondary_email"].lower()
+        member.contact_emails.filter(email_type="secondary").exclude(email_address=p["secondary_email"]).delete()
+        if sec_key not in claimed_contact_emails:
+            ContactEmail.objects.update_or_create(
+                member=member,
+                email_address=p["secondary_email"],
+                defaults={
+                    "email_type": "secondary",
+                    "verified": p["secondary_verified"],
+                    "subscribe": p["secondary_subscribed"],
+                },
+            )
+            claimed_contact_emails.add(sec_key)
     else:
         member.contact_emails.filter(email_type="secondary").delete()
 
-    # Handle phone
-    if phone_number:
-        existing_phone = member.contact_phones.first()
-        if existing_phone:
-            existing_phone.phone_number = phone_number
-            existing_phone.subscribe = phone_subscribed
-            existing_phone.verified = phone_verified
-            existing_phone.save()
-        else:
-            ContactPhone.objects.create(
-                member=member,
-                phone_number=phone_number,
-                region="US",
-                subscribe=phone_subscribed,
-                verified=phone_verified,
-            )
+    # Phone
+    if p["phone_number"]:
+        if p["phone_number"] not in claimed_phones:
+            existing_phone = member.contact_phones.first()
+            if existing_phone:
+                existing_phone.phone_number = p["phone_number"]
+                existing_phone.subscribe = p["phone_subscribed"]
+                existing_phone.verified = p["phone_verified"]
+                existing_phone.save()
+            else:
+                ContactPhone.objects.create(
+                    member=member,
+                    phone_number=p["phone_number"],
+                    region="US",
+                    subscribe=p["phone_subscribed"],
+                    verified=p["phone_verified"],
+                )
+            claimed_phones.add(p["phone_number"])
     else:
         member.contact_phones.all().delete()
+
+
+# ---------------------------------------------------------------------------
+# Template generation
+# ---------------------------------------------------------------------------
 
 
 def generate_template_excel() -> bytes:
