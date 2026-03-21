@@ -1,7 +1,7 @@
 import logging
 
 from django.db import IntegrityError
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -35,7 +35,10 @@ class EventRegistrationOptionsView(APIView):
             return Response({"detail": "No live event available."}, status=status.HTTP_404_NOT_FOUND)
 
         # Annotate tickets with registration count for remaining quantity
-        tickets = event.tickets.annotate(registration_count=Count("registrations"))
+        # Exclude soft-deleted registrations so cancelled tickets free up capacity
+        tickets = event.tickets.annotate(
+            registration_count=Count("registrations", filter=Q(registrations__is_deleted=False))
+        )
         # Replace prefetched tickets with annotated queryset
         event._prefetched_objects_cache["tickets"] = list(tickets)
 
@@ -103,18 +106,22 @@ class EventRegistrationCreateView(APIView):
                 q_text = questions[req_id].text
                 return Response({"detail": f'Answer required for: "{q_text}"'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Snapshot question text + answer
+        # Snapshot question text + answer; reject answers for unknown questions
         question_answers = []
         for a in answers:
             qid = str(a["question_id"])
-            if qid in questions:
-                question_answers.append(
-                    {
-                        "question_id": qid,
-                        "question_text": questions[qid].text,
-                        "answer": a["answer"],
-                    }
+            if qid not in questions:
+                return Response(
+                    {"detail": "One of your answers references an invalid question. Please reload and try again."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
+            question_answers.append(
+                {
+                    "question_id": qid,
+                    "question_text": questions[qid].text,
+                    "answer": a["answer"],
+                }
+            )
 
         # Create registration
         try:
