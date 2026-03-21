@@ -106,6 +106,13 @@
         <span class="material-symbols-outlined !text-[18px]">send</span>
         Send
       </button>
+      {% if preview_url %}
+      <button type="button" id="preview-btn"
+              class="bg-base-100 dark:bg-base-800 hover:bg-base-200 dark:hover:bg-base-700 text-font-default-light dark:text-font-default-dark font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2 border border-base-200 dark:border-base-700">
+        <span class="material-symbols-outlined !text-[18px]">visibility</span>
+        Preview
+      </button>
+      {% endif %}
       <a href="{{ cancel_url }}"
          class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
         Cancel
@@ -113,4 +120,30 @@
     </div>
   </form>
 </div>
+
+{% if preview_url %}
+<script>
+document.getElementById('preview-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    var body = document.getElementById('id_body').value;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ preview_url }}';
+    form.target = '_blank';
+    var csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = '{{ csrf_token }}';
+    form.appendChild(csrf);
+    var bodyInput = document.createElement('input');
+    bodyInput.type = 'hidden';
+    bodyInput.name = 'body';
+    bodyInput.value = body;
+    form.appendChild(bodyInput);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+});
+</script>
+{% endif %}
 {% endblock %}

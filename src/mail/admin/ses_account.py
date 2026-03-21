@@ -3,6 +3,7 @@ Admin configuration for the SES sender with a dedicated compose flow.
 """
 
 from django.contrib import admin, messages
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -10,6 +11,7 @@ from django.utils.html import format_html
 from core.admin.base import BaseModelAdmin
 from mail.forms import ComposeForm
 from mail.models import EmailLog, SESAccount, SESEmailLog
+from mail.services.email_layout import get_logo_data_uri, get_logo_inline_image, render_email_layout
 from mail.services.ses import SESService, SESServiceError
 
 
@@ -56,6 +58,7 @@ class SESAccountAdmin(BaseModelAdmin):
         custom_urls = [
             path("compose/", self.admin_site.admin_view(self.compose_view), name="mail_ses_compose"),
             path("send/", self.admin_site.admin_view(self.send_action), name="mail_ses_send"),
+            path("preview/", self.admin_site.admin_view(self.preview_action), name="mail_ses_preview"),
         ]
         return custom_urls + urls
 
@@ -114,6 +117,7 @@ class SESAccountAdmin(BaseModelAdmin):
             "form": form,
             "account_email": account.email,
             "send_url": reverse("admin:mail_ses_send"),
+            "preview_url": reverse("admin:mail_ses_preview"),
             "cancel_url": reverse("admin:mail_sesaccount_changelist"),
             "parent_label": "SES Mail Senders",
             "parent_url": reverse("admin:mail_sesaccount_changelist"),
@@ -137,6 +141,7 @@ class SESAccountAdmin(BaseModelAdmin):
                 "form": form,
                 "account_email": account.email,
                 "send_url": reverse("admin:mail_ses_send"),
+                "preview_url": reverse("admin:mail_ses_preview"),
                 "cancel_url": reverse("admin:mail_sesaccount_changelist"),
                 "parent_label": "SES Mail Senders",
                 "parent_url": reverse("admin:mail_sesaccount_changelist"),
@@ -146,14 +151,18 @@ class SESAccountAdmin(BaseModelAdmin):
         data = form.cleaned_data
         attachments = [(uploaded.name, uploaded.read()) for uploaded in request.FILES.getlist("attachments")]
 
+        wrapped_html = render_email_layout(data["body"])
+        logo_image = get_logo_inline_image()
+
         try:
             result = SESService(account).send_message(
                 to=data["to"],
                 subject=data["subject"],
-                body_html=data["body"],
+                body_html=wrapped_html,
                 cc=data.get("cc", ""),
                 bcc=data.get("bcc", ""),
                 attachments=attachments or None,
+                inline_images=[logo_image],
             )
             self._log_action(
                 account,
@@ -179,3 +188,21 @@ class SESAccountAdmin(BaseModelAdmin):
             messages.error(request, f"Failed to send SES email: {error_msg}")
 
         return redirect(reverse("admin:mail_sesemaillog_changelist"))
+
+    def preview_action(self, request):
+        """Render the composed email body wrapped in the I2G layout for preview."""
+        if request.method != "POST":
+            return redirect(reverse("admin:mail_ses_compose"))
+
+        body = request.POST.get("body", "")
+        logo_data_uri = get_logo_data_uri()
+        preview_html = render_email_layout(body, logo_src=logo_data_uri)
+
+        # Wrap in a minimal HTML page with centered gray background
+        page_html = f"""\
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Email Preview</title></head>
+<body style="margin:0;padding:40px 20px;background:#f3f4f6;font-family:Arial,sans-serif;">
+{preview_html}
+</body></html>"""
+        return HttpResponse(page_html, content_type="text/html")

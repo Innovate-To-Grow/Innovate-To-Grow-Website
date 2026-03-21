@@ -7,6 +7,7 @@ import html
 from authn.models.security import EmailAuthChallenge
 from mail.models import SESAccount
 from mail.services import SESService, SESServiceError
+from mail.services.email_layout import get_logo_inline_image, render_email_layout
 
 
 class AuthEmailError(RuntimeError):
@@ -52,13 +53,7 @@ def _render_auth_email(purpose: str, code: str, email: str) -> tuple[str, str]:
     safe_email = html.escape(email)
     safe_code = html.escape(code)
     subject = copy["subject"]
-    body = f"""
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827; max-width: 640px; margin: 0 auto;">
-      <div style="text-align: center; padding: 24px 0 16px;">
-        <span style="font-size: 28px; font-weight: 800; color: #1e3a5f; letter-spacing: 0.02em;">Innovate to Grow</span>
-        <span style="display: block; font-size: 13px; color: #6b7280; margin-top: 2px;">UC Merced</span>
-      </div>
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0 0 24px;">
+    content_html = f"""\
       <h2 style="margin-bottom: 8px;">{copy["heading"]}</h2>
       <p style="margin-top: 0;">{copy["body"]}</p>
       <div style="margin: 24px 0; padding: 16px; border-radius: 12px; background: #f3f4f6; text-align: center;">
@@ -66,11 +61,9 @@ def _render_auth_email(purpose: str, code: str, email: str) -> tuple[str, str]:
         <div style="font-size: 32px; font-weight: 700; letter-spacing: 0.28em; margin-top: 8px;">{safe_code}</div>
       </div>
       <p>This code expires in 10 minutes and can only be used once.</p>
-      <p>If you did not request this email for {safe_email}, you can ignore it.</p>
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 16px;">
-      <p style="font-size: 12px; color: #9ca3af; text-align: center;">Innovate to Grow &mdash; UC Merced</p>
-    </div>
-    """
+      <p>If you did not request this email for {safe_email}, you can ignore it.</p>"""
+
+    body = render_email_layout(content_html)
     return subject, body
 
 
@@ -82,7 +75,9 @@ def send_auth_code_email(*, purpose: str, code: str, email: str):
     subject, body_html = _render_auth_email(purpose, code, email)
 
     try:
-        result = SESService(account).send_message(to=email, subject=subject, body_html=body_html)
+        result = SESService(account).send_message(
+            to=email, subject=subject, body_html=body_html, inline_images=[get_logo_inline_image()]
+        )
         account.mark_used()
         return result
     except SESServiceError as exc:

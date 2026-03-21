@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from mail.models import SESAccount, SESEmailLog
 from mail.services import SESService, SESServiceError
+from mail.services.email_layout import get_logo_inline_image, render_email_layout
 
 from .ticket_assets import (
     build_frontend_absolute_url,
@@ -43,13 +44,7 @@ def _render_ticket_email(registration, request=None):
     login_token = build_ticket_login_token(registration.member)
     account_url = build_frontend_absolute_url(f"/ticket-login?token={login_token}", request=request)
 
-    body_html = f"""
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:640px;margin:0 auto;">
-      <div style="text-align:center;padding:24px 0 16px;">
-        <span style="font-size:28px;font-weight:800;color:#1e3a5f;letter-spacing:0.02em;">Innovate to Grow</span>
-        <span style="display:block;font-size:13px;color:#6b7280;margin-top:2px;">UC Merced</span>
-      </div>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 24px;">
+    content_html = f"""\
       <h2 style="margin-bottom:8px;">Your event ticket is ready</h2>
       <p style="margin-top:0;">Hi {attendee_name}, you're registered for <strong>{event_name}</strong>.</p>
       <div style="margin:24px 0;padding:16px;border-radius:14px;background:#f8fafc;border:1px solid #dbe3ef;">
@@ -69,16 +64,14 @@ def _render_ticket_email(registration, request=None):
           View Tickets in My Account
         </a>
         <p style="font-size:12px;color:#6b7280;margin-top:8px;">This link will expire in 30 days. After that, please log in manually.</p>
-      </div>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 16px;">
-      <p style="font-size:12px;color:#9ca3af;text-align:center;">Innovate to Grow - UC Merced</p>
-    </div>
-    """
+      </div>"""
+
+    body_html = render_email_layout(content_html)
 
     barcode_filename = f"{registration.event.slug}-{registration.ticket_code}.png"
     barcode_bytes = generate_ticket_barcode_png_bytes(registration)
 
-    inline_images = [("ticket-barcode", barcode_filename, barcode_bytes)]
+    inline_images = [get_logo_inline_image(), ("ticket-barcode", barcode_filename, barcode_bytes)]
     attachments = [(barcode_filename, barcode_bytes)]
 
     return subject, body_html, attachments, inline_images

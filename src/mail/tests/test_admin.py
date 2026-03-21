@@ -366,3 +366,52 @@ class SESAccountAdminTest(TestCase):
             }
         )
         self.assertTrue(form.is_valid())
+
+    def test_preview_action_returns_html(self):
+        response = self.client.post(
+            reverse("admin:mail_ses_preview"),
+            {"body": "<p>Preview content</p>"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/html")
+        content = response.content.decode()
+        self.assertIn("<p>Preview content</p>", content)
+        self.assertIn("Innovate to Grow", content)
+        self.assertIn("UC Merced", content)
+        # Should use data URI for logo, not CID
+        self.assertIn("data:image/png;base64,", content)
+        self.assertNotIn("cid:i2g-logo", content)
+
+    def test_preview_action_get_redirects(self):
+        response = self.client.get(reverse("admin:mail_ses_preview"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_ses_compose"))
+
+    @patch("mail.admin.ses_account.SESService")
+    def test_send_wraps_body_in_layout(self, mock_service_cls):
+        mock_service = MagicMock()
+        mock_service.send_message.return_value = {"id": "ses-msg-456"}
+        mock_service_cls.return_value = mock_service
+
+        self.client.post(
+            reverse("admin:mail_ses_send"),
+            {
+                "to": "recipient@example.com",
+                "subject": "Layout Test",
+                "body": "<p>My content</p>",
+            },
+        )
+
+        mock_service.send_message.assert_called_once()
+        call_kwargs = mock_service.send_message.call_args
+        body_html = call_kwargs.kwargs.get("body_html") or call_kwargs[1].get("body_html")
+        # Body should be wrapped in layout
+        self.assertIn("<p>My content</p>", body_html)
+        self.assertIn("Innovate to Grow", body_html)
+        # Should include inline images with logo
+        inline_images = call_kwargs.kwargs.get("inline_images") or call_kwargs[1].get("inline_images")
+        self.assertIsNotNone(inline_images)
+        self.assertEqual(len(inline_images), 1)
+        cid, filename, data = inline_images[0]
+        self.assertEqual(cid, "i2g-logo")
+        self.assertEqual(filename, "i2glogo.png")
