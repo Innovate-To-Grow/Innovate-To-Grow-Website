@@ -54,6 +54,8 @@ urlpatterns = [
     path("authn/", include("authn.urls")),
     # analytics
     path("analytics/", include("analytics.urls")),
+    # mail (SNS webhook)
+    path("mail/", include("mail.urls")),
 ]
 
 if settings.DEBUG:

@@ -58,7 +58,8 @@
             <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-12">#</th>
             <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">Name</th>
             <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">Email</th>
-            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-32">Status</th>
+            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-28">Send</th>
+            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-32">Delivery</th>
           </tr>
         </thead>
         <tbody>
@@ -78,6 +79,16 @@
                 <span class="material-symbols-outlined !text-[16px]">cancel</span>
                 Failed
               </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2.5">
+              {% if r.status == "success" %}
+              <span class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                <span class="material-symbols-outlined !text-[16px]">schedule</span>
+                Pending
+              </span>
+              {% else %}
+              <span class="text-font-subtle-light dark:text-font-subtle-dark">&mdash;</span>
               {% endif %}
             </td>
           </tr>

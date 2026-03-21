@@ -145,12 +145,20 @@ class SESService:
             attachments=attachments,
             inline_images=inline_images,
         )
-        response = client.send_raw_email(
-            Source=formataddr((self.account.display_name, self.account.email))
+        source = (
+            formataddr((self.account.display_name, self.account.email))
             if self.account.display_name
-            else self.account.email,
-            Destinations=destinations,
-            RawMessage={"Data": mime_msg.as_bytes()},
+            else self.account.email
         )
+        send_kwargs = {
+            "Source": source,
+            "Destinations": destinations,
+            "RawMessage": {"Data": mime_msg.as_bytes()},
+        }
+        config_set = getattr(settings, "SES_CONFIGURATION_SET_NAME", "").strip()
+        if config_set:
+            send_kwargs["ConfigurationSetName"] = config_set
+
+        response = client.send_raw_email(**send_kwargs)
         message_id = response.get("MessageId", "")
         return {"id": message_id, "message_id": message_id}

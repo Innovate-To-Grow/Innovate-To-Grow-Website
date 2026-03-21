@@ -63,6 +63,7 @@ def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}"
 
     Args:
         content_html: The email body content (already escaped/safe HTML).
+            Plain-text newlines are converted to ``<br>`` tags.
         logo_src: Image src for the logo. Defaults to ``cid:i2g-logo`` for real
             emails. Pass a data URI (from ``get_logo_data_uri()``) for browser preview.
         unsubscribe_url: Optional URL for an unsubscribe / manage-preferences link
@@ -71,11 +72,14 @@ def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}"
     Returns:
         Complete email HTML string with header, content, and footer.
     """
+    # Convert plain-text newlines to <br> so line breaks render in email clients.
+    content_html = content_html.replace("\r\n", "\n").replace("\n", "<br>\n")
+
     logo_img = ""
     if logo_src:
         logo_img = (
             f'<img src="{logo_src}" alt="Innovate to Grow" '
-            f'style="width:80px;height:80px;border-radius:50%;margin-bottom:8px;">'
+            f'style="width:60px;height:60px;border-radius:50%;vertical-align:middle;">'
         )
 
     unsubscribe_html = ""
@@ -87,14 +91,22 @@ def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}"
         )
 
     return f"""\
-<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:640px;margin:0 auto;">
-  <div style="text-align:center;padding:24px 0 16px;">
-    {logo_img}
-    <span style="display:block;font-size:28px;font-weight:800;color:#1e3a5f;letter-spacing:0.02em;">Innovate to Grow</span>
-    <span style="display:block;font-size:13px;color:#6b7280;margin-top:2px;">UC Merced</span>
+<div style="font-family:Arial,sans-serif;line-height:1.7;color:#111827;max-width:640px;margin:0 auto;">
+  <div style="padding:24px 0 16px;">
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+      <tr>
+        <td style="vertical-align:middle;padding-right:16px;">{logo_img}</td>
+        <td style="vertical-align:middle;">
+          <span style="display:block;font-size:24px;font-weight:800;color:#1e3a5f;letter-spacing:0.02em;line-height:1.2;">Innovate to Grow</span>
+          <span style="display:block;font-size:13px;color:#6b7280;margin-top:2px;">UC Merced</span>
+        </td>
+      </tr>
+    </table>
   </div>
   <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 24px;">
-  {content_html}
+  <div style="font-size:16px;line-height:1.7;">
+    {content_html}
+  </div>
   <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 16px;">
   <p style="font-size:12px;color:#9ca3af;text-align:center;">Innovate to Grow &mdash; UC Merced</p>
   {unsubscribe_html}

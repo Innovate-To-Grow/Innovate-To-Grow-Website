@@ -190,7 +190,6 @@ class SESAccountAdmin(BaseModelAdmin):
         logo_image = get_logo_inline_image()
         ses = SESService(account)
         results = []
-        success_emails = []
 
         for recipient in recipients:
             body = personalize_body(data["body"], recipient)
@@ -212,39 +211,31 @@ class SESAccountAdmin(BaseModelAdmin):
                     attachments=attachments or None,
                     inline_images=[logo_image],
                 )
+                self._log_action(
+                    account,
+                    SESEmailLog.Status.SUCCESS,
+                    request,
+                    message_id=result["id"],
+                    subject=data["subject"],
+                    recipients=recipient["email"],
+                )
                 results.append(
                     {"email": recipient["email"], "name": recipient["full_name"], "status": "success", "error": ""}
                 )
-                success_emails.append(recipient["email"])
                 logger.info("SES email sent to %s (message_id=%s)", recipient["email"], result["id"])
             except SESServiceError as exc:
+                self._log_action(
+                    account,
+                    SESEmailLog.Status.FAILED,
+                    request,
+                    subject=data["subject"],
+                    recipients=recipient["email"],
+                    error=str(exc),
+                )
                 results.append(
                     {"email": recipient["email"], "name": recipient["full_name"], "status": "failed", "error": str(exc)}
                 )
                 logger.exception("SES email failed for %s", recipient["email"])
-
-        # Log summary entries
-        success_count = len(success_emails)
-        fail_count = len(results) - success_count
-        all_recipients_str = ", ".join(success_emails)
-
-        if success_count:
-            self._log_action(
-                account,
-                SESEmailLog.Status.SUCCESS,
-                request,
-                subject=data["subject"],
-                recipients=all_recipients_str,
-            )
-        if fail_count:
-            self._log_action(
-                account,
-                SESEmailLog.Status.FAILED,
-                request,
-                subject=data["subject"],
-                recipients=all_recipients_str,
-                error=f"{fail_count} email(s) failed to send.",
-            )
 
         account.mark_used()
         return results

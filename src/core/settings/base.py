@@ -30,6 +30,8 @@ SES_AWS_SECRET_ACCESS_KEY = os.environ.get("SES_AWS_SECRET_ACCESS_KEY", "")
 SES_AWS_REGION = os.environ.get("SES_AWS_REGION", "us-west-2")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "i2g@g.ucmerced.edu")
 SES_FROM_NAME = os.environ.get("SES_FROM_NAME", "Innovate to Grow")
+SES_CONFIGURATION_SET_NAME = os.environ.get("SES_CONFIGURATION_SET_NAME", "")
+SES_SNS_TOPIC_ARN = os.environ.get("SES_SNS_TOPIC_ARN", "")
 
 # Google Sheets settings
 # Preferred: service account credentials (production)
