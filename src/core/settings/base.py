@@ -336,12 +336,6 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Analytics",
-                "items": [
-                    {"title": "Page Views", "link": "/admin/analytics/pageview/"},
-                ],
-            },
-            {
                 "title": "Gmail",
                 "items": [
                     {"title": "Gmail API Accounts", "link": "/admin/mail/googleaccount/"},
