@@ -19,6 +19,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 from authn.views.admin_login import AdminLoginView
 from core.views import MaintenanceBypassView
@@ -30,6 +31,8 @@ admin.site.site_title = "I2G Admin"
 admin.site.index_title = "Welcome to I2G Admin"
 
 urlpatterns = [
+    # root → admin
+    path("", RedirectView.as_view(url="/admin/", permanent=False)),
     # custom admin login (before admin.site.urls to override default)
     path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
     # admin site
@@ -57,6 +60,8 @@ urlpatterns = [
     # mail (SNS webhook)
     path("mail/", include("mail.urls")),
 ]
+
+handler404 = "core.views.custom_404"
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

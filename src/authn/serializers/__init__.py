@@ -28,6 +28,7 @@ from .email_code import (
 from .login import LoginSerializer
 from .profile import ProfileSerializer
 from .register import RegisterSerializer
+from .subscribe import SubscribeSerializer
 
 __all__ = [
     "RegisterSerializer",
@@ -54,4 +55,5 @@ __all__ = [
     "ContactPhoneSerializer",
     "ContactPhoneCreateSerializer",
     "ContactPhoneUpdateSerializer",
+    "SubscribeSerializer",
 ]

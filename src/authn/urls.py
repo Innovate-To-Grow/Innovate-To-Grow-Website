@@ -31,6 +31,7 @@ from .views import (
     RegisterResendCodeView,
     RegisterVerifyCodeView,
     RegisterView,
+    SubscribeView,
     UnsubscribeAutoLoginView,
 )
 
@@ -82,6 +83,8 @@ urlpatterns = [
     path("contact-phones/<uuid:pk>/", ContactPhoneDetailView.as_view(), name="contact-phone-detail"),
     # Admin invitation acceptance (public)
     path("invite/<str:token>/", AcceptInvitationView.as_view(), name="accept-invitation"),
+    # Subscribe (public)
+    path("subscribe/", SubscribeView.as_view(), name="subscribe"),
     # Unsubscribe auto-login (from email link)
     path("unsubscribe-login/", UnsubscribeAutoLoginView.as_view(), name="unsubscribe-login"),
 ]

@@ -9,6 +9,8 @@ import {
 } from 'react';
 import {
   fetchLayoutData,
+  readLayoutCache,
+  writeLayoutCache,
   type LayoutData,
 } from '../../../services/api';
 import { LayoutContext, type LayoutContextValue, type LayoutLoadState } from './context';
@@ -23,9 +25,17 @@ interface RefreshLayoutOptions {
 
 const LAYOUT_REVALIDATE_MS = 60_000;
 
+function getInitialLayoutFromStorage(): { data: LayoutData | null; state: LayoutLoadState } {
+  const cached = readLayoutCache();
+  return cached
+    ? { data: cached, state: 'ready' as const }
+    : { data: null, state: 'loading' as const };
+}
+
 export const LayoutProvider = ({ children }: LayoutProviderProps) => {
-  const [layoutData, setLayoutData] = useState<LayoutData | null>(null);
-  const [state, setState] = useState<LayoutLoadState>('loading');
+  const initialLayout = useMemo(() => getInitialLayoutFromStorage(), []);
+  const [layoutData, setLayoutData] = useState<LayoutData | null>(() => initialLayout.data);
+  const [state, setState] = useState<LayoutLoadState>(() => initialLayout.state);
   const [error, setError] = useState<string | null>(null);
   const lastLoadedAtRef = useRef(0);
   const inFlightRef = useRef<Promise<void> | null>(null);
@@ -58,6 +68,7 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
         }
 
         lastLoadedAtRef.current = Date.now();
+        writeLayoutCache(data);
         startTransition(() => {
           setLayoutData(data);
           setError(null);

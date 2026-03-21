@@ -101,6 +101,7 @@ class EmailAuthVerifyCodeView(APIView):
         if flow == "register" and not member.is_active:
             member.is_active = True
             member.save(update_fields=["is_active"])
+            _link_email_subscriber(member)
         elif flow == "login" and not member.is_active:
             return Response(
                 {"detail": "Verification code is invalid or has expired."},
@@ -134,6 +135,7 @@ class RegisterVerifyCodeView(APIView):
         if not member.is_active:
             member.is_active = True
             member.save(update_fields=["is_active"])
+            _link_email_subscriber(member)
         consume_login_or_registration_challenge(challenge)
         return Response(
             build_auth_success_payload(member, "Email verified. Registration successful."),
@@ -207,3 +209,13 @@ class PasswordResetConfirmView(APIView):
         except AuthChallengeInvalid as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(payload, status=status.HTTP_200_OK)
+
+
+def _link_email_subscriber(member):
+    """Link anonymous ContactEmail records to a newly activated member."""
+    from authn.models import ContactEmail
+
+    ContactEmail.objects.filter(
+        email_address__iexact=member.email,
+        member__isnull=True,
+    ).update(member=member)

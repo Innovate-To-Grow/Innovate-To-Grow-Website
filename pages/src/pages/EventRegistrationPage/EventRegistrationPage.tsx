@@ -45,6 +45,14 @@ export const EventRegistrationPage = () => {
       }
     } catch (err: unknown) {
       const msg = getErrorMessage(err);
+      const axiosErr = err as {response?: {status?: number}};
+
+      // If token is invalid/expired, treat as unauthenticated and show email step
+      if (axiosErr.response?.status === 401) {
+        setStep('email');
+        return;
+      }
+
       if (msg.toLowerCase().includes('no live event')) {
         setError('No event is currently accepting registrations.');
       } else {

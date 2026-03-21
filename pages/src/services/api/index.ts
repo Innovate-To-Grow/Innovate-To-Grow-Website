@@ -16,7 +16,13 @@ export type {
   Menu,
   LayoutData,
 } from './layout';
-export { fetchLayoutData, clearLayoutCache } from './layout';
+export {
+  fetchLayoutData,
+  clearLayoutCache,
+  readLayoutCache,
+  writeLayoutCache,
+  LAYOUT_CACHE_VERSION,
+} from './layout';
 
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth, bypassMaintenance } from './health';

@@ -14,4 +14,5 @@ APP_ROUTES = [
     {"url": "/projects-teams", "title": "Projects & Teams"},
     {"url": "/acknowledgement", "title": "Partners & Sponsors"},
     {"url": "/event-registration", "title": "Event Registration"},
+    {"url": "/subscribe", "title": "Subscribe"},
 ]

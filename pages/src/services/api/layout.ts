@@ -1,4 +1,5 @@
 import api from './client';
+import type { SheetsDataResponse } from './sheets';
 
 // ======================== Footer ========================
 
@@ -69,8 +70,6 @@ export interface Menu {
   updated_at: string;
 }
 
-import type { SheetsDataResponse } from './sheets';
-
 export interface LayoutData {
   menus: Menu[];
   footer: FooterContentResponse | null;
@@ -78,11 +77,75 @@ export interface LayoutData {
   sheets_data?: Record<string, SheetsDataResponse>;
 }
 
+/** Bump when cached JSON shape is incompatible. */
+export const LAYOUT_CACHE_VERSION = 1;
+
+const LAYOUT_CACHE_STORAGE_KEY = 'itg-layout-v1';
+
+interface StoredLayoutPayload {
+  v: number;
+  data: LayoutData;
+}
+
+function isLayoutDataShape(value: unknown): value is LayoutData {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  return Array.isArray(o.menus);
+}
+
+export function readLayoutCache(): LayoutData | null {
+  if (typeof window === 'undefined' || !window.sessionStorage) {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(LAYOUT_CACHE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const payload = parsed as StoredLayoutPayload;
+    if (payload.v !== LAYOUT_CACHE_VERSION || !isLayoutDataShape(payload.data)) {
+      return null;
+    }
+    return payload.data;
+  } catch {
+    return null;
+  }
+}
+
+export function writeLayoutCache(data: LayoutData): void {
+  if (typeof window === 'undefined' || !window.sessionStorage) {
+    return;
+  }
+  try {
+    const payload: StoredLayoutPayload = { v: LAYOUT_CACHE_VERSION, data };
+    window.sessionStorage.setItem(LAYOUT_CACHE_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // QuotaExceededError or private mode — ignore
+  }
+}
+
+/** In-flight dedupe: multiple LayoutProvider roots share one network request. */
+let layoutFetchInFlight: Promise<LayoutData> | null = null;
+
 export const fetchLayoutData = async (): Promise<LayoutData> => {
-  const response = await api.get<LayoutData>('/layout/');
-  return response.data;
+  if (!layoutFetchInFlight) {
+    layoutFetchInFlight = api
+      .get<LayoutData>('/layout/')
+      .then((response) => response.data)
+      .finally(() => {
+        layoutFetchInFlight = null;
+      });
+  }
+  return layoutFetchInFlight;
 };
 
-export const clearLayoutCache = () => {
-  // Request caching now lives in LayoutProvider's revalidation flow.
+export const clearLayoutCache = (): void => {
+  if (typeof window === 'undefined' || !window.sessionStorage) {
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(LAYOUT_CACHE_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
 };

@@ -17,7 +17,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Load environment variables from .env file
 load_dotenv(BASE_DIR / ".env")
 
-
 # Frontend URL for Live Preview (optional)
 # If set, the "Open Live Preview" button in admin will link to this URL + /preview
 # Example: "https://www.innovatetogrow.com" or "http://localhost:5173"
@@ -112,7 +111,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -131,7 +129,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -142,7 +139,6 @@ TIME_ZONE = "America/Los_Angeles"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
@@ -281,6 +277,12 @@ UNFOLD = {
         "show_search": True,
         "navigation": [
             {
+                "title": "Site Settings",
+                "items": [
+                    {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
+                ],
+            },
+            {
                 "title": "Content Management System",
                 "items": [
                     {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
@@ -292,24 +294,10 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Site Settings",
-                "items": [
-                    {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
-                ],
-            },
-            {
                 "title": "Events",
                 "items": [
                     {"title": "Events", "link": "/admin/event/event/"},
                     {"title": "Registrations", "link": "/admin/event/eventregistration/"},
-                ],
-            },
-            {
-                "title": "News",
-                "items": [
-                    {"title": "News Articles", "link": "/admin/news/newsarticle/"},
-                    {"title": "Feed Sources", "link": "/admin/news/newsfeedsource/"},
-                    {"title": "Sync Logs", "link": "/admin/news/newssynclog/"},
                 ],
             },
             {
@@ -320,11 +308,21 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Members",
+                "title": "Members & Authentication",
                 "items": [
+                    {"title": "User", "link": "/admin/authn/member/"},
+                    {"title": "Contact Emails", "link": "/admin/authn/contactemail/"},
                     {"title": "Members", "link": "/admin/authn/member/"},
                     {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
                     {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
+                ],
+            },
+            {
+                "title": "News",
+                "items": [
+                    {"title": "News Articles", "link": "/admin/news/newsarticle/"},
+                    {"title": "Feed Sources", "link": "/admin/news/newsfeedsource/"},
+                    {"title": "Sync Logs", "link": "/admin/news/newssynclog/"},
                 ],
             },
             {

@@ -539,4 +539,9 @@ export const isAuthenticated = (): boolean => {
   }
 };
 
+export const subscribe = async (email: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/subscribe/', { email });
+  return response.data;
+};
+
 export default authApi;

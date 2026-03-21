@@ -31,12 +31,8 @@
   margin: 0 auto;
 }
 
-/* Top bar container */
-.site-header-top .site-header-container {
-  width: min(1200px, calc(100% - 48px));
-}
-
-/* Bottom menu bar container */
+/* Top + bottom: same max width and horizontal padding as top bar */
+.site-header-top .site-header-container,
 .site-header-bottom .site-header-container {
   width: min(1200px, calc(100% - 48px));
 }
@@ -132,9 +128,12 @@
   gap: 32px;
 }
 
+/* Stretch to full bar height so nav / menu-bar-item bottom matches site-header-bottom
+   (otherwise li height follows badge ~40px and dropdown top: 100% leaves a gap). */
 .site-header-bottom-left {
   display: flex;
-  align-items: center;
+  align-self: stretch;
+  align-items: stretch;
   gap: 20px;
   min-width: 0;
   flex: 1;
@@ -146,6 +145,7 @@
   justify-content: center;
   text-decoration: none;
   flex: 0 0 auto;
+  align-self: center;
 }
 
 .site-header-badge img {
@@ -168,20 +168,41 @@
   flex: 1;
   display: flex;
   justify-content: flex-start;
+  align-self: stretch;
+  align-items: stretch;
   min-width: 0;
+}
+
+/* One-time fade: loading skeleton → first ready menu */
+@keyframes menuNavIntroFade {
+  from {
+    opacity: 0.72;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.site-header-nav.menu-nav-intro-fade {
+  animation: menuNavIntroFade 0.25s ease forwards;
 }
 
 .menu-bar-list {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   list-style: none;
   margin: 0;
   padding: 0;
   gap: 28px;
+  height: 100%;
 }
 
 .menu-bar-item {
   position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 /* Create invisible bridge to maintain hover when moving to dropdown */
@@ -258,6 +279,65 @@
   color: #c0392b;
 }
 
+/* Desktop nav loading skeleton (similar height to .menu-bar-link) */
+@keyframes menu-bar-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.menu-bar-item--skeleton {
+  pointer-events: none;
+}
+
+.menu-bar-list--skeleton .menu-bar-skeleton {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 51, 102, 0.12) 0%,
+    rgba(0, 51, 102, 0.2) 50%,
+    rgba(0, 51, 102, 0.12) 100%
+  );
+  background-size: 200% 100%;
+  animation: menu-bar-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.header-mobile-nav-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.header-mobile-nav-skeleton-row {
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.header-mobile-nav-skeleton .menu-bar-skeleton {
+  display: block;
+  height: 16px;
+  max-width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 51, 102, 0.12) 0%,
+    rgba(0, 51, 102, 0.22) 50%,
+    rgba(0, 51, 102, 0.12) 100%
+  );
+  animation: menu-bar-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
 .site-header-date {
   flex: 0 0 auto;
   font-size: 11px;
@@ -272,7 +352,7 @@
 /* ---------- Dropdowns (desktop) ---------- */
 .menu-dropdown {
   position: absolute;
-  /* Position dropdown below the full menu bar height to avoid overlap */
+  /* Flush with bottom of site-header-bottom (li spans full inner bar height) */
   top: 100%;
   left: 0;
   min-width: 220px;
@@ -285,8 +365,6 @@
   transform: translateY(0);
   transition: opacity 0.2s ease, visibility 0.2s ease;
   z-index: 1100;
-  /* Add margin-top to create space between menu and dropdown */
-  margin-top: 8px;
 }
 
 .menu-dropdown.is-open,
@@ -640,13 +718,68 @@
 }
 
 /* ---------- Responsive: Large Desktop ---------- */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
+  .site-header-bottom-inner {
+    gap: 24px;
+  }
+
+  .site-header-bottom-left {
+    gap: 16px;
+  }
+
   .menu-bar-list {
-    gap: 22px;
+    gap: 20px;
   }
 
   .menu-bar-link {
     font-size: 14px;
+  }
+
+  .site-header-date {
+    font-size: 10px;
+    letter-spacing: 0.8px;
+  }
+
+  .member-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .site-header-bottom-inner {
+    gap: 16px;
+  }
+
+  .menu-bar-list {
+    gap: 16px;
+  }
+
+  .site-header-date {
+    display: none;
+  }
+
+  .site-header-member {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 1200px) {
+  .menu-bar-list {
+    gap: 14px;
+  }
+
+  .menu-bar-link {
+    font-size: 13px;
+  }
+
+  .site-header-bottom-left {
+    gap: 12px;
+  }
+
+  .member-button {
+    padding: 6px 10px;
+    font-size: 11px;
   }
 }
 

@@ -7,6 +7,9 @@ import './MainMenu.css';
 
 const buildHref = (item: MenuItem) => item.url || '#';
 
+/** Placeholder widths (px) for loading skeleton — similar footprint to real nav labels */
+const MENU_BAR_SKELETON_WIDTHS_PX = [56, 72, 64, 48, 80, 68, 52] as const;
+
 export const MainMenu = () => {
   const { menu, state } = useMenu();
   const { user, isAuthenticated, logout, refreshProfile } = useAuth();
@@ -14,6 +17,9 @@ export const MainMenu = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
   const hasSyncedMemberProfile = useRef(false);
+  const prevLayoutStateRef = useRef<typeof state | undefined>(undefined);
+  const introFadePlayedRef = useRef(false);
+  const [navIntroFade, setNavIntroFade] = useState(false);
   const currentDate = useMemo(() => {
     const date = new Date();
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -52,6 +58,23 @@ export const MainMenu = () => {
       void refreshProfile();
     }
   }, [isAuthenticated, refreshProfile, user?.profile_image]);
+
+  /** One-time fade when first transitioning from loading (skeleton) to ready menu */
+  useEffect(() => {
+    const prev = prevLayoutStateRef.current;
+    prevLayoutStateRef.current = state;
+    if (prev === undefined) return;
+    if (
+      introFadePlayedRef.current ||
+      prev !== 'loading' ||
+      state !== 'ready' ||
+      !menu?.items?.length
+    ) {
+      return;
+    }
+    introFadePlayedRef.current = true;
+    setTimeout(() => setNavIntroFade(true), 0);
+  }, [state, menu]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -225,12 +248,23 @@ export const MainMenu = () => {
               <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" width={2038} height={2039} />
             </a>
 
-            <nav className="site-header-nav" aria-label="Main menu">
+            <nav
+              className={`site-header-nav${navIntroFade ? ' menu-nav-intro-fade' : ''}`}
+              aria-label="Main menu"
+              aria-busy={state === 'loading'}
+              onAnimationEnd={(e) => {
+                if (e.animationName === 'menuNavIntroFade' && e.currentTarget === e.target) {
+                  setNavIntroFade(false);
+                }
+              }}
+            >
               {state === 'loading' && (
-                <ul className="menu-bar-list">
-                  <li className="menu-bar-item is-muted">
-                    <span className="menu-bar-link">Loading...</span>
-                  </li>
+                <ul className="menu-bar-list menu-bar-list--skeleton" aria-hidden="true">
+                  {MENU_BAR_SKELETON_WIDTHS_PX.map((w, i) => (
+                    <li key={i} className="menu-bar-item menu-bar-item--skeleton">
+                      <span className="menu-bar-skeleton" style={{ width: `${w}px` }} />
+                    </li>
+                  ))}
                 </ul>
               )}
 
@@ -353,7 +387,16 @@ export const MainMenu = () => {
           </button>
         </div>
 
-        <nav className="header-mobile-nav">
+        <nav className="header-mobile-nav" aria-busy={state === 'loading'}>
+          {state === 'loading' && (
+            <ul className="header-mobile-nav-skeleton" aria-hidden="true">
+              {MENU_BAR_SKELETON_WIDTHS_PX.map((w, i) => (
+                <li key={i} className="header-mobile-nav-skeleton-row">
+                  <span className="menu-bar-skeleton" style={{ width: `${Math.min(w + 24, 200)}px` }} />
+                </li>
+              ))}
+            </ul>
+          )}
           {state === 'ready' && menu && menu.items && menu.items.length > 0 && renderMenuItems(menu.items)}
         </nav>
 
