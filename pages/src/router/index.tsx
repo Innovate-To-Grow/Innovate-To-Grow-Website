@@ -35,7 +35,7 @@ export const router = createBrowserRouter([
         children: [
 
             // support rout pointer for support old url
-            {parh: 'membership/events', element: <EventRegistrationPage/>},
+            {path: 'membership/events', element: <EventRegistrationPage/>},
 
             // homepage — resolved dynamically from SiteSettings.homepage_route
             {index: true, element: <HomepageResolver/>},
