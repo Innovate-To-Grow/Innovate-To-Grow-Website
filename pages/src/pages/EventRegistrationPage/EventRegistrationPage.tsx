@@ -302,7 +302,12 @@ export const EventRegistrationPage = () => {
                       onChange={() => setSelectedTicketId(ticket.id)}
                       disabled={isSoldOut}
                     />
-                    <span className="event-reg-ticket-name">{ticket.name}</span>
+                    <span className="event-reg-ticket-name">
+                      {ticket.name}
+                      {ticket.price !== '0.00' && (
+                        <span className="event-reg-ticket-price"> — ${ticket.price}</span>
+                      )}
+                    </span>
                     {ticket.remaining_quantity !== null && (
                       <span className="event-reg-ticket-meta">
                         {isSoldOut ? 'Sold out' : `${ticket.remaining_quantity} left`}
