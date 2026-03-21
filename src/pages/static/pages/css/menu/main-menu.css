@@ -498,13 +498,24 @@
 }
 
 .header-mobile-nav .menu-bar-list {
-  flex-direction: column;
+  display: block;
   gap: 0;
-  align-items: stretch;
+  height: auto;
 }
 
 .header-mobile-nav .menu-bar-item {
+  display: block;
+  height: auto;
   border-bottom: 1px solid #eee;
+}
+
+.header-mobile-nav .menu-dropdown-list,
+.header-mobile-nav .menu-dropdown-list.nested {
+  display: block;
+}
+
+.header-mobile-nav .menu-dropdown-item {
+  display: block;
 }
 
 .header-mobile-nav .menu-bar-link {

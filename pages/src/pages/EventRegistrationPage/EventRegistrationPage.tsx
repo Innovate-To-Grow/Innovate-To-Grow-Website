@@ -184,7 +184,7 @@ export const EventRegistrationPage = () => {
             </div>
           ) : null}
 
-          <Link to="/account" className="event-reg-link">View My Tickets</Link>
+          <Link to="/account" className="event-reg-link">View My Account</Link>
         </div>
       </div>
     );
