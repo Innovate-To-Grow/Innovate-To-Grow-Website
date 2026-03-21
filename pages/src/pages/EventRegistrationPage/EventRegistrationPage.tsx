@@ -308,9 +308,6 @@ export const EventRegistrationPage = () => {
                         {isSoldOut ? 'Sold out' : `${ticket.remaining_quantity} left`}
                       </span>
                     )}
-                    <span className="event-reg-ticket-price">
-                      {parseFloat(ticket.price) === 0 ? 'Free' : `$${ticket.price}`}
-                    </span>
                   </label>
                 );
               })}
