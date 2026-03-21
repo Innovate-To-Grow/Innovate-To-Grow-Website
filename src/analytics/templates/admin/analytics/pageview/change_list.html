@@ -1,0 +1,88 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<!-- Analytics Dashboard -->
+<div class="mb-6">
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary-600" style="font-size:28px">visibility</span>
+        <div>
+          <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Total Views</p>
+          <p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ total_views|default:"0" }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-green-600" style="font-size:28px">today</span>
+        <div>
+          <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Today</p>
+          <p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ today_views|default:"0" }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-blue-600" style="font-size:28px">description</span>
+        <div>
+          <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Unique Pages</p>
+          <p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ unique_paths|default:"0" }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-orange-600" style="font-size:28px">group</span>
+        <div>
+          <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Unique Visitors</p>
+          <p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ unique_visitors|default:"0" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column: 7-Day Chart + Top Pages -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <!-- Last 7 Days Bar Chart (CSS only) -->
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3">
+        <span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>
+        Last 7 Days
+      </h3>
+      <div class="space-y-2">
+        {% for day in last_7_days %}
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-font-subtle-light dark:text-font-subtle-dark w-16 shrink-0">{{ day.date|date:"M d" }}</span>
+          <div class="flex-1 bg-base-100 dark:bg-base-800 rounded h-5 overflow-hidden">
+            <div class="bg-primary-600 h-full rounded" style="width: {% widthratio day.count max_daily_count 100 %}%; min-width: {% if day.count %}2px{% else %}0{% endif %};"></div>
+          </div>
+          <span class="text-xs font-medium text-font-default-light dark:text-font-default-dark w-8 text-right">{{ day.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Top 10 Pages -->
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3">
+        <span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">trending_up</span>
+        Top Pages
+      </h3>
+      <div class="space-y-1">
+        {% for page in top_pages %}
+        <div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}">
+          <span class="text-sm text-font-default-light dark:text-font-default-dark truncate mr-2" title="{{ page.path }}">{{ page.path }}</span>
+          <span class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0">{{ page.view_count }}</span>
+        </div>
+        {% empty %}
+        <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No page views recorded yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ block.super }}
+{% endblock %}
