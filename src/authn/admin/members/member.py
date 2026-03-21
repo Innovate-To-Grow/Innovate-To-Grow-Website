@@ -107,7 +107,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         "first_name",
         "middle_name",
         "last_name",
-        "member_uuid",
+        "id",
         "organization",
     )
 
