@@ -2,17 +2,24 @@
 Admin configuration for the SES sender with a dedicated compose flow.
 """
 
+import logging
+
 from django.contrib import admin, messages
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
+from authn.models import Member
+from authn.services.unsubscribe_token import build_unsubscribe_url
 from core.admin.base import BaseModelAdmin
 from mail.forms import ComposeForm
 from mail.models import EmailLog, SESAccount, SESEmailLog
 from mail.services.email_layout import get_logo_data_uri, get_logo_inline_image, render_email_layout
+from mail.services.recipients import personalize_body, resolve_recipients
 from mail.services.ses import SESService, SESServiceError
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(SESAccount)
@@ -58,6 +65,11 @@ class SESAccountAdmin(BaseModelAdmin):
         custom_urls = [
             path("compose/", self.admin_site.admin_view(self.compose_view), name="mail_ses_compose"),
             path("send/", self.admin_site.admin_view(self.send_action), name="mail_ses_send"),
+            path(
+                "send-confirmed/",
+                self.admin_site.admin_view(self.send_confirmed_action),
+                name="mail_ses_send_confirmed",
+            ),
             path("preview/", self.admin_site.admin_view(self.preview_action), name="mail_ses_preview"),
         ]
         return custom_urls + urls
@@ -81,6 +93,23 @@ class SESAccountAdmin(BaseModelAdmin):
             )
             return None
         return account
+
+    def _build_compose_context(self, request, form, account):
+        subscriber_count = Member.objects.filter(email_subscribe=True, is_active=True).count()
+        return {
+            **self.admin_site.each_context(request),
+            "title": "Compose SES Email",
+            "opts": self.model._meta,
+            "form": form,
+            "account_email": account.email,
+            "send_url": reverse("admin:mail_ses_send"),
+            "preview_url": reverse("admin:mail_ses_preview"),
+            "cancel_url": reverse("admin:mail_sesaccount_changelist"),
+            "parent_label": "SES Mail Senders",
+            "parent_url": reverse("admin:mail_sesaccount_changelist"),
+            "subscriber_count": subscriber_count,
+            "show_recipient_settings": True,
+        }
 
     def _log_action(self, account, status, request, message_id="", subject="", recipients="", error=""):
         SESEmailLog.objects.create(
@@ -110,47 +139,11 @@ class SESAccountAdmin(BaseModelAdmin):
             return redirect(reverse("admin:mail_sesaccount_changelist"))
 
         form = ComposeForm()
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "Compose SES Email",
-            "opts": self.model._meta,
-            "form": form,
-            "account_email": account.email,
-            "send_url": reverse("admin:mail_ses_send"),
-            "preview_url": reverse("admin:mail_ses_preview"),
-            "cancel_url": reverse("admin:mail_sesaccount_changelist"),
-            "parent_label": "SES Mail Senders",
-            "parent_url": reverse("admin:mail_sesaccount_changelist"),
-        }
+        context = self._build_compose_context(request, form, account)
         return render(request, "admin/mail/compose.html", context)
 
-    def send_action(self, request):
-        if request.method != "POST":
-            return redirect(reverse("admin:mail_ses_compose"))
-
-        account = self._get_active_account(request)
-        if not account:
-            return redirect(reverse("admin:mail_sesaccount_changelist"))
-
-        form = ComposeForm(request.POST, request.FILES)
-        if not form.is_valid():
-            context = {
-                **self.admin_site.each_context(request),
-                "title": "Compose SES Email",
-                "opts": self.model._meta,
-                "form": form,
-                "account_email": account.email,
-                "send_url": reverse("admin:mail_ses_send"),
-                "preview_url": reverse("admin:mail_ses_preview"),
-                "cancel_url": reverse("admin:mail_sesaccount_changelist"),
-                "parent_label": "SES Mail Senders",
-                "parent_url": reverse("admin:mail_sesaccount_changelist"),
-            }
-            return render(request, "admin/mail/compose.html", context)
-
-        data = form.cleaned_data
-        attachments = [(uploaded.name, uploaded.read()) for uploaded in request.FILES.getlist("attachments")]
-
+    def _send_manual(self, request, account, data, attachments):
+        """Send a single email to manually-specified recipients."""
         wrapped_html = render_email_layout(data["body"])
         logo_image = get_logo_inline_image()
 
@@ -187,7 +180,168 @@ class SESAccountAdmin(BaseModelAdmin):
             account.mark_used(error=error_msg)
             messages.error(request, f"Failed to send SES email: {error_msg}")
 
+    def _send_personalized(self, request, account, data, attachments):
+        """Send individual personalized emails and return per-recipient results."""
+        recipients = resolve_recipients(data["recipient_source"], data.get("event"))
+        if not recipients:
+            return []
+
+        include_unsub = data.get("include_unsubscribe_link", False)
+        logo_image = get_logo_inline_image()
+        ses = SESService(account)
+        results = []
+        success_emails = []
+
+        for recipient in recipients:
+            body = personalize_body(data["body"], recipient)
+            unsub_url = ""
+            if include_unsub:
+                try:
+                    member = Member.objects.get(pk=recipient["member_id"])
+                    unsub_url = build_unsubscribe_url(member)
+                except Member.DoesNotExist:
+                    pass
+
+            wrapped_html = render_email_layout(body, unsubscribe_url=unsub_url)
+
+            try:
+                result = ses.send_message(
+                    to=recipient["email"],
+                    subject=data["subject"],
+                    body_html=wrapped_html,
+                    attachments=attachments or None,
+                    inline_images=[logo_image],
+                )
+                results.append(
+                    {"email": recipient["email"], "name": recipient["full_name"], "status": "success", "error": ""}
+                )
+                success_emails.append(recipient["email"])
+                logger.info("SES email sent to %s (message_id=%s)", recipient["email"], result["id"])
+            except SESServiceError as exc:
+                results.append(
+                    {"email": recipient["email"], "name": recipient["full_name"], "status": "failed", "error": str(exc)}
+                )
+                logger.exception("SES email failed for %s", recipient["email"])
+
+        # Log summary entries
+        success_count = len(success_emails)
+        fail_count = len(results) - success_count
+        all_recipients_str = ", ".join(success_emails)
+
+        if success_count:
+            self._log_action(
+                account,
+                SESEmailLog.Status.SUCCESS,
+                request,
+                subject=data["subject"],
+                recipients=all_recipients_str,
+            )
+        if fail_count:
+            self._log_action(
+                account,
+                SESEmailLog.Status.FAILED,
+                request,
+                subject=data["subject"],
+                recipients=all_recipients_str,
+                error=f"{fail_count} email(s) failed to send.",
+            )
+
+        account.mark_used()
+        return results
+
+    def send_action(self, request):
+        if request.method != "POST":
+            return redirect(reverse("admin:mail_ses_compose"))
+
+        account = self._get_active_account(request)
+        if not account:
+            return redirect(reverse("admin:mail_sesaccount_changelist"))
+
+        form = ComposeForm(request.POST, request.FILES)
+        if not form.is_valid():
+            context = self._build_compose_context(request, form, account)
+            return render(request, "admin/mail/compose.html", context)
+
+        data = form.cleaned_data
+
+        # For bulk sends, show confirmation page first
+        if data["recipient_source"] != "manual":
+            recipients = resolve_recipients(data["recipient_source"], data.get("event"))
+            if not recipients:
+                messages.warning(request, "No recipients found for the selected source.")
+                return redirect(reverse("admin:mail_ses_compose"))
+
+            source_labels = {"subscribers": "All Subscribers", "event": f"Event: {data.get('event', '')}"}
+            context = {
+                **self.admin_site.each_context(request),
+                "title": "Confirm Send",
+                "opts": self.model._meta,
+                "recipients": recipients,
+                "recipient_count": len(recipients),
+                "subject": data["subject"],
+                "body": data["body"],
+                "recipient_source": data["recipient_source"],
+                "event_id": str(data["event"].pk) if data.get("event") else "",
+                "include_unsubscribe": data.get("include_unsubscribe_link", False),
+                "account_email": account.email,
+                "source_label": source_labels.get(data["recipient_source"], data["recipient_source"]),
+                "confirm_url": reverse("admin:mail_ses_send_confirmed"),
+            }
+            return render(request, "admin/mail/ses_confirm.html", context)
+
+        # Manual send — immediate
+        attachments = [(uploaded.name, uploaded.read()) for uploaded in request.FILES.getlist("attachments")]
+        self._send_manual(request, account, data, attachments)
         return redirect(reverse("admin:mail_sesemaillog_changelist"))
+
+    def send_confirmed_action(self, request):
+        """Actually send bulk emails after confirmation."""
+        if request.method != "POST":
+            return redirect(reverse("admin:mail_ses_compose"))
+
+        account = self._get_active_account(request)
+        if not account:
+            return redirect(reverse("admin:mail_sesaccount_changelist"))
+
+        # Rebuild data from hidden fields
+        from event.models import Event
+
+        recipient_source = request.POST.get("recipient_source", "")
+        event_id = request.POST.get("event", "")
+        event = None
+        if event_id:
+            try:
+                event = Event.objects.get(pk=event_id)
+            except Event.DoesNotExist:
+                messages.error(request, "Selected event no longer exists.")
+                return redirect(reverse("admin:mail_ses_compose"))
+
+        data = {
+            "recipient_source": recipient_source,
+            "event": event,
+            "subject": request.POST.get("subject", ""),
+            "body": request.POST.get("body", ""),
+            "include_unsubscribe_link": request.POST.get("include_unsubscribe_link") == "on",
+        }
+
+        results = self._send_personalized(request, account, data, attachments=[])
+        if not results:
+            messages.warning(request, "No recipients found.")
+            return redirect(reverse("admin:mail_ses_compose"))
+
+        success_count = sum(1 for r in results if r["status"] == "success")
+        fail_count = len(results) - success_count
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Send Results",
+            "opts": self.model._meta,
+            "results": results,
+            "success_count": success_count,
+            "fail_count": fail_count,
+            "subject": data["subject"],
+        }
+        return render(request, "admin/mail/ses_send_status.html", context)
 
     def preview_action(self, request):
         """Render the composed email body wrapped in the I2G layout for preview."""
@@ -195,8 +349,14 @@ class SESAccountAdmin(BaseModelAdmin):
             return redirect(reverse("admin:mail_ses_compose"))
 
         body = request.POST.get("body", "")
+        # Replace {name} with a sample name for preview
+        body = body.replace("{name}", "Hongzhe")
+
+        include_unsub = request.POST.get("include_unsubscribe_link") == "on"
+        unsub_url = "#unsubscribe-preview" if include_unsub else ""
+
         logo_data_uri = get_logo_data_uri()
-        preview_html = render_email_layout(body, logo_src=logo_data_uri)
+        preview_html = render_email_layout(body, logo_src=logo_data_uri, unsubscribe_url=unsub_url)
 
         # Wrap in a minimal HTML page with centered gray background
         page_html = f"""\

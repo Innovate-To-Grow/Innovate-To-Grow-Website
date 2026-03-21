@@ -13,6 +13,7 @@ export interface CMSPageResponse {
   page_css_class: string;
   meta_description: string;
   blocks: CMSBlock[];
+  expires_at?: string;
 }
 
 export function normalizeCMSRoute(route: string): string {

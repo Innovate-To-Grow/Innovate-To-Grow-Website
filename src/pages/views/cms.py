@@ -1,7 +1,9 @@
 import json
 import logging
+from datetime import timedelta
 
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -54,6 +56,7 @@ class CMSLivePreviewView(APIView):
         except (json.JSONDecodeError, ValueError):
             return Response({"detail": "Invalid JSON."}, status=400)
 
+        data["expires_at"] = (timezone.now() + timedelta(seconds=_LIVE_PREVIEW_TTL)).isoformat()
         cache.set(f"cms:live-preview:{page_id}", data, timeout=_LIVE_PREVIEW_TTL)
         return Response({"ok": True})
 

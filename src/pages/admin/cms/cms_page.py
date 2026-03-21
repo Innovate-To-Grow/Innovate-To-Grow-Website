@@ -223,8 +223,12 @@ class CMSPageAdmin(ModelAdmin):
             return JsonResponse({"detail": "Invalid JSON."}, status=400)
 
         import uuid
+        from datetime import timedelta
+
+        from django.utils import timezone
 
         token = uuid.uuid4().hex
+        data["expires_at"] = (timezone.now() + timedelta(seconds=600)).isoformat()
         cache.set(f"cms:preview:{token}", data, timeout=600)
         return JsonResponse({"token": token})
 

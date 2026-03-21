@@ -58,13 +58,15 @@ def get_logo_data_uri() -> str:
     return f"data:image/png;base64,{encoded}"
 
 
-def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}") -> str:
+def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}", unsubscribe_url: str = "") -> str:
     """Wrap inner content HTML in the I2G branded email layout.
 
     Args:
         content_html: The email body content (already escaped/safe HTML).
         logo_src: Image src for the logo. Defaults to ``cid:i2g-logo`` for real
             emails. Pass a data URI (from ``get_logo_data_uri()``) for browser preview.
+        unsubscribe_url: Optional URL for an unsubscribe / manage-preferences link
+            in the footer.
 
     Returns:
         Complete email HTML string with header, content, and footer.
@@ -74,6 +76,14 @@ def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}"
         logo_img = (
             f'<img src="{logo_src}" alt="Innovate to Grow" '
             f'style="width:80px;height:80px;border-radius:50%;margin-bottom:8px;">'
+        )
+
+    unsubscribe_html = ""
+    if unsubscribe_url:
+        unsubscribe_html = (
+            '<p style="font-size:12px;color:#9ca3af;text-align:center;margin-top:8px;">'
+            f'<a href="{unsubscribe_url}" style="color:#6b7280;">Manage email preferences</a>'
+            "</p>"
         )
 
     return f"""\
@@ -87,4 +97,5 @@ def render_email_layout(content_html: str, *, logo_src: str = f"cid:{_LOGO_CID}"
   {content_html}
   <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 16px;">
   <p style="font-size:12px;color:#9ca3af;text-align:center;">Innovate to Grow &mdash; UC Merced</p>
+  {unsubscribe_html}
 </div>"""

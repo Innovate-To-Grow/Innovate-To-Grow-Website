@@ -6,7 +6,23 @@ import json
 
 from django import forms
 
+from event.models import Event
+
 from .models import GoogleAccount
+
+_UNFOLD_INPUT = (
+    "border border-base-200 bg-white font-medium min-w-20 placeholder-base-400 rounded-default shadow-xs"
+    " text-font-default-light text-sm focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600"
+    " dark:bg-base-900 dark:border-base-700 dark:text-font-default-dark dark:scheme-dark"
+    " px-3 py-2 w-full max-w-2xl"
+)
+
+_UNFOLD_SELECT = (
+    "border border-base-200 bg-white font-medium rounded-default shadow-xs"
+    " text-font-default-light text-sm focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600"
+    " dark:bg-base-900 dark:border-base-700 dark:text-font-default-dark dark:scheme-dark"
+    " px-3 py-2 w-full max-w-2xl"
+)
 
 
 class GoogleAccountForm(forms.ModelForm):
@@ -48,36 +64,59 @@ class GoogleAccountForm(forms.ModelForm):
         return value
 
 
+RECIPIENT_SOURCE_CHOICES = [
+    ("manual", "Manual Entry"),
+    ("subscribers", "All Subscribers"),
+    ("event", "Event Registrants"),
+]
+
+
 class ComposeForm(forms.Form):
     """Form for composing, replying to, or forwarding emails."""
 
-    _input_classes = (
-        "w-full border border-base-200 dark:border-base-700 bg-white dark:bg-base-900"
-        " text-font-default-light dark:text-font-default-dark rounded-default px-3 py-2 text-sm"
+    recipient_source = forms.ChoiceField(
+        choices=RECIPIENT_SOURCE_CHOICES,
+        initial="manual",
+        widget=forms.RadioSelect(),
+    )
+
+    event = forms.ModelChoiceField(
+        queryset=Event.objects.all(),
+        required=False,
+        empty_label="— Select an event —",
+        widget=forms.Select(attrs={"class": _UNFOLD_SELECT}),
+    )
+
+    include_unsubscribe_link = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Include unsubscribe link",
+        help_text="Adds a 'Manage email preferences' link with 7-day auto-login.",
     )
 
     to = forms.CharField(
         max_length=1000,
-        widget=forms.TextInput(attrs={"class": _input_classes, "placeholder": "recipient@example.com"}),
+        required=False,
+        widget=forms.TextInput(attrs={"class": _UNFOLD_INPUT, "placeholder": "recipient@example.com"}),
         help_text="Comma-separated email addresses.",
     )
     cc = forms.CharField(
         max_length=1000,
         required=False,
-        widget=forms.TextInput(attrs={"class": _input_classes, "placeholder": "cc@example.com"}),
+        widget=forms.TextInput(attrs={"class": _UNFOLD_INPUT, "placeholder": "cc@example.com"}),
     )
     bcc = forms.CharField(
         max_length=1000,
         required=False,
-        widget=forms.TextInput(attrs={"class": _input_classes, "placeholder": "bcc@example.com"}),
+        widget=forms.TextInput(attrs={"class": _UNFOLD_INPUT, "placeholder": "bcc@example.com"}),
     )
     subject = forms.CharField(
         max_length=500,
-        widget=forms.TextInput(attrs={"class": _input_classes}),
+        widget=forms.TextInput(attrs={"class": _UNFOLD_INPUT}),
     )
     body = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 15, "class": _input_classes + " font-mono"}),
-        help_text="HTML content is supported.",
+        widget=forms.Textarea(attrs={"rows": 15, "class": _UNFOLD_INPUT}),
+        help_text="HTML supported. Use {name} for personalization when sending to subscribers or event registrants.",
     )
     attachments = forms.FileField(
         required=False,
@@ -88,3 +127,16 @@ class ComposeForm(forms.Form):
     thread_id = forms.CharField(required=False, widget=forms.HiddenInput())
     in_reply_to = forms.CharField(required=False, widget=forms.HiddenInput())
     references = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned = super().clean()
+        source = cleaned.get("recipient_source", "manual")
+
+        if source == "manual":
+            if not cleaned.get("to"):
+                self.add_error("to", "Recipients are required for manual entry.")
+        elif source == "event":
+            if not cleaned.get("event"):
+                self.add_error("event", "Please select an event.")
+
+        return cleaned

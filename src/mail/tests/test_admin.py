@@ -125,6 +125,7 @@ class GoogleAccountAdminTest(TestCase):
         response = self.client.post(
             url,
             {
+                "recipient_source": "manual",
                 "to": "recipient@example.com",
                 "subject": "Test",
                 "body": "<p>Hello</p>",
@@ -235,6 +236,7 @@ class ComposeFormTest(TestCase):
     def test_valid_compose(self):
         form = ComposeForm(
             data={
+                "recipient_source": "manual",
                 "to": "user@example.com",
                 "subject": "Test",
                 "body": "<p>Hello</p>",
@@ -285,6 +287,7 @@ class SESAccountAdminTest(TestCase):
         response = self.client.post(
             reverse("admin:mail_ses_send"),
             {
+                "recipient_source": "manual",
                 "to": "recipient@example.com",
                 "subject": "SES Test",
                 "body": "<p>Hello</p>",
@@ -313,6 +316,7 @@ class SESAccountAdminTest(TestCase):
         response = self.client.post(
             reverse("admin:mail_ses_send"),
             {
+                "recipient_source": "manual",
                 "to": "recipient@example.com",
                 "subject": "SES Test",
                 "body": "<p>Hello</p>",
@@ -346,7 +350,7 @@ class SESAccountAdminTest(TestCase):
         self.assertContains(response, "SES test subject")
 
     def test_required_fields(self):
-        form = ComposeForm(data={})
+        form = ComposeForm(data={"recipient_source": "manual"})
         self.assertFalse(form.is_valid())
         self.assertIn("to", form.errors)
         self.assertIn("subject", form.errors)
@@ -355,6 +359,7 @@ class SESAccountAdminTest(TestCase):
     def test_optional_fields(self):
         form = ComposeForm(
             data={
+                "recipient_source": "manual",
                 "to": "user@example.com",
                 "subject": "Test",
                 "body": "Hello",
@@ -396,6 +401,7 @@ class SESAccountAdminTest(TestCase):
         self.client.post(
             reverse("admin:mail_ses_send"),
             {
+                "recipient_source": "manual",
                 "to": "recipient@example.com",
                 "subject": "Layout Test",
                 "body": "<p>My content</p>",

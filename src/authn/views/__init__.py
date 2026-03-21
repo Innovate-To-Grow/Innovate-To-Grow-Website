@@ -33,6 +33,7 @@ from .auth.login import LoginView
 from .auth.register import RegisterView
 from .invitation import AcceptInvitationView
 from .token import PublicTokenRefreshView
+from .unsubscribe_login import UnsubscribeAutoLoginView
 from .verification.public_key import PublicKeyView
 
 __all__ = [
@@ -63,4 +64,5 @@ __all__ = [
     "PublicTokenRefreshView",
     "AcceptInvitationView",
     "AdminLoginView",
+    "UnsubscribeAutoLoginView",
 ]
