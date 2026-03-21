@@ -24,7 +24,6 @@ export interface RegistrationEvent {
   name: string;
   slug: string;
   date: string;
-  time: string;
   location: string;
   description: string;
 }
@@ -61,7 +60,6 @@ export interface EventRegistrationOptions {
   name: string;
   slug: string;
   date: string;
-  time: string;
   location: string;
   description: string;
   tickets: TicketOption[];

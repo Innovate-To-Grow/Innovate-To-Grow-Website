@@ -40,7 +40,7 @@ _PURPOSE_COPY = {
         "body": "Use this code to verify a new email address linked to your Innovate to Grow account.",
     },
     EmailAuthChallenge.Purpose.ADMIN_LOGIN: {
-        "subject": "Your I2G Admin login code",
+        "subject": "Your Innovate to Grow Admin login code",
         "heading": "Admin login verification code",
         "body": "Use this code to sign in to the Innovate to Grow admin panel.",
     },
@@ -55,8 +55,8 @@ def _render_auth_email(purpose: str, code: str, email: str) -> tuple[str, str]:
     body = f"""
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827; max-width: 640px; margin: 0 auto;">
       <div style="text-align: center; padding: 24px 0 16px;">
-        <span style="font-size: 28px; font-weight: 800; color: #1e3a5f; letter-spacing: 0.02em;">i2g</span>
-        <span style="display: block; font-size: 13px; color: #6b7280; margin-top: 2px;">Innovate to Grow</span>
+        <span style="font-size: 28px; font-weight: 800; color: #1e3a5f; letter-spacing: 0.02em;">Innovate to Grow</span>
+        <span style="display: block; font-size: 13px; color: #6b7280; margin-top: 2px;">UC Merced</span>
       </div>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0 0 24px;">
       <h2 style="margin-bottom: 8px;">{copy["heading"]}</h2>
@@ -68,7 +68,7 @@ def _render_auth_email(purpose: str, code: str, email: str) -> tuple[str, str]:
       <p>This code expires in 10 minutes and can only be used once.</p>
       <p>If you did not request this email for {safe_email}, you can ignore it.</p>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 16px;">
-      <p style="font-size: 12px; color: #9ca3af; text-align: center;">Innovate to Grow (i2g) &mdash; UC Merced</p>
+      <p style="font-size: 12px; color: #9ca3af; text-align: center;">Innovate to Grow &mdash; UC Merced</p>
     </div>
     """
     return subject, body

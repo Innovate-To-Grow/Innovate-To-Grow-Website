@@ -508,6 +508,14 @@ export const verifyContactEmailCode = async (id: string, code: string): Promise<
 
 // ======================== Session ========================
 
+export const ticketAutoLogin = async (token: string): Promise<LoginResponse> => {
+  const response = await authApi.post<LoginResponse>('/event/ticket-login/', { token });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  clearProfileCompletionRequired();
+  return response.data;
+};
+
 export const logout = (): void => {
   clearTokens();
 };

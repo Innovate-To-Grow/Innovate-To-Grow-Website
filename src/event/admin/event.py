@@ -7,7 +7,7 @@ from ..models import Event, Question, Ticket
 class TicketInline(TabularInline):
     model = Ticket
     extra = 0
-    fields = ("name", "price", "quantity", "order")
+    fields = ("name", "order")
 
 
 class QuestionInline(TabularInline):
@@ -18,7 +18,7 @@ class QuestionInline(TabularInline):
 
 @admin.register(Event)
 class EventAdmin(ModelAdmin):
-    list_display = ("name", "date", "time", "location", "is_live")
+    list_display = ("name", "date", "location", "is_live")
     list_filter = ("is_live", "date")
     search_fields = ("name", "location")
     readonly_fields = ("created_at", "updated_at")
@@ -29,7 +29,7 @@ class EventAdmin(ModelAdmin):
         (
             "Event Details",
             {
-                "fields": ("name", "slug", "date", "time", "location", "description", "is_live"),
+                "fields": ("name", "slug", "date", "location", "description", "is_live"),
             },
         ),
         (

@@ -79,20 +79,39 @@ class SESService:
 
         return addresses
 
-    def _build_mime(self, to, subject, body_html, cc="", attachments=None):
-        """Construct a MIME message with HTML and optional attachments."""
+    def _build_mime(self, to, subject, body_html, cc="", attachments=None, inline_images=None):
+        """Construct a MIME message with HTML, optional inline images, and optional attachments.
+
+        ``inline_images`` is a list of ``(cid, filename, content_bytes)`` tuples.
+        Referenced in HTML as ``<img src="cid:{cid}">``.
+        """
         body_plain = strip_tags(body_html or "")
+
+        alternative = MIMEMultipart("alternative")
+        alternative.attach(MIMEText(body_plain, "plain", "utf-8"))
+        alternative.attach(MIMEText(body_html, "html", "utf-8"))
+
+        if inline_images:
+            related = MIMEMultipart("related")
+            related.attach(alternative)
+            for cid, filename, content_bytes in inline_images:
+                mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+                maintype, subtype = mime_type.split("/", 1)
+                img_part = MIMEBase(maintype, subtype)
+                img_part.set_payload(content_bytes)
+                encoders.encode_base64(img_part)
+                img_part.add_header("Content-ID", f"<{cid}>")
+                img_part.add_header("Content-Disposition", "inline", filename=filename)
+                related.attach(img_part)
+            body_part = related
+        else:
+            body_part = alternative
 
         if attachments:
             msg = MIMEMultipart("mixed")
-            alternative = MIMEMultipart("alternative")
-            alternative.attach(MIMEText(body_plain, "plain", "utf-8"))
-            alternative.attach(MIMEText(body_html, "html", "utf-8"))
-            msg.attach(alternative)
+            msg.attach(body_part)
         else:
-            msg = MIMEMultipart("alternative")
-            msg.attach(MIMEText(body_plain, "plain", "utf-8"))
-            msg.attach(MIMEText(body_html, "html", "utf-8"))
+            msg = body_part
 
         from_name = (self.account.display_name or getattr(settings, "SES_FROM_NAME", "")).strip()
         from_email = self.account.email.strip()
@@ -114,7 +133,7 @@ class SESService:
         return msg
 
     @_wrap_api_errors
-    def send_message(self, to, subject, body_html, cc="", bcc="", attachments=None):
+    def send_message(self, to, subject, body_html, cc="", bcc="", attachments=None, inline_images=None):
         """Send a raw email through SES."""
         client = self._get_client()
         destinations = self._parse_destinations(to, cc, bcc)
@@ -124,6 +143,7 @@ class SESService:
             body_html=body_html,
             cc=cc,
             attachments=attachments,
+            inline_images=inline_images,
         )
         response = client.send_raw_email(
             Source=formataddr((self.account.display_name, self.account.email))

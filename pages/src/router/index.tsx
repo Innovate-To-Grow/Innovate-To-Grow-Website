@@ -24,6 +24,7 @@ const ProjectsTeamsPage = React.lazy(() => import('../pages/ProjectsTeamsPage').
 const AcknowledgementPage = React.lazy(() => import('../pages/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
 const EventArchivePage = React.lazy(() => import('../pages/EventArchivePage').then(m => ({default: m.EventArchivePage})));
 const EventRegistrationPage = React.lazy(() => import('../pages/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
+const TicketLoginPage = React.lazy(() => import('../pages/TicketLoginPage').then(m => ({default: m.TicketLoginPage})));
 
 export const router = createBrowserRouter([
     {
@@ -102,6 +103,9 @@ export const router = createBrowserRouter([
             {path: '2021-fall-event', element: <Navigate to="/events/2021-fall" replace/>},
             {path: '2021-spring-event', element: <Navigate to="/events/2021-spring" replace/>},
             {path: '2020-fall-post-event', element: <Navigate to="/events/2020-fall" replace/>},
+
+            // Ticket auto-login from email
+            {path: 'ticket-login', element: <TicketLoginPage/>},
 
             // Convenience redirects
             {path: 'profile', element: <Navigate to="/account" replace/>},

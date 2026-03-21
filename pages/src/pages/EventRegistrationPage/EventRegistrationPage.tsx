@@ -163,7 +163,6 @@ export const EventRegistrationPage = () => {
           <div className="event-reg-done-details">
             <p><strong>Ticket:</strong> {registration.ticket.name}</p>
             <p><strong>Date:</strong> {formatDate(registration.event.date)}</p>
-            <p><strong>Time:</strong> {formatTime(registration.event.time)}</p>
             <p><strong>Location:</strong> {registration.event.location}</p>
           </div>
 
@@ -192,7 +191,6 @@ export const EventRegistrationPage = () => {
         <div className="event-reg-info">
           <h2>{options.name}</h2>
           <p><strong>Date:</strong> {formatDate(options.date)}</p>
-          <p><strong>Time:</strong> {formatTime(options.time)}</p>
           <p><strong>Location:</strong> {options.location}</p>
           {options.description && <p style={{marginTop: '0.5rem'}}>{options.description}</p>}
         </div>
@@ -346,13 +344,6 @@ export const EventRegistrationPage = () => {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
-}
-
-function formatTime(timeStr: string): string {
-  const [h, m] = timeStr.split(':').map(Number);
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const hour = h % 12 || 12;
-  return `${hour}:${m.toString().padStart(2, '0')} ${suffix}`;
 }
 
 function getErrorMessage(err: unknown): string {
