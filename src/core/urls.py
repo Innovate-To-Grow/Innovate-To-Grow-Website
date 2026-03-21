@@ -52,6 +52,8 @@ urlpatterns = [
     path("cms/", include("pages.cms_urls")),
     # authn
     path("authn/", include("authn.urls")),
+    # analytics
+    path("analytics/", include("analytics.urls")),
 ]
 
 if settings.DEBUG:

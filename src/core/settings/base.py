@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
+    "analytics.apps.AnalyticsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -329,6 +330,12 @@ UNFOLD = {
                     {"title": "SES Mail Senders", "link": "/admin/mail/sesaccount/"},
                     {"title": "SES Compose", "link": "/admin/mail/sesaccount/compose/"},
                     {"title": "SES Email Logs", "link": "/admin/mail/sesemaillog/"},
+                ],
+            },
+            {
+                "title": "Analytics",
+                "items": [
+                    {"title": "Page Views", "link": "/admin/analytics/pageview/"},
                 ],
             },
             {
