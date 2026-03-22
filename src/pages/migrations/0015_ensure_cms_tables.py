@@ -32,7 +32,6 @@ def cleanup_cms_migration_records(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pages", "0014_adopt_cms_models"),
     ]

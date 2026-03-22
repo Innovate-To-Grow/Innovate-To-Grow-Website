@@ -4,117 +4,129 @@
 {% block title %}Send Results — {{ subject|truncatechars:40 }}{% endblock %}
 
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">Home</a>
-  &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
-  &rsaquo; <a href="{% url 'admin:mail_sesaccount_changelist' %}">SES Mail Senders</a>
-  &rsaquo; Send Results
-</div>
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a>
+        &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+        &rsaquo; <a href="{% url 'admin:mail_sesaccount_changelist' %}">SES Mail Senders</a>
+        &rsaquo; Send Results
+    </div>
 {% endblock %}
 
 {% block content %}
 
-<!-- ═══ Summary ═══ -->
-<fieldset class="module relative">
-  <h2 class="bg-base-100 flex flex-row font-semibold h-[38px] items-center mb-4 px-3 rounded-default text-important dark:bg-white/[.02]">
-    Send Results
-  </h2>
+    <!-- ═══ Summary ═══ -->
+    <fieldset class="module relative">
+        <h2 class="bg-base-100 flex flex-row font-semibold h-[38px] items-center mb-4 px-3 rounded-default text-important dark:bg-white/[.02]">
+            Send Results
+        </h2>
 
-  <div class="px-3 pb-4">
-    {% if fail_count == 0 %}
-    <div class="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 rounded-default px-4 py-3 mb-4">
-      <p class="text-sm text-green-800 dark:text-green-300 flex items-center gap-2">
-        <span class="material-symbols-outlined !text-[20px]">check_circle</span>
-        All <strong>{{ success_count }}</strong> email{{ success_count|pluralize }} sent successfully.
-      </p>
-    </div>
-    {% else %}
-    <div class="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded-default px-4 py-3 mb-4">
-      <p class="text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
-        <span class="material-symbols-outlined !text-[20px]">warning</span>
-        Sent <strong>{{ success_count }}</strong> email{{ success_count|pluralize }}, <strong>{{ fail_count }}</strong> failed.
-      </p>
-    </div>
-    {% endif %}
+        <div class="px-3 pb-4">
+            {% if fail_count == 0 %}
+                <div class="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 rounded-default px-4 py-3 mb-4">
+                    <p class="text-sm text-green-800 dark:text-green-300 flex items-center gap-2">
+                        <span class="material-symbols-outlined !text-[20px]">check_circle</span>
+                        All <strong>{{ success_count }}</strong> email{{ success_count|pluralize }} sent successfully.
+                    </p>
+                </div>
+            {% else %}
+                <div class="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded-default px-4 py-3 mb-4">
+                    <p class="text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                        <span class="material-symbols-outlined !text-[20px]">warning</span>
+                        Sent <strong>{{ success_count }}</strong> email{{ success_count|pluralize }},
+                        <strong>{{ fail_count }}</strong> failed.
+                    </p>
+                </div>
+            {% endif %}
 
-    <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm max-w-xl">
-      <div class="text-font-subtle-light dark:text-font-subtle-dark font-medium">Subject</div>
-      <div class="text-font-default-light dark:text-font-default-dark">{{ subject|truncatechars:80 }}</div>
-    </div>
-  </div>
-</fieldset>
+            <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm max-w-xl">
+                <div class="text-font-subtle-light dark:text-font-subtle-dark font-medium">Subject</div>
+                <div class="text-font-default-light dark:text-font-default-dark">{{ subject|truncatechars:80 }}</div>
+            </div>
+        </div>
+    </fieldset>
 
-<!-- ═══ Per-Recipient Results ═══ -->
-<fieldset class="module relative">
-  <h2 class="bg-base-100 flex flex-row font-semibold h-[38px] items-center mb-4 px-3 rounded-default text-important dark:bg-white/[.02]">
-    Recipient Details ({{ results|length }})
-  </h2>
+    <!-- ═══ Per-Recipient Results ═══ -->
+    <fieldset class="module relative">
+        <h2 class="bg-base-100 flex flex-row font-semibold h-[38px] items-center mb-4 px-3 rounded-default text-important dark:bg-white/[.02]">
+            Recipient Details ({{ results|length }})
+        </h2>
 
-  <div class="px-3 pb-4">
-    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-base-50 dark:bg-base-800 border-b border-base-200 dark:border-base-700">
-            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-12">#</th>
-            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">Name</th>
-            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">Email</th>
-            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-28">Send</th>
-            <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-32">Delivery</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in results %}
-          <tr class="border-b border-base-100 dark:border-base-800">
-            <td class="px-4 py-2.5 text-font-subtle-light dark:text-font-subtle-dark">{{ forloop.counter }}</td>
-            <td class="px-4 py-2.5 text-font-default-light dark:text-font-default-dark">{{ r.name }}</td>
-            <td class="px-4 py-2.5 text-font-default-light dark:text-font-default-dark">{{ r.email }}</td>
-            <td class="px-4 py-2.5">
-              {% if r.status == "success" %}
-              <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+        <div class="px-3 pb-4">
+            <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                    <tr class="bg-base-50 dark:bg-base-800 border-b border-base-200 dark:border-base-700">
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-12">
+                            #
+                        </th>
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">
+                            Name
+                        </th>
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">
+                            Email
+                        </th>
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-28">
+                            Send
+                        </th>
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-32">
+                            Delivery
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for r in results %}
+                        <tr class="border-b border-base-100 dark:border-base-800">
+                            <td class="px-4 py-2.5 text-font-subtle-light dark:text-font-subtle-dark">{{ forloop.counter }}</td>
+                            <td class="px-4 py-2.5 text-font-default-light dark:text-font-default-dark">{{ r.name }}</td>
+                            <td class="px-4 py-2.5 text-font-default-light dark:text-font-default-dark">{{ r.email }}</td>
+                            <td class="px-4 py-2.5">
+                                {% if r.status == "success" %}
+                                    <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
                 <span class="material-symbols-outlined !text-[16px]">check_circle</span>
                 Sent
               </span>
-              {% else %}
-              <span class="inline-flex items-center gap-1 text-red-600 dark:text-red-400" title="{{ r.error }}">
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 text-red-600 dark:text-red-400"
+                                          title="{{ r.error }}">
                 <span class="material-symbols-outlined !text-[16px]">cancel</span>
                 Failed
               </span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2.5">
-              {% if r.status == "success" %}
-              <span class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-2.5">
+                                {% if r.status == "success" %}
+                                    <span class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
                 <span class="material-symbols-outlined !text-[16px]">schedule</span>
                 Pending
               </span>
-              {% else %}
-              <span class="text-font-subtle-light dark:text-font-subtle-dark">&mdash;</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</fieldset>
+                                {% else %}
+                                    <span class="text-font-subtle-light dark:text-font-subtle-dark">&mdash;</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </fieldset>
 
-<!-- ═══ Actions ═══ -->
-<div id="submit-row" class="relative lg:sticky lg:bottom-0 z-40">
-  <div class="backdrop-blur-xs bg-white/80 rounded-b-default pb-4 px-4 dark:bg-base-900/80 lg:border-t lg:border-base-200 relative lg:py-0 dark:border-base-800">
-    <div class="flex flex-col-reverse gap-3 items-center mx-auto lg:flex-row-reverse container lg:h-[64px]">
-      <a href="{% url 'admin:mail_ses_compose' %}"
-         class="bg-primary-600 block border border-transparent font-medium px-3 py-2 rounded-default text-white w-full lg:w-auto text-center flex items-center justify-center gap-2">
-        <span class="material-symbols-outlined !text-[18px]">edit</span>
-        Compose Another
-      </a>
-      <a href="{% url 'admin:mail_sesemaillog_changelist' %}"
-         class="border border-base-200 cursor-pointer font-medium px-3 py-2 rounded-default transition-all w-full text-center hover:bg-base-50 lg:block lg:w-auto dark:border-base-700 dark:hover:bg-base-800">
-        View Email Logs
-      </a>
-      <div class="flex-1"></div>
+    <!-- ═══ Actions ═══ -->
+    <div id="submit-row" class="relative lg:sticky lg:bottom-0 z-40">
+        <div class="backdrop-blur-xs bg-white/80 rounded-b-default pb-4 px-4 dark:bg-base-900/80 lg:border-t lg:border-base-200 relative lg:py-0 dark:border-base-800">
+            <div class="flex flex-col-reverse gap-3 items-center mx-auto lg:flex-row-reverse container lg:h-[64px]">
+                <a href="{% url 'admin:mail_ses_compose' %}"
+                   class="bg-primary-600 block border border-transparent font-medium px-3 py-2 rounded-default text-white w-full lg:w-auto text-center flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px]">edit</span>
+                    Compose Another
+                </a>
+                <a href="{% url 'admin:mail_sesemaillog_changelist' %}"
+                   class="border border-base-200 cursor-pointer font-medium px-3 py-2 rounded-default transition-all w-full text-center hover:bg-base-50 lg:block lg:w-auto dark:border-base-700 dark:hover:bg-base-800">
+                    View Email Logs
+                </a>
+                <div class="flex-1"></div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
 {% endblock %}

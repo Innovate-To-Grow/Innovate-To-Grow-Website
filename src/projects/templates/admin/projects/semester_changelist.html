@@ -1,22 +1,28 @@
 {% extends "admin/change_list.html" %}
 
 {% block object-tools-items %}
-  <div class="flex flex-row items-center gap-2">
-    <form method="post" action="{{ publish_all_url }}" class="inline">
-      {% csrf_token %}
-      <button type="submit" class="bg-green-600 hover:bg-green-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors" title="Publish All Semesters">
-        <span class="material-symbols-outlined text-white !text-[18px]">publish</span>
-        Publish All
-      </button>
-    </form>
-    <a href="{{ sync_sheets_url }}" class="bg-primary-600 hover:bg-primary-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors" title="Sync from Google Sheets">
-      <span class="material-symbols-outlined text-white !text-[18px]">sync</span>
-      Sync Sheets
-    </a>
-    <a href="{{ import_url }}" class="border border-base-200 dark:border-base-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-sm font-medium transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark" title="Import Excel">
-      <span class="material-symbols-outlined !text-[18px]">upload_file</span>
-      Import Excel
-    </a>
-  </div>
-  {{ block.super }}
+    <div class="flex flex-row items-center gap-2">
+        <form method="post" action="{{ publish_all_url }}" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="bg-green-600 hover:bg-green-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors"
+                    title="Publish All Semesters">
+                <span class="material-symbols-outlined text-white !text-[18px]">publish</span>
+                Publish All
+            </button>
+        </form>
+        <a href="{{ sync_sheets_url }}"
+           class="bg-primary-600 hover:bg-primary-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors"
+           title="Sync from Google Sheets">
+            <span class="material-symbols-outlined text-white !text-[18px]">sync</span>
+            Sync Sheets
+        </a>
+        <a href="{{ import_url }}"
+           class="border border-base-200 dark:border-base-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-sm font-medium transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark"
+           title="Import Excel">
+            <span class="material-symbols-outlined !text-[18px]">upload_file</span>
+            Import Excel
+        </a>
+    </div>
+    {{ block.super }}
 {% endblock %}

@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pages", "0005_add_missing_grapesjs_columns"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

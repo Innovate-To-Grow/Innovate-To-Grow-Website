@@ -51,7 +51,6 @@ def add_missing_columns(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pages", "0004_homepage_scheduled_publish_at_and_more"),
     ]

@@ -4,88 +4,94 @@
 {% block title %}Sync Projects from Google Sheets{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto py-8 px-4">
-  <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Sync Projects from Google Sheets</h1>
-  <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-6">
-    Pull project data from all active Google Sheet sources (current-event, past-projects, archive-event)
-    and sync into the database. Existing projects are updated; new ones are created.
-  </p>
+    <div class="max-w-2xl mx-auto py-8 px-4">
+        <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Sync Projects from
+            Google Sheets</h1>
+        <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-6">
+            Pull project data from all active Google Sheet sources (current-event, past-projects, archive-event)
+            and sync into the database. Existing projects are updated; new ones are created.
+        </p>
 
-  {% if error %}
-  <div class="border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 rounded-default p-4 mb-6">
-    <div class="flex items-center gap-2">
-      <span class="material-symbols-outlined text-red-600 dark:text-red-400 !text-[20px]">error</span>
-      <span class="text-sm font-medium text-red-800 dark:text-red-300">{{ error }}</span>
-    </div>
-  </div>
-  {% endif %}
+        {% if error %}
+            <div class="border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 rounded-default p-4 mb-6">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-red-600 dark:text-red-400 !text-[20px]">error</span>
+                    <span class="text-sm font-medium text-red-800 dark:text-red-300">{{ error }}</span>
+                </div>
+            </div>
+        {% endif %}
 
-  {% if warnings %}
-  <div class="border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 rounded-default p-4 mb-6">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400 !text-[20px]">warning</span>
-      <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Some sources had errors:</span>
-    </div>
-    <ul class="list-disc list-inside text-sm text-yellow-800 dark:text-yellow-300">
-      {% for w in warnings %}
-      <li>{{ w }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
+        {% if warnings %}
+            <div class="border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 rounded-default p-4 mb-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400 !text-[20px]">warning</span>
+                    <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Some sources had errors:</span>
+                </div>
+                <ul class="list-disc list-inside text-sm text-yellow-800 dark:text-yellow-300">
+                    {% for w in warnings %}
+                        <li>{{ w }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
 
-  {% if stats %}
-  <div class="border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 rounded-default p-4 mb-6">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="material-symbols-outlined text-green-600 dark:text-green-400 !text-[20px]">check_circle</span>
-      <span class="text-sm font-semibold text-green-800 dark:text-green-300">Sync complete!</span>
-    </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-      <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
-        <div class="text-2xl font-bold text-primary-600">{{ stats.sources_synced }}</div>
-        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Sources synced</div>
-      </div>
-      <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
-        <div class="text-2xl font-bold text-primary-600">{{ stats.semesters_created }}</div>
-        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Semesters created</div>
-      </div>
-      <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
-        <div class="text-2xl font-bold text-primary-600">{{ stats.semesters_existing }}</div>
-        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Semesters existing</div>
-      </div>
-      <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
-        <div class="text-2xl font-bold text-primary-600">{{ stats.projects_created }}</div>
-        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Projects created</div>
-      </div>
-      <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
-        <div class="text-2xl font-bold text-primary-600">{{ stats.projects_updated }}</div>
-        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Projects updated</div>
-      </div>
-      <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
-        <div class="text-2xl font-bold text-font-subtle-light dark:text-font-subtle-dark">{{ stats.rows_skipped }}</div>
-        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Rows skipped</div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+        {% if stats %}
+            <div class="border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 rounded-default p-4 mb-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 !text-[20px]">check_circle</span>
+                    <span class="text-sm font-semibold text-green-800 dark:text-green-300">Sync complete!</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                        <div class="text-2xl font-bold text-primary-600">{{ stats.sources_synced }}</div>
+                        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Sources synced</div>
+                    </div>
+                    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                        <div class="text-2xl font-bold text-primary-600">{{ stats.semesters_created }}</div>
+                        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Semesters created
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                        <div class="text-2xl font-bold text-primary-600">{{ stats.semesters_existing }}</div>
+                        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Semesters existing
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                        <div class="text-2xl font-bold text-primary-600">{{ stats.projects_created }}</div>
+                        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Projects created
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                        <div class="text-2xl font-bold text-primary-600">{{ stats.projects_updated }}</div>
+                        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Projects updated
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                        <div class="text-2xl font-bold text-font-subtle-light dark:text-font-subtle-dark">{{ stats.rows_skipped }}</div>
+                        <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Rows skipped</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
 
-  <form method="post" class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
-    {% csrf_token %}
-    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-5">
-      This will fetch data from all active Google Sheet sources configured in the admin and
-      upsert into the Semester/Project database tables.
-    </p>
-    <div class="flex items-center gap-3">
-      <button type="submit"
-              class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2">
-        <span class="material-symbols-outlined !text-[18px]">sync</span>
-        Sync All Sheets
-      </button>
-      <a href="{% url 'admin:projects_semester_changelist' %}"
-         class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
-        Cancel
-      </a>
+        <form method="post"
+              class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
+            {% csrf_token %}
+            <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-5">
+                This will fetch data from all active Google Sheet sources configured in the admin and
+                upsert into the Semester/Project database tables.
+            </p>
+            <div class="flex items-center gap-3">
+                <button type="submit"
+                        class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px]">sync</span>
+                    Sync All Sheets
+                </button>
+                <a href="{% url 'admin:projects_semester_changelist' %}"
+                   class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
     </div>
-  </form>
-</div>
 {% endblock %}

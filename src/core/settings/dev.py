@@ -45,7 +45,6 @@ DATABASES = {
     }
 }
 
-
 # Development-specific settings
 
 # Cache configuration - use in-memory cache for development

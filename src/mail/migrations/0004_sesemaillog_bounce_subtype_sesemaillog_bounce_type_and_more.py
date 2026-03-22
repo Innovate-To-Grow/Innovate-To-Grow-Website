@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("mail", "0003_backfill_ses_logs_into_email_logs"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

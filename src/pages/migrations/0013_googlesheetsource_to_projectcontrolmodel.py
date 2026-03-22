@@ -18,7 +18,6 @@ def populate_uuids(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("contenttypes", "0002_remove_content_type_name"),
         ("pages", "0012_menu_is_active"),

@@ -2,10 +2,10 @@
 {% load i18n admin_urls %}
 
 {% block object-tools-items %}
-<li>
-    <a href="{% url 'admin:authn_member_import_excel' %}" class="addlink">
-        Import from Excel
-    </a>
-</li>
-{{ block.super }}
+    <li>
+        <a href="{% url 'admin:authn_member_import_excel' %}" class="addlink">
+            Import from Excel
+        </a>
+    </li>
+    {{ block.super }}
 {% endblock %}
