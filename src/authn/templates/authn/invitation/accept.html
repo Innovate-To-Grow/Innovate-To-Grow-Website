@@ -27,7 +27,8 @@
         {% for field in form %}
             <div class="{% if field.errors %}errors {% endif %}flex flex-col group mb-5">
                 <div class="flex flex-col gap-2">
-                    <label for="{{ field.id_for_label }}" class="flex font-medium text-font-default-light text-sm dark:text-font-default-dark">
+                    <label for="{{ field.id_for_label }}"
+                           class="flex font-medium text-font-default-light text-sm dark:text-font-default-dark">
                         {{ field.label }}
                         {% if field.field.required %}<span class="text-red-600 ml-0.5">*</span>{% endif %}
                     </label>
@@ -43,7 +44,8 @@
 
         <div class="flex flex-col gap-3 mt-6">
             {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
-                Create account <span class="material-symbols-outlined relative right-0 transition-all group-hover:-right-1 text-sm">arrow_forward</span>
+                Create account
+                <span class="material-symbols-outlined relative right-0 transition-all group-hover:-right-1 text-sm">arrow_forward</span>
             {% endcomponent %}
         </div>
     </form>

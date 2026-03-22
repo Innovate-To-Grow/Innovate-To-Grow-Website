@@ -4,112 +4,120 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">Home</a>
-  &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
-  &rsaquo; {{ title }}
-</div>
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a>
+        &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+        &rsaquo; {{ title }}
+    </div>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto py-6 px-4">
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-    <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ title }}</h1>
-    <div class="flex items-center gap-2">
-      <a href="{% url 'admin:mail_compose' %}"
-         class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-4 py-2 rounded-default transition-colors flex items-center gap-1.5">
-        <span class="material-symbols-outlined !text-[18px]">edit</span>
-        Compose
-      </a>
-    </div>
-  </div>
+    <div class="max-w-5xl mx-auto py-6 px-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ title }}</h1>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'admin:mail_compose' %}"
+                   class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-4 py-2 rounded-default transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined !text-[18px]">edit</span>
+                    Compose
+                </a>
+            </div>
+        </div>
 
-  <!-- Tabs -->
-  <div class="flex gap-1 mb-4 border-b border-base-200 dark:border-base-700">
-    <a href="{% url 'admin:mail_inbox' %}"
-       class="px-4 py-2 text-sm font-medium transition-colors border-b-2 {% if current_view == 'inbox' %}border-primary-600 text-primary-600{% else %}border-transparent text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600{% endif %}">
-      Inbox
-    </a>
-    <a href="{% url 'admin:mail_sent' %}"
-       class="px-4 py-2 text-sm font-medium transition-colors border-b-2 {% if current_view == 'sent' %}border-primary-600 text-primary-600{% else %}border-transparent text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600{% endif %}">
-      Sent
-    </a>
-  </div>
+        <!-- Tabs -->
+        <div class="flex gap-1 mb-4 border-b border-base-200 dark:border-base-700">
+            <a href="{% url 'admin:mail_inbox' %}"
+               class="px-4 py-2 text-sm font-medium transition-colors border-b-2 {% if current_view == 'inbox' %}border-primary-600 text-primary-600{% else %}border-transparent text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600{% endif %}">
+                Inbox
+            </a>
+            <a href="{% url 'admin:mail_sent' %}"
+               class="px-4 py-2 text-sm font-medium transition-colors border-b-2 {% if current_view == 'sent' %}border-primary-600 text-primary-600{% else %}border-transparent text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600{% endif %}">
+                Sent
+            </a>
+        </div>
 
-  <!-- Search -->
-  <form method="get" class="mb-4">
-    <div class="flex gap-2">
-      <input type="text" name="q" value="{{ search_query }}" placeholder="Search emails..."
-             class="flex-1 px-3 py-2 text-sm border border-base-200 dark:border-base-700 rounded-default bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark">
-      <button type="submit"
-              class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-4 py-2 rounded-default transition-colors flex items-center gap-1.5">
-        <span class="material-symbols-outlined !text-[18px]">search</span>
-        Search
-      </button>
-      {% if search_query %}
-      <a href="{% if current_view == 'sent' %}{% url 'admin:mail_sent' %}{% else %}{% url 'admin:mail_inbox' %}{% endif %}"
-         class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 px-3 py-2 transition-colors">
-        Clear
-      </a>
-      {% endif %}
-    </div>
-  </form>
+        <!-- Search -->
+        <form method="get" class="mb-4">
+            <div class="flex gap-2">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Search emails..."
+                       class="flex-1 px-3 py-2 text-sm border border-base-200 dark:border-base-700 rounded-default bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark">
+                <button type="submit"
+                        class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-4 py-2 rounded-default transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined !text-[18px]">search</span>
+                    Search
+                </button>
+                {% if search_query %}
+                    <a href="
 
-  <!-- Account info -->
-  <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-3">
-    Account: <strong>{{ account_email }}</strong>
-  </p>
+                            {% if current_view == 'sent' %}{% url 'admin:mail_sent' %}{% else %}{% url 'admin:mail_inbox' %}{% endif %}"
+                       class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 px-3 py-2 transition-colors">
+                        Clear
+                    </a>
+                {% endif %}
+            </div>
+        </form>
 
-  <!-- Messages list -->
-  <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
-    {% if messages_list %}
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="bg-base-50 dark:bg-base-800 border-b border-base-200 dark:border-base-700">
-          <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-1/4">
-            {% if current_view == 'sent' %}To{% else %}From{% endif %}
-          </th>
-          <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">Subject</th>
-          <th class="text-right px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-40">Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for msg in messages_list %}
-        <tr class="border-b border-base-100 dark:border-base-800 hover:bg-base-50 dark:hover:bg-base-800 transition-colors cursor-pointer {% if msg.is_unread %}font-semibold{% endif %}"
-            onclick="window.location='{% url 'admin:mail_message_detail' msg.id %}'">
-          <td class="px-4 py-3 text-font-default-light dark:text-font-default-dark">
-            {% if msg.is_unread %}
-            <span class="inline-block w-2 h-2 rounded-full bg-primary-600 mr-1.5" title="Unread"></span>
+        <!-- Account info -->
+        <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-3">
+            Account: <strong>{{ account_email }}</strong>
+        </p>
+
+        <!-- Messages list -->
+        <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            {% if messages_list %}
+                <table class="w-full text-sm">
+                    <thead>
+                    <tr class="bg-base-50 dark:bg-base-800 border-b border-base-200 dark:border-base-700">
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-1/4">
+                            {% if current_view == 'sent' %}To{% else %}From{% endif %}
+                        </th>
+                        <th class="text-left px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark">
+                            Subject
+                        </th>
+                        <th class="text-right px-4 py-2.5 font-semibold text-font-subtle-light dark:text-font-subtle-dark w-40">
+                            Date
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for msg in messages_list %}
+                        <tr class="border-b border-base-100 dark:border-base-800 hover:bg-base-50 dark:hover:bg-base-800 transition-colors cursor-pointer {% if msg.is_unread %}font-semibold{% endif %}"
+                            onclick="window.location='{% url 'admin:mail_message_detail' msg.id %}'">
+                            <td class="px-4 py-3 text-font-default-light dark:text-font-default-dark">
+                                {% if msg.is_unread %}
+                                    <span class="inline-block w-2 h-2 rounded-full bg-primary-600 mr-1.5"
+                                          title="Unread"></span>
+                                {% endif %}
+                                {% if current_view == 'sent' %}{{ msg.to|truncatechars:35 }}{% else %}
+                                    {{ msg.from|truncatechars:35 }}{% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-font-default-light dark:text-font-default-dark">
+                                <span>{{ msg.subject|default:"(no subject)"|truncatechars:70 }}</span>
+                                <span class="text-font-subtle-light dark:text-font-subtle-dark font-normal ml-2">{{ msg.snippet|truncatechars:50 }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-right text-font-subtle-light dark:text-font-subtle-dark whitespace-nowrap">{{ msg.date|truncatechars:22 }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="px-6 py-12 text-center text-font-subtle-light dark:text-font-subtle-dark">
+                    <span class="material-symbols-outlined !text-[48px] mb-2 block">inbox</span>
+                    <p>No messages found.</p>
+                </div>
             {% endif %}
-            {% if current_view == 'sent' %}{{ msg.to|truncatechars:35 }}{% else %}{{ msg.from|truncatechars:35 }}{% endif %}
-          </td>
-          <td class="px-4 py-3 text-font-default-light dark:text-font-default-dark">
-            <span>{{ msg.subject|default:"(no subject)"|truncatechars:70 }}</span>
-            <span class="text-font-subtle-light dark:text-font-subtle-dark font-normal ml-2">{{ msg.snippet|truncatechars:50 }}</span>
-          </td>
-          <td class="px-4 py-3 text-right text-font-subtle-light dark:text-font-subtle-dark whitespace-nowrap">{{ msg.date|truncatechars:22 }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="px-6 py-12 text-center text-font-subtle-light dark:text-font-subtle-dark">
-      <span class="material-symbols-outlined !text-[48px] mb-2 block">inbox</span>
-      <p>No messages found.</p>
-    </div>
-    {% endif %}
-  </div>
+        </div>
 
-  <!-- Pagination -->
-  {% if next_page_token %}
-  <div class="mt-4 flex justify-end">
-    <a href="?{% if search_query %}q={{ search_query }}&{% endif %}page_token={{ next_page_token }}"
-       class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 text-font-default-light dark:text-font-default-dark text-sm font-medium px-4 py-2 rounded-default hover:bg-base-50 dark:hover:bg-base-800 transition-colors flex items-center gap-1.5">
-      Next Page
-      <span class="material-symbols-outlined !text-[18px]">arrow_forward</span>
-    </a>
-  </div>
-  {% endif %}
-</div>
+        <!-- Pagination -->
+        {% if next_page_token %}
+            <div class="mt-4 flex justify-end">
+                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}page_token={{ next_page_token }}"
+                   class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 text-font-default-light dark:text-font-default-dark text-sm font-medium px-4 py-2 rounded-default hover:bg-base-50 dark:hover:bg-base-800 transition-colors flex items-center gap-1.5">
+                    Next Page
+                    <span class="material-symbols-outlined !text-[18px]">arrow_forward</span>
+                </a>
+            </div>
+        {% endif %}
+    </div>
 {% endblock %}

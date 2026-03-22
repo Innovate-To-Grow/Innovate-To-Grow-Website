@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pages", "0006_alter_homepage_is_active_page_page_slug_status_idx"),
     ]

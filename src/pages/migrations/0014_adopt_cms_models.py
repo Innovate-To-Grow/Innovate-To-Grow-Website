@@ -25,7 +25,6 @@ def reverse_content_types(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pages", "0013_googlesheetsource_to_projectcontrolmodel"),
         ("contenttypes", "0002_remove_content_type_name"),

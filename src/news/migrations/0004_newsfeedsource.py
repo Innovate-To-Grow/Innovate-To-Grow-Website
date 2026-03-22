@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0003_newsarticle_hero_caption_newsarticle_hero_image_url"),
     ]

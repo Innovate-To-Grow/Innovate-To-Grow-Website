@@ -4,115 +4,133 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">Home</a>
-  &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
-  &rsaquo; <a href="{% url 'admin:mail_inbox' %}">Inbox</a>
-  &rsaquo; {{ title|truncatechars:50 }}
-</div>
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a>
+        &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+        &rsaquo; <a href="{% url 'admin:mail_inbox' %}">Inbox</a>
+        &rsaquo; {{ title|truncatechars:50 }}
+    </div>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto py-6 px-4">
-  <!-- Action bar -->
-  <div class="flex items-center gap-2 mb-4 flex-wrap">
-    <a href="{% url 'admin:mail_inbox' %}"
-       class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 text-font-default-light dark:text-font-default-dark text-sm font-medium px-3 py-1.5 rounded-default hover:bg-base-50 dark:hover:bg-base-800 transition-colors flex items-center gap-1">
-      <span class="material-symbols-outlined !text-[16px]">arrow_back</span>
-      Back
-    </a>
-    <a href="{% url 'admin:mail_reply' msg.id %}"
-       class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-3 py-1.5 rounded-default transition-colors flex items-center gap-1">
-      <span class="material-symbols-outlined !text-[16px]">reply</span>
-      Reply
-    </a>
-    <a href="{% url 'admin:mail_forward' msg.id %}"
-       class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 text-font-default-light dark:text-font-default-dark text-sm font-medium px-3 py-1.5 rounded-default hover:bg-base-50 dark:hover:bg-base-800 transition-colors flex items-center gap-1">
-      <span class="material-symbols-outlined !text-[16px]">forward</span>
-      Forward
-    </a>
-    <form method="post" action="{% url 'admin:mail_trash' msg.id %}" class="inline"
-          onsubmit="return confirm('Move this message to trash?')">
-      {% csrf_token %}
-      <button type="submit"
-              class="bg-white dark:bg-base-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium px-3 py-1.5 rounded-default hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center gap-1">
-        <span class="material-symbols-outlined !text-[16px]">delete</span>
-        Delete
-      </button>
-    </form>
-  </div>
+    <div class="max-w-4xl mx-auto py-6 px-4">
+        <!-- Action bar -->
+        <div class="flex items-center gap-2 mb-4 flex-wrap">
+            <a href="{% url 'admin:mail_inbox' %}"
+               class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 text-font-default-light dark:text-font-default-dark text-sm font-medium px-3 py-1.5 rounded-default hover:bg-base-50 dark:hover:bg-base-800 transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined !text-[16px]">arrow_back</span>
+                Back
+            </a>
+            <a href="{% url 'admin:mail_reply' msg.id %}"
+               class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-3 py-1.5 rounded-default transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined !text-[16px]">reply</span>
+                Reply
+            </a>
+            <a href="{% url 'admin:mail_forward' msg.id %}"
+               class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 text-font-default-light dark:text-font-default-dark text-sm font-medium px-3 py-1.5 rounded-default hover:bg-base-50 dark:hover:bg-base-800 transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined !text-[16px]">forward</span>
+                Forward
+            </a>
+            <form method="post" action="{% url 'admin:mail_trash' msg.id %}" class="inline"
+                  onsubmit="return confirm('Move this message to trash?')">
+                {% csrf_token %}
+                <button type="submit"
+                        class="bg-white dark:bg-base-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-medium px-3 py-1.5 rounded-default hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center gap-1">
+                    <span class="material-symbols-outlined !text-[16px]">delete</span>
+                    Delete
+                </button>
+            </form>
+        </div>
 
-  <!-- Message card -->
-  <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
-    <!-- Subject -->
-    <div class="px-6 py-4 border-b border-base-200 dark:border-base-700">
-      <h1 class="text-xl font-bold text-font-default-light dark:text-font-default-dark">
-        {{ msg.subject|default:"(no subject)" }}
-      </h1>
+        <!-- Message card -->
+        <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <!-- Subject -->
+            <div class="px-6 py-4 border-b border-base-200 dark:border-base-700">
+                <h1 class="text-xl font-bold text-font-default-light dark:text-font-default-dark">
+                    {{ msg.subject|default:"(no subject)" }}
+                </h1>
+            </div>
+
+            <!-- Headers -->
+            <div class="px-6 py-3 border-b border-base-100 dark:border-base-800 bg-base-50 dark:bg-base-800/50">
+                <table class="text-sm w-full">
+                    <tr>
+                        <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top w-16">
+                            From:
+                        </td>
+                        <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.from }}</td>
+                    </tr>
+                    <tr>
+                        <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top">
+                            To:
+                        </td>
+                        <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.to }}</td>
+                    </tr>
+                    {% if msg.cc %}
+                        <tr>
+                            <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top">
+                                CC:
+                            </td>
+                            <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.cc }}</td>
+                        </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top">
+                            Date:
+                        </td>
+                        <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.date }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Body -->
+            <div class="px-6 py-5">
+                {% if msg.body_html %}
+                    <div class="email-body prose prose-sm max-w-none text-font-default-light dark:text-font-default-dark">
+                        {{ msg.body_html|safe }}
+                    </div>
+                {% elif msg.body_plain %}
+                    <pre class="whitespace-pre-wrap text-sm text-font-default-light dark:text-font-default-dark font-sans">{{ msg.body_plain }}</pre>
+                {% else %}
+                    <p class="text-font-subtle-light dark:text-font-subtle-dark italic">No message body.</p>
+                {% endif %}
+            </div>
+
+            <!-- Attachments -->
+            {% if msg.attachments %}
+                <div class="px-6 py-4 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
+                    <h3 class="text-sm font-semibold text-font-subtle-light dark:text-font-subtle-dark mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined !text-[16px]">attach_file</span>
+                        Attachments ({{ msg.attachments|length }})
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% for att in msg.attachments %}
+                            <a href="{% url 'admin:mail_attachment' msg.id att.attachment_id %}"
+                               class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default text-sm text-font-default-light dark:text-font-default-dark hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                                <span class="material-symbols-outlined !text-[16px]">download</span>
+                                {{ att.filename }}
+                                <span class="text-font-subtle-light dark:text-font-subtle-dark text-xs">({{ att.size|filesizeformat }})</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Headers -->
-    <div class="px-6 py-3 border-b border-base-100 dark:border-base-800 bg-base-50 dark:bg-base-800/50">
-      <table class="text-sm w-full">
-        <tr>
-          <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top w-16">From:</td>
-          <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.from }}</td>
-        </tr>
-        <tr>
-          <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top">To:</td>
-          <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.to }}</td>
-        </tr>
-        {% if msg.cc %}
-        <tr>
-          <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top">CC:</td>
-          <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.cc }}</td>
-        </tr>
-        {% endif %}
-        <tr>
-          <td class="font-semibold text-font-subtle-light dark:text-font-subtle-dark pr-3 py-0.5 whitespace-nowrap align-top">Date:</td>
-          <td class="text-font-default-light dark:text-font-default-dark py-0.5">{{ msg.date }}</td>
-        </tr>
-      </table>
-    </div>
+    <style>
+        .email-body img {
+            max-width: 100%;
+            height: auto;
+        }
 
-    <!-- Body -->
-    <div class="px-6 py-5">
-      {% if msg.body_html %}
-      <div class="email-body prose prose-sm max-w-none text-font-default-light dark:text-font-default-dark">
-        {{ msg.body_html|safe }}
-      </div>
-      {% elif msg.body_plain %}
-      <pre class="whitespace-pre-wrap text-sm text-font-default-light dark:text-font-default-dark font-sans">{{ msg.body_plain }}</pre>
-      {% else %}
-      <p class="text-font-subtle-light dark:text-font-subtle-dark italic">No message body.</p>
-      {% endif %}
-    </div>
+        .email-body table {
+            border-collapse: collapse;
+        }
 
-    <!-- Attachments -->
-    {% if msg.attachments %}
-    <div class="px-6 py-4 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
-      <h3 class="text-sm font-semibold text-font-subtle-light dark:text-font-subtle-dark mb-2 flex items-center gap-1">
-        <span class="material-symbols-outlined !text-[16px]">attach_file</span>
-        Attachments ({{ msg.attachments|length }})
-      </h3>
-      <div class="flex flex-wrap gap-2">
-        {% for att in msg.attachments %}
-        <a href="{% url 'admin:mail_attachment' msg.id att.attachment_id %}"
-           class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default text-sm text-font-default-light dark:text-font-default-dark hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
-          <span class="material-symbols-outlined !text-[16px]">download</span>
-          {{ att.filename }}
-          <span class="text-font-subtle-light dark:text-font-subtle-dark text-xs">({{ att.size|filesizeformat }})</span>
-        </a>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
-  </div>
-</div>
-
-<style>
-  .email-body img { max-width: 100%; height: auto; }
-  .email-body table { border-collapse: collapse; }
-  .email-body a { color: #2563eb; text-decoration: underline; }
-</style>
+        .email-body a {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+    </style>
 {% endblock %}

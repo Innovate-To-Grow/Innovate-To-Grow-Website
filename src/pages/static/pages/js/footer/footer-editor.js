@@ -2,120 +2,125 @@
  * Footer Content Visual Editor
  * Handles the visual editing of footer content in Django admin
  */
-(function() {
-  // CSS paths
-  const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
+(function () {
+    // CSS paths
+    const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
 
-  // App routes injected from Django backend (see pages/app_routes.py)
-  const APP_ROUTES = window.APP_ROUTES || [];
-  // Published CMS routes injected from Django backend
-  const CMS_ROUTES = window.CMS_ROUTES || [];
+    // App routes injected from Django backend (see pages/app_routes.py)
+    const APP_ROUTES = window.APP_ROUTES || [];
+    // Published CMS routes injected from Django backend
+    const CMS_ROUTES = window.CMS_ROUTES || [];
 
-  function isCmsRoute(url) {
-    if (!url) return false;
-    return CMS_ROUTES.some(r => r.url === url);
-  }
-
-  // DOM elements (initialized in init())
-  let jsonInput = null;
-  let iframe = null;
-  let errorBox = null;
-
-  // Current data state
-  let footerData = {
-    cta_buttons: [],
-    contact_html: '',
-    columns: [],
-    social_links: [],
-    copyright: '',
-    footer_links: []
-  };
-
-  // Initialize
-  function init() {
-    // Get DOM elements after DOM is ready
-    jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
-    iframe = document.getElementById('footer-preview-iframe');
-    errorBox = document.getElementById('footer-preview-error');
-
-    if (jsonInput) {
-      try {
-        const parsed = JSON.parse(jsonInput.value || '{}');
-        footerData = { ...footerData, ...parsed };
-      } catch (e) {
-        console.error('Failed to parse initial JSON:', e);
-      }
+    function isCmsRoute(url) {
+        if (!url) return false;
+        return CMS_ROUTES.some(r => r.url === url);
     }
 
-    // Set up tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.editor-section').forEach(s => s.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('section-' + btn.dataset.tab).classList.add('active');
-      });
-    });
+    // DOM elements (initialized in init())
+    let jsonInput = null;
+    let iframe = null;
+    let errorBox = null;
 
-    // Set up input listeners
-    document.getElementById('contact-html-input').addEventListener('input', (e) => {
-      footerData.contact_html = e.target.value;
-      syncToJson();
-    });
+    // Current data state
+    let footerData = {
+        cta_buttons: [],
+        contact_html: '',
+        columns: [],
+        social_links: [],
+        copyright: '',
+        footer_links: []
+    };
 
-    document.getElementById('copyright-input').addEventListener('input', (e) => {
-      footerData.copyright = e.target.value;
-      syncToJson();
-    });
+    // Initialize
+    function init() {
+        // Get DOM elements after DOM is ready
+        jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
+        iframe = document.getElementById('footer-preview-iframe');
+        errorBox = document.getElementById('footer-preview-error');
 
-    // Set up JSON editor events
-    setupJsonEditorEvents();
+        if (jsonInput) {
+            try {
+                const parsed = JSON.parse(jsonInput.value || '{}');
+                footerData = {...footerData, ...parsed};
+            } catch (e) {
+                console.error('Failed to parse initial JSON:', e);
+            }
+        }
 
-    renderAll();
-    updatePreview();
-  }
+        // Set up tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.editor-section').forEach(s => s.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('section-' + btn.dataset.tab).classList.add('active');
+            });
+        });
 
-  // Render all sections
-  function renderAll() {
-    renderCtaButtons();
-    renderColumns();
-    renderSocialLinks();
-    renderFooterLinks();
+        // Set up input listeners
+        document.getElementById('contact-html-input').addEventListener('input', (e) => {
+            footerData.contact_html = e.target.value;
+            syncToJson();
+        });
 
-    document.getElementById('contact-html-input').value = footerData.contact_html || '';
-    document.getElementById('copyright-input').value = footerData.copyright || '';
-    document.getElementById('json-editor').value = JSON.stringify(footerData, null, 2);
-  }
+        document.getElementById('copyright-input').addEventListener('input', (e) => {
+            footerData.copyright = e.target.value;
+            syncToJson();
+        });
 
-  // Sync to hidden JSON field
-  function syncToJson() {
-    if (jsonInput) {
-      jsonInput.value = JSON.stringify(footerData);
+        // Set up JSON editor events
+        setupJsonEditorEvents();
+
+        renderAll();
+        updatePreview();
     }
-    document.getElementById('json-editor').value = JSON.stringify(footerData, null, 2);
-    updatePreview();
-  }
 
-  // ===== CTA Buttons =====
-  window.addCtaButton = function(type) {
-    type = type || 'external';
-    footerData.cta_buttons.push({ type: type, label: 'New Button', href: (type === 'app' || type === 'cms') ? '' : '#', style: 'blue' });
-    renderCtaButtons();
-    syncToJson();
-  };
+    // Render all sections
+    function renderAll() {
+        renderCtaButtons();
+        renderColumns();
+        renderSocialLinks();
+        renderFooterLinks();
 
-  window.removeCtaButton = function(idx) {
-    footerData.cta_buttons.splice(idx, 1);
-    renderCtaButtons();
-    syncToJson();
-  };
+        document.getElementById('contact-html-input').value = footerData.contact_html || '';
+        document.getElementById('copyright-input').value = footerData.copyright || '';
+        document.getElementById('json-editor').value = JSON.stringify(footerData, null, 2);
+    }
 
-  function renderCtaButtons() {
-    const container = document.getElementById('cta-list');
-    container.innerHTML = footerData.cta_buttons.map((btn, idx) => {
-      const btnType = (btn.type === 'app' && isCmsRoute(btn.href)) ? 'cms' : (btn.type || 'external');
+    // Sync to hidden JSON field
+    function syncToJson() {
+        if (jsonInput) {
+            jsonInput.value = JSON.stringify(footerData);
+        }
+        document.getElementById('json-editor').value = JSON.stringify(footerData, null, 2);
+        updatePreview();
+    }
 
-      const typeSelector = `
+    // ===== CTA Buttons =====
+    window.addCtaButton = function (type) {
+        type = type || 'external';
+        footerData.cta_buttons.push({
+            type: type,
+            label: 'New Button',
+            href: (type === 'app' || type === 'cms') ? '' : '#',
+            style: 'blue'
+        });
+        renderCtaButtons();
+        syncToJson();
+    };
+
+    window.removeCtaButton = function (idx) {
+        footerData.cta_buttons.splice(idx, 1);
+        renderCtaButtons();
+        syncToJson();
+    };
+
+    function renderCtaButtons() {
+        const container = document.getElementById('cta-list');
+        container.innerHTML = footerData.cta_buttons.map((btn, idx) => {
+            const btnType = (btn.type === 'app' && isCmsRoute(btn.href)) ? 'cms' : (btn.type || 'external');
+
+            const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
           <label>Type</label>
           <select onchange="changeCtaType(${idx}, this.value)">
@@ -126,12 +131,12 @@
         </div>
       `;
 
-      let urlField;
-      if (btnType === 'app') {
-        const appOptions = APP_ROUTES.map(r =>
-          `<option value="${escapeAttr(r.url)}" ${btn.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-        ).join('');
-        urlField = `
+            let urlField;
+            if (btnType === 'app') {
+                const appOptions = APP_ROUTES.map(r =>
+                    `<option value="${escapeAttr(r.url)}" ${btn.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+                ).join('');
+                urlField = `
           <div class="item-field">
             <label>App Route</label>
             <select onchange="selectCtaAppRoute(${idx}, this.value)">
@@ -140,11 +145,11 @@
             </select>
           </div>
         `;
-      } else if (btnType === 'cms') {
-        const cmsOptions = CMS_ROUTES.map(r =>
-          `<option value="${escapeAttr(r.url)}" ${btn.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-        ).join('');
-        urlField = `
+            } else if (btnType === 'cms') {
+                const cmsOptions = CMS_ROUTES.map(r =>
+                    `<option value="${escapeAttr(r.url)}" ${btn.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+                ).join('');
+                urlField = `
           <div class="item-field">
             <label>CMS Page</label>
             <select onchange="selectCtaCmsRoute(${idx}, this.value)">
@@ -153,16 +158,16 @@
             </select>
           </div>
         `;
-      } else {
-        urlField = `
+            } else {
+                urlField = `
           <div class="item-field">
             <label>URL</label>
             <input type="text" value="${escapeAttr(btn.href)}" placeholder="https://example.com" onchange="updateCtaButton(${idx}, 'href', this.value)">
           </div>
         `;
-      }
+            }
 
-      return `
+            return `
         <div class="item-card">
           <div class="item-card-header">
             <span class="item-card-title">Button ${idx + 1}</span>
@@ -187,83 +192,83 @@
           </div>
         </div>
       `;
-    }).join('');
-  }
-
-  window.updateCtaButton = function(idx, field, value) {
-    footerData.cta_buttons[idx][field] = value;
-    syncToJson();
-  };
-
-  window.changeCtaType = function(idx, newType) {
-    const btn = footerData.cta_buttons[idx];
-    btn.type = newType;
-    btn.href = (newType === 'app' || newType === 'cms') ? '' : '#';
-    renderCtaButtons();
-    syncToJson();
-  };
-
-  window.selectCtaAppRoute = function(idx, url) {
-    const btn = footerData.cta_buttons[idx];
-    btn.href = url;
-    const route = APP_ROUTES.find(r => r.url === url);
-    if (route && (!btn.label || btn.label === 'New Button')) {
-      btn.label = route.title;
+        }).join('');
     }
-    renderCtaButtons();
-    syncToJson();
-  };
 
-  window.selectCtaCmsRoute = function(idx, url) {
-    const btn = footerData.cta_buttons[idx];
-    btn.href = url;
-    const route = CMS_ROUTES.find(r => r.url === url);
-    if (route && (!btn.label || btn.label === 'New Button')) {
-      btn.label = route.title;
-    }
-    renderCtaButtons();
-    syncToJson();
-  };
+    window.updateCtaButton = function (idx, field, value) {
+        footerData.cta_buttons[idx][field] = value;
+        syncToJson();
+    };
 
-  // ===== Columns =====
-  window.addColumn = function() {
-    footerData.columns.push({ title: 'New Column', links: [], body_html: '' });
-    renderColumns();
-    syncToJson();
-  };
+    window.changeCtaType = function (idx, newType) {
+        const btn = footerData.cta_buttons[idx];
+        btn.type = newType;
+        btn.href = (newType === 'app' || newType === 'cms') ? '' : '#';
+        renderCtaButtons();
+        syncToJson();
+    };
 
-  window.removeColumn = function(idx) {
-    footerData.columns.splice(idx, 1);
-    renderColumns();
-    syncToJson();
-  };
+    window.selectCtaAppRoute = function (idx, url) {
+        const btn = footerData.cta_buttons[idx];
+        btn.href = url;
+        const route = APP_ROUTES.find(r => r.url === url);
+        if (route && (!btn.label || btn.label === 'New Button')) {
+            btn.label = route.title;
+        }
+        renderCtaButtons();
+        syncToJson();
+    };
 
-  window.addColumnLink = function(colIdx) {
-    footerData.columns[colIdx].links = footerData.columns[colIdx].links || [];
-    footerData.columns[colIdx].links.push({ label: 'New Link', href: '#', target: '_blank', rel: 'noopener' });
-    renderColumns();
-    syncToJson();
-  };
+    window.selectCtaCmsRoute = function (idx, url) {
+        const btn = footerData.cta_buttons[idx];
+        btn.href = url;
+        const route = CMS_ROUTES.find(r => r.url === url);
+        if (route && (!btn.label || btn.label === 'New Button')) {
+            btn.label = route.title;
+        }
+        renderCtaButtons();
+        syncToJson();
+    };
 
-  window.removeColumnLink = function(colIdx, linkIdx) {
-    footerData.columns[colIdx].links.splice(linkIdx, 1);
-    renderColumns();
-    syncToJson();
-  };
+    // ===== Columns =====
+    window.addColumn = function () {
+        footerData.columns.push({title: 'New Column', links: [], body_html: ''});
+        renderColumns();
+        syncToJson();
+    };
 
-  window.updateColumn = function(idx, field, value) {
-    footerData.columns[idx][field] = value;
-    syncToJson();
-  };
+    window.removeColumn = function (idx) {
+        footerData.columns.splice(idx, 1);
+        renderColumns();
+        syncToJson();
+    };
 
-  window.updateColumnLink = function(colIdx, linkIdx, field, value) {
-    footerData.columns[colIdx].links[linkIdx][field] = value;
-    syncToJson();
-  };
+    window.addColumnLink = function (colIdx) {
+        footerData.columns[colIdx].links = footerData.columns[colIdx].links || [];
+        footerData.columns[colIdx].links.push({label: 'New Link', href: '#', target: '_blank', rel: 'noopener'});
+        renderColumns();
+        syncToJson();
+    };
 
-  function renderColumns() {
-    const container = document.getElementById('columns-list');
-    container.innerHTML = footerData.columns.map((col, idx) => `
+    window.removeColumnLink = function (colIdx, linkIdx) {
+        footerData.columns[colIdx].links.splice(linkIdx, 1);
+        renderColumns();
+        syncToJson();
+    };
+
+    window.updateColumn = function (idx, field, value) {
+        footerData.columns[idx][field] = value;
+        syncToJson();
+    };
+
+    window.updateColumnLink = function (colIdx, linkIdx, field, value) {
+        footerData.columns[colIdx].links[linkIdx][field] = value;
+        syncToJson();
+    };
+
+    function renderColumns() {
+        const container = document.getElementById('columns-list');
+        container.innerHTML = footerData.columns.map((col, idx) => `
       <div class="item-card">
         <div class="item-card-header">
           <span class="item-card-title">Column ${idx + 1}: ${escapeHtml(col.title || 'Untitled')}</span>
@@ -294,44 +299,44 @@
         </div>
       </div>
     `).join('');
-  }
+    }
 
-  // ===== Social Links =====
-  window.addSocialLink = function() {
-    footerData.social_links.push({
-      href: '#',
-      icon_class: 'fa fa-facebook',
-      aria_label: 'Facebook',
-      target: '_blank',
-      rel: 'noopener'
-    });
-    renderSocialLinks();
-    syncToJson();
-  };
+    // ===== Social Links =====
+    window.addSocialLink = function () {
+        footerData.social_links.push({
+            href: '#',
+            icon_class: 'fa fa-facebook',
+            aria_label: 'Facebook',
+            target: '_blank',
+            rel: 'noopener'
+        });
+        renderSocialLinks();
+        syncToJson();
+    };
 
-  window.removeSocialLink = function(idx) {
-    footerData.social_links.splice(idx, 1);
-    renderSocialLinks();
-    syncToJson();
-  };
+    window.removeSocialLink = function (idx) {
+        footerData.social_links.splice(idx, 1);
+        renderSocialLinks();
+        syncToJson();
+    };
 
-  window.updateSocialLink = function(idx, field, value) {
-    footerData.social_links[idx][field] = value;
-    syncToJson();
-  };
+    window.updateSocialLink = function (idx, field, value) {
+        footerData.social_links[idx][field] = value;
+        syncToJson();
+    };
 
-  function renderSocialLinks() {
-    const container = document.getElementById('social-list');
-    const iconOptions = [
-      { value: 'fa fa-facebook', label: 'Facebook' },
-      { value: 'fa fa-twitter', label: 'Twitter/X' },
-      { value: 'fa fa-linkedin', label: 'LinkedIn' },
-      { value: 'fa fa-instagram', label: 'Instagram' },
-      { value: 'fa fa-youtube', label: 'YouTube' },
-      { value: 'fa fa-github', label: 'GitHub' }
-    ];
+    function renderSocialLinks() {
+        const container = document.getElementById('social-list');
+        const iconOptions = [
+            {value: 'fa fa-facebook', label: 'Facebook'},
+            {value: 'fa fa-twitter', label: 'Twitter/X'},
+            {value: 'fa fa-linkedin', label: 'LinkedIn'},
+            {value: 'fa fa-instagram', label: 'Instagram'},
+            {value: 'fa fa-youtube', label: 'YouTube'},
+            {value: 'fa fa-github', label: 'GitHub'}
+        ];
 
-    container.innerHTML = footerData.social_links.map((link, idx) => `
+        container.innerHTML = footerData.social_links.map((link, idx) => `
       <div class="item-card">
         <div class="item-card-header">
           <span class="item-card-title"><i class="${link.icon_class}"></i> ${escapeHtml(link.aria_label)}</span>
@@ -353,65 +358,71 @@
         </div>
       </div>
     `).join('');
-  }
-
-  // ===== Footer Links =====
-  window.addFooterLink = function(type) {
-    type = type || 'external';
-    footerData.footer_links.push({ type: type, label: 'New Link', href: (type === 'app' || type === 'cms') ? '' : '#', target: type === 'external' ? '_blank' : '', rel: type === 'external' ? 'noopener' : '' });
-    renderFooterLinks();
-    syncToJson();
-  };
-
-  window.removeFooterLink = function(idx) {
-    footerData.footer_links.splice(idx, 1);
-    renderFooterLinks();
-    syncToJson();
-  };
-
-  window.updateFooterLink = function(idx, field, value) {
-    footerData.footer_links[idx][field] = value;
-    syncToJson();
-  };
-
-  window.changeFooterLinkType = function(idx, newType) {
-    const link = footerData.footer_links[idx];
-    link.type = newType;
-    link.href = (newType === 'app' || newType === 'cms') ? '' : '#';
-    link.target = newType === 'external' ? '_blank' : '';
-    link.rel = newType === 'external' ? 'noopener' : '';
-    renderFooterLinks();
-    syncToJson();
-  };
-
-  window.selectFooterLinkAppRoute = function(idx, url) {
-    const link = footerData.footer_links[idx];
-    link.href = url;
-    const route = APP_ROUTES.find(r => r.url === url);
-    if (route && (!link.label || link.label === 'New Link')) {
-      link.label = route.title;
     }
-    renderFooterLinks();
-    syncToJson();
-  };
 
-  window.selectFooterLinkCmsRoute = function(idx, url) {
-    const link = footerData.footer_links[idx];
-    link.href = url;
-    const route = CMS_ROUTES.find(r => r.url === url);
-    if (route && (!link.label || link.label === 'New Link')) {
-      link.label = route.title;
-    }
-    renderFooterLinks();
-    syncToJson();
-  };
+    // ===== Footer Links =====
+    window.addFooterLink = function (type) {
+        type = type || 'external';
+        footerData.footer_links.push({
+            type: type,
+            label: 'New Link',
+            href: (type === 'app' || type === 'cms') ? '' : '#',
+            target: type === 'external' ? '_blank' : '',
+            rel: type === 'external' ? 'noopener' : ''
+        });
+        renderFooterLinks();
+        syncToJson();
+    };
 
-  function renderFooterLinks() {
-    const container = document.getElementById('footer-links-list');
-    container.innerHTML = footerData.footer_links.map((link, idx) => {
-      const linkType = (link.type === 'app' && isCmsRoute(link.href)) ? 'cms' : (link.type || 'external');
+    window.removeFooterLink = function (idx) {
+        footerData.footer_links.splice(idx, 1);
+        renderFooterLinks();
+        syncToJson();
+    };
 
-      const typeSelector = `
+    window.updateFooterLink = function (idx, field, value) {
+        footerData.footer_links[idx][field] = value;
+        syncToJson();
+    };
+
+    window.changeFooterLinkType = function (idx, newType) {
+        const link = footerData.footer_links[idx];
+        link.type = newType;
+        link.href = (newType === 'app' || newType === 'cms') ? '' : '#';
+        link.target = newType === 'external' ? '_blank' : '';
+        link.rel = newType === 'external' ? 'noopener' : '';
+        renderFooterLinks();
+        syncToJson();
+    };
+
+    window.selectFooterLinkAppRoute = function (idx, url) {
+        const link = footerData.footer_links[idx];
+        link.href = url;
+        const route = APP_ROUTES.find(r => r.url === url);
+        if (route && (!link.label || link.label === 'New Link')) {
+            link.label = route.title;
+        }
+        renderFooterLinks();
+        syncToJson();
+    };
+
+    window.selectFooterLinkCmsRoute = function (idx, url) {
+        const link = footerData.footer_links[idx];
+        link.href = url;
+        const route = CMS_ROUTES.find(r => r.url === url);
+        if (route && (!link.label || link.label === 'New Link')) {
+            link.label = route.title;
+        }
+        renderFooterLinks();
+        syncToJson();
+    };
+
+    function renderFooterLinks() {
+        const container = document.getElementById('footer-links-list');
+        container.innerHTML = footerData.footer_links.map((link, idx) => {
+            const linkType = (link.type === 'app' && isCmsRoute(link.href)) ? 'cms' : (link.type || 'external');
+
+            const typeSelector = `
         <div class="item-field" style="max-width: 120px;">
           <label>Type</label>
           <select onchange="changeFooterLinkType(${idx}, this.value)">
@@ -422,12 +433,12 @@
         </div>
       `;
 
-      let urlField;
-      if (linkType === 'app') {
-        const appOptions = APP_ROUTES.map(r =>
-          `<option value="${escapeAttr(r.url)}" ${link.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-        ).join('');
-        urlField = `
+            let urlField;
+            if (linkType === 'app') {
+                const appOptions = APP_ROUTES.map(r =>
+                    `<option value="${escapeAttr(r.url)}" ${link.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+                ).join('');
+                urlField = `
           <div class="item-field">
             <label>App Route</label>
             <select onchange="selectFooterLinkAppRoute(${idx}, this.value)">
@@ -436,11 +447,11 @@
             </select>
           </div>
         `;
-      } else if (linkType === 'cms') {
-        const cmsOptions = CMS_ROUTES.map(r =>
-          `<option value="${escapeAttr(r.url)}" ${link.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-        ).join('');
-        urlField = `
+            } else if (linkType === 'cms') {
+                const cmsOptions = CMS_ROUTES.map(r =>
+                    `<option value="${escapeAttr(r.url)}" ${link.href === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
+                ).join('');
+                urlField = `
           <div class="item-field">
             <label>CMS Page</label>
             <select onchange="selectFooterLinkCmsRoute(${idx}, this.value)">
@@ -449,16 +460,16 @@
             </select>
           </div>
         `;
-      } else {
-        urlField = `
+            } else {
+                urlField = `
           <div class="item-field">
             <label>URL</label>
             <input type="text" value="${escapeAttr(link.href)}" placeholder="https://example.com" onchange="updateFooterLink(${idx}, 'href', this.value)">
           </div>
         `;
-      }
+            }
 
-      return `
+            return `
         <div class="item-card">
           <div class="item-row">
             ${typeSelector}
@@ -473,235 +484,235 @@
           </div>
         </div>
       `;
-    }).join('');
-  }
-
-  // Toggle JSON view
-  window.toggleJsonView = function() {
-    document.getElementById('json-raw-view').classList.toggle('show');
-  };
-
-  // Apply JSON changes from the editor
-  window.applyJsonChanges = function() {
-    console.log('applyJsonChanges called');
-
-    const jsonEditor = document.getElementById('json-editor');
-    const jsonErrorBox = document.getElementById('json-error');
-
-    if (!jsonEditor) {
-      console.error('JSON editor element not found');
-      alert('Error: JSON editor element not found');
-      return;
+        }).join('');
     }
 
-    console.log('JSON editor value:', jsonEditor.value);
+    // Toggle JSON view
+    window.toggleJsonView = function () {
+        document.getElementById('json-raw-view').classList.toggle('show');
+    };
 
-    if (!jsonEditor.value || !jsonEditor.value.trim()) {
-      if (jsonErrorBox) {
-        jsonErrorBox.textContent = 'Please enter JSON content';
-        jsonErrorBox.className = 'json-error show';
-      }
-      return;
-    }
+    // Apply JSON changes from the editor
+    window.applyJsonChanges = function () {
+        console.log('applyJsonChanges called');
 
-    try {
-      let parsed = JSON.parse(jsonEditor.value);
+        const jsonEditor = document.getElementById('json-editor');
+        const jsonErrorBox = document.getElementById('json-error');
 
-      // Handle Django fixture format: [{"model": "...", "fields": {"content": {...}}}]
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].fields) {
-        console.log('Detected Django fixture format, extracting content');
-        if (parsed[0].fields.content) {
-          parsed = parsed[0].fields.content;
-        } else {
-          parsed = parsed[0].fields;
+        if (!jsonEditor) {
+            console.error('JSON editor element not found');
+            alert('Error: JSON editor element not found');
+            return;
         }
-      }
 
-      // Handle wrapped format: {"content": {...}}
-      if (parsed.content && typeof parsed.content === 'object' && !parsed.cta_buttons) {
-        console.log('Detected wrapped content format, extracting');
-        parsed = parsed.content;
-      }
+        console.log('JSON editor value:', jsonEditor.value);
 
-      // Validate structure
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('JSON must be an object');
-      }
-
-      // Merge with default structure to ensure all fields exist
-      footerData = {
-        cta_buttons: parsed.cta_buttons || [],
-        contact_html: parsed.contact_html || '',
-        columns: parsed.columns || [],
-        social_links: parsed.social_links || [],
-        copyright: parsed.copyright || '',
-        footer_links: parsed.footer_links || []
-      };
-
-      // Update the JSON editor to show the cleaned format
-      jsonEditor.value = JSON.stringify(footerData, null, 2);
-
-      // Re-query jsonInput in case it wasn't found during init
-      if (!jsonInput) {
-        jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
-      }
-
-      // Update the hidden form field
-      if (jsonInput) {
-        jsonInput.value = JSON.stringify(footerData);
-      } else {
-        console.warn('Hidden JSON input field not found, changes may not be saved');
-      }
-
-      // Re-render all visual editor sections
-      renderAll();
-      updatePreview();
-
-      // Clear error and show success
-      if (jsonErrorBox) {
-        jsonErrorBox.textContent = '';
-        jsonErrorBox.className = 'json-error';
-      }
-
-      // Flash success feedback
-      jsonEditor.style.borderColor = '#28a745';
-      if (jsonErrorBox) {
-        jsonErrorBox.textContent = '✓ JSON applied successfully!';
-        jsonErrorBox.className = 'json-error show';
-        jsonErrorBox.style.background = '#d4edda';
-        jsonErrorBox.style.borderColor = '#c3e6cb';
-        jsonErrorBox.style.color = '#155724';
-      }
-      setTimeout(() => {
-        jsonEditor.style.borderColor = '';
-        if (jsonErrorBox) {
-          jsonErrorBox.textContent = '';
-          jsonErrorBox.className = 'json-error';
-          jsonErrorBox.style.background = '';
-          jsonErrorBox.style.borderColor = '';
-          jsonErrorBox.style.color = '';
+        if (!jsonEditor.value || !jsonEditor.value.trim()) {
+            if (jsonErrorBox) {
+                jsonErrorBox.textContent = 'Please enter JSON content';
+                jsonErrorBox.className = 'json-error show';
+            }
+            return;
         }
-      }, 2000);
 
-      console.log('JSON applied successfully, footerData:', footerData);
-
-    } catch (e) {
-      console.error('JSON parse error:', e);
-      if (jsonErrorBox) {
-        jsonErrorBox.textContent = 'Invalid JSON: ' + e.message;
-        jsonErrorBox.className = 'json-error show';
-      }
-      jsonEditor.style.borderColor = '#dc3545';
-    }
-  };
-
-  // Real-time JSON validation as user types
-  function setupJsonEditorEvents() {
-    const jsonEditor = document.getElementById('json-editor');
-    const jsonErrorBox = document.getElementById('json-error');
-    const applyBtn = document.querySelector('.btn-apply-json');
-
-    if (jsonEditor) {
-      jsonEditor.addEventListener('input', function() {
         try {
-          JSON.parse(this.value);
-          this.style.borderColor = '';
-          if (jsonErrorBox) {
-            jsonErrorBox.textContent = '';
-            jsonErrorBox.className = 'json-error';
-          }
+            let parsed = JSON.parse(jsonEditor.value);
+
+            // Handle Django fixture format: [{"model": "...", "fields": {"content": {...}}}]
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].fields) {
+                console.log('Detected Django fixture format, extracting content');
+                if (parsed[0].fields.content) {
+                    parsed = parsed[0].fields.content;
+                } else {
+                    parsed = parsed[0].fields;
+                }
+            }
+
+            // Handle wrapped format: {"content": {...}}
+            if (parsed.content && typeof parsed.content === 'object' && !parsed.cta_buttons) {
+                console.log('Detected wrapped content format, extracting');
+                parsed = parsed.content;
+            }
+
+            // Validate structure
+            if (typeof parsed !== 'object' || parsed === null) {
+                throw new Error('JSON must be an object');
+            }
+
+            // Merge with default structure to ensure all fields exist
+            footerData = {
+                cta_buttons: parsed.cta_buttons || [],
+                contact_html: parsed.contact_html || '',
+                columns: parsed.columns || [],
+                social_links: parsed.social_links || [],
+                copyright: parsed.copyright || '',
+                footer_links: parsed.footer_links || []
+            };
+
+            // Update the JSON editor to show the cleaned format
+            jsonEditor.value = JSON.stringify(footerData, null, 2);
+
+            // Re-query jsonInput in case it wasn't found during init
+            if (!jsonInput) {
+                jsonInput = document.getElementById('id_content') || document.querySelector('textarea[name="content"]');
+            }
+
+            // Update the hidden form field
+            if (jsonInput) {
+                jsonInput.value = JSON.stringify(footerData);
+            } else {
+                console.warn('Hidden JSON input field not found, changes may not be saved');
+            }
+
+            // Re-render all visual editor sections
+            renderAll();
+            updatePreview();
+
+            // Clear error and show success
+            if (jsonErrorBox) {
+                jsonErrorBox.textContent = '';
+                jsonErrorBox.className = 'json-error';
+            }
+
+            // Flash success feedback
+            jsonEditor.style.borderColor = '#28a745';
+            if (jsonErrorBox) {
+                jsonErrorBox.textContent = '✓ JSON applied successfully!';
+                jsonErrorBox.className = 'json-error show';
+                jsonErrorBox.style.background = '#d4edda';
+                jsonErrorBox.style.borderColor = '#c3e6cb';
+                jsonErrorBox.style.color = '#155724';
+            }
+            setTimeout(() => {
+                jsonEditor.style.borderColor = '';
+                if (jsonErrorBox) {
+                    jsonErrorBox.textContent = '';
+                    jsonErrorBox.className = 'json-error';
+                    jsonErrorBox.style.background = '';
+                    jsonErrorBox.style.borderColor = '';
+                    jsonErrorBox.style.color = '';
+                }
+            }, 2000);
+
+            console.log('JSON applied successfully, footerData:', footerData);
+
         } catch (e) {
-          // Don't show error while typing, just remove success styling
-          this.style.borderColor = '';
+            console.error('JSON parse error:', e);
+            if (jsonErrorBox) {
+                jsonErrorBox.textContent = 'Invalid JSON: ' + e.message;
+                jsonErrorBox.className = 'json-error show';
+            }
+            jsonEditor.style.borderColor = '#dc3545';
         }
-      });
+    };
 
-      // Allow Ctrl+Enter to apply changes
-      jsonEditor.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          window.applyJsonChanges();
+    // Real-time JSON validation as user types
+    function setupJsonEditorEvents() {
+        const jsonEditor = document.getElementById('json-editor');
+        const jsonErrorBox = document.getElementById('json-error');
+        const applyBtn = document.querySelector('.btn-apply-json');
+
+        if (jsonEditor) {
+            jsonEditor.addEventListener('input', function () {
+                try {
+                    JSON.parse(this.value);
+                    this.style.borderColor = '';
+                    if (jsonErrorBox) {
+                        jsonErrorBox.textContent = '';
+                        jsonErrorBox.className = 'json-error';
+                    }
+                } catch (e) {
+                    // Don't show error while typing, just remove success styling
+                    this.style.borderColor = '';
+                }
+            });
+
+            // Allow Ctrl+Enter to apply changes
+            jsonEditor.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    window.applyJsonChanges();
+                }
+            });
         }
-      });
+
+        // Also add click event listener as backup for the Apply button
+        if (applyBtn) {
+            applyBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.applyJsonChanges();
+            });
+        }
     }
 
-    // Also add click event listener as backup for the Apply button
-    if (applyBtn) {
-      applyBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        window.applyJsonChanges();
-      });
-    }
-  }
-
-  // Helper functions
-  function escapeHtml(val) {
-    const div = document.createElement('div');
-    div.textContent = val || '';
-    return div.innerHTML;
-  }
-
-  function escapeAttr(val) {
-    return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  // ===== Preview =====
-  function renderFooterHtml(content) {
-    // Check if content is effectively empty
-    const hasContent = content && (
-      (content.cta_buttons && content.cta_buttons.length > 0) ||
-      (content.contact_html && content.contact_html.trim()) ||
-      (content.columns && content.columns.length > 0) ||
-      (content.social_links && content.social_links.length > 0) ||
-      (content.copyright && content.copyright.trim()) ||
-      (content.footer_links && content.footer_links.length > 0)
-    );
-
-    if (!hasContent) {
-      return '<div style="color:#666;font-style:italic;padding:40px;text-align:center;background:#f5f5f5;border-radius:4px;">No footer content yet. Add some content using the editor above.</div>';
+    // Helper functions
+    function escapeHtml(val) {
+        const div = document.createElement('div');
+        div.textContent = val || '';
+        return div.innerHTML;
     }
 
-    // CTA buttons section
-    const cta = (content.cta_buttons || []).map(btn => {
-      const color = btn.style === 'gold' ? 'gold' : 'blue';
-      return `<div class="sb-col hb__buttons-${color}"><a class="btn--invert-${color} hb__play" href="${escapeAttr(btn.href)}" onclick="return false;">${escapeHtml(btn.label)}</a></div>`;
-    }).join('');
+    function escapeAttr(val) {
+        return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
 
-    const contact = content.contact_html ? `<div class="i2gHome">${content.contact_html}</div>` : '';
-    const ctaBlock = (cta || contact) ? `<div class="sb-row home-cta-row">${cta}${contact}</div>` : '';
+    // ===== Preview =====
+    function renderFooterHtml(content) {
+        // Check if content is effectively empty
+        const hasContent = content && (
+            (content.cta_buttons && content.cta_buttons.length > 0) ||
+            (content.contact_html && content.contact_html.trim()) ||
+            (content.columns && content.columns.length > 0) ||
+            (content.social_links && content.social_links.length > 0) ||
+            (content.copyright && content.copyright.trim()) ||
+            (content.footer_links && content.footer_links.length > 0)
+        );
 
-    // Footer columns - using new structure matching Footer.tsx
-    const columns = (content.columns || []).map((col, idx, arr) => {
-      const isAddressColumn = idx === arr.length - 1;
+        if (!hasContent) {
+            return '<div style="color:#666;font-style:italic;padding:40px;text-align:center;background:#f5f5f5;border-radius:4px;">No footer content yet. Add some content using the editor above.</div>';
+        }
 
-      // Links
-      const links = (col.links || []).map(link =>
-        `<li><a href="${escapeAttr(link.href)}" target="${escapeAttr(link.target || '_blank')}" rel="${escapeAttr(link.rel || 'noopener')}" onclick="return false;">${escapeHtml(link.label)}</a></li>`
-      ).join('');
-      const linkList = links ? `<ul>${links}</ul>` : '';
+        // CTA buttons section
+        const cta = (content.cta_buttons || []).map(btn => {
+            const color = btn.style === 'gold' ? 'gold' : 'blue';
+            return `<div class="sb-col hb__buttons-${color}"><a class="btn--invert-${color} hb__play" href="${escapeAttr(btn.href)}" onclick="return false;">${escapeHtml(btn.label)}</a></div>`;
+        }).join('');
 
-      // Body HTML
-      const body = col.body_html ? `<div class="footer-column__body">${col.body_html}</div>` : '';
+        const contact = content.contact_html ? `<div class="i2gHome">${content.contact_html}</div>` : '';
+        const ctaBlock = (cta || contact) ? `<div class="sb-row home-cta-row">${cta}${contact}</div>` : '';
 
-      // Social icons (only in last column)
-      const social = (isAddressColumn && (content.social_links || []).length) ? `
+        // Footer columns - using new structure matching Footer.tsx
+        const columns = (content.columns || []).map((col, idx, arr) => {
+            const isAddressColumn = idx === arr.length - 1;
+
+            // Links
+            const links = (col.links || []).map(link =>
+                `<li><a href="${escapeAttr(link.href)}" target="${escapeAttr(link.target || '_blank')}" rel="${escapeAttr(link.rel || 'noopener')}" onclick="return false;">${escapeHtml(link.label)}</a></li>`
+            ).join('');
+            const linkList = links ? `<ul>${links}</ul>` : '';
+
+            // Body HTML
+            const body = col.body_html ? `<div class="footer-column__body">${col.body_html}</div>` : '';
+
+            // Social icons (only in last column)
+            const social = (isAddressColumn && (content.social_links || []).length) ? `
         <div class="socialIcons">
           <ul class="fa-ul inline">
             ${(content.social_links || []).map(s =>
-              `<li class="fa-li"><a href="${escapeAttr(s.href)}" target="${escapeAttr(s.target || '_blank')}" rel="${escapeAttr(s.rel || 'noopener')}" aria-label="${escapeAttr(s.aria_label)}" onclick="return false;"><i class="${escapeAttr(s.icon_class)}"></i></a></li>`
+                `<li class="fa-li"><a href="${escapeAttr(s.href)}" target="${escapeAttr(s.target || '_blank')}" rel="${escapeAttr(s.rel || 'noopener')}" aria-label="${escapeAttr(s.aria_label)}" onclick="return false;"><i class="${escapeAttr(s.icon_class)}"></i></a></li>`
             ).join('')}
           </ul>
         </div>
       ` : '';
 
-      const title = col.title ? `<h2>${escapeHtml(col.title)}</h2>` : '';
-      const columnClass = `footer-column${isAddressColumn ? ' footer-column--address' : ''}`;
+            const title = col.title ? `<h2>${escapeHtml(col.title)}</h2>` : '';
+            const columnClass = `footer-column${isAddressColumn ? ' footer-column--address' : ''}`;
 
-      return `<div class="${columnClass}">${title}${linkList}${body}${social}</div>`;
-    }).join('');
+            return `<div class="${columnClass}">${title}${linkList}${body}${social}</div>`;
+        }).join('');
 
-    // Footer main section
-    const columnsBlock = columns ? `
+        // Footer main section
+        const columnsBlock = columns ? `
       <div class="footer-main">
         <div class="footer-container">
           <div class="footer-columns">
@@ -711,17 +722,17 @@
       </div>
     ` : '';
 
-    // Footer bottom bar
-    const footerLinks = (content.footer_links || []).map(l =>
-      `<li><a href="${escapeAttr(l.href)}" target="${escapeAttr(l.target || '_blank')}" rel="${escapeAttr(l.rel || 'noopener')}" onclick="return false;">${escapeHtml(l.label)}</a></li>`
-    ).join('');
-    const copyright = content.copyright ? `<li>${escapeHtml(content.copyright)}</li>` : '';
+        // Footer bottom bar
+        const footerLinks = (content.footer_links || []).map(l =>
+            `<li><a href="${escapeAttr(l.href)}" target="${escapeAttr(l.target || '_blank')}" rel="${escapeAttr(l.rel || 'noopener')}" onclick="return false;">${escapeHtml(l.label)}</a></li>`
+        ).join('');
+        const copyright = content.copyright ? `<li>${escapeHtml(content.copyright)}</li>` : '';
 
-    const hasFooterLinks = (content.footer_links || []).length > 0;
-    const hasCopyright = Boolean(content.copyright);
-    const shouldShowFooterBottom = hasFooterLinks || hasCopyright;
+        const hasFooterLinks = (content.footer_links || []).length > 0;
+        const hasCopyright = Boolean(content.copyright);
+        const shouldShowFooterBottom = hasFooterLinks || hasCopyright;
 
-    const footerBottomBlock = shouldShowFooterBottom ? `
+        const footerBottomBlock = shouldShowFooterBottom ? `
       <div class="footer-bottom">
         <div class="footer-container">
           <ul class="footer-meta">
@@ -731,23 +742,23 @@
       </div>
     ` : '';
 
-    return `
+        return `
       ${ctaBlock}
       <footer id="footer" class="site-footer" role="contentinfo">
         ${columnsBlock}
         ${footerBottomBlock}
       </footer>
     `;
-  }
+    }
 
-  function updatePreview() {
-    if (!iframe) return;
+    function updatePreview() {
+        if (!iframe) return;
 
-    try {
-      const footerHtml = renderFooterHtml(footerData);
+        try {
+            const footerHtml = renderFooterHtml(footerData);
 
-      // Inline CSS to ensure it works in the iframe
-      const inlineCSS = `
+            // Inline CSS to ensure it works in the iframe
+            const inlineCSS = `
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #fff; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
 
@@ -786,7 +797,7 @@
         .i2gHome { font-size: 14px; line-height: 1.6; color: #0b2653; }
       `;
 
-      const fullHtml = `<!DOCTYPE html>
+            const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -799,28 +810,29 @@
 </body>
 </html>`;
 
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open();
-      doc.write(fullHtml);
-      doc.close();
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(fullHtml);
+            doc.close();
 
-      setTimeout(() => {
-        try {
-          const height = Math.max(doc.body.scrollHeight, doc.body.offsetHeight, doc.documentElement.scrollHeight);
-          iframe.style.height = Math.max(height + 20, 300) + 'px';
-        } catch (e) {}
-      }, 150);
+            setTimeout(() => {
+                try {
+                    const height = Math.max(doc.body.scrollHeight, doc.body.offsetHeight, doc.documentElement.scrollHeight);
+                    iframe.style.height = Math.max(height + 20, 300) + 'px';
+                } catch (e) {
+                }
+            }, 150);
 
-      if (errorBox) errorBox.textContent = '';
-    } catch (err) {
-      if (errorBox) errorBox.textContent = 'Preview error: ' + err.message;
+            if (errorBox) errorBox.textContent = '';
+        } catch (err) {
+            if (errorBox) errorBox.textContent = 'Preview error: ' + err.message;
+        }
     }
-  }
 
-  // Run on load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+    // Run on load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

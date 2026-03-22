@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pages", "0008_delete_googlesheet_remove_mediaasset_uploaded_by_and_more"),
     ]

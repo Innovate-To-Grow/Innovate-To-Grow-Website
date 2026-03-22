@@ -4,109 +4,118 @@
 {% block title %}{{ title }} | {{ site_title }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto py-8 px-4">
-  <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">{{ title }}</h1>
-  <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-6">
-    Upload a CMS export JSON file to import pages. Use "Preview Import" to see what will happen before executing.
-  </p>
+    <div class="max-w-3xl mx-auto py-8 px-4">
+        <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">{{ title }}</h1>
+        <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-6">
+            Upload a CMS export JSON file to import pages. Use "Preview Import" to see what will happen before
+            executing.
+        </p>
 
-  {% if has_results %}
-  <div class="border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 rounded-default p-6 mb-6">
-    <h2 class="text-lg font-semibold text-font-default-light dark:text-font-default-dark mb-4">
-      {% if is_dry_run %}Import Preview (Dry Run){% else %}Import Results{% endif %}
-    </h2>
+        {% if has_results %}
+            <div class="border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 rounded-default p-6 mb-6">
+                <h2 class="text-lg font-semibold text-font-default-light dark:text-font-default-dark mb-4">
+                    {% if is_dry_run %}Import Preview (Dry Run){% else %}Import Results{% endif %}
+                </h2>
 
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b-2 border-base-200 dark:border-base-700 text-left">
-            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">Slug</th>
-            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">Title</th>
-            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">Action</th>
-            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in results %}
-          <tr class="border-b border-base-100 dark:border-base-800">
-            <td class="px-3 py-2 font-mono text-font-default-light dark:text-font-default-dark">{{ r.slug }}</td>
-            <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ r.title }}</td>
-            <td class="px-3 py-2">
-              {% if r.action == "create" %}
-              <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">CREATE</span>
-              {% elif r.action == "update" %}
-              <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">UPDATE</span>
-              {% endif %}
-            </td>
-            <td class="px-3 py-2">
-              {% if r.errors %}
-              <span class="text-red-600 dark:text-red-400 text-xs">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                        <tr class="border-b-2 border-base-200 dark:border-base-700 text-left">
+                            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">
+                                Slug
+                            </th>
+                            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">
+                                Title
+                            </th>
+                            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">
+                                Action
+                            </th>
+                            <th class="px-3 py-2 font-semibold text-font-default-light dark:text-font-default-dark">
+                                Status
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for r in results %}
+                            <tr class="border-b border-base-100 dark:border-base-800">
+                                <td class="px-3 py-2 font-mono text-font-default-light dark:text-font-default-dark">{{ r.slug }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ r.title }}</td>
+                                <td class="px-3 py-2">
+                                    {% if r.action == "create" %}
+                                        <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">CREATE</span>
+                                    {% elif r.action == "update" %}
+                                        <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">UPDATE</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {% if r.errors %}
+                                        <span class="text-red-600 dark:text-red-400 text-xs">
                 {% for err in r.errors %}{{ err }}<br>{% endfor %}
               </span>
-              {% elif r.success %}
-              <span class="text-green-600 dark:text-green-400 text-xs font-medium">OK</span>
-              {% elif is_dry_run %}
-              <span class="text-font-subtle-light dark:text-font-subtle-dark text-xs">Ready</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+                                    {% elif r.success %}
+                                        <span class="text-green-600 dark:text-green-400 text-xs font-medium">OK</span>
+                                    {% elif is_dry_run %}
+                                        <span class="text-font-subtle-light dark:text-font-subtle-dark text-xs">Ready</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-    {% if is_dry_run %}
-    <p class="mt-4 text-xs text-font-subtle-light dark:text-font-subtle-dark italic">
-      This is a preview. No changes have been made. Click "Execute Import" to apply.
-    </p>
-    {% endif %}
-  </div>
-  {% endif %}
+                {% if is_dry_run %}
+                    <p class="mt-4 text-xs text-font-subtle-light dark:text-font-subtle-dark italic">
+                        This is a preview. No changes have been made. Click "Execute Import" to apply.
+                    </p>
+                {% endif %}
+            </div>
+        {% endif %}
 
-  <form method="post" enctype="multipart/form-data"
-        class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
-    {% csrf_token %}
-    <div class="mb-5 rounded-default border border-base-200 bg-base-50/70 p-4 dark:border-base-700 dark:bg-base-800/40">
-      <label for="json_file" class="mb-3 block">
+        <form method="post" enctype="multipart/form-data"
+              class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6">
+            {% csrf_token %}
+            <div class="mb-5 rounded-default border border-base-200 bg-base-50/70 p-4 dark:border-base-700 dark:bg-base-800/40">
+                <label for="json_file" class="mb-3 block">
         <span class="mb-1 flex items-center gap-2 text-sm font-semibold text-font-default-light dark:text-font-default-dark">
           <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
             <span class="material-symbols-outlined !text-[18px]">upload_file</span>
           </span>
           <span>JSON File</span>
         </span>
-        <span class="block text-xs leading-5 text-font-subtle-light dark:text-font-subtle-dark">
+                    <span class="block text-xs leading-5 text-font-subtle-light dark:text-font-subtle-dark">
           Upload a CMS export file in `.json` format. The file will be validated before any pages are created or updated.
         </span>
-      </label>
-      <div class="rounded-default border border-dashed border-base-300 bg-white p-3 dark:border-base-600 dark:bg-base-900">
-        <input type="file" name="json_file" id="json_file" accept=".json"
-               class="block w-full text-sm text-font-default-light dark:text-font-default-dark
+                </label>
+                <div class="rounded-default border border-dashed border-base-300 bg-white p-3 dark:border-base-600 dark:bg-base-900">
+                    <input type="file" name="json_file" id="json_file" accept=".json"
+                           class="block w-full text-sm text-font-default-light dark:text-font-default-dark
                       file:mr-4 file:py-2.5 file:px-4 file:rounded-default file:border file:border-base-200
                       file:dark:border-base-700 file:text-sm file:font-medium file:bg-base-50
                       file:dark:bg-base-800 file:text-font-default-light file:dark:text-font-default-dark
                       hover:file:bg-base-100 dark:hover:file:bg-base-700 file:cursor-pointer file:transition-colors">
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <button type="submit" name="action" value="dry_run"
-              class="border border-base-200 dark:border-base-700 cursor-pointer font-medium text-sm px-5 py-2.5 rounded-default transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark flex items-center gap-2">
-        <span class="material-symbols-outlined !text-[18px]">preview</span>
-        Preview Import
-      </button>
-      <button type="submit" name="action" value="execute"
-              onclick="return confirm('This will create or update pages. Continue?');"
-              class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2">
-        <span class="material-symbols-outlined !text-[18px]">upload</span>
-        Execute Import
-      </button>
-    </div>
-  </form>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="submit" name="action" value="dry_run"
+                        class="border border-base-200 dark:border-base-700 cursor-pointer font-medium text-sm px-5 py-2.5 rounded-default transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark flex items-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px]">preview</span>
+                    Preview Import
+                </button>
+                <button type="submit" name="action" value="execute"
+                        onclick="return confirm('This will create or update pages. Continue?');"
+                        class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px]">upload</span>
+                    Execute Import
+                </button>
+            </div>
+        </form>
 
-  <div class="mt-6">
-    <a href="{% url 'admin:pages_cmspage_changelist' %}"
-       class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
-      &larr; Back to CMS Pages
-    </a>
-  </div>
-</div>
+        <div class="mt-6">
+            <a href="{% url 'admin:pages_cmspage_changelist' %}"
+               class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+                &larr; Back to CMS Pages
+            </a>
+        </div>
+    </div>
 {% endblock %}

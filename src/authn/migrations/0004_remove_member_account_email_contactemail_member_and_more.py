@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("authn", "0003_remove_display_name_from_memberprofile"),
     ]

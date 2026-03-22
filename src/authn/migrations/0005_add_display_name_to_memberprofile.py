@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("authn", "0004_remove_member_account_email_contactemail_member_and_more"),
     ]

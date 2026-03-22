@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("authn", "0002_remove_avatar_from_memberprofile"),
     ]

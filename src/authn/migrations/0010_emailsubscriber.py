@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("authn", "0009_alter_emailauthchallenge_purpose"),
     ]
