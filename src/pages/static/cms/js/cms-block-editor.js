@@ -519,21 +519,6 @@
         current[lastKey] = value;
     }
 
-    function getNestedValue(obj, path) {
-        var parts = path.split('.');
-        var current = obj;
-        for (var i = 0; i < parts.length; i++) {
-            var key = parts[i];
-            if (/^\d+$/.test(key)) key = parseInt(key);
-            if (current === undefined || current === null) return undefined;
-            current = current[key];
-        }
-        return current;
-    }
-
-    // Default data factories for repeater items (keyed by block_type + field)
-    var repeaterDefaults = {};
-
     // ===== Sync =====
     function syncToJson() {
         var hidden = document.getElementById('id_blocks_json');
