@@ -1,18 +1,19 @@
 """
-Two-step admin login via email verification code (plain Django view, not DRF).
+Admin login via email verification code or password (plain Django view, not DRF).
 """
 
 import logging
 
 from django.contrib import admin, auth
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
+from django.core.cache import cache
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.decorators.cache import never_cache
 
-from authn.forms.admin_login import AdminCodeForm, AdminEmailForm
+from authn.forms.admin_login import AdminCodeForm, AdminEmailForm, AdminPasswordForm
 from authn.models.security import EmailAuthChallenge
 from authn.services.email_challenges import (
     AuthChallengeDeliveryError,
@@ -33,10 +34,35 @@ _SESSION_MEMBER_ID = "admin_login_member_id"
 
 PURPOSE = EmailAuthChallenge.Purpose.ADMIN_LOGIN
 
+_RATE_LIMIT_PREFIX = "admin_pwd_login:"
+_MAX_PASSWORD_ATTEMPTS = 5
+_RATE_LIMIT_WINDOW = 60  # seconds
+
 
 def _clear_session(request):
     for key in (_SESSION_STEP, _SESSION_EMAIL, _SESSION_MEMBER_ID):
         request.session.pop(key, None)
+
+
+def _password_rate_key(request):
+    ip = request.META.get("REMOTE_ADDR", "unknown")
+    return f"{_RATE_LIMIT_PREFIX}{ip}"
+
+
+def _is_password_throttled(request):
+    return (cache.get(_password_rate_key(request), 0)) >= _MAX_PASSWORD_ATTEMPTS
+
+
+def _record_password_failure(request):
+    key = _password_rate_key(request)
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, _RATE_LIMIT_WINDOW)
+
+
+def _clear_password_rate_limit(request):
+    cache.delete(_password_rate_key(request))
 
 
 def _admin_context(request, **extra):
@@ -44,6 +70,11 @@ def _admin_context(request, **extra):
     ctx["site_title"] = admin.site.site_title
     ctx["site_header"] = admin.site.site_header
     ctx["title"] = "Log in"
+    # Build toggle URLs preserving ?next= parameter
+    next_param = request.GET.get("next", "")
+    next_qs = f"&next={next_param}" if next_param else ""
+    ctx["password_mode_url"] = f"?mode=password{next_qs}"
+    ctx["email_code_mode_url"] = f"?step=email{next_qs}"
     ctx.update(extra)
     return ctx
 
@@ -57,11 +88,18 @@ def _safe_next(request):
 
 @method_decorator(never_cache, name="dispatch")
 class AdminLoginView(View):
-    """Passwordless admin login: email → SES code → verify → login."""
+    """Admin login: email code flow OR password flow."""
 
     def get(self, request):
         if request.user.is_authenticated and request.user.is_staff:
             return redirect(_safe_next(request))
+
+        # Password mode
+        if request.GET.get("mode") == "password":
+            _clear_session(request)
+            return render(
+                request, "admin/login.html", _admin_context(request, step="password", form=AdminPasswordForm())
+            )
 
         # Allow resetting back to email step
         if request.GET.get("step") == "email":
@@ -79,10 +117,41 @@ class AdminLoginView(View):
         if request.user.is_authenticated and request.user.is_staff:
             return redirect(_safe_next(request))
 
+        # Password mode
+        if request.POST.get("mode") == "password":
+            return self._handle_password_step(request)
+
         step = request.session.get(_SESSION_STEP, "email")
         if step == "code":
             return self._handle_code_step(request)
         return self._handle_email_step(request)
+
+    # ── password login ────────────────────────────────────────────────
+
+    def _handle_password_step(self, request):
+        if _is_password_throttled(request):
+            form = AdminPasswordForm(request.POST)
+            form.add_error(None, "Too many login attempts. Please try again later.")
+            return render(request, "admin/login.html", _admin_context(request, step="password", form=form))
+
+        form = AdminPasswordForm(request.POST)
+        if not form.is_valid():
+            return render(request, "admin/login.html", _admin_context(request, step="password", form=form))
+
+        email = form.cleaned_data["email"].strip().lower()
+        password = form.cleaned_data["password"]
+
+        member = authenticate(request, username=email, password=password)
+        if member is None or not member.is_staff or not member.is_active:
+            _record_password_failure(request)
+            form.add_error(None, "Invalid email or password.")
+            return render(request, "admin/login.html", _admin_context(request, step="password", form=form))
+
+        _clear_password_rate_limit(request)
+        auth.login(request, member, backend="authn.backends.EmailOrUsernameBackend")
+        _clear_session(request)
+        logger.info("Admin login via password: %s", member.email)
+        return redirect(_safe_next(request))
 
     # ── step 1: email ───────────────────────────────────────────────
 
