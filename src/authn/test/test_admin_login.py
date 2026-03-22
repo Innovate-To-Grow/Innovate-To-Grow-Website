@@ -1,5 +1,5 @@
 """
-Tests for the two-step admin login via email verification code.
+Tests for admin login via email verification code and password.
 """
 
 from datetime import timedelta
@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -176,3 +177,104 @@ class AdminLoginViewTest(TestCase):
         resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Too many codes requested")
+
+
+@override_settings(ROOT_URLCONF="core.urls")
+class AdminPasswordLoginTest(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.staff = Member.objects.create_user(
+            username="admin",
+            email="admin@example.com",
+            password="testpass123",
+            is_staff=True,
+            is_active=True,
+        )
+        self.non_staff = Member.objects.create_user(
+            username="regular",
+            email="regular@example.com",
+            password="testpass123",
+            is_staff=False,
+            is_active=True,
+        )
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_get_password_mode_shows_password_form(self):
+        resp = self.client.get(LOGIN_URL + "?mode=password")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="password"')
+        self.assertContains(resp, 'name="mode"')
+        self.assertContains(resp, "Sign In")
+
+    def test_post_password_valid_credentials_logs_in(self):
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "testpass123"}
+        )
+        self.assertRedirects(resp, "/admin/", fetch_redirect_response=False)
+        # User should be authenticated
+        resp2 = self.client.get("/admin/")
+        self.assertEqual(resp2.status_code, 200)
+
+    def test_post_password_wrong_password_shows_error(self):
+        resp = self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Invalid email or password")
+
+    def test_post_password_unknown_email_shows_error(self):
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "unknown@example.com", "password": "testpass123"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Invalid email or password")
+
+    def test_post_password_non_staff_shows_error(self):
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "regular@example.com", "password": "testpass123"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Invalid email or password")
+
+    def test_post_password_inactive_user_shows_error(self):
+        self.staff.is_active = False
+        self.staff.save()
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "testpass123"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Invalid email or password")
+
+    def test_password_next_redirect(self):
+        url = LOGIN_URL + "?next=/admin/pages/cmspage/"
+        resp = self.client.post(url, {"mode": "password", "email": "admin@example.com", "password": "testpass123"})
+        self.assertRedirects(resp, "/admin/pages/cmspage/", fetch_redirect_response=False)
+
+    @patch("authn.views.admin_login.issue_email_challenge")
+    def test_password_mode_clears_email_code_session(self, mock_issue):
+        # Start email-code flow
+        self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+        self.assertEqual(self.client.session.get("admin_login_step"), "code")
+
+        # Switch to password mode
+        resp = self.client.get(LOGIN_URL + "?mode=password")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="password"')
+        self.assertNotIn("admin_login_step", self.client.session)
+
+    def test_toggle_link_on_email_step(self):
+        resp = self.client.get(LOGIN_URL)
+        self.assertContains(resp, "Sign in with password instead")
+
+    def test_toggle_link_on_password_step(self):
+        resp = self.client.get(LOGIN_URL + "?mode=password")
+        self.assertContains(resp, "Sign in with email code instead")
+
+    def test_password_rate_limit(self):
+        for _ in range(5):
+            self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
+
+        # 6th attempt should be throttled
+        resp = self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Too many login attempts")

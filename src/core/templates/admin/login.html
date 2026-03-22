@@ -58,7 +58,8 @@
 
         /* Input field styles */
         .login-box #login-form input[type="text"],
-        .login-box #login-form input[type="email"] {
+        .login-box #login-form input[type="email"],
+        .login-box #login-form input[type="password"] {
             display: block;
             width: 100%;
             min-height: 38px;
@@ -73,7 +74,8 @@
         }
 
         .login-box #login-form input[type="text"]:focus,
-        .login-box #login-form input[type="email"]:focus {
+        .login-box #login-form input[type="email"]:focus,
+        .login-box #login-form input[type="password"]:focus {
             outline: 2px solid #9333ea;
             outline-offset: -2px;
             border-color: #9333ea;
@@ -84,7 +86,8 @@
         }
 
         .dark .login-box #login-form input[type="text"],
-        .dark .login-box #login-form input[type="email"] {
+        .dark .login-box #login-form input[type="email"],
+        .dark .login-box #login-form input[type="password"] {
             color: #f3f4f6;
             background-color: #1f2937;
             border-color: #374151;
@@ -201,6 +204,8 @@
             <div class="login-title-wrap">
                 {% if step == "code" %}
                     <span class="login-subtitle">{% translate "Enter verification code" %}</span>
+                {% elif step == "password" %}
+                    <span class="login-subtitle">{% translate "Sign in with password" %}</span>
                 {% else %}
                     <span class="login-subtitle">{% translate "Welcome back to" %}</span>
                 {% endif %}
@@ -278,6 +283,49 @@
                 </form>
             </div>
 
+        {% elif step == "password" %}
+            {# ── Password login ── #}
+            <form action="{{ request.get_full_path }}" method="post" id="login-form">
+                {% csrf_token %}
+                <input type="hidden" name="mode" value="password">
+
+                <div class="mb-4">
+                    <label for="id_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {% translate "Email" %}
+                    </label>
+                    <input type="email"
+                           name="email"
+                           id="id_email"
+                           placeholder="{% translate 'Email' %}"
+                           autofocus
+                           required
+                           autocomplete="email"
+                           {% if form.email.value %}value="{{ form.email.value }}"{% endif %}>
+                </div>
+
+                <div class="mb-4">
+                    <label for="id_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {% translate "Password" %}
+                    </label>
+                    <input type="password"
+                           name="password"
+                           id="id_password"
+                           placeholder="{% translate 'Password' %}"
+                           required
+                           autocomplete="current-password">
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                        {% translate 'Sign In' %}
+                    {% endcomponent %}
+                </div>
+            </form>
+
+            <div class="login-links" style="justify-content: center;">
+                <a href="{{ email_code_mode_url }}">{% translate "Sign in with email code instead" %}</a>
+            </div>
+
         {% else %}
             {# ── Step 1: Email entry ── #}
             <form action="{{ request.get_full_path }}" method="post" id="login-form">
@@ -302,6 +350,10 @@
                     {% endcomponent %}
                 </div>
             </form>
+
+            <div class="login-links" style="justify-content: center;">
+                <a href="{{ password_mode_url }}">{% translate "Sign in with password instead" %}</a>
+            </div>
         {% endif %}
     </div>
 {% endblock %}
