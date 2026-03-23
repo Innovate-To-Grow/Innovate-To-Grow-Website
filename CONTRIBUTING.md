@@ -1,4 +1,4 @@
-//# Contributing to the Innovate to Grow Website
+# Contributing to the Innovate to Grow Website
 
 Thanks for your interest in helping build the UC Merced Innovate to Grow (ITG) website. This project pairs a Django REST Framework backend (`src/`) with a React + TypeScript frontend powered by Vite (`pages/`). Please read this guide before opening a pull request so we can keep the codebase maintainable and releases predictable.
 

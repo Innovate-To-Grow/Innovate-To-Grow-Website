@@ -1,0 +1,11 @@
+.template-email-page {
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+@media (max-width: 768px) {
+  .template-email-page {
+    padding: var(--itg-page-padding-mobile);
+  }
+}

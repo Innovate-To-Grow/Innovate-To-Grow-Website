@@ -33,6 +33,7 @@ import './page-styles/ProjectSubmissionPage.css';
 import './page-styles/SponsorAcknowledgementPage.css';
 import './page-styles/HomePage.css';
 import './page-styles/PostEventHomePage.css';
+import './page-styles/TemplateEmailPage.css';
 
 interface CMSPageComponentProps {
   routeOverride?: string;
