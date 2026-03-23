@@ -1,6 +1,9 @@
 import json
+import logging
 
 from django.http import HttpResponse
+
+logger = logging.getLogger(__name__)
 
 
 class HealthCheckMiddleware:
@@ -44,7 +47,8 @@ class HealthCheckMiddleware:
                     health_status["maintenance"] = True
                     health_status["maintenance_message"] = config.message
             except (DatabaseError, OSError):
-                pass
+                # Log maintenance configuration lookup errors but do not fail the health check.
+                logger.exception("Failed to load SiteMaintenanceControl configuration during health check")
 
             return HttpResponse(json.dumps(health_status), content_type="application/json")
         return self.get_response(request)
