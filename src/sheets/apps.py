@@ -1,4 +1,8 @@
+import logging
+
 from django.apps import AppConfig
+
+logger = logging.getLogger(__name__)
 
 
 class SheetsConfig(AppConfig):
@@ -11,4 +15,5 @@ class SheetsConfig(AppConfig):
             from . import admin  # noqa
             from . import signals  # noqa
         except ImportError:
-            pass
+            # admin or signals modules are optional; ignore if not present
+            logger.warning("sheets: could not import admin or signals modules")
