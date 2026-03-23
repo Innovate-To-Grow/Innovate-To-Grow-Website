@@ -106,6 +106,7 @@ class GoogleAccountModelTest(TestCase):
 class EmailLogModelTest(TestCase):
     """Tests for EmailLog model."""
 
+    # noinspection PyPep8Naming
     def setUp(self):
         self.account = GoogleAccount.objects.create(
             email="test@example.com",
@@ -158,6 +159,7 @@ class EmailLogModelTest(TestCase):
 class SESAccountModelTest(TestCase):
     """Tests for SESAccount model."""
 
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         SESAccount.all_objects.all().hard_delete()
 
@@ -208,6 +210,7 @@ class SESAccountModelTest(TestCase):
 class SESEmailLogModelTest(TestCase):
     """Tests for SESEmailLog model."""
 
+    # noinspection PyPep8Naming
     def setUp(self):
         SESAccount.all_objects.all().hard_delete()
         self.account = SESAccount.objects.create(display_name="SES Sender")
@@ -239,6 +242,7 @@ class SESEmailLogModelTest(TestCase):
 
 
 class SESLogBackfillMigrationTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         SESAccount.all_objects.all().hard_delete()
         self.account = SESAccount.objects.create(display_name="SES Sender")

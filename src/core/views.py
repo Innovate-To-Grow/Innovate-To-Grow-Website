@@ -16,6 +16,7 @@ class MaintenanceBypassView(APIView):
 
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         password = request.data.get("password", "")
         if not password:
@@ -39,6 +40,7 @@ class MaintenanceBypassView(APIView):
         return Response({"success": False, "error": "Incorrect password."}, status=status.HTTP_403_FORBIDDEN)
 
 
+# noinspection PyUnusedLocal
 def custom_404(request, exception):
     """Custom 404 page using the admin theme."""
     return render(request, "404.html", status=404)

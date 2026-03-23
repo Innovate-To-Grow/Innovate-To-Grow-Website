@@ -113,11 +113,14 @@ class PageViewAdmin(ModelAdmin):
             return "-"
         return f"{obj.session_key[:8]}…"
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
         return False
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_change_permission(self, request, obj=None):
         return False
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         return False

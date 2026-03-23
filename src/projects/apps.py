@@ -6,5 +6,6 @@ class ProjectsConfig(AppConfig):
     name = "projects"
     verbose_name = "Projects"
 
+    # noinspection PyMethodMayBeStatic
     def ready(self):
         from . import signals  # noqa: F401

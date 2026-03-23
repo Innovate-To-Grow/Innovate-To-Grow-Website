@@ -17,25 +17,28 @@ from .models import CMSBlock, CMSPage, FooterContent, Menu, SiteSettings
 @receiver([post_save, post_delete], sender=Menu)
 @receiver([post_save, post_delete], sender=FooterContent)
 @receiver([post_save, post_delete], sender=SiteSettings)
+# noinspection PyUnusedLocal
 def invalidate_layout_cache(sender, instance, **kwargs):
     """Clear layout cache when Menu or FooterContent is saved or deleted."""
     transaction.on_commit(lambda: cache.delete("layout:data"))
 
 
 @receiver(pre_save, sender=CMSPage)
+# noinspection PyUnusedLocal
 def stash_old_cms_route(sender, instance, **kwargs):
     """Remember the old route before save so we can clear its cache in post_save."""
     if instance.pk:
         try:
             old = CMSPage.all_objects.filter(pk=instance.pk).values_list("route", flat=True).first()
             instance._old_route = old
-        except Exception:
+        except (CMSPage.DoesNotExist, ValueError):
             instance._old_route = None
     else:
         instance._old_route = None
 
 
 @receiver([post_save, post_delete], sender=CMSPage)
+# noinspection PyUnusedLocal
 def invalidate_cms_page_cache(sender, instance, **kwargs):
     """Clear CMS page cache when a CMSPage is saved or deleted."""
     route = instance.route
@@ -51,6 +54,7 @@ def invalidate_cms_page_cache(sender, instance, **kwargs):
 
 
 @receiver([post_save, post_delete], sender=CMSBlock)
+# noinspection PyUnusedLocal
 def invalidate_cms_block_cache(sender, instance, **kwargs):
     """Clear CMS page cache when a CMSBlock is saved or deleted."""
     page_id = instance.page_id

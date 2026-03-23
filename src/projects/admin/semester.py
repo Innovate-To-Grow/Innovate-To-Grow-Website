@@ -101,7 +101,7 @@ class SemesterAdmin(ModelAdmin):
                         stats["sources_synced"],
                     ),
                 )
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError):  # noinspection PyBroadException
                 logger.exception("Sheets sync failed")
                 context["error"] = "An unexpected error occurred during sync. Check the server logs."
 
@@ -135,7 +135,7 @@ class SemesterAdmin(ModelAdmin):
                 )
             except ValueError as e:
                 context["error"] = str(e)
-            except Exception:
+            except (OSError, TypeError, KeyError):
                 logger.exception("Excel import failed")
                 context["error"] = "An unexpected error occurred during import. Check the server logs."
 

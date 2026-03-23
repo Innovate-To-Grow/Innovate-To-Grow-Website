@@ -38,6 +38,7 @@ class SiteMaintenanceControl(models.Model):
         status = "ON" if self.is_maintenance else "OFF"
         return f"Maintenance Mode: {status}"
 
+    # noinspection PyAttributeOutsideInit
     def save(self, *args, **kwargs):
         # Enforce singleton: always use pk=1
         self.pk = 1

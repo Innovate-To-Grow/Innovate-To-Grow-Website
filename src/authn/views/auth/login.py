@@ -23,6 +23,7 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
 

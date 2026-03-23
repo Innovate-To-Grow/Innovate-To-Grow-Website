@@ -23,6 +23,7 @@ def sample_row(**overrides):
 
 
 class PastProjectShareAPIViewTests(TestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.client = APIClient()

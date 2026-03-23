@@ -16,6 +16,7 @@ class SubscribeView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = SubscribeSerializer(data=request.data)
         if not serializer.is_valid():

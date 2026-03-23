@@ -5,6 +5,7 @@ class PagesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "pages"
 
+    # noinspection PyMethodMayBeStatic
     def ready(self):
         """Import admin and signals when Django apps are ready."""
         try:

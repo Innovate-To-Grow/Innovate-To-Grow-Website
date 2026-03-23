@@ -7,6 +7,7 @@ from django.test import SimpleTestCase
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+# noinspection PyProtectedMember
 from authn.models.members.member import MemberProfile
 from authn.utils import generate_unique_username
 from authn.views.account.profile import _validate_image_bytes
@@ -17,6 +18,7 @@ Member = get_user_model()
 class PublicTokenRefreshTests(APITestCase):
     """Tests for the PublicTokenRefreshView (S1 fix)."""
 
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(
@@ -82,6 +84,7 @@ class ImageMagicByteValidationTests(SimpleTestCase):
 class ProfileImageUploadTests(APITestCase):
     """Tests for profile image upload validation (S6 + B6 fixes)."""
 
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(

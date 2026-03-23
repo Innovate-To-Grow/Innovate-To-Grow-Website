@@ -1,8 +1,10 @@
+# noinspection PyPep8Naming
 import logging
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.core.cache import cache
+from django.db import DatabaseError
 
 from ..models import NewsArticle
 from .feed_parser import (
@@ -23,7 +25,7 @@ def _scrape_one(article_id, source_url: str) -> tuple:
     """Scrape a single article page. Returns (article_id, scraped_dict | None)."""
     try:
         return article_id, scrape_article(source_url)
-    except Exception:
+    except Exception:  # noqa: BLE001 — scraper can raise arbitrary errors
         logger.warning("Failed to scrape %s, using RSS content", source_url)
         return article_id, None
 
@@ -37,7 +39,7 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
     try:
         xml_bytes = fetch_feed(feed_url) if feed_url else fetch_feed()
         items = parse_feed_items(xml_bytes)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — feed fetcher/parser can raise arbitrary errors
         logger.exception("Failed to fetch/parse RSS feed")
         return {"created": 0, "updated": 0, "errors": [str(e)]}
 
@@ -64,7 +66,7 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
                     child = ET.SubElement(raw_el, key)
                     child.text = val
                 raw = ET.tostring(raw_el, encoding="unicode")
-            except Exception:
+            except (TypeError, ValueError):
                 logger.debug("Failed to serialize raw XML for item: %s", item.get("guid", "unknown"))
 
             defaults = {
@@ -91,7 +93,7 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
             else:
                 updated += 1
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, DatabaseError) as e:
             logger.exception("Error syncing item: %s", item.get("guid", "unknown"))
             errors.append(f"Error syncing {item.get('guid', 'unknown')}: {e}")
 
@@ -102,7 +104,7 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
             for future in as_completed(futures):
                 try:
                     article_id, scraped = future.result()
-                except Exception:
+                except Exception:  # noqa: BLE001 — re-raised from worker thread
                     logger.exception("Unexpected error in scrape worker")
                     continue
 

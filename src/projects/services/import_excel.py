@@ -115,16 +115,16 @@ def import_projects_from_excel(file):
 
     proj_col = {name: idx for idx, name in enumerate(proj_headers) if name}
 
-    def get(row, col_name, default=""):
+    def get_cell(data_row, col_name, default=""):
         idx = proj_col.get(col_name)
-        if idx is None or idx >= len(row):
+        if idx is None or idx >= len(data_row):
             return default
-        return row[idx]
+        return data_row[idx]
 
     for row in proj_rows[1:]:
-        year = _to_int(get(row, "year"))
-        season = _to_int(get(row, "season"))
-        title = _to_str(get(row, "project_title"))
+        year = _to_int(get_cell(row, "year"))
+        season = _to_int(get_cell(row, "season"))
+        title = _to_str(get_cell(row, "project_title"))
 
         if not year or not season or not title:
             stats["rows_skipped"] += 1
@@ -140,17 +140,17 @@ def import_projects_from_excel(file):
             if created:
                 stats["semesters_created"] += 1
 
-        team_number = _to_str(get(row, "team_number"))
+        team_number = _to_str(get_cell(row, "team_number"))
         defaults = {
-            "team_name": _to_str(get(row, "team_name")),
+            "team_name": _to_str(get_cell(row, "team_name")),
             "project_title": title,
-            "organization": _to_str(get(row, "organization")),
-            "industry": _to_str(get(row, "industry")),
-            "abstract": _to_str(get(row, "abstract")),
-            "student_names": _to_str(get(row, "student_names")),
-            "track": _to_int(get(row, "track")),
-            "presentation_order": _to_int(get(row, "presentation_order")),
-            "class_code": _to_str(get(row, "class_code")),
+            "organization": _to_str(get_cell(row, "organization")),
+            "industry": _to_str(get_cell(row, "industry")),
+            "abstract": _to_str(get_cell(row, "abstract")),
+            "student_names": _to_str(get_cell(row, "student_names")),
+            "track": _to_int(get_cell(row, "track")),
+            "presentation_order": _to_int(get_cell(row, "presentation_order")),
+            "class_code": _to_str(get_cell(row, "class_code")),
         }
 
         _, created = Project.objects.update_or_create(

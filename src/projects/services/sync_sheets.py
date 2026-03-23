@@ -1,4 +1,5 @@
 """Sync project data from Google Sheets into the projects database."""
+# noinspection DuplicatedCode
 
 import logging
 import re

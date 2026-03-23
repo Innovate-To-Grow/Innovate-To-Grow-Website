@@ -38,6 +38,7 @@ class GoogleSheetSourceAdmin(ModelAdmin):
         extra_context["show_import_buttons"] = True
         return super().changelist_view(request, extra_context)
 
+    # noinspection PyMethodMayBeStatic
     def _serialize_source(self, source):
         return {
             "slug": source.slug,
@@ -52,6 +53,7 @@ class GoogleSheetSourceAdmin(ModelAdmin):
             "is_active": source.is_active,
         }
 
+    # noinspection PyMethodMayBeStatic
     def _build_source_from_data(self, source, source_data):
         source.slug = source_data.get("slug", "")
         source.title = source_data.get("title", "")

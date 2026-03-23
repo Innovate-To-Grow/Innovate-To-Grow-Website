@@ -6,6 +6,7 @@ from projects.services.sync_sheets import sync_all_project_sheets, sync_from_she
 class Command(BaseCommand):
     help = "Sync project data from Google Sheets into the database"
 
+    # noinspection PyMethodMayBeStatic
     def add_arguments(self, parser):
         parser.add_argument("--slug", type=str, help="Sync only the GoogleSheetSource with this slug")
         parser.add_argument("--spreadsheet-id", type=str, help="Google Spreadsheet ID (for direct sync)")
@@ -18,6 +19,7 @@ class Command(BaseCommand):
         )
         parser.add_argument("--semester-filter", type=str, default="", help="Filter rows by semester value")
 
+    # noinspection PyUnusedLocal
     def handle(self, *args, **options):
         spreadsheet_id = options.get("spreadsheet_id")
         range_a1 = options.get("range")

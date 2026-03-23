@@ -9,6 +9,7 @@ Member = get_user_model()
 
 
 class CMSPageAdminFormTests(TestCase):
+    # noinspection PyMethodMayBeStatic
     def build_form_data(self, **overrides):
         data = {
             "slug": "cms-admin-test",
@@ -52,6 +53,7 @@ class CMSPageAdminFormTests(TestCase):
 
 
 class CMSPageAdminViewTests(TestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         self.admin_user = Member.objects.create_superuser(
             username="admin",

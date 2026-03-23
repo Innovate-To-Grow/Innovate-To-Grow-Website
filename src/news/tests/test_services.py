@@ -114,6 +114,7 @@ class ScraperTest(TestCase):
 class SyncNewsTest(TestCase):
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed")
+    # noinspection PyUnusedLocal
     def test_sync_creates_articles(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = SAMPLE_RSS
         result = sync_news()
@@ -124,6 +125,7 @@ class SyncNewsTest(TestCase):
 
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed")
+    # noinspection PyUnusedLocal
     def test_sync_source_key_flows_to_articles(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = SAMPLE_RSS
         sync_news(source_key="custom-source")
@@ -132,6 +134,7 @@ class SyncNewsTest(TestCase):
 
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed")
+    # noinspection PyUnusedLocal
     def test_sync_updates_existing(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = SAMPLE_RSS
         sync_news()
@@ -141,6 +144,7 @@ class SyncNewsTest(TestCase):
 
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed")
+    # noinspection PyUnusedLocal
     def test_sync_extracts_fields(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = SAMPLE_RSS
         sync_news()
@@ -153,6 +157,7 @@ class SyncNewsTest(TestCase):
 
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed")
+    # noinspection PyUnusedLocal
     def test_sync_stores_content_fallback_rss(self, mock_fetch, mock_scrape):
         """When scraping fails, RSS description content is preserved."""
         mock_fetch.return_value = SAMPLE_RSS
@@ -179,6 +184,7 @@ class SyncNewsTest(TestCase):
 
     @patch("news.services.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("news.services.sync.fetch_feed", side_effect=Exception("Network error"))
+    # noinspection PyUnusedLocal
     def test_sync_handles_fetch_error(self, mock_fetch, mock_scrape):
         result = sync_news()
         self.assertEqual(result["created"], 0)

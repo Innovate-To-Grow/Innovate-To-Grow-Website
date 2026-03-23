@@ -46,7 +46,7 @@ def get_logo_inline_image() -> tuple[str, str, bytes]:
     Returns:
         (cid, filename, bytes) — pass to SESService.send_message(inline_images=[...])
     """
-    return (_LOGO_CID, _LOGO_FILENAME, _read_logo_bytes())
+    return _LOGO_CID, _LOGO_FILENAME, _read_logo_bytes()
 
 
 def get_logo_data_uri() -> str:

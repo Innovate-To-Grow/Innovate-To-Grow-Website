@@ -10,6 +10,7 @@ Member = get_user_model()
 
 
 class AcceptInvitationViewTests(TestCase):
+    # noinspection PyMethodMayBeStatic
     def _create_invitation(self, email="invite@example.com", role=AdminInvitation.Role.STAFF, **kwargs):
         defaults = {
             "email": email,

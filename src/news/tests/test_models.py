@@ -85,6 +85,7 @@ class NewsFeedSourceModelTest(TestCase):
 
 
 class NewsSyncLogModelTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.source = NewsFeedSource.objects.create(
             name="Test Source",

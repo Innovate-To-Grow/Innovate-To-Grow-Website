@@ -24,6 +24,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         fields = ["id", "rows", "share_url", "created_at"]
         read_only_fields = ["id", "share_url", "created_at"]
 
+    # noinspection PyMethodMayBeStatic
     def validate_rows(self, value):
         if not value:
             raise serializers.ValidationError("At least one row is required.")
@@ -37,5 +38,6 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             return f"/past-projects/{obj.pk}"
         return request.build_absolute_uri(f"/past-projects/{obj.pk}")
 
+    # noinspection PyMethodMayBeStatic
     def create(self, validated_data):
         return PastProjectShare.objects.create(rows=validated_data["rows"])

@@ -4,7 +4,9 @@ from django.test import TestCase
 from projects.models import Project, Semester
 
 
+# noinspection DuplicatedCode
 class ProjectCacheInvalidationSignalTests(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
 

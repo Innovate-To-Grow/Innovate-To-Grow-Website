@@ -10,6 +10,7 @@ Member = get_user_model()
 
 
 class NewsArticleAdminTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.admin = Member.objects.create_superuser(
             email="admin@test.com",
@@ -24,6 +25,7 @@ class NewsArticleAdminTest(TestCase):
 
 
 class NewsFeedSourceAdminTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.admin = Member.objects.create_superuser(
             email="admin@test.com",
@@ -100,6 +102,7 @@ class NewsFeedSourceAdminTest(TestCase):
 
 
 class NewsSyncLogAdminTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.admin = Member.objects.create_superuser(
             email="admin@test.com",

@@ -7,6 +7,7 @@ Member = get_user_model()
 
 
 class ContactPhoneTests(APITestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         self.member = Member.objects.create_user(
             username="testuser",

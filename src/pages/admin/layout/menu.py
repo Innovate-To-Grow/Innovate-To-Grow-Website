@@ -21,6 +21,7 @@ class MenuAdmin(ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
 
+    # noinspection PyMethodMayBeStatic
     def _get_editor_context(self):
         """Build context with app routes and CMS pages for the menu editor."""
         cms_pages = list(CMSPage.objects.filter(status="published").order_by("title").values("route", "title"))

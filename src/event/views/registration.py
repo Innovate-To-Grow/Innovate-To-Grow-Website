@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class EventRegistrationOptionsView(APIView):
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic,PyProtectedMember
     def get(self, request):
         event = (
             Event.objects.filter(is_live=True)
@@ -56,6 +57,7 @@ class EventRegistrationOptionsView(APIView):
 class EventRegistrationCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = EventRegistrationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -159,6 +161,7 @@ class EventRegistrationCreateView(APIView):
 class MyTicketsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request):
         registrations = EventRegistration.objects.filter(member=request.user).select_related("event", "ticket")
         return Response([build_registration_payload(r, request=request) for r in registrations])
@@ -167,6 +170,7 @@ class MyTicketsView(APIView):
 class ResendTicketEmailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
         try:
             registration = EventRegistration.objects.select_related("event", "ticket", "member").get(pk=pk)

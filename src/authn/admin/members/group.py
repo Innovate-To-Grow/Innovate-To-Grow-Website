@@ -28,6 +28,7 @@ class I2GMemberGroupAdmin(ModelAdmin):
     actions = ["create_default_groups"]
 
     @admin.action(description="Create default I2G groups")
+    # noinspection PyUnusedLocal
     def create_default_groups(self, request, queryset):
         I2GMemberGroup.create_default_groups()
         self.message_user(request, "Default I2G groups have been created.")

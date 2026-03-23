@@ -28,6 +28,7 @@ class ContactEmailCreateSerializer(serializers.Serializer):
     )
     subscribe = serializers.BooleanField(default=False)
 
+    # noinspection PyMethodMayBeStatic
     def validate_email_type(self, value):
         if value == "primary":
             raise serializers.ValidationError("Cannot create a contact email with type 'primary'.")
@@ -43,6 +44,7 @@ class ContactEmailUpdateSerializer(serializers.Serializer):
     )
     subscribe = serializers.BooleanField(required=False)
 
+    # noinspection PyMethodMayBeStatic
     def validate_email_type(self, value):
         if value == "primary":
             raise serializers.ValidationError("Cannot set contact email type to 'primary'.")
@@ -54,6 +56,7 @@ class ContactEmailVerifyCodeSerializer(serializers.Serializer):
 
     code = serializers.CharField(required=True, min_length=6, max_length=6)
 
+    # noinspection PyMethodMayBeStatic
     def validate_code(self, value):
         if not re.match(r"^\d{6}$", value):
             raise serializers.ValidationError("Code must be exactly 6 digits.")

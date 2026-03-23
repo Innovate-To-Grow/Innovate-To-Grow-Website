@@ -2,6 +2,8 @@
 Registration serializer for user signup.
 """
 
+from __future__ import annotations
+
 import re
 
 from django.conf import settings
@@ -70,16 +72,19 @@ class RegisterSerializer(serializers.Serializer):
         help_text="Organization or company the user belongs to.",
     )
 
+    # noinspection PyMethodMayBeStatic
     def validate_first_name(self, value: str) -> str:
         if _HTML_TAG_RE.search(value):
             raise serializers.ValidationError("First name must not contain HTML tags.")
         return value
 
+    # noinspection PyMethodMayBeStatic
     def validate_last_name(self, value: str) -> str:
         if _HTML_TAG_RE.search(value):
             raise serializers.ValidationError("Last name must not contain HTML tags.")
         return value
 
+    # noinspection PyAttributeOutsideInit
     def validate_email(self, value: str) -> str:
         """
         Check that the email is not already registered.
@@ -91,6 +96,7 @@ class RegisterSerializer(serializers.Serializer):
         self._pending_member = pending_member
         return email_lower
 
+    # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
         """
         Decrypt passwords and validate them.

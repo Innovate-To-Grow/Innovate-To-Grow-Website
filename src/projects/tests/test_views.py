@@ -6,6 +6,7 @@ from projects.models import Project, Semester
 
 
 class CurrentProjectsAPIViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.client = APIClient()
         cache.clear()
@@ -70,6 +71,7 @@ class CurrentProjectsAPIViewTest(TestCase):
 
 
 class PastProjectsAPIViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.client = APIClient()
         cache.clear()
@@ -130,6 +132,7 @@ class PastProjectsAPIViewTest(TestCase):
 
 
 class ProjectDetailAPIViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.client = APIClient()
         cache.clear()

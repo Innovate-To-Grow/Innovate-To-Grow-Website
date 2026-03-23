@@ -1,3 +1,4 @@
+# noinspection PyPep8Naming
 import re
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime

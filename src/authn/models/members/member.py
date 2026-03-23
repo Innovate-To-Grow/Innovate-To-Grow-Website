@@ -123,7 +123,7 @@ class MemberProfile(ProjectControlModel):
     profile_image = models.TextField(
         null=True,
         blank=True,
-        help_text=("User Profile Image, Base64 Encoded PNG 128*128"),
+        help_text="User Profile Image, Base64 Encoded PNG 128*128",
         verbose_name="Profile Image (Base64 Encoded PNG)",
     )
 

@@ -2,6 +2,8 @@
 Serializers for email-code auth flows.
 """
 
+from __future__ import annotations
+
 import re
 
 from django.conf import settings
@@ -80,6 +82,7 @@ class BaseCodeVerifySerializer(BaseEmailSerializer):
 
     purpose: str = ""
 
+    # noinspection PyMethodMayBeStatic
     def validate_code(self, value: str) -> str:
         normalized = value.strip()
         if not _CODE_RE.match(normalized):
@@ -119,6 +122,7 @@ class LoginCodeVerifySerializer(BaseCodeVerifySerializer):
 
 
 class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
+    # noinspection PyMethodMayBeStatic
     def _create_pending_member(self, email: str) -> Member:
         member = Member(
             username=_generate_unique_username(email),
@@ -167,6 +171,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
 class UnifiedEmailAuthVerifySerializer(BaseEmailSerializer):
     code = serializers.CharField(required=True, max_length=6, min_length=6)
 
+    # noinspection PyMethodMayBeStatic
     def validate_code(self, value: str) -> str:
         normalized = value.strip()
         if not _CODE_RE.match(normalized):
@@ -239,9 +244,11 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password_confirm = serializers.CharField(write_only=True, required=True)
     key_id = serializers.CharField(required=False, allow_blank=True)
 
+    # noinspection PyMethodMayBeStatic
     def validate_email(self, value: str) -> str:
         return normalize_email(value)
 
+    # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
         # Resolve the member from email so the token is bound to a specific user
         email = attrs["email"]
@@ -267,6 +274,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class AccountEmailsSerializer(serializers.Serializer):
     emails = serializers.ListField(child=serializers.EmailField(), read_only=True)
 
+    # noinspection PyMethodMayBeStatic
     def to_representation(self, instance):
         return {"emails": get_member_auth_emails(instance)}
 

@@ -6,5 +6,6 @@ class NewsConfig(AppConfig):
     name = "news"
     verbose_name = "News"
 
+    # noinspection PyMethodMayBeStatic
     def ready(self):
         from . import signals  # noqa: F401

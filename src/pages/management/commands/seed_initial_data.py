@@ -102,6 +102,7 @@ MAIN_NAV_ITEMS = [
 class Command(BaseCommand):
     help = "Seed initial menu and footer data for the I2G website."
 
+    # noinspection PyUnusedLocal
     def handle(self, *args, **options):
         self._seed_menu()
         self._seed_footer()

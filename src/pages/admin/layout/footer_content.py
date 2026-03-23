@@ -22,6 +22,7 @@ class FooterContentAdmin(ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
 
+    # noinspection PyMethodMayBeStatic
     def _get_editor_context(self):
         cms_pages = list(CMSPage.objects.filter(status="published").order_by("title").values("route", "title"))
         cms_routes = [{"url": p["route"], "title": p["title"]} for p in cms_pages]

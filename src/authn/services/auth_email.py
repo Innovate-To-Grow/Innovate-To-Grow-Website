@@ -2,6 +2,8 @@
 Helpers for resolving which email addresses are eligible for auth flows.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model

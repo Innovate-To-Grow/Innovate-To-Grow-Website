@@ -83,6 +83,7 @@ class SESAccountAdmin(BaseModelAdmin):
             extra.update(extra_context)
         return super().changelist_view(request, extra_context=extra)
 
+    # noinspection PyMethodMayBeStatic
     def _get_active_account(self, request):
         """Return the active SES sender or redirect with an admin error."""
         account = SESAccount.get_active()
@@ -94,6 +95,7 @@ class SESAccountAdmin(BaseModelAdmin):
             return None
         return account
 
+    # noinspection PyProtectedMember
     def _build_compose_context(self, request, form, account):
         subscriber_count = Member.objects.filter(email_subscribe=True, is_active=True).count()
         return {
@@ -111,6 +113,7 @@ class SESAccountAdmin(BaseModelAdmin):
             "show_recipient_settings": True,
         }
 
+    # noinspection PyMethodMayBeStatic
     def _log_action(self, account, status, request, message_id="", subject="", recipients="", error=""):
         SESEmailLog.objects.create(
             account=account,
@@ -240,6 +243,7 @@ class SESAccountAdmin(BaseModelAdmin):
         account.mark_used()
         return results
 
+    # noinspection PyProtectedMember
     def send_action(self, request):
         if request.method != "POST":
             return redirect(reverse("admin:mail_ses_compose"))
@@ -285,6 +289,7 @@ class SESAccountAdmin(BaseModelAdmin):
         self._send_manual(request, account, data, attachments)
         return redirect(reverse("admin:mail_sesemaillog_changelist"))
 
+    # noinspection PyProtectedMember
     def send_confirmed_action(self, request):
         """Actually send bulk emails after confirmation."""
         if request.method != "POST":
@@ -334,6 +339,7 @@ class SESAccountAdmin(BaseModelAdmin):
         }
         return render(request, "admin/mail/ses_send_status.html", context)
 
+    # noinspection PyMethodMayBeStatic
     def preview_action(self, request):
         """Render the composed email body wrapped in the I2G layout for preview."""
         if request.method != "POST":

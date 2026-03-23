@@ -3,6 +3,8 @@ import logging
 import threading
 from collections import deque
 
+from django.db import DatabaseError
+
 from analytics.models import PageView
 
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ def _do_bulk_insert(batch: list[dict]) -> None:
         try:
             PageView.objects.bulk_create([PageView(**data) for data in batch])
             return
-        except Exception:
+        except DatabaseError:
             if attempt < _MAX_RETRIES - 1:
                 logger.warning("bulk-insert attempt %d failed, retrying…", attempt + 1)
             else:
@@ -120,7 +122,7 @@ def flush_sync() -> None:
 
     try:
         PageView.objects.bulk_create([PageView(**data) for data in batch])
-    except Exception:
+    except DatabaseError:
         logger.exception("Failed to bulk-insert %d page views on flush_sync", len(batch))
 
 

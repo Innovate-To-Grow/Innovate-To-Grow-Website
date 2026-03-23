@@ -6,6 +6,7 @@ from analytics.services.buffer import flush_sync
 
 
 class PageViewCreateViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         from analytics.services.buffer import flush_sync as _flush
 

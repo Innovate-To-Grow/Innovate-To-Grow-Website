@@ -11,6 +11,7 @@ from ..serializers import SemesterWithFullProjectsSerializer
 class CurrentProjectsAPIView(APIView):
     permission_classes = [AllowAny]
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def get(self, request):
         cache_key = "projects:current"
         cached = cache.get(cache_key)

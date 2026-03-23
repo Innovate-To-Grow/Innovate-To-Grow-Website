@@ -175,12 +175,12 @@ class GmailService:
         fetched: dict[str, dict] = {}
         batch_errors: list[str] = []
 
-        def _on_message_response(request_id, response, exception):
-            if exception is not None:
-                batch_errors.append(str(exception))
-                logger.warning("Batch get failed for message %s: %s", request_id, exception)
+        def _on_message_response(request_id, resp, exc):
+            if exc is not None:
+                batch_errors.append(str(exc))
+                logger.warning("Batch get failed for message %s: %s", request_id, exc)
             else:
-                fetched[request_id] = response
+                fetched[request_id] = resp
 
         batch: BatchHttpRequest = service.new_batch_http_request(callback=_on_message_response)
         for msg_stub in messages:

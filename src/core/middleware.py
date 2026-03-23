@@ -15,7 +15,7 @@ class HealthCheckMiddleware:
     def __call__(self, request):
         if request.path == "/health/":
             # Import here to avoid circular imports
-            from django.db import connection
+            from django.db import DatabaseError, connection
 
             from .models import SiteMaintenanceControl
 
@@ -31,7 +31,7 @@ class HealthCheckMiddleware:
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT 1")
                     cursor.fetchone()
-            except Exception as e:
+            except (DatabaseError, OSError) as e:
                 health_status["status"] = "error"
                 health_status["database"] = str(e)
                 return HttpResponse(json.dumps(health_status), content_type="application/json", status=503)
@@ -43,7 +43,7 @@ class HealthCheckMiddleware:
                     health_status["status"] = "maintenance"
                     health_status["maintenance"] = True
                     health_status["maintenance_message"] = config.message
-            except Exception:
+            except (DatabaseError, OSError):
                 pass
 
             return HttpResponse(json.dumps(health_status), content_type="application/json")

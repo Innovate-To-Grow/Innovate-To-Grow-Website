@@ -20,6 +20,7 @@ class UnsubscribeAutoLoginView(APIView):
 
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         token = request.data.get("token", "").strip()
         if not token:

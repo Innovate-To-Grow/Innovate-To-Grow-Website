@@ -153,6 +153,7 @@ class ImportExportMixin:
     import_form_template = None
 
     @admin.action(description="Export selected items as JSON")
+    # noinspection PyUnusedLocal,PyProtectedMember
     def export_as_json(self, request, queryset):
         """Export selected items as JSON."""
         data = []
@@ -191,6 +192,7 @@ class ExportMixin:
     """
 
     @admin.action(description="Export to CSV")
+    # noinspection PyUnusedLocal,PyProtectedMember
     def export_to_csv(self, request, queryset):
         """Export queryset to CSV."""
         import csv

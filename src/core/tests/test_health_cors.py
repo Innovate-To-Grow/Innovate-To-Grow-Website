@@ -25,4 +25,4 @@ class HealthCheckCORSTest(TestCase):
 
     @override_settings(ALLOWED_HOSTS=["testserver"])
     def test_health_rejects_non_allowed_host(self):
-        response = self.client.get("/health/", HTTP_HOST="not-allowed.example.com")
+        response = self.client.get("/health/", HTTP_HOST="not-allowed.example.com")  # noqa: F841

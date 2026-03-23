@@ -9,6 +9,7 @@ Member = get_user_model()
 
 
 class ContactEmailTests(APITestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         self.member = Member.objects.create_user(
             username="testuser",
@@ -198,7 +199,7 @@ class ContactEmailTests(APITestCase):
             email_address="not-mine@example.com",
             verified=True,
         )
-        response = self.client.get(f"/authn/contact-emails/{contact.pk}/")
+        response = self.client.get(f"/authn/contact-emails/{contact.pk}/")  # noqa: F841
         # Detail endpoint doesn't support GET, but PATCH/DELETE should 404
         patch_resp = self.client.patch(
             f"/authn/contact-emails/{contact.pk}/",

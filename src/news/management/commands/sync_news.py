@@ -6,6 +6,7 @@ from news.services import sync_news
 class Command(BaseCommand):
     help = "Sync news articles from UC Merced RSS feed"
 
+    # noinspection PyUnusedLocal
     def handle(self, *args, **options):
         self.stdout.write("Syncing news from RSS feed...")
         result = sync_news()

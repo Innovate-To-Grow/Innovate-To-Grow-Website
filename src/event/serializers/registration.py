@@ -38,6 +38,7 @@ def _serialize_question(question) -> dict:
     }
 
 
+# noinspection PyUnusedLocal
 def build_registration_payload(registration, request=None) -> dict:
     return {
         "id": str(registration.pk),

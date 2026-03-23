@@ -202,6 +202,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         self.message_user(request, f"{updated} member(s) deactivated.")
 
     @admin.action(description="Create default I2G groups")
+    # noinspection PyUnusedLocal
     def assign_default_groups(self, request, queryset):
         I2GMemberGroup.create_default_groups()
         self.message_user(request, "Default I2G groups created successfully.")
@@ -246,6 +247,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         ]
         return custom_urls + urls
 
+    # noinspection PyProtectedMember
     def import_excel_view(self, request):
         """Handle Excel file import."""
         from ...services.import_members import import_members_from_excel

@@ -665,10 +665,12 @@ SEED_PAGES = [
 class Command(BaseCommand):
     help = "Seed CMS pages for Batch A (simple) and Batch B (rich content)."
 
+    # noinspection PyMethodMayBeStatic
     def add_arguments(self, parser):
         parser.add_argument("--page", type=str, help="Seed a specific page by slug.")
         parser.add_argument("--force", action="store_true", help="Overwrite existing pages.")
 
+    # noinspection PyUnusedLocal,DuplicatedCode
     def handle(self, *args, **options):
         target_slug = options.get("page")
         force = options.get("force", False)

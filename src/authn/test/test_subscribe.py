@@ -7,6 +7,7 @@ from authn.models import ContactEmail
 
 
 class SubscribeViewTests(APITestCase):
+    # noinspection PyPep8Naming,PyMethodMayBeStatic
     def setUp(self):
         cache.clear()
 

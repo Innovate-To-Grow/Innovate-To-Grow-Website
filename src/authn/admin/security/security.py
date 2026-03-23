@@ -18,12 +18,14 @@ class RSAKeypairAdmin(ModelAdmin):
     list_filter = ("is_active", "created_at", "rotated_at")
     search_fields = ("name", "key_id")
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def get_readonly_fields(self, request, obj=None):
         """Keys are read-only after creation (auto-generated)."""
         if obj:  # Editing existing object
-            return ("key_id", "public_key_pem", "private_key_pem", "created_at", "rotated_at")
+            return "key_id", "public_key_pem", "private_key_pem", "created_at", "rotated_at"
         return ("key_id",)
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def get_fieldsets(self, request, obj=None):
         """Show different fieldsets for add vs change."""
         if obj:  # Editing existing object - show keys as read-only

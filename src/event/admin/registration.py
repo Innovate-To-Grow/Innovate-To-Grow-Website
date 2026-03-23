@@ -32,11 +32,14 @@ class EventRegistrationAdmin(ModelAdmin):
     )
     ordering = ("-created_at",)
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
         return False
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_change_permission(self, request, obj=None):
         return False
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         return True

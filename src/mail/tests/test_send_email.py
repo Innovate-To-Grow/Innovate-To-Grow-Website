@@ -14,6 +14,7 @@ FAKE_SERVICE_JSON = '{"type":"service_account","project_id":"test","private_key"
 class SendEmailTest(TestCase):
     """Tests for the send_email() convenience function."""
 
+    # noinspection PyPep8Naming
     def setUp(self):
         self.account = GoogleAccount.objects.create(
             email="i2g@g.ucmerced.edu",
@@ -162,6 +163,7 @@ class SendEmailTest(TestCase):
     def test_send_email_with_user(self, mock_send):
         from django.contrib.auth import get_user_model
 
+        # noinspection PyPep8Naming
         Member = get_user_model()
         admin = Member.objects.create_superuser(username="admin", email="admin@example.com", password="pass")
         mock_send.return_value = {"id": "msg_user", "thread_id": "t_user"}

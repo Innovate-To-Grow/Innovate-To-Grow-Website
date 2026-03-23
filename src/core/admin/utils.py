@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from django.utils.text import Truncator
 
 
+# noinspection PyProtectedMember
 def admin_url(obj, label=None):
     """
     Generate admin change URL for an object.
