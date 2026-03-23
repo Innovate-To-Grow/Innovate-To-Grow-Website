@@ -69,6 +69,8 @@ Students / Purchasing | Travel -> /capstone-purchasing-reimbursement
 /contact-us -> contact-us.html
 /judging -> judging.html
 /capstone-purchasing-reimbursement -> capstone-purchasing-reimbursement.html
+/template-email-team-students -> template-email-team-students.html
+/I2G-project-sponsor-acknowledgement -> I2G-project-sponsor-acknowledgement.html
 
 /i2g-students-preparation -> i2g-students-preparation.html
 /video-preparation -> video-preparation.html
@@ -87,12 +89,8 @@ Students / Purchasing | Travel -> /capstone-purchasing-reimbursement
 ### NEED TO WORK
 /template -> template.html >>> This Page is not work on the old system
 
-
-
-/template-email-team-students -> template-email-team-students.html
-
 work with layout issue
-/I2G-project-sponsor-acknowledgement -> I2G-project-sponsor-acknowledgement.html
+
 
 ### NEED TO WORK WITH NEW CONTENT MANAGEMENT SYSTEM
 /event -> event.html

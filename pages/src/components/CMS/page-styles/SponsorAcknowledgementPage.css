@@ -1,5 +1,5 @@
 .sponsor-ack-page {
-  max-width: var(--itg-page-narrow-width);
+  max-width: var(--itg-page-max-width);
   margin: 0 auto;
   padding: var(--itg-page-padding);
 }
