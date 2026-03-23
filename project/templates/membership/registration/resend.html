@@ -1,12 +1,13 @@
 {% extends "membership/layout.html" %}
 
 {% block content %}
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<br>
-<br>
-<div class="text-prompt">
-<p style="font-size:120%;">The confirmation link is invalid or has expired. 
-        <a style="font-size:120%; color:#0091b3; text-decoration: underline;" href="{{ url_for('registration.resend', token=token) }}">Resend Link!</a></p>
-</div>
+    <br>
+    <br>
+    <div class="text-prompt">
+        <p style="font-size:120%;">The confirmation link is invalid or has expired.
+            <a style="font-size:120%; color:#0091b3; text-decoration: underline;"
+               href="{{ url_for('registration.resend', token=token) }}">Resend Link!</a></p>
+    </div>
 {% endblock %}
