@@ -32,16 +32,20 @@ def get_or_create_auth_keypair() -> RSAKeypair:
     """
     Get the active authentication keypair, creating one if it doesn't exist.
     Automatically rotates the key if it's older than KEY_ROTATION_INTERVAL.
-    Uses get_or_create to prevent race conditions under concurrent requests.
+    If duplicate active keypairs exist, keeps the newest and deactivates the rest.
     """
-    keypair, _created = RSAKeypair.objects.get_or_create(
-        name=AUTH_KEY_NAME,
-        is_active=True,
-        defaults={},
-    )
+    active_keypairs = RSAKeypair.objects.filter(name=AUTH_KEY_NAME, is_active=True).order_by("-created_at")
+    count = active_keypairs.count()
 
-    if _created:
+    if count == 0:
+        # No active keypair exists, create one
+        keypair = RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
         return keypair
+
+    # Keep the newest keypair, deactivate any duplicates
+    keypair = active_keypairs[0]
+    if count > 1:
+        RSAKeypair.objects.filter(name=AUTH_KEY_NAME, is_active=True).exclude(pk=keypair.pk).update(is_active=False)
 
     # Check if rotation is needed
     last_rotation = keypair.rotated_at or keypair.created_at

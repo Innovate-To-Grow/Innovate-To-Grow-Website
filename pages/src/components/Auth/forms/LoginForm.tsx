@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
@@ -12,15 +12,42 @@ export const LoginForm = () => {
     clearError,
   } = useAuth();
   const navigate = useNavigate();
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const validateForm = (requirePassword: boolean) => {
+    const trimmedEmail = email.trim();
+    const emailInput = emailInputRef.current;
+
+    if (!trimmedEmail) {
+      setValidationError('Please enter your email address.');
+      return false;
+    }
+
+    if (emailInput && !emailInput.validity.valid) {
+      setValidationError('Please enter a valid email address.');
+      return false;
+    }
+
+    if (requirePassword && !password) {
+      setValidationError('Please enter your password.');
+      return false;
+    }
+
+    setValidationError(null);
+    return true;
+  };
 
   const handleEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setInfoMessage(null);
+    clearError();
+    if (!validateForm(false)) return;
     try {
       const response = await requestEmailAuthCode(email);
       setInfoMessage(response.message);
@@ -33,6 +60,8 @@ export const LoginForm = () => {
   const handlePasswordSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setInfoMessage(null);
+    clearError();
+    if (!validateForm(true)) return;
     try {
       await login(email, password);
       navigate(requiresProfileCompletion ? '/complete-profile' : '/account', { replace: true });
@@ -46,6 +75,7 @@ export const LoginForm = () => {
     setPassword('');
     clearError();
     setInfoMessage(null);
+    setValidationError(null);
   };
 
   return (
@@ -59,22 +89,23 @@ export const LoginForm = () => {
         </div>
       )}
 
-      {error && (
+      {(validationError || error) && (
         <div className="auth-alert-wrapper">
           <div className="auth-alert error" role="alert">
             <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
-            <span>{error}</span>
+            <span>{validationError ?? error}</span>
           </div>
         </div>
       )}
 
       {showPasswordForm ? (
-        <form className="auth-form" onSubmit={handlePasswordSubmit}>
+        <form className="auth-form" onSubmit={handlePasswordSubmit} noValidate>
           <div className="auth-form-group">
             <label className="auth-form-label" htmlFor="login-email">
               Email
             </label>
             <input
+              ref={emailInputRef}
               id="login-email"
               type="email"
               className="auth-form-input"
@@ -83,6 +114,7 @@ export const LoginForm = () => {
                 setEmail(event.target.value);
                 clearError();
                 setInfoMessage(null);
+                setValidationError(null);
               }}
               placeholder="your@email.com"
               required
@@ -102,6 +134,7 @@ export const LoginForm = () => {
               onChange={(event) => {
                 setPassword(event.target.value);
                 clearError();
+                setValidationError(null);
               }}
               placeholder="Enter your password"
               required
@@ -139,12 +172,13 @@ export const LoginForm = () => {
           </div>
         </form>
       ) : (
-        <form className="auth-form" onSubmit={handleEmailSubmit}>
+        <form className="auth-form" onSubmit={handleEmailSubmit} noValidate>
           <div className="auth-form-group">
             <label className="auth-form-label" htmlFor="login-email">
               Email
             </label>
             <input
+              ref={emailInputRef}
               id="login-email"
               type="email"
               className="auth-form-input"
@@ -153,6 +187,7 @@ export const LoginForm = () => {
                 setEmail(event.target.value);
                 clearError();
                 setInfoMessage(null);
+                setValidationError(null);
               }}
               placeholder="your@email.com"
               required
