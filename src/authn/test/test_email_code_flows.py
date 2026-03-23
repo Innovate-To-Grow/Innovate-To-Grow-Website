@@ -467,3 +467,14 @@ class EmailCodeAuthFlowTests(APITestCase):
         )
         self.assertEqual(confirm_response.status_code, 400)
         self.assertIn("Verification token is invalid", str(confirm_response.data))
+
+    @patch("authn.services.email_challenges.send_auth_code_email")
+    def test_password_reset_request_same_response_for_unknown_email(self, _mock_send):
+        """Password reset for non-existent email should not reveal whether the email exists."""
+        response = self.client.post(
+            "/authn/password-reset/request-code/",
+            {"email": "nonexistent@example.com"},
+            format="json",
+        )
+        # Should return a success-like status (not 404) to prevent email enumeration
+        self.assertIn(response.status_code, [200, 202])

@@ -292,3 +292,44 @@ class ContactEmailTests(APITestCase):
         response = self.client.get("/authn/account-emails/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("will-verify@example.com", response.data["emails"])
+
+    # ── Cross-user scope enforcement ──────────────────────
+
+    @patch("authn.services.email_challenges.send_auth_code_email")
+    def test_cannot_verify_other_users_email(self, _mock_send):
+        """Verify that a user cannot verify another user's contact email."""
+        # Create contact email for other_member
+        self.client.force_authenticate(user=self.other_member)
+        create_resp = self.client.post(
+            "/authn/contact-emails/",
+            {"email_address": "other-contact@example.com"},
+            format="json",
+        )
+        other_contact_id = create_resp.data["id"]
+
+        # Switch to self.member and try to verify other_member's email
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/authn/contact-emails/{other_contact_id}/verify-code/",
+            {"code": "123456"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+    @patch("authn.services.email_challenges.send_auth_code_email")
+    def test_cannot_request_verification_for_other_users_email(self, _mock_send):
+        """Verify that a user cannot request verification for another user's contact email."""
+        self.client.force_authenticate(user=self.other_member)
+        create_resp = self.client.post(
+            "/authn/contact-emails/",
+            {"email_address": "other-contact2@example.com"},
+            format="json",
+        )
+        other_contact_id = create_resp.data["id"]
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(
+            f"/authn/contact-emails/{other_contact_id}/request-verification/",
+            format="json",
+        )
+        self.assertEqual(response.status_code, 404)

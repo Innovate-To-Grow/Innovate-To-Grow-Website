@@ -2,6 +2,7 @@
 View for accepting admin invitations (plain Django, not DRF).
 """
 
+from django.contrib import admin
 from django.shortcuts import render
 from django.views import View
 
@@ -20,37 +21,62 @@ def _get_member_model():
     return Member
 
 
+def _get_unfold_context(request):
+    """Get Unfold theme context (colors, border_radius, theme) from the admin site."""
+    site = admin.site
+    if hasattr(site, "each_context"):
+        ctx = site.each_context(request)
+        return {k: ctx[k] for k in ("colors", "border_radius", "theme") if k in ctx}
+    return {}
+
+
 class AcceptInvitationView(View):
     """Standalone Django view for accepting admin invitations."""
 
     def get(self, request, token):
         invitation = self._get_invitation(token)
         if invitation is None:
-            return render(request, "authn/invitation/invalid.html", status=400)
+            return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
         MemberModel = _get_member_model()
         existing = MemberModel.objects.filter(email__iexact=invitation.email).first()
         if existing:
             self._upgrade_member(existing, invitation)
-            return render(request, "authn/invitation/already_registered.html", {"email": invitation.email})
+            return render(
+                request,
+                "authn/invitation/already_registered.html",
+                {"email": invitation.email, **_get_unfold_context(request)},
+            )
 
         form = AcceptInvitationForm(initial={"email": invitation.email})
-        return render(request, "authn/invitation/accept.html", {"form": form, "invitation": invitation})
+        return render(
+            request,
+            "authn/invitation/accept.html",
+            {"form": form, "invitation": invitation, **_get_unfold_context(request)},
+        )
 
     def post(self, request, token):
         invitation = self._get_invitation(token)
         if invitation is None:
-            return render(request, "authn/invitation/invalid.html", status=400)
+            return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
         MemberModel = _get_member_model()
         existing = MemberModel.objects.filter(email__iexact=invitation.email).first()
         if existing:
             self._upgrade_member(existing, invitation)
-            return render(request, "authn/invitation/already_registered.html", {"email": invitation.email})
+            return render(
+                request,
+                "authn/invitation/already_registered.html",
+                {"email": invitation.email, **_get_unfold_context(request)},
+            )
 
         form = AcceptInvitationForm(request.POST, initial={"email": invitation.email})
         if not form.is_valid():
-            return render(request, "authn/invitation/accept.html", {"form": form, "invitation": invitation})
+            return render(
+                request,
+                "authn/invitation/accept.html",
+                {"form": form, "invitation": invitation, **_get_unfold_context(request)},
+            )
 
         member = MemberModel(
             email=invitation.email,
@@ -66,7 +92,11 @@ class AcceptInvitationView(View):
         member.save()
 
         invitation.mark_accepted(member)
-        return render(request, "authn/invitation/success.html", {"member": member})
+        return render(
+            request,
+            "authn/invitation/success.html",
+            {"member": member, **_get_unfold_context(request)},
+        )
 
     def _get_invitation(self, token):
         try:
