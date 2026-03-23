@@ -34,7 +34,7 @@ def export_members_to_excel(queryset) -> bytes:
         "is_staff",
         "email_subscribe",
         "date_joined",
-    ).prefetch_related("contactemail_set", "contactphone_set", "groups")
+    ).prefetch_related("contact_emails", "contact_phones", "groups")
 
     wb = Workbook(write_only=True)
     ws = wb.create_sheet("Members")
@@ -78,8 +78,8 @@ def export_members_to_excel(queryset) -> bytes:
 
     # Write data rows — plain values, no per-cell styling for performance
     for member in queryset:
-        contact_emails = member.contactemail_set.all()
-        contact_phones = member.contactphone_set.all()
+        contact_emails = member.contact_emails.all()
+        contact_phones = member.contact_phones.all()
         groups = member.groups.all()
 
         email_parts = []

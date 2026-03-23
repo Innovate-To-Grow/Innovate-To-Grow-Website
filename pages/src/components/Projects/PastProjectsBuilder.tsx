@@ -1,4 +1,4 @@
-import {useRef, useState} from 'react';
+import {useCallback, useRef, useState} from 'react';
 import {MergedResultsTable} from './MergedResultsTable';
 import {SearchTableCard, type SearchTableHandle} from './SearchTableCard';
 import {
@@ -42,12 +42,12 @@ export const PastProjectsBuilder = ({
 
   const hasAnySelection = Object.values(selectionState).some(Boolean);
 
-  const handleSelectionStateChange = (tableId: string, hasSelection: boolean) => {
-    setSelectionState((current) => ({
-      ...current,
-      [tableId]: hasSelection,
-    }));
-  };
+  const handleSelectionStateChange = useCallback((tableId: string, hasSelection: boolean) => {
+    setSelectionState((current) => {
+      if (current[tableId] === hasSelection) return current;
+      return {...current, [tableId]: hasSelection};
+    });
+  }, []);
 
   const handleAddSearchTable = () => {
     tableSequence.current += 1;
