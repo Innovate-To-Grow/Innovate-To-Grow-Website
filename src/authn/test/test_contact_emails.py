@@ -199,7 +199,7 @@ class ContactEmailTests(APITestCase):
             email_address="not-mine@example.com",
             verified=True,
         )
-        response = self.client.get(f"/authn/contact-emails/{contact.pk}/")  # noqa: F841
+        self.client.get(f"/authn/contact-emails/{contact.pk}/")
         # Detail endpoint doesn't support GET, but PATCH/DELETE should 404
         patch_resp = self.client.patch(
             f"/authn/contact-emails/{contact.pk}/",
