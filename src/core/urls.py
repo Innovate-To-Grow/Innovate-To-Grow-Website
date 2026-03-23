@@ -42,7 +42,7 @@ urlpatterns = [
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
     # sheets (Google Sheets data proxy)
-    path("sheets/", include("pages.urls")),
+    path("sheets/", include("sheets.urls")),
     # event
     path("event/", include("event.urls")),
     # news

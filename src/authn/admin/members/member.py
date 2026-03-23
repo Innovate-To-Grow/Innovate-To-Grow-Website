@@ -189,7 +189,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         return "-"
 
     # Actions
-    actions = ["activate_members", "deactivate_members", "assign_default_groups"]
+    actions = ["activate_members", "deactivate_members", "assign_default_groups", "export_members_to_excel"]
 
     @admin.action(description="Activate selected members")
     def activate_members(self, request, queryset):
@@ -206,8 +206,22 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         I2GMemberGroup.create_default_groups()
         self.message_user(request, "Default I2G groups created successfully.")
 
+    @admin.action(description="Export selected members to Excel")
+    def export_members_to_excel(self, request, queryset):
+        from django.utils import timezone
+
+        from ...services.export_members import export_members_to_excel
+
+        content = export_members_to_excel(queryset)
+        filename = f"members_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        response = HttpResponse(
+            content, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
     # =========================================================================
-    # Custom URLs for Excel Import
+    # Custom URLs for Excel Import / Export
     # =========================================================================
 
     def get_urls(self):
@@ -223,6 +237,11 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
                 "import-template/",
                 self.admin_site.admin_view(self.download_template_view),
                 name="authn_member_import_template",
+            ),
+            path(
+                "export-excel/",
+                self.admin_site.admin_view(self.export_excel_view),
+                name="authn_member_export_excel",
             ),
         ]
         return custom_urls + urls
@@ -282,6 +301,21 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         except ImportError as e:
             self.message_user(request, str(e), level="error")
             return HttpResponseRedirect(reverse("admin:authn_member_changelist"))
+
+    def export_excel_view(self, request):
+        """Export all members to Excel."""
+        from django.utils import timezone
+
+        from ...services.export_members import export_members_to_excel
+
+        queryset = self.get_queryset(request)
+        content = export_members_to_excel(queryset)
+        filename = f"members_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        response = HttpResponse(
+            content, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 
 # ============================================================================

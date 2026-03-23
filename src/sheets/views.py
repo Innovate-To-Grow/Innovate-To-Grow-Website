@@ -7,8 +7,8 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import GoogleSheetSource
-from ..services.google_sheets import GoogleSheetsConfigError, fetch_source_data
+from .models import GoogleSheetSource
+from .services import GoogleSheetsConfigError, fetch_source_data
 
 logger = logging.getLogger(__name__)
 

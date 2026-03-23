@@ -11,7 +11,6 @@ from .pages import (
     CMSBlock,
     CMSPage,
     FooterContent,
-    GoogleSheetSource,
     Menu,
     SiteSettings,
     validate_block_data,
@@ -21,7 +20,6 @@ __all__ = [
     # Layout
     "Menu",
     "FooterContent",
-    "GoogleSheetSource",
     "SiteSettings",
     # CMS
     "CMSPage",

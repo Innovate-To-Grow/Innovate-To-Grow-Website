@@ -8,7 +8,7 @@ from django.urls import path
 from django.utils import timezone
 from unfold.admin import ModelAdmin
 
-from ...models import GoogleSheetSource
+from .models import GoogleSheetSource
 
 
 @admin.register(GoogleSheetSource)
@@ -29,7 +29,7 @@ class GoogleSheetSourceAdmin(ModelAdmin):
 
     def get_urls(self):
         custom_urls = [
-            path("import/", self.admin_site.admin_view(self.import_view), name="pages_googlesheetsource_import"),
+            path("import/", self.admin_site.admin_view(self.import_view), name="sheets_googlesheetsource_import"),
         ]
         return custom_urls + super().get_urls()
 
@@ -90,28 +90,28 @@ class GoogleSheetSourceAdmin(ModelAdmin):
         }
 
         if request.method != "POST":
-            return render(request, "admin/pages/googlesheetsource/import_form.html", context)
+            return render(request, "admin/sheets/googlesheetsource/import_form.html", context)
 
         json_file = request.FILES.get("json_file")
         if not json_file:
             messages.error(request, "Please select a JSON file to import.")
-            return render(request, "admin/pages/googlesheetsource/import_form.html", context)
+            return render(request, "admin/sheets/googlesheetsource/import_form.html", context)
 
         try:
             raw = json_file.read().decode("utf-8")
             bundle = json.loads(raw)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             messages.error(request, f"Invalid JSON file: {exc}")
-            return render(request, "admin/pages/googlesheetsource/import_form.html", context)
+            return render(request, "admin/sheets/googlesheetsource/import_form.html", context)
 
         if not isinstance(bundle, dict) or "sources" not in bundle:
             messages.error(request, "Invalid format: expected a JSON object with a 'sources' key.")
-            return render(request, "admin/pages/googlesheetsource/import_form.html", context)
+            return render(request, "admin/sheets/googlesheetsource/import_form.html", context)
 
         sources_data = bundle["sources"]
         if not isinstance(sources_data, list):
             messages.error(request, "Invalid format: 'sources' must be a list.")
-            return render(request, "admin/pages/googlesheetsource/import_form.html", context)
+            return render(request, "admin/sheets/googlesheetsource/import_form.html", context)
 
         action = request.POST.get("action", "dry_run")
         results = []
@@ -171,4 +171,4 @@ class GoogleSheetSourceAdmin(ModelAdmin):
         context["results"] = results
         context["is_dry_run"] = action != "execute"
         context["has_results"] = True
-        return render(request, "admin/pages/googlesheetsource/import_form.html", context)
+        return render(request, "admin/sheets/googlesheetsource/import_form.html", context)
