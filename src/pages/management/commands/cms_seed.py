@@ -129,7 +129,7 @@ SEED_PAGES = [
                     "items": [
                         {
                             "title": "Past Projects",
-                            "description": ("Searchable database of Innovate to Grow projects since 2012."),
+                            "description": "Searchable database of Innovate to Grow projects since 2012.",
                             "url": "/past-projects",
                             "is_external": False,
                         },
@@ -176,6 +176,7 @@ SEED_PAGES = [
 class Command(BaseCommand):
     help = "Seed CMS pages with initial content from hardcoded React pages."
 
+    # noinspection PyMethodMayBeStatic
     def add_arguments(self, parser):
         parser.add_argument(
             "--page",
@@ -188,6 +189,7 @@ class Command(BaseCommand):
             help="Overwrite existing pages (deletes and recreates).",
         )
 
+    # noinspection PyUnusedLocal,DuplicatedCode
     def handle(self, *args, **options):
         target_slug = options.get("page")
         force = options.get("force", False)

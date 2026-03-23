@@ -118,8 +118,8 @@ class ProjectControlModel(models.Model):
                 # Handle ForeignKey fields
                 if field.is_relation and field.many_to_one:
                     if value:
+                        related_model = field.related_model
                         try:
-                            related_model = field.related_model
                             value = related_model.objects.get(pk=value)
                         except related_model.DoesNotExist:
                             value = None

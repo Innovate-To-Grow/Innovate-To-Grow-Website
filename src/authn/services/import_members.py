@@ -218,6 +218,8 @@ def import_members_from_excel(
     if load_workbook is None:
         return ImportResult(success=False, errors=["openpyxl library not installed. Please run: pip install openpyxl"])
 
+    assert load_workbook is not None  # narrowing for static analysis after guard above
+
     result = ImportResult(success=True)
 
     try:

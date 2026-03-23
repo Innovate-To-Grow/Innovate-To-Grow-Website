@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.test import TestCase
 
+# noinspection PyProtectedMember
 from projects.models import Project, Semester
 from projects.services.sync_sheets import _parse_year_semester, sync_from_sheet
 
@@ -107,6 +108,7 @@ PAST_PROJECTS_ROWS = [
 ]
 
 
+# noinspection PyUnusedLocal
 def _mock_fetch(spreadsheet_id, range_ref):
     """Return test data based on spreadsheet_id."""
     if spreadsheet_id == "current-sheet":
@@ -117,10 +119,12 @@ def _mock_fetch(spreadsheet_id, range_ref):
 
 
 class SyncFromSheetCurrentEventTests(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
 
     @patch("projects.services.sync_sheets.fetch_raw_values", side_effect=_mock_fetch)
+    # noinspection PyUnusedLocal
     def test_creates_semesters_and_projects(self, mock_fetch):
         stats = sync_from_sheet("current-sheet", "Sheet1!A:L", "current-event")
 
@@ -142,6 +146,7 @@ class SyncFromSheetCurrentEventTests(TestCase):
         self.assertEqual(alpha.abstract, "An abstract")
 
     @patch("projects.services.sync_sheets.fetch_raw_values", side_effect=_mock_fetch)
+    # noinspection PyUnusedLocal
     def test_semester_filter(self, mock_fetch):
         stats = sync_from_sheet("current-sheet", "Sheet1!A:L", "current-event", semester_filter="2025-2 Fall")
 
@@ -149,6 +154,7 @@ class SyncFromSheetCurrentEventTests(TestCase):
         self.assertEqual(stats["rows_skipped"], 1)  # Spring row skipped
 
     @patch("projects.services.sync_sheets.fetch_raw_values", side_effect=_mock_fetch)
+    # noinspection PyUnusedLocal
     def test_resync_updates_existing(self, mock_fetch):
         # First sync
         sync_from_sheet("current-sheet", "Sheet1!A:L", "current-event")
@@ -161,6 +167,7 @@ class SyncFromSheetCurrentEventTests(TestCase):
         self.assertEqual(Project.objects.count(), 3)
 
     @patch("projects.services.sync_sheets.fetch_raw_values", side_effect=_mock_fetch)
+    # noinspection PyUnusedLocal
     def test_semesters_auto_published(self, mock_fetch):
         sync_from_sheet("current-sheet", "Sheet1!A:L", "current-event")
 
@@ -169,10 +176,12 @@ class SyncFromSheetCurrentEventTests(TestCase):
 
 
 class SyncFromSheetPastProjectsTests(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
 
     @patch("projects.services.sync_sheets.fetch_raw_values", side_effect=_mock_fetch)
+    # noinspection PyUnusedLocal
     def test_creates_past_projects(self, mock_fetch):
         stats = sync_from_sheet("past-sheet", "Sheet1!A:I", "past-projects")
 
@@ -187,6 +196,7 @@ class SyncFromSheetPastProjectsTests(TestCase):
 
 
 class SyncSkipsInvalidRowsTests(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
 
@@ -239,10 +249,12 @@ class SyncSkipsInvalidRowsTests(TestCase):
 
 
 class SyncCacheClearingTests(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
 
     @patch("projects.services.sync_sheets.fetch_raw_values", side_effect=_mock_fetch)
+    # noinspection PyUnusedLocal
     def test_clears_project_caches(self, mock_fetch):
         cache.set("projects:current", {"test": True})
         cache.set("projects:past-all", {"test": True})

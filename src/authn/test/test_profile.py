@@ -10,6 +10,7 @@ Member = get_user_model()
 
 
 class ProfileUpdateTests(APITestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(

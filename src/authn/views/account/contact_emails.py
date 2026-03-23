@@ -32,11 +32,13 @@ def _get_contact_email(request, pk):
 class ContactEmailListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request):
         emails = ContactEmail.objects.filter(member=request.user)
         serializer = ContactEmailSerializer(emails, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = ContactEmailCreateSerializer(data=request.data)
         if not serializer.is_valid():
@@ -60,6 +62,7 @@ class ContactEmailListCreateView(APIView):
 class ContactEmailDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def patch(self, request, pk):
         contact_email = _get_contact_email(request, pk)
         if contact_email is None:
@@ -80,6 +83,7 @@ class ContactEmailDetailView(APIView):
 
         return Response(ContactEmailSerializer(contact_email).data, status=status.HTTP_200_OK)
 
+    # noinspection PyMethodMayBeStatic
     def delete(self, request, pk):
         contact_email = _get_contact_email(request, pk)
         if contact_email is None:
@@ -92,6 +96,7 @@ class ContactEmailDetailView(APIView):
 class ContactEmailRequestVerificationView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
         contact_email = _get_contact_email(request, pk)
         if contact_email is None:
@@ -113,6 +118,7 @@ class ContactEmailRequestVerificationView(APIView):
 class ContactEmailVerifyCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
         contact_email = _get_contact_email(request, pk)
         if contact_email is None:

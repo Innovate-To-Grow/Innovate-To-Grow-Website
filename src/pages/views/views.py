@@ -22,6 +22,7 @@ class LayoutAPIView(APIView):
 
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request, *args, **kwargs):
         cache_key = "layout:data"
 
@@ -52,7 +53,7 @@ class LayoutAPIView(APIView):
             data["sheets_data"] = {"current-event": fetch_source_data(source)}
         except GoogleSheetSource.DoesNotExist:
             pass
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # noinspection PyBroadException
             logger.warning("Failed to prefetch current-event sheets data for layout")
 
         cache.set(cache_key, data, timeout=600)

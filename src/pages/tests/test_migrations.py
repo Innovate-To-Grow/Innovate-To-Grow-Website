@@ -9,6 +9,7 @@ class HomepagePageMigrationTests(TransactionTestCase):
     migrate_from = ("pages", "0015_ensure_cms_tables")
     migrate_to = ("pages", "0016_sitesettings_homepage_page")
 
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         super().setUp()
         self.executor = MigrationExecutor(connection)

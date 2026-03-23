@@ -78,8 +78,10 @@ class SiteSettingsAdmin(ModelAdmin):
 
     homepage_route_display.short_description = "Effective Homepage Route"
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
         return not SiteSettings.objects.exists()
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         return False

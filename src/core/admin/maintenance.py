@@ -16,5 +16,6 @@ class SiteMaintenanceControlAdmin(ModelAdmin):
             return False
         return super().has_add_permission(request)
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         return False

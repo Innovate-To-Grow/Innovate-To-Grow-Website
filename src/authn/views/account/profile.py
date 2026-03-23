@@ -38,18 +38,20 @@ class ProfileView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request):
         """Get current user's profile."""
         try:
             serializer = ProfileSerializer(instance=request.user)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception:
+        except (ValueError, TypeError, AttributeError):
             logger.exception("Profile serialization failed for user %s", request.user.pk)
             return Response(
                 {"detail": "Failed to load profile."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    # noinspection PyMethodMayBeStatic
     def patch(self, request):
         """Update current user's profile."""
         user = request.user

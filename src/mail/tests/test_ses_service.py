@@ -16,6 +16,7 @@ from mail.services.ses import SESService, SESServiceError
 class SESServiceTest(TestCase):
     """Tests for SESService sends and error handling."""
 
+    # noinspection PyPep8Naming
     def setUp(self):
         SESAccount.all_objects.all().hard_delete()
         self.account = SESAccount.objects.create(

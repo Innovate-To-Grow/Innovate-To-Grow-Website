@@ -7,6 +7,7 @@ from news.models import NewsArticle
 
 
 class NewsListAPIViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.client = APIClient()
@@ -64,6 +65,7 @@ class NewsListAPIViewTest(TestCase):
 
 
 class NewsDetailAPIViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.client = APIClient()

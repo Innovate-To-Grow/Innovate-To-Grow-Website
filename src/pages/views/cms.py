@@ -21,6 +21,7 @@ class CMSPreviewFetchView(APIView):
 
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get(self, request, token):
         data = cache.get(f"cms:preview:{token}")
         if data is None:
@@ -40,6 +41,7 @@ class CMSLivePreviewView(APIView):
             return [IsAdminUser()]
         return [AllowAny()]
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get(self, request, page_id):
         cached = cache.get(f"cms:live-preview:{page_id}")
         if cached is not None:
@@ -50,6 +52,7 @@ class CMSLivePreviewView(APIView):
             return Response({"detail": "Page not found."}, status=404)
         return Response(CMSPageSerializer(page).data)
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request, page_id):
         try:
             data = json.loads(request.body)
@@ -66,6 +69,7 @@ class CMSPageView(APIView):
 
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request, route_path=""):
         route = f"/{route_path}" if route_path else "/"
         is_preview = request.query_params.get("preview") == "true"

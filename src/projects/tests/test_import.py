@@ -45,6 +45,7 @@ def _make_excel(semesters_data, projects_data):
 
 
 class ImportExcelServiceTest(TestCase):
+    # noinspection PyPep8Naming,PyMethodMayBeStatic
     def setUp(self):
         cache.clear()
 

@@ -37,6 +37,7 @@ class LoginSerializer(serializers.Serializer):
         help_text="Key ID used for encryption (for key rotation handling).",
     )
 
+    # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
         """
         Validate credentials and return the authenticated user.

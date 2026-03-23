@@ -27,6 +27,7 @@ class Command(BaseCommand):
     DEV_DEFAULT_ADMIN_EMAIL = "xiehongzhe04@gmail.com"
     DEV_DEFAULT_ADMIN_PASSWORD = "1"
 
+    # noinspection PyMethodMayBeStatic
     def add_arguments(self, parser):
         parser.add_argument(
             "--force",
@@ -54,6 +55,7 @@ class Command(BaseCommand):
             help="Allow running even if DEBUG is False (dangerous).",
         )
 
+    # noinspection PyUnusedLocal
     def handle(self, *args, **options):
         db_alias = options["database"]
         force = options["force"]
@@ -158,6 +160,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Deleted {deleted_count} migration file(s)."))
 
+    # noinspection PyMethodMayBeStatic
     def _reset_postgresql(self, connection):
         """PostgreSQL reset: Drop public schema and recreate it."""
         with connection.cursor() as cursor:
@@ -168,6 +171,7 @@ class Command(BaseCommand):
             if db_user:
                 cursor.execute(f"GRANT ALL ON SCHEMA public TO {db_user};")
 
+    # noinspection PyMethodMayBeStatic
     def _reset_mysql(self, connection):
         """MySQL reset: Disable FK checks and drop all tables."""
         with connection.cursor() as cursor:
@@ -204,6 +208,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f"  SQLite file not found at {db_name}, nothing to delete.")
 
+    # noinspection PyMethodMayBeStatic
     def _drop_sqlite_tables(self, connection):
         """Fallback: drop all tables in SQLite."""
         with connection.cursor() as cursor:

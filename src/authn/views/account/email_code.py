@@ -1,6 +1,7 @@
 """
 Views for authenticated email-code account flows.
 """
+# noinspection DuplicatedCode
 
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
@@ -21,6 +22,7 @@ from ..helpers import challenge_error_response
 class AccountEmailsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request):
         serializer = AccountEmailsSerializer(instance=request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -29,6 +31,7 @@ class AccountEmailsView(APIView):
 class ChangePasswordCodeRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = ChangePasswordCodeRequestSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
@@ -45,6 +48,7 @@ class ChangePasswordCodeRequestView(APIView):
 class ChangePasswordCodeVerifyView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = ChangePasswordCodeVerifySerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
@@ -56,6 +60,7 @@ class ChangePasswordCodeVerifyView(APIView):
 class ChangePasswordCodeConfirmView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = ChangePasswordCodeConfirmSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():

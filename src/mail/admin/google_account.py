@@ -160,6 +160,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
     # Helper: get active account + service
     # ------------------------------------------------------------------
 
+    # noinspection PyMethodMayBeStatic
     def _get_gmail_service(self, request):
         """Return (GmailService, GoogleAccount) or redirect with error."""
         account = GoogleAccount.get_active()
@@ -168,6 +169,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
             return None, None
         return GmailService(account), account
 
+    # noinspection PyMethodMayBeStatic
     def _log_action(self, account, action, status, request, message_id="", subject="", recipients="", error=""):
         """Create an EmailLog entry."""
         EmailLog.objects.create(
@@ -185,6 +187,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
     # Inbox / Sent views
     # ------------------------------------------------------------------
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def inbox_view(self, request):
         service, account = self._get_gmail_service(request)
         if not service:
@@ -217,6 +220,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
         }
         return render(request, "admin/mail/inbox.html", context)
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def sent_view(self, request):
         service, account = self._get_gmail_service(request)
         if not service:
@@ -253,6 +257,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
     # Message detail
     # ------------------------------------------------------------------
 
+    # noinspection PyProtectedMember
     def message_detail_view(self, request, message_id):
         service, account = self._get_gmail_service(request)
         if not service:
@@ -290,6 +295,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
     # Compose / Reply / Forward
     # ------------------------------------------------------------------
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def compose_view(self, request):
         service, account = self._get_gmail_service(request)
         if not service:
@@ -310,6 +316,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
         }
         return render(request, "admin/mail/compose.html", context)
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def reply_view(self, request, message_id):
         service, account = self._get_gmail_service(request)
         if not service:
@@ -354,6 +361,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
         }
         return render(request, "admin/mail/compose.html", context)
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def forward_view(self, request, message_id):
         service, account = self._get_gmail_service(request)
         if not service:
@@ -405,6 +413,7 @@ class GoogleAccountAdmin(BaseModelAdmin):
     # Send action (POST)
     # ------------------------------------------------------------------
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def send_action(self, request):
         if request.method != "POST":
             return redirect(reverse("admin:mail_compose"))

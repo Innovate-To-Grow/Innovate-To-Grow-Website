@@ -18,6 +18,7 @@ class SheetsDataView(APIView):
 
     permission_classes = [AllowAny]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request, slug):
         try:
             source = GoogleSheetSource.objects.get(slug=slug, is_active=True)
@@ -53,6 +54,7 @@ class SheetsRefreshView(APIView):
 
     permission_classes = [IsAdminUser]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request, slug):
         try:
             source = GoogleSheetSource.objects.get(slug=slug)

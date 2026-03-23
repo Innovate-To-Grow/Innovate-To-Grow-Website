@@ -8,6 +8,7 @@ from mail.models import SESAccount
 
 
 class AuthMailTests(TestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         SESAccount.all_objects.all().hard_delete()
         self.account = SESAccount.objects.create(display_name="Innovate to Grow", is_active=True)

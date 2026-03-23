@@ -2,15 +2,18 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+# noinspection PyProtectedMember
 from analytics.models import PageView
 from analytics.services.buffer import _BATCH_SIZE, enqueue, flush_sync
 
 
 class PageViewBufferTest(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         flush_sync()
         PageView.objects.all().delete()
 
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def tearDown(self):
         flush_sync()
 

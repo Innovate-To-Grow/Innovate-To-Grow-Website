@@ -293,7 +293,7 @@
 
     // Remove item
     window.removeItem = function (path) {
-        const match = path.match(/(.+)\[(\d+)\]$/);
+        const match = path.match(/(.+)\[(\d+)]$/);
         if (match) {
             const parentPath = match[1];
             const index = parseInt(match[2]);
@@ -306,7 +306,7 @@
 
     // Move item up or down
     window.moveItem = function (path, direction) {
-        const match = path.match(/(.+)\[(\d+)\]$/);
+        const match = path.match(/(.+)\[(\d+)]$/);
         if (match) {
             const parentPath = match[1];
             const index = parseInt(match[2]);

@@ -2,6 +2,8 @@
 Profile serializer for user information.
 """
 
+from __future__ import annotations
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -49,6 +51,7 @@ class ProfileSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
 
+    # noinspection PyMethodMayBeStatic
     def to_representation(self, instance: Member) -> dict:
         """
         Get profile data from the user instance.
@@ -81,6 +84,7 @@ class ProfileSerializer(serializers.Serializer):
             "profile_image": profile_image,
         }
 
+    # noinspection PyMethodMayBeStatic
     def update(self, instance: Member, validated_data: dict) -> Member:
         """
         Update the user's profile with the validated data.

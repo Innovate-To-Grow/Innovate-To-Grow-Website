@@ -16,11 +16,13 @@ from authn.services.email_challenges import AuthChallengeInvalid
 class ContactPhoneListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request):
         phones = ContactPhone.objects.filter(member=request.user)
         serializer = ContactPhoneSerializer(phones, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = ContactPhoneCreateSerializer(data=request.data)
         if not serializer.is_valid():
@@ -42,6 +44,7 @@ class ContactPhoneListCreateView(APIView):
 class ContactPhoneDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def patch(self, request, pk):
         contact_phone = ContactPhone.objects.filter(pk=pk, member=request.user).first()
         if contact_phone is None:
@@ -56,6 +59,7 @@ class ContactPhoneDetailView(APIView):
 
         return Response(ContactPhoneSerializer(contact_phone).data, status=status.HTTP_200_OK)
 
+    # noinspection PyMethodMayBeStatic
     def delete(self, request, pk):
         try:
             delete_contact_phone(member=request.user, contact_phone_id=pk)

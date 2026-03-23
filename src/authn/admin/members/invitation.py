@@ -31,6 +31,7 @@ class AdminInvitationAdmin(UnfoldModelAdmin):
     ]
     actions = ["resend_invitation", "cancel_invitations"]
 
+    # noinspection PyUnusedLocal
     def get_fieldsets(self, request, obj=None):
         if obj is None:
             return [
@@ -42,6 +43,7 @@ class AdminInvitationAdmin(UnfoldModelAdmin):
             ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
         ]
 
+    # noinspection PyUnusedLocal
     def get_readonly_fields(self, request, obj=None):
         if obj is not None:
             return self.readonly_fields + ["email", "role", "message"]

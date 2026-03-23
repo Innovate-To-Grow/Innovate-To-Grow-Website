@@ -39,6 +39,7 @@ class Base64ImageWidget(forms.ClearableFileInput):
             return ""
         return None  # No change
 
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def format_value(self, value):
         # Return None so the default ClearableFileInput doesn't try to treat
         # the base64 string as a FieldFile object.

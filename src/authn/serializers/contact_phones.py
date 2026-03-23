@@ -22,6 +22,7 @@ class ContactPhoneSerializer(serializers.Serializer):
     verified = serializers.BooleanField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
+    # noinspection PyMethodMayBeStatic
     def get_region_display(self, obj) -> str:
         return obj.get_region_display_name()
 
@@ -33,6 +34,7 @@ class ContactPhoneCreateSerializer(serializers.Serializer):
     region = serializers.ChoiceField(choices=PHONE_REGION_CHOICES, required=True)
     subscribe = serializers.BooleanField(default=False)
 
+    # noinspection PyMethodMayBeStatic
     def validate_phone_number(self, value):
         # Strip whitespace and common formatting characters
         cleaned = re.sub(r"[\s()\-.]", "", value.strip())
@@ -58,6 +60,7 @@ class ContactPhoneCreateSerializer(serializers.Serializer):
         # Store the cleaned value (normalization to E.164 happens in the service layer)
         return cleaned
 
+    # noinspection PyMethodMayBeStatic
     def validate_region(self, value):
         if value not in _VALID_REGION_CODES:
             raise serializers.ValidationError("Invalid region.")

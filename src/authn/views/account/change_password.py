@@ -25,6 +25,7 @@ class ChangePasswordView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         """Change the user's password."""
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})

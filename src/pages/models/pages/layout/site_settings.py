@@ -26,6 +26,7 @@ class SiteSettings(models.Model):
     def __str__(self):
         return "Site Settings"
 
+    # noinspection PyAttributeOutsideInit
     def save(self, *args, **kwargs):
         # Enforce singleton: always use pk=1
         self.pk = 1

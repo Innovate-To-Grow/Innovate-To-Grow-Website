@@ -38,6 +38,7 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
+        # noinspection PyPep8Naming
         MemberModel = _get_member_model()
         existing = MemberModel.objects.filter(email__iexact=invitation.email).first()
         if existing:
@@ -60,6 +61,7 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
+        # noinspection PyPep8Naming
         MemberModel = _get_member_model()
         existing = MemberModel.objects.filter(email__iexact=invitation.email).first()
         if existing:
@@ -98,6 +100,7 @@ class AcceptInvitationView(View):
             {"member": member, **_get_unfold_context(request)},
         )
 
+    # noinspection PyMethodMayBeStatic
     def _get_invitation(self, token):
         try:
             invitation = AdminInvitation.objects.get(token=token)
@@ -111,6 +114,7 @@ class AcceptInvitationView(View):
 
         return invitation
 
+    # noinspection PyMethodMayBeStatic
     def _upgrade_member(self, member, invitation):
         member.is_staff = True
         if invitation.role == AdminInvitation.Role.SUPERUSER:

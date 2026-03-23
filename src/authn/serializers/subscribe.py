@@ -10,9 +10,11 @@ from authn.models import ContactEmail
 class SubscribeSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
+    # noinspection PyMethodMayBeStatic
     def validate_email(self, value):
         return value.strip().lower()
 
+    # noinspection PyMethodMayBeStatic
     def create(self, validated_data):
         normalized = validated_data["email"]
         contact, created = ContactEmail.objects.get_or_create(

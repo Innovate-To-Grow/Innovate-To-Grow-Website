@@ -6,6 +6,7 @@ from projects.models import Project, Semester
 
 
 class AllPastProjectsAPIViewTests(TestCase):
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.client = APIClient()

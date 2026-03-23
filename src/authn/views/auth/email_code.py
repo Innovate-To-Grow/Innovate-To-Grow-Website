@@ -1,6 +1,7 @@
 """
 Views for public email-code auth flows.
 """
+# noinspection DuplicatedCode
 
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
@@ -29,6 +30,7 @@ class LoginCodeRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = LoginCodeRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -47,6 +49,7 @@ class EmailAuthRequestCodeView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = UnifiedEmailAuthRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -65,6 +68,7 @@ class LoginCodeVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = LoginCodeVerifySerializer(data=request.data)
         if not serializer.is_valid():
@@ -89,6 +93,7 @@ class EmailAuthVerifyCodeView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = UnifiedEmailAuthVerifySerializer(data=request.data)
         if not serializer.is_valid():
@@ -125,6 +130,7 @@ class RegisterVerifyCodeView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = RegisterVerifyCodeSerializer(data=request.data)
         if not serializer.is_valid():
@@ -148,6 +154,7 @@ class RegisterResendCodeView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = RegisterResendCodeSerializer(data=request.data)
         if not serializer.is_valid():
@@ -166,6 +173,7 @@ class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -184,6 +192,7 @@ class PasswordResetVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = PasswordResetVerifySerializer(data=request.data)
         if not serializer.is_valid():
@@ -200,6 +209,7 @@ class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeVerifyThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         if not serializer.is_valid():

@@ -18,6 +18,7 @@ class PublicKeyView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    # noinspection PyUnusedLocal
     def get(self, request):
         """
         Get the current public key PEM and key ID.

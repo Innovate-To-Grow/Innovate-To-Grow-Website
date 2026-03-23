@@ -13,5 +13,6 @@ def _clear_project_caches():
 
 @receiver([post_save, post_delete], sender=Project)
 @receiver([post_save, post_delete], sender=Semester)
+# noinspection PyUnusedLocal
 def invalidate_project_cache(sender, instance, **kwargs):
     transaction.on_commit(_clear_project_caches)

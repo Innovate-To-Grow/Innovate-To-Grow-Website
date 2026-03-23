@@ -14,6 +14,7 @@ from mail.services.gmail import GmailService, GmailServiceError
 class Command(BaseCommand):
     help = "Test Gmail API connection using the active GoogleAccount"
 
+    # noinspection PyUnusedLocal
     def handle(self, *args, **options):
         account = GoogleAccount.get_active()
         if not account:

@@ -17,6 +17,7 @@ from authn.services.rsa_manager import (
 
 
 class RSAManagerServiceTests(TestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         RSAKeypair.all_objects.all().hard_delete()
 

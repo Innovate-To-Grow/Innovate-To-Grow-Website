@@ -23,6 +23,7 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [EmailCodeRequestThrottle]
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
 

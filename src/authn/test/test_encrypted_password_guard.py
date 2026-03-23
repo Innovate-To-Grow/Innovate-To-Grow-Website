@@ -12,6 +12,7 @@ Member = get_user_model()
 class RequireEncryptedPasswordsTests(APITestCase):
     """Verify that plaintext passwords are rejected when encryption is required."""
 
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.password = "StrongPass123!"

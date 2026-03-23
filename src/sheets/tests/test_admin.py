@@ -18,6 +18,7 @@ class GoogleSheetSourceAdminImportExportTests(TestCase):
         )
         self.client.login(username="sheetadmin", password="testpass123")
 
+    # noinspection PyMethodMayBeStatic
     def _make_bundle(self, sources):
         return json.dumps({"version": 1, "sources": sources}).encode("utf-8")
 

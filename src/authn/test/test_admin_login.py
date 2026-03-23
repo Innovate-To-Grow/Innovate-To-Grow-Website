@@ -32,6 +32,7 @@ def _create_pending_challenge(member, email, code="123456"):
 
 @override_settings(ROOT_URLCONF="core.urls")
 class AdminLoginViewTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         self.staff = Member.objects.create_user(
             username="admin",
@@ -89,6 +90,7 @@ class AdminLoginViewTest(TestCase):
         self.assertContains(resp, "Unable to send verification code")
 
     @patch("authn.views.admin_login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_post_valid_code_logs_in(self, mock_issue):
         # Step 1: submit email
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})
@@ -106,6 +108,7 @@ class AdminLoginViewTest(TestCase):
         self.assertEqual(resp2.status_code, 200)
 
     @patch("authn.views.admin_login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_post_invalid_code_shows_error(self, mock_issue):
         # Step 1
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})
@@ -132,6 +135,7 @@ class AdminLoginViewTest(TestCase):
         self.assertContains(resp, "A new verification code has been sent")
 
     @patch("authn.views.admin_login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_step_email_query_resets_flow(self, mock_issue):
         # Step 1 → code step
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})
@@ -144,6 +148,7 @@ class AdminLoginViewTest(TestCase):
         self.assertNotIn("admin_login_step", self.client.session)
 
     @patch("authn.views.admin_login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_next_redirect_parameter(self, mock_issue):
         # Step 1
         url = LOGIN_URL + "?next=/admin/pages/cmspage/"
@@ -157,6 +162,7 @@ class AdminLoginViewTest(TestCase):
         self.assertRedirects(resp, "/admin/pages/cmspage/", fetch_redirect_response=False)
 
     @patch("authn.views.admin_login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_next_rejects_external_urls(self, mock_issue):
         url = LOGIN_URL + "?next=https://evil.com"
         self.client.post(url, {"email": "admin@example.com"})
@@ -181,6 +187,7 @@ class AdminLoginViewTest(TestCase):
 
 @override_settings(ROOT_URLCONF="core.urls")
 class AdminPasswordLoginTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.staff = Member.objects.create_user(
@@ -198,6 +205,7 @@ class AdminPasswordLoginTest(TestCase):
             is_active=True,
         )
 
+    # noinspection PyPep8Naming,PyMethodMayBeStatic
     def tearDown(self):
         cache.clear()
 
@@ -251,6 +259,7 @@ class AdminPasswordLoginTest(TestCase):
         self.assertRedirects(resp, "/admin/pages/cmspage/", fetch_redirect_response=False)
 
     @patch("authn.views.admin_login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_password_mode_clears_email_code_session(self, mock_issue):
         # Start email-code flow
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})

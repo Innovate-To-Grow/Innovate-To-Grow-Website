@@ -21,6 +21,7 @@ class SNSWebhookView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []  # Prevent CSRF from SessionAuthentication
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request):
         # SNS sends Content-Type: text/plain, so parse body directly
         try:

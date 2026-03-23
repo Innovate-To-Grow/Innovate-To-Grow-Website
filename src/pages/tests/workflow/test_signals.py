@@ -14,6 +14,7 @@ class CacheInvalidationSignalTests(TestCase):
     the test transaction.
     """
 
+    # noinspection PyPep8Naming,PyMethodMayBeStatic
     def setUp(self):
         cache.clear()
 

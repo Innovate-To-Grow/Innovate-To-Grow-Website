@@ -126,6 +126,7 @@ class CMSPageAdmin(ModelAdmin):
 
     # ===== Context injection for visual editor =====
 
+    # noinspection PyMethodMayBeStatic
     def _get_editor_context(self, obj=None):
         from django.conf import settings as django_settings
 
@@ -212,6 +213,7 @@ class CMSPageAdmin(ModelAdmin):
 
     # ===== Preview store endpoint =====
 
+    # noinspection PyMethodMayBeStatic
     def preview_store_view(self, request):
         """Store preview data in cache and return a token."""
         if request.method != "POST":
@@ -232,6 +234,7 @@ class CMSPageAdmin(ModelAdmin):
         cache.set(f"cms:preview:{token}", data, timeout=600)
         return JsonResponse({"token": token})
 
+    # noinspection PyMethodMayBeStatic
     def route_conflict_view(self, request):
         route = request.GET.get("route", "")
         page_id = request.GET.get("page_id")
@@ -276,6 +279,7 @@ class CMSPageAdmin(ModelAdmin):
     # ===== Export =====
 
     @admin.action(description="Export selected pages as JSON")
+    # noinspection PyUnusedLocal
     def export_pages(self, request, queryset):
         pages_data = []
         for page in queryset.prefetch_related("blocks"):
@@ -318,6 +322,7 @@ class CMSPageAdmin(ModelAdmin):
 
     # ===== Import =====
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def import_view(self, request):
         """Import CMS pages from a JSON file."""
         context = {
@@ -447,6 +452,7 @@ class CMSPageAdmin(ModelAdmin):
 
     # ===== Import All Seed Pages =====
 
+    # noinspection PyMethodMayBeStatic
     def _get_all_seed_pages(self):
         """Collect all seed page data from management commands."""
         all_pages = []
@@ -455,6 +461,7 @@ class CMSPageAdmin(ModelAdmin):
         all_pages.extend(SEED_PAGES_CD)
         return all_pages
 
+    # noinspection PyProtectedMember,DuplicatedCode
     def import_all_view(self, request):
         """Import all seed pages at once, with preview and execute modes."""
         context = {

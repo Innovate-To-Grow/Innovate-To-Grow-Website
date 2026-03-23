@@ -7,6 +7,7 @@ class EmailOrUsernameBackend(ModelBackend):
     Allow authentication with either username or email.
     """
 
+    # noinspection PyUnusedLocal,PyPep8Naming
     def authenticate(self, request, username=None, password=None, **kwargs):
         UserModel = get_user_model()
         if username is None:

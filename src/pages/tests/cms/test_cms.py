@@ -10,6 +10,7 @@ from pages.models import CMSBlock, CMSPage
 
 
 class CMSPageModelTest(TestCase):
+    # noinspection PyPep8Naming,PyMethodMayBeStatic
     def setUp(self):
         cache.clear()
 
@@ -90,6 +91,7 @@ class CMSPageModelTest(TestCase):
 
 
 class CMSPageAPITest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.client = APIClient()
@@ -202,6 +204,7 @@ class CMSPageAPITest(TestCase):
 
 
 class CMSPreviewAPITest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.client = APIClient()
@@ -260,6 +263,7 @@ class CMSPreviewAPITest(TestCase):
 
 
 class CMSExportTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.staff = Member.objects.create_superuser(
@@ -336,6 +340,7 @@ class CMSExportTest(TestCase):
 
 
 class CMSImportTest(TestCase):
+    # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
         self.staff = Member.objects.create_superuser(
@@ -346,6 +351,7 @@ class CMSImportTest(TestCase):
         self.client = APIClient()
         self.client.force_login(self.staff)
 
+    # noinspection PyMethodMayBeStatic
     def _make_bundle(self, pages):
         return json.dumps({"version": 1, "pages": pages}).encode("utf-8")
 

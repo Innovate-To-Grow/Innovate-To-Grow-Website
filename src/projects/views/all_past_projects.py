@@ -14,6 +14,7 @@ class AllPastProjectsAPIView(ListAPIView):
     serializer_class = ProjectTableSerializer
     pagination_class = None
 
+    # noinspection PyMethodMayBeStatic
     def get_queryset(self):
         current_pk_qs = Semester.objects.filter(is_published=True).values("pk")[:1]
         return (

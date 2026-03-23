@@ -90,6 +90,7 @@ def _safe_next(request):
 class AdminLoginView(View):
     """Admin login: email code flow OR password flow."""
 
+    # noinspection PyMethodMayBeStatic
     def get(self, request):
         if request.user.is_authenticated and request.user.is_staff:
             return redirect(_safe_next(request))
@@ -128,6 +129,7 @@ class AdminLoginView(View):
 
     # ── password login ────────────────────────────────────────────────
 
+    # noinspection PyMethodMayBeStatic
     def _handle_password_step(self, request):
         if _is_password_throttled(request):
             form = AdminPasswordForm(request.POST)
@@ -155,6 +157,7 @@ class AdminLoginView(View):
 
     # ── step 1: email ───────────────────────────────────────────────
 
+    # noinspection PyMethodMayBeStatic
     def _handle_email_step(self, request):
         form = AdminEmailForm(request.POST)
         if not form.is_valid():
@@ -232,6 +235,7 @@ class AdminLoginView(View):
         logger.info("Admin login via email code: %s", member.email)
         return redirect(_safe_next(request))
 
+    # noinspection PyMethodMayBeStatic
     def _handle_resend(self, request, email, member_id):
         member = Member.objects.filter(pk=member_id, is_staff=True, is_active=True).first()
         if not member:

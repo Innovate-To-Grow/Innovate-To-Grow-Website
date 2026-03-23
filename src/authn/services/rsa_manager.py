@@ -136,5 +136,5 @@ def is_encrypted_password(password: str) -> bool:
         decoded = base64.b64decode(password)
         # RSA 2048-bit encryption produces 256 bytes of ciphertext
         return len(decoded) >= 128
-    except Exception:
+    except (ValueError, TypeError):
         return False

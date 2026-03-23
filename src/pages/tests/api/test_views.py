@@ -9,6 +9,7 @@ from pages.models import CMSPage, FooterContent, Menu, SiteSettings
 class LayoutAPIViewTests(TestCase):
     """Tests for the LayoutAPIView (F3 fix)."""
 
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
 

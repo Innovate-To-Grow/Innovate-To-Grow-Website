@@ -19,6 +19,7 @@ FAKE_SERVICE_JSON = '{"type":"service_account","project_id":"test","private_key"
 class GoogleAccountAdminTest(TestCase):
     """Tests for GoogleAccountAdmin views."""
 
+    # noinspection PyPep8Naming
     def setUp(self):
         self.admin_user = Member.objects.create_superuser(
             username="admin",
@@ -83,6 +84,7 @@ class GoogleAccountAdminTest(TestCase):
         self.assertContains(response, "Sent")
 
     @patch("mail.admin.google_account.GmailService")
+    # noinspection PyUnusedLocal
     def test_compose_view(self, mock_service_cls):
         url = reverse("admin:mail_compose")
         response = self.client.get(url)
@@ -254,6 +256,7 @@ class ComposeFormTest(TestCase):
 class SESAccountAdminTest(TestCase):
     """Tests for the SES sender admin views."""
 
+    # noinspection PyPep8Naming
     def setUp(self):
         self.admin_user = Member.objects.create_superuser(
             username="ses-admin",

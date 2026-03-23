@@ -9,6 +9,7 @@ from authn.models import RSAKeypair
 
 
 class PublicKeyViewTests(APITestCase):
+    # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
         RSAKeypair.all_objects.all().hard_delete()
