@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 
 
 async def query_primary_column(
-    email: str, wks_records: List[Dict[str, Any]]
+        email: str, wks_records: List[Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
     Query worksheet records to find users by primary email.
@@ -67,14 +67,14 @@ def extract_from_form(form):
 
 
 def log(
-    logs,
-    route: str,
-    primary_email: str,
-    first_name: str = "",
-    last_name: str = "",
-    secondary_email: str = "",
-    phone_number: str = "",
-    additional_info: str = "",
+        logs,
+        route: str,
+        primary_email: str,
+        first_name: str = "",
+        last_name: str = "",
+        secondary_email: str = "",
+        phone_number: str = "",
+        additional_info: str = "",
 ):
     """
     Log user action to the logs worksheet.
@@ -122,7 +122,7 @@ def log(
 
 
 def find_user_by_email(
-    email: str, wks_records: List[Dict[str, Any]], search_both_columns: bool = True
+        email: str, wks_records: List[Dict[str, Any]], search_both_columns: bool = True
 ) -> Dict[str, Any]:
     """
     Find a user by email address in worksheet records.

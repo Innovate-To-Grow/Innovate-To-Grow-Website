@@ -96,10 +96,10 @@ def register():
         phone_number = ""
         phone_subscribe_flag = False
         if (
-            hasattr(form, "country_code")
-            and hasattr(form, "phone_number")
-            and form.country_code.data
-            and form.phone_number.data
+                hasattr(form, "country_code")
+                and hasattr(form, "phone_number")
+                and form.country_code.data
+                and form.phone_number.data
         ):
             country_code_input = str(form.country_code.data).strip()
             number_input = (
@@ -145,9 +145,9 @@ def register():
                         )
 
                 if (
-                    user_prim1["Secondary Email"]
-                    and user_prim1["Secondary Email"].strip() != ""
-                    and user_prim1["Secondary Verified"] == "TRUE"
+                        user_prim1["Secondary Email"]
+                        and user_prim1["Secondary Email"].strip() != ""
+                        and user_prim1["Secondary Verified"] == "TRUE"
                 ):
                     html = render_template(
                         "deleting_email.html",
@@ -218,9 +218,9 @@ def register():
                         )
 
                 if (
-                    user_prim2["Primary Email"]
-                    and user_prim2["Primary Email"].strip() != ""
-                    and user_prim2["Primary Verified"] == "TRUE"
+                        user_prim2["Primary Email"]
+                        and user_prim2["Primary Email"].strip() != ""
+                        and user_prim2["Primary Verified"] == "TRUE"
                 ):
                     html = render_template(
                         "deleting_email.html",
@@ -294,9 +294,9 @@ def register():
                         )
 
                 if (
-                    user_sec1["Secondary Email"]
-                    and user_sec1["Secondary Email"].strip() != ""
-                    and user_sec1["Secondary Verified"] == "TRUE"
+                        user_sec1["Secondary Email"]
+                        and user_sec1["Secondary Email"].strip() != ""
+                        and user_sec1["Secondary Verified"] == "TRUE"
                 ):
                     html = render_template(
                         "deleting_email.html",
@@ -370,9 +370,9 @@ def register():
                         )
 
                 if (
-                    user_sec2["Primary Email"]
-                    and user_sec2["Primary Email"].strip() != ""
-                    and user_sec2["Primary Verified"] == "TRUE"
+                        user_sec2["Primary Email"]
+                        and user_sec2["Primary Email"].strip() != ""
+                        and user_sec2["Primary Verified"] == "TRUE"
                 ):
                     html = render_template(
                         "deleting_email.html",
@@ -900,7 +900,6 @@ def info(token):
         setattr(InformationForm, row.label, get_field(row))
 
         if event_obj is not None:
-
             async def query_event_prim_col():
                 return [
                     row
@@ -1130,7 +1129,7 @@ def info(token):
                     for question in event_obj.questions.split("\n"):
                         row[event_wks_columns[question] - 1] = form[
                             "event_" + question
-                        ].data
+                            ].data
 
                     event_wks.append_row(row)
 
@@ -1152,8 +1151,8 @@ def info(token):
                     current_user = None
                     for row in fresh_user_records:
                         if (
-                            row["Primary Email"] == current_user_email
-                            or row["Secondary Email"] == current_user_email
+                                row["Primary Email"] == current_user_email
+                                or row["Secondary Email"] == current_user_email
                         ):
                             current_user = row
                             break

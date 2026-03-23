@@ -2,9 +2,11 @@ from wtforms import StringField, SelectField, SelectMultipleField
 from wtforms.validators import InputRequired, StopValidation
 from wtforms.widgets import ListWidget, CheckboxInput
 
+
 class MultiCheckboxField(SelectMultipleField):
     widget = ListWidget(html_tag="ol", prefix_label=False)
     option_widget = CheckboxInput()
+
 
 class MultiCheckboxAtLeastOne():
     def __init__(self, message=None):
@@ -17,7 +19,7 @@ class MultiCheckboxAtLeastOne():
             raise StopValidation(self.message)
 
 
-def get_field(field): 
+def get_field(field):
     if field.field_type == "Dropdown":
         if field.required:
             return SelectField(field.label, choices=dropdown_get_choices(field.options))
@@ -32,7 +34,7 @@ def get_field(field):
                                       choices=checkbox_get_choices(field.options), coerce=int)
         else:
             return MultiCheckboxField(field.label, choices=checkbox_get_choices(field.options), coerce=int)
-    
+
     else:
         if field.required:
             return StringField(field.label, [InputRequired(" ")])
@@ -47,8 +49,8 @@ def dropdown_get_choices(options):
 def checkbox_get_choices(options):
     choices = []
     temp = options.split("\n")
-    
+
     for n in range(len(temp)):
         choices.append((n, temp[n]))
 
-    return choices 
+    return choices

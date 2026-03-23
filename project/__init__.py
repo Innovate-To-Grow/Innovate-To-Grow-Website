@@ -43,7 +43,6 @@ def too_many_requests(e):
 db = SQLAlchemy()
 db.init_app(app)
 
-
 import boto3
 
 ses = boto3.client(
@@ -60,11 +59,9 @@ sqs = boto3.client(
     aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"],
 )
 
-
 import pytz
 
 tz = pytz.timezone("America/Los_Angeles")
-
 
 # Models
 from project.models import edit_form, event, user
@@ -81,7 +78,8 @@ def inject_event():
 import gspread
 from gspread.client import BackoffClient
 
-gc = gspread.service_account(filename=os.path.join(os.path.dirname(os.path.dirname(__file__)), "service_account.json"), client_factory=BackoffClient)
+gc = gspread.service_account(filename=os.path.join(os.path.dirname(os.path.dirname(__file__)), "service_account.json"),
+                             client_factory=BackoffClient)
 sh = gc.open(app.config["CURRENT_SPREADSHEET"])
 
 worksheets = []
@@ -120,12 +118,10 @@ if "Members" not in worksheets:
                     1, len(sh.worksheet("Members").row_values(1)) + 1, row.label
                 )
 
-
 if "Logs" not in worksheets:
     sh.add_worksheet("Logs", 1, 100)
     row = ["Order", "Transaction", "DateTime"]
     sh.worksheet("Logs").append_row(row)
-
 
 if "Prospects" not in worksheets:
     sh.add_worksheet("Prospects", 1, 100)
@@ -154,7 +150,6 @@ if "Prospects" not in worksheets:
                 sh.worksheet("Prospects").update_cell(
                     1, len(sh.worksheet("Prospects").row_values(1)) + 1, row.label
                 )
-
 
 wks = sh.worksheet("Members")
 prospects = sh.worksheet("Prospects")
@@ -189,7 +184,6 @@ app.register_blueprint(update_blueprint)
 app.register_blueprint(events_blueprint)
 app.register_blueprint(geo_blueprint)
 app.register_blueprint(confirm_blueprint)
-
 
 # Flask Admin
 from project.views.admin import (

@@ -5,7 +5,7 @@ from flask import (
 )
 from gspread.cell import Cell
 
-from project import  get_wks_columns, get_wks_records, prospects, wks
+from project import get_wks_columns, get_wks_records, prospects, wks
 from project.utils.utils import clean_phone_number
 
 

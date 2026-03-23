@@ -2,7 +2,8 @@ import asyncio, time, traceback
 from datetime import datetime
 from threading import Thread
 from gspread.cell import Cell
-from flask import Blueprint, render_template, url_for, request, copy_current_request_context, session, redirect, flash, get_flashed_messages
+from flask import Blueprint, render_template, url_for, request, copy_current_request_context, session, redirect, flash, \
+    get_flashed_messages
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired, Optional
@@ -74,7 +75,6 @@ def enter_email():
             send_email(email, subject, html)
 
             return render_template("instructions_sent.html")
-
 
         @copy_current_request_context
         def send_instructions():
@@ -201,7 +201,8 @@ def update_info(token):
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
-        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token,
+                            _external=True)
 
     if email:
 
@@ -580,7 +581,7 @@ def update_info(token):
                     # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                     # Get custom fields for form processing
                     custom_fields = [{"label": row.label, "field_type": row.field_type}
-                                   for row in edit_form.query.all()]
+                                     for row in edit_form.query.all()]
 
                     # Prepare form data for processing (including phone data)
                     form_data = {
@@ -607,7 +608,8 @@ def update_info(token):
 
                     # Calculate all required cell updates
                     basic_updates = calculate_basic_user_updates(form_data, row_find, custom_fields)
-                    verification_updates = calculate_verification_cell_updates(user, decision, row_find, prim_email, sec_email)
+                    verification_updates = calculate_verification_cell_updates(user, decision, row_find, prim_email,
+                                                                               sec_email)
                     phone_updates = calculate_phone_updates(user, form_data, phone_decision, row_find)
 
                     # PHASE 3: EXECUTE SIDE EFFECTS
@@ -628,9 +630,11 @@ def update_info(token):
                                 {"row": event_user["Row"], "column": "Last Name", "value": form.last_name.data},
                                 {"row": event_user["Row"], "column": "Membership Primary", "value": prim_email},
                                 {"row": event_user["Row"], "column": "Membership Secondary", "value": sec_email},
-                                {"row": event_user["Row"], "column": "Phone Number", "value": phone_data.get('full_phone_number', '')},
+                                {"row": event_user["Row"], "column": "Phone Number",
+                                 "value": phone_data.get('full_phone_number', '')},
                                 {"row": event_user["Row"], "column": "Last Updated",
-                                 "value": str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))},
+                                 "value": str(
+                                     datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))},
                                 {"row": event_user["Row"], "column": "Ticket Type", "value": form.event_tickets.data}
                             ]
 
@@ -805,22 +809,22 @@ def update_info(token):
                     final_phone_subscribed = "TRUE" if phone_data.get("phone_subscribe", False) else "FALSE"
 
                 return render_template("thanks_update.html",
-                                      event_url=event_url,
-                                      update_url=update_url,
-                                      first=form.first_name.data,
-                                      last=form.last_name.data,
-                                      primary_email=form.primary_email.data,
-                                      primary_verified="TRUE" if final_primary_verified else "FALSE",
-                                      primary_subscribed=primary_subscribed,
-                                      secondary_email=form.secondary_email.data,
-                                      secondary_verified="TRUE" if final_secondary_verified else "FALSE",
-                                      secondary_subscribed=secondary_subscribed,
-                                      phone_number=phone_data.get('full_phone_number', ''),
-                                      phone_number_verified=final_phone_verified,
-                                      phone_subscribed=final_phone_subscribed,
-                                      info_fields=info_fields,
-                                      event_name=event_obj.name if event_obj is not None else None,
-                                      event_fields=event_fields)
+                                       event_url=event_url,
+                                       update_url=update_url,
+                                       first=form.first_name.data,
+                                       last=form.last_name.data,
+                                       primary_email=form.primary_email.data,
+                                       primary_verified="TRUE" if final_primary_verified else "FALSE",
+                                       primary_subscribed=primary_subscribed,
+                                       secondary_email=form.secondary_email.data,
+                                       secondary_verified="TRUE" if final_secondary_verified else "FALSE",
+                                       secondary_subscribed=secondary_subscribed,
+                                       phone_number=phone_data.get('full_phone_number', ''),
+                                       phone_number_verified=final_phone_verified,
+                                       phone_subscribed=final_phone_subscribed,
+                                       info_fields=info_fields,
+                                       event_name=event_obj.name if event_obj is not None else None,
+                                       event_fields=event_fields)
 
     else:
         # GET request - clear any stale flash messages from previous sessions

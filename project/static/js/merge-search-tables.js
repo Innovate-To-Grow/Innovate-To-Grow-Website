@@ -246,6 +246,7 @@ $(document).ready(function () {
     });
 
 });
+
 // Merge Table specific functions END
 function updateDataTableSelectAllCtrl(table) {
     var $table = table.table().node();
@@ -275,6 +276,7 @@ function updateDataTableSelectAllCtrl(table) {
         }
     }
 }
+
 // All functions under the search table scope (.addtable) START
 $(document).on('click', '.addtable', function () { // adds a new search table and appends it to the .tableManage html
     search_counter++
@@ -373,7 +375,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                             tr.css('font-weight', 'bold');
                         }
                     });
-                } 
+                }
             }
         ],
         "pageLength": 5,
@@ -393,13 +395,13 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     return '<input type="checkbox">';
                 }
             },
-            { "data": "Year-Semester" },
-            { "data": "Class" },
-            { "data": "Team#" },
-            { "data": "Team Name" },
-            { "data": "Project Title" },
-            { "data": "Organization" },
-            { "data": "Industry" },
+            {"data": "Year-Semester"},
+            {"data": "Class"},
+            {"data": "Team#"},
+            {"data": "Team Name"},
+            {"data": "Project Title"},
+            {"data": "Organization"},
+            {"data": "Industry"},
             {
                 "className": 'details-control',
                 "orderable": false,
@@ -532,7 +534,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
         if (unique_url == true) {
             $(".mergeTable").show();
-            merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
+            merged_array = search_table.rows({filter: 'applied'}).data().toArray();
             for (let i = 0; i < merged_array.length; i++) {
                 var row = merged_table.row($(this).closest('tr'));
                 merged_table.row.add([
@@ -573,12 +575,11 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
 
                     if (first_merge == true) {
                         expected_merges = count_search_tables() - 1;
-                    }
-                    else {
+                    } else {
                         expected_merges = deleted.length + count_search_tables() - 1;
                     }
 
-                    merged_array = search_table.rows({ filter: 'applied' }).data().toArray(); // turn kept rows into an array
+                    merged_array = search_table.rows({filter: 'applied'}).data().toArray(); // turn kept rows into an array
 
                     merged_array = merged_array.filter(function (element) {
                         var is_deleted = false;
@@ -620,12 +621,10 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                         $('#example' + i).DataTable().destroy();
                         $('#example' + i).remove();
                     }
-                }
-                else {
+                } else {
                     alert_confirmation = false;
                 }
-            }
-            else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
+            } else if (confirmation_tracker != 0 && alert_confirmation == true) { // allows the merge to continue if confirmation is true
                 $(".mergeTable").show();
 
                 deleted_counter++;
@@ -633,7 +632,7 @@ $(document).on('click', '.addtable', function () { // adds a new search table an
                     deleted[deleted_counter] = new Set();
                 }
 
-                merged_array = search_table.rows({ filter: 'applied' }).data().toArray();
+                merged_array = search_table.rows({filter: 'applied'}).data().toArray();
 
                 merged_array = merged_array.filter(function (element) {
                     var is_deleted = false;
@@ -759,12 +758,12 @@ $(document).ready(function () {
         }).length) {
             $('.merge').prop('disabled', true);
             $('.merge').css('background-color', '#5B5B5B');
-        }
-        else {
+        } else {
             $('.merge').prop('disabled', false);
             $('.merge').css('background-color', '#162D4F');
         }
     }
+
     setInterval(disable_merge, 100);
 });
 

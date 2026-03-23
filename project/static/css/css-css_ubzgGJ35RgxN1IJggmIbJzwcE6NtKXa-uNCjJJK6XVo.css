@@ -8,7 +8,7 @@
     padding: 0;
 }
 
-.container-inline-date>.form-item {
+.container-inline-date > .form-item {
     display: inline-block;
     margin-right: 0.5em;
     margin-bottom: 10px;
@@ -79,11 +79,14 @@
     padding: 0;
 }
 
-span.date-display-single {}
+span.date-display-single {
+}
 
-span.date-display-start {}
+span.date-display-start {
+}
 
-span.date-display-end {}
+span.date-display-end {
+}
 
 .date-prefix-inline {
     display: inline-block;

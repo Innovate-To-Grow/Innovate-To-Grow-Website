@@ -26,7 +26,7 @@ from project.utils.token import generate_token
 
 
 def execute_cell_updates(
-    cell_updates: List[Dict[str, Any]], worksheet_name: str = "membership"
+        cell_updates: List[Dict[str, Any]], worksheet_name: str = "membership"
 ) -> None:
     """
     Execute a batch of cell updates on a specified worksheet.
@@ -60,10 +60,10 @@ def execute_cell_updates(
 
 
 def send_verification_email(
-    email: str,
-    user_first_name: str,
-    user_last_name: str,
-    start_expiry_timer: bool = True,
+        email: str,
+        user_first_name: str,
+        user_last_name: str,
+        start_expiry_timer: bool = True,
 ) -> None:
     """
     Send a verification email to the specified address.
@@ -91,7 +91,7 @@ def send_verification_email(
 
 
 def send_confirmation_email(
-    email: str, subject: str, template_name: str, template_data: Dict[str, Any]
+        email: str, subject: str, template_name: str, template_data: Dict[str, Any]
 ) -> None:
     """
     Send a confirmation/receipt email using specified template.
@@ -107,7 +107,7 @@ def send_confirmation_email(
 
 
 def send_deletion_notice_email(
-    email: str, user_first_name: str, user_last_name: str, deleted_email: str
+        email: str, user_first_name: str, user_last_name: str, deleted_email: str
 ) -> None:
     """
     Send notification that an email address has been removed from their account.
@@ -168,7 +168,7 @@ def start_email_expiry_timer(email: str) -> None:
 
 
 def refresh_user_data(
-    primary_email: str, secondary_email: str
+        primary_email: str, secondary_email: str
 ) -> Optional[Dict[str, Any]]:
     """
     Re-fetch user data from worksheet after updates.
@@ -185,8 +185,8 @@ def refresh_user_data(
     # Find user by email combination
     for row in wks_records:
         if (
-            row["Primary Email"] == primary_email
-            and row["Secondary Email"] == secondary_email
+                row["Primary Email"] == primary_email
+                and row["Secondary Email"] == secondary_email
         ):
             return row
 
@@ -194,7 +194,7 @@ def refresh_user_data(
 
 
 def create_event_registration(
-    event_worksheet_name: str, user_data: Dict[str, Any], event_data: Dict[str, Any]
+        event_worksheet_name: str, user_data: Dict[str, Any], event_data: Dict[str, Any]
 ) -> None:
     """
     Create a new event registration row in the event worksheet.
@@ -237,12 +237,12 @@ def create_event_registration(
 
 
 def update_subscription_status(
-    user_row: int,
-    primary_subscription: Optional[bool],
-    secondary_subscription: Optional[bool],
-    primary_verified: bool,
-    secondary_verified: bool,
-    secondary_email: str = None,
+        user_row: int,
+        primary_subscription: Optional[bool],
+        secondary_subscription: Optional[bool],
+        primary_verified: bool,
+        secondary_verified: bool,
+        secondary_email: str = None,
 ) -> None:
     """
     Update subscription status based on verification status and user preferences.
@@ -314,12 +314,12 @@ def update_completion_status(user_row: int) -> None:
 
 
 def send_event_confirmation_emails(
-    user: Dict[str, Any],
-    event_name: str,
-    event_url: str,
-    update_url: str,
-    info_fields: Dict[str, Any],
-    event_fields: Dict[str, Any],
+        user: Dict[str, Any],
+        event_name: str,
+        event_url: str,
+        update_url: str,
+        info_fields: Dict[str, Any],
+        event_fields: Dict[str, Any],
 ) -> None:
     """
     Send event registration confirmation emails to verified addresses.
@@ -376,7 +376,7 @@ def send_event_confirmation_emails(
 
 
 def create_complete_user_registration(
-    user_data: Dict[str, Any], custom_fields: List[Dict[str, Any]] = None
+        user_data: Dict[str, Any], custom_fields: List[Dict[str, Any]] = None
 ) -> int:
     """
     Create a new user record for complete registration and return the row number.
@@ -415,13 +415,13 @@ def create_complete_user_registration(
 
 
 def send_complete_registration_confirmation_email(
-    primary_email: str,
-    user_data: Dict[str, Any],
-    info_fields: Dict[str, Any],
-    event_fields: Dict[str, Any],
-    event_url: Optional[str],
-    update_url: str,
-    event_name: Optional[str] = None,
+        primary_email: str,
+        user_data: Dict[str, Any],
+        info_fields: Dict[str, Any],
+        event_fields: Dict[str, Any],
+        event_url: Optional[str],
+        update_url: str,
+        event_name: Optional[str] = None,
 ) -> None:
     """
     Send confirmation email for complete registration.
@@ -509,10 +509,10 @@ def start_phone_verification_process(phone_number: str) -> str:
 
 
 def setup_otp_verification_session(
-    session: Any,
-    user_data: Dict[str, Any],
-    event_data: Optional[Dict[str, Any]] = None,
-    phone_data: Optional[Dict[str, Any]] = None,
+        session: Any,
+        user_data: Dict[str, Any],
+        event_data: Optional[Dict[str, Any]] = None,
+        phone_data: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Sets up Flask session data for OTP verification flow.
@@ -574,7 +574,7 @@ def setup_otp_verification_session(
 
 
 def send_phone_confirmation_sms(
-    phone_number: str, event_name: str, phone_subscribed: bool = True
+        phone_number: str, event_name: str, phone_subscribed: bool = True
 ) -> None:
     """
     Sends a confirmation SMS message after successful registration.
@@ -655,10 +655,10 @@ def update_phone_verification_status(phone_number: str, verified: bool = True) -
 
 
 def setup_event_phone_verification_session(
-    session: Any,
-    user_data: Dict[str, Any],
-    event_data: Dict[str, Any],
-    phone_data: Dict[str, Any],
+        session: Any,
+        user_data: Dict[str, Any],
+        event_data: Dict[str, Any],
+        phone_data: Dict[str, Any],
 ) -> None:
     """
     Sets up Flask session data for phone verification flow.
@@ -820,10 +820,10 @@ def extract_phone_data_from_event_form(form) -> Dict[str, Any]:
 
 
 def create_event_registration_with_phone(
-    event_worksheet_name: str,
-    user_data: dict[str, Any],
-    event_data: dict[str, Any],
-    phone_data: Optional[dict[str, Any]] = None,
+        event_worksheet_name: str,
+        user_data: dict[str, Any],
+        event_data: dict[str, Any],
+        phone_data: Optional[dict[str, Any]] = None,
 ) -> None:
     """
     Create a new event registration row with phone information.

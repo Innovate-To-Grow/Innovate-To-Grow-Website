@@ -18,7 +18,7 @@ class ConditionalRequiredIfFieldProvided:
     def __init__(self, other_field_name, message=None):
         self.other_field_name = other_field_name
         self.message = (
-            message or f"This field is required when {other_field_name} is provided"
+                message or f"This field is required when {other_field_name} is provided"
         )
 
     def __call__(self, form, field):

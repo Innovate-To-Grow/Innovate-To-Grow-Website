@@ -15,11 +15,10 @@ from gspread.cell import Cell
 from project.forms.otp_forms import OTPForm
 from project.utils.twilio import client, verify_sid, check_verification, send_message
 
-
 confirm_blueprint = Blueprint("confirm",
-                             __name__,
-                             template_folder="../templates/membership/events",
-                             url_prefix=app.config["URL_PREFIX"])
+                              __name__,
+                              template_folder="../templates/membership/events",
+                              url_prefix=app.config["URL_PREFIX"])
 
 
 @confirm_blueprint.route("/otp", methods=["GET", "POST"])
@@ -61,7 +60,7 @@ def otp():
 
         # Get OTP code from form
         otp = form.otp.data
-        
+
         # Debug: Print session data
         print(f"DEBUG: Session data at start of OTP verification:")
         print(f"  - phone_subscribe: {phone_subscribe}")
@@ -79,7 +78,7 @@ def otp():
 
                 # Find user by primary email
                 user = asyncio.run(query_primary_column(primary_email, wks_records))
-                
+
                 if user:
                     # Record found, proceed with verification
                     user = user[0]
@@ -92,7 +91,7 @@ def otp():
                     # Final attempt failed
                     flash("Registration still processing. Please try again in a moment.", "warning")
                     return render_template("otp.html", form=form)
-            
+
             # User found, update phone verification
             if user:
                 row_find = user["Row"]
@@ -102,7 +101,7 @@ def otp():
                 cells.append(Cell(row_find, wks_columns["Phone number verified"], "TRUE"))
                 cells.append(Cell(row_find, wks_columns["Phone number subscribed"], phone_subscribe))
                 cells.append(Cell(row_find, wks_columns["Last Updated"],
-                                str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
+                                  str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))))
 
                 # Debug: Print what we're updating
                 print(f"DEBUG: Updating phone verification status:")
@@ -113,12 +112,12 @@ def otp():
 
                 # Update the worksheet
                 wks.update_cells(cells)
-                
+
                 # Debug: Verify the update was successful
                 print(f"DEBUG: After update, checking cell value:")
                 updated_cell = wks.cell(row_find, wks_columns["Phone number subscribed"])
                 print(f"  - Cell value: '{updated_cell.value}'")
-                
+
                 # Add a small delay to ensure database update is committed
                 time.sleep(1)
 
@@ -138,7 +137,7 @@ def otp():
                 # Since OTP was successfully verified, phone is now verified
                 phone_number_verified = "TRUE"
                 # phone_subscribe is already set from session data above (as "TRUE" or "FALSE" string)
-                
+
                 return render_template("thanks_update.html",
                                        event_url=event_url,
                                        update_url=update_url,
@@ -163,7 +162,7 @@ def otp():
                     # Since OTP was successfully verified, phone is now verified
                     phone_number_verified = "TRUE"
                     # phone_subscribe is already set from session data above (as "TRUE" or "FALSE" string)
-                    
+
                     return render_template("successfully_registered.html",
                                            event_url=event_url,
                                            update_url=update_url,
@@ -189,7 +188,7 @@ def otp():
                     # Since OTP was successfully verified, phone is now verified
                     phone_number_verified = "TRUE"
                     # phone_subscribe is already set from session data above
-                    
+
                     return render_template("receipt.html",
                                            event_url=event_url,
                                            update_url=update_url,

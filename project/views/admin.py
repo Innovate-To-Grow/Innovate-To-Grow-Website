@@ -377,7 +377,7 @@ class ContactView(BaseView):
                 event_records = get_wks_records(sh.worksheet(event_obj.name))
 
             if event_obj is None and (
-                recip_selection == "Event" or recip_selection == "Non-Event Subscribed"
+                    recip_selection == "Event" or recip_selection == "Non-Event Subscribed"
             ):
                 flash("There is no live event right now")
 
@@ -386,9 +386,9 @@ class ContactView(BaseView):
                 html_from_email = None
 
                 with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(
-                    app.config["MAIL_USERNAME"],
-                    app.config["MAIL_PASSWORD"],
-                    "Email Blasts",
+                        app.config["MAIL_USERNAME"],
+                        app.config["MAIL_PASSWORD"],
+                        "Email Blasts",
                 ) as mailbox:
                     for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
                         html_from_email = msg.html
@@ -416,32 +416,32 @@ class ContactView(BaseView):
                                     row
                                     for row in wks_records
                                     if row["Primary Email"] == attendee["Membership Primary"]
-                                    and (row["Secondary Email"]  == attendee["Membership Secondary"]
-                                        or row["Phone Number"] == attendee["Phone Number"])
+                                       and (row["Secondary Email"] == attendee["Membership Secondary"]
+                                            or row["Phone Number"] == attendee["Phone Number"])
                                 ]
                                 if member:
                                     member = member[0]
                                     html = render_template_string(html_from_email)
 
                                     if (
-                                        email_selection == "Primary"
-                                        or email_selection == "Both"
+                                            email_selection == "Primary"
+                                            or email_selection == "Both"
                                     ):
                                         if (
-                                            member["Primary Email"] != ""
-                                            and member["Primary Verified"] == "TRUE"
+                                                member["Primary Email"] != ""
+                                                and member["Primary Verified"] == "TRUE"
                                         ):
                                             send_email(
                                                 member["Primary Email"], subject, html
                                             )
 
                                     if (
-                                        email_selection == "Secondary"
-                                        or email_selection == "Both"
+                                            email_selection == "Secondary"
+                                            or email_selection == "Both"
                                     ):
                                         if (
-                                            member["Secondary Email"] != ""
-                                            and member["Secondary Verified"] == "TRUE"
+                                                member["Secondary Email"] != ""
+                                                and member["Secondary Verified"] == "TRUE"
                                         ):
                                             send_email(
                                                 member["Secondary Email"], subject, html
@@ -454,24 +454,24 @@ class ContactView(BaseView):
                                 html = render_template_string(html_from_email)
 
                                 if (
-                                    email_selection == "Primary"
-                                    or email_selection == "Both"
+                                        email_selection == "Primary"
+                                        or email_selection == "Both"
                                 ):
                                     if (
-                                        member["Primary Email"] != ""
-                                        and member["Primary Subscribed"] == "TRUE"
+                                            member["Primary Email"] != ""
+                                            and member["Primary Subscribed"] == "TRUE"
                                     ):
                                         send_email(
                                             member["Primary Email"], subject, html
                                         )
 
                                 if (
-                                    email_selection == "Secondary"
-                                    or email_selection == "Both"
+                                        email_selection == "Secondary"
+                                        or email_selection == "Both"
                                 ):
                                     if (
-                                        member["Secondary Email"] != ""
-                                        and member["Secondary Subscribed"] == "TRUE"
+                                            member["Secondary Email"] != ""
+                                            and member["Secondary Subscribed"] == "TRUE"
                                     ):
                                         send_email(
                                             member["Secondary Email"], subject, html
@@ -482,32 +482,32 @@ class ContactView(BaseView):
                         elif recip_selection == "Non-Event Subscribed":
                             for member in wks_records:
                                 if not any(
-                                    member["Primary Email"] == attendee["Membership Primary"]
-                                    and (member["Secondary Email"] == attendee["Membership Secondary"]
-                                        or member["Phone Number"] == attendee["Phone Number"])
-                                    for attendee in event_records
+                                        member["Primary Email"] == attendee["Membership Primary"]
+                                        and (member["Secondary Email"] == attendee["Membership Secondary"]
+                                             or member["Phone Number"] == attendee["Phone Number"])
+                                        for attendee in event_records
                                 ):
                                     html = render_template_string(html_from_email)
 
                                     if (
-                                        email_selection == "Primary"
-                                        or email_selection == "Both"
+                                            email_selection == "Primary"
+                                            or email_selection == "Both"
                                     ):
                                         if (
-                                            member["Primary Email"] != ""
-                                            and member["Primary Subscribed"] == "TRUE"
+                                                member["Primary Email"] != ""
+                                                and member["Primary Subscribed"] == "TRUE"
                                         ):
                                             send_email(
                                                 member["Primary Email"], subject, html
                                             )
 
                                     if (
-                                        email_selection == "Secondary"
-                                        or email_selection == "Both"
+                                            email_selection == "Secondary"
+                                            or email_selection == "Both"
                                     ):
                                         if (
-                                            member["Secondary Email"] != ""
-                                            and member["Secondary Subscribed"] == "TRUE"
+                                                member["Secondary Email"] != ""
+                                                and member["Secondary Subscribed"] == "TRUE"
                                         ):
                                             send_email(
                                                 member["Secondary Email"], subject, html
@@ -520,24 +520,24 @@ class ContactView(BaseView):
                                 html = render_template_string(html_from_email)
 
                                 if (
-                                    email_selection == "Primary"
-                                    or email_selection == "Both"
+                                        email_selection == "Primary"
+                                        or email_selection == "Both"
                                 ):
                                     if (
-                                        member["Primary Email"] != ""
-                                        and member["Primary Verified"] == "TRUE"
+                                            member["Primary Email"] != ""
+                                            and member["Primary Verified"] == "TRUE"
                                     ):
                                         send_email(
                                             member["Primary Email"], subject, html
                                         )
 
                                 if (
-                                    email_selection == "Secondary"
-                                    or email_selection == "Both"
+                                        email_selection == "Secondary"
+                                        or email_selection == "Both"
                                 ):
                                     if (
-                                        member["Secondary Email"] != ""
-                                        and member["Secondary Verified"] == "TRUE"
+                                            member["Secondary Email"] != ""
+                                            and member["Secondary Verified"] == "TRUE"
                                     ):
                                         send_email(
                                             member["Secondary Email"], subject, html
@@ -555,16 +555,16 @@ class ContactView(BaseView):
                             prospect_records = get_wks_records(prospects)
                             for row in prospect_records:
                                 if (row[when_signed_as_member] == ""
-                                    and row["Email"] != ""
-                                    and (email_selection == "Primary"
-                                        or email_selection == "Both")):
-                                            send_email(row["Email"], subject,html)
+                                        and row["Email"] != ""
+                                        and (email_selection == "Primary"
+                                             or email_selection == "Both")):
+                                    send_email(row["Email"], subject, html)
 
                                 if (row[when_signed_as_member] == ""
-                                    and row[secondary_email] != ""
-                                    and (email_selection == "Secondary"
-                                        or email_selection == "Both")):
-                                            send_email(row[secondary_email], subject, html)
+                                        and row[secondary_email] != ""
+                                        and (email_selection == "Secondary"
+                                             or email_selection == "Both")):
+                                    send_email(row[secondary_email], subject, html)
 
                     Thread(target=send_blast).start()
 
@@ -644,9 +644,9 @@ class CatchBouncesView(BaseView):
                                 )
 
                                 if (
-                                    row["Secondary Email"] != ""
-                                    and row["Secondary Verified"] == "TRUE"
-                                    and row["Secondary Bounced"] == ""
+                                        row["Secondary Email"] != ""
+                                        and row["Secondary Verified"] == "TRUE"
+                                        and row["Secondary Bounced"] == ""
                                 ):
                                     token = generate_token(row["Secondary Email"])
                                     update_url = url_for(
@@ -680,9 +680,9 @@ class CatchBouncesView(BaseView):
                                 )
 
                                 if (
-                                    row["Primary Email"] != ""
-                                    and row["Primary Verified"] == "TRUE"
-                                    and row["Primary Bounced"] == ""
+                                        row["Primary Email"] != ""
+                                        and row["Primary Verified"] == "TRUE"
+                                        and row["Primary Bounced"] == ""
                                 ):
                                     token = generate_token(row["Primary Email"])
                                     update_url = url_for(
@@ -760,9 +760,9 @@ class ManualEmailView(BaseView):
 
             try:
                 with imap_tools.MailBox(app.config["IMAP_SERVER"]).login(
-                    app.config["MAIL_USERNAME"],
-                    app.config["MAIL_PASSWORD"],
-                    "Email Blasts",
+                        app.config["MAIL_USERNAME"],
+                        app.config["MAIL_PASSWORD"],
+                        "Email Blasts",
                 ) as mailbox:
                     for msg in mailbox.fetch(limit=1, reverse=True, bulk=True):
                         html_from_email = msg.html

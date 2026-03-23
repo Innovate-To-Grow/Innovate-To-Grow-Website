@@ -21,7 +21,7 @@ def process_data():
         if node['id'] not in seen_nodes:
             node_type = node['tags'].get('amenity') or node['tags'].get(
                 'shop') or node['tags'].get('office') or node['tags'].get(
-                    'building') or 'other'
+                'building') or 'other'
             # location = geolocator.reverse((node['lat'], node['lon']))
             # address = location.address.replace(",", " ")
             # node['address'] = address

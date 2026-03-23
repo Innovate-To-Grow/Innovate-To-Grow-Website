@@ -82,8 +82,7 @@ async function fetchDataForShape(shape) {
                 console.log('Error: ', error);
             }
         }
-    }
-    else if (shapeType === "circle") {
+    } else if (shapeType === "circle") {
         console.log("circle");
         let center = shape.getLatLng();
         let radius = shape.getRadius();
@@ -172,7 +171,6 @@ map.on('draw:created', function (e) {
 });
 
 
-
 // Saving function
 function saveShapeSelection() {
     if (drawnItems.getLayers().length != 0) {
@@ -251,7 +249,7 @@ function loadShapeSelection() {
     L.geoJSON(selectedShapes, {
         pointToLayer: function (feature, latlng) {
             if (feature.properties.shapeType === "circle") {
-                let circle = L.circle(latlng, { radius: feature.properties.radius });
+                let circle = L.circle(latlng, {radius: feature.properties.radius});
                 circle.shapeType = feature.properties.shapeType;
                 drawnItems.addLayer(circle);
             }
@@ -339,7 +337,7 @@ document.getElementById('loadDataButton').addEventListener('click', async functi
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ elements: data })
+        body: JSON.stringify({elements: data})
     });
     if (!response.ok) {
         throw Error(`HTTP error! status: ${response.status}`);
@@ -361,7 +359,7 @@ let detailsData = [];  // Array to hold details data
 function moveSearchBar() {
     let searchContainer = $("#data-dateFilterDropdown .search-bar");
     let searchBar = $("#data-table_filter");
-  
+
     // If the search bar already exists in the search container, remove it
     if (searchContainer.children().length > 0) {
         searchContainer.empty();
@@ -437,9 +435,7 @@ async function loadData() {
 
         if (node.lat !== undefined && node.lon !== undefined) {
             row.dataset.details = `<b>Latitude</b>: ${node.lat}&emsp;<b>Longitude</b>: ${node.lon}&emsp;${tagsString}`;
-        }
-
-        else {
+        } else {
             row.dataset.details = tagsString;
         }
 
@@ -476,10 +472,10 @@ async function loadData() {
     // Initialize DataTable
     let table = $('#data-table').DataTable({
         "columns": [
-            { "data": null, "defaultContent": "<input type='checkbox' class='row-checkbox'>" }, // Checkbox column
-            { "data": "tags.name" },
-            { "data": "type" },
-            { "data": "timestamp" },
+            {"data": null, "defaultContent": "<input type='checkbox' class='row-checkbox'>"}, // Checkbox column
+            {"data": "tags.name"},
+            {"data": "type"},
+            {"data": "timestamp"},
             {
                 "data": null,
                 "className": 'details-control',
@@ -495,14 +491,14 @@ async function loadData() {
         ],
         "order": [[1, 'asc']],
         "columnDefs": [
-            { "width": "50%", "targets": 1 },
-            { "width": "1%", "targets": 4 },
-            { "width": "auto", "targets": "_all" }
+            {"width": "50%", "targets": 1},
+            {"width": "1%", "targets": 4},
+            {"width": "auto", "targets": "_all"}
         ],
         "stateSave": true
     });
     moveSearchBar();
-    
+
 
     // Adjust table width on window resize
     $(window).resize(function () {
@@ -569,9 +565,9 @@ $(document).ready(function () {
 
     let masterTable = $('#master-table').DataTable({
         "columns": [
-            { "data": "tags.name" },
-            { "data": "type" },
-            { "data": "timestamp" },
+            {"data": "tags.name"},
+            {"data": "type"},
+            {"data": "timestamp"},
             {
                 "data": null,
                 "className": 'details-control',
@@ -600,9 +596,9 @@ $(document).ready(function () {
             'copyHtml5', 'csvHtml5', 'excelHtml5', 'pdfHtml5', 'print'
         ],
         "columnDefs": [
-            { "width": "50%", "targets": 0 },
-            { "width": "1%", "targets": 3 },
-            { "width": "auto", "targets": "_all" }
+            {"width": "50%", "targets": 0},
+            {"width": "1%", "targets": 3},
+            {"width": "auto", "targets": "_all"}
         ]
     });
 

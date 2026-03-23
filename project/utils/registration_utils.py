@@ -35,9 +35,9 @@ class CompleteRegistrationDecision:
 
 
 def analyze_complete_registration_conflicts(
-    wks_records: List[Dict[str, Any]],
-    primary_email: str,
-    secondary_email: str
+        wks_records: List[Dict[str, Any]],
+        primary_email: str,
+        secondary_email: str
 ) -> CompleteRegistrationDecision:
     """
     Analyzes potential conflicts for a complete registration attempt.
@@ -190,10 +190,10 @@ def analyze_complete_registration_conflicts(
 
 
 def calculate_new_user_creation(
-    form_data: Dict[str, Any],
-    custom_fields: List[Dict[str, Any]],
-    next_order_number: int,
-    current_timestamp: str
+        form_data: Dict[str, Any],
+        custom_fields: List[Dict[str, Any]],
+        next_order_number: int,
+        current_timestamp: str
 ) -> Dict[str, Any]:
     """
     Calculates all the data needed to create a new user record for complete registration.
@@ -223,20 +223,20 @@ def calculate_new_user_creation(
 
         # Primary email (immediately verified in complete registration)
         "Primary Email": form_data["primary_email"],
-        "Primary Verified": "TRUE",      # Key difference: immediately verified
+        "Primary Verified": "TRUE",  # Key difference: immediately verified
         "Primary Subscribed": "TRUE" if form_data.get("primary_subscribe", True) else "FALSE",
         "Primary Expired": "FALSE",
         "Primary Bounced": "",
 
         # Secondary email (needs verification)
         "Secondary Email": form_data["secondary_email"],
-        "Secondary Verified": "FALSE",   # Will be verified later
+        "Secondary Verified": "FALSE",  # Will be verified later
         "Secondary Subscribed": "TRUE" if form_data.get("secondary_subscribe", False) else "FALSE",
         "Secondary Expired": "FALSE",
         "Secondary Bounced": "",
 
         # Completion status
-        "Info Completed": "TRUE"         # Key difference: immediately completed
+        "Info Completed": "TRUE"  # Key difference: immediately completed
     }
 
     # Add phone fields if provided
@@ -260,9 +260,9 @@ def calculate_new_user_creation(
 
 
 def calculate_event_registration_from_complete(
-    form_data: Dict[str, Any],
-    event_questions: List[str],
-    register_for_event: bool = True
+        form_data: Dict[str, Any],
+        event_questions: List[str],
+        register_for_event: bool = True
 ) -> Optional[Dict[str, Any]]:
     """
     Calculates event registration data if user opted to register for an event.
@@ -297,8 +297,8 @@ def calculate_event_registration_from_complete(
 
 
 def validate_complete_registration_form_data(
-    form_data: Dict[str, Any],
-    required_fields: List[str] = None
+        form_data: Dict[str, Any],
+        required_fields: List[str] = None
 ) -> Dict[str, List[str]]:
     """
     Validates complete registration form data for business rule compliance.
@@ -347,9 +347,9 @@ def validate_complete_registration_form_data(
 
 
 def analyze_user_existence_check(
-    wks_records: List[Dict[str, Any]],
-    primary_email: str,
-    secondary_email: str
+        wks_records: List[Dict[str, Any]],
+        primary_email: str,
+        secondary_email: str
 ) -> Dict[str, Any]:
     """
     Checks if a user already exists with either of the provided emails.
@@ -408,8 +408,8 @@ def analyze_user_existence_check(
 
 
 def analyze_phone_number_conflicts(
-    wks_records: List[Dict[str, Any]],
-    phone_number: str
+        wks_records: List[Dict[str, Any]],
+        phone_number: str
 ) -> Dict[str, Any]:
     """
     Analyzes potential conflicts for a phone number in complete registration.
@@ -439,7 +439,7 @@ def analyze_phone_number_conflicts(
         sheet_phone = row.get("Phone Number", "")
         # print(f"DEBUG: Record {i+1} phone: '{sheet_phone}' (type: {type(sheet_phone)})")
         # if sheet_phone:
-            # print(f"DEBUG: Record {i+1} phone stripped: '{str(sheet_phone).strip()}'")
+        # print(f"DEBUG: Record {i+1} phone stripped: '{str(sheet_phone).strip()}'")
 
     # Find users with this phone number
     # Handle type mismatch: Google Sheets may store phone numbers as integers
@@ -497,8 +497,8 @@ def analyze_phone_number_conflicts(
 
 
 def calculate_registration_method(
-    has_secondary_email: bool,
-    has_phone_number: bool
+        has_secondary_email: bool,
+        has_phone_number: bool
 ) -> str:
     """
     Determines the registration method based on provided contact methods.
@@ -525,8 +525,8 @@ def calculate_registration_method(
 
 
 def should_trigger_phone_verification(
-    registration_method: str,
-    phone_number: str
+        registration_method: str,
+        phone_number: str
 ) -> bool:
     """
     Determines if phone verification (OTP) should be triggered.
@@ -546,8 +546,8 @@ def should_trigger_phone_verification(
 
 
 def validate_and_format_phone_number(
-    country_code: str,
-    phone_number: str
+        country_code: str,
+        phone_number: str
 ) -> Dict[str, Any]:
     """
     Validates and formats a phone number for storage.
@@ -595,7 +595,7 @@ def validate_and_format_phone_number(
 
 
 def calculate_phone_registration_data(
-    form_data: Dict[str, Any]
+        form_data: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
     Calculates phone-related data for user registration.

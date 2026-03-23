@@ -39,9 +39,9 @@ class PhoneChangeDecision:
 
 
 def analyze_email_changes(
-    current_user: Dict[str, Any],
-    new_primary_email: str,
-    new_secondary_email: str
+        current_user: Dict[str, Any],
+        new_primary_email: str,
+        new_secondary_email: str
 ) -> EmailChangeDecision:
     """
     Analyzes email changes and determines what verification actions are needed.
@@ -119,11 +119,11 @@ def analyze_email_changes(
 
 
 def calculate_verification_cell_updates(
-    current_user: Dict[str, Any],
-    decision: EmailChangeDecision,
-    row_number: int,
-    new_primary_email: str = None,
-    new_secondary_email: str = None
+        current_user: Dict[str, Any],
+        decision: EmailChangeDecision,
+        row_number: int,
+        new_primary_email: str = None,
+        new_secondary_email: str = None
 ) -> List[Dict[str, Any]]:
     """
     Calculates what cell updates are needed for email verification status changes.
@@ -194,9 +194,9 @@ def calculate_verification_cell_updates(
 
 
 def calculate_basic_user_updates(
-    form_data: Dict[str, Any],
-    row_number: int,
-    custom_fields: List[Dict[str, Any]] = None
+        form_data: Dict[str, Any],
+        row_number: int,
+        custom_fields: List[Dict[str, Any]] = None
 ) -> List[Dict[str, Any]]:
     """
     Calculates basic user information updates (name, emails, custom fields).
@@ -229,7 +229,6 @@ def calculate_basic_user_updates(
         for field in secondary_fields:
             updates.append({"row": row_number, "column": field, "value": ""})
 
-
     # Add custom fields if provided
     if custom_fields:
         for field in custom_fields:
@@ -246,11 +245,11 @@ def calculate_basic_user_updates(
 
 
 def make_sure(
-    can_update: bool,
-    wks_records: list[dict],
-    current_user_row: int,
-    new_primary_email: str,
-    new_secondary_email: str
+        can_update: bool,
+        wks_records: list[dict],
+        current_user_row: int,
+        new_primary_email: str,
+        new_secondary_email: str
 ):
     """
     Validates email changes for event registration updates.
@@ -340,11 +339,11 @@ def make_sure(
 
 
 def analyze_phone_number_changes(
-    current_phone: Optional[str],
-    new_country_code: Optional[str],
-    new_phone_number: Optional[str],
-    wks_records: List[Dict[str, Any]],
-    current_user_row: Optional[int] = None
+        current_phone: Optional[str],
+        new_country_code: Optional[str],
+        new_phone_number: Optional[str],
+        wks_records: List[Dict[str, Any]],
+        current_user_row: Optional[int] = None
 ) -> PhoneChangeDecision:
     """
     Analyzes phone number changes and determines what actions are needed.
@@ -408,7 +407,6 @@ def analyze_phone_number_changes(
     normalized_current = normalize_phone(current_phone)
     normalized_new = normalize_phone(new_full_phone)
 
-
     # Compare normalized phone numbers
     if normalized_current == normalized_new:
         return PhoneChangeDecision()  # No change
@@ -429,9 +427,9 @@ def analyze_phone_number_changes(
 
 
 def calculate_phone_verification_decision(
-    user: Dict[str, Any],
-    phone_decision: PhoneChangeDecision,
-    phone_subscribe: bool = False
+        user: Dict[str, Any],
+        phone_decision: PhoneChangeDecision,
+        phone_subscribe: bool = False
 ) -> bool:
     """
     Determine if phone verification is needed based on phone change analysis.
@@ -468,11 +466,11 @@ def calculate_phone_verification_decision(
 
 
 def should_send_event_sms_confirmation(
-    phone_verified: str,
-    phone_subscribed: bool,
-    has_phone_number: bool,
-    event_name: Optional[str] = None,
-    is_new_registration: bool = True
+        phone_verified: str,
+        phone_subscribed: bool,
+        has_phone_number: bool,
+        event_name: Optional[str] = None,
+        is_new_registration: bool = True
 ) -> bool:
     """
     Decide if we should send SMS confirmation for event registration.
@@ -491,19 +489,19 @@ def should_send_event_sms_confirmation(
         bool: True if SMS confirmation should be sent
     """
     return (
-        is_new_registration and  # Only send SMS for new registrations, not updates
-        has_phone_number and
-        phone_verified == "TRUE" and
-        phone_subscribed and
-        event_name is not None
+            is_new_registration and  # Only send SMS for new registrations, not updates
+            has_phone_number and
+            phone_verified == "TRUE" and
+            phone_subscribed and
+            event_name is not None
     )
 
 
 def calculate_phone_updates(
-    user: Dict[str, Any],
-    form_data: Dict[str, Any],
-    phone_decision: PhoneChangeDecision,
-    row_number: int
+        user: Dict[str, Any],
+        form_data: Dict[str, Any],
+        phone_decision: PhoneChangeDecision,
+        row_number: int
 ) -> List[Dict[str, Any]]:
     """
     Calculates phone-related cell updates for the worksheet.
@@ -574,7 +572,7 @@ def extract_phone_data_from_form(form) -> Dict[str, Any]:
         "phone_number": getattr(form, "phone_number", None).data if hasattr(form, "phone_number") else "",
         "phone_subscribe": getattr(form, "phone_subscribe", None).data if hasattr(form, "phone_subscribe") else False,
         "full_phone_number": (
-            (getattr(form, "country_code", None).data or "") +
-            (getattr(form, "phone_number", None).data or "")
+                (getattr(form, "country_code", None).data or "") +
+                (getattr(form, "phone_number", None).data or "")
         ) if hasattr(form, "country_code") and hasattr(form, "phone_number") else ""
     }

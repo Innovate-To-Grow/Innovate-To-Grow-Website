@@ -3,7 +3,8 @@ from datetime import datetime
 from threading import Thread
 
 from gspread.cell import Cell
-from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context, abort, session, flash, get_flashed_messages
+from flask import Blueprint, render_template, request, url_for, redirect, copy_current_request_context, abort, session, \
+    flash, get_flashed_messages
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, RadioField
 from wtforms.validators import EqualTo, Email, InputRequired
@@ -30,7 +31,6 @@ from project.forms.update_forms import EmailForm
 from project.forms.complete_registration_forms import CompleteRegistrationForm
 from project.utils.twilio import split_number
 from project.services.logging_service import Logger
-
 
 events_blueprint = Blueprint("events",
                              __name__,
@@ -106,7 +106,6 @@ def enter_email(event_name):
 
             return render_template("event_instructions_sent.html")
 
-
         @copy_current_request_context
         def send_instructions():
             try:
@@ -124,7 +123,8 @@ def enter_email(event_name):
 
                     if user["Secondary Email"] != "":
                         token = generate_token(user["Secondary Email"])
-                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"),
+                                            token=token, _external=True)
                         html = render_template(
                             "event_email.html",
                             first=user["First Name"],
@@ -137,7 +137,8 @@ def enter_email(event_name):
                 elif (user["Primary Verified"] == "TRUE" and user["Secondary Verified"] == "FALSE"):
                     if user["Primary Email"] != "":
                         token = generate_token(user["Primary Email"])
-                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"),
+                                            token=token, _external=True)
                         html = render_template(
                             "event_email.html",
                             first=user["First Name"],
@@ -184,7 +185,8 @@ def enter_email(event_name):
                 else:
                     if user["Primary Email"] != "":
                         token = generate_token(user["Primary Email"])
-                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+                        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"),
+                                            token=token, _external=True)
                         html = render_template(
                             "event_email.html",
                             first=user["First Name"],
@@ -232,7 +234,8 @@ def event_register(event_name, token):
         event_wks = sh.worksheet(event_obj.name)
         event_wks_records = get_wks_records(event_wks)
         event_wks_columns = get_wks_columns(event_wks)
-        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token, _external=True)
+        event_url = url_for("events.event_register", event_name=event_obj.name.replace(" ", "-"), token=token,
+                            _external=True)
 
     if email:
 
@@ -359,7 +362,6 @@ def event_register(event_name, token):
     if hasattr(form, 'register_event'):
         form.register_event.render_kw = {"disabled": True}
 
-
     if request.method == "POST" and form.validate_on_submit():
 
         # Extract phone data first (needed for logging)
@@ -383,7 +385,8 @@ def event_register(event_name, token):
         primary_email = form.primary_email.data
         secondary_email = form.secondary_email.data
         phone_number = phone_data.get('full_phone_number', '')
-        Thread(target=logger.log_event_register, args=(path, first_name, last_name, primary_email, secondary_email)).start()
+        Thread(target=logger.log_event_register,
+               args=(path, first_name, last_name, primary_email, secondary_email)).start()
 
         wks_records = get_wks_records(wks)
         wks_columns = get_wks_columns(wks)
@@ -612,7 +615,7 @@ def event_register(event_name, token):
                     # PHASE 2: CALCULATE REQUIRED UPDATES (Pure Logic)
                     # Get custom fields for form processing
                     custom_fields = [{"label": row.label, "field_type": row.field_type}
-                                   for row in edit_form.query.all()]
+                                     for row in edit_form.query.all()]
 
                     # Prepare form data for processing (including phone data)
                     form_data = {
@@ -669,7 +672,8 @@ def event_register(event_name, token):
                                 {"row": event_user["Row"], "column": "Membership Secondary", "value": sec_email},
                                 {"row": event_user["Row"], "column": "Phone Number", "value": event_phone_value},
                                 {"row": event_user["Row"], "column": "Last Updated",
-                                 "value": str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))},
+                                 "value": str(
+                                     datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p"))},
                                 {"row": event_user["Row"], "column": "Ticket Type", "value": form.event_tickets.data}
                             ]
 
@@ -701,7 +705,8 @@ def event_register(event_name, token):
 
                             # For new event registrations, only pass phone data if not clearing
                             event_phone_data = None if phone_decision.clear else phone_data
-                            create_event_registration_with_phone(event_obj.name, user_data, event_data, event_phone_data)
+                            create_event_registration_with_phone(event_obj.name, user_data, event_data,
+                                                                 event_phone_data)
 
                     # PHASE 4: HANDLE SUBSCRIPTION STATUS (calculate from local state)
                     # Calculate final verification status from email decision
@@ -814,22 +819,22 @@ def event_register(event_name, token):
                     final_phone_subscribed = "TRUE" if phone_data.get("phone_subscribe", False) else "FALSE"
 
                 return render_template("successfully_registered.html",
-                                      event_url=event_url,
-                                      update_url=update_url,
-                                      first=form.first_name.data,
-                                      last=form.last_name.data,
-                                      primary_email=form.primary_email.data,
-                                      primary_verified="TRUE" if final_primary_verified else "FALSE",
-                                      primary_subscribed=primary_subscribed,
-                                      secondary_email=form.secondary_email.data,
-                                      secondary_verified="TRUE" if final_secondary_verified else "FALSE",
-                                      secondary_subscribed=secondary_subscribed,
-                                      phone_number=phone_data.get('full_phone_number', ''),
-                                      phone_number_verified=final_phone_verified,
-                                      phone_subscribed=final_phone_subscribed,
-                                      info_fields=info_fields,
-                                      event_name=event_obj.name if event_obj is not None else None,
-                                      event_fields=event_fields)
+                                       event_url=event_url,
+                                       update_url=update_url,
+                                       first=form.first_name.data,
+                                       last=form.last_name.data,
+                                       primary_email=form.primary_email.data,
+                                       primary_verified="TRUE" if final_primary_verified else "FALSE",
+                                       primary_subscribed=primary_subscribed,
+                                       secondary_email=form.secondary_email.data,
+                                       secondary_verified="TRUE" if final_secondary_verified else "FALSE",
+                                       secondary_subscribed=secondary_subscribed,
+                                       phone_number=phone_data.get('full_phone_number', ''),
+                                       phone_number_verified=final_phone_verified,
+                                       phone_subscribed=final_phone_subscribed,
+                                       info_fields=info_fields,
+                                       event_name=event_obj.name if event_obj is not None else None,
+                                       event_fields=event_fields)
 
     else:
         # GET request - clear any stale flash messages from previous sessions

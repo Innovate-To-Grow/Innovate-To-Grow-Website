@@ -214,7 +214,7 @@ html.js .js-hide {
     height: 1%;
 }
 
-*:first-child+html .clearfix {
+*:first-child + html .clearfix {
     min-height: 1%;
 }
 
