@@ -1,0 +1,135 @@
+{
+  "family": "itg-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::394167325273:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::394167325273:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "itg-backend",
+      "image": "394167325273.dkr.ecr.us-west-2.amazonaws.com/itg-backend:latest",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DJANGO_SETTINGS_MODULE",
+          "value": "core.settings.prod"
+        },
+        {
+          "name": "DJANGO_SECRET_KEY",
+          "value": "__DJANGO_SECRET_KEY__"
+        },
+        {
+          "name": "DJANGO_ALLOWED_HOSTS",
+          "value": "__DJANGO_ALLOWED_HOSTS__"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "__DB_NAME__"
+        },
+        {
+          "name": "DB_USER",
+          "value": "__DB_USER__"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "value": "__DB_PASSWORD__"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "__DB_HOST__"
+        },
+        {
+          "name": "DB_PORT",
+          "value": "__DB_PORT__"
+        },
+        {
+          "name": "REDIS_URL",
+          "value": "__REDIS_URL__"
+        },
+        {
+          "name": "CSRF_TRUSTED_ORIGINS",
+          "value": "__CSRF_TRUSTED_ORIGINS__"
+        },
+        {
+          "name": "CORS_ALLOWED_ORIGINS",
+          "value": "__CORS_ALLOWED_ORIGINS__"
+        },
+        {
+          "name": "FRONTEND_URL",
+          "value": "__FRONTEND_URL__"
+        },
+        {
+          "name": "AWS_STORAGE_BUCKET_NAME",
+          "value": "__AWS_STORAGE_BUCKET_NAME__"
+        },
+        {
+          "name": "AWS_S3_REGION_NAME",
+          "value": "__AWS_S3_REGION_NAME__"
+        },
+        {
+          "name": "SES_AWS_ACCESS_KEY_ID",
+          "value": "__SES_AWS_ACCESS_KEY_ID__"
+        },
+        {
+          "name": "SES_AWS_SECRET_ACCESS_KEY",
+          "value": "__SES_AWS_SECRET_ACCESS_KEY__"
+        },
+        {
+          "name": "SES_AWS_REGION",
+          "value": "__SES_AWS_REGION__"
+        },
+        {
+          "name": "SES_FROM_EMAIL",
+          "value": "__SES_FROM_EMAIL__"
+        },
+        {
+          "name": "SES_FROM_NAME",
+          "value": "__SES_FROM_NAME__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_USERNAME",
+          "value": "__DJANGO_SUPERUSER_USERNAME__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_EMAIL",
+          "value": "__DJANGO_SUPERUSER_EMAIL__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_PASSWORD",
+          "value": "__DJANGO_SUPERUSER_PASSWORD__"
+        },
+        {
+          "name": "GOOGLE_SHEETS_CREDENTIALS_JSON",
+          "value": "__GOOGLE_SHEETS_CREDENTIALS_JSON__"
+        },
+        {
+          "name": "GOOGLE_SHEETS_API_KEY",
+          "value": "__GOOGLE_SHEETS_API_KEY__"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/itg-backend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')\""],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "essential": true
+    }
+  ]
+}
