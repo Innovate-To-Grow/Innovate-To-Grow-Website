@@ -1,16 +1,20 @@
 from rest_framework import status
-from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.views import APIView
 
-from analytics.models import PageView
 from analytics.serializers import PageViewCreateSerializer
+from analytics.services.buffer import enqueue
 
 
-class PageViewCreateView(CreateAPIView):
+class PageViewThrottle(AnonRateThrottle):
+    rate = "60/min"
+
+
+class PageViewCreateView(APIView):
     permission_classes = [AllowAny]
-    serializer_class = PageViewCreateSerializer
-    queryset = PageView.objects.all()
+    throttle_classes = [PageViewThrottle]
 
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -18,18 +22,19 @@ class PageViewCreateView(CreateAPIView):
             return x_forwarded_for.split(",")[0].strip()
         return request.META.get("REMOTE_ADDR")
 
-    def perform_create(self, serializer):
-        request = self.request
-        member = request.user if request.user.is_authenticated else None
-        serializer.save(
-            ip_address=self.get_client_ip(request),
-            user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            member=member,
-            session_key=request.session.session_key or "",
-        )
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    def post(self, request, *args, **kwargs):
+        serializer = PageViewCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+
+        member = request.user if request.user.is_authenticated else None
+        enqueue(
+            {
+                "path": serializer.validated_data["path"],
+                "referrer": serializer.validated_data.get("referrer", ""),
+                "ip_address": self.get_client_ip(request),
+                "user_agent": request.META.get("HTTP_USER_AGENT", ""),
+                "member": member,
+                "session_key": getattr(request.session, "session_key", None) or "",
+            }
+        )
         return Response(status=status.HTTP_201_CREATED)

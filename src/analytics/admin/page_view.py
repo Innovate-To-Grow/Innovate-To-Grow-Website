@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.contrib import admin
+from django.core.cache import cache
 from django.db.models import Count
 from django.db.models.functions import TruncDate
 from django.utils import timezone
@@ -8,6 +9,9 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from analytics.models import PageView
+
+_DASHBOARD_CACHE_KEY = "analytics:dashboard"
+_DASHBOARD_CACHE_TTL = 60  # seconds
 
 
 @admin.register(PageView)
@@ -47,22 +51,32 @@ class PageViewAdmin(ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
+
+        cached = cache.get(_DASHBOARD_CACHE_KEY)
+        if cached is None:
+            cached = self._compute_dashboard_stats()
+            cache.set(_DASHBOARD_CACHE_KEY, cached, _DASHBOARD_CACHE_TTL)
+
+        extra_context.update(cached)
+        return super().changelist_view(request, extra_context=extra_context)
+
+    @staticmethod
+    def _compute_dashboard_stats():
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         seven_days_ago = today_start - timedelta(days=6)
 
-        qs = PageView.objects.all()
+        # .order_by() clears the default ordering so COUNT avoids a needless sort
+        qs = PageView.objects.order_by()
 
-        # Summary stats
-        extra_context["total_views"] = qs.count()
-        extra_context["today_views"] = qs.filter(timestamp__gte=today_start).count()
-        extra_context["unique_paths"] = qs.values("path").distinct().count()
-        extra_context["unique_visitors"] = qs.values("ip_address").distinct().count()
+        stats = {
+            "total_views": qs.count(),
+            "today_views": qs.filter(timestamp__gte=today_start).count(),
+            "unique_paths": qs.values("path").distinct().count(),
+            "unique_visitors": qs.values("ip_address").distinct().count(),
+            "top_pages": list(qs.values("path").annotate(view_count=Count("id")).order_by("-view_count")[:10]),
+        }
 
-        # Top 10 pages
-        extra_context["top_pages"] = qs.values("path").annotate(view_count=Count("id")).order_by("-view_count")[:10]
-
-        # Views over last 7 days (fill missing days with 0)
         daily_views = (
             qs.filter(timestamp__gte=seven_days_ago)
             .annotate(date=TruncDate("timestamp"))
@@ -75,10 +89,9 @@ class PageViewAdmin(ModelAdmin):
         for i in range(7):
             day = (seven_days_ago + timedelta(days=i)).date()
             last_7_days.append({"date": day, "count": daily_map.get(day, 0)})
-        extra_context["last_7_days"] = last_7_days
-        extra_context["max_daily_count"] = max((d["count"] for d in last_7_days), default=1) or 1
-
-        return super().changelist_view(request, extra_context=extra_context)
+        stats["last_7_days"] = last_7_days
+        stats["max_daily_count"] = max((d["count"] for d in last_7_days), default=1) or 1
+        return stats
 
     @admin.display(description="Referrer")
     def short_referrer(self, obj):

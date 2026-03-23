@@ -49,25 +49,80 @@
 
         <!-- Two-column: 7-Day Chart + Top Pages -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <!-- Last 7 Days Bar Chart (CSS only) -->
+            <!-- Last 7 Days Chart (Chart.js) -->
             <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
                 <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3">
                     <span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>
                     Last 7 Days
                 </h3>
-                <div class="space-y-2">
-                    {% for day in last_7_days %}
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-font-subtle-light dark:text-font-subtle-dark w-16 shrink-0">{{ day.date|date:"M d" }}</span>
-                            <div class="flex-1 bg-base-100 dark:bg-base-800 rounded h-5 overflow-hidden">
-                                <div class="bg-primary-600 h-full rounded"
-                                     style="width: {% widthratio day.count max_daily_count 100 %}%; min-width: {% if day.count %}2px{% else %}0{% endif %};"></div>
-                            </div>
-                            <span class="text-xs font-medium text-font-default-light dark:text-font-default-dark w-8 text-right">{{ day.count }}</span>
-                        </div>
-                    {% endfor %}
+                <div style="position:relative; height:220px;">
+                    <canvas id="last7DaysChart"></canvas>
                 </div>
             </div>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+            <script>
+                (function () {
+                    const labels = [{% for day in last_7_days %}"{{ day.date|date:'M d' }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+                    const data = [{% for day in last_7_days %}{{ day.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+                    const textColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+
+                    new Chart(document.getElementById('last7DaysChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Page Views',
+                                data: data,
+                                backgroundColor: isDark ? 'rgba(99,102,241,0.7)' : 'rgba(79,70,229,0.75)',
+                                borderRadius: 4,
+                                borderSkipped: false,
+                                maxBarThickness: 48,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {mode: 'index', intersect: false},
+                            plugins: {
+                                legend: {display: false},
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1e1e2e' : '#fff',
+                                    titleColor: isDark ? '#e2e8f0' : '#1e293b',
+                                    bodyColor: isDark ? '#cbd5e1' : '#475569',
+                                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                    borderWidth: 1,
+                                    padding: 10,
+                                    cornerRadius: 6,
+                                    displayColors: false,
+                                    callbacks: {
+                                        label: function (ctx) { return ctx.parsed.y + ' views'; }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {display: false},
+                                    ticks: {color: textColor, font: {size: 11}},
+                                    border: {display: false}
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {color: gridColor},
+                                    ticks: {
+                                        color: textColor,
+                                        font: {size: 11},
+                                        precision: 0,
+                                        maxTicksLimit: 5
+                                    },
+                                    border: {display: false}
+                                }
+                            }
+                        }
+                    });
+                })();
+            </script>
 
             <!-- Top 10 Pages -->
             <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">

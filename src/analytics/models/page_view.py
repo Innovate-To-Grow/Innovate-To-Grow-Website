@@ -9,7 +9,7 @@ class PageView(models.Model):
     path = models.CharField(max_length=2048, db_index=True)
     referrer = models.URLField(max_length=2048, blank=True, default="")
     user_agent = models.TextField(blank=True, default="")
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
     member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
