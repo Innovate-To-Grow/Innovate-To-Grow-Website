@@ -33,7 +33,7 @@ class Command(BaseCommand):
 
         if slug:
             # Sync a specific GoogleSheetSource by slug
-            from pages.models import GoogleSheetSource
+            from sheets.models import GoogleSheetSource
 
             try:
                 source = GoogleSheetSource.objects.get(slug=slug, is_active=True)

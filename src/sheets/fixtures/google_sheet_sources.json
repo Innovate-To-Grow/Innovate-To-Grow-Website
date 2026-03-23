@@ -1,6 +1,6 @@
 [
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "current-event",
       "title": "Current Event",
@@ -15,7 +15,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "past-projects",
       "title": "Past Projects",
@@ -30,7 +30,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2025-fall",
       "title": "Fall 2025 Event",
@@ -45,7 +45,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2025-spring",
       "title": "Spring 2025 Event",
@@ -60,7 +60,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2024-fall",
       "title": "Fall 2024 Event",
@@ -75,7 +75,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2024-spring",
       "title": "Spring 2024 Event",
@@ -90,7 +90,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2023-fall",
       "title": "Fall 2023 Event",
@@ -105,7 +105,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2023-spring",
       "title": "Spring 2023 Event",
@@ -120,7 +120,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2022-fall",
       "title": "Fall 2022 Event",
@@ -135,7 +135,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2022-spring",
       "title": "Spring 2022 Event",
@@ -150,7 +150,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2021-fall",
       "title": "Fall 2021 Event",
@@ -165,7 +165,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2021-spring",
       "title": "Spring 2021 Event",
@@ -180,7 +180,7 @@
     }
   },
   {
-    "model": "pages.googlesheetsource",
+    "model": "sheets.googlesheetsource",
     "fields": {
       "slug": "2020-fall",
       "title": "Fall 2020 Event",

@@ -3,9 +3,9 @@ import threading
 
 from django.core.cache import cache
 
-from core.services.google_sheets import GoogleSheetsConfigError
-from core.services.google_sheets import fetch_raw_values as _fetch_raw_values
-from core.services.google_sheets import normalize_values as _normalize_values
+from .client import GoogleSheetsConfigError
+from .client import fetch_raw_values as _fetch_raw_values
+from .client import normalize_values as _normalize_values
 
 logger = logging.getLogger(__name__)
 

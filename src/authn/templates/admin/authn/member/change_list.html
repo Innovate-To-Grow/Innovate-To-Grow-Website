@@ -3,6 +3,11 @@
 
 {% block object-tools-items %}
     <li>
+        <a href="{% url 'admin:authn_member_export_excel' %}" class="addlink">
+            Export to Excel
+        </a>
+    </li>
+    <li>
         <a href="{% url 'admin:authn_member_import_excel' %}" class="addlink">
             Import from Excel
         </a>

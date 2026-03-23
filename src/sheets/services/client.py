@@ -1,4 +1,4 @@
-"""Shared Google Sheets API client used by pages and projects apps."""
+"""Google Sheets API client for fetching spreadsheet data."""
 
 import json
 import logging

@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "mail.apps.MailConfig",
     "analytics.apps.AnalyticsConfig",
+    "sheets.apps.SheetsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
@@ -303,7 +304,7 @@ UNFOLD = {
                     {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
                     {"title": "Pages", "link": "/admin/pages/cmspage/"},
                     {"title": "Page Analytics", "link": "/admin/analytics/pageview/"},
-                    {"title": "Sheet Sources", "link": "/admin/pages/googlesheetsource/"},
+                    {"title": "Sheet Sources", "link": "/admin/sheets/googlesheetsource/"},
                     {"title": "Menus", "link": "/admin/pages/menu/"},
                     {"title": "Footer", "link": "/admin/pages/footercontent/"},
                 ],

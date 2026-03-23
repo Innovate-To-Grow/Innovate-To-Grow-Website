@@ -5,9 +5,9 @@ import re
 
 from django.core.cache import cache
 
-from core.services.google_sheets import fetch_raw_values, normalize_values
 from projects.models import Project, Semester
 from projects.services.import_excel import _to_int, _to_str
+from sheets.services import fetch_raw_values, normalize_values
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ def sync_all_project_sheets() -> dict:
     Read all active GoogleSheetSource records with project-related sheet_types,
     sync each into the DB. Returns combined stats.
     """
-    from pages.models import GoogleSheetSource
+    from sheets.models import GoogleSheetSource
 
     combined = {
         "semesters_created": 0,

@@ -5,12 +5,14 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import FooterContent, GoogleSheetSource, Menu, SiteSettings
+from sheets.models import GoogleSheetSource
+from sheets.services import fetch_source_data
+
+from ..models import FooterContent, Menu, SiteSettings
 from ..serializers import (
     FooterContentSerializer,
     MenuSerializer,
 )
-from ..services.google_sheets import fetch_source_data
 
 logger = logging.getLogger(__name__)
 

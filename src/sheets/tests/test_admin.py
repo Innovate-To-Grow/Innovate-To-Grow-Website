@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from pages.models import GoogleSheetSource
+from sheets.models import GoogleSheetSource
 
 Member = get_user_model()
 
@@ -36,7 +36,7 @@ class GoogleSheetSourceAdminImportExportTests(TestCase):
         )
 
         response = self.client.post(
-            "/admin/pages/googlesheetsource/",
+            "/admin/sheets/googlesheetsource/",
             {"action": "export_sources", "_selected_action": [str(source.pk)]},
         )
 
@@ -100,7 +100,7 @@ class GoogleSheetSourceAdminImportExportTests(TestCase):
         upload = SimpleUploadedFile("sheet-sources.json", bundle, content_type="application/json")
 
         response = self.client.post(
-            "/admin/pages/googlesheetsource/import/",
+            "/admin/sheets/googlesheetsource/import/",
             {"json_file": upload, "action": "execute"},
             format="multipart",
         )
@@ -139,7 +139,7 @@ class GoogleSheetSourceAdminImportExportTests(TestCase):
         upload = SimpleUploadedFile("sheet-sources.json", bundle, content_type="application/json")
 
         response = self.client.post(
-            "/admin/pages/googlesheetsource/import/",
+            "/admin/sheets/googlesheetsource/import/",
             {"json_file": upload, "action": "dry_run"},
             format="multipart",
         )
