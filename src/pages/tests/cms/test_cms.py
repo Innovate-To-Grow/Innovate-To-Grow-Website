@@ -730,7 +730,12 @@ class CMSLivePreviewSyncTest(TestCase):
         self.assertEqual(cached_v1["title"], "Version 1")
 
         # Second POST
-        self._post_preview({"title": "Version 2", "blocks": [{"block_type": "rich_text", "sort_order": 0, "data": {"body_html": "<p>New</p>"}}]})
+        self._post_preview(
+            {
+                "title": "Version 2",
+                "blocks": [{"block_type": "rich_text", "sort_order": 0, "data": {"body_html": "<p>New</p>"}}],
+            }
+        )
         cached_v2 = cache.get(f"cms:live-preview:{self.page.pk}")
         self.assertEqual(cached_v2["title"], "Version 2")
         self.assertEqual(len(cached_v2["blocks"]), 1)
