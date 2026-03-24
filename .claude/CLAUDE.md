@@ -74,7 +74,7 @@ pre-commit run --all-files
 The backend is organized into specialized Django apps:
 
 - **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system, middleware
-- **`pages/`**: Layout (Menu, FooterContent), Google Sheets data proxy (GoogleSheetSource), SiteSettings, and block-based CMS (CMSPage, CMSBlock). CMS pages have a route, status (draft/published/archived), and ordered content blocks. Block types: hero, rich_text, faq_list, link_list, cta_group, image_text, notice, contact_info, google_sheet, section_group, table, numbered_list, proposal_cards, navigation_grid, schedule_grid. CMS API at `/cms/pages/<route>/` and preview at `/cms/preview/<token>/`. Sheets data at `/sheets/<slug>/`
+- **`pages/`**: Layout (Menu, FooterContent), SiteSettings, and block-based CMS (CMSPage, CMSBlock). CMS pages have a route, status (draft/published/archived), and ordered content blocks. Block types: hero, rich_text, faq_list, link_list, cta_group, image_text, notice, contact_info, section_group, table, numbered_list, proposal_cards, navigation_grid. CMS API at `/cms/pages/<route>/` and preview at `/cms/preview/<token>/`.
 - **`cms/`**: Migration-only stub (models moved to `pages`). Kept in `INSTALLED_APPS` for migration history
 - **`authn/`**: Auth with Member model, JWT, email verification, contact emails/phones, password reset
 - **`event/`**: Event management (Event, Ticket, Question models)
@@ -135,8 +135,8 @@ The admin uses **django-unfold** for theming and **CKEditor 5** for rich text ed
 
 - **Dev**: In-memory cache (`LocMemCache`)
 - **Prod**: Redis via `django-redis`
-- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu, FooterContent, GoogleSheetSource, CMSPage, or CMSBlock are saved/deleted
-- **Cache keys**: `"layout:data"`, `"sheets:<slug>:data"`, `"cms:page:<route>"`, `"cms:preview:<token>"`
+- **Cache invalidation**: Signal handlers in `src/pages/signals.py` auto-clear cache when Menu, FooterContent, CMSPage, or CMSBlock are saved/deleted. GoogleSheetSource cache invalidation is in `src/sheets/signals.py`.
+- **Cache keys**: `"layout:data"`, `"sheets:<slug>:data"`, `"sheets:<slug>:stale"`, `"cms:page:<route>"`, `"cms:preview:<token>"`
 - **Important**: When adding cache to views, ensure tests call `cache.clear()` in `setUp()` to prevent cross-test pollution.
 
 ### API Contracts

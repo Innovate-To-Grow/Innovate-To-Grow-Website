@@ -42,7 +42,7 @@ export const TableBlock = ({data}: {data: TableBlockData}) => {
 
   return (
     <section className="cms-table-block">
-      {data.heading ? <h2 className="cms-sheet-block-title">{data.heading}</h2> : null}
+      {data.heading ? <h2 className="cms-table-block-title">{data.heading}</h2> : null}
       <div className="cms-table-block-wrap">
         <table className="cms-table-block-table">
           {columns.length > 0 ? (

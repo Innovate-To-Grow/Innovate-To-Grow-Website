@@ -34,6 +34,7 @@ class EventRegistration(ProjectControlModel):
     )
     attendee_name = models.CharField(max_length=255, blank=True, default="")
     attendee_email = models.EmailField(blank=True, default="")
+    attendee_organization = models.CharField(max_length=255, blank=True, default="")
     question_answers = models.JSONField(
         default=list,
         blank=True,
@@ -72,4 +73,6 @@ class EventRegistration(ProjectControlModel):
             self.attendee_name = self.member.get_full_name() or self.member.username or self.member.email
         if not self.attendee_email:
             self.attendee_email = self.member.email
+        if not self.attendee_organization:
+            self.attendee_organization = getattr(self.member, "organization", "") or ""
         super().save(*args, **kwargs)

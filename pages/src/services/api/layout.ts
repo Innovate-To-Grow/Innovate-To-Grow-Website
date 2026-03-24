@@ -1,5 +1,4 @@
 import api from './client';
-import type { SheetsDataResponse } from './sheets';
 
 // ======================== Footer ========================
 
@@ -74,7 +73,6 @@ export interface LayoutData {
   menus: Menu[];
   footer: FooterContentResponse | null;
   homepage_route?: string;
-  sheets_data?: Record<string, SheetsDataResponse>;
 }
 
 /** Bump when cached JSON shape is incompatible. */

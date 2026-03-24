@@ -9,13 +9,11 @@ BLOCK_TYPE_CHOICES = [
     ("image_text", "Image + Text"),
     ("notice", "Notice / Callout"),
     ("contact_info", "Contact Info"),
-    ("google_sheet", "Google Sheet Embed"),
     ("section_group", "Section Group"),
     ("table", "Data Table"),
     ("numbered_list", "Numbered List"),
     ("proposal_cards", "Proposal Cards"),
     ("navigation_grid", "Navigation Grid"),
-    ("schedule_grid", "Schedule Grid"),
 ]
 
 BLOCK_TYPE_KEYS = {choice[0] for choice in BLOCK_TYPE_CHOICES}
@@ -30,13 +28,11 @@ BLOCK_SCHEMAS = {
     "image_text": {"required": ["body_html"], "optional": ["image_url", "image_alt", "image_position", "heading"]},
     "notice": {"required": ["body_html"], "optional": ["heading", "style"]},
     "contact_info": {"required": ["items"], "optional": ["heading"]},
-    "google_sheet": {"required": ["sheet_source_slug"], "optional": ["sheet_view_slug", "display_mode", "heading"]},
     "section_group": {"required": ["sections"], "optional": ["heading"]},
     "table": {"required": ["columns", "rows"], "optional": ["heading"]},
     "numbered_list": {"required": ["items"], "optional": ["heading", "preamble_html"]},
     "proposal_cards": {"required": ["proposals"], "optional": ["heading", "footer_html"]},
     "navigation_grid": {"required": ["items"], "optional": ["heading"]},
-    "schedule_grid": {"required": ["sheet_source_slug"], "optional": ["heading"]},
 }
 
 

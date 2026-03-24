@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback, type FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {useAuth} from '../../components/Auth';
+import {updateProfileFields} from '../../services/auth';
 import {
   fetchRegistrationOptions,
   createRegistration,
@@ -9,10 +10,10 @@ import {
 } from '../../services/api/events';
 import './EventRegistrationPage.css';
 
-type Step = 'loading' | 'email' | 'code' | 'form' | 'done';
+type Step = 'loading' | 'email' | 'code' | 'profile' | 'form' | 'done';
 
 export const EventRegistrationPage = () => {
-  const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode} = useAuth();
+  const {isAuthenticated, requiresProfileCompletion, requestEmailAuthCode, verifyEmailAuthCode, clearProfileCompletionRequirement} = useAuth();
 
   const [step, setStep] = useState<Step>('loading');
   const [options, setOptions] = useState<EventRegistrationOptions | null>(null);
@@ -24,6 +25,12 @@ export const EventRegistrationPage = () => {
   const [code, setCode] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authFlow, setAuthFlow] = useState<string | null>(null);
+
+  // Profile state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [organization, setOrganization] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -66,13 +73,18 @@ export const EventRegistrationPage = () => {
     loadOptions();
   }, [loadOptions]);
 
-  // When auth state changes (user logs in), reload options
+  // When auth state changes (user logs in), decide next step
   useEffect(() => {
     if (isAuthenticated && (step === 'email' || step === 'code')) {
-      setStep('loading');
-      loadOptions();
+      // New user without name — show profile step first
+      if (requiresProfileCompletion) {
+        setStep('profile');
+      } else {
+        setStep('loading');
+        loadOptions();
+      }
     }
-  }, [isAuthenticated, step, loadOptions]);
+  }, [isAuthenticated, requiresProfileCompletion, step, loadOptions]);
 
   const handleEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -95,11 +107,37 @@ export const EventRegistrationPage = () => {
     setError(null);
     try {
       await verifyEmailAuthCode(email.trim(), code.trim());
-      // Auth context updates automatically, useEffect above will reload options
+      // The useEffect above handles routing:
+      // - New user (requiresProfileCompletion) → profile step
+      // - Existing user → reload options → form step
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const handleProfileSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!firstName.trim()) {
+      setError('First name is required.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await updateProfileFields({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        organization: organization.trim(),
+      });
+      clearProfileCompletionRequirement();
+      setStep('loading');
+      loadOptions();
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -277,6 +315,69 @@ export const EventRegistrationPage = () => {
           >
             Use a different email
           </button>
+        </div>
+      )}
+
+      {/* Profile completion step (new accounts) */}
+      {step === 'profile' && (
+        <div className="event-reg-auth">
+          <p className="event-reg-auth-hint">
+            Please provide your name and organization to continue with registration.
+          </p>
+          <form onSubmit={handleProfileSubmit}>
+            <div className="event-reg-form-row">
+              <div className="event-reg-form-group">
+                <label className="event-reg-label" htmlFor="reg-first-name">
+                  First Name <span className="required-mark">*</span>
+                </label>
+                <input
+                  id="reg-first-name"
+                  type="text"
+                  className="event-reg-input"
+                  value={firstName}
+                  onChange={(e) => { setFirstName(e.target.value); setError(null); }}
+                  placeholder="First name"
+                  autoComplete="given-name"
+                  required
+                  autoFocus
+                  disabled={saving}
+                />
+              </div>
+              <div className="event-reg-form-group">
+                <label className="event-reg-label" htmlFor="reg-last-name">
+                  Last Name <span className="event-reg-optional">(optional)</span>
+                </label>
+                <input
+                  id="reg-last-name"
+                  type="text"
+                  className="event-reg-input"
+                  value={lastName}
+                  onChange={(e) => { setLastName(e.target.value); setError(null); }}
+                  placeholder="Last name"
+                  autoComplete="family-name"
+                  disabled={saving}
+                />
+              </div>
+            </div>
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="reg-org">
+                Organization <span className="event-reg-optional">(optional)</span>
+              </label>
+              <input
+                id="reg-org"
+                type="text"
+                className="event-reg-input"
+                value={organization}
+                onChange={(e) => { setOrganization(e.target.value); setError(null); }}
+                placeholder="Company or organization"
+                autoComplete="organization"
+                disabled={saving}
+              />
+            </div>
+            <button type="submit" className="event-reg-submit" disabled={saving || !firstName.trim()}>
+              {saving ? <><span className="event-reg-spinner" /> Saving...</> : 'Continue'}
+            </button>
+          </form>
         </div>
       )}
 

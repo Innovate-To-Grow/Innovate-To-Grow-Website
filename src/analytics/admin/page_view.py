@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib import admin
 from django.core.cache import cache
 from django.db.models import Count
-from django.db.models.functions import TruncDate
+from django.db.models.functions import TruncDate, TruncHour
 from django.utils import timezone
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
@@ -91,6 +91,39 @@ class PageViewAdmin(ModelAdmin):
             last_7_days.append({"date": day, "count": daily_map.get(day, 0)})
         stats["last_7_days"] = last_7_days
         stats["max_daily_count"] = max((d["count"] for d in last_7_days), default=1) or 1
+
+        # Week total & daily average (derived from last_7_days, no extra query)
+        week_views = sum(d["count"] for d in last_7_days)
+        stats["week_views"] = week_views
+        stats["avg_daily_views"] = round(week_views / 7, 1)
+
+        # Unique visitors per day for the 7-day chart second dataset
+        daily_visitors = (
+            qs.filter(timestamp__gte=seven_days_ago)
+            .annotate(date=TruncDate("timestamp"))
+            .values("date")
+            .annotate(visitor_count=Count("ip_address", distinct=True))
+            .order_by("date")
+        )
+        visitor_map = {entry["date"]: entry["visitor_count"] for entry in daily_visitors}
+        stats["last_7_days_visitors"] = [visitor_map.get(d["date"], 0) for d in last_7_days]
+
+        # Today's hourly views
+        hourly_qs = (
+            qs.filter(timestamp__gte=today_start)
+            .annotate(hour=TruncHour("timestamp"))
+            .values("hour")
+            .annotate(count=Count("id"))
+            .order_by("hour")
+        )
+        hourly_map = {entry["hour"].hour: entry["count"] for entry in hourly_qs}
+        stats["hourly_views"] = [{"hour": h, "count": hourly_map.get(h, 0)} for h in range(24)]
+
+        # Top referrers (exclude empty/direct)
+        stats["top_referrers"] = list(
+            qs.exclude(referrer="").values("referrer").annotate(ref_count=Count("id")).order_by("-ref_count")[:10]
+        )
+
         return stats
 
     @admin.display(description="Referrer")

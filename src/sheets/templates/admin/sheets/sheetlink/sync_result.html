@@ -1,0 +1,50 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 2rem auto; padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px;">
+    <h2>{{ sync_log.get_direction_display }} Result — {{ sheet_link.name }}</h2>
+
+    <div style="padding: 0.75rem; border-radius: 4px; margin: 1rem 0;
+                {% if sync_log.status == 'success' %}background: #d4edda; color: #155724;
+                {% elif sync_log.status == 'partial' %}background: #fff3cd; color: #856404;
+                {% else %}background: #f8d7da; color: #721c24;{% endif %}">
+        <strong>Status:</strong> {{ sync_log.get_status_display }}
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+        <tr><td style="padding: 4px 8px;">Rows processed</td><td style="padding: 4px 8px;"><strong>{{ sync_log.rows_processed }}</strong></td></tr>
+        <tr><td style="padding: 4px 8px;">Rows created</td><td style="padding: 4px 8px;"><strong>{{ sync_log.rows_created }}</strong></td></tr>
+        <tr><td style="padding: 4px 8px;">Rows updated</td><td style="padding: 4px 8px;"><strong>{{ sync_log.rows_updated }}</strong></td></tr>
+        <tr><td style="padding: 4px 8px;">Rows skipped</td><td style="padding: 4px 8px;"><strong>{{ sync_log.rows_skipped }}</strong></td></tr>
+        <tr><td style="padding: 4px 8px;">Rows failed</td><td style="padding: 4px 8px;"><strong>{{ sync_log.rows_failed }}</strong></td></tr>
+        <tr><td style="padding: 4px 8px;">Duration</td><td style="padding: 4px 8px;">{{ sync_log.started_at }} → {{ sync_log.completed_at }}</td></tr>
+    </table>
+
+    {% if sync_log.error_details %}
+    <details style="margin: 1rem 0;">
+        <summary><strong>Error Details ({{ sync_log.error_details|length }})</strong></summary>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc;">Row</th>
+                    <th style="text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc;">Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for err in sync_log.error_details %}
+                <tr>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">{{ err.row }}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">{{ err.error }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </details>
+    {% endif %}
+
+    <a href="{% url 'admin:sheets_sheetlink_changelist' %}" class="button" style="margin-top: 1rem; display: inline-block; padding: 8px 24px;">
+        Back to Sheet Links
+    </a>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 import {useState, useCallback} from 'react';
 import {useParams, Link} from 'react-router-dom';
-import {useSheetsData} from '../../hooks/useSheetsData';
+import {usePastProjectsData} from '../../hooks/usePastProjectsData';
 import {ScheduleGrid} from '../../components/ScheduleGrid';
 import {SheetsDataTable} from '../../components/SheetsDataTable';
 import {EVENT_CONFIGS} from './eventConfigs';
@@ -10,9 +10,8 @@ export const EventArchivePage = () => {
   const {eventSlug} = useParams<{eventSlug: string}>();
   const config = eventSlug ? EVENT_CONFIGS[eventSlug] : undefined;
 
-  const {rows, trackInfos, loading, error} = useSheetsData({
-    slug: eventSlug ?? '',
-  });
+  const {rows, loading, error} = usePastProjectsData();
+  const trackInfos: {name: string; room: string; zoomLink: string}[] = [];
 
   const [teamSearch, setTeamSearch] = useState('');
 

@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.core.cache import cache
 from unfold.admin import ModelAdmin
 
 from ..models import Project
@@ -49,5 +48,3 @@ class ProjectAdmin(ModelAdmin):
 
     def delete_queryset(self, request, queryset):
         super().delete_queryset(request, queryset)
-        cache.delete("projects:current")
-        cache.delete("projects:past-all")

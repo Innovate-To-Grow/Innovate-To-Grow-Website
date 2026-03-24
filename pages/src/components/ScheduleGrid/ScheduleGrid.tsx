@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import type {SheetRow, TrackInfo} from '../../services/api/sheets';
+import type {SheetRow, TrackInfo} from '../SheetsDataTable';
 import './ScheduleGrid.css';
 
 export interface ClassConfig {

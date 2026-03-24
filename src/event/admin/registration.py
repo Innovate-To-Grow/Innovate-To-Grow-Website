@@ -10,13 +10,14 @@ class EventRegistrationAdmin(ModelAdmin):
         "event",
         "attendee_name",
         "attendee_email",
+        "attendee_organization",
         "ticket",
         "ticket_code",
         "created_at",
         "ticket_email_sent_at",
     )
     list_filter = ("event", "ticket")
-    search_fields = ("attendee_name", "attendee_email", "ticket_code")
+    search_fields = ("attendee_name", "attendee_email", "attendee_organization", "ticket_code")
     readonly_fields = (
         "member",
         "event",
@@ -24,6 +25,7 @@ class EventRegistrationAdmin(ModelAdmin):
         "ticket_code",
         "attendee_name",
         "attendee_email",
+        "attendee_organization",
         "question_answers",
         "ticket_email_sent_at",
         "ticket_email_error",

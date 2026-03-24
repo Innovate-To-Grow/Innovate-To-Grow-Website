@@ -118,17 +118,17 @@
 
             cm.setSize(null, 380);
 
-            // Keep existing onchange="updateBlockData(...)" behavior by updating the underlying textarea
-            // and dispatching a change event.
+            // Keep existing oninput="updateBlockData(...)" behavior by updating the underlying textarea
+            // and dispatching an input event.
             cm.on('change', function (instance) {
                 var textarea = instance.getTextArea();
                 textarea.value = instance.getValue();
                 try {
-                    textarea.dispatchEvent(new Event('change', {bubbles: true}));
+                    textarea.dispatchEvent(new Event('input', {bubbles: true}));
                 } catch (e) {
                     // IE11-ish fallback (unlikely, but safe)
                     var evt = document.createEvent('Event');
-                    evt.initEvent('change', true, true);
+                    evt.initEvent('input', true, true);
                     textarea.dispatchEvent(evt);
                 }
             });
@@ -191,13 +191,11 @@
             image_text: renderImageTextFields,
             notice: renderNoticeFields,
             contact_info: renderContactInfoFields,
-            google_sheet: renderGoogleSheetFields,
             section_group: renderSectionGroupFields,
             table: renderTableFields,
             numbered_list: renderNumberedListFields,
             proposal_cards: renderProposalCardsFields,
             navigation_grid: renderNavigationGridFields,
-            schedule_grid: renderScheduleGridFields,
         };
 
         var renderer = renderers[type];
@@ -320,16 +318,6 @@
             });
     }
 
-    // ----- Google Sheet -----
-    function renderGoogleSheetFields(data, idx) {
-        return textField('Heading', data.heading, idx, 'heading') +
-            '<div class="cms-block-field-row">' +
-            textField('Sheet Source Slug', data.sheet_source_slug, idx, 'sheet_source_slug') +
-            textField('Sheet View Slug', data.sheet_view_slug, idx, 'sheet_view_slug') +
-            '</div>' +
-            textField('Display Mode', data.display_mode, idx, 'display_mode');
-    }
-
     // ----- Section Group -----
     function renderSectionGroupFields(data, idx) {
         var sections = data.sections || [];
@@ -405,18 +393,12 @@
             });
     }
 
-    // ----- Schedule Grid -----
-    function renderScheduleGridFields(data, idx) {
-        return textField('Heading', data.heading, idx, 'heading') +
-            textField('Sheet Source Slug', data.sheet_source_slug, idx, 'sheet_source_slug');
-    }
-
     // ===== Field Primitives =====
     function textField(label, value, blockIdx, dataPath) {
         return '<div class="cms-block-field">' +
             '<label>' + escapeHtml(label) + '</label>' +
             '<input type="text" value="' + escapeAttr(value) + '" ' +
-            'onchange="updateBlockData(' + blockIdx + ', \'' + dataPath + '\', this.value)">' +
+            'oninput="updateBlockData(' + blockIdx + ', \'' + dataPath + '\', this.value)">' +
             '</div>';
     }
 
@@ -425,7 +407,7 @@
         return '<div class="cms-block-field">' +
             '<label>' + escapeHtml(label) + '</label>' +
             '<input type="text" value="' + escapeAttr(value) + '" ' +
-            'onchange="updateBlockDataDirect(' + blockIdx + ', \'' + dataPath + '\', this.value)">' +
+            'oninput="updateBlockDataDirect(' + blockIdx + ', \'' + dataPath + '\', this.value)">' +
             '</div>';
     }
 
@@ -433,7 +415,7 @@
         return '<div class="cms-block-field">' +
             '<label>' + escapeHtml(label) + '</label>' +
             '<textarea class="html-field" ' +
-            'onchange="updateBlockData(' + blockIdx + ', \'' + dataPath + '\', this.value)">' +
+            'oninput="updateBlockData(' + blockIdx + ', \'' + dataPath + '\', this.value)">' +
             escapeHtml(value || '') + '</textarea>' +
             '<span class="field-hint">Supports HTML markup</span>' +
             '</div>';
@@ -469,7 +451,7 @@
         return '<div class="cms-json-subeditor">' +
             '<div class="cms-block-field">' +
             '<label>' + escapeHtml(displayLabel) + '</label>' +
-            '<textarea onchange="updateBlockDataJson(' + blockIdx + ', \'' + (fieldName || '') + '\', this.value)">' +
+            '<textarea oninput="updateBlockDataJson(' + blockIdx + ', \'' + (fieldName || '') + '\', this.value)">' +
             escapeHtml(jsonStr) + '</textarea>' +
             '</div>' +
             '</div>';

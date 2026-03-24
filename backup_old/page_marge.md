@@ -4,10 +4,12 @@
 
 ```
 Home -> /
+
 About -> /about
 About / Engineering Capstone -> /engineering-capstone
-About / Eng. Service Learning -> 外链 https://engineeringservicelearning.ucmerced.edu/
+About / Eng. Service Learning -> redirect to  https://engineeringservicelearning.ucmerced.edu/
 About / Software Eng. Capstone -> /software-capstone
+
 Events -> /event
 Events / Registration -> /membership/events
 Events / Registration redirect -> /membership/events/<event_name>
@@ -19,11 +21,13 @@ Events / for Attendees -> /attendees
 Events / for Students -> /students
 Events / Partners & Sponsors -> /acknowledgement
 Events / Past Events -> /past-events
+
 Projects -> /projects
 Projects / Past Projects -> /past-projects
 Projects / Current Projects -> /current-projects
 Projects / Project Submission -> /project-submission
 Projects / Sample Project Proposals -> /sample-proposals
+
 Partner with Us -> /partnership
 Partner with Us / Newsletter -> /membership/signup
 Partner with Us / Update I2G Membership -> /membership/update
@@ -32,7 +36,9 @@ Partner with Us / Propose a project -> /project-submission
 Partner with Us / Sign up to Judge -> /judges
 Partner with Us / Sponsor or donate -> /sponsorship
 Partner with Us / FAQs -> /FAQs
+
 Submit a Project -> /project-submission
+
 Students -> /students
 Students / Student Agreement -> /I2G-student-agreement
 Students / FERPA (Media) Agreement -> /ferpa

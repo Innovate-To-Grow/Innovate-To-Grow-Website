@@ -127,12 +127,17 @@ class EventRegistrationCreateView(APIView):
 
         # Create registration
         try:
-            registration = EventRegistration.objects.create(
-                member=request.user,
-                event=event,
-                ticket=ticket,
-                question_answers=question_answers,
-            )
+            create_kwargs = {
+                "member": request.user,
+                "event": event,
+                "ticket": ticket,
+                "question_answers": question_answers,
+            }
+            if data.get("attendee_name"):
+                create_kwargs["attendee_name"] = data["attendee_name"]
+            if data.get("attendee_organization"):
+                create_kwargs["attendee_organization"] = data["attendee_organization"]
+            registration = EventRegistration.objects.create(**create_kwargs)
         except IntegrityError:
             # Race condition: another request registered between check and create
             existing = (

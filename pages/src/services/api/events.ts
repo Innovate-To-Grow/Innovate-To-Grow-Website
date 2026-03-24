@@ -45,6 +45,7 @@ export interface Registration {
   ticket_code: string;
   attendee_name: string;
   attendee_email: string;
+  attendee_organization: string;
   registered_at: string;
   ticket_email_sent_at: string | null;
   ticket_email_error: string;
@@ -85,6 +86,8 @@ export async function createRegistration(data: {
   event_slug: string;
   ticket_id: string;
   answers: Array<{question_id: string; answer: string}>;
+  attendee_name?: string;
+  attendee_organization?: string;
 }): Promise<Registration> {
   const response = await api.post<Registration>('/event/registrations/', data, {
     headers: authHeaders(),

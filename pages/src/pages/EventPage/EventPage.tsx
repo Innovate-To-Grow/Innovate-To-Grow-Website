@@ -1,5 +1,5 @@
 import {useState, useCallback} from 'react';
-import {useSheetsData} from '../../hooks/useSheetsData';
+import {useCurrentProjectsData} from '../../hooks/useCurrentProjectsData';
 import {ScheduleGrid} from '../../components/ScheduleGrid';
 import {SheetsDataTable} from '../../components/SheetsDataTable';
 import type {ClassConfig} from '../../components/ScheduleGrid';
@@ -37,7 +37,8 @@ const CLASSES: ClassConfig[] = [
 ];
 
 export const EventPage = () => {
-  const {rows, trackInfos, loading, error} = useSheetsData({slug: 'current-event'});
+  const {rows, loading, error} = useCurrentProjectsData();
+  const trackInfos: {name: string; room: string; zoomLink: string}[] = [];
 
   const [, setSearchTrigger] = useState(0);
 

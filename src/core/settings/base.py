@@ -32,19 +32,7 @@ SES_FROM_NAME = os.environ.get("SES_FROM_NAME", "Innovate to Grow")
 SES_CONFIGURATION_SET_NAME = os.environ.get("SES_CONFIGURATION_SET_NAME", "")
 SES_SNS_TOPIC_ARN = os.environ.get("SES_SNS_TOPIC_ARN", "")
 
-# Google Sheets settings
-# Preferred: service account credentials (production)
-GOOGLE_SHEETS_CREDENTIALS_JSON = os.environ.get("GOOGLE_SHEETS_CREDENTIALS_JSON", "")
-GOOGLE_SHEETS_SCOPES = [
-    scope.strip()
-    for scope in os.environ.get(
-        "GOOGLE_SHEETS_SCOPES",
-        "https://www.googleapis.com/auth/spreadsheets.readonly",
-    ).split(",")
-    if scope.strip()
-]
-# Fallback: API key for public read-only access (dev)
-GOOGLE_SHEETS_API_KEY = os.environ.get("GOOGLE_SHEETS_API_KEY", "")
+# Google Sheets credentials are stored in the database via sheets.SheetsAccount
 
 # Application definition
 INSTALLED_APPS = [
@@ -304,7 +292,9 @@ UNFOLD = {
                     {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
                     {"title": "Pages", "link": "/admin/pages/cmspage/"},
                     {"title": "Page Analytics", "link": "/admin/analytics/pageview/"},
-                    {"title": "Sheet Sources", "link": "/admin/sheets/googlesheetsource/"},
+                    {"title": "Sheet Links", "link": "/admin/sheets/sheetlink/"},
+                    {"title": "Sheets Accounts", "link": "/admin/sheets/sheetsaccount/"},
+                    {"title": "Sync Logs", "link": "/admin/sheets/synclog/"},
                     {"title": "Menus", "link": "/admin/pages/menu/"},
                     {"title": "Footer", "link": "/admin/pages/footercontent/"},
                 ],

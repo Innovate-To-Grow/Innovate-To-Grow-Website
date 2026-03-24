@@ -147,6 +147,24 @@
   color: #6b7280;
 }
 
+/* Profile form row (two columns) */
+.event-reg-form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.event-reg-form-row .event-reg-form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.event-reg-optional {
+  font-weight: 400;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
 /* Submit */
 .event-reg-submit {
   display: inline-flex;

@@ -1,26 +1,27 @@
-"""Google Sheets API client for fetching spreadsheet data."""
+"""Google Sheets API client — account-based authentication with read+write support."""
 
 import json
 import logging
 
 import httplib2
-from django.conf import settings
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
 
+SHEETS_SCOPES = ("https://www.googleapis.com/auth/spreadsheets",)
+
 
 class GoogleSheetsConfigError(RuntimeError):
-    """Raised when Google Sheets credentials or scopes are misconfigured."""
+    """Raised when Google Sheets credentials are misconfigured."""
 
 
-def build_sheets_client_sa(credentials_json: str, scopes: tuple[str, ...]):
-    """Build a Sheets client using service account credentials."""
+def _build_client(credentials_json: str, scopes: tuple[str, ...] = SHEETS_SCOPES):
+    """Build a Sheets v4 client from service account JSON."""
     try:
         credentials_info = json.loads(credentials_json)
     except json.JSONDecodeError as exc:
-        raise GoogleSheetsConfigError("GOOGLE_SHEETS_CREDENTIALS_JSON is not valid JSON.") from exc
+        raise GoogleSheetsConfigError("Service account JSON is not valid JSON.") from exc
 
     try:
         credentials = Credentials.from_service_account_info(credentials_info, scopes=list(scopes))
@@ -31,36 +32,56 @@ def build_sheets_client_sa(credentials_json: str, scopes: tuple[str, ...]):
     return build("sheets", "v4", credentials=credentials, http=http, cache_discovery=False)
 
 
-def build_sheets_client_key(api_key: str):
-    """Build a Sheets client using an API key (public read-only access)."""
-    http = httplib2.Http(timeout=15)
-    return build("sheets", "v4", developerKey=api_key, http=http, cache_discovery=False)
+def get_client_for_account(account):
+    """
+    Build a Sheets client from a SheetsAccount instance.
+
+    Marks the account as used after building the client.
+    On failure, records the error on the account.
+    """
+    try:
+        client = _build_client(account.service_account_json)
+        account.mark_used()
+        return client
+    except Exception as exc:
+        account.mark_used(error=str(exc))
+        raise
 
 
-def get_sheets_client():
-    credentials_json = getattr(settings, "GOOGLE_SHEETS_CREDENTIALS_JSON", "")
-    api_key = getattr(settings, "GOOGLE_SHEETS_API_KEY", "")
-
-    if credentials_json:
-        scopes = tuple(getattr(settings, "GOOGLE_SHEETS_SCOPES", []))
-        if not scopes:
-            raise GoogleSheetsConfigError("GOOGLE_SHEETS_SCOPES is not configured.")
-        return build_sheets_client_sa(credentials_json, scopes)
-
-    if api_key:
-        return build_sheets_client_key(api_key)
-
-    raise GoogleSheetsConfigError("Neither GOOGLE_SHEETS_CREDENTIALS_JSON nor GOOGLE_SHEETS_API_KEY is configured.")
-
-
-def fetch_raw_values(spreadsheet_id: str, range_ref: str) -> list[list[object]]:
-    """Fetch raw values from a Google Sheets range."""
-    client = get_sheets_client()
+def fetch_raw_values(account, spreadsheet_id: str, range_ref: str) -> list[list[object]]:
+    """Fetch raw values from a Google Sheets range using the given account."""
+    client = get_client_for_account(account)
     response = client.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=range_ref).execute()
     return response.get("values", [])
 
 
+def write_values(account, spreadsheet_id: str, range_ref: str, values: list[list[str]]) -> dict:
+    """Write a 2D list of values to a Google Sheets range."""
+    client = get_client_for_account(account)
+    body = {"values": values}
+    response = (
+        client.spreadsheets()
+        .values()
+        .update(
+            spreadsheetId=spreadsheet_id,
+            range=range_ref,
+            valueInputOption="RAW",
+            body=body,
+        )
+        .execute()
+    )
+    return response
+
+
+def clear_range(account, spreadsheet_id: str, range_ref: str) -> dict:
+    """Clear all values in a Google Sheets range."""
+    client = get_client_for_account(account)
+    response = client.spreadsheets().values().clear(spreadsheetId=spreadsheet_id, range=range_ref, body={}).execute()
+    return response
+
+
 def normalize_values(values: list[list[object]]) -> tuple[list[str], list[list[str]]]:
+    """Normalize raw sheet values into (headers, rows) with consistent column counts."""
     if not values:
         return [], []
 
@@ -77,14 +98,8 @@ def normalize_values(values: list[list[object]]) -> tuple[list[str], list[list[s
                 row = row[:header_len]
         rows.append(row)
 
+    # Remove trailing empty rows
     while rows and not any(cell.strip() for cell in rows[-1]):
         rows.pop()
 
     return headers, rows
-
-
-def build_sheet_range(sheet_name: str, range_a1: str) -> str:
-    cleaned_range = (range_a1 or "").strip()
-    if cleaned_range:
-        return f"{sheet_name}!{cleaned_range}"
-    return sheet_name

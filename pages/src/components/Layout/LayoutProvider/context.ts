@@ -1,6 +1,5 @@
 import { createContext, useContext } from 'react';
 import type { FooterContentResponse, Menu } from '../../../services/api';
-import type { SheetsDataResponse } from '../../../services/api/sheets';
 
 export type LayoutLoadState = 'loading' | 'ready' | 'error';
 
@@ -9,7 +8,6 @@ export interface LayoutContextValue {
   menus: Menu[];
   footer: FooterContentResponse | null;
   homepage_route?: string;
-  sheets_data?: Record<string, SheetsDataResponse>;
   error: string | null;
 }
 

@@ -131,7 +131,6 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
     menus: layoutData?.menus ?? [],
     footer: layoutData?.footer ?? null,
     homepage_route: layoutData?.homepage_route,
-    sheets_data: layoutData?.sheets_data,
     error,
   }), [state, layoutData, error]);
 

@@ -41,8 +41,7 @@ urlpatterns = [
     path("maintenance/bypass/", MaintenanceBypassView.as_view(), name="maintenance-bypass"),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
-    # sheets (Google Sheets data proxy)
-    path("sheets/", include("sheets.urls")),
+    # sheets (sync managed via admin and management commands — no API endpoints)
     # event
     path("event/", include("event.urls")),
     # news

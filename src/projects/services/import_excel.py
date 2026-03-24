@@ -1,7 +1,8 @@
 import openpyxl
-from django.core.cache import cache
+from django.db import transaction
 
 from projects.models import Project, Semester
+from projects.signals import _clear_project_caches
 
 SEMESTER_HEADERS = {"year", "season", "label"}
 PROJECT_HEADERS = {
@@ -166,8 +167,7 @@ def import_projects_from_excel(file):
 
     wb.close()
 
-    # Clear cached project data
-    cache.delete("projects:current")
-    cache.delete("projects:past-all")
+    # Clear cached project data after all DB writes commit
+    transaction.on_commit(_clear_project_caches)
 
     return stats

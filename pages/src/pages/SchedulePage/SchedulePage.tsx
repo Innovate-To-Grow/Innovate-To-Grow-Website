@@ -1,11 +1,12 @@
-import {useSheetsData} from '../../hooks/useSheetsData';
+import {useCurrentProjectsData} from '../../hooks/useCurrentProjectsData';
 import {ScheduleGrid} from '../../components/ScheduleGrid';
 import {SheetsDataTable} from '../../components/SheetsDataTable';
 import {SCHEDULE_CLASS_CONFIGS} from '../../config/scheduleConfig';
 import './SchedulePage.css';
 
 export const SchedulePage = () => {
-  const {rows, trackInfos, loading, error} = useSheetsData({slug: 'current-event'});
+  const {rows, loading, error} = useCurrentProjectsData();
+  const trackInfos: {name: string; room: string; zoomLink: string}[] = [];
 
   return (
     <div className="schedule-page">

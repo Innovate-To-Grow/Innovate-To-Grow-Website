@@ -708,15 +708,14 @@
 }
 
 /* ==========================================================================
-   Sheet-backed Blocks (.cms-sheet-block / .cms-table-block)
+   Table Block (.cms-table-block)
    ========================================================================== */
 
-.cms-sheet-block,
 .cms-table-block {
   margin: 0 0 2.5rem;
 }
 
-.cms-sheet-block-title {
+.cms-table-block-title {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-h2);
   margin: 0 0 1.25rem;
@@ -860,7 +859,7 @@
     padding: 1rem;
   }
 
-  .cms-sheet-block-title {
+  .cms-table-block-title {
     font-size: var(--itg-font-size-h2-mobile);
   }
 

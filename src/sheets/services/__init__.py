@@ -1,10 +1,10 @@
-from .client import GoogleSheetsConfigError, build_sheet_range, fetch_raw_values, normalize_values
-from .source_data import fetch_source_data
+from .client import GoogleSheetsConfigError, get_client_for_account, normalize_values
+from .sync import pull_from_sheet, push_to_sheet
 
 __all__ = [
     "GoogleSheetsConfigError",
-    "build_sheet_range",
-    "fetch_raw_values",
+    "get_client_for_account",
     "normalize_values",
-    "fetch_source_data",
+    "pull_from_sheet",
+    "push_to_sheet",
 ]

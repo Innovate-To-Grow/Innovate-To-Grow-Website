@@ -12,6 +12,8 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
     event_slug = serializers.SlugField()
     ticket_id = serializers.UUIDField()
     answers = RegistrationAnswerInputSerializer(many=True, required=False, default=list)
+    attendee_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    attendee_organization = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
 
 
 def _serialize_ticket_option(ticket) -> dict:
@@ -45,6 +47,7 @@ def build_registration_payload(registration, request=None) -> dict:
         "ticket_code": registration.ticket_code,
         "attendee_name": registration.attendee_name,
         "attendee_email": registration.attendee_email,
+        "attendee_organization": registration.attendee_organization,
         "registered_at": registration.created_at.isoformat(),
         "ticket_email_sent_at": registration.ticket_email_sent_at.isoformat()
         if registration.ticket_email_sent_at

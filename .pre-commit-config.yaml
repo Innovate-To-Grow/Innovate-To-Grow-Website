@@ -58,5 +58,7 @@ repos:
         exclude: (^pages/node_modules/|tsconfig.*\.json$)
       - id: check-added-large-files
         args: [--maxkb=500]
+        exclude: ^backup_old/
       - id: check-merge-conflict
       - id: detect-private-key
+        exclude: ^src/.*/tests/
