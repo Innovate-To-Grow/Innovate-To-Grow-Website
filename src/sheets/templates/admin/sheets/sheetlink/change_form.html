@@ -1,0 +1,16 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'sheets/css/column-mapping-editor.css' %}">
+{% endblock %}
+
+{% block after_related_objects %}
+    {{ block.super }}
+    <script>
+        window.COLUMN_MAPPING_INITIAL = {{ initial_mapping_json|safe }};
+        window.MODEL_FIELDS_URL = "{{ model_fields_url|escapejs }}";
+    </script>
+    <script src="{% static 'sheets/js/column-mapping-editor.js' %}?v=1"></script>
+{% endblock %}

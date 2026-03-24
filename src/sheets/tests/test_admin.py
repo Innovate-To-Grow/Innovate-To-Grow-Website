@@ -74,6 +74,47 @@ class SheetLinkAdminTests(TestCase):
         response = self.client.get("/admin/sheets/sheetlink/add/")
         self.assertEqual(response.status_code, 200)
 
+    def test_link_add_page_has_editor_context(self):
+        response = self.client.get("/admin/sheets/sheetlink/add/")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("COLUMN_MAPPING_INITIAL", content)
+        self.assertIn("MODEL_FIELDS_URL", content)
+        self.assertIn("column-mapping-editor.js", content)
+
+    def test_model_fields_endpoint_returns_fields(self):
+        from django.contrib.contenttypes.models import ContentType
+
+        from event.models import Event
+
+        ct = ContentType.objects.get_for_model(Event)
+        response = self.client.get(f"/admin/sheets/sheetlink/model-fields/{ct.id}/")
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertIn("fields", data)
+        self.assertTrue(len(data["fields"]) > 0)
+        # Check that fields have the expected structure
+        field = data["fields"][0]
+        self.assertIn("value", field)
+        self.assertIn("label", field)
+        self.assertIn("group", field)
+
+    def test_model_fields_endpoint_rejects_invalid_ct(self):
+        response = self.client.get("/admin/sheets/sheetlink/model-fields/99999/")
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["fields"], [])
+
+    def test_model_fields_endpoint_rejects_disallowed_app(self):
+        from django.contrib.contenttypes.models import ContentType
+
+        # ContentType itself is from 'contenttypes' app which is not in ALLOWED_APP_LABELS
+        ct = ContentType.objects.get_for_model(ContentType)
+        response = self.client.get(f"/admin/sheets/sheetlink/model-fields/{ct.id}/")
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["fields"], [])
+
 
 class SyncLogAdminTests(TestCase):
     def setUp(self):

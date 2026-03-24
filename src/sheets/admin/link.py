@@ -1,9 +1,11 @@
+import json
 import logging
 
 from django.contrib import admin, messages
 from django.contrib.contenttypes.models import ContentType
+from django.http import JsonResponse
 from django.shortcuts import render
-from django.urls import path
+from django.urls import path, reverse
 from unfold.admin import ModelAdmin
 
 from sheets.models import SheetLink
@@ -16,6 +18,7 @@ ALLOWED_APP_LABELS = {"authn", "event", "news", "pages", "projects"}
 
 @admin.register(SheetLink)
 class SheetLinkAdmin(ModelAdmin):
+    change_form_template = "admin/sheets/sheetlink/change_form.html"
     list_display = ("name", "content_type", "spreadsheet_id_short", "sync_direction", "is_active", "last_sync_status")
     list_filter = ("sync_direction", "is_active", "content_type")
     search_fields = ("name", "spreadsheet_id")
@@ -86,11 +89,82 @@ class SheetLinkAdmin(ModelAdmin):
         )
 
     # ------------------------------------------------------------------
+    # Column mapping visual editor context
+    # ------------------------------------------------------------------
+
+    def _get_editor_context(self, obj=None):
+        # Build URL with a placeholder; can't use reverse() with non-int placeholder
+        base_url = reverse("admin:sheets_sheetlink_model_fields", args=[0])
+        model_fields_url = base_url.replace("/0/", "/__CT_ID__/")
+        return {
+            "initial_mapping_json": json.dumps(obj.column_mapping if obj else {}),
+            "model_fields_url": model_fields_url,
+        }
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id) if object_id else None
+        extra_context.update(self._get_editor_context(obj))
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def add_view(self, request, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context.update(self._get_editor_context())
+        return super().add_view(request, form_url, extra_context)
+
+    # ------------------------------------------------------------------
+    # AJAX endpoint: model fields for a content type
+    # ------------------------------------------------------------------
+
+    def model_fields_view(self, request, content_type_id):
+        """Return JSON list of model fields for the given content_type."""
+        ct = ContentType.objects.filter(id=content_type_id, app_label__in=ALLOWED_APP_LABELS).first()
+        if not ct:
+            return JsonResponse({"fields": []})
+
+        model_class = ct.model_class()
+        if not model_class:
+            return JsonResponse({"fields": []})
+
+        fields = []
+        for f in model_class._meta.get_fields():
+            if f.is_relation and hasattr(f, "related_model") and f.related_model and f.many_to_one:
+                # FK field — expand to show related model's concrete fields
+                related_model = f.related_model
+                for rf in related_model._meta.get_fields():
+                    if not rf.is_relation and hasattr(rf, "column"):
+                        fields.append(
+                            {
+                                "value": f"{f.name}__{rf.name}",
+                                "label": f"{f.name} \u2192 {rf.name} ({rf.get_internal_type()})",
+                                "group": f"FK: {f.name}",
+                            }
+                        )
+            elif not f.is_relation and hasattr(f, "column"):
+                # Skip auto primary key
+                if f.primary_key and f.name == "id":
+                    continue
+                fields.append(
+                    {
+                        "value": f.name,
+                        "label": f"{f.name} ({f.get_internal_type()})",
+                        "group": "Direct fields",
+                    }
+                )
+
+        return JsonResponse({"fields": fields})
+
+    # ------------------------------------------------------------------
     # Custom URLs for pull/push
     # ------------------------------------------------------------------
 
     def get_urls(self):
         custom_urls = [
+            path(
+                "model-fields/<int:content_type_id>/",
+                self.admin_site.admin_view(self.model_fields_view),
+                name="sheets_sheetlink_model_fields",
+            ),
             path(
                 "<path:object_id>/pull/",
                 self.admin_site.admin_view(self.pull_view),
