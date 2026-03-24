@@ -292,11 +292,16 @@ UNFOLD = {
                     {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
                     {"title": "Pages", "link": "/admin/pages/cmspage/"},
                     {"title": "Page Analytics", "link": "/admin/analytics/pageview/"},
+                    {"title": "Menus", "link": "/admin/pages/menu/"},
+                    {"title": "Footer", "link": "/admin/pages/footercontent/"},
+                ],
+            },
+            {
+                "title": "Data Sync & Integrations",
+                "items": [
                     {"title": "Sheet Links", "link": "/admin/sheets/sheetlink/"},
                     {"title": "Sheets Accounts", "link": "/admin/sheets/sheetsaccount/"},
                     {"title": "Sync Logs", "link": "/admin/sheets/synclog/"},
-                    {"title": "Menus", "link": "/admin/pages/menu/"},
-                    {"title": "Footer", "link": "/admin/pages/footercontent/"},
                 ],
             },
             {

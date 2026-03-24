@@ -9,8 +9,28 @@
 
     let blocks = [];
     let collapsedSet = new Set();
-    let livePreviewActive = false;
     let livePreviewTimer = null;
+
+    // ===== Live Preview State (sessionStorage-backed) =====
+    function getLivePreviewKey() {
+        var config = window.CMS_ROUTE_EDITOR || {};
+        return config.pageId ? 'cms_live_preview_active_' + config.pageId : '';
+    }
+
+    function isLivePreviewActive() {
+        var key = getLivePreviewKey();
+        return key ? sessionStorage.getItem(key) === 'true' : false;
+    }
+
+    function setLivePreviewActive(active) {
+        var key = getLivePreviewKey();
+        if (!key) return;
+        if (active) {
+            sessionStorage.setItem(key, 'true');
+        } else {
+            sessionStorage.removeItem(key);
+        }
+    }
 
     // ===== Helpers =====
     function escapeHtml(val) {
@@ -62,6 +82,22 @@
                 select.appendChild(opt);
             });
         }
+
+        // Resume live preview sync if it was active before page reload
+        if (isLivePreviewActive()) {
+            setTimeout(function () { postLivePreview(); }, 300);
+        }
+
+        // Sync metadata field changes to live preview
+        var metadataFields = ['id_title', 'id_route', 'id_meta_description', 'id_page_css_class'];
+        metadataFields.forEach(function (fieldId) {
+            var el = document.getElementById(fieldId);
+            if (el) {
+                el.addEventListener('input', function () {
+                    scheduleLivePreviewSync();
+                });
+            }
+        });
 
         renderAll();
         syncToJson();
@@ -545,15 +581,20 @@
             body: JSON.stringify(gatherPageData()),
             credentials: 'same-origin',
         })
-            .then(function () {
+            .then(function (response) {
+                if (!response.ok) {
+                    console.warn('[CMS Preview] POST failed with status ' + response.status);
+                    return;
+                }
                 if (callback) callback();
             })
-            .catch(function () { /* silently ignore */
+            .catch(function (err) {
+                console.warn('[CMS Preview] Network error:', err.message || err);
             });
     }
 
     function scheduleLivePreviewSync() {
-        if (!livePreviewActive) return;
+        if (!isLivePreviewActive()) return;
         if (livePreviewTimer) clearTimeout(livePreviewTimer);
         livePreviewTimer = setTimeout(function () {
             postLivePreview();
@@ -568,7 +609,7 @@
             return;
         }
 
-        livePreviewActive = true;
+        setLivePreviewActive(true);
 
         postLivePreview(function () {
             var route = gatherPageData().route || '/';
