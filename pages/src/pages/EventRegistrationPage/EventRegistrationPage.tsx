@@ -36,7 +36,8 @@ export const EventRegistrationPage = () => {
   // Form state
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [attendeeName, setAttendeeName] = useState('');
+  const [attendeeFirstName, setAttendeeFirstName] = useState('');
+  const [attendeeLastName, setAttendeeLastName] = useState('');
   const [attendeeOrganization, setAttendeeOrganization] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -137,7 +138,8 @@ export const EventRegistrationPage = () => {
       });
       clearProfileCompletionRequirement();
       // Pre-populate attendee fields from profile
-      setAttendeeName([firstName.trim(), lastName.trim()].filter(Boolean).join(' '));
+      setAttendeeFirstName(firstName.trim());
+      setAttendeeLastName(lastName.trim());
       setAttendeeOrganization(organization.trim());
       setStep('loading');
       loadOptions();
@@ -161,7 +163,8 @@ export const EventRegistrationPage = () => {
         answers: Object.entries(answers)
           .filter(([, v]) => v.trim())
           .map(([qId, answer]) => ({question_id: qId, answer})),
-        attendee_name: attendeeName.trim(),
+        attendee_first_name: attendeeFirstName.trim(),
+        attendee_last_name: attendeeLastName.trim(),
         attendee_organization: attendeeOrganization.trim() || undefined,
       });
       setRegistration(result);
@@ -411,18 +414,33 @@ export const EventRegistrationPage = () => {
           {/* Attendee info */}
           <div className="event-reg-form-row">
             <div className="event-reg-form-group">
-              <label className="event-reg-label" htmlFor="reg-attendee-name">
-                Name <span className="required-mark">*</span>
+              <label className="event-reg-label" htmlFor="reg-attendee-first-name">
+                First Name <span className="required-mark">*</span>
               </label>
               <input
-                id="reg-attendee-name"
+                id="reg-attendee-first-name"
                 type="text"
                 className="event-reg-input"
-                value={attendeeName}
-                onChange={(e) => setAttendeeName(e.target.value)}
-                placeholder="Your full name"
-                autoComplete="name"
+                value={attendeeFirstName}
+                onChange={(e) => setAttendeeFirstName(e.target.value)}
+                placeholder="First name"
+                autoComplete="given-name"
                 required
+                disabled={submitting}
+              />
+            </div>
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="reg-attendee-last-name">
+                Last Name <span className="event-reg-optional">(optional)</span>
+              </label>
+              <input
+                id="reg-attendee-last-name"
+                type="text"
+                className="event-reg-input"
+                value={attendeeLastName}
+                onChange={(e) => setAttendeeLastName(e.target.value)}
+                placeholder="Last name"
+                autoComplete="family-name"
                 disabled={submitting}
               />
             </div>
@@ -501,7 +519,7 @@ export const EventRegistrationPage = () => {
           <button
             type="submit"
             className="event-reg-submit"
-            disabled={submitting || !selectedTicketId || !attendeeName.trim()}
+            disabled={submitting || !selectedTicketId || !attendeeFirstName.trim()}
           >
             {submitting ? <><span className="event-reg-spinner" /> Registering...</> : 'Register'}
           </button>
