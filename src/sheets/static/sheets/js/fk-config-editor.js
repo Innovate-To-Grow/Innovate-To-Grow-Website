@@ -12,6 +12,7 @@
     var fkEntries = [];     // [{fkField, createIfMissing, defaults: [{key, value}]}]
     var hiddenTextarea = null;
     var editorContainer = null;
+    var rawMode = false;
 
     // ---------------------------------------------------------------
     // Init
@@ -23,7 +24,29 @@
 
         // Parse existing config
         var initial = window.FK_CONFIG_INITIAL || {};
-        fkEntries = [];
+        fkEntries = parseConfig(initial);
+
+        // Hide the textarea and its label/wrapper robustly
+        hideFieldAndLabel(hiddenTextarea);
+
+        // Build editor container and insert right after the hidden textarea
+        editorContainer = document.createElement("div");
+        editorContainer.className = "fk-config-editor";
+        hiddenTextarea.parentElement.insertBefore(editorContainer, hiddenTextarea.nextSibling);
+
+        renderEditor();
+
+        // Safety net: sync before form submission
+        var form = hiddenTextarea.closest("form");
+        if (form) {
+            form.addEventListener("submit", function () {
+                syncToHidden();
+            });
+        }
+    }
+
+    function parseConfig(initial) {
+        var entries = [];
         var keys = Object.keys(initial);
         for (var i = 0; i < keys.length; i++) {
             var fkField = keys[i];
@@ -35,45 +58,39 @@
                     defaults.push({ key: dKeys[d], value: String(cfg.defaults[dKeys[d]]) });
                 }
             }
-            fkEntries.push({
+            entries.push({
                 fkField: fkField,
                 createIfMissing: !!cfg.create_if_missing,
                 defaults: defaults,
             });
         }
-
-        // Hide the original textarea and its parent wrapper
-        var fieldRow = hiddenTextarea.closest(".flex-col");
-        if (fieldRow) fieldRow.style.display = "none";
-
-        // Build editor container
-        editorContainer = document.createElement("div");
-        editorContainer.className = "fk-config-editor";
-
-        // Find the Column Mapping fieldset (fk_config lives there)
-        var fieldset = findFieldsetByTitle("Column Mapping");
-        if (fieldset) {
-            var contentArea = fieldset.querySelector(".flex-col") || fieldset;
-            contentArea.appendChild(editorContainer);
-        } else {
-            hiddenTextarea.parentElement.appendChild(editorContainer);
-        }
-
-        renderEditor();
+        return entries;
     }
 
-    function findFieldsetByTitle(title) {
-        var headings = document.querySelectorAll("h2, h3, .module caption, legend, [class*='title']");
-        for (var i = 0; i < headings.length; i++) {
-            if (headings[i].textContent.trim().indexOf(title) !== -1) {
-                var el = headings[i].parentElement;
-                while (el && !el.matches("fieldset, .module, section, [class*='border']")) {
-                    el = el.parentElement;
-                }
-                return el;
+    // ---------------------------------------------------------------
+    // Hide field + label robustly
+    // ---------------------------------------------------------------
+
+    function hideFieldAndLabel(textarea) {
+        textarea.style.display = "none";
+        var label = document.querySelector('label[for="' + textarea.id + '"]');
+        if (label) {
+            var wrapper = label.closest(".flex-col");
+            if (wrapper && wrapper.contains(textarea)) {
+                wrapper.style.display = "none";
+            } else {
+                label.style.display = "none";
             }
         }
-        return null;
+    }
+
+    function showTextarea(textarea) {
+        textarea.style.display = "";
+        textarea.style.width = "100%";
+        textarea.style.minHeight = "120px";
+        textarea.style.fontFamily = "monospace";
+        textarea.style.fontSize = "0.8125rem";
+        textarea.rows = 8;
     }
 
     // ---------------------------------------------------------------
@@ -109,8 +126,21 @@
     // ---------------------------------------------------------------
 
     function renderEditor() {
+        var html = '';
+
+        // Toggle button
+        html += '<div class="json-editor-toggle">';
+        html += '<button type="button" class="json-toggle-btn" onclick="window._fkConfigEditor.toggleRaw()">';
+        html += rawMode ? "Show visual editor" : "Show raw JSON";
+        html += '</button></div>';
+
+        if (rawMode) {
+            editorContainer.innerHTML = html;
+            return;
+        }
+
         var fkPrefixes = getFkPrefixes();
-        var html = '<div class="fk-cards">';
+        html += '<div class="fk-cards">';
 
         if (fkEntries.length === 0) {
             html += '<div class="fk-empty">No FK configuration yet. Click "Add FK Config" to start.</div>';
@@ -212,7 +242,6 @@
         fkEntries.push({ fkField: "", createIfMissing: false, defaults: [] });
         renderEditor();
         syncToHidden();
-        // Focus the new FK field input
         var cards = editorContainer.querySelectorAll(".fk-card");
         if (cards.length > 0) {
             var lastCard = cards[cards.length - 1];
@@ -241,7 +270,6 @@
         fkEntries[entryIndex].defaults.push({ key: "", value: "" });
         renderEditor();
         syncToHidden();
-        // Focus the new default key input
         var cards = editorContainer.querySelectorAll(".fk-card");
         if (cards[entryIndex]) {
             var rows = cards[entryIndex].querySelectorAll(".fk-defaults-row");
@@ -267,6 +295,39 @@
     function updateDefaultValue(entryIndex, defaultIndex, value) {
         fkEntries[entryIndex].defaults[defaultIndex].value = value;
         syncToHidden();
+    }
+
+    // ---------------------------------------------------------------
+    // Toggle raw JSON
+    // ---------------------------------------------------------------
+
+    function toggleRaw() {
+        if (rawMode) {
+            if (!reparseFromTextarea()) return;
+            rawMode = false;
+            hiddenTextarea.style.display = "none";
+            renderEditor();
+        } else {
+            syncToHidden();
+            rawMode = true;
+            showTextarea(hiddenTextarea);
+            try {
+                var obj = JSON.parse(hiddenTextarea.value);
+                hiddenTextarea.value = JSON.stringify(obj, null, 2);
+            } catch (e) { /* leave as-is */ }
+            renderEditor();
+        }
+    }
+
+    function reparseFromTextarea() {
+        try {
+            var obj = JSON.parse(hiddenTextarea.value || "{}");
+            fkEntries = parseConfig(obj);
+            return true;
+        } catch (e) {
+            alert("Invalid JSON. Please fix the JSON before switching to visual mode.");
+            return false;
+        }
     }
 
     // ---------------------------------------------------------------
@@ -325,6 +386,7 @@
         removeDefault: removeDefault,
         updateDefaultKey: updateDefaultKey,
         updateDefaultValue: updateDefaultValue,
+        toggleRaw: toggleRaw,
     };
 
     // Init on DOMContentLoaded

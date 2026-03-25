@@ -9,11 +9,12 @@
     "use strict";
 
     // State
-    let mappings = [];          // [{header: "", field: ""}]
-    let modelFields = [];       // [{value, label, group}]
-    let fieldsUrl = "";
-    let hiddenTextarea = null;
-    let editorContainer = null;
+    var mappings = [];          // [{header: "", field: ""}]
+    var modelFields = [];       // [{value, label, group}]
+    var fieldsUrl = "";
+    var hiddenTextarea = null;
+    var editorContainer = null;
+    var rawMode = false;
 
     // ---------------------------------------------------------------
     // Init
@@ -26,59 +27,67 @@
         fieldsUrl = window.MODEL_FIELDS_URL || "";
 
         // Parse existing mapping
-        const initial = window.COLUMN_MAPPING_INITIAL || {};
+        var initial = window.COLUMN_MAPPING_INITIAL || {};
         mappings = Object.entries(initial).map(function (entry) {
             return { header: entry[0], field: entry[1] };
         });
 
-        // Hide the original textarea and its parent wrapper
-        const fieldRow = hiddenTextarea.closest(".flex-col");
-        if (fieldRow) fieldRow.style.display = "none";
+        // Hide the textarea and its label/wrapper robustly
+        hideFieldAndLabel(hiddenTextarea);
 
-        // Build editor container and insert after the hidden field's fieldset row
+        // Build editor container and insert right after the hidden textarea
         editorContainer = document.createElement("div");
         editorContainer.className = "column-mapping-editor";
-
-        // Find the Column Mapping fieldset to insert into
-        const fieldset = findColumnMappingFieldset();
-        if (fieldset) {
-            // Insert editor inside the fieldset content area
-            const contentArea = fieldset.querySelector(".flex-col") || fieldset;
-            contentArea.appendChild(editorContainer);
-        } else {
-            // Fallback: insert after the hidden textarea's container
-            hiddenTextarea.parentElement.appendChild(editorContainer);
-        }
+        hiddenTextarea.parentElement.insertBefore(editorContainer, hiddenTextarea.nextSibling);
 
         renderEditor();
 
         // Listen for content_type changes
-        const ctSelect = document.getElementById("id_content_type");
+        var ctSelect = document.getElementById("id_content_type");
         if (ctSelect) {
             ctSelect.addEventListener("change", function () {
                 fetchModelFields(ctSelect.value);
             });
-            // Initial fetch if a value is already selected
             if (ctSelect.value) {
                 fetchModelFields(ctSelect.value);
             }
         }
+
+        // Safety net: sync before form submission
+        var form = hiddenTextarea.closest("form");
+        if (form) {
+            form.addEventListener("submit", function () {
+                syncToHidden();
+            });
+        }
     }
 
-    function findColumnMappingFieldset() {
-        // Look for the fieldset whose heading contains "Column Mapping"
-        const headings = document.querySelectorAll("h2, h3, .module caption, legend, [class*='title']");
-        for (let i = 0; i < headings.length; i++) {
-            if (headings[i].textContent.trim().indexOf("Column Mapping") !== -1) {
-                // Walk up to find the fieldset/module container
-                let el = headings[i].parentElement;
-                while (el && !el.matches("fieldset, .module, section, [class*='border']")) {
-                    el = el.parentElement;
-                }
-                return el;
+    // ---------------------------------------------------------------
+    // Hide field + label robustly
+    // ---------------------------------------------------------------
+
+    function hideFieldAndLabel(textarea) {
+        textarea.style.display = "none";
+        // Try to hide the label
+        var label = document.querySelector('label[for="' + textarea.id + '"]');
+        if (label) {
+            // Try to hide the parent wrapper first (unfold uses .flex-col)
+            var wrapper = label.closest(".flex-col");
+            if (wrapper && wrapper.contains(textarea)) {
+                wrapper.style.display = "none";
+            } else {
+                label.style.display = "none";
             }
         }
-        return null;
+    }
+
+    function showTextarea(textarea) {
+        textarea.style.display = "";
+        textarea.style.width = "100%";
+        textarea.style.minHeight = "120px";
+        textarea.style.fontFamily = "monospace";
+        textarea.style.fontSize = "0.8125rem";
+        textarea.rows = 8;
     }
 
     // ---------------------------------------------------------------
@@ -86,16 +95,27 @@
     // ---------------------------------------------------------------
 
     function renderEditor() {
-        let html = '<div class="mapping-rows">';
+        var html = '';
 
+        // Toggle button
+        html += '<div class="json-editor-toggle">';
+        html += '<button type="button" class="json-toggle-btn" onclick="window._colMapEditor.toggleRaw()">';
+        html += rawMode ? "Show visual editor" : "Show raw JSON";
+        html += '</button></div>';
+
+        if (rawMode) {
+            editorContainer.innerHTML = html;
+            return;
+        }
+
+        html += '<div class="mapping-rows">';
         if (mappings.length === 0) {
             html += '<div class="mapping-empty">No column mappings yet. Click "Add Mapping" to start.</div>';
         } else {
-            for (let i = 0; i < mappings.length; i++) {
+            for (var i = 0; i < mappings.length; i++) {
                 html += renderRow(i, mappings[i]);
             }
         }
-
         html += "</div>";
         html += '<button type="button" class="mapping-add-btn" onclick="window._colMapEditor.addRow()">+ Add Mapping</button>';
         html += '<p class="mapping-hint">Use Django __ syntax for FK fields (e.g. semester__year). Select "__skip__" to ignore a column.</p>';
@@ -103,7 +123,7 @@
         // Datalist for autocomplete
         html += '<datalist id="model-fields-list">';
         html += '<option value="__skip__">';
-        for (let j = 0; j < modelFields.length; j++) {
+        for (var j = 0; j < modelFields.length; j++) {
             html += '<option value="' + escapeAttr(modelFields[j].value) + '" label="' + escapeAttr(modelFields[j].label) + '">';
         }
         html += "</datalist>";
@@ -115,12 +135,12 @@
         return (
             '<div class="mapping-row">' +
             '<span class="mapping-row-number">' + (index + 1) + "</span>" +
-            '<input type="text" class="mapping-input" placeholder="Sheet Header (e.g. Year)" ' +
+            '<input type="text" class="mapping-input mapping-header-input" placeholder="Sheet Header (e.g. Year)" ' +
             'value="' + escapeAttr(mapping.header) + '" ' +
             'onchange="window._colMapEditor.updateHeader(' + index + ', this.value)" ' +
             'oninput="window._colMapEditor.updateHeader(' + index + ', this.value)">' +
             '<span class="mapping-arrow">\u2192</span>' +
-            '<input type="text" class="mapping-input" list="model-fields-list" placeholder="Model Field (e.g. class_code)" ' +
+            '<input type="text" class="mapping-input mapping-field-input" list="model-fields-list" placeholder="Model Field (e.g. class_code)" ' +
             'value="' + escapeAttr(mapping.field) + '" ' +
             'onchange="window._colMapEditor.updateField(' + index + ', this.value)" ' +
             'oninput="window._colMapEditor.updateField(' + index + ', this.value)">' +
@@ -137,7 +157,6 @@
         mappings.push({ header: "", field: "" });
         renderEditor();
         syncToHidden();
-        // Focus the new header input
         var rows = editorContainer.querySelectorAll(".mapping-row");
         if (rows.length > 0) {
             var lastRow = rows[rows.length - 1];
@@ -160,6 +179,44 @@
     function updateField(index, value) {
         mappings[index].field = value;
         syncToHidden();
+    }
+
+    // ---------------------------------------------------------------
+    // Toggle raw JSON
+    // ---------------------------------------------------------------
+
+    function toggleRaw() {
+        if (rawMode) {
+            // Switching back to visual — re-parse textarea
+            if (!reparseFromTextarea()) return;
+            rawMode = false;
+            hiddenTextarea.style.display = "none";
+            renderEditor();
+        } else {
+            // Switch to raw JSON
+            syncToHidden();
+            rawMode = true;
+            showTextarea(hiddenTextarea);
+            // Pretty-print the JSON
+            try {
+                var obj = JSON.parse(hiddenTextarea.value);
+                hiddenTextarea.value = JSON.stringify(obj, null, 2);
+            } catch (e) { /* leave as-is */ }
+            renderEditor();
+        }
+    }
+
+    function reparseFromTextarea() {
+        try {
+            var obj = JSON.parse(hiddenTextarea.value || "{}");
+            mappings = Object.entries(obj).map(function (entry) {
+                return { header: entry[0], field: String(entry[1]) };
+            });
+            return true;
+        } catch (e) {
+            alert("Invalid JSON. Please fix the JSON before switching to visual mode.");
+            return false;
+        }
     }
 
     // ---------------------------------------------------------------
@@ -222,6 +279,7 @@
         removeRow: removeRow,
         updateHeader: updateHeader,
         updateField: updateField,
+        toggleRaw: toggleRaw,
     };
 
     // Init on DOMContentLoaded

@@ -14,6 +14,7 @@
     var fieldsUrl = "";
     var hiddenTextarea = null;
     var editorContainer = null;
+    var rawMode = false;
 
     // ---------------------------------------------------------------
     // Init
@@ -29,22 +30,13 @@
         var initial = window.LOOKUP_FIELDS_INITIAL || [];
         lookupFields = Array.isArray(initial) ? initial.slice() : [];
 
-        // Hide the original textarea and its parent wrapper
-        var fieldRow = hiddenTextarea.closest(".flex-col");
-        if (fieldRow) fieldRow.style.display = "none";
+        // Hide the textarea and its label/wrapper robustly
+        hideFieldAndLabel(hiddenTextarea);
 
-        // Build editor container
+        // Build editor container and insert right after the hidden textarea
         editorContainer = document.createElement("div");
         editorContainer.className = "lookup-fields-editor";
-
-        // Find the Upsert Configuration fieldset
-        var fieldset = findFieldsetByTitle("Upsert Configuration");
-        if (fieldset) {
-            var contentArea = fieldset.querySelector(".flex-col") || fieldset;
-            contentArea.appendChild(editorContainer);
-        } else {
-            hiddenTextarea.parentElement.appendChild(editorContainer);
-        }
+        hiddenTextarea.parentElement.insertBefore(editorContainer, hiddenTextarea.nextSibling);
 
         renderEditor();
 
@@ -58,20 +50,40 @@
                 fetchModelFields(ctSelect.value);
             }
         }
+
+        // Safety net: sync before form submission
+        var form = hiddenTextarea.closest("form");
+        if (form) {
+            form.addEventListener("submit", function () {
+                syncToHidden();
+            });
+        }
     }
 
-    function findFieldsetByTitle(title) {
-        var headings = document.querySelectorAll("h2, h3, .module caption, legend, [class*='title']");
-        for (var i = 0; i < headings.length; i++) {
-            if (headings[i].textContent.trim().indexOf(title) !== -1) {
-                var el = headings[i].parentElement;
-                while (el && !el.matches("fieldset, .module, section, [class*='border']")) {
-                    el = el.parentElement;
-                }
-                return el;
+    // ---------------------------------------------------------------
+    // Hide field + label robustly
+    // ---------------------------------------------------------------
+
+    function hideFieldAndLabel(textarea) {
+        textarea.style.display = "none";
+        var label = document.querySelector('label[for="' + textarea.id + '"]');
+        if (label) {
+            var wrapper = label.closest(".flex-col");
+            if (wrapper && wrapper.contains(textarea)) {
+                wrapper.style.display = "none";
+            } else {
+                label.style.display = "none";
             }
         }
-        return null;
+    }
+
+    function showTextarea(textarea) {
+        textarea.style.display = "";
+        textarea.style.width = "100%";
+        textarea.style.minHeight = "120px";
+        textarea.style.fontFamily = "monospace";
+        textarea.style.fontSize = "0.8125rem";
+        textarea.rows = 8;
     }
 
     // ---------------------------------------------------------------
@@ -79,8 +91,20 @@
     // ---------------------------------------------------------------
 
     function renderEditor() {
-        var html = '<div class="lookup-rows">';
+        var html = '';
 
+        // Toggle button
+        html += '<div class="json-editor-toggle">';
+        html += '<button type="button" class="json-toggle-btn" onclick="window._lookupFieldsEditor.toggleRaw()">';
+        html += rawMode ? "Show visual editor" : "Show raw JSON";
+        html += '</button></div>';
+
+        if (rawMode) {
+            editorContainer.innerHTML = html;
+            return;
+        }
+
+        html += '<div class="lookup-rows">';
         if (lookupFields.length === 0) {
             html += '<div class="lookup-empty">No lookup fields yet. Click "Add Field" to start.</div>';
         } else {
@@ -88,13 +112,12 @@
                 html += renderRow(i, lookupFields[i]);
             }
         }
-
         html += "</div>";
         html += '<button type="button" class="lookup-add-btn" onclick="window._lookupFieldsEditor.addField()">+ Add Field</button>';
         html += '<p class="lookup-hint">Fields forming the unique key for upserts (used with update_or_create). ' +
             'Use direct field names or FK field names (e.g. "semester", not "semester__year").</p>';
 
-        // Datalist for autocomplete — include direct fields and FK-level names
+        // Datalist for autocomplete
         html += '<datalist id="lookup-fields-list">';
         for (var j = 0; j < modelFields.length; j++) {
             html += '<option value="' + escapeAttr(modelFields[j].value) + '" label="' + escapeAttr(modelFields[j].label) + '">';
@@ -127,7 +150,6 @@
         lookupFields.push("");
         renderEditor();
         syncToHidden();
-        // Focus the new input
         var rows = editorContainer.querySelectorAll(".lookup-row");
         if (rows.length > 0) {
             var lastRow = rows[rows.length - 1];
@@ -145,6 +167,43 @@
     function updateField(index, value) {
         lookupFields[index] = value;
         syncToHidden();
+    }
+
+    // ---------------------------------------------------------------
+    // Toggle raw JSON
+    // ---------------------------------------------------------------
+
+    function toggleRaw() {
+        if (rawMode) {
+            if (!reparseFromTextarea()) return;
+            rawMode = false;
+            hiddenTextarea.style.display = "none";
+            renderEditor();
+        } else {
+            syncToHidden();
+            rawMode = true;
+            showTextarea(hiddenTextarea);
+            try {
+                var arr = JSON.parse(hiddenTextarea.value);
+                hiddenTextarea.value = JSON.stringify(arr, null, 2);
+            } catch (e) { /* leave as-is */ }
+            renderEditor();
+        }
+    }
+
+    function reparseFromTextarea() {
+        try {
+            var arr = JSON.parse(hiddenTextarea.value || "[]");
+            if (!Array.isArray(arr)) {
+                alert("Expected a JSON array. Please fix the JSON.");
+                return false;
+            }
+            lookupFields = arr.map(function (v) { return String(v); });
+            return true;
+        } catch (e) {
+            alert("Invalid JSON. Please fix the JSON before switching to visual mode.");
+            return false;
+        }
     }
 
     // ---------------------------------------------------------------
@@ -178,13 +237,11 @@
             .then(function (resp) { return resp.json(); })
             .then(function (data) {
                 var rawFields = data.fields || [];
-                // Build a deduplicated list: direct fields + FK-level names
                 var result = [];
                 var seenFk = {};
                 for (var i = 0; i < rawFields.length; i++) {
                     var f = rawFields[i];
                     if (f.group && f.group.indexOf("FK:") === 0) {
-                        // Extract FK prefix name
                         var prefix = f.group.replace("FK: ", "").replace("FK:", "").trim();
                         if (!seenFk[prefix]) {
                             seenFk[prefix] = true;
@@ -224,6 +281,7 @@
         addField: addField,
         removeField: removeField,
         updateField: updateField,
+        toggleRaw: toggleRaw,
     };
 
     // Init on DOMContentLoaded

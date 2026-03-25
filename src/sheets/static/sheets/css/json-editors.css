@@ -3,6 +3,34 @@
    Matches django-unfold theme + column-mapping-editor.css
    ============================================================ */
 
+/* ---- Shared: JSON toggle button ---- */
+.json-editor-toggle {
+    margin-bottom: 8px;
+    text-align: right;
+}
+
+.json-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary-600, #4f46e5);
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 4px 8px;
+}
+
+.json-toggle-btn:hover {
+    color: var(--color-primary-700, #4338ca);
+}
+
+.dark .json-toggle-btn {
+    color: var(--color-primary-400, #818cf8);
+}
+
+.dark .json-toggle-btn:hover {
+    color: var(--color-primary-300, #a5b4fc);
+}
+
 /* ---- Shared ---- */
 .fk-config-editor,
 .lookup-fields-editor {
@@ -417,4 +445,79 @@
 .dark .lookup-fields-editor .lookup-empty {
     border-color: var(--color-base-700, #374151);
     color: var(--color-base-500, #6b7280);
+}
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 640px) {
+    /* FK Config Editor */
+    .fk-config-editor .fk-card {
+        padding: 10px 12px;
+    }
+
+    .fk-config-editor .fk-card-header {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .fk-config-editor .fk-card-field-input {
+        flex: 1 1 calc(100% - 100px);
+        min-width: 0;
+    }
+
+    .fk-config-editor .fk-card-remove-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+    }
+
+    .fk-config-editor .fk-toggle-row input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+    }
+
+    .fk-config-editor .fk-defaults-row {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--color-base-100, #f3f4f6);
+    }
+
+    .fk-config-editor .fk-defaults-input {
+        flex: 1 1 100%;
+    }
+
+    .fk-config-editor .fk-defaults-arrow {
+        display: none;
+    }
+
+    .fk-config-editor .fk-defaults-remove-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
+    }
+
+    .fk-config-editor .fk-add-btn,
+    .fk-config-editor .fk-add-default-btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    /* Lookup Fields Editor */
+    .lookup-fields-editor .lookup-remove-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .lookup-fields-editor .lookup-add-btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 640px) {
+    .dark .fk-config-editor .fk-defaults-row {
+        border-bottom-color: var(--color-base-700, #374151);
+    }
 }
