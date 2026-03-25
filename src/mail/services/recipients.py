@@ -52,7 +52,7 @@ def resolve_recipients(source, event=None):
         return [
             {
                 "email": reg.member.email or reg.attendee_email,
-                "first_name": reg.member.first_name,
+                "first_name": reg.member.first_name or reg.attendee_first_name,
                 "full_name": reg.member.get_full_name() or reg.attendee_name,
                 "member_id": str(reg.member.pk),
             }

@@ -8,7 +8,8 @@ from ..models import EventRegistration
 class EventRegistrationAdmin(ModelAdmin):
     list_display = (
         "event",
-        "attendee_name",
+        "attendee_first_name",
+        "attendee_last_name",
         "attendee_email",
         "attendee_organization",
         "ticket",
@@ -17,13 +18,20 @@ class EventRegistrationAdmin(ModelAdmin):
         "ticket_email_sent_at",
     )
     list_filter = ("event", "ticket")
-    search_fields = ("attendee_name", "attendee_email", "attendee_organization", "ticket_code")
+    search_fields = (
+        "attendee_first_name",
+        "attendee_last_name",
+        "attendee_email",
+        "attendee_organization",
+        "ticket_code",
+    )
     readonly_fields = (
         "member",
         "event",
         "ticket",
         "ticket_code",
-        "attendee_name",
+        "attendee_first_name",
+        "attendee_last_name",
         "attendee_email",
         "attendee_organization",
         "question_answers",

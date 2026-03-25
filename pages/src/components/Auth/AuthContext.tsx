@@ -326,7 +326,6 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
                 if (!prev) return null;
                 const nextUser = {
                     ...prev,
-                    display_name: profile.display_name,
                     profile_image: profile.profile_image,
                 };
                 localStorage.setItem('i2g_user', JSON.stringify(nextUser));

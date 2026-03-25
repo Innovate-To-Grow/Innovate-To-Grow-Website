@@ -25,7 +25,6 @@ def build_auth_success_payload(
             "member_uuid": str(member.member_uuid),
             "email": member.email,
             "username": member.username,
-            "display_name": member.get_full_name() or member.username,
         },
     }
     if next_step is not None:

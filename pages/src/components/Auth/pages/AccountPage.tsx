@@ -27,8 +27,8 @@ export const AccountPage = () => {
 
     // Profile form state
     const [firstName, setFirstName] = useState('');
+    const [middleName, setMiddleName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [displayName, setDisplayName] = useState('');
     const [organization, setOrganization] = useState('');
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -60,8 +60,8 @@ export const AccountPage = () => {
                 const data = await getProfile();
                 setProfile(data);
                 setFirstName(data.first_name ?? '');
+                setMiddleName(data.middle_name ?? '');
                 setLastName(data.last_name ?? '');
-                setDisplayName(data.display_name ?? '');
                 setOrganization(data.organization ?? '');
                 setProfileError(null);
                 if (data.profile_image) {
@@ -69,10 +69,6 @@ export const AccountPage = () => {
                 }
             } catch (err: unknown) {
                 console.error('[AccountPage] Profile fetch failed:', err);
-                // Populate from user context when profile API fails
-                if (user?.display_name) {
-                    setDisplayName(user.display_name);
-                }
                 setProfileError(getErrorMessage(err));
             } finally {
                 setProfileLoading(false);
@@ -80,7 +76,7 @@ export const AccountPage = () => {
         };
 
         fetchProfile();
-    }, [isAuthenticated, requiresProfileCompletion, user?.display_name]);
+    }, [isAuthenticated, requiresProfileCompletion]);
 
     // Fetch tickets on mount
     useEffect(() => {
@@ -159,8 +155,8 @@ export const AccountPage = () => {
         try {
             const updated = await updateProfileFields({
                 first_name: firstName.trim(),
+                middle_name: middleName.trim(),
                 last_name: lastName.trim(),
-                display_name: displayName.trim(),
                 organization: organization.trim(),
             });
             setProfile(updated);
@@ -212,7 +208,7 @@ export const AccountPage = () => {
                       <span className="profile-image-initials">
                         {firstName && lastName
                             ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-                            : (displayName ? displayName[0].toUpperCase() : 'U')}
+                            : (firstName ? firstName[0].toUpperCase() : 'U')}
                       </span>
                                     </div>
                                 )}
@@ -264,13 +260,12 @@ export const AccountPage = () => {
                                             const data = await getProfile();
                                             setProfile(data);
                                             setFirstName(data.first_name ?? '');
+                                            setMiddleName(data.middle_name ?? '');
                                             setLastName(data.last_name ?? '');
-                                            setDisplayName(data.display_name ?? '');
                                             setOrganization(data.organization ?? '');
                                             if (data.profile_image) setProfileImage(data.profile_image);
                                         } catch (err: unknown) {
                                             console.error('[AccountPage] Profile fetch failed:', err);
-                                            if (user?.display_name) setDisplayName(user.display_name);
                                             setProfileError(getErrorMessage(err));
                                         } finally {
                                             setProfileLoading(false);
@@ -300,6 +295,21 @@ export const AccountPage = () => {
                                 </div>
 
                                 <div className="auth-form-group">
+                                    <label className="auth-form-label" htmlFor="account-middle-name">
+                                        Middle Name
+                                    </label>
+                                    <input
+                                        id="account-middle-name"
+                                        type="text"
+                                        className="auth-form-input"
+                                        value={middleName}
+                                        onChange={(e) => setMiddleName(e.target.value)}
+                                        autoComplete="additional-name"
+                                        disabled={!isEditingProfile}
+                                    />
+                                </div>
+
+                                <div className="auth-form-group">
                                     <label className="auth-form-label" htmlFor="account-last-name">
                                         Last Name
                                     </label>
@@ -313,20 +323,6 @@ export const AccountPage = () => {
                                         disabled={!isEditingProfile}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="auth-form-group">
-                                <label className="auth-form-label" htmlFor="account-display-name">
-                                    Display Name
-                                </label>
-                                <input
-                                    id="account-display-name"
-                                    type="text"
-                                    className="auth-form-input"
-                                    value={displayName}
-                                    onChange={(e) => setDisplayName(e.target.value)}
-                                    disabled={!isEditingProfile}
-                                />
                             </div>
 
                             <div className="auth-form-group">
@@ -368,8 +364,8 @@ export const AccountPage = () => {
                                         onClick={() => {
                                             setIsEditingProfile(false);
                                             setFirstName(profile?.first_name || '');
+                                            setMiddleName(profile?.middle_name || '');
                                             setLastName(profile?.last_name || '');
-                                            setDisplayName(profile?.display_name || '');
                                             setOrganization(profile?.organization || '');
                                             setProfileMessage(null);
                                             setProfileError(null);

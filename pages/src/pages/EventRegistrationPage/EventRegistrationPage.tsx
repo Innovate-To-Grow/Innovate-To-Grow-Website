@@ -28,6 +28,7 @@ export const EventRegistrationPage = () => {
 
   // Profile state
   const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
   const [saving, setSaving] = useState(false);
@@ -130,6 +131,7 @@ export const EventRegistrationPage = () => {
     try {
       await updateProfileFields({
         first_name: firstName.trim(),
+        middle_name: middleName.trim(),
         last_name: lastName.trim(),
         organization: organization.trim(),
       });
@@ -347,6 +349,21 @@ export const EventRegistrationPage = () => {
                   autoComplete="given-name"
                   required
                   autoFocus
+                  disabled={saving}
+                />
+              </div>
+              <div className="event-reg-form-group">
+                <label className="event-reg-label" htmlFor="reg-middle-name">
+                  Middle Name <span className="event-reg-optional">(optional)</span>
+                </label>
+                <input
+                  id="reg-middle-name"
+                  type="text"
+                  className="event-reg-input"
+                  value={middleName}
+                  onChange={(e) => { setMiddleName(e.target.value); setError(null); }}
+                  placeholder="Middle name"
+                  autoComplete="additional-name"
                   disabled={saving}
                 />
               </div>

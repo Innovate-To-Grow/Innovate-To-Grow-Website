@@ -20,6 +20,7 @@ export const SubscribePage = () => {
 
   // Profile state
   const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
   const [saving, setSaving] = useState(false);
@@ -79,6 +80,7 @@ export const SubscribePage = () => {
     try {
       await updateProfileFields({
         first_name: firstName.trim(),
+        middle_name: middleName.trim(),
         last_name: lastName.trim(),
         organization: organization.trim(),
         email_subscribe: true,
@@ -216,6 +218,21 @@ export const SubscribePage = () => {
                   autoComplete="given-name"
                   required
                   autoFocus
+                  disabled={saving}
+                />
+              </div>
+              <div className="subscribe-form-group">
+                <label className="subscribe-label" htmlFor="subscribe-middle-name">
+                  Middle Name <span className="subscribe-optional">(optional)</span>
+                </label>
+                <input
+                  id="subscribe-middle-name"
+                  type="text"
+                  className="subscribe-input"
+                  value={middleName}
+                  onChange={(e) => { setMiddleName(e.target.value); setError(null); }}
+                  placeholder="Middle name"
+                  autoComplete="additional-name"
                   disabled={saving}
                 />
               </div>

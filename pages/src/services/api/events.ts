@@ -43,6 +43,8 @@ export interface RegistrationAnswer {
 export interface Registration {
   id: string;
   ticket_code: string;
+  attendee_first_name: string;
+  attendee_last_name: string;
   attendee_name: string;
   attendee_email: string;
   attendee_organization: string;

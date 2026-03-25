@@ -7,8 +7,6 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from authn.models import MemberProfile
-
 Member = get_user_model()
 
 
@@ -26,17 +24,17 @@ class ProfileSerializer(serializers.Serializer):
         max_length=150,
         help_text="User's first name.",
     )
+    middle_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        help_text="User's middle name.",
+    )
     last_name = serializers.CharField(
         required=False,
         allow_blank=True,
         max_length=150,
         help_text="User's last name.",
-    )
-    display_name = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=255,
-        help_text="User display name.",
     )
     organization = serializers.CharField(
         required=False,
@@ -57,9 +55,6 @@ class ProfileSerializer(serializers.Serializer):
         Get profile data from the user instance.
         """
         profile = instance.get_profile()
-        display_name = (
-            profile.display_name if profile.display_name else (instance.get_full_name() or instance.username or "")
-        )
         profile_image = None
         if profile.profile_image:
             try:
@@ -75,8 +70,8 @@ class ProfileSerializer(serializers.Serializer):
             "email": instance.email,
             "username": instance.username,
             "first_name": instance.first_name or "",
+            "middle_name": instance.middle_name or "",
             "last_name": instance.last_name or "",
-            "display_name": display_name,
             "organization": instance.organization or "",
             "email_subscribe": instance.email_subscribe,
             "is_active": instance.is_active,
@@ -89,15 +84,9 @@ class ProfileSerializer(serializers.Serializer):
         """
         Update the user's profile with the validated data.
         """
-        display_name = validated_data.get("display_name")
-        if display_name is not None:
-            profile, _ = MemberProfile.objects.get_or_create(model_user=instance)
-            profile.display_name = display_name
-            profile.save(update_fields=["display_name", "updated_at"])
-
         # Update Member model fields
         member_fields_to_update = []
-        for field in ("first_name", "last_name", "organization", "email_subscribe"):
+        for field in ("first_name", "middle_name", "last_name", "organization", "email_subscribe"):
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
                 member_fields_to_update.append(field)

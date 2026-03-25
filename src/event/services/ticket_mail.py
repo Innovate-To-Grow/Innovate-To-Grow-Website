@@ -36,7 +36,7 @@ def _log_ses_email(account, status, *, message_id="", subject="", recipients="",
 def _render_ticket_email(registration, request=None):
     subject = f"Your {registration.event.name} ticket"
     event_name = html.escape(registration.event.name)
-    attendee_name = html.escape(registration.attendee_name)
+    attendee_name = html.escape(registration.attendee_first_name or registration.attendee_name)
     ticket_name = html.escape(registration.ticket.name)
     location = html.escape(registration.event.location)
     ticket_code = html.escape(registration.ticket_code)

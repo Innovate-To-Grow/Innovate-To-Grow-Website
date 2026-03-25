@@ -133,8 +133,10 @@ class EventRegistrationCreateView(APIView):
                 "ticket": ticket,
                 "question_answers": question_answers,
             }
-            if data.get("attendee_name"):
-                create_kwargs["attendee_name"] = data["attendee_name"]
+            if data.get("attendee_first_name"):
+                create_kwargs["attendee_first_name"] = data["attendee_first_name"]
+            if data.get("attendee_last_name"):
+                create_kwargs["attendee_last_name"] = data["attendee_last_name"]
             if data.get("attendee_organization"):
                 create_kwargs["attendee_organization"] = data["attendee_organization"]
             registration = EventRegistration.objects.create(**create_kwargs)

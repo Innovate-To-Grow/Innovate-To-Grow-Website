@@ -15,6 +15,7 @@ export const CompleteProfilePage = () => {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export const CompleteProfilePage = () => {
       try {
         const profile = await getProfile();
         setFirstName(profile.first_name ?? '');
+        setMiddleName(profile.middle_name ?? '');
         setLastName(profile.last_name ?? '');
         setOrganization(profile.organization ?? '');
       } catch (err: unknown) {
@@ -62,6 +64,7 @@ export const CompleteProfilePage = () => {
     try {
       await updateProfileFields({
         first_name: firstName.trim(),
+        middle_name: middleName.trim(),
         last_name: lastName.trim(),
         organization: organization.trim(),
       });
@@ -118,6 +121,24 @@ export const CompleteProfilePage = () => {
                   placeholder="First name"
                   autoComplete="given-name"
                   required
+                />
+              </div>
+
+              <div className="auth-form-group">
+                <label className="auth-form-label" htmlFor="complete-profile-middle-name">
+                  Middle Name <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+                </label>
+                <input
+                  id="complete-profile-middle-name"
+                  type="text"
+                  className="auth-form-input"
+                  value={middleName}
+                  onChange={(event) => {
+                    setMiddleName(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Middle name"
+                  autoComplete="additional-name"
                 />
               </div>
 

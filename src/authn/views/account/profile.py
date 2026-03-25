@@ -32,7 +32,7 @@ class ProfileView(APIView):
     """
     API endpoint for user profile.
     GET: Retrieve current user's profile.
-    PATCH: Update profile (JSON: first_name, last_name, display_name, organization;
+    PATCH: Update profile (JSON: first_name, last_name, organization;
            multipart: profile_image file).
     """
 

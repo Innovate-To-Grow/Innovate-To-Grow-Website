@@ -4,8 +4,6 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 
-from authn.models.members.member import MemberProfile
-
 Member = get_user_model()
 
 
@@ -32,7 +30,7 @@ class ProfileUpdateTests(APITestCase):
         self.assertIn("username", data)
         self.assertIn("first_name", data)
         self.assertIn("last_name", data)
-        self.assertIn("display_name", data)
+        self.assertIn("middle_name", data)
         self.assertIn("organization", data)
         self.assertIn("email_subscribe", data)
         self.assertIn("is_active", data)
@@ -68,16 +66,6 @@ class ProfileUpdateTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.member.refresh_from_db()
         self.assertEqual(self.member.organization, "Acme Corp")
-
-    def test_patch_display_name(self):
-        response = self.client.patch(
-            "/authn/profile/",
-            {"display_name": "Cool Display Name"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, 200)
-        profile = MemberProfile.objects.get(model_user=self.member)
-        self.assertEqual(profile.display_name, "Cool Display Name")
 
     def test_patch_email_subscribe(self):
         response = self.client.patch(

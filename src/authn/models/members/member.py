@@ -110,15 +110,6 @@ class MemberProfile(ProjectControlModel):
     # foreign key link to user
     model_user = models.OneToOneField(Member, on_delete=models.CASCADE)
 
-    # display name (can differ from first_name + last_name)
-    display_name = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="User display name shown in UI.",
-        verbose_name="Display Name",
-    )
-
     # user profile image (base64 encoded png 128*128)
     profile_image = models.TextField(
         null=True,
@@ -129,10 +120,6 @@ class MemberProfile(ProjectControlModel):
 
     def __str__(self):
         return f"{self.model_user.username} - User Profile"
-
-    def get_display_name(self):
-        """Return the user's full name, falling back to username."""
-        return self.model_user.get_full_name() or self.model_user.username
 
     # check if profile image exists
     def has_profile_image(self):

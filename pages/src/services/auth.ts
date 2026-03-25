@@ -9,7 +9,6 @@ export interface User {
   member_uuid: string;
   email: string;
   username: string;
-  display_name?: string;
   profile_image?: string;
 }
 
@@ -59,8 +58,8 @@ export interface ProfileResponse {
   email: string;
   username: string;
   first_name: string;
+  middle_name: string;
   last_name: string;
-  display_name: string;
   organization: string;
   email_subscribe: boolean;
   is_active: boolean;
@@ -326,39 +325,14 @@ export const getProfile = async (): Promise<ProfileResponse> => {
   return response.data;
 };
 
-export const updateProfile = async (displayName: string): Promise<ProfileResponse> => {
-  const response = await authApi.patch<ProfileResponse>('/authn/profile/', {
-    display_name: displayName,
-  });
-
-  // Update stored user
-  const user = getStoredUser();
-  if (user) {
-    user.display_name = displayName;
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
-
-  return response.data;
-};
-
 export const updateProfileFields = async (data: {
   first_name?: string;
+  middle_name?: string;
   last_name?: string;
-  display_name?: string;
   organization?: string;
   email_subscribe?: boolean;
 }): Promise<ProfileResponse> => {
   const response = await authApi.patch<ProfileResponse>('/authn/profile/', data);
-
-  // Update stored user display_name if changed
-  if (data.display_name !== undefined) {
-    const user = getStoredUser();
-    if (user) {
-      user.display_name = data.display_name;
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-    }
-  }
-
   return response.data;
 };
 
