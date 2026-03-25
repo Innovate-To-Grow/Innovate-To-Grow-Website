@@ -1,0 +1,153 @@
+/* CMS Event page styling */
+.event-page {
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+/* Two-column grid layout */
+.event-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.event-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Headings */
+.event-date {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 0 0 1rem;
+}
+
+.event-section-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 0 0 1rem;
+}
+
+.event-section-title a {
+  color: var(--itg-color-accent);
+  text-decoration: underline;
+}
+
+.event-section-title a:hover {
+  opacity: 0.85;
+}
+
+/* Lists */
+.event-list,
+.event-schedule-list {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1rem var(--itg-list-indent);
+  padding: 0;
+}
+
+.event-list li,
+.event-schedule-list li {
+  margin-bottom: 0.5rem;
+}
+
+.event-list a {
+  color: var(--itg-color-accent);
+  text-decoration: underline;
+}
+
+.event-list a:hover {
+  opacity: 0.85;
+}
+
+/* Buttons */
+.event-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.event-btn {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-body);
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  background: transparent;
+  border: 2px solid;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.event-btn-gold {
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+.event-btn-gold:hover {
+  background: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.event-btn-blue {
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-primary);
+}
+
+.event-btn-blue:hover {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+/* Map image */
+.event-map-col {
+  align-items: center;
+  justify-content: center;
+}
+
+.event-map-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--itg-radius-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: opacity var(--itg-transition-fast);
+}
+
+.event-map-img:hover {
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .event-page {
+    padding: var(--itg-page-padding-mobile);
+  }
+
+  .event-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .event-date {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .event-section-title {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .event-btn {
+    padding: 0.5rem 1.25rem;
+    font-size: var(--itg-font-size-small);
+    width: 100%;
+  }
+}

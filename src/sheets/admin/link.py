@@ -18,6 +18,7 @@ ALLOWED_APP_LABELS = {"authn", "event", "news", "pages", "projects"}
 
 @admin.register(SheetLink)
 class SheetLinkAdmin(ModelAdmin):
+    add_form_template = "admin/sheets/sheetlink/change_form.html"
     change_form_template = "admin/sheets/sheetlink/change_form.html"
     list_display = ("name", "content_type", "spreadsheet_id_short", "sync_direction", "is_active", "last_sync_status")
     list_filter = ("sync_direction", "is_active", "content_type")

@@ -34,6 +34,7 @@ import './page-styles/SponsorAcknowledgementPage.css';
 import './page-styles/HomePage.css';
 import './page-styles/PostEventHomePage.css';
 import './page-styles/TemplateEmailPage.css';
+import './page-styles/EventPage.css';
 
 interface CMSPageComponentProps {
   routeOverride?: string;
