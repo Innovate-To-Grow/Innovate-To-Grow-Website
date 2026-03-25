@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from authn.models import ContactEmail
 from authn.models.members.admin_invitation import AdminInvitation
 
 Member = get_user_model()
@@ -83,9 +84,12 @@ class AcceptInvitationViewTests(TestCase):
     def test_post_existing_member_upgrades_to_staff(self):
         existing = Member.objects.create_user(
             username="existinguser",
-            email="invite@example.com",
+            email="",
             password="StrongPass123!",
             is_staff=False,
+        )
+        ContactEmail.objects.create(
+            member=existing, email_address="invite@example.com", email_type="primary", verified=True
         )
         invitation = self._create_invitation(email="invite@example.com")
         response = self.client.post(

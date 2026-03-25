@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 
+from authn.models import ContactEmail
+
 Member = get_user_model()
 
 
@@ -13,11 +15,14 @@ class ProfileUpdateTests(APITestCase):
         cache.clear()
         self.member = Member.objects.create_user(
             username="profuser",
-            email="prof@example.com",
+            email="",
             password="StrongPass123!",
             first_name="Original",
             last_name="Name",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.member, email_address="prof@example.com", email_type="primary", verified=True
         )
         self.client.force_authenticate(user=self.member)
 

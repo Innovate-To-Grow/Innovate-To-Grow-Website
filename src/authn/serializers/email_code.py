@@ -124,9 +124,11 @@ class LoginCodeVerifySerializer(BaseCodeVerifySerializer):
 class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
     # noinspection PyMethodMayBeStatic
     def _create_pending_member(self, email: str) -> Member:
+        from authn.models import ContactEmail
+
         member = Member(
             username=_generate_unique_username(email),
-            email=email,
+            email="",
             is_active=False,
             first_name="",
             last_name="",
@@ -134,6 +136,12 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
         )
         member.set_unusable_password()
         member.save()
+        ContactEmail.objects.create(
+            member=member,
+            email_address=email,
+            email_type="primary",
+            verified=False,
+        )
         return member
 
     def save(self):
@@ -151,7 +159,14 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
                 "next_step": "verify_code",
             }
 
-        pending_member = Member.objects.filter(email__iexact=email, is_active=False).first()
+        from authn.models import ContactEmail
+
+        pending_contact = (
+            ContactEmail.objects.filter(email_address__iexact=email, member__is_active=False)
+            .select_related("member")
+            .first()
+        )
+        pending_member = pending_contact.member if pending_contact else None
         if registration_email_conflicts(email, exclude_member_id=pending_member.pk if pending_member else None):
             raise serializers.ValidationError({"email": "This email cannot be used for registration."})
 
@@ -203,7 +218,14 @@ class RegisterVerifyCodeSerializer(BaseCodeVerifySerializer):
 
 class RegisterResendCodeSerializer(BaseEmailSerializer):
     def save(self):
-        member = Member.objects.filter(email__iexact=self.validated_data["email"], is_active=False).first()
+        from authn.models import ContactEmail
+
+        contact = (
+            ContactEmail.objects.filter(email_address__iexact=self.validated_data["email"], member__is_active=False)
+            .select_related("member")
+            .first()
+        )
+        member = contact.member if contact else None
         if member is None:
             raise serializers.ValidationError({"email": "No pending registration was found for this email."})
         issue_email_challenge(

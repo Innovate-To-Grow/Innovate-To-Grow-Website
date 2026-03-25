@@ -3,7 +3,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from ..models import Member
+from ..models import ContactEmail, Member
 
 
 class CreateMemberService:
@@ -101,7 +101,7 @@ class CreateMemberService:
                 }
 
             # Check if email already exists (if provided)
-            if email and Member.objects.filter(email=email).exists():
+            if email and ContactEmail.objects.filter(email_address__iexact=email.strip()).exists():
                 return {
                     "success": False,
                     "member": None,
@@ -114,7 +114,7 @@ class CreateMemberService:
             member = Member.objects.create_user(
                 username=username.strip(),
                 password=password,
-                email=email.strip() if email else "",
+                email="",
                 first_name=first_name.strip(),
                 middle_name=middle_name.strip() if middle_name else "",
                 last_name=last_name.strip(),
@@ -124,6 +124,15 @@ class CreateMemberService:
                 is_staff=is_staff,
                 is_superuser=is_superuser,
             )
+
+            # Create primary ContactEmail if email was provided
+            if email and email.strip():
+                ContactEmail.objects.create(
+                    member=member,
+                    email_address=email.strip(),
+                    email_type="primary",
+                    verified=True,
+                )
 
             return {
                 "success": True,

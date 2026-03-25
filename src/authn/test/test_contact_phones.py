@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from authn.models import ContactPhone
+from authn.models import ContactEmail, ContactPhone
 
 Member = get_user_model()
 
@@ -11,15 +11,21 @@ class ContactPhoneTests(APITestCase):
     def setUp(self):
         self.member = Member.objects.create_user(
             username="testuser",
-            email="primary@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
         )
+        ContactEmail.objects.create(
+            member=self.member, email_address="primary@example.com", email_type="primary", verified=True
+        )
         self.other_member = Member.objects.create_user(
             username="otheruser",
-            email="other@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.other_member, email_address="other@example.com", email_type="primary", verified=True
         )
         self.client.force_authenticate(user=self.member)
 

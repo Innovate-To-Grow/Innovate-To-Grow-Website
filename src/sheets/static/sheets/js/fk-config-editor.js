@@ -75,12 +75,7 @@
         textarea.style.display = "none";
         var label = document.querySelector('label[for="' + textarea.id + '"]');
         if (label) {
-            var wrapper = label.closest(".flex-col");
-            if (wrapper && wrapper.contains(textarea)) {
-                wrapper.style.display = "none";
-            } else {
-                label.style.display = "none";
-            }
+            label.style.display = "none";
         }
     }
 

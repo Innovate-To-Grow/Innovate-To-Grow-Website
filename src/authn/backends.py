@@ -1,10 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
+from authn.models import ContactEmail
+
 
 class EmailOrUsernameBackend(ModelBackend):
     """
     Allow authentication with either username or email.
+    Email lookup goes through ContactEmail (verified).
     """
 
     # noinspection PyUnusedLocal,PyPep8Naming
@@ -17,7 +20,13 @@ class EmailOrUsernameBackend(ModelBackend):
 
         user = UserModel.objects.filter(**{f"{UserModel.USERNAME_FIELD}__iexact": username}).first()
         if user is None and "@" in username:
-            user = UserModel.objects.filter(email__iexact=username).first()
+            contact = (
+                ContactEmail.objects.select_related("member")
+                .filter(email_address__iexact=username, verified=True)
+                .first()
+            )
+            if contact:
+                user = contact.member
 
         if user and user.check_password(password) and self.user_can_authenticate(user):
             return user

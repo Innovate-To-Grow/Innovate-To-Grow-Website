@@ -5,6 +5,8 @@ from django.core.cache import cache
 from django.test import override_settings
 from rest_framework.test import APITestCase
 
+from authn.models import ContactEmail
+
 Member = get_user_model()
 
 
@@ -18,9 +20,12 @@ class RequireEncryptedPasswordsTests(APITestCase):
         self.password = "StrongPass123!"
         self.member = Member.objects.create_user(
             username="enctest",
-            email="enctest@example.com",
+            email="",
             password=self.password,
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.member, email_address="enctest@example.com", email_type="primary", verified=True
         )
 
     def test_login_rejects_plaintext_when_encryption_required(self):

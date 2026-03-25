@@ -13,24 +13,31 @@ class ContactEmailTests(APITestCase):
     def setUp(self):
         self.member = Member.objects.create_user(
             username="testuser",
-            email="primary@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
         )
+        ContactEmail.objects.create(
+            member=self.member, email_address="primary@example.com", email_type="primary", verified=True
+        )
         self.other_member = Member.objects.create_user(
             username="otheruser",
-            email="other@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.other_member, email_address="other@example.com", email_type="primary", verified=True
         )
         self.client.force_authenticate(user=self.member)
 
     # ── List ─────────────────────────────────────────────
 
-    def test_list_contact_emails_empty(self):
+    def test_list_contact_emails_shows_primary(self):
         response = self.client.get("/authn/contact-emails/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, [])
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["email_address"], "primary@example.com")
 
     # ── Create ───────────────────────────────────────────
 

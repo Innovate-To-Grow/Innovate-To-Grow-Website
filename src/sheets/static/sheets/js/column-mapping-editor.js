@@ -68,16 +68,9 @@
 
     function hideFieldAndLabel(textarea) {
         textarea.style.display = "none";
-        // Try to hide the label
         var label = document.querySelector('label[for="' + textarea.id + '"]');
         if (label) {
-            // Try to hide the parent wrapper first (unfold uses .flex-col)
-            var wrapper = label.closest(".flex-col");
-            if (wrapper && wrapper.contains(textarea)) {
-                wrapper.style.display = "none";
-            } else {
-                label.style.display = "none";
-            }
+            label.style.display = "none";
         }
     }
 

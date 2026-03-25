@@ -300,8 +300,8 @@ UNFOLD = {
             {
                 "title": "Data Sync & Integrations",
                 "items": [
-                    {"title": "Sheet Links", "link": "/admin/sheets/sheetlink/"},
                     {"title": "Sheets Accounts", "link": "/admin/sheets/sheetsaccount/"},
+                    {"title": "Sheet Links", "link": "/admin/sheets/sheetlink/"},
                     {"title": "Sync Logs", "link": "/admin/sheets/synclog/"},
                 ],
             },

@@ -67,7 +67,7 @@ class ProfileSerializer(serializers.Serializer):
                 profile_image = None
         return {
             "member_uuid": str(instance.member_uuid),
-            "email": instance.email,
+            "email": instance.get_primary_email(),
             "username": instance.username,
             "first_name": instance.first_name or "",
             "middle_name": instance.middle_name or "",

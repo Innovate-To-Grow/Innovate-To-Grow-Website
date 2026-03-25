@@ -18,9 +18,15 @@ class EmailCodeAuthFlowTests(APITestCase):
         self.password = "StrongPass123!"
         self.member = Member.objects.create_user(
             username="member",
-            email="member@example.com",
+            email="",
             password=self.password,
             is_active=True,
+        )
+        self.primary_email = ContactEmail.objects.create(
+            member=self.member,
+            email_address="member@example.com",
+            email_type="primary",
+            verified=True,
         )
         self.alias = ContactEmail.objects.create(
             member=self.member,
@@ -36,7 +42,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["user"]["email"], self.member.email)
+        self.assertEqual(response.data["user"]["email"], self.primary_email.email_address)
         self.assertIn("access", response.data)
 
     def test_password_login_rejects_unverified_contact_email(self):
@@ -75,7 +81,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         )
 
         self.assertEqual(verify_response.status_code, 200)
-        self.assertEqual(verify_response.data["user"]["email"], self.member.email)
+        self.assertEqual(verify_response.data["user"]["email"], self.primary_email.email_address)
         self.assertEqual(EmailAuthChallenge.objects.first().status, EmailAuthChallenge.Status.CONSUMED)
 
     @patch("authn.services.email_challenges.send_auth_code_email")
@@ -83,7 +89,7 @@ class EmailCodeAuthFlowTests(APITestCase):
     def test_unified_email_auth_uses_login_flow_for_active_primary_email(self, _mock_code, _mock_send):
         request_response = self.client.post(
             "/authn/email-auth/request-code/",
-            {"email": self.member.email},
+            {"email": self.primary_email.email_address},
             format="json",
         )
 
@@ -93,7 +99,7 @@ class EmailCodeAuthFlowTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
-            {"email": self.member.email, "code": "112233"},
+            {"email": self.primary_email.email_address, "code": "112233"},
             format="json",
         )
 
@@ -121,7 +127,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         )
 
         self.assertEqual(verify_response.status_code, 200)
-        self.assertEqual(verify_response.data["user"]["email"], self.member.email)
+        self.assertEqual(verify_response.data["user"]["email"], self.primary_email.email_address)
         self.assertEqual(verify_response.data["next_step"], "account")
         self.assertFalse(verify_response.data["requires_profile_completion"])
 
@@ -136,7 +142,7 @@ class EmailCodeAuthFlowTests(APITestCase):
 
         self.assertEqual(request_response.status_code, 202)
         self.assertEqual(request_response.data["flow"], "register")
-        pending = Member.objects.get(email="new-flow@example.com")
+        pending = ContactEmail.objects.get(email_address="new-flow@example.com").member
         self.assertFalse(pending.is_active)
         self.assertFalse(pending.has_usable_password())
         self.assertEqual(pending.first_name, "")
@@ -160,10 +166,13 @@ class EmailCodeAuthFlowTests(APITestCase):
     def test_unified_email_auth_reuses_pending_member(self, _mock_code, _mock_send):
         pending = Member.objects.create_user(
             username="pending-email-auth",
-            email="pending-flow@example.com",
+            email="",
             password="OldPass123!",
             is_active=False,
             first_name="Existing",
+        )
+        ContactEmail.objects.create(
+            member=pending, email_address="pending-flow@example.com", email_type="primary", verified=True
         )
 
         request_response = self.client.post(
@@ -175,7 +184,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         pending.refresh_from_db()
         self.assertEqual(request_response.status_code, 202)
         self.assertEqual(request_response.data["flow"], "register")
-        self.assertEqual(Member.objects.filter(email="pending-flow@example.com").count(), 1)
+        self.assertEqual(ContactEmail.objects.filter(email_address="pending-flow@example.com").count(), 1)
         self.assertEqual(pending.first_name, "Existing")
 
     @patch("authn.services.email_challenges.send_auth_code_email")
@@ -212,7 +221,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 202)
-        member = Member.objects.get(email="new-member@example.com")
+        member = ContactEmail.objects.get(email_address="new-member@example.com").member
         self.assertFalse(member.is_active)
 
         verify_response = self.client.post(
@@ -231,10 +240,13 @@ class EmailCodeAuthFlowTests(APITestCase):
     def test_register_reuses_pending_member(self, _mock_code, _mock_send):
         pending = Member.objects.create_user(
             username="pending",
-            email="pending@example.com",
+            email="",
             password="OldPass123!",
             is_active=False,
             first_name="Old",
+        )
+        ContactEmail.objects.create(
+            member=pending, email_address="pending@example.com", email_type="primary", verified=True
         )
 
         response = self.client.post(
@@ -251,7 +263,7 @@ class EmailCodeAuthFlowTests(APITestCase):
 
         pending.refresh_from_db()
         self.assertEqual(response.status_code, 202)
-        self.assertEqual(Member.objects.filter(email="pending@example.com").count(), 1)
+        self.assertEqual(ContactEmail.objects.filter(email_address="pending@example.com").count(), 1)
         self.assertEqual(pending.first_name, "Updated")
         self.assertTrue(pending.check_password(self.password))
 
@@ -311,9 +323,12 @@ class EmailCodeAuthFlowTests(APITestCase):
     def test_authenticated_password_change_code_flow_uses_own_verified_emails(self, _mock_code, _mock_send):
         other_member = Member.objects.create_user(
             username="other",
-            email="other@example.com",
+            email="",
             password="OtherPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=other_member, email_address="other@example.com", email_type="primary", verified=True
         )
         other_alias = ContactEmail.objects.create(
             member=other_member,
@@ -325,7 +340,8 @@ class EmailCodeAuthFlowTests(APITestCase):
 
         list_response = self.client.get("/authn/account-emails/")
         self.assertEqual(list_response.status_code, 200)
-        self.assertEqual(list_response.data["emails"], [self.member.email, self.alias.email_address])
+        self.assertIn(self.primary_email.email_address, list_response.data["emails"])
+        self.assertIn(self.alias.email_address, list_response.data["emails"])
 
         invalid_request = self.client.post(
             "/authn/change-password/request-code/",
@@ -405,12 +421,12 @@ class EmailCodeAuthFlowTests(APITestCase):
         # Request + verify code for member
         self.client.post(
             "/authn/password-reset/request-code/",
-            {"email": self.member.email},
+            {"email": self.primary_email.email_address},
             format="json",
         )
         verify_response = self.client.post(
             "/authn/password-reset/verify-code/",
-            {"email": self.member.email, "code": "777777"},
+            {"email": self.primary_email.email_address, "code": "777777"},
             format="json",
         )
         self.assertEqual(verify_response.status_code, 200)
@@ -436,20 +452,23 @@ class EmailCodeAuthFlowTests(APITestCase):
         """Member B's email + member A's token → 400 'Verification token is invalid' (S10 fix)."""
         other_member = Member.objects.create_user(
             username="other-reset",
-            email="other-reset@example.com",
+            email="",
             password="OtherPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=other_member, email_address="other-reset@example.com", email_type="primary", verified=True
         )
 
         # Request + verify code for self.member (member A)
         self.client.post(
             "/authn/password-reset/request-code/",
-            {"email": self.member.email},
+            {"email": self.primary_email.email_address},
             format="json",
         )
         verify_response = self.client.post(
             "/authn/password-reset/verify-code/",
-            {"email": self.member.email, "code": "888888"},
+            {"email": self.primary_email.email_address, "code": "888888"},
             format="json",
         )
         self.assertEqual(verify_response.status_code, 200)
@@ -459,7 +478,7 @@ class EmailCodeAuthFlowTests(APITestCase):
         confirm_response = self.client.post(
             "/authn/password-reset/confirm/",
             {
-                "email": other_member.email,
+                "email": "other-reset@example.com",
                 "verification_token": token_a,
                 "new_password": "ResetPass123!",
                 "new_password_confirm": "ResetPass123!",

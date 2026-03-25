@@ -3,10 +3,9 @@ Admin login forms for the two-step email verification code flow.
 """
 
 from django import forms
-from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
-Member = get_user_model()
+from authn.models import ContactEmail
 
 
 class AdminEmailForm(forms.Form):
@@ -19,10 +18,19 @@ class AdminEmailForm(forms.Form):
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
-        member = Member.objects.filter(email__iexact=email, is_staff=True, is_active=True).first()
-        if member is None:
+        contact = (
+            ContactEmail.objects.select_related("member")
+            .filter(
+                email_address__iexact=email,
+                member__is_staff=True,
+                member__is_active=True,
+                verified=True,
+            )
+            .first()
+        )
+        if contact is None:
             raise forms.ValidationError(_("Unable to send verification code."))
-        self.cleaned_data["member"] = member
+        self.cleaned_data["member"] = contact.member
         return email
 
 

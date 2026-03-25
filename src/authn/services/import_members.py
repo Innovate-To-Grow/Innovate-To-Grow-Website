@@ -265,9 +265,8 @@ def import_members_from_excel(
         # ------------------------------------------------------------------
         # 2. Pre-load existing DB state for fast lookups
         # ------------------------------------------------------------------
-        existing_emails = {e.lower() for e in Member.objects.values_list("email", flat=True)}
+        existing_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
         taken_usernames = set(Member.all_objects.values_list("username", flat=True))
-        existing_contact_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
         existing_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
 
         # ------------------------------------------------------------------
@@ -284,7 +283,7 @@ def import_members_from_excel(
         rows_to_update: list[dict] = []
 
         # Track contact addresses claimed by this import to avoid dupes
-        claimed_contact_emails: set[str] = set(existing_contact_emails)
+        claimed_contact_emails: set[str] = set(existing_emails)
         claimed_phones: set[str] = set(existing_phones)
 
         now = timezone.now()
@@ -304,7 +303,7 @@ def import_members_from_excel(
             username = _generate_unique_username(p["primary_email"], taken_usernames)
             member = Member(
                 username=username,
-                email=Member.objects.normalize_email(p["primary_email"]),
+                email="",
                 password=hashed_pw,
                 first_name=p["first_name"],
                 last_name=p["last_name"],
@@ -396,9 +395,10 @@ def _bulk_update_members(
     claimed_phones: set[str],
 ):
     """Update existing members. Uses per-row savepoints for safety."""
-    # Pre-fetch all members to update in one query
+    # Pre-fetch all members to update via their primary ContactEmail
     emails = [r["primary_email"] for r in rows]
-    member_map = {m.email.lower(): m for m in Member.objects.filter(email__in=emails)}
+    contacts = ContactEmail.objects.filter(email_address__in=emails, email_type="primary").select_related("member")
+    member_map = {c.email_address.lower(): c.member for c in contacts if c.member}
 
     for p in rows:
         member = member_map.get(p["primary_email"].lower())
@@ -427,16 +427,18 @@ def _update_single_member(member, p, claimed_contact_emails, claimed_phones):
     member.save()
 
     # Primary ContactEmail
-    email_key = member.email.lower()
+    primary_contact = member.contact_emails.filter(email_type="primary").first()
+    primary_email_addr = primary_contact.email_address if primary_contact else p["primary_email"]
+    email_key = primary_email_addr.lower()
     if email_key not in claimed_contact_emails:
         ContactEmail.objects.update_or_create(
             member=member,
-            email_address=member.email,
+            email_address=primary_email_addr,
             defaults={"email_type": "primary", "verified": p["primary_verified"], "subscribe": p["primary_subscribed"]},
         )
         claimed_contact_emails.add(email_key)
     else:
-        ContactEmail.objects.filter(member=member, email_address=member.email).update(
+        ContactEmail.objects.filter(member=member, email_address=primary_email_addr).update(
             verified=p["primary_verified"], subscribe=p["primary_subscribed"]
         )
 

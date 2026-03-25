@@ -24,7 +24,7 @@ class PageViewAdmin(ModelAdmin):
         "referrer",
         "ip_address",
         "session_key",
-        "member__email",
+        "member__contact_emails__email_address",
         "member__first_name",
         "member__last_name",
     )
@@ -137,7 +137,7 @@ class PageViewAdmin(ModelAdmin):
     @admin.display(description="Member")
     def member_display(self, obj):
         if obj.member:
-            return obj.member.email
+            return obj.member.get_primary_email() or obj.member.username
         return "-"
 
     @admin.display(description="Session")

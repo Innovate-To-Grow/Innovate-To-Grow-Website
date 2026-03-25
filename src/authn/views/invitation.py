@@ -7,6 +7,7 @@ from django.shortcuts import render
 from django.views import View
 
 from authn.forms.invitation import AcceptInvitationForm
+from authn.models import ContactEmail
 from authn.models.members.admin_invitation import AdminInvitation
 
 Member = None  # resolved lazily
@@ -38,9 +39,12 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
-        # noinspection PyPep8Naming
-        MemberModel = _get_member_model()
-        existing = MemberModel.objects.filter(email__iexact=invitation.email).first()
+        contact = (
+            ContactEmail.objects.filter(email_address__iexact=invitation.email, verified=True)
+            .select_related("member")
+            .first()
+        )
+        existing = contact.member if contact else None
         if existing:
             self._upgrade_member(existing, invitation)
             return render(
@@ -61,9 +65,12 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
-        # noinspection PyPep8Naming
-        MemberModel = _get_member_model()
-        existing = MemberModel.objects.filter(email__iexact=invitation.email).first()
+        contact = (
+            ContactEmail.objects.filter(email_address__iexact=invitation.email, verified=True)
+            .select_related("member")
+            .first()
+        )
+        existing = contact.member if contact else None
         if existing:
             self._upgrade_member(existing, invitation)
             return render(
@@ -80,8 +87,10 @@ class AcceptInvitationView(View):
                 {"form": form, "invitation": invitation, **_get_unfold_context(request)},
             )
 
+        # noinspection PyPep8Naming
+        MemberModel = _get_member_model()
         member = MemberModel(
-            email=invitation.email,
+            email="",
             username=form.cleaned_data["username"],
             first_name=form.cleaned_data["first_name"],
             last_name=form.cleaned_data["last_name"],
@@ -92,6 +101,14 @@ class AcceptInvitationView(View):
         )
         member.set_password(form.cleaned_data["password1"])
         member.save()
+
+        ContactEmail.objects.create(
+            member=member,
+            email_address=invitation.email,
+            email_type="primary",
+            verified=True,
+            subscribe=True,
+        )
 
         invitation.mark_accepted(member)
         return render(

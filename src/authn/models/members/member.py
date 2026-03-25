@@ -86,6 +86,15 @@ class Member(AbstractUser, ProjectControlModel):
         """
         return list(self.groups.values_list("name", flat=True))
 
+    def get_primary_email(self) -> str:
+        """Return the primary ContactEmail address, or empty string."""
+        contact = self.contact_emails.filter(email_type="primary").order_by("created_at").first()
+        return contact.email_address if contact else ""
+
+    def get_primary_contact_email(self):
+        """Return the primary ContactEmail object, or None."""
+        return self.contact_emails.filter(email_type="primary").order_by("created_at").first()
+
     # check if user has a specific role
     def has_role(self, role_name: str) -> bool:
         """

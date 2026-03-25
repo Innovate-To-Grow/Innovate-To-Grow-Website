@@ -20,7 +20,7 @@ class ContactEmailAdmin(ModelAdmin):
 
     list_display = ("email_address", "member", "email_type", "verified", "subscribe", "created_at")
     list_filter = ("email_type", "verified", "subscribe", "created_at")
-    search_fields = ("email_address", "member__username", "member__email")
+    search_fields = ("email_address", "member__username")
     readonly_fields = ("created_at", "updated_at")
     list_editable = ("verified", "subscribe")
     autocomplete_fields = ["member"]
@@ -63,7 +63,7 @@ class ContactPhoneAdmin(ModelAdmin):
 
     list_display = ("phone_number", "member", "region", "get_formatted_number", "subscribe", "created_at")
     list_filter = ("region", "subscribe", "created_at")
-    search_fields = ("phone_number", "member__username", "member__email")
+    search_fields = ("phone_number", "member__username")
     readonly_fields = ("created_at", "updated_at")
     list_editable = ("subscribe",)
     autocomplete_fields = ["member"]

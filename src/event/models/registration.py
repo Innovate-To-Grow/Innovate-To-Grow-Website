@@ -67,7 +67,7 @@ class EventRegistration(ProjectControlModel):
         return f"{self.attendee_first_name} {self.attendee_last_name}".strip()
 
     def __str__(self):
-        return f"{self.event.name} - {self.attendee_name or self.member.email}"
+        return f"{self.event.name} - {self.attendee_name or self.member.get_primary_email()}"
 
     @property
     def barcode_payload(self):
@@ -75,11 +75,11 @@ class EventRegistration(ProjectControlModel):
 
     def save(self, *args, **kwargs):
         if not self.attendee_first_name:
-            self.attendee_first_name = self.member.first_name or self.member.username or self.member.email
+            self.attendee_first_name = self.member.first_name or self.member.username or self.member.get_primary_email()
         if not self.attendee_last_name:
             self.attendee_last_name = self.member.last_name or ""
         if not self.attendee_email:
-            self.attendee_email = self.member.email
+            self.attendee_email = self.member.get_primary_email()
         if not self.attendee_organization:
             self.attendee_organization = getattr(self.member, "organization", "") or ""
         super().save(*args, **kwargs)

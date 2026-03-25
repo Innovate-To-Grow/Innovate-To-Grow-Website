@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from authn.models import ContactEmail
 from news.models import NewsArticle, NewsFeedSource, NewsSyncLog
 
 Member = get_user_model()
@@ -13,9 +14,12 @@ class NewsArticleAdminTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         self.admin = Member.objects.create_superuser(
-            email="admin@test.com",
+            email="",
             username="admin",
             password="testpass123",
+        )
+        ContactEmail.objects.get_or_create(
+            member=self.admin, email_address="admin@test.com", defaults={"email_type": "primary", "verified": True}
         )
         self.client.login(username="admin@test.com", password="testpass123")
 
@@ -28,9 +32,12 @@ class NewsFeedSourceAdminTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         self.admin = Member.objects.create_superuser(
-            email="admin@test.com",
+            email="",
             username="admin",
             password="testpass123",
+        )
+        ContactEmail.objects.get_or_create(
+            member=self.admin, email_address="admin@test.com", defaults={"email_type": "primary", "verified": True}
         )
         self.client.login(username="admin@test.com", password="testpass123")
         self.source = NewsFeedSource.objects.create(
@@ -105,9 +112,12 @@ class NewsSyncLogAdminTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         self.admin = Member.objects.create_superuser(
-            email="admin@test.com",
+            email="",
             username="admin",
             password="testpass123",
+        )
+        ContactEmail.objects.get_or_create(
+            member=self.admin, email_address="admin@test.com", defaults={"email_type": "primary", "verified": True}
         )
         self.client.login(username="admin@test.com", password="testpass123")
 

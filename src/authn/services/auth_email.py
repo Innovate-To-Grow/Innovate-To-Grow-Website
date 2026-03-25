@@ -29,10 +29,6 @@ def resolve_auth_email(email: str, *, require_active: bool = True) -> ResolvedAu
     if not normalized:
         return None
 
-    member = Member.objects.filter(email__iexact=normalized).first()
-    if member and (member.is_active or not require_active):
-        return ResolvedAuthEmail(member=member, delivery_email=normalized, source_type="member")
-
     contact = (
         ContactEmail.objects.select_related("member").filter(email_address__iexact=normalized, verified=True).first()
     )
@@ -52,7 +48,6 @@ def get_member_auth_emails(member: Member) -> list[str]:
             seen.add(normalized)
             emails.append(normalized)
 
-    add(member.email)
     contacts = ContactEmail.objects.filter(member=member, verified=True).order_by("email_type", "created_at")
     for contact in contacts:
         add(contact.email_address)
@@ -62,9 +57,7 @@ def get_member_auth_emails(member: Member) -> list[str]:
 
 def registration_email_conflicts(email: str, *, exclude_member_id=None) -> bool:
     normalized = normalize_email(email)
-    member_qs = Member.objects.filter(email__iexact=normalized)
+    qs = ContactEmail.objects.filter(email_address__iexact=normalized)
     if exclude_member_id:
-        member_qs = member_qs.exclude(pk=exclude_member_id)
-    if member_qs.exists():
-        return True
-    return ContactEmail.objects.filter(email_address__iexact=normalized).exists()
+        qs = qs.exclude(member_id=exclude_member_id)
+    return qs.exists()

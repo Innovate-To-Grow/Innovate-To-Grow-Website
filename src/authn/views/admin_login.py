@@ -152,7 +152,7 @@ class AdminLoginView(View):
         _clear_password_rate_limit(request)
         auth.login(request, member, backend="authn.backends.EmailOrUsernameBackend")
         _clear_session(request)
-        logger.info("Admin login via password: %s", member.email)
+        logger.info("Admin login via password: %s", member.get_primary_email())
         return redirect(_safe_next(request))
 
     # ── step 1: email ───────────────────────────────────────────────
@@ -232,7 +232,7 @@ class AdminLoginView(View):
 
         auth.login(request, member, backend="authn.backends.EmailOrUsernameBackend")
         _clear_session(request)
-        logger.info("Admin login via email code: %s", member.email)
+        logger.info("Admin login via email code: %s", member.get_primary_email())
         return redirect(_safe_next(request))
 
     # noinspection PyMethodMayBeStatic

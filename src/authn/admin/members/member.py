@@ -80,7 +80,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     # List display columns
     list_display = (
         "username",
-        "email",
+        "get_primary_email_display",
         "get_full_name_display",
         "organization",
         "is_active",
@@ -100,10 +100,10 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         "date_joined",
     )
 
-    # Search fields
+    # Search fields (email is looked up via ContactEmail)
     search_fields = (
         "username",
-        "email",
+        "contact_emails__email_address",
         "first_name",
         "middle_name",
         "last_name",
@@ -125,7 +125,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             _("Personal Info"),
-            {"fields": ("first_name", "middle_name", "last_name", "email", "organization")},
+            {"fields": ("first_name", "middle_name", "last_name", "organization")},
         ),
         (
             _("Member Info"),
@@ -153,7 +153,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("username", "email", "password1", "password2"),
+                "fields": ("username", "password1", "password2"),
             },
         ),
         (
@@ -177,6 +177,10 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     change_list_template = "admin/authn/member/change_list.html"
 
     # Custom display methods
+    @admin.display(description="Primary Email")
+    def get_primary_email_display(self, obj):
+        return obj.get_primary_email() or "-"
+
     @admin.display(description="Full Name")
     def get_full_name_display(self, obj):
         return obj.get_full_name() or "-"
@@ -331,7 +335,7 @@ class MemberProfileAdmin(UnfoldModelAdmin):
 
     list_display = ("model_user", "has_profile_image_display", "updated_at")
     list_filter = ("updated_at",)
-    search_fields = ("model_user__username", "model_user__email")
+    search_fields = ("model_user__username", "model_user__contact_emails__email_address")
     readonly_fields = ("updated_at",)
     autocomplete_fields = ["model_user"]
 

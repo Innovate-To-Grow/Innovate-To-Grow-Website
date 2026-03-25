@@ -8,6 +8,7 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # noinspection PyProtectedMember
+from authn.models import ContactEmail
 from authn.models.members.member import MemberProfile
 from authn.utils import generate_unique_username
 from authn.views.account.profile import _validate_image_bytes
@@ -23,9 +24,12 @@ class PublicTokenRefreshTests(APITestCase):
         cache.clear()
         self.member = Member.objects.create_user(
             username="refresher",
-            email="refresher@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.member, email_address="refresher@example.com", email_type="primary", verified=True
         )
 
     def test_refresh_returns_new_access_token(self):
@@ -89,9 +93,12 @@ class ProfileImageUploadTests(APITestCase):
         cache.clear()
         self.member = Member.objects.create_user(
             username="uploader",
-            email="uploader@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.member, email_address="uploader@example.com", email_type="primary", verified=True
         )
         self.client.force_authenticate(user=self.member)
 

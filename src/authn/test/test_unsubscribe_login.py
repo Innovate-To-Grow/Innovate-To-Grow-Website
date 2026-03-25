@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 
+from authn.models import ContactEmail
 from authn.services.unsubscribe_token import build_unsubscribe_login_token
 
 Member = get_user_model()
@@ -15,9 +16,12 @@ class UnsubscribeAutoLoginViewTests(APITestCase):
         cache.clear()
         self.member = Member.objects.create_user(
             username="unsubuser",
-            email="unsub@example.com",
+            email="",
             password="StrongPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.member, email_address="unsub@example.com", email_type="primary", verified=True
         )
 
     def test_valid_token_returns_jwt(self):

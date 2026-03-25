@@ -11,6 +11,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
 
 Member = get_user_model()
@@ -36,17 +37,23 @@ class AdminLoginViewTest(TestCase):
     def setUp(self):
         self.staff = Member.objects.create_user(
             username="admin",
-            email="admin@example.com",
+            email="",
             password="testpass123",
             is_staff=True,
             is_active=True,
         )
+        ContactEmail.objects.create(
+            member=self.staff, email_address="admin@example.com", email_type="primary", verified=True
+        )
         self.non_staff = Member.objects.create_user(
             username="regular",
-            email="regular@example.com",
+            email="",
             password="testpass123",
             is_staff=False,
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.non_staff, email_address="regular@example.com", email_type="primary", verified=True
         )
 
     def test_get_shows_email_form(self):
@@ -192,17 +199,23 @@ class AdminPasswordLoginTest(TestCase):
         cache.clear()
         self.staff = Member.objects.create_user(
             username="admin",
-            email="admin@example.com",
+            email="",
             password="testpass123",
             is_staff=True,
             is_active=True,
         )
+        ContactEmail.objects.create(
+            member=self.staff, email_address="admin@example.com", email_type="primary", verified=True
+        )
         self.non_staff = Member.objects.create_user(
             username="regular",
-            email="regular@example.com",
+            email="",
             password="testpass123",
             is_staff=False,
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.non_staff, email_address="regular@example.com", email_type="primary", verified=True
         )
 
     # noinspection PyPep8Naming,PyMethodMayBeStatic

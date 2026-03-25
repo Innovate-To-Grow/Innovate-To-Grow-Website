@@ -23,7 +23,7 @@ def build_auth_success_payload(
         "refresh": str(refresh),
         "user": {
             "member_uuid": str(member.member_uuid),
-            "email": member.email,
+            "email": member.get_primary_email(),
             "username": member.username,
         },
     }

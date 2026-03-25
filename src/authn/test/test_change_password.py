@@ -5,6 +5,8 @@ from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from authn.models import ContactEmail
+
 Member = get_user_model()
 
 
@@ -14,9 +16,12 @@ class ChangePasswordViewTests(APITestCase):
         cache.clear()
         self.member = Member.objects.create_user(
             username="chgpwduser",
-            email="chgpwd@example.com",
+            email="",
             password="OldPass123!",
             is_active=True,
+        )
+        ContactEmail.objects.create(
+            member=self.member, email_address="chgpwd@example.com", email_type="primary", verified=True
         )
         self.client.force_authenticate(user=self.member)
 

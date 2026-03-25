@@ -89,8 +89,15 @@ class RegisterSerializer(serializers.Serializer):
         """
         Check that the email is not already registered.
         """
+        from authn.models import ContactEmail
+
         email_lower = normalize_email(value)
-        pending_member = Member.objects.filter(email__iexact=email_lower, is_active=False).first()
+        pending_contact = (
+            ContactEmail.objects.filter(email_address__iexact=email_lower, member__is_active=False)
+            .select_related("member")
+            .first()
+        )
+        pending_member = pending_contact.member if pending_contact else None
         if registration_email_conflicts(email_lower, exclude_member_id=pending_member.pk if pending_member else None):
             raise serializers.ValidationError("A user with this email already exists.")
         self._pending_member = pending_member
@@ -149,27 +156,34 @@ class RegisterSerializer(serializers.Serializer):
         last_name = validated_data.get("last_name", "")
         organization = validated_data.get("organization", "")
 
+        from authn.models import ContactEmail
+
         member = getattr(self, "_pending_member", None)
         if member is None:
             username = generate_unique_username(email)
 
             member = Member.objects.create_user(
                 username=username,
-                email=email,
+                email="",
                 password=password,
                 first_name=first_name,
                 last_name=last_name,
                 is_active=False,
             )
+            ContactEmail.objects.create(
+                member=member,
+                email_address=email,
+                email_type="primary",
+                verified=False,
+            )
         else:
-            member.email = email
             member.first_name = first_name
             member.last_name = last_name
             member.is_active = False
             member.set_password(password)
 
         member.organization = organization or ""
-        update_fields = ["email", "first_name", "last_name", "organization", "is_active", "password", "updated_at"]
+        update_fields = ["first_name", "last_name", "organization", "is_active", "password", "updated_at"]
         member.save(update_fields=update_fields)
 
         issue_email_challenge(

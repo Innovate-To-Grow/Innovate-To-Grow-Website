@@ -2,7 +2,7 @@
 Recipient resolution and email body personalization for SES compose.
 """
 
-from authn.models import ContactEmail, Member
+from authn.models import ContactEmail
 from event.models import EventRegistration
 
 
@@ -13,14 +13,19 @@ def resolve_recipients(source, event=None):
     Each dict has: {"email", "first_name", "full_name", "member_id"}
     """
     if source == "subscribers":
-        members = Member.objects.filter(email_subscribe=True, is_active=True)
+        primary_contacts = ContactEmail.objects.filter(
+            member__email_subscribe=True,
+            member__is_active=True,
+            email_type="primary",
+        ).select_related("member")
         member_emails = set()
         recipients = []
-        for m in members:
-            member_emails.add(m.email.lower())
+        for contact in primary_contacts:
+            m = contact.member
+            member_emails.add(contact.email_address.lower())
             recipients.append(
                 {
-                    "email": m.email,
+                    "email": contact.email_address,
                     "first_name": m.first_name,
                     "full_name": m.get_full_name() or m.username,
                     "member_id": str(m.pk),
@@ -51,7 +56,7 @@ def resolve_recipients(source, event=None):
         registrations = EventRegistration.objects.filter(event=event).select_related("member")
         return [
             {
-                "email": reg.member.email or reg.attendee_email,
+                "email": reg.member.get_primary_email() or reg.attendee_email,
                 "first_name": reg.member.first_name or reg.attendee_first_name,
                 "full_name": reg.member.get_full_name() or reg.attendee_name,
                 "member_id": str(reg.member.pk),

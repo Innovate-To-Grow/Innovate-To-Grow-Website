@@ -225,7 +225,9 @@ def _link_email_subscriber(member):
     """Link anonymous ContactEmail records to a newly activated member."""
     from authn.models import ContactEmail
 
-    ContactEmail.objects.filter(
-        email_address__iexact=member.email,
-        member__isnull=True,
-    ).update(member=member)
+    primary_email = member.get_primary_email()
+    if primary_email:
+        ContactEmail.objects.filter(
+            email_address__iexact=primary_email,
+            member__isnull=True,
+        ).update(member=member)
