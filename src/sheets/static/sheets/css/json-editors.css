@@ -1,0 +1,420 @@
+/* ============================================================
+   FK Config Editor & Lookup Fields Editor
+   Matches django-unfold theme + column-mapping-editor.css
+   ============================================================ */
+
+/* ---- Shared ---- */
+.fk-config-editor,
+.lookup-fields-editor {
+    margin-top: 8px;
+}
+
+/* ---- FK Config Editor ---- */
+
+.fk-config-editor .fk-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fk-config-editor .fk-card {
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    border-radius: 0.5rem;
+    padding: 12px 16px;
+    background: var(--color-base-50, #f9fafb);
+}
+
+.fk-config-editor .fk-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.fk-config-editor .fk-card-header-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-base-500, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.fk-config-editor .fk-card-field-input {
+    flex: 1;
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    background: white;
+    font-size: 0.875rem;
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    color: var(--color-font-default-light, #111827);
+    min-width: 0;
+}
+
+.fk-config-editor .fk-card-field-input:focus {
+    outline: 2px solid var(--color-primary-600, #4f46e5);
+    outline-offset: -2px;
+}
+
+.fk-config-editor .fk-card-remove-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    border-radius: 0.375rem;
+    background: white;
+    color: var(--color-base-400, #9ca3af);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.15s;
+}
+
+.fk-config-editor .fk-card-remove-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.fk-config-editor .fk-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.fk-config-editor .fk-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fk-config-editor .fk-toggle-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary-600, #4f46e5);
+    cursor: pointer;
+}
+
+.fk-config-editor .fk-toggle-row label {
+    font-size: 0.875rem;
+    color: var(--color-font-default-light, #111827);
+    cursor: pointer;
+    user-select: none;
+}
+
+.fk-config-editor .fk-defaults-section {
+    margin-top: 2px;
+}
+
+.fk-config-editor .fk-defaults-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-base-500, #6b7280);
+    margin-bottom: 6px;
+}
+
+.fk-config-editor .fk-defaults-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fk-config-editor .fk-defaults-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.fk-config-editor .fk-defaults-input {
+    flex: 1;
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    background: white;
+    font-size: 0.8125rem;
+    border-radius: 0.375rem;
+    padding: 0.35rem 0.625rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    color: var(--color-font-default-light, #111827);
+    min-width: 0;
+}
+
+.fk-config-editor .fk-defaults-input:focus {
+    outline: 2px solid var(--color-primary-600, #4f46e5);
+    outline-offset: -2px;
+}
+
+.fk-config-editor .fk-defaults-input::placeholder {
+    color: var(--color-base-400, #9ca3af);
+}
+
+.fk-config-editor .fk-defaults-arrow {
+    flex-shrink: 0;
+    color: var(--color-base-400, #9ca3af);
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.fk-config-editor .fk-defaults-remove-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    border-radius: 0.375rem;
+    background: white;
+    color: var(--color-base-400, #9ca3af);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.15s;
+}
+
+.fk-config-editor .fk-defaults-remove-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.fk-config-editor .fk-add-default-btn {
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.3rem 0.75rem;
+    border: 1px dashed var(--color-base-300, #d1d5db);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-primary-600, #4f46e5);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.fk-config-editor .fk-add-default-btn:hover {
+    border-color: var(--color-primary-600, #4f46e5);
+    background: rgba(79, 70, 229, 0.04);
+}
+
+.fk-config-editor .fk-add-btn {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 1rem;
+    border: 1px dashed var(--color-base-300, #d1d5db);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-primary-600, #4f46e5);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.fk-config-editor .fk-add-btn:hover {
+    border-color: var(--color-primary-600, #4f46e5);
+    background: rgba(79, 70, 229, 0.04);
+}
+
+.fk-config-editor .fk-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--color-base-400, #9ca3af);
+    font-size: 0.875rem;
+    border: 1px dashed var(--color-base-200, #e5e7eb);
+    border-radius: 0.375rem;
+}
+
+.fk-config-editor .fk-hint {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--color-base-400, #9ca3af);
+}
+
+/* ---- Lookup Fields Editor ---- */
+
+.lookup-fields-editor .lookup-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lookup-fields-editor .lookup-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lookup-fields-editor .lookup-row-number {
+    min-width: 24px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--color-base-400, #9ca3af);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.lookup-fields-editor .lookup-input {
+    flex: 1;
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    background: white;
+    font-size: 0.875rem;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    color: var(--color-font-default-light, #111827);
+    min-width: 0;
+}
+
+.lookup-fields-editor .lookup-input:focus {
+    outline: 2px solid var(--color-primary-600, #4f46e5);
+    outline-offset: -2px;
+}
+
+.lookup-fields-editor .lookup-input::placeholder {
+    color: var(--color-base-400, #9ca3af);
+}
+
+.lookup-fields-editor .lookup-remove-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-base-200, #e5e7eb);
+    border-radius: 0.375rem;
+    background: white;
+    color: var(--color-base-400, #9ca3af);
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.15s;
+}
+
+.lookup-fields-editor .lookup-remove-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.lookup-fields-editor .lookup-add-btn {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 1rem;
+    border: 1px dashed var(--color-base-300, #d1d5db);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-primary-600, #4f46e5);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.lookup-fields-editor .lookup-add-btn:hover {
+    border-color: var(--color-primary-600, #4f46e5);
+    background: rgba(79, 70, 229, 0.04);
+}
+
+.lookup-fields-editor .lookup-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--color-base-400, #9ca3af);
+    font-size: 0.875rem;
+    border: 1px dashed var(--color-base-200, #e5e7eb);
+    border-radius: 0.375rem;
+}
+
+.lookup-fields-editor .lookup-hint {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--color-base-400, #9ca3af);
+}
+
+/* ---- Dark mode ---- */
+
+.dark .fk-config-editor .fk-card {
+    background: var(--color-base-800, #1f2937);
+    border-color: var(--color-base-700, #374151);
+}
+
+.dark .fk-config-editor .fk-card-field-input,
+.dark .fk-config-editor .fk-defaults-input {
+    background: var(--color-base-900, #111827);
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-font-default-dark, #f9fafb);
+}
+
+.dark .fk-config-editor .fk-toggle-row label {
+    color: var(--color-font-default-dark, #f9fafb);
+}
+
+.dark .fk-config-editor .fk-card-remove-btn,
+.dark .fk-config-editor .fk-defaults-remove-btn {
+    background: var(--color-base-900, #111827);
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-base-400, #9ca3af);
+}
+
+.dark .fk-config-editor .fk-card-remove-btn:hover,
+.dark .fk-config-editor .fk-defaults-remove-btn:hover {
+    background: #450a0a;
+    border-color: #dc2626;
+    color: #fca5a5;
+}
+
+.dark .fk-config-editor .fk-add-btn,
+.dark .fk-config-editor .fk-add-default-btn {
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-primary-500, #6366f1);
+}
+
+.dark .fk-config-editor .fk-add-btn:hover,
+.dark .fk-config-editor .fk-add-default-btn:hover {
+    border-color: var(--color-primary-500, #6366f1);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.dark .fk-config-editor .fk-empty {
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-base-500, #6b7280);
+}
+
+.dark .lookup-fields-editor .lookup-input {
+    background: var(--color-base-900, #111827);
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-font-default-dark, #f9fafb);
+}
+
+.dark .lookup-fields-editor .lookup-remove-btn {
+    background: var(--color-base-900, #111827);
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-base-400, #9ca3af);
+}
+
+.dark .lookup-fields-editor .lookup-remove-btn:hover {
+    background: #450a0a;
+    border-color: #dc2626;
+    color: #fca5a5;
+}
+
+.dark .lookup-fields-editor .lookup-add-btn {
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-primary-500, #6366f1);
+}
+
+.dark .lookup-fields-editor .lookup-add-btn:hover {
+    border-color: var(--color-primary-500, #6366f1);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.dark .lookup-fields-editor .lookup-empty {
+    border-color: var(--color-base-700, #374151);
+    color: var(--color-base-500, #6b7280);
+}

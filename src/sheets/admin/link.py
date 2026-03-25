@@ -98,6 +98,8 @@ class SheetLinkAdmin(ModelAdmin):
         model_fields_url = base_url.replace("/0/", "/__CT_ID__/")
         return {
             "initial_mapping_json": json.dumps(obj.column_mapping if obj else {}),
+            "initial_fk_config_json": json.dumps(obj.fk_config if obj else {}),
+            "initial_lookup_fields_json": json.dumps(obj.lookup_fields if obj else []),
             "model_fields_url": model_fields_url,
         }
 
