@@ -611,12 +611,17 @@
 
         setLivePreviewActive(true);
 
-        postLivePreview(function () {
-            var route = gatherPageData().route || '/';
-            if (route.charAt(0) !== '/') route = '/' + route;
-            var base = (config.frontendUrl || '').replace(/\/+$/, '') || window.location.origin;
-            window.open(base + route + '?cms_live_preview=' + pageId, '_blank');
-        });
+        // Open the window synchronously within the user click context
+        // to avoid being blocked by the browser's popup blocker.
+        // The preview tab will poll for the latest editor state.
+        var route = gatherPageData().route || '/';
+        if (route.charAt(0) !== '/') route = '/' + route;
+        var base = (config.frontendUrl || '').replace(/\/+$/, '') || window.location.origin;
+        window.open(base + route + '?cms_live_preview=' + pageId, '_blank');
+
+        // POST the current editor state in the background so the preview
+        // tab picks it up on its next poll cycle.
+        postLivePreview();
     };
 
     // ===== Global Actions =====
