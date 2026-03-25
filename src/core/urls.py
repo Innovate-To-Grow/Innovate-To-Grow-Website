@@ -56,6 +56,8 @@ urlpatterns = [
     path("authn/", include("authn.urls")),
     # analytics
     path("analytics/", include("analytics.urls")),
+    # sponsors
+    path("sponsors/", include("sponsors.urls")),
     # mail (SNS webhook)
     path("mail/", include("mail.urls")),
 ]

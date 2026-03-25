@@ -72,6 +72,69 @@
   text-decoration: underline;
 }
 
+.ack-page-loading {
+  text-align: center;
+  color: #888;
+  padding: 2rem;
+  font-size: var(--itg-font-size-body);
+}
+
+/* Sponsor grid */
+.ack-sponsor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.5rem;
+}
+
+.ack-sponsor-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
+  text-decoration: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.ack-sponsor-card:hover {
+  border-color: var(--itg-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ack-sponsor-card.no-link {
+  cursor: default;
+  pointer-events: none;
+}
+
+.ack-sponsor-logo {
+  max-height: 80px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.ack-sponsor-logo-placeholder {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--itg-color-primary);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+  border-radius: var(--itg-radius-button);
+}
+
+.ack-sponsor-name {
+  color: var(--itg-color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .ack-page {
     padding: var(--itg-page-padding-mobile);
@@ -87,5 +150,10 @@
 
   .ack-page-section-title {
     font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .ack-sponsor-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
   }
 }

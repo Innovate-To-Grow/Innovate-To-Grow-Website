@@ -1,7 +1,19 @@
+import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
+import {fetchSponsors, type SponsorYear} from '../../services/api/sponsors';
 import './AcknowledgementPage.css';
 
 export const AcknowledgementPage = () => {
+  const [sponsorYears, setSponsorYears] = useState<SponsorYear[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSponsors()
+      .then(setSponsorYears)
+      .catch(() => setSponsorYears([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="ack-page">
       <h1 className="ack-page-title">Partners &amp; Sponsors</h1>
@@ -19,14 +31,47 @@ export const AcknowledgementPage = () => {
         helps prepare the next generation of engineers and innovators.
       </p>
 
-      <section className="ack-page-section">
-        <h2 className="ack-page-section-title">Our Sponsors</h2>
-        <div className="ack-page-placeholder">
-          <p className="ack-page-text">
-            Sponsor logos and acknowledgements will be updated for each event.
-          </p>
-        </div>
-      </section>
+      {loading ? (
+        <div className="ack-page-loading">Loading sponsors...</div>
+      ) : sponsorYears.length > 0 ? (
+        sponsorYears.map(({year, sponsors}) => (
+          <section key={year} className="ack-page-section">
+            <h2 className="ack-page-section-title">{year} Sponsors</h2>
+            <div className="ack-sponsor-grid">
+              {sponsors.map((sponsor) => (
+                <a
+                  key={sponsor.id}
+                  href={sponsor.website || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`ack-sponsor-card${sponsor.website ? '' : ' no-link'}`}
+                >
+                  {sponsor.logo ? (
+                    <img
+                      src={sponsor.logo}
+                      alt={sponsor.name}
+                      className="ack-sponsor-logo"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="ack-sponsor-logo-placeholder">{sponsor.name[0]}</div>
+                  )}
+                  <span className="ack-sponsor-name">{sponsor.name}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+      ) : (
+        <section className="ack-page-section">
+          <h2 className="ack-page-section-title">Our Sponsors</h2>
+          <div className="ack-page-placeholder">
+            <p className="ack-page-text">
+              Sponsor logos and acknowledgements will be updated for each event.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="ack-page-section">
         <h2 className="ack-page-section-title">Become a Sponsor</h2>

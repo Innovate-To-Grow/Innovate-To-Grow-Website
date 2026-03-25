@@ -75,12 +75,14 @@ The backend is organized into specialized Django apps:
 
 - **`core/`**: Project configuration, settings (base/dev/prod), health check, versioning system, middleware
 - **`pages/`**: Layout (Menu, FooterContent), SiteSettings, and block-based CMS (CMSPage, CMSBlock). CMS pages have a route, status (draft/published/archived), and ordered content blocks. Block types: hero, rich_text, faq_list, link_list, cta_group, image_text, notice, contact_info, section_group, table, numbered_list, proposal_cards, navigation_grid. CMS API at `/cms/pages/<route>/` and preview at `/cms/preview/<token>/`.
-- **`cms/`**: Migration-only stub (models moved to `pages`). Kept in `INSTALLED_APPS` for migration history
 - **`authn/`**: Auth with Member model, JWT, email verification, contact emails/phones, password reset
 - **`event/`**: Event management (Event, Ticket, Question models)
 - **`news/`**: News articles (NewsArticle, NewsFeedSource, NewsSyncLog) and feed syncing
 - **`projects/`**: Semester and project management (Semester, Project models)
 - **`mail/`**: Email sending via Gmail API and AWS SES (GoogleAccount, SESAccount, EmailLog, SESEmailLog)
+- **`sheets/`**: Google Sheets integration (SheetsAccount, GoogleSheetSource, SheetLink, SyncLog) for embedding live spreadsheet data in CMS blocks
+- **`analytics/`**: Page view tracking (API at `/analytics/pageview/`)
+- **`sponsors/`**: Partners & sponsors management (Sponsor model with logo, name, website, year). API at `/sponsors/` returns sponsors grouped by year.
 
 ### Settings Structure
 
@@ -94,10 +96,10 @@ Set `DJANGO_SETTINGS_MODULE` environment variable or use `--settings` flag.
 
 ### Frontend Architecture
 
-- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`, `sheets.ts`, `cms.ts`). TypeScript interfaces in `types.ts` and alongside API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
-- **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `CMS/`, `MaintenanceMode/`)
+- **`pages/src/services/api/`**: API calls split into modules (`client.ts`, `health.ts`, `layout.ts`, `news.ts`, `projects.ts`, `events.ts`, `cms.ts`, `analytics.ts`). TypeScript interfaces in `types.ts` and alongside API functions. `auth.ts` and `crypto.ts` are at `pages/src/services/`.
+- **`pages/src/components/`**: React components organized by feature (`Layout/`, `Auth/`, `CMS/`, `MaintenanceMode/`, `Projects/`, `ScheduleGrid/`, `SheetsDataTable/`)
 - **`pages/src/components/CMS/`**: CMS rendering system. `CMSPageComponent` fetches page data by route and renders blocks via `BlockRenderer`. Per-page CSS in `page-styles/`. The `useCMSPage` hook handles data fetching.
-- **`pages/src/pages/`**: Data-driven pages with dedicated React components (each has `index.ts`, `PageName.tsx`, `PageName.css`): NewsPage, NewsDetailPage, ProjectsPage, PastProjectsPage, ProjectDetailPage, EventPage, SchedulePage, EventArchivePage, ProjectsTeamsPage, AcknowledgementPage, HomePage, NotFoundPage
+- **`pages/src/pages/`**: Data-driven pages with dedicated React components (each has `index.ts`, `PageName.tsx`, `PageName.css`): NewsPage, NewsDetailPage, ProjectsPage, PastProjectsPage, ProjectDetailPage, SchedulePage, EventArchivePage, EventRegistrationPage, TicketLoginPage, ProjectsTeamsPage, AcknowledgementPage, HomePage, SubscribePage, UnsubscribeLoginPage, NotFoundPage
 - **`pages/src/router/`**: React Router configuration. `HomepageResolver` dynamically resolves the homepage based on `SiteSettings.homepage_route` from the layout API.
 - **CMS vs dedicated pages**: Most content routes (about, faqs, contact-us, privacy, students, judges, sponsorship, etc.) use `CMSPageComponent` which renders CMS-managed content from the backend. Only data-driven routes (news, projects, events) have dedicated React components.
 - **Routes**: See `pages/src/router/index.tsx` for full list. Key data-driven routes: `/news`, `/news/:id`, `/current-projects`, `/past-projects`, `/projects/:id`, `/event`, `/schedule`, `/events/:eventSlug`, `/projects-teams`, `/acknowledgement`. CMS routes: `/about`, `/projects`, `/faqs`, `/contact-us`, `/privacy`, `/ferpa`, `/judges`, `/attendees`, `/judging`, `/sponsorship`, `/students`, and more. Auth routes: `/login`, `/register`, `/forgot-password`, `/verify-email`, `/complete-profile`, `/account`. Many legacy URLs redirect to canonical paths.
@@ -218,7 +220,7 @@ Key ignored rules (see `pyproject.toml`):
 - `DJ012`: Order of model inner classes/methods (existing pattern)
 - `F403/F405`: Star imports (used in Django settings)
 
-**Note**: `cms` is a migration-only stub — no linting needed. `known-first-party` lists `["core", "authn", "pages", "event", "news", "projects", "mail"]`.
+`known-first-party` lists `["core", "authn", "pages", "event", "news", "projects", "mail", "analytics", "sheets"]`.
 
 ## Testing
 

@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "mail.apps.MailConfig",
     "analytics.apps.AnalyticsConfig",
     "sheets.apps.SheetsConfig",
+    "sponsors.apps.SponsorsConfig",
     # third party application
     "corsheaders",
     "rest_framework",
