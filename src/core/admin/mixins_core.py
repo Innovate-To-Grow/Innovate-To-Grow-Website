@@ -1,6 +1,8 @@
 """Core admin mixins unrelated to export formats."""
 
 from django.contrib import admin, messages
+from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from django.utils.html import format_html
 
 
@@ -77,9 +79,14 @@ class VersionControlAdminMixin:
             return "-"
         versions = obj.get_versions()
         count = versions.count() if versions else 0
-        return format_html(
-            '<a href="#" onclick="alert(\'Version history coming soon\'); return false;">{} versions</a>', count
+        if count == 0:
+            return "0 versions"
+        ct = ContentType.objects.get_for_model(obj)
+        url = (
+            reverse("admin:core_modelversion_changelist")
+            + f"?content_type__id__exact={ct.pk}&object_id={obj.pk}"
         )
+        return format_html('<a href="{}">{} version{}</a>', url, count, "s" if count != 1 else "")
 
 
 class TimestampedAdminMixin:

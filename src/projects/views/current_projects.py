@@ -19,10 +19,18 @@ class CurrentProjectsAPIView(APIView):
             return Response(cached)
 
         semester = (
-            Semester.objects.filter(is_published=True)
+            Semester.objects.filter(is_published=True, is_current=True)
             .prefetch_related(Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number")))
             .first()
         )
+
+        # Fallback: if no explicit current semester, use newest published
+        if semester is None:
+            semester = (
+                Semester.objects.filter(is_published=True)
+                .prefetch_related(Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number")))
+                .first()
+            )
 
         if not semester:
             return Response({"detail": "No published projects found."}, status=404)

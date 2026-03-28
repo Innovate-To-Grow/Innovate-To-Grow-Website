@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import CMSBlock, CMSPage, FooterContent, Menu, SiteSettings
+from .models import CMSBlock, CMSPage, FooterContent, Menu, NewsArticle, SiteSettings
 
 
 @receiver([post_save, post_delete], sender=Menu)
@@ -69,3 +69,10 @@ def invalidate_cms_block_cache(sender, instance, **kwargs):
             pass
 
     transaction.on_commit(_clear)
+
+
+@receiver([post_save, post_delete], sender=NewsArticle)
+# noinspection PyUnusedLocal
+def invalidate_news_cache(sender, instance, **kwargs):
+    """Clear news list cache when a NewsArticle is saved or deleted."""
+    transaction.on_commit(lambda: cache.delete("news:list"))

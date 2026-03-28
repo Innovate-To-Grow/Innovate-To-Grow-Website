@@ -1,17 +1,22 @@
 """
-Django CI settings for core project.
+CI pipeline settings.
 
-This file contains settings specific to CI validation jobs.
+Used by GitHub Actions (or similar) for automated test / check runs.
+Mirrors production constraints (DEBUG=False, PostgreSQL) but with
+throwaway credentials.
 """
 
 import os
 
-from .base import *
+from .base import *  # noqa: F403
 
 SECRET_KEY = "ci-secret-key"
 DEBUG = False
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
+# ---------------------------------------------------------------------------
+# Database (PostgreSQL service container spun up by CI)
+# ---------------------------------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),

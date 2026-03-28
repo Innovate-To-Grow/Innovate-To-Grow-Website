@@ -69,6 +69,27 @@ class CurrentProjectsAPIViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_returns_explicit_current_semester(self):
+        """When is_current is set, that semester is returned even if not the newest."""
+        spring = Semester.objects.create(year=2025, season=1, is_published=True, is_current=True)
+        Semester.objects.create(year=2025, season=2, is_published=True)
+        Project.objects.create(semester=spring, project_title="Spring Project")
+
+        response = self.client.get("/projects/current/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["label"], spring.label)
+
+    def test_fallback_when_no_current_set(self):
+        """When no semester has is_current=True, falls back to newest published."""
+        Semester.objects.create(year=2025, season=1, is_published=True)
+        fall = Semester.objects.create(year=2025, season=2, is_published=True)
+
+        response = self.client.get("/projects/current/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["label"], fall.label)
+
 
 class PastProjectsAPIViewTest(TestCase):
     # noinspection PyPep8Naming
@@ -129,6 +150,19 @@ class PastProjectsAPIViewTest(TestCase):
         response = self.client.get("/projects/past/")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_excludes_explicit_current_not_newest(self):
+        """When an older semester is marked is_current, it is excluded from past."""
+        spring = Semester.objects.create(year=2025, season=1, is_published=True, is_current=True)
+        fall = Semester.objects.create(year=2025, season=2, is_published=True)
+        Semester.objects.create(year=2024, season=2, is_published=True)
+
+        response = self.client.get("/projects/past/")
+
+        labels = [s["label"] for s in response.data["results"]]
+        self.assertNotIn(spring.label, labels)
+        # Fall 2025 is NOT current, so it should appear in past
+        self.assertIn(fall.label, labels)
 
 
 class ProjectDetailAPIViewTest(TestCase):

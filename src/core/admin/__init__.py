@@ -14,11 +14,13 @@ from .mixins import (
     VersionControlAdminMixin,
 )
 from .utils import admin_url, format_duration, format_file_size, format_json, get_field_value, truncate_text
+from .version_history import ModelVersionAdmin  # noqa: F401 - register admin
 
 __all__ = [
     # Base classes
     "BaseModelAdmin",
     "ReadOnlyModelAdmin",
+    "ModelVersionAdmin",
     # Mixins
     "SoftDeleteAdminMixin",
     "VersionControlAdminMixin",

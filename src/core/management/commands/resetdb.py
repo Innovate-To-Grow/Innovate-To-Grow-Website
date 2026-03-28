@@ -1,4 +1,19 @@
-"""Reset the local database and regenerate migrations."""
+"""
+Reset the local database and regenerate migrations.
+
+Usage (DEV ONLY):
+    This will delete all data from the database and re-run migrations.
+    It is intended for development environments only.
+    It is not recommended for production use.
+    python manage.py resetdb --force --confirm RESET_DB
+
+Options:
+    --force                 Acknowledge the destructive nature of this command.
+    --confirm RESET_DB      Required confirmation string.
+    --database ALIAS        Database alias to reset (default: "default").
+    --keep-migrations       Keep existing migration files; only reset the database.
+    --allow-production      Allow running even when DEBUG is False.
+"""
 
 from django.conf import settings
 from django.core.management import call_command

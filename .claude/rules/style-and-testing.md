@@ -16,4 +16,3 @@
 
 - Backend: `ruff check .`, `ruff format --check .`, `python manage.py check`, and targeted Django tests.
 - Frontend: `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
-- Repository: `python src/core/scripts/check_repo_structure.py`.

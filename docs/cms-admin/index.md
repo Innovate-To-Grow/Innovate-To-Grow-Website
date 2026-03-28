@@ -6,11 +6,11 @@ This section covers the operational workflows behind the Django admin.
 
 - [CMS content workflows](content.md)
 - [Operational admin tasks](operations.md)
-- [Members and mail tooling](members-mail.md)
+- [Members tooling](members-mail.md)
 
 ## Scope
 
 - CMS pages and blocks
 - Menu, footer, and site settings
-- Event, news, project, and mail admin workflows
+- Event, news, and project admin workflows
 - Common admin pitfalls

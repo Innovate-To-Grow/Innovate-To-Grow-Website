@@ -109,3 +109,49 @@ class AllPastProjectsAPIViewTests(TestCase):
         response2 = self.client.get("/projects/past-all/")
         self.assertEqual(response2.status_code, 200)
         self.assertEqual(len(response2.data), 2)
+
+    def test_excludes_explicit_current_not_newest(self):
+        """When an older semester is marked is_current, only it is excluded."""
+        cache.clear()
+        # Mark past1 (Spring 2025) as current instead of Fall 2025
+        self.past1.is_current = True
+        self.past1.save()
+
+        response = self.client.get("/projects/past-all/")
+        titles = [p["project_title"] for p in response.data]
+        # past1's project should be excluded (it's now current)
+        self.assertNotIn("Past Project 1", titles)
+        # current semester's project should now appear (it's no longer current)
+        self.assertIn("Current Project", titles)
+        self.assertIn("Past Project 2", titles)
+
+
+class SemesterIsCurrentModelTests(TestCase):
+    def test_only_one_semester_can_be_current(self):
+        s1 = Semester.objects.create(year=2024, season=1, is_published=True, is_current=True)
+        s2 = Semester.objects.create(year=2025, season=1, is_published=True, is_current=True)
+
+        s1.refresh_from_db()
+        s2.refresh_from_db()
+        self.assertFalse(s1.is_current)
+        self.assertTrue(s2.is_current)
+
+    def test_setting_current_auto_publishes(self):
+        sem = Semester.objects.create(year=2025, season=1, is_published=False)
+        sem.is_current = True
+        sem.save()
+
+        sem.refresh_from_db()
+        self.assertTrue(sem.is_published)
+        self.assertTrue(sem.is_current)
+
+    def test_update_fields_does_not_clear_others(self):
+        s1 = Semester.objects.create(year=2024, season=1, is_published=True, is_current=True)
+        s2 = Semester.objects.create(year=2025, season=1, is_published=False)
+
+        # Saving s2 with only update_fields=["is_published"] should not clear s1's is_current
+        s2.is_published = True
+        s2.save(update_fields=["is_published"])
+
+        s1.refresh_from_db()
+        self.assertTrue(s1.is_current)

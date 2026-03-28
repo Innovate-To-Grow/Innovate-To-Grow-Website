@@ -1,0 +1,77 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4">
+    <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">{{ title }}</h1>
+    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-6">
+        {{ version.content_type }} &middot; Object {{ version.object_id|truncatechars:12 }}
+    </p>
+
+    {% if not v_left %}
+        {# ---- Version picker ---- #}
+        {% if siblings %}
+        <form method="get"
+              class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6 mb-6">
+            <label for="compare_to"
+                   class="block text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-2">
+                Compare v{{ version.version_number }} with:
+            </label>
+            <select name="compare_to" id="compare_to"
+                    class="block w-full text-sm border border-base-200 dark:border-base-700 rounded-default
+                           bg-white dark:bg-base-800 text-font-default-light dark:text-font-default-dark
+                           py-2 px-3 mb-4">
+                {% for s in siblings %}
+                <option value="{{ s.pk }}">v{{ s.version_number }} &mdash; {{ s.created_at|date:"Y-m-d H:i" }}{% if s.comment %} &mdash; {{ s.comment|truncatechars:50 }}{% endif %}</option>
+                {% endfor %}
+            </select>
+            <button type="submit"
+                    class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors">
+                Compare
+            </button>
+        </form>
+        {% else %}
+        <div class="border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800 rounded-default p-4 mb-6">
+            <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No other versions to compare against.</p>
+        </div>
+        {% endif %}
+
+    {% else %}
+        {# ---- Diff results ---- #}
+        <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default overflow-hidden mb-6">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-base-50 dark:bg-base-800 border-b border-base-200 dark:border-base-700">
+                        <th class="text-left px-4 py-3 font-semibold text-font-default-light dark:text-font-default-dark">Field</th>
+                        <th class="text-left px-4 py-3 font-semibold text-font-default-light dark:text-font-default-dark">v{{ v_left.version_number }} <span class="font-normal text-font-subtle-light dark:text-font-subtle-dark">({{ v_left.created_at|date:"Y-m-d H:i" }})</span></th>
+                        <th class="text-left px-4 py-3 font-semibold text-font-default-light dark:text-font-default-dark">v{{ v_right.version_number }} <span class="font-normal text-font-subtle-light dark:text-font-subtle-dark">({{ v_right.created_at|date:"Y-m-d H:i" }})</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    {% if row.changed %}
+                    <tr class="border-b border-base-200 dark:border-base-700 bg-yellow-50 dark:bg-yellow-900/20">
+                        <td class="px-4 py-2 font-medium text-font-default-light dark:text-font-default-dark">{{ row.field }}</td>
+                        <td class="px-4 py-2 text-red-700 dark:text-red-400 break-all">{{ row.left }}</td>
+                        <td class="px-4 py-2 text-green-700 dark:text-green-400 break-all">{{ row.right }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="border-b border-base-200 dark:border-base-700">
+                        <td class="px-4 py-2 font-medium text-font-default-light dark:text-font-default-dark">{{ row.field }}</td>
+                        <td class="px-4 py-2 text-font-subtle-light dark:text-font-subtle-dark break-all" colspan="2">{{ row.left }} (unchanged)</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <a href="{% url 'admin:core_modelversion_changelist' %}"
+       class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+        &larr; Back to Version History
+    </a>
+</div>
+{% endblock %}
