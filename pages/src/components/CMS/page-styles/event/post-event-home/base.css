@@ -1,0 +1,110 @@
+/* Post-Event Home Page */
+.post-event-home-page {
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
+/* Hero banner — full width, break out of page container */
+.peh-hero {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-top: -10px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.peh-hero-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Program section with logo */
+.peh-program {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.peh-program-logo {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.peh-program p {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0;
+}
+
+.peh-program a {
+  color: #0091b3;
+  text-decoration: underline;
+}
+
+.peh-program a:hover {
+  color: #007e9e;
+}
+
+/* Section headings (h4 style matching original) */
+.post-event-home-page h4 {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 0 0 0.75rem;
+}
+
+/* Two-column sections */
+.peh-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2.5rem;
+}
+
+/* Responsive video container (16:9) */
+.peh-video-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding-top: 56.25%;
+  border-radius: var(--itg-radius-card);
+}
+
+.peh-video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Event details text */
+.peh-event-details p {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 0.75rem;
+}
+
+/* Video caption */
+.peh-video-caption {
+  text-align: center;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  margin-top: 0.5rem;
+  line-height: var(--itg-line-height-meta);
+}
+
+/* Button rows */
+.peh-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}

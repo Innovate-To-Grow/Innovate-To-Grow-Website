@@ -6,7 +6,7 @@ import {
   toProjectGridRow,
   type PastProjectShare,
   type ProjectGridRow,
-} from '../services/api/projects';
+} from '../features/projects/api';
 
 interface ProjectGridDataResult {
   rows: ProjectGridRow[];

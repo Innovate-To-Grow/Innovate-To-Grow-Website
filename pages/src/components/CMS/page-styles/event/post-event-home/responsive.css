@@ -1,0 +1,106 @@
+
+/* Outline buttons with square corners (matching original invert style) */
+.post-event-home-page .peh-btn {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  border-radius: 0;
+  font-size: var(--itg-font-size-meta);
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  background: transparent;
+  border: 2px solid;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.post-event-home-page .peh-btn-blue {
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-primary);
+}
+
+.post-event-home-page .peh-btn-blue:hover {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.post-event-home-page .peh-btn-gold {
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+.post-event-home-page .peh-btn-gold:hover {
+  background: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+/* Event links — free-flow wrap */
+.peh-event-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Bottom quick links */
+.peh-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin: 2rem 0;
+  padding-top: 2rem;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+/* Contact footer */
+.peh-contact {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+}
+
+.peh-contact a {
+  color: #0091b3;
+  text-decoration: underline;
+}
+
+.peh-contact a:hover {
+  color: #007e9e;
+}
+
+@media (max-width: 768px) {
+  .post-event-home-page {
+    padding: 0 1rem 1rem;
+  }
+
+  .peh-hero {
+    margin-top: -8px;
+  }
+
+  .peh-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .peh-program {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .peh-btn {
+    padding: 0.5rem 1.25rem;
+    font-size: var(--itg-font-size-small);
+  }
+
+  .peh-btn-row {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .peh-hero {
+    margin-top: -5px;
+  }
+}

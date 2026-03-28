@@ -1,0 +1,122 @@
+/* Status card */
+.maintenance-status-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  background: var(--ucm-panel);
+  border: 1px solid var(--ucm-border);
+  border-radius: 12px;
+  padding: 1.75rem 1.5rem;
+  margin: 0;
+  position: relative;
+  color: var(--ucm-text);
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: center;
+  padding: 0;
+}
+
+.status-item + .status-item {
+  border-left: 1px solid var(--ucm-divider);
+}
+
+.status-logo-wrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-logo {
+  height: 36px;
+  width: auto;
+  display: block;
+}
+
+.status-logo-aws {
+  height: 28px;
+}
+
+.status-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ucm-text);
+}
+
+.status-subtitle {
+  font-size: 0.98rem;
+  color: var(--ucm-text-muted);
+}
+
+.status-subtitle-ok {
+  color: #1f7a3b;
+  font-weight: 700;
+}
+
+.status-subtitle-alert {
+  color: #e74c3c;
+  font-weight: 700;
+}
+
+/* Info sections */
+.maintenance-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.maintenance-info h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: var(--ucm-white);
+}
+
+.maintenance-info p {
+  margin: 0;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+/* Footer */
+.maintenance-footer {
+  width: 100%;
+  padding: 0;
+  z-index: 1;
+}
+
+.maintenance-footer-links {
+  margin-bottom: 0.5rem;
+}
+
+.maintenance-footer-links a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.maintenance-footer-links a:hover {
+  color: var(--ucm-gold);
+}
+
+.footer-divider {
+  margin: 0 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.maintenance-copyright {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+

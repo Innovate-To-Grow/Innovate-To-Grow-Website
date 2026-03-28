@@ -1,0 +1,144 @@
+/* Account Page */
+
+.account-page {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.account-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.account-page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #003366;
+  margin: 0 0 1.5rem 0;
+}
+
+.account-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 0;
+}
+
+.account-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.25rem 0;
+}
+
+.account-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.account-section-header .account-section-title {
+  margin-bottom: 0;
+}
+
+.account-section-toggle {
+  font-size: 1.25rem;
+  color: #6b7280;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.account-section-header:hover .account-section-toggle {
+  color: #1f2937;
+}
+
+.account-edit-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1.5px solid #003366;
+  color: #003366;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.account-edit-btn:hover:not(:disabled) {
+  background: #f0f4f8;
+}
+
+.account-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.account-edit-btn.auth-form-submit {
+  background: linear-gradient(135deg, #003366 0%, #00254d 100%);
+  color: #fff;
+  border-color: transparent;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  box-shadow: none;
+  margin-top: 0;
+}
+
+.account-edit-btn.auth-form-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #00254d 0%, #001a3a 100%);
+}
+
+.account-details-rows .account-readonly-group {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.account-readonly-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.account-readonly-group:last-child {
+  margin-bottom: 0;
+}
+
+.account-readonly-value {
+  font-size: 1rem;
+  color: #1f2937;
+  padding: 0.5rem 0;
+}
+
+.account-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.account-subsection-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.account-code-password {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+

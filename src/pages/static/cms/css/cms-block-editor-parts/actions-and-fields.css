@@ -1,0 +1,160 @@
+/* ===== Block Actions ===== */
+.cms-block-card-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.cms-block-card-actions button {
+    padding: 4px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    transition: all 0.15s;
+    line-height: 1;
+}
+
+.dark .cms-block-card-actions button {
+    background: #1f2937;
+    border-color: #374151;
+    color: #9ca3af;
+}
+
+.cms-block-card-actions button:hover {
+    background: #f0f0f0;
+    border-color: #bbb;
+    color: #333;
+}
+
+.dark .cms-block-card-actions button:hover {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+.cms-block-card-actions .btn-block-delete {
+    color: #dc3545;
+    border-color: #f5c6cb;
+}
+
+.cms-block-card-actions .btn-block-delete:hover {
+    background: #f8d7da;
+    border-color: #dc3545;
+}
+
+/* ===== Block Body ===== */
+.cms-block-card-body {
+    padding: 16px;
+}
+
+.cms-block-card.is-collapsed .cms-block-card-body {
+    display: none;
+}
+
+/* ===== Block Fields ===== */
+.cms-block-field {
+    margin-bottom: 12px;
+}
+
+.cms-block-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.dark .cms-block-field label {
+    color: #9ca3af;
+}
+
+.cms-block-field input[type="text"],
+.cms-block-field input[type="number"],
+.cms-block-field input[type="url"],
+.cms-block-field select,
+.cms-block-field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+    background: #fff;
+    color: #333;
+}
+
+.dark .cms-block-field input[type="text"],
+.dark .cms-block-field input[type="number"],
+.dark .cms-block-field input[type="url"],
+.dark .cms-block-field select,
+.dark .cms-block-field textarea {
+    background: #111827;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+.cms-block-field input:focus,
+.cms-block-field select:focus,
+.cms-block-field textarea:focus {
+    outline: none;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+.cms-block-field textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 13px;
+}
+
+.cms-block-field textarea.html-field {
+    min-height: 360px;
+}
+
+/* CodeMirror integration for HTML fields */
+.cms-block-field .CodeMirror {
+    height: 380px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 13px;
+}
+
+.cms-block-field .CodeMirror-focused {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+.cms-block-field .CodeMirror-gutters {
+    background: #f9fafb;
+    border-right: 1px solid #e5e7eb;
+}
+
+.cms-block-field .field-hint {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.cms-block-field-row {
+    display: flex;
+    gap: 12px;
+}
+
+.cms-block-field-row > .cms-block-field {
+    flex: 1;
+}
+
+.cms-block-field-row > .cms-block-field.field-small {
+    flex: 0 0 120px;
+}
+

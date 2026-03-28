@@ -1,7 +1,3 @@
-"""
-Issue, verify, and consume short-lived email auth challenges.
-"""
-
 from __future__ import annotations
 
 import secrets
@@ -13,9 +9,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from authn.models.security import EmailAuthChallenge
-
-from .auth_email import normalize_email
-from .auth_mail import AuthEmailError, send_auth_code_email
+from authn.services.email.auth_email import normalize_email
+from authn.services.email.auth_mail import AuthEmailError, send_auth_code_email
 
 CHALLENGE_TTL = timedelta(minutes=10)
 RESEND_COOLDOWN = timedelta(seconds=60)

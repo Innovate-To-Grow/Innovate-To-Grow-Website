@@ -1,4 +1,5 @@
 import {useCallback, useRef, useState} from 'react';
+import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
 import {MergedResultsTable} from './MergedResultsTable';
 import {SearchTableCard, type SearchTableHandle} from './SearchTableCard';
 import {
@@ -133,72 +134,19 @@ export const PastProjectsBuilder = ({
     <div className="past-projects-builder">
       <MergedResultsTable rows={mergedRows} onCreateShare={onCreateShare} onDeleteRow={handleDeleteMergedRow} />
 
-      <div className="project-grid-card past-projects-action-bar">
-        <div className="project-grid-card-header">
-          <div>
-            <h2 className="project-grid-card-title">Search Tables</h2>
-            <p className="project-grid-card-copy">
-              Open one or more search tables, narrow the dataset independently, then merge the remaining rows into saved results.
-            </p>
-          </div>
-        </div>
-
-        <div className="past-projects-action-bar-controls">
-          <button
-            type="button"
-            className="itg-btn itg-btn-primary"
-            onClick={handleAddSearchTable}
-            disabled={loading || Boolean(error)}
-          >
-            + Search Table
-          </button>
-          <button
-            type="button"
-            className="itg-btn itg-btn-outline"
-            onClick={handleMergeResults}
-            disabled={!searchTables.length}
-          >
-            Save/Merge Results
-          </button>
-          <button
-            type="button"
-            className="itg-btn itg-btn-outline"
-            onClick={() => applyToSearchTables((table) => table.deleteSelectedRows())}
-            disabled={!hasAnySelection}
-          >
-            Delete Selected Rows
-          </button>
-          <button
-            type="button"
-            className="itg-btn itg-btn-outline"
-            onClick={() => applyToSearchTables((table) => table.keepSelectedRows())}
-            disabled={!hasAnySelection}
-          >
-            Keep Selected Rows
-          </button>
-          <label className="past-projects-delete-toggle">
-            <input
-              type="checkbox"
-              checked={deleteMode}
-              onChange={(event) => setDeleteMode(event.target.checked)}
-            />
-            Delete Table
-          </label>
-        </div>
-
-        <div className="past-projects-help-grid">
-          <div className="project-grid-help-card">
-            <strong>How merge works</strong>
-            <span>Each search table contributes only its currently filtered rows. Duplicate rows are skipped automatically.</span>
-          </div>
-          <div className="project-grid-help-card">
-            <strong>Delete mode</strong>
-            <span>Turn on Delete Table, then click the red overlay on any search table you want to remove.</span>
-          </div>
-        </div>
-
-        {builderMessage ? <p className="project-grid-status">{builderMessage}</p> : null}
-      </div>
+      <PastProjectsActionBar
+        builderMessage={builderMessage}
+        error={error}
+        hasAnySelection={hasAnySelection}
+        loading={loading}
+        searchTableCount={searchTables.length}
+        deleteMode={deleteMode}
+        onAddSearchTable={handleAddSearchTable}
+        onMergeResults={handleMergeResults}
+        onDeleteSelectedRows={() => applyToSearchTables((table) => table.deleteSelectedRows())}
+        onKeepSelectedRows={() => applyToSearchTables((table) => table.keepSelectedRows())}
+        onDeleteModeChange={setDeleteMode}
+      />
 
       {loading ? <div className="project-grid-card"><div className="project-grid-state">Loading past projects...</div></div> : null}
       {error ? <div className="project-grid-card"><div className="project-grid-state project-grid-state-error">{error}</div></div> : null}

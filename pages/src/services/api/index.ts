@@ -2,8 +2,8 @@
 // Usage: import { type MenuItem } from '../../services/api';
 //        import api from '../../services/api';
 
-export { default } from './client';
-export { api } from './client';
+export { default } from '../../shared/api/client';
+export { api } from '../../shared/api/client';
 
 export type {
   FooterLink,
@@ -15,22 +15,22 @@ export type {
   MenuItem,
   Menu,
   LayoutData,
-} from './layout';
+} from '../../features/layout/api';
 export {
   fetchLayoutData,
   clearLayoutCache,
   readLayoutCache,
   writeLayoutCache,
   LAYOUT_CACHE_VERSION,
-} from './layout';
+} from '../../features/layout/api';
 
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth, bypassMaintenance } from './health';
 
-export type { PaginatedResponse } from './types';
+export type { PaginatedResponse } from '../../shared/api/types';
 
-export type { NewsArticle } from './news';
-export { fetchNews, fetchLatestNews, fetchNewsDetail } from './news';
+export type { NewsArticle } from '../../features/news/api';
+export { fetchNews, fetchLatestNews, fetchNewsDetail } from '../../features/news/api';
 
 export type {
   PastProjectShare,
@@ -40,7 +40,7 @@ export type {
   ProjectTableRow,
   SemesterWithFullProjects,
   SemesterWithProjects,
-} from './projects';
+} from '../../features/projects/api';
 export {
   createPastProjectShare,
   fetchAllPastProjects,
@@ -50,7 +50,20 @@ export {
   fetchPastProjects,
   fetchProjectDetail,
   toProjectGridRow,
-} from './projects';
+} from '../../features/projects/api';
 
-export type { TicketOption, QuestionOption, Registration, RegistrationEvent, RegistrationTicket, RegistrationAnswer, EventRegistrationOptions } from './events';
-export { fetchRegistrationOptions, createRegistration, fetchMyTickets, resendTicketEmail } from './events';
+export type {
+  TicketOption,
+  QuestionOption,
+  Registration,
+  RegistrationEvent,
+  RegistrationTicket,
+  RegistrationAnswer,
+  EventRegistrationOptions,
+} from '../../features/events/api';
+export {
+  fetchRegistrationOptions,
+  createRegistration,
+  fetchMyTickets,
+  resendTicketEmail,
+} from '../../features/events/api';

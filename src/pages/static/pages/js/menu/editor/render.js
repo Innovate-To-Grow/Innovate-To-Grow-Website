@@ -1,0 +1,93 @@
+(function () {
+    const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
+
+    function escapeHtml(val) {
+        const div = document.createElement('div');
+        div.textContent = val || '';
+        return div.innerHTML;
+    }
+
+    function escapeAttr(val) {
+        return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderItems(items, path, routes, isTopLevel = true) {
+        if (!items || items.length === 0) return '<p style="color: #999; font-style: italic;">No menu items yet. Add items using the buttons below.</p>';
+        return items.map((item, idx) => {
+            const itemPath = `${path}[${idx}]`;
+            const hasChildren = item.children && item.children.length > 0;
+            const isCmsPage = item.type === 'app' && routes.cmsRoutes.some(route => route.url === item.url);
+            const typeBadgeClass = isCmsPage ? 'type-cms' : `type-${item.type}`;
+            const typeLabel = item.type === 'home' ? 'Home' : item.type === 'external' ? 'External' : isCmsPage ? 'CMS Page' : 'App';
+            const typeSelector = `<div class="item-field" style="max-width: 120px;"><label>Type</label><select onchange="changeItemType('${itemPath}', this.value)"><option value="home" ${item.type === 'home' ? 'selected' : ''}>Home</option><option value="app" ${item.type === 'app' ? 'selected' : ''}>${isCmsPage ? 'CMS Page' : 'App Route'}</option><option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option></select></div>`;
+            const fieldsHtml = item.type === 'home' ? renderHomeFields(item, itemPath, typeSelector) : item.type === 'external' ? renderExternalFields(item, itemPath, typeSelector) : renderAppFields(item, itemPath, typeSelector, routes);
+            const childrenHtml = hasChildren ? `<div class="menu-children-container">${renderItems(item.children, `${itemPath}.children`, routes, false)}</div>` : '';
+            let actionButtons = '';
+            if (idx > 0) actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', -1)">↑</button>`;
+            if (idx < items.length - 1) actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', 1)">↓</button>`;
+            actionButtons += `<button type="button" class="btn-add-child" onclick="addChildItem('${itemPath}')">+ Child</button><button type="button" class="btn-delete" onclick="removeItem('${itemPath}')">Delete</button>`;
+            return `<div class="menu-item-card ${hasChildren ? 'has-children' : ''}"><div class="menu-item-card-header"><span class="menu-item-card-title"><span class="menu-item-type-badge ${typeBadgeClass}">${typeLabel}</span>${escapeHtml(item.title || 'Untitled')}</span><div class="menu-item-card-actions">${actionButtons}</div></div>${fieldsHtml}${childrenHtml}</div>`;
+        }).join('');
+    }
+
+    function renderHomeFields(item, itemPath, typeSelector) {
+        return `<div class="item-row">${typeSelector}<div class="item-field"><label>Title</label><input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)"></div><div class="item-field" style="flex: 0; white-space: nowrap;"><label>URL</label><span style="color: #666; font-size: 13px; padding: 6px 0; display: block;">/ (homepage)</span></div><div class="item-field item-field-small"><label>Icon</label><input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-home" onchange="updateItem('${itemPath}', 'icon', this.value)"></div></div>`;
+    }
+
+    function renderExternalFields(item, itemPath, typeSelector) {
+        return `<div class="item-row">${typeSelector}<div class="item-field"><label>Title</label><input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)"></div><div class="item-field"><label>URL</label><input type="text" value="${escapeAttr(item.url || '')}" placeholder="https://example.com" onchange="updateItem('${itemPath}', 'url', this.value)"></div><div class="item-field item-field-small"><label>Icon</label><input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-external-link" onchange="updateItem('${itemPath}', 'icon', this.value)"></div><div class="item-field-checkbox"><input type="checkbox" id="newtab-${itemPath}" ${item.open_in_new_tab ? 'checked' : ''} onchange="updateItem('${itemPath}', 'open_in_new_tab', this.checked)"><label for="newtab-${itemPath}">New tab</label></div></div>`;
+    }
+
+    function renderAppFields(item, itemPath, typeSelector, routes) {
+        const appOptions = routes.appRoutes.map(route => `<option value="${escapeAttr(route.url)}" ${item.url === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${route.url})</option>`).join('');
+        const cmsOptions = routes.cmsRoutes.map(route => `<option value="${escapeAttr(route.url)}" ${item.url === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${route.url})</option>`).join('');
+        const knownUrl = !item.url || routes.allRoutes.some(route => route.url === item.url);
+        const warningHtml = knownUrl ? '' : '<span style="color:#dc3545;font-size:12px;margin-left:4px;" title="This URL does not match any known route or CMS page">&#9888; Unknown route</span>';
+        return `<div class="item-row">${typeSelector}<div class="item-field"><label>Title</label><input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)"></div><div class="item-field"><label>Route${warningHtml}</label><select onchange="selectAppRoute('${itemPath}', this.value)"><option value="">-- Select Route --</option>${appOptions ? `<optgroup label="App Routes">${appOptions}</optgroup>` : ''}${cmsOptions ? `<optgroup label="CMS Pages">${cmsOptions}</optgroup>` : ''}</select></div><div class="item-field item-field-small"><label>Icon</label><input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-calendar" onchange="updateItem('${itemPath}', 'icon', this.value)"></div></div>`;
+    }
+
+    function renderMenuItemsHtml(items, level) {
+        if (!items || items.length === 0) return '';
+        return items.map(item => {
+            const href = item.url || '#';
+            const targetAttr = item.type === 'external' && item.open_in_new_tab ? ' target="_blank" rel="noopener noreferrer"' : '';
+            const icon = item.icon ? `<i class="fa ${item.icon}"></i> ` : '';
+            const hasChildren = item.children && item.children.length > 0;
+            if (level === 0) {
+                const childrenHtml = hasChildren ? `<div class="menu-dropdown is-open">${renderMenuItemsHtml(item.children, 1)}</div>` : '';
+                return `<li class="menu-bar-item${hasChildren ? ' has-children is-open' : ''}"><a href="${escapeAttr(href)}" class="menu-bar-link"${targetAttr} onclick="return false;">${icon}<span>${escapeHtml(item.title)}</span>${hasChildren ? '<i class="fa fa-angle-down menu-bar-arrow"></i>' : ''}</a>${childrenHtml}</li>`;
+            }
+            const childrenHtml = hasChildren ? `<div class="menu-dropdown-nested">${renderMenuItemsHtml(item.children, level + 1)}</div>` : '';
+            return `<li class="menu-dropdown-item${hasChildren ? ' has-children' : ''}"><a href="${escapeAttr(href)}" class="menu-dropdown-link"${targetAttr} onclick="return false;">${icon}<span>${escapeHtml(item.title)}</span>${hasChildren ? '<i class="fa fa-angle-right menu-dropdown-arrow"></i>' : ''}</a>${childrenHtml}</li>`;
+        }).join('');
+    }
+
+    function renderMenuHtml(items) {
+        if (!items || items.length === 0) return '<div style="color:#666;font-style:italic;padding:20px;text-align:center;">No menu items</div>';
+        const date = new Date();
+        const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+        const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+        const currentDate = `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+        return `<header class="site-header" role="banner"><div class="site-header-top"><div class="site-header-container site-header-top-inner"><a class="ucm-wordmark" href="#" onclick="return false;" aria-label="UC Merced"><img src="/assets/images/ucmlogo.png" alt="UC Merced" onerror="this.parentElement.style.display='none'"></a><a class="site-header-top-logo" href="#" onclick="return false;" aria-label="Innovate To Grow"><img class="site-header-top-logo-full" src="/assets/images/I2G-fullname-low.png" alt="Innovate To Grow" onerror="this.style.display='none'"></a><div class="site-header-top-links" aria-label="Quick links"><a href="#" onclick="return false;">Directory</a><a href="#" onclick="return false;">Apply</a><a href="#" onclick="return false;">Give</a></div></div></div><div class="site-header-bottom"><div class="site-header-container site-header-bottom-inner"><div class="site-header-bottom-left"><a class="site-header-badge" href="#" onclick="return false;" aria-label="Home"><img src="/assets/images/i2glogo.png" alt="Innovate To Grow" onerror="this.style.display='none'"></a><nav class="site-header-nav" aria-label="Main menu"><ul class="menu-bar-list">${renderMenuItemsHtml(items, 0)}</ul></nav></div><div class="site-header-date" aria-label="Current date">${currentDate}</div></div></div></header>`;
+    }
+
+    function updatePreview(iframe, menuItems) {
+        if (!iframe) return;
+        const inlineCSS = `:root { --header-navy: #003366; --header-navy-dark: #0b1f3f; --header-gold: #daa520; --header-text: #003366; --header-bg: #ffffff; --dropdown-bg: #f5f5f5; --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); } * { box-sizing: border-box; } body { margin: 0; padding: 0; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; } .site-header { position: relative; z-index: 1000; } .site-header-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; } .site-header-top { background: var(--header-navy-dark); border-bottom: 4px solid var(--header-gold); } .site-header-top-inner { height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 24px; } .ucm-wordmark { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; } .ucm-wordmark img { height: 32px; width: auto; display: block; } .site-header-top-logo { display: flex; align-items: center; justify-content: center; text-decoration: none; flex: 1; } .site-header-top-logo img { height: 36px; width: auto; display: block; } .site-header-top-links { display: flex; align-items: center; gap: 24px; flex-shrink: 0; } .site-header-top-links a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; } .site-header-top-links a:hover { text-decoration: underline; } .site-header-bottom { background: var(--header-bg); border-bottom: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); } .site-header-bottom-inner { height: 47px; display: flex; align-items: center; justify-content: space-between; gap: 32px; } .site-header-bottom-left { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1; } .site-header-badge { display: flex; align-items: center; justify-content: center; text-decoration: none; flex: 0 0 auto; } .site-header-badge img { width: 38px; height: 38px; border-radius: 50%; display: block; object-fit: cover; border: 2px solid var(--header-gold); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); } .site-header-nav { flex: 1; display: flex; justify-content: flex-start; min-width: 0; } .site-header-date { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: var(--header-text); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; opacity: 0.7; } .menu-bar-list { display: flex; align-items: center; list-style: none; margin: 0; padding: 0; gap: 28px; } .menu-bar-item { position: relative; } .menu-bar-link { display: inline-flex; align-items: center; gap: 5px; padding: 8px 0; color: var(--header-text); text-decoration: none; font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: 0.2px; white-space: nowrap; position: relative; } .menu-bar-link::after { content: ''; position: absolute; bottom: 4px; left: 0; right: 0; height: 2px; background: var(--header-gold); transform: scaleX(0); transition: transform 0.25s ease; } .menu-bar-link:hover::after, .menu-bar-item.is-open > .menu-bar-link::after { transform: scaleX(1); } .menu-bar-arrow { font-size: 11px; opacity: 0.6; margin-left: 2px; } .menu-dropdown { position: absolute; top: 100%; left: 0; min-width: 220px; background: var(--dropdown-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 12px 0; margin-top: 8px; z-index: 1100; } .menu-dropdown.is-open { display: block; } .menu-dropdown-item { position: relative; } .menu-dropdown-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--header-text); text-decoration: none; font-size: 14px; font-weight: 700; font-style: italic; white-space: nowrap; } .menu-dropdown-link:hover { background: rgba(0, 51, 102, 0.06); padding-left: 24px; } .menu-dropdown-arrow { margin-left: auto; color: #888; font-size: 11px; } .menu-dropdown-nested { position: absolute; top: 0; left: 100%; min-width: 200px; background: var(--header-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 8px 0; z-index: 1101; display: none; } .menu-dropdown-item.has-children:hover > .menu-dropdown-nested { display: block; }`;
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="${FONT_AWESOME_CSS}"><style>${inlineCSS}</style></head><body>${renderMenuHtml(menuItems)}</body></html>`);
+        doc.close();
+        setTimeout(() => {
+            try { iframe.style.height = Math.max(Math.max(doc.body.scrollHeight, doc.body.offsetHeight, doc.documentElement.scrollHeight) + 20, 200) + 'px'; } catch (e) {}
+        }, 150);
+    }
+
+    window.ITGMenuEditorRender = {
+        renderAll: function (container, jsonEditor, menuItems, routes) {
+            container.innerHTML = renderItems(menuItems, 'menuItems', routes, true);
+            jsonEditor.value = JSON.stringify(menuItems, null, 2);
+        },
+        updatePreview: updatePreview,
+    };
+})();

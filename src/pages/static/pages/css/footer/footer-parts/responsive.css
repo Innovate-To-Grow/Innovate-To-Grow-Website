@@ -1,0 +1,83 @@
+    /* Remove the colored band behind the CTA area */
+    background: transparent;
+    padding: 24px 0;
+}
+
+.sb-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    width: min(960px, calc(100% - 40px));
+    margin: 0 auto;
+}
+
+.sb-col {
+    display: flex;
+    justify-content: center;
+}
+
+.hb__play {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Square corners */
+    border-radius: 0;
+    border: 2px solid currentColor;
+    padding: 10px 26px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.btn--invert-gold {
+    color: #936200;
+    border-color: #d3a437;
+    background: transparent;
+}
+
+.btn--invert-gold:hover {
+    background: #d3a437;
+    color: #0b1f3f;
+}
+
+.btn--invert-blue {
+    color: #0b2653;
+    border-color: #0b2653;
+    background: transparent;
+}
+
+.btn--invert-blue:hover {
+    background: #0b2653;
+    color: #fff;
+}
+
+.i2gHome {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #0b2653;
+}
+
+.i2gHome a {
+    color: inherit;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .footer-main {
+        padding: 36px 0 48px;
+    }
+
+    .footer-column h2 {
+        font-size: 14px;
+    }
+
+    .footer-meta {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}

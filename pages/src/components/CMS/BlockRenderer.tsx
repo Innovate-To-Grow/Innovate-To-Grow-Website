@@ -1,13 +1,13 @@
-import type { CMSBlock } from '../../services/api/cms';
-import { ContactInfoBlock } from './blocks/ContactInfoBlock';
-import { FaqListBlock } from './blocks/FaqListBlock';
-import { ImageTextBlock } from './blocks/ImageTextBlock';
-import { LinkListBlock } from './blocks/LinkListBlock';
-import { NavigationGridBlock } from './blocks/NavigationGridBlock';
-import { ProposalCardsBlock } from './blocks/ProposalCardsBlock';
-import { RichTextBlock } from './blocks/RichTextBlock';
-import { SectionGroupBlock } from './blocks/SectionGroupBlock';
-import { TableBlock } from './blocks/TableBlock';
+import type { CMSBlock } from '../../features/cms/api';
+import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
+import { FaqListBlock } from './blocks/content/FaqListBlock';
+import { ImageTextBlock } from './blocks/content/ImageTextBlock';
+import { LinkListBlock } from './blocks/content/LinkListBlock';
+import { RichTextBlock } from './blocks/content/RichTextBlock';
+import { TableBlock } from './blocks/content/TableBlock';
+import { NavigationGridBlock } from './blocks/navigation/NavigationGridBlock';
+import { SectionGroupBlock } from './blocks/navigation/SectionGroupBlock';
+import { ProposalCardsBlock } from './blocks/showcase/ProposalCardsBlock';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type BlockComponent = React.FC<{ data: any }>;

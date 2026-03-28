@@ -1,0 +1,77 @@
+/* Mobile cards - hidden on desktop, shown on mobile */
+.project-grid-mobile-cards {
+  display: none;
+}
+
+.project-grid-mobile-card {
+  border: 1px solid var(--itg-color-border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--itg-color-white);
+}
+
+.project-grid-mobile-card + .project-grid-mobile-card {
+  margin-top: 0.75rem;
+}
+
+.project-grid-mobile-card.is-expanded {
+  background: #f8fbff;
+}
+
+.project-grid-mobile-card.is-selected {
+  background: #eef4fb;
+  border-color: var(--itg-color-primary);
+}
+
+.project-grid-mobile-card-select {
+  margin-bottom: 0.5rem;
+}
+
+.project-grid-mobile-card-fields {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.project-grid-mobile-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.project-grid-mobile-card-label {
+  color: var(--itg-color-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.project-grid-mobile-card-value {
+  color: var(--itg-color-text-dark);
+  font-size: var(--itg-font-size-small);
+  line-height: var(--itg-line-height-meta);
+}
+
+.project-grid-mobile-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.project-grid-mobile-card-actions .project-grid-detail-button,
+.project-grid-mobile-card-actions .project-grid-delete-button {
+  flex: 1;
+  justify-content: center;
+}
+
+.project-grid-mobile-card-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--itg-color-border);
+  display: grid;
+  gap: 0.5rem;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-small);
+  line-height: var(--itg-line-height-meta);
+}
+

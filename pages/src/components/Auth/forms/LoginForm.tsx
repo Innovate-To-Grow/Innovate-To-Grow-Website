@@ -1,6 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { LoginEmailMode } from './LoginEmailMode';
+import { LoginPasswordMode } from './LoginPasswordMode';
 
 export const LoginForm = () => {
   const {
@@ -99,131 +101,39 @@ export const LoginForm = () => {
       )}
 
       {showPasswordForm ? (
-        <form className="auth-form" onSubmit={handlePasswordSubmit} noValidate>
-          <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="login-email">
-              Email
-            </label>
-            <input
-              ref={emailInputRef}
-              id="login-email"
-              type="email"
-              className="auth-form-input"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                clearError();
-                setInfoMessage(null);
-                setValidationError(null);
-              }}
-              placeholder="your@email.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-
-          <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="login-password">
-              Password
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              className="auth-form-input"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                clearError();
-                setValidationError(null);
-              }}
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="auth-form-submit"
-            disabled={isLoading || !email || !password}
-          >
-            {isLoading ? (
-              <>
-                <span className="auth-spinner" />
-                Signing in...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-
-          <div className="auth-inline-links">
-            <button
-              type="button"
-              className="auth-text-link"
-              onClick={() => switchMode(false)}
-              style={{ fontSize: '0.8125rem' }}
-            >
-              Sign in with email code
-            </button>
-            <Link to="/forgot-password" className="auth-text-link" style={{ fontSize: '0.8125rem' }}>
-              Forgot password?
-            </Link>
-          </div>
-        </form>
+        <LoginPasswordMode
+          email={email}
+          password={password}
+          isLoading={isLoading}
+          emailInputRef={emailInputRef}
+          onEmailChange={(value) => {
+            setEmail(value);
+            clearError();
+            setInfoMessage(null);
+            setValidationError(null);
+          }}
+          onPasswordChange={(value) => {
+            setPassword(value);
+            clearError();
+            setValidationError(null);
+          }}
+          onSubmit={handlePasswordSubmit}
+          onSwitchToCode={() => switchMode(false)}
+        />
       ) : (
-        <form className="auth-form" onSubmit={handleEmailSubmit} noValidate>
-          <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="login-email">
-              Email
-            </label>
-            <input
-              ref={emailInputRef}
-              id="login-email"
-              type="email"
-              className="auth-form-input"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                clearError();
-                setInfoMessage(null);
-                setValidationError(null);
-              }}
-              placeholder="your@email.com"
-              required
-              autoComplete="email"
-            />
-            <span className="auth-help-text">
-              We&apos;ll sign you in if this email already exists, or start your account setup if it&apos;s new.
-            </span>
-          </div>
-
-          <button
-            type="submit"
-            className="auth-form-submit"
-            disabled={isLoading || !email}
-          >
-            {isLoading ? (
-              <>
-                <span className="auth-spinner" />
-                Sending code...
-              </>
-            ) : (
-              'Continue with Email'
-            )}
-          </button>
-
-          <div style={{ textAlign: 'center' }}>
-            <button
-              type="button"
-              className="auth-text-link"
-              onClick={() => switchMode(true)}
-              style={{ fontSize: '0.8125rem' }}
-            >
-              Sign in with password instead
-            </button>
-          </div>
-        </form>
+        <LoginEmailMode
+          email={email}
+          isLoading={isLoading}
+          emailInputRef={emailInputRef}
+          onEmailChange={(value) => {
+            setEmail(value);
+            clearError();
+            setInfoMessage(null);
+            setValidationError(null);
+          }}
+          onSubmit={handleEmailSubmit}
+          onSwitchToPassword={() => switchMode(true)}
+        />
       )}
     </>
   );

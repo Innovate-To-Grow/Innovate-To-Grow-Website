@@ -1,0 +1,115 @@
+/* Alert Box */
+
+.auth-alert-wrapper {
+  padding: 0 2rem;
+  margin: 1rem 0 0;
+}
+
+.auth-alert {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.9375rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.auth-alert.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.auth-alert.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.auth-alert.info {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.auth-alert-icon {
+  flex-shrink: 0;
+  font-size: 1.125rem;
+  margin-top: 0.125rem;
+  line-height: 1.25;
+}
+
+.auth-alert span {
+  flex: 1;
+  min-width: 0;
+  display: block;
+}
+
+/* Switch Link */
+
+.auth-switch {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1.25rem 2rem 1.75rem;
+  border-top: 1px solid #e5e7eb;
+  margin: 0 -2rem -2rem;
+  background: #f9fafb;
+  border-radius: 0 0 16px 16px;
+}
+
+.auth-switch p {
+  margin: 0;
+}
+
+.auth-switch-link {
+  color: #003366;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  background: transparent;
+  border: 1.5px solid #003366;
+  border-radius: 8px;
+  padding: 0.625rem 1.75rem;
+  font-size: 0.875rem;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-switch-link:hover {
+  background: #003366;
+  color: #fff;
+  border-color: #003366;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 51, 102, 0.2);
+}
+
+.auth-inline-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-text-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #003366;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-text-link:hover {
+  text-decoration: underline;
+}
+

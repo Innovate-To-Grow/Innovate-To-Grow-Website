@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { getProfile, updateProfileFields } from '../../../services/auth';
+import { getAuthErrorMessage } from '../context/shared';
+import { CompleteProfileForm } from './CompleteProfileForm';
 import '../Auth.css';
 
 export const CompleteProfilePage = () => {
@@ -33,7 +35,7 @@ export const CompleteProfilePage = () => {
         setLastName(profile.last_name ?? '');
         setOrganization(profile.organization ?? '');
       } catch (err: unknown) {
-        setError(getErrorMessage(err));
+        setError(getAuthErrorMessage(err));
       } finally {
         setIsBootstrapping(false);
       }
@@ -71,7 +73,7 @@ export const CompleteProfilePage = () => {
       clearProfileCompletionRequirement();
       navigate('/account', { replace: true });
     } catch (err: unknown) {
-      setError(getErrorMessage(err));
+      setError(getAuthErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -103,123 +105,21 @@ export const CompleteProfilePage = () => {
             </div>
           </div>
         ) : (
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="auth-form-row">
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor="complete-profile-first-name">
-                  First Name
-                </label>
-                <input
-                  id="complete-profile-first-name"
-                  type="text"
-                  className="auth-form-input"
-                  value={firstName}
-                  onChange={(event) => {
-                    setFirstName(event.target.value);
-                    setError(null);
-                  }}
-                  placeholder="First name"
-                  autoComplete="given-name"
-                  required
-                />
-              </div>
-
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor="complete-profile-middle-name">
-                  Middle Name <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
-                </label>
-                <input
-                  id="complete-profile-middle-name"
-                  type="text"
-                  className="auth-form-input"
-                  value={middleName}
-                  onChange={(event) => {
-                    setMiddleName(event.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Middle name"
-                  autoComplete="additional-name"
-                />
-              </div>
-
-              <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor="complete-profile-last-name">
-                  Last Name <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
-                </label>
-                <input
-                  id="complete-profile-last-name"
-                  type="text"
-                  className="auth-form-input"
-                  value={lastName}
-                  onChange={(event) => {
-                    setLastName(event.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Last name"
-                  autoComplete="family-name"
-                />
-              </div>
-            </div>
-
-            <div className="auth-form-group">
-              <label className="auth-form-label" htmlFor="complete-profile-organization">
-                Organization <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
-              </label>
-              <input
-                id="complete-profile-organization"
-                type="text"
-                className="auth-form-input"
-                value={organization}
-                onChange={(event) => {
-                  setOrganization(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Company or organization"
-                autoComplete="organization"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="auth-form-submit"
-              disabled={isSaving || !firstName.trim()}
-            >
-              {isSaving ? (
-                <>
-                  <span className="auth-spinner" />
-                  Saving profile...
-                </>
-              ) : (
-                'Continue to Account'
-              )}
-            </button>
-          </form>
+          <CompleteProfileForm
+            firstName={firstName}
+            middleName={middleName}
+            lastName={lastName}
+            organization={organization}
+            isSaving={isSaving}
+            setFirstName={setFirstName}
+            setMiddleName={setMiddleName}
+            setLastName={setLastName}
+            setOrganization={setOrganization}
+            clearError={() => setError(null)}
+            onSubmit={handleSubmit}
+          />
         )}
       </div>
     </div>
   );
 };
-
-function getErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    const response = (err as { response?: { data?: Record<string, unknown> } }).response;
-    if (response?.data) {
-      const messages: string[] = [];
-      for (const value of Object.values(response.data)) {
-        if (Array.isArray(value)) {
-          for (const item of value) {
-            if (typeof item === 'string') {
-              messages.push(item);
-            }
-          }
-        } else if (typeof value === 'string') {
-          messages.push(value);
-        }
-      }
-      if (messages.length > 0) {
-        return messages.join(' ');
-      }
-    }
-  }
-  return 'Failed to complete your profile. Please try again.';
-}

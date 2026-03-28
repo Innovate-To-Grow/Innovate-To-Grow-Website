@@ -1,6 +1,6 @@
-import type {ProjectGridRow, ProjectTableRow} from '../../services/api/projects';
+import type {ProjectGridRow, ProjectTableRow} from '../../features/projects/api';
 
-export type {ProjectGridRow} from '../../services/api/projects';
+export type {ProjectGridRow} from '../../features/projects/api';
 
 export type ProjectGridColumnKey = keyof ProjectGridRow;
 export type ProjectGridSortDirection = 'asc' | 'desc';

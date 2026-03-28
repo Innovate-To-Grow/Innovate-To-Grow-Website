@@ -1,0 +1,134 @@
+/* ===== Add Block ===== */
+.cms-add-block-wrapper {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cms-add-block-wrapper select {
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 200px;
+    background: #fff;
+    color: #333;
+}
+
+.dark .cms-add-block-wrapper select {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+.cms-add-block-wrapper .btn-add-block {
+    padding: 8px 16px;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+
+.cms-add-block-wrapper .btn-add-block:hover {
+    background: #6d28d9;
+}
+
+/* ===== Admin Label Field ===== */
+.cms-block-admin-label {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.cms-block-admin-label input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* ===== Preview ===== */
+.cms-preview-wrapper {
+    margin-top: 24px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cms-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.cms-preview-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    margin: 0;
+}
+
+.dark .cms-preview-title {
+    color: #e5e7eb;
+}
+
+.cms-preview-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.cms-preview-actions button {
+    padding: 4px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+}
+
+.cms-preview-actions button:hover {
+    background: #f0f0f0;
+}
+
+.cms-preview-iframe {
+    width: 100%;
+    min-height: 500px;
+    border: none;
+    background: #fff;
+}
+
+.cms-preview-status {
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #999;
+    background: #fafafa;
+    border-top: 1px solid #eee;
+}
+
+/* ===== JSON Section (rows sub-editor) ===== */
+.cms-json-subeditor textarea {
+    width: 100%;
+    min-height: 120px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.cms-json-subeditor .json-error {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+}

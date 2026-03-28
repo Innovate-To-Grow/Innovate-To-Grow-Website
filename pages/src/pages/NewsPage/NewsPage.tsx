@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchNews, type NewsArticle, type PaginatedResponse } from '../../services/api/news';
+import { fetchNews, type NewsArticle, type PaginatedResponse } from '../../features/news/api';
 import './NewsPage.css';
 
 export const NewsPage = () => {

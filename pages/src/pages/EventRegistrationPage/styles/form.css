@@ -1,0 +1,94 @@
+/* Ticket selection */
+.event-reg-tickets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.event-reg-ticket-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.event-reg-ticket-option:hover {
+  border-color: #003366;
+  background: #f0f4f8;
+}
+
+.event-reg-ticket-option.selected {
+  border-color: #003366;
+  background: #eef2f7;
+}
+
+.event-reg-ticket-option.sold-out {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.event-reg-ticket-option input[type='radio'] {
+  accent-color: #003366;
+}
+
+.event-reg-ticket-name {
+  flex: 1;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.event-reg-ticket-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* Profile form row (two columns) */
+.event-reg-form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.event-reg-form-row .event-reg-form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.event-reg-optional {
+  font-weight: 400;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+/* Submit */
+.event-reg-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  background: #daa520;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 0.5rem;
+}
+
+.event-reg-submit:hover:not(:disabled) {
+  background: #c49418;
+}
+
+.event-reg-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

@@ -1,0 +1,114 @@
+.subscribe-page {
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+.subscribe-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #003366;
+  margin: 0 0 0.5rem;
+}
+
+/* Info banner */
+.subscribe-info {
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  margin-bottom: 1.5rem;
+}
+
+.subscribe-info h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  color: #003366;
+}
+
+.subscribe-info p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+/* Form section */
+.subscribe-section {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+
+.subscribe-hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.subscribe-form-group {
+  margin-bottom: 1rem;
+}
+
+.subscribe-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.subscribe-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.375rem;
+}
+
+.subscribe-required {
+  color: #dc2626;
+  margin-left: 0.125rem;
+}
+
+.subscribe-optional {
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.subscribe-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #1f2937;
+  background: #fff;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.subscribe-input:focus {
+  outline: none;
+  border-color: #003366;
+  box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+}
+
+/* Submit button — gold accent */
+.subscribe-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  background: #daa520;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 0.5rem;
+}

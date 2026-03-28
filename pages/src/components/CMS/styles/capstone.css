@@ -1,0 +1,157 @@
+/* ==========================================================================
+   Image + Text Block (.cms-image-text)
+   Uses existing capstone-page.css classes
+   ========================================================================== */
+
+.cms-image-text .section-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  margin: 0 0 2rem;
+}
+
+.cms-image-text .capstone-content {
+  overflow: hidden;
+}
+
+.cms-image-text .capstone-hero-image {
+  float: right;
+  max-width: 50%;
+  height: auto;
+  margin: 0 0 1rem 1.5rem;
+  border-radius: var(--itg-radius-image);
+}
+
+.cms-image-text p {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1rem;
+}
+
+.cms-image-text a {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.cms-image-text a:hover {
+  text-decoration: underline;
+}
+
+/* Capstone nav buttons (at bottom of capstone pages) */
+.cms-image-text .capstone-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.cms-image-text .capstone-nav-btn {
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-meta);
+  text-decoration: none;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.cms-image-text .capstone-nav-btn-primary {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.cms-image-text .capstone-nav-btn-primary:hover {
+  background: var(--itg-color-primary-hover);
+}
+
+.cms-image-text .capstone-nav-btn-accent {
+  background: var(--itg-color-accent-gold);
+  color: var(--itg-color-white);
+}
+
+.cms-image-text .capstone-nav-btn-accent:hover {
+  background: var(--itg-color-accent-gold-hover);
+}
+
+.cms-image-text .capstone-contact {
+  text-align: center;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
+  margin-top: 1.5rem;
+}
+
+/* ==========================================================================
+   Proposal Cards Block (.cms-proposal-cards)
+   Uses existing SampleProposalsPage.css classes
+   ========================================================================== */
+
+.cms-proposal-cards .proposals-page-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  margin: 0 0 2rem;
+}
+
+.cms-proposal-cards .proposal-card {
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
+  overflow: hidden;
+  margin-bottom: 2rem;
+  background: var(--itg-color-white);
+}
+
+.cms-proposal-cards .proposal-card-header {
+  background: var(--itg-color-bg-light);
+  border-bottom: 1px solid var(--itg-color-border);
+  padding: 0.75rem 1.25rem;
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  color: var(--itg-color-primary);
+}
+
+.cms-proposal-cards .proposal-card-body {
+  padding: 1.25rem;
+}
+
+.cms-proposal-cards .proposal-field {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin-bottom: 0.25rem;
+}
+
+.cms-proposal-cards .proposal-label {
+  font-weight: 600;
+}
+
+.cms-proposal-cards .proposal-section-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-subtitle);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.cms-proposal-cards .proposal-text {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0;
+}
+
+.cms-proposal-cards .proposal-footer {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
+  line-height: var(--itg-line-height-body);
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.cms-proposal-cards .proposal-footer a {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.cms-proposal-cards .proposal-footer a:hover {
+  text-decoration: underline;
+}
+

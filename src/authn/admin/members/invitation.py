@@ -9,7 +9,7 @@ from django.utils import timezone
 from unfold.admin import ModelAdmin as UnfoldModelAdmin
 
 from authn.models import AdminInvitation
-from authn.services.invitation_mail import InvitationEmailError, send_admin_invitation_email
+from authn.services.email.invitation_mail import InvitationEmailError, send_admin_invitation_email
 
 logger = logging.getLogger(__name__)
 

@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from ..managers import AllObjectsManager, ProjectControlManager
 from ..versioning import ModelVersion
+from .versioning import deserialize_model_version, diff_versions, get_version_fields, serialize_model_version
 
 
 class ProjectControlModel(models.Model):
@@ -84,48 +85,15 @@ class ProjectControlModel(models.Model):
 
     def _get_version_fields(self):
         """Get fields to include in version snapshot (exclude control fields)."""
-        exclude_fields = {
-            "id",
-            "created_at",
-            "updated_at",
-            "is_deleted",
-            "deleted_at",
-            "version",
-            "versions",
-        }
-        return [
-            f for f in self._meta.get_fields() if f.name not in exclude_fields and f.concrete and not f.many_to_many
-        ]
+        return get_version_fields(self)
 
     def _serialize_for_version(self):
         """Serialize model data for version storage."""
-        data = {}
-        for field in self._get_version_fields():
-            value = getattr(self, field.name)
-            # Handle special field types
-            if isinstance(value, uuid.UUID):
-                value = str(value)
-            elif hasattr(value, "pk"):  # ForeignKey
-                value = str(value.pk) if value.pk else None
-            data[field.name] = value
-        return data
+        return serialize_model_version(self)
 
     def _deserialize_from_version(self, data):
         """Apply version data to the model instance."""
-        for field in self._get_version_fields():
-            if field.name in data:
-                value = data[field.name]
-                # Handle ForeignKey fields
-                if field.is_relation and field.many_to_one:
-                    if value:
-                        related_model = field.related_model
-                        try:
-                            value = related_model.objects.get(pk=value)
-                        except related_model.DoesNotExist:
-                            value = None
-                    else:
-                        value = None
-                setattr(self, field.name, value)
+        deserialize_model_version(self, data)
 
     def save_version(self, comment="", user=None):
         """
@@ -230,11 +198,4 @@ class ProjectControlModel(models.Model):
         if data_a is None or data_b is None:
             raise ValueError("One or both versions do not exist")
 
-        diff = {}
-        all_keys = set(data_a.keys()) | set(data_b.keys())
-        for key in all_keys:
-            val_a = data_a.get(key)
-            val_b = data_b.get(key)
-            if val_a != val_b:
-                diff[key] = (val_a, val_b)
-        return diff
+        return diff_versions(data_a, data_b)

@@ -1,0 +1,149 @@
+.project-grid-card {
+  background: var(--itg-color-white);
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
+  box-shadow: 0 10px 30px rgba(15, 45, 82, 0.08);
+  overflow: hidden;
+}
+
+.project-grid-card + .project-grid-card {
+  margin-top: 1.5rem;
+}
+
+.project-grid-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem 1.5rem 0;
+}
+
+.project-grid-card-title {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+}
+
+.project-grid-card-copy {
+  margin: 0.5rem 0 0;
+  color: var(--itg-color-text-secondary);
+  line-height: var(--itg-line-height-meta);
+}
+
+.project-grid-table-shell {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.project-grid-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.project-grid-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.project-grid-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.project-grid-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: min(100%, 360px);
+  flex: 1;
+}
+
+.project-grid-search-label {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-label);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.project-grid-search input {
+  width: 100%;
+  border: 1px solid var(--itg-color-border);
+  border-radius: 10px;
+  padding: 0.8rem 0.95rem;
+  font: inherit;
+  color: var(--itg-color-text-dark);
+  background: #fbfcfe;
+}
+
+.project-grid-search input:focus {
+  outline: 2px solid rgba(15, 45, 82, 0.18);
+  border-color: var(--itg-color-primary);
+}
+
+.project-grid-count {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  white-space: nowrap;
+}
+
+.project-grid-state,
+.project-grid-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-state-error {
+  color: var(--itg-color-error);
+}
+
+.project-grid-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--itg-color-border);
+  border-radius: 14px;
+}
+
+.project-grid-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 900px;
+}
+
+.project-grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f4f7fb;
+  border-bottom: 1px solid var(--itg-color-border);
+  padding: 0.9rem 0.8rem;
+  color: var(--itg-color-primary);
+  text-align: left;
+  font-size: var(--itg-font-size-small);
+}
+
+.project-grid-table thead th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.project-grid-sort-indicator {
+  font-size: 0.7rem;
+}
+
