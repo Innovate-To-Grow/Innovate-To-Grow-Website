@@ -23,6 +23,10 @@ class Command(BaseCommand):
 
     # Default admin credentials
     # For development only, move this to env vars in production
+    # WARNING: DO NOT USE THESE CREDENTIALS IN PRODUCTION
+    # Adding Admin User When Reset the Database
+    DEV_ADD_ADMIN_USER = False
+
     DEV_DEFAULT_ADMIN_USERNAME = "hongzhe"
     DEV_DEFAULT_ADMIN_EMAIL = "xiehongzhe04@gmail.com"
     DEV_DEFAULT_ADMIN_PASSWORD = "1"
@@ -225,6 +229,11 @@ class Command(BaseCommand):
 
         # Import the Member model (custom user model)
         from authn.models import Member
+
+        # Check if DEV_ADD_ADMIN_USER is enabled
+        if not self.DEV_ADD_ADMIN_USER:
+            self.stdout.write("  Skipping admin user creation (DEV_ADD_ADMIN_USER=False).")
+            return
 
         # Check if admin already exists
         if Member.objects.filter(username=self.DEV_DEFAULT_ADMIN_USERNAME).exists():

@@ -74,6 +74,7 @@ class ProfileSerializer(serializers.Serializer):
             "last_name": instance.last_name or "",
             "organization": instance.organization or "",
             "email_subscribe": instance.email_subscribe,
+            "is_staff": instance.is_staff,
             "is_active": instance.is_active,
             "date_joined": instance.date_joined.isoformat(),
             "profile_image": profile_image,

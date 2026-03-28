@@ -1,4 +1,5 @@
 import api from './client';
+import authApi from '../auth';
 import type { PaginatedResponse } from './types';
 
 export type { PaginatedResponse } from './types';
@@ -127,4 +128,35 @@ export const createPastProjectShare = async (rows: ProjectGridRow[]): Promise<Pa
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
   const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
   return response.data;
+};
+
+// ======================== Import ========================
+
+export interface ImportStats {
+  semesters_created: number;
+  semesters_existing: number;
+  projects_created: number;
+  projects_updated: number;
+  rows_skipped: number;
+}
+
+export const importProjectsFromExcel = async (file: File): Promise<ImportStats> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await authApi.post<ImportStats>('/projects/import/', formData);
+  return response.data;
+};
+
+export const downloadImportTemplate = async (): Promise<void> => {
+  const response = await authApi.get('/projects/import/template/', {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'project_import_template.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 };
