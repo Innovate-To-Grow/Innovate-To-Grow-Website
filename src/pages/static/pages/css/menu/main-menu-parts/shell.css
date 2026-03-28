@@ -1,0 +1,108 @@
+/* ============================================
+   Header – Redesigned per UC Merced I2G reference
+   - Top: navy bar with gold divider
+   - Bottom: white menu bar with badge + nav + date
+   ============================================ */
+
+:root {
+    --header-navy: #003366;
+    --header-navy-dark: #0b1f3f;
+    --header-gold: #daa520;
+    --header-text: #003366;
+    --header-bg: #ffffff;
+    --dropdown-bg: #f5f5f5;
+    --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.site-header {
+    position: relative;
+    z-index: 1000;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.site-header-container {
+    width: min(1280px, calc(100% - 48px));
+    margin: 0 auto;
+}
+
+/* Top + bottom: same max width and horizontal padding */
+.site-header-top .site-header-container,
+.site-header-bottom .site-header-container {
+    width: min(1200px, calc(100% - 48px));
+}
+
+/* ---------- Top bar ---------- */
+.site-header-top {
+    background: var(--header-navy-dark);
+    border-bottom: 4px solid var(--header-gold);
+}
+
+.site-header-top-inner {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.ucm-wordmark {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.ucm-wordmark img {
+    height: 32px;
+    width: auto;
+    display: block;
+}
+
+.site-header-top-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    flex: 1;
+}
+
+.site-header-top-logo img {
+    height: 36px;
+    width: auto;
+    display: block;
+}
+
+.site-header-top-logo-icon {
+    display: none;
+    height: 30px;
+    width: 30px;
+    border-radius: 999px;
+    object-fit: cover;
+}
+
+.site-header-top-logo-full {
+    display: block;
+}
+
+.site-header-top-links {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-shrink: 0;
+}
+
+.site-header-top-links a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: opacity 0.2s ease;
+}
+
+.site-header-top-links a:hover {
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.75);
+}
+

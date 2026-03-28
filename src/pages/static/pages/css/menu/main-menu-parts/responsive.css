@@ -1,0 +1,105 @@
+/* ---------- Responsive: Large Desktop ---------- */
+@media (max-width: 1200px) {
+    .menu-bar-list {
+        gap: 22px;
+    }
+
+    .menu-bar-link {
+        font-size: 14px;
+    }
+}
+
+/* ---------- Responsive: Tablet ---------- */
+@media (max-width: 992px) {
+    .site-header-container {
+        width: calc(100% - 32px);
+    }
+
+    /* Top bar: only show I2G icon on small widths */
+    .site-header-top-inner {
+        position: relative;
+        justify-content: space-between;
+        gap: 12px;
+        padding-inline: 4px;
+    }
+
+    .ucm-wordmark,
+    .site-header-top-links {
+        display: none;
+    }
+
+    .site-header-top-logo {
+        flex: 0 0 auto;
+        justify-content: flex-start;
+        order: 1;
+    }
+
+    .site-header-top-logo-full {
+        display: block !important;
+        height: 26px;
+    }
+
+    .site-header-top-logo-icon {
+        display: none !important;
+    }
+
+    /* Hide the white menubar entirely on small widths */
+    .site-header-bottom {
+        display: none;
+    }
+
+    /* Keep the top bar sticky on small screens (since the menubar is hidden) */
+    .site-header-top {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+
+    .site-header-date {
+        display: none;
+    }
+
+    .site-header-nav {
+        display: none;
+    }
+
+    .site-header-mobile-toggle {
+        display: inline-flex;
+        position: static;
+        order: 2;
+        margin-left: auto;
+    }
+
+    .header-mobile-actions,
+    .header-mobile-footer {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .site-header-container {
+        width: calc(100% - 24px);
+    }
+
+    .site-header-top-inner {
+        height: 54px;
+    }
+
+    .site-header-top-logo-full {
+        height: 22px;
+    }
+
+    .header-mobile-brand span {
+        font-size: 14px;
+    }
+}
+
+/* Loading and error states */
+.menu-muted {
+    color: #999;
+    font-style: italic;
+}
+
+.menu-error {
+    color: #c00;
+}

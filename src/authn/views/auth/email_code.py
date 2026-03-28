@@ -1,9 +1,6 @@
-"""
-Views for public email-code auth flows.
-"""
-# noinspection DuplicatedCode
+"""Views for public email-code auth flows."""
 
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,10 +16,11 @@ from authn.serializers import (
     UnifiedEmailAuthRequestSerializer,
     UnifiedEmailAuthVerifySerializer,
 )
-from authn.services import AuthChallengeInvalid, consume_login_or_registration_challenge
+from authn.services import consume_login_or_registration_challenge
 from authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
 
-from ..helpers import build_auth_success_payload, challenge_error_response
+from ..helpers import build_auth_success_payload
+from .email_code_helpers import auth_challenge_response, request_code_response
 
 
 class LoginCodeRequestView(APIView):
@@ -32,16 +30,7 @@ class LoginCodeRequestView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        serializer = LoginCodeRequestSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except serializers.ValidationError as exc:
-            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
-            return challenge_error_response(exc)
-        return Response(payload, status=status.HTTP_202_ACCEPTED)
+        return request_code_response(request, LoginCodeRequestSerializer)
 
 
 class EmailAuthRequestCodeView(APIView):
@@ -51,16 +40,7 @@ class EmailAuthRequestCodeView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        serializer = UnifiedEmailAuthRequestSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except serializers.ValidationError as exc:
-            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
-            return challenge_error_response(exc)
-        return Response(payload, status=status.HTTP_202_ACCEPTED)
+        return request_code_response(request, UnifiedEmailAuthRequestSerializer)
 
 
 class LoginCodeVerifyView(APIView):
@@ -156,16 +136,7 @@ class RegisterResendCodeView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        serializer = RegisterResendCodeSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except serializers.ValidationError as exc:
-            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
-            return challenge_error_response(exc)
-        return Response(payload, status=status.HTTP_202_ACCEPTED)
+        return request_code_response(request, RegisterResendCodeSerializer)
 
 
 class PasswordResetRequestView(APIView):
@@ -175,16 +146,7 @@ class PasswordResetRequestView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        serializer = PasswordResetRequestSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except serializers.ValidationError as exc:
-            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
-            return challenge_error_response(exc)
-        return Response(payload, status=status.HTTP_202_ACCEPTED)
+        return request_code_response(request, PasswordResetRequestSerializer)
 
 
 class PasswordResetVerifyView(APIView):
@@ -194,14 +156,7 @@ class PasswordResetVerifyView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        serializer = PasswordResetVerifySerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(payload, status=status.HTTP_200_OK)
+        return auth_challenge_response(request, PasswordResetVerifySerializer)
 
 
 class PasswordResetConfirmView(APIView):
@@ -211,14 +166,7 @@ class PasswordResetConfirmView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(payload, status=status.HTTP_200_OK)
+        return auth_challenge_response(request, PasswordResetConfirmSerializer)
 
 
 def _link_email_subscriber(member):

@@ -1,0 +1,7 @@
+/* Shared controls */
+.json-editor-toggle { margin-bottom: 8px; text-align: right; }
+.json-toggle-btn { background: none; border: none; color: var(--color-primary-600, #4f46e5); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 4px 8px; }
+.json-toggle-btn:hover { color: var(--color-primary-700, #4338ca); }
+.dark .json-toggle-btn { color: var(--color-primary-400, #818cf8); }
+.dark .json-toggle-btn:hover { color: var(--color-primary-300, #a5b4fc); }
+.fk-config-editor, .lookup-fields-editor { margin-top: 8px; }

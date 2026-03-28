@@ -1,199 +1,51 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { type MenuItem } from '../../../services/api';
-import { useMenu } from '../LayoutProvider/context';
-import { useAuth } from '../../Auth';
 import { router } from '../../../router';
+import {MemberMenu} from './parts/MemberMenu';
+import {MenuTree} from './parts/MenuTree';
+import {MobileMenuPanel} from './parts/MobileMenuPanel';
+import {MENU_BAR_SKELETON_WIDTHS_PX} from './parts/shared';
+import {useMainMenuState} from './useMainMenuState';
 import './MainMenu.css';
 
-const buildHref = (item: MenuItem) => item.url || '#';
-
-/** Placeholder widths (px) for loading skeleton — similar footprint to real nav labels */
-const MENU_BAR_SKELETON_WIDTHS_PX = [56, 72, 64, 48, 80, 68, 52] as const;
-
 export const MainMenu = () => {
-  const { menu, state } = useMenu();
-  const { user, isAuthenticated, logout, refreshProfile } = useAuth();
-  const [openItemIndex, setOpenItemIndex] = useState<number | null>(null);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
-  const hasSyncedMemberProfile = useRef(false);
-  const prevLayoutStateRef = useRef<typeof state | undefined>(undefined);
-  const introFadePlayedRef = useRef(false);
-  const [navIntroFade, setNavIntroFade] = useState(false);
-  const currentDate = useMemo(() => {
-    const date = new Date();
-    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-    const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-  }, []);
+  const {
+    currentDate,
+    isAuthenticated,
+    isMemberDropdownOpen,
+    isMobileOpen,
+    logout,
+    menuItems,
+    navIntroFade,
+    openItemIndex,
+    setIsMemberDropdownOpen,
+    setIsMobileOpen,
+    setNavIntroFade,
+    setOpenItemIndex,
+    state,
+    user,
+  } = useMainMenuState();
 
-  useEffect(() => {
-    const handleToggle = () => {
-      setIsMobileOpen(prev => !prev);
-    };
+  const toggleMobileMenu = () => setIsMobileOpen((prev) => !prev);
 
-    window.addEventListener('toggle-menu', handleToggle);
-    return () => window.removeEventListener('toggle-menu', handleToggle);
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 992) {
-        setIsMobileOpen(false);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      hasSyncedMemberProfile.current = false;
-      return;
-    }
-
-    if (!user?.profile_image && !hasSyncedMemberProfile.current) {
-      hasSyncedMemberProfile.current = true;
-      void refreshProfile();
-    }
-  }, [isAuthenticated, refreshProfile, user?.profile_image]);
-
-  /** One-time fade when first transitioning from loading (skeleton) to ready menu */
-  useEffect(() => {
-    const prev = prevLayoutStateRef.current;
-    prevLayoutStateRef.current = state;
-    if (prev === undefined) return;
-    if (
-      introFadePlayedRef.current ||
-      prev !== 'loading' ||
-      state !== 'ready' ||
-      !menu?.items?.length
-    ) {
-      return;
-    }
-    introFadePlayedRef.current = true;
-    setTimeout(() => setNavIntroFade(true), 0);
-  }, [state, menu]);
-
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMobileOpen]);
-
-  const toggleMobileMenu = () => setIsMobileOpen(prev => !prev);
-
-  const handleToggle = (_index: number, hasChildren: boolean) => {
+  const handleDesktopToggle = (_index: number, hasChildren: boolean) => {
     if (!hasChildren) return;
-    // On desktop, dropdowns use hover (mouseEnter/mouseLeave)
-    // On mobile, dropdowns are auto-expanded via CSS — let the link navigate normally
   };
 
-  const handleMouseEnter = (index: number, hasChildren: boolean) => {
+  const handleDesktopOpen = (index: number, hasChildren: boolean) => {
     if (window.innerWidth > 992 && hasChildren) {
       setOpenItemIndex(index);
     }
   };
 
-  const handleMouseLeave = () => {
+  const handleDesktopClose = () => {
     if (window.innerWidth > 992) {
       setOpenItemIndex(null);
     }
   };
 
-  const renderMenuItems = (items: MenuItem[], level: number = 0): ReactElement => {
-    if (level === 0) {
-      return (
-        <ul className="menu-bar-list">
-          {items.map((item, index) => {
-            const hasChildren = item.children && item.children.length > 0;
-            const isOpen = openItemIndex === index;
-            const href = buildHref(item);
-            const isExternal = item.type === 'external';
-
-            const accessibilityProps = hasChildren
-              ? {
-                  'aria-haspopup': 'menu' as const,
-                  'aria-expanded': isOpen,
-                }
-              : {};
-
-            return (
-              <li
-                key={index}
-                className={`menu-bar-item${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
-                onMouseEnter={() => handleMouseEnter(index, hasChildren)}
-                onMouseLeave={handleMouseLeave}
-              >
-                <a
-                  href={href}
-                  className="menu-bar-link"
-                  {...accessibilityProps}
-                  target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
-                  rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                  onClick={() => hasChildren ? handleToggle(index, hasChildren) : undefined}
-                >
-                  {item.icon && <i className={`fa ${item.icon}`}></i>}
-                  <span>{item.title}</span>
-                  {hasChildren && <i className="fa fa-angle-down menu-bar-arrow" />}
-                </a>
-
-                {hasChildren && (
-                  <div className={`menu-dropdown${isOpen ? ' is-open' : ''}`}>
-                    {renderMenuItems(item.children, 1)}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      );
-    } else {
-      return (
-        <ul className={`menu-dropdown-list${level > 1 ? ' nested' : ''}`}>
-          {items.map((item, index) => {
-            const hasChildren = item.children && item.children.length > 0;
-            const href = buildHref(item);
-            const isExternal = item.type === 'external';
-
-            return (
-              <li key={index} className={`menu-dropdown-item${hasChildren ? ' has-children' : ''}`}>
-                <a
-                  href={href}
-                  className="menu-dropdown-link"
-                  target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
-                  rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                >
-                  {item.icon && <i className={`fa ${item.icon}`}></i>}
-                  <span>{item.title}</span>
-                  {hasChildren && <i className="fa fa-angle-right menu-dropdown-arrow" />}
-                </a>
-                {hasChildren && (
-                  <div className="menu-dropdown-nested">
-                    {renderMenuItems(item.children, level + 1)}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      );
-    }
-  };
-
   return (
     <header className="site-header" role="banner">
-      {/* Top blue bar */}
       <div className="site-header-top">
         <div className="site-header-container site-header-top-inner">
-          {/* Mobile Menu Toggle (shown on small screens) */}
           <button
             type="button"
             className={`site-header-mobile-toggle ${isMobileOpen ? 'is-active' : ''}`}
@@ -240,7 +92,6 @@ export const MainMenu = () => {
         </div>
       </div>
 
-      {/* White menu bar */}
       <div className="site-header-bottom">
         <div className="site-header-container site-header-bottom-inner">
           <div className="site-header-bottom-left">
@@ -276,15 +127,23 @@ export const MainMenu = () => {
                 </ul>
               )}
 
-              {state === 'ready' && menu && menu.items && menu.items.length > 0 && renderMenuItems(menu.items)}
+              {state === 'ready' && menuItems.length > 0 ? (
+                <MenuTree
+                  items={menuItems}
+                  openItemIndex={openItemIndex}
+                  onDesktopOpen={handleDesktopOpen}
+                  onDesktopClose={handleDesktopClose}
+                  onDesktopToggle={handleDesktopToggle}
+                />
+              ) : null}
 
-              {state === 'ready' && (!menu || !menu.items || menu.items.length === 0) && (
+              {state === 'ready' && menuItems.length === 0 ? (
                 <ul className="menu-bar-list">
                   <li className="menu-bar-item is-muted">
                     <span className="menu-bar-link">No menu items</span>
                   </li>
                 </ul>
-              )}
+              ) : null}
             </nav>
           </div>
 
@@ -292,206 +151,50 @@ export const MainMenu = () => {
             {currentDate}
           </div>
 
-          {/* Member Section */}
-          <div
-            className={`site-header-member${isAuthenticated ? ' is-authenticated' : ''}${isMemberDropdownOpen ? ' is-open' : ''}`}
+          <MemberMenu
+            user={user}
+            isAuthenticated={isAuthenticated}
+            isOpen={isMemberDropdownOpen}
             onMouseEnter={() => isAuthenticated && setIsMemberDropdownOpen(true)}
             onMouseLeave={() => setIsMemberDropdownOpen(false)}
-          >
-            {isAuthenticated ? (
-              <>
-                <button
-                  type="button"
-                  className="member-button authenticated"
-                  aria-expanded={isMemberDropdownOpen}
-                  onClick={() => setIsMemberDropdownOpen(prev => !prev)}
-                >
-                  {user?.profile_image ? (
-                    <img
-                      src={user.profile_image}
-                      alt=""
-                      className="member-avatar"
-                    />
-                  ) : (
-                    <i className="fa fa-user-circle" />
-                  )}
-                  <span className="member-name">{user?.email || 'Member'}</span>
-                  <i className="fa fa-angle-down member-arrow" />
-                </button>
-                {isMemberDropdownOpen && (
-                  <div className="member-dropdown">
-                    <button
-                      type="button"
-                      className="member-dropdown-item member-dropdown-item-account"
-                      onClick={() => {
-                        setIsMemberDropdownOpen(false);
-                        router.navigate('/account');
-                      }}
-                    >
-                      <i className="fa fa-cog" />
-                      <span>Account</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="member-dropdown-item logout"
-                      onClick={() => {
-                        setIsMemberDropdownOpen(false);
-                        logout();
-                      }}
-                    >
-                      <i className="fa fa-sign-out" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <button
-                type="button"
-                className="member-button"
-                onClick={() => router.navigate('/login')}
-              >
-                <i className="fa fa-user" />
-                <span>Sign In</span>
-              </button>
-            )}
-          </div>
+            onToggle={() => setIsMemberDropdownOpen((prev) => !prev)}
+            onAccountClick={() => {
+              setIsMemberDropdownOpen(false);
+              router.navigate('/account');
+            }}
+            onLoginClick={() => router.navigate('/login')}
+            onLogoutClick={() => {
+              setIsMemberDropdownOpen(false);
+              logout();
+            }}
+          />
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      <div
-        className={`header-mobile-overlay ${isMobileOpen ? 'is-open' : ''}`}
-        onClick={toggleMobileMenu}
-        aria-hidden="true"
+      <MobileMenuPanel
+        menuItems={menuItems}
+        state={state}
+        isMobileOpen={isMobileOpen}
+        isAuthenticated={isAuthenticated}
+        user={user}
+        openItemIndex={openItemIndex}
+        onClose={toggleMobileMenu}
+        onDesktopOpen={handleDesktopOpen}
+        onDesktopClose={handleDesktopClose}
+        onDesktopToggle={handleDesktopToggle}
+        onAccountClick={() => {
+          setIsMobileOpen(false);
+          router.navigate('/account');
+        }}
+        onLoginClick={() => {
+          setIsMobileOpen(false);
+          router.navigate('/login');
+        }}
+        onLogoutClick={() => {
+          setIsMobileOpen(false);
+          logout();
+        }}
       />
-
-      {/* Mobile Menu Panel */}
-      <div
-        id="mobile-menu"
-        className={`header-mobile-menu ${isMobileOpen ? 'is-open' : ''}`}
-        aria-label="Mobile menu"
-      >
-        <div className="header-mobile-top">
-          <a href="/" className="header-mobile-brand">
-            <img src="/assets/images/i2glogo.png" alt="I2G" className="header-mobile-logo" width={2038} height={2039} />
-            <span>Innovate To Grow</span>
-          </a>
-          <button
-            type="button"
-            className="header-mobile-close"
-            aria-label="Close menu"
-            onClick={toggleMobileMenu}
-          >
-            <i className="fa fa-times" />
-          </button>
-        </div>
-
-        <nav className="header-mobile-nav" aria-busy={state === 'loading'}>
-          {state === 'loading' && (
-            <ul className="header-mobile-nav-skeleton" aria-hidden="true">
-              {MENU_BAR_SKELETON_WIDTHS_PX.map((w, i) => (
-                <li key={i} className="header-mobile-nav-skeleton-row">
-                  <span className="menu-bar-skeleton" style={{ width: `${Math.min(w + 24, 200)}px` }} />
-                </li>
-              ))}
-            </ul>
-          )}
-          {state === 'ready' && menu && menu.items && menu.items.length > 0 && renderMenuItems(menu.items)}
-        </nav>
-
-        {/* Mobile Member Actions */}
-        <div className="header-mobile-member">
-          {isAuthenticated ? (
-            <>
-              <div className="header-mobile-member-info">
-                {user?.profile_image ? (
-                  <img
-                    src={user.profile_image}
-                    alt=""
-                    className="header-mobile-member-avatar"
-                  />
-                ) : (
-                  <i className="fa fa-user-circle" />
-                )}
-                <span>{user?.email || 'Member'}</span>
-              </div>
-              <div className="header-mobile-member-actions">
-                <button
-                  type="button"
-                  className="header-mobile-action"
-                  onClick={() => {
-                    setIsMobileOpen(false);
-                    router.navigate('/account');
-                  }}
-                >
-                  Account
-                </button>
-                <button
-                  type="button"
-                  className="header-mobile-action"
-                  onClick={() => {
-                    setIsMobileOpen(false);
-                    logout();
-                  }}
-                >
-                  Sign Out
-                </button>
-              </div>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="header-mobile-action primary"
-              onClick={() => {
-                setIsMobileOpen(false);
-                router.navigate('/login');
-              }}
-            >
-              <i className="fa fa-user" />
-              Sign In / Sign Up
-            </button>
-          )}
-        </div>
-
-        <div className="header-mobile-actions">
-          <a
-            href="https://directory.ucmerced.edu/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-mobile-action"
-          >
-            Directory
-          </a>
-          <a
-            href="https://admissions.ucmerced.edu/first-year/apply?button"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-mobile-action primary"
-          >
-            Apply Now
-          </a>
-          <a
-            href="http://giving.ucmerced.edu/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-mobile-action"
-          >
-            Give
-          </a>
-        </div>
-
-        <div className="header-mobile-footer">
-          <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">
-            <img
-              src="/assets/images/ucmlogo.png"
-              alt="UC Merced"
-              width={230}
-              height={57}
-            />
-          </a>
-        </div>
-      </div>
     </header>
   );
 };

@@ -2,22 +2,23 @@
 Authn app services.
 """
 
-from .auth_email import (
+from .contacts.contact_emails import (
+    create_contact_email,
+    delete_contact_email,
+    resend_contact_email_verification,
+    verify_contact_email_code,
+)
+from .contacts.contact_phones import create_contact_phone, delete_contact_phone
+from .create_member import CreateMemberService
+from .email.auth_email import (
     ResolvedAuthEmail,
     get_member_auth_emails,
     normalize_email,
     registration_email_conflicts,
     resolve_auth_email,
 )
-from .auth_mail import AuthEmailError, send_auth_code_email
-from .contact_emails import (
-    create_contact_email,
-    delete_contact_email,
-    resend_contact_email_verification,
-    verify_contact_email_code,
-)
-from .contact_phones import create_contact_phone, delete_contact_phone
-from .create_member import CreateMemberService
+from .email.auth_mail import AuthEmailError, send_auth_code_email
+from .email.invitation_mail import InvitationEmailError, send_admin_invitation_email
 from .email_challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeError,
@@ -35,7 +36,6 @@ from .import_members import (
     generate_template_excel,
     import_members_from_excel,
 )
-from .invitation_mail import InvitationEmailError, send_admin_invitation_email
 from .rsa_manager import (
     RSADecryptionError,
     decrypt_password,

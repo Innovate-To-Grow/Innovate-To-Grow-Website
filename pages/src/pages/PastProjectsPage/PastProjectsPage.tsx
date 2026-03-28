@@ -2,7 +2,7 @@ import {useMemo} from 'react';
 import {useParams} from 'react-router-dom';
 import {MergedResultsTable, PastProjectsBuilder, createProjectGridItems} from '../../components/Projects';
 import {usePastProjectGridData, usePastProjectShareData} from '../../hooks/useProjectGridData';
-import {createPastProjectShare} from '../../services/api/projects';
+import {createPastProjectShare} from '../../features/projects/api';
 import './PastProjectsPage.css';
 
 export const PastProjectsPage = () => {

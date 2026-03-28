@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react';
-import {fetchAllPastProjects} from '../services/api/projects';
-import type {ProjectTableRow} from '../services/api/projects';
+import {fetchAllPastProjects} from '../features/projects/api';
+import type {ProjectTableRow} from '../features/projects/api';
 import type {SheetRow} from '../components/SheetsDataTable';
 
 function projectToSheetRow(p: ProjectTableRow): SheetRow {

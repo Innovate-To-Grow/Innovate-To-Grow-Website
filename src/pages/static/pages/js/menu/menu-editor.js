@@ -1,633 +1,119 @@
-/**
- * Menu Visual Editor
- * Handles the visual editing of menu items in Django admin
- */
 (function () {
-    // CSS paths - use the same CSS as frontend
-    const FONT_AWESOME_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
-
-    // Get the hidden JSON input
-    let jsonInput = document.getElementById('id_items') || document.querySelector('textarea[name="items"]');
     const iframe = document.getElementById('menu-preview-iframe');
-
-    // Current data state
+    const renderApi = window.ITGMenuEditorRender;
+    const routes = {
+        appRoutes: window.APP_ROUTES || [],
+        cmsRoutes: window.CMS_ROUTES || [],
+        allRoutes: [...(window.APP_ROUTES || []), ...(window.CMS_ROUTES || [])],
+    };
+    let jsonInput = document.getElementById('id_items') || document.querySelector('textarea[name="items"]');
     let menuItems = [];
 
-    // Routes injected from Django backend
-    const APP_ROUTES = window.APP_ROUTES || [];
-    const CMS_ROUTES = window.CMS_ROUTES || [];
-    const ALL_ROUTES = [...APP_ROUTES, ...CMS_ROUTES];
-
-    // Initialize
     function init() {
-        // Parse initial data
         if (jsonInput) {
-            try {
-                const parsed = JSON.parse(jsonInput.value || '[]');
-                menuItems = Array.isArray(parsed) ? parsed : [];
-            } catch (e) {
-                console.error('Failed to parse initial JSON:', e);
-                menuItems = [];
-            }
+            try { menuItems = Array.isArray(JSON.parse(jsonInput.value || '[]')) ? JSON.parse(jsonInput.value || '[]') : []; }
+            catch (e) { console.error('Failed to parse initial JSON:', e); menuItems = []; }
         }
-
         renderAll();
         updatePreview();
     }
 
-    // Render all items
-    function renderAll() {
-        const container = document.getElementById('menu-items-container');
-        container.innerHTML = renderItems(menuItems, 'menuItems', true);
-        document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2);
-    }
+    function renderAll() { renderApi.renderAll(document.getElementById('menu-items-container'), document.getElementById('json-editor'), menuItems, routes); }
+    function updatePreview() { renderApi.updatePreview(iframe, menuItems); }
+    function syncToJson() { if (jsonInput) jsonInput.value = JSON.stringify(menuItems); document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2); updatePreview(); }
+    function getItemByPath(path) { return eval(path); }
+    function setItemProperty(path, property, value) { eval(`${path}.${property} = ${JSON.stringify(value)}`); }
 
-    // Render items recursively
-    function renderItems(items, path, isTopLevel = true) {
-        if (!items || items.length === 0) {
-            return '<p style="color: #999; font-style: italic;">No menu items yet. Add items using the buttons below.</p>';
-        }
-
-        return items.map((item, idx) => {
-            const itemPath = `${path}[${idx}]`;
-            const hasChildren = item.children && item.children.length > 0;
-            const isCmsPage = item.type === 'app' && CMS_ROUTES.some(r => r.url === item.url);
-            const typeBadgeClass = isCmsPage ? 'type-cms' : `type-${item.type}`;
-            const typeLabel = item.type === 'home' ? 'Home' : item.type === 'external' ? 'External' : isCmsPage ? 'CMS Page' : 'App';
-
-            // Type selector
-            const appLabel = isCmsPage ? 'CMS Page' : 'App Route';
-            const typeSelector = `
-        <div class="item-field" style="max-width: 120px;">
-          <label>Type</label>
-          <select onchange="changeItemType('${itemPath}', this.value)">
-            <option value="home" ${item.type === 'home' ? 'selected' : ''}>Home</option>
-            <option value="app" ${item.type === 'app' ? 'selected' : ''}>${appLabel}</option>
-            <option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option>
-          </select>
-        </div>
-      `;
-
-            let fieldsHtml = '';
-
-            if (item.type === 'home') {
-                // Home type: always links to "/". Homepage page is configured in Site Settings.
-                fieldsHtml = `
-          <div class="item-row">
-            ${typeSelector}
-            <div class="item-field">
-              <label>Title</label>
-              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
-            </div>
-            <div class="item-field" style="flex: 0; white-space: nowrap;">
-              <label>URL</label>
-              <span style="color: #666; font-size: 13px; padding: 6px 0; display: block;">/ (homepage)</span>
-            </div>
-            <div class="item-field item-field-small">
-              <label>Icon</label>
-              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-home" onchange="updateItem('${itemPath}', 'icon', this.value)">
-            </div>
-          </div>
-        `;
-            } else if (item.type === 'external') {
-                fieldsHtml = `
-          <div class="item-row">
-            ${typeSelector}
-            <div class="item-field">
-              <label>Title</label>
-              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
-            </div>
-            <div class="item-field">
-              <label>URL</label>
-              <input type="text" value="${escapeAttr(item.url || '')}" placeholder="https://example.com" onchange="updateItem('${itemPath}', 'url', this.value)">
-            </div>
-            <div class="item-field item-field-small">
-              <label>Icon</label>
-              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-external-link" onchange="updateItem('${itemPath}', 'icon', this.value)">
-            </div>
-            <div class="item-field-checkbox">
-              <input type="checkbox" id="newtab-${itemPath}" ${item.open_in_new_tab ? 'checked' : ''} onchange="updateItem('${itemPath}', 'open_in_new_tab', this.checked)">
-              <label for="newtab-${itemPath}">New tab</label>
-            </div>
-          </div>
-        `;
-            } else if (item.type === 'app') {
-                const appOptions = APP_ROUTES.map(r =>
-                    `<option value="${escapeAttr(r.url)}" ${item.url === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-                ).join('');
-                const cmsOptions = CMS_ROUTES.map(r =>
-                    `<option value="${escapeAttr(r.url)}" ${item.url === r.url ? 'selected' : ''}>${escapeHtml(r.title)} (${r.url})</option>`
-                ).join('');
-
-                // Show warning if URL doesn't match any known route
-                const knownUrl = !item.url || ALL_ROUTES.some(r => r.url === item.url);
-                const warningHtml = !knownUrl
-                    ? `<span style="color:#dc3545;font-size:12px;margin-left:4px;" title="This URL does not match any known route or CMS page">&#9888; Unknown route</span>`
-                    : '';
-
-                fieldsHtml = `
-          <div class="item-row">
-            ${typeSelector}
-            <div class="item-field">
-              <label>Title</label>
-              <input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)">
-            </div>
-            <div class="item-field">
-              <label>Route${warningHtml}</label>
-              <select onchange="selectAppRoute('${itemPath}', this.value)">
-                <option value="">-- Select Route --</option>
-                ${appOptions ? `<optgroup label="App Routes">${appOptions}</optgroup>` : ''}
-                ${cmsOptions ? `<optgroup label="CMS Pages">${cmsOptions}</optgroup>` : ''}
-              </select>
-            </div>
-            <div class="item-field item-field-small">
-              <label>Icon</label>
-              <input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-calendar" onchange="updateItem('${itemPath}', 'icon', this.value)">
-            </div>
-          </div>
-        `;
-            }
-
-            const childrenHtml = hasChildren ? `
-        <div class="menu-children-container">
-          ${renderItems(item.children, `${itemPath}.children`, false)}
-        </div>
-      ` : '';
-
-            // Build action buttons
-            let actionButtons = '';
-            if (idx > 0) {
-                actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', -1)">↑</button>`;
-            }
-            if (idx < items.length - 1) {
-                actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', 1)">↓</button>`;
-            }
-            actionButtons += `<button type="button" class="btn-add-child" onclick="addChildItem('${itemPath}')">+ Child</button>`;
-            actionButtons += `<button type="button" class="btn-delete" onclick="removeItem('${itemPath}')">Delete</button>`;
-
-            return `
-        <div class="menu-item-card ${hasChildren ? 'has-children' : ''}">
-          <div class="menu-item-card-header">
-            <span class="menu-item-card-title">
-              <span class="menu-item-type-badge ${typeBadgeClass}">${typeLabel}</span>
-              ${escapeHtml(item.title || 'Untitled')}
-            </span>
-            <div class="menu-item-card-actions">
-              ${actionButtons}
-            </div>
-          </div>
-          ${fieldsHtml}
-          ${childrenHtml}
-        </div>
-      `;
-        }).join('');
-    }
-
-    // Sync to hidden JSON field
-    function syncToJson() {
-        if (jsonInput) {
-            jsonInput.value = JSON.stringify(menuItems);
-        }
-        document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2);
-        updatePreview();
-    }
-
-    // Get item by path
-    function getItemByPath(path) {
-        return eval(path);
-    }
-
-    // Set item property by path
-    function setItemProperty(path, property, value) {
-        eval(`${path}.${property} = ${JSON.stringify(value)}`);
-    }
-
-    // Add menu item
     window.addMenuItem = function (type) {
-        const newItem = {
-            type: type,
-            title: type === 'home' ? 'Home' : type === 'app' ? 'New App Link' : 'New External Link',
-            url: type === 'home' ? '/' : '',
-            icon: '',
-            open_in_new_tab: type === 'external',
-            children: []
-        };
-
-        menuItems.push(newItem);
+        menuItems.push({ type, title: type === 'home' ? 'Home' : type === 'app' ? 'New App Link' : 'New External Link', url: type === 'home' ? '/' : '', icon: '', open_in_new_tab: type === 'external', children: [] });
         renderAll();
         syncToJson();
     };
 
-    // Add child item
     window.addChildItem = function (parentPath) {
         const parent = getItemByPath(parentPath);
         if (!parent.children) parent.children = [];
-
-        parent.children.push({
-            type: 'external',
-            title: 'New Child Link',
-            url: '',
-            icon: '',
-            open_in_new_tab: false,
-            children: []
-        });
-
+        parent.children.push({ type: 'external', title: 'New Child Link', url: '', icon: '', open_in_new_tab: false, children: [] });
         renderAll();
         syncToJson();
     };
 
-    // Select app route (auto-fills title and icon)
     window.selectAppRoute = function (path, url) {
         const item = getItemByPath(path);
         item.url = url;
-        const route = ALL_ROUTES.find(r => r.url === url);
+        const route = routes.allRoutes.find(entry => entry.url === url);
         if (route) {
-            if (!item.title || item.title === 'New App Link') {
-                item.title = route.title;
-            }
-            if (!item.icon) {
-                item.icon = route.icon;
-            }
+            if (!item.title || item.title === 'New App Link') item.title = route.title;
+            if (!item.icon) item.icon = route.icon;
         }
         renderAll();
         syncToJson();
     };
 
-    // Update item property
-    window.updateItem = function (path, property, value) {
-        setItemProperty(path, property, value);
-        renderAll();
-        syncToJson();
-    };
-
-    // Change item type
+    window.updateItem = function (path, property, value) { setItemProperty(path, property, value); renderAll(); syncToJson(); };
     window.changeItemType = function (path, newType) {
         const item = getItemByPath(path);
-        const oldType = item.type;
-
-        if (oldType === newType) return;
-
-        // Update type
+        if (item.type === newType) return;
         item.type = newType;
-
-        // Reset type-specific fields
         delete item.page_slug;
         delete item.homepage_page;
-        if (newType === 'home') {
-            item.url = '/';
-            item.open_in_new_tab = false;
-            if (!item.title || item.title === 'New External Link' || item.title === 'New App Link') {
-                item.title = 'Home';
-            }
-        } else if (newType === 'external') {
-            item.url = item.url || '';
-            item.open_in_new_tab = true;
-        } else {
-            item.url = item.url || '';
-            item.open_in_new_tab = false;
-        }
-
+        item.url = newType === 'home' ? '/' : item.url || '';
+        item.open_in_new_tab = newType === 'external';
+        if (newType === 'home' && (!item.title || item.title === 'New External Link' || item.title === 'New App Link')) item.title = 'Home';
         renderAll();
         syncToJson();
     };
 
-    // Remove item
     window.removeItem = function (path) {
         const match = path.match(/(.+)\[(\d+)]$/);
-        if (match) {
-            const parentPath = match[1];
-            const index = parseInt(match[2]);
-            const parent = eval(parentPath);
-            parent.splice(index, 1);
-            renderAll();
-            syncToJson();
-        }
+        if (!match) return;
+        eval(match[1]).splice(parseInt(match[2], 10), 1);
+        renderAll();
+        syncToJson();
     };
 
-    // Move item up or down
     window.moveItem = function (path, direction) {
         const match = path.match(/(.+)\[(\d+)]$/);
-        if (match) {
-            const parentPath = match[1];
-            const index = parseInt(match[2]);
-            const parent = eval(parentPath);
-            const newIndex = index + direction;
-
-            if (newIndex >= 0 && newIndex < parent.length) {
-                const item = parent.splice(index, 1)[0];
-                parent.splice(newIndex, 0, item);
-                renderAll();
-                syncToJson();
-            }
-        }
+        if (!match) return;
+        const parent = eval(match[1]);
+        const index = parseInt(match[2], 10);
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= parent.length) return;
+        parent.splice(nextIndex, 0, parent.splice(index, 1)[0]);
+        renderAll();
+        syncToJson();
     };
 
-    // Toggle JSON view
-    window.toggleJsonView = function () {
-        document.getElementById('json-raw-view').classList.toggle('show');
-    };
-
-    // Copy JSON to clipboard
+    window.toggleJsonView = function () { document.getElementById('json-raw-view').classList.toggle('show'); };
     window.copyJson = function () {
         const editor = document.getElementById('json-editor');
         const btn = event && event.target;
         editor.select();
-        try {
-            // Use execCommand as fallback for non-HTTPS contexts
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(editor.value);
-            } else {
-                document.execCommand('copy');
-            }
-            if (btn) {
-                btn.textContent = 'Copied!';
-                setTimeout(() => {
-                    btn.textContent = 'Copy JSON';
-                }, 1200);
-            }
-        } catch (e) {
-            if (btn) {
-                btn.textContent = 'Select & Ctrl+C';
-                setTimeout(() => {
-                    btn.textContent = 'Copy JSON';
-                }, 2000);
-            }
-        }
+        try { navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(editor.value) : document.execCommand('copy'); }
+        catch (e) {}
+        if (!btn) return;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy JSON'; }, 1200);
     };
 
-    // Apply JSON from textarea
     window.applyJson = function () {
         const editor = document.getElementById('json-editor');
         const btn = event && event.target;
-        var text = editor.value.trim();
-        if (!text) return;
         try {
-            var parsed = JSON.parse(text);
-            if (!Array.isArray(parsed)) {
-                if (btn) {
-                    btn.textContent = 'Error: must be a JSON array';
-                    btn.style.color = '#dc3545';
-                }
-                setTimeout(() => {
-                    if (btn) {
-                        btn.textContent = 'Apply JSON';
-                        btn.style.color = '';
-                    }
-                }, 2000);
-                return;
-            }
+            const parsed = JSON.parse(editor.value.trim() || '[]');
+            if (!Array.isArray(parsed)) throw new Error('must be a JSON array');
             menuItems = parsed;
             renderAll();
             syncToJson();
-            if (btn) {
-                btn.textContent = 'Applied!';
-                setTimeout(() => {
-                    btn.textContent = 'Apply JSON';
-                }, 1200);
-            }
+            if (btn) { btn.textContent = 'Applied!'; setTimeout(() => { btn.textContent = 'Apply JSON'; }, 1200); }
         } catch (e) {
-            if (btn) {
-                btn.textContent = 'Invalid JSON';
-                btn.style.color = '#dc3545';
-            }
-            setTimeout(() => {
-                if (btn) {
-                    btn.textContent = 'Apply JSON';
-                    btn.style.color = '';
-                }
-            }, 2000);
+            if (!btn) return;
+            btn.textContent = e.message === 'must be a JSON array' ? 'Error: must be a JSON array' : 'Invalid JSON';
+            btn.style.color = '#dc3545';
+            setTimeout(() => { btn.textContent = 'Apply JSON'; btn.style.color = ''; }, 2000);
         }
     };
 
-    // Helper functions
-    function escapeHtml(val) {
-        const div = document.createElement('div');
-        div.textContent = val || '';
-        return div.innerHTML;
-    }
-
-    function escapeAttr(val) {
-        return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    // ===== Preview =====
-    // Render menu items recursively with proper structure matching frontend
-    function renderMenuItemsHtml(items, level) {
-        if (!items || items.length === 0) {
-            return '';
-        }
-
-        return items.map(item => {
-            let href = item.url || '#';
-            let targetAttr = '';
-
-            if (item.type === 'external' && item.open_in_new_tab) {
-                targetAttr = ' target="_blank" rel="noopener noreferrer"';
-            }
-
-            const icon = item.icon ? `<i class="fa ${item.icon}"></i> ` : '';
-            const hasChildren = item.children && item.children.length > 0;
-
-            if (level === 0) {
-                // Top-level items - use new menu-bar classes
-                let childrenHtml = '';
-                if (hasChildren) {
-                    childrenHtml = `
-            <div class="menu-dropdown is-open">
-              ${renderMenuItemsHtml(item.children, 1)}
-            </div>
-          `;
-                }
-
-                return `
-          <li class="menu-bar-item${hasChildren ? ' has-children is-open' : ''}">
-            <a href="${escapeAttr(href)}" class="menu-bar-link"${targetAttr} onclick="return false;">
-              ${icon}<span>${escapeHtml(item.title)}</span>
-              ${hasChildren ? '<i class="fa fa-angle-down menu-bar-arrow"></i>' : ''}
-            </a>
-            ${childrenHtml}
-          </li>
-        `;
-            } else {
-                // Submenu items - use new dropdown classes
-                let childrenHtml = '';
-                if (hasChildren) {
-                    childrenHtml = `
-            <div class="menu-dropdown-nested">
-              ${renderMenuItemsHtml(item.children, level + 1)}
-            </div>
-          `;
-                }
-
-                return `
-          <li class="menu-dropdown-item${hasChildren ? ' has-children' : ''}">
-            <a href="${escapeAttr(href)}" class="menu-dropdown-link"${targetAttr} onclick="return false;">
-              ${icon}<span>${escapeHtml(item.title)}</span>
-              ${hasChildren ? '<i class="fa fa-angle-right menu-dropdown-arrow"></i>' : ''}
-            </a>
-            ${childrenHtml}
-          </li>
-        `;
-            }
-        }).join('');
-    }
-
-    function renderMenuHtml(items) {
-        if (!items || items.length === 0) {
-            return '<div style="color:#666;font-style:italic;padding:20px;text-align:center;">No menu items</div>';
-        }
-
-        // Get current date for display
-        const date = new Date();
-        const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-        const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-        const currentDate = `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-
-        return `
-      <header class="site-header" role="banner">
-        <!-- Top blue bar -->
-        <div class="site-header-top">
-          <div class="site-header-container site-header-top-inner">
-            <a class="ucm-wordmark" href="#" onclick="return false;" aria-label="UC Merced">
-              <img src="/assets/images/ucmlogo.png" alt="UC Merced" onerror="this.parentElement.style.display='none'">
-            </a>
-
-            <a class="site-header-top-logo" href="#" onclick="return false;" aria-label="Innovate To Grow">
-              <img class="site-header-top-logo-full" src="/assets/images/I2G-fullname-low.png" alt="Innovate To Grow" onerror="this.style.display='none'">
-            </a>
-
-            <div class="site-header-top-links" aria-label="Quick links">
-              <a href="#" onclick="return false;">Directory</a>
-              <a href="#" onclick="return false;">Apply</a>
-              <a href="#" onclick="return false;">Give</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- White menu bar -->
-        <div class="site-header-bottom">
-          <div class="site-header-container site-header-bottom-inner">
-            <div class="site-header-bottom-left">
-              <a class="site-header-badge" href="#" onclick="return false;" aria-label="Home">
-                <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" onerror="this.style.display='none'">
-              </a>
-
-              <nav class="site-header-nav" aria-label="Main menu">
-                <ul class="menu-bar-list">
-                  ${renderMenuItemsHtml(items, 0)}
-                </ul>
-              </nav>
-            </div>
-
-            <div class="site-header-date" aria-label="Current date">
-              ${currentDate}
-            </div>
-          </div>
-        </div>
-      </header>
-    `;
-    }
-
-    function updatePreview() {
-        if (!iframe) return;
-
-        try {
-            const menuHtml = renderMenuHtml(menuItems);
-
-            // Inline CSS to ensure it works in the iframe
-            const inlineCSS = `
-        :root {
-          --header-navy: #003366;
-          --header-navy-dark: #0b1f3f;
-          --header-gold: #daa520;
-          --header-text: #003366;
-          --header-bg: #ffffff;
-          --dropdown-bg: #f5f5f5;
-          --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        }
-
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; }
-
-        .site-header { position: relative; z-index: 1000; }
-        .site-header-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-
-        /* Top bar */
-        .site-header-top { background: var(--header-navy-dark); border-bottom: 4px solid var(--header-gold); }
-        .site-header-top-inner { height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-        .ucm-wordmark { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
-        .ucm-wordmark img { height: 32px; width: auto; display: block; }
-        .site-header-top-logo { display: flex; align-items: center; justify-content: center; text-decoration: none; flex: 1; }
-        .site-header-top-logo img { height: 36px; width: auto; display: block; }
-        .site-header-top-links { display: flex; align-items: center; gap: 24px; flex-shrink: 0; }
-        .site-header-top-links a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; }
-        .site-header-top-links a:hover { text-decoration: underline; }
-
-        /* Bottom menu bar */
-        .site-header-bottom { background: var(--header-bg); border-bottom: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
-        .site-header-bottom-inner { height: 47px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
-        .site-header-bottom-left { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1; }
-        .site-header-badge { display: flex; align-items: center; justify-content: center; text-decoration: none; flex: 0 0 auto; }
-        .site-header-badge img { width: 38px; height: 38px; border-radius: 50%; display: block; object-fit: cover; border: 2px solid var(--header-gold); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
-        .site-header-nav { flex: 1; display: flex; justify-content: flex-start; min-width: 0; }
-        .site-header-date { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: var(--header-text); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; opacity: 0.7; }
-
-        /* Menu items */
-        .menu-bar-list { display: flex; align-items: center; list-style: none; margin: 0; padding: 0; gap: 28px; }
-        .menu-bar-item { position: relative; }
-        .menu-bar-link { display: inline-flex; align-items: center; gap: 5px; padding: 8px 0; color: var(--header-text); text-decoration: none; font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: 0.2px; white-space: nowrap; position: relative; }
-        .menu-bar-link::after { content: ''; position: absolute; bottom: 4px; left: 0; right: 0; height: 2px; background: var(--header-gold); transform: scaleX(0); transition: transform 0.25s ease; }
-        .menu-bar-link:hover::after, .menu-bar-item.is-open > .menu-bar-link::after { transform: scaleX(1); }
-        .menu-bar-arrow { font-size: 11px; opacity: 0.6; margin-left: 2px; }
-
-        /* Dropdowns */
-        .menu-dropdown { position: absolute; top: 100%; left: 0; min-width: 220px; background: var(--dropdown-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 12px 0; margin-top: 8px; z-index: 1100; }
-        .menu-dropdown.is-open { display: block; }
-        .menu-dropdown-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-        .menu-dropdown-item { position: relative; }
-        .menu-dropdown-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--header-text); text-decoration: none; font-size: 14px; font-weight: 700; font-style: italic; white-space: nowrap; }
-        .menu-dropdown-link:hover { background: rgba(0, 51, 102, 0.06); padding-left: 24px; }
-        .menu-dropdown-arrow { margin-left: auto; color: #888; font-size: 11px; }
-        .menu-dropdown-nested { position: absolute; top: 0; left: 100%; min-width: 200px; background: var(--header-bg); border-left: 3px solid var(--header-gold); box-shadow: var(--dropdown-shadow); padding: 8px 0; z-index: 1101; display: none; }
-        .menu-dropdown-item.has-children:hover > .menu-dropdown-nested { display: block; }
-      `;
-
-            const fullHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="${FONT_AWESOME_CSS}">
-  <style>${inlineCSS}</style>
-</head>
-<body>
-  ${menuHtml}
-</body>
-</html>`;
-
-            const doc = iframe.contentDocument || iframe.contentWindow.document;
-            doc.open();
-            doc.write(fullHtml);
-            doc.close();
-
-            // Adjust iframe height
-            setTimeout(() => {
-                try {
-                    const height = Math.max(doc.body.scrollHeight, doc.body.offsetHeight, doc.documentElement.scrollHeight);
-                    iframe.style.height = Math.max(height + 20, 200) + 'px';
-                } catch (e) {
-                }
-            }, 150);
-
-        } catch (err) {
-            console.error('Preview error:', err);
-        }
-    }
-
-    // Run on load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();

@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
-import {fetchSponsors, type SponsorYear} from '../../services/api/sponsors';
+import {fetchSponsors, type SponsorYear} from '../../features/sponsors/api';
 import './AcknowledgementPage.css';
 
 export const AcknowledgementPage = () => {

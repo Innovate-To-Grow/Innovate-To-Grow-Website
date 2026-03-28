@@ -1,0 +1,66 @@
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .itg-page,
+  .itg-page-narrow {
+    padding: var(--itg-page-padding-mobile);
+  }
+
+  .itg-page-title {
+    font-size: var(--itg-font-size-h1-mobile);
+  }
+
+  .itg-section-title {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .itg-subsection-title {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .itg-section-header {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .itg-lead {
+    font-size: var(--itg-font-size-lead-mobile);
+  }
+
+  .itg-btn-lg {
+    padding: 0.5rem 1.25rem;
+    font-size: var(--itg-font-size-small);
+  }
+
+  .itg-grid-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .itg-meta-box {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .itg-content table {
+    font-size: var(--itg-font-size-table-mobile);
+  }
+
+  .itg-content th,
+  .itg-content td {
+    padding: 0.5rem;
+  }
+
+  .itg-content h2 {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .itg-content h3 {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+}
+
+@media (max-width: 480px) {
+  .itg-meta-box {
+    grid-template-columns: 1fr;
+  }
+}

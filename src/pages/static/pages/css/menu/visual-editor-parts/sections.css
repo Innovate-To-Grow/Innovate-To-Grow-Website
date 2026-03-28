@@ -1,0 +1,146 @@
+/* Section Styles */
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.dark .section-title {
+    color: #e5e7eb;
+    border-bottom-color: #374151;
+}
+
+.item-list {
+    margin-bottom: 16px;
+}
+
+.item-card {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.dark .item-card {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+.item-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.item-card-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #666;
+}
+
+.item-card-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.item-card-actions button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-move {
+    background: #e0e0e0;
+    color: #666;
+}
+
+.btn-delete {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.btn-delete:hover {
+    background: #ffcdd2;
+}
+
+.item-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.item-row label {
+    font-size: 12px;
+    color: #666;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.item-field {
+    flex: 1;
+    min-width: 150px;
+}
+
+.item-field input, .item-field select, .item-field textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.item-field input:focus, .item-field select:focus, .item-field textarea:focus {
+    border-color: #7c3aed;
+    outline: none;
+}
+
+.dark .item-field input, .dark .item-field select, .dark .item-field textarea {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+.dark .item-field input:focus, .dark .item-field select:focus, .dark .item-field textarea:focus {
+    border-color: #9333ea;
+}
+
+.item-field-small {
+    flex: 0 0 120px;
+}
+
+.item-field-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 20px;
+}
+
+.item-field-checkbox input {
+    width: auto;
+}
+
+.btn-add {
+    padding: 8px 16px;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s;
+}
+
+.btn-add:hover {
+    background: #6d28d9;
+}
+

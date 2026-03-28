@@ -1,0 +1,73 @@
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.itg-page {
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+.itg-page-narrow {
+  max-width: var(--itg-page-narrow-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.itg-page-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  margin: 0 0 2rem;
+}
+
+.itg-section-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  margin: 2rem 0 0.75rem;
+}
+
+.itg-subsection-title {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 1.5rem 0 0.75rem;
+}
+
+.itg-text {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1rem;
+}
+
+.itg-lead {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-lead);
+  font-weight: 600;
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1.5rem;
+}
+
+.itg-subtitle {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-subtitle);
+  margin: 0 0 2rem;
+}
+
+/* ==========================================================================
+   Section Header (boxed style used by event, schedule, acknowledgement, etc.)
+   ========================================================================== */
+
+.itg-section-header {
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--itg-radius-button);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 0 0 1.5rem;
+}
+

@@ -35,12 +35,9 @@ class EventRegistrationOptionsView(APIView):
         if event is None:
             return Response({"detail": "No live event available."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Annotate tickets with registration count for remaining quantity
-        # Exclude soft-deleted registrations so cancelled tickets free up capacity
         tickets = event.tickets.annotate(
             registration_count=Count("registrations", filter=Q(registrations__is_deleted=False))
         )
-        # Replace prefetched tickets with annotated queryset
         event._prefetched_objects_cache["tickets"] = list(tickets)
 
         registration = None
@@ -63,7 +60,6 @@ class EventRegistrationCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        # Look up event
         try:
             event = Event.objects.get(slug=data["event_slug"], is_live=True)
         except Event.DoesNotExist:
@@ -72,7 +68,6 @@ class EventRegistrationCreateView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Check existing registration
         existing = (
             EventRegistration.objects.filter(member=request.user, event=event).select_related("event", "ticket").first()
         )
@@ -85,19 +80,16 @@ class EventRegistrationCreateView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Validate ticket
         try:
             ticket = Ticket.objects.get(pk=data["ticket_id"], event=event)
         except Ticket.DoesNotExist:
             return Response({"detail": "Invalid ticket for this event."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check remaining quantity
         if ticket.quantity > 0:
             current_count = EventRegistration.objects.filter(ticket=ticket).count()
             if current_count >= ticket.quantity:
                 return Response({"detail": "This ticket is sold out."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate required questions
         questions = {str(q.pk): q for q in Question.objects.filter(event=event)}
         required_ids = {qid for qid, q in questions.items() if q.is_required}
         answers = data.get("answers", [])
@@ -108,7 +100,6 @@ class EventRegistrationCreateView(APIView):
                 q_text = questions[req_id].text
                 return Response({"detail": f'Answer required for: "{q_text}"'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Snapshot question text + answer; reject answers for unknown questions
         question_answers = []
         for a in answers:
             qid = str(a["question_id"])
@@ -125,7 +116,6 @@ class EventRegistrationCreateView(APIView):
                 }
             )
 
-        # Create registration
         try:
             create_kwargs = {
                 "member": request.user,
@@ -141,7 +131,6 @@ class EventRegistrationCreateView(APIView):
                 create_kwargs["attendee_organization"] = data["attendee_organization"]
             registration = EventRegistration.objects.create(**create_kwargs)
         except IntegrityError:
-            # Race condition: another request registered between check and create
             existing = (
                 EventRegistration.objects.filter(member=request.user, event=event)
                 .select_related("event", "ticket")
@@ -155,7 +144,6 @@ class EventRegistrationCreateView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Send ticket email (non-blocking)
         try:
             send_event_ticket_email(registration, request=request, performed_by=request.user)
         except EventTicketEmailError:
@@ -187,7 +175,6 @@ class ResendTicketEmailView(APIView):
         if registration.member_id != request.user.pk:
             return Response({"detail": "You do not own this ticket."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Rate limit: 60 seconds between resends
         if registration.ticket_email_sent_at:
             elapsed = (timezone.now() - registration.ticket_email_sent_at).total_seconds()
             if elapsed < 60:

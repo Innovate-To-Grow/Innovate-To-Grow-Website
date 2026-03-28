@@ -1,0 +1,46 @@
+<script>
+    (function () {
+        Chart.register(ChartDataLabels);
+        const labels = [{% for day in last_7_days %}"{{ day.date|date:'M d' }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+        const viewsData = [{% for day in last_7_days %}{{ day.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        const visitorsData = [{% for v in last_7_days_visitors %}{{ v }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        const isDark = document.documentElement.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+        const textColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+
+        new Chart(document.getElementById('last7DaysChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Page Views', data: viewsData, backgroundColor: isDark ? 'rgba(99,102,241,0.7)' : 'rgba(79,70,229,0.75)', borderRadius: 4, borderSkipped: false, maxBarThickness: 48, datalabels: {anchor: 'end', align: 'top', color: textColor, font: {size: 10, weight: 'bold'}, display: function (ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }} },
+                    { label: 'Unique Visitors', type: 'line', data: visitorsData, borderColor: isDark ? 'rgba(251,146,60,0.9)' : 'rgba(234,88,12,0.8)', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 4, pointBackgroundColor: isDark ? 'rgba(251,146,60,0.9)' : 'rgba(234,88,12,0.8)', tension: 0.3, datalabels: {anchor: 'end', align: 'top', color: isDark ? 'rgba(251,146,60,0.9)' : 'rgba(234,88,12,0.8)', font: {size: 9}, display: function (ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }} }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: {display: true, labels: {color: textColor, boxWidth: 12, font: {size: 11}}},
+                    tooltip: {
+                        backgroundColor: isDark ? '#1e1e2e' : '#fff',
+                        titleColor: isDark ? '#e2e8f0' : '#1e293b',
+                        bodyColor: isDark ? '#cbd5e1' : '#475569',
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 6,
+                        displayColors: true,
+                        callbacks: {label: function (ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + (ctx.dataset.label === 'Page Views' ? ' views' : ' visitors'); }}
+                    }
+                },
+                scales: {
+                    x: {grid: {display: false}, ticks: {color: textColor, font: {size: 11}}, border: {display: false}},
+                    y: {beginAtZero: true, grid: {color: gridColor}, ticks: {color: textColor, font: {size: 11}, precision: 0, maxTicksLimit: 6}, border: {display: false}}
+                }
+            }
+        });
+    })();
+</script>
