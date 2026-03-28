@@ -10,7 +10,6 @@ from django.utils import timezone
 
 from authn.models.security import EmailAuthChallenge
 from authn.services.email.auth_email import normalize_email
-from authn.services.email.auth_mail import AuthEmailError, send_auth_code_email
 
 CHALLENGE_TTL = timedelta(minutes=10)
 RESEND_COOLDOWN = timedelta(seconds=60)
@@ -113,13 +112,6 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
         max_attempts=5,
         last_sent_at=now,
     )
-
-    try:
-        send_auth_code_email(purpose=purpose, code=code, email=normalized_email)
-    except AuthEmailError as exc:
-        challenge.status = EmailAuthChallenge.Status.EXPIRED
-        challenge.save(update_fields=["status", "updated_at"])
-        raise AuthChallengeDeliveryError(str(exc)) from exc
 
     return challenge
 

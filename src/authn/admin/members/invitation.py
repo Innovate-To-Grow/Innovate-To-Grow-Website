@@ -9,7 +9,6 @@ from django.utils import timezone
 from unfold.admin import ModelAdmin as UnfoldModelAdmin
 
 from authn.models import AdminInvitation
-from authn.services.email.invitation_mail import InvitationEmailError, send_admin_invitation_email
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class AdminInvitationAdmin(UnfoldModelAdmin):
         "created_at",
         "updated_at",
     ]
-    actions = ["resend_invitation", "cancel_invitations"]
+    actions = ["cancel_invitations"]
 
     # noinspection PyUnusedLocal
     def get_fieldsets(self, request, obj=None):
@@ -80,29 +79,10 @@ class AdminInvitationAdmin(UnfoldModelAdmin):
             ).update(status=AdminInvitation.Status.CANCELLED, updated_at=timezone.now())
 
             super().save_model(request, obj, form, change)
-
-            try:
-                send_admin_invitation_email(obj, request)
-                messages.success(request, f"Invitation sent to {obj.email}.")
-            except InvitationEmailError as exc:
-                logger.exception("Failed to send invitation email to %s", obj.email)
-                messages.warning(request, f"Invitation created but email failed to send: {exc}")
+            messages.success(request, f"Invitation created for {obj.email}.")
         else:
             super().save_model(request, obj, form, change)
 
-    @admin.action(description="Resend invitation email")
-    def resend_invitation(self, request, queryset):
-        sent = 0
-        for invitation in queryset.filter(status=AdminInvitation.Status.PENDING):
-            if invitation.is_expired:
-                continue
-            try:
-                send_admin_invitation_email(invitation, request)
-                sent += 1
-            except InvitationEmailError as exc:
-                messages.warning(request, f"Failed to resend to {invitation.email}: {exc}")
-        if sent:
-            messages.success(request, f"Resent {sent} invitation(s).")
 
     @admin.action(description="Cancel selected invitations")
     def cancel_invitations(self, request, queryset):

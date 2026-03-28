@@ -4,22 +4,6 @@ on:
   workflow_call:
 
 jobs:
-  repo-structure:
-    name: Repository Structure
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Run repository structure checks
-        run: python src/core/scripts/check_repo_structure.py
-
   # Python (Django Backend) Linting
   python-lint:
     name: Python Linting

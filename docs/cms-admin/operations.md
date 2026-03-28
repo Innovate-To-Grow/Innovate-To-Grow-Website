@@ -8,7 +8,6 @@
 ## Events
 
 - Event registrations, tickets, and questions are managed in the event admin.
-- Ticket resend flows and registration APIs rely on the configured mail provider and templates.
 
 ## News and projects
 

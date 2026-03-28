@@ -19,10 +19,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
-
 from authn.views.admin_login import AdminLoginView
-from core.views import MaintenanceBypassView
+from core.views import MaintenanceBypassView, root_index
 from pages.views import LayoutAPIView
 
 # Customize Django Admin
@@ -31,8 +29,8 @@ admin.site.site_title = "I2G Admin"
 admin.site.index_title = "Welcome to I2G Admin"
 
 urlpatterns = [
-    # root → admin
-    path("", RedirectView.as_view(url="/admin/", permanent=False)),
+    # root → API index
+    path("", root_index, name="root-index"),
     # custom admin login (before admin.site.urls to override default)
     path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
     # admin site
@@ -41,11 +39,10 @@ urlpatterns = [
     path("maintenance/bypass/", MaintenanceBypassView.as_view(), name="maintenance-bypass"),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
-    # sheets (sync managed via admin and management commands — no API endpoints)
     # event
     path("event/", include("event.urls")),
     # news
-    path("news/", include("news.urls")),
+    path("news/", include("pages.news_urls")),
     # projects
     path("projects/", include("projects.urls")),
     # ckeditor 5
@@ -58,8 +55,6 @@ urlpatterns = [
     path("analytics/", include("analytics.urls")),
     # sponsors
     path("sponsors/", include("sponsors.urls")),
-    # mail (SNS webhook)
-    path("mail/", include("mail.urls")),
 ]
 
 handler404 = "core.views.custom_404"

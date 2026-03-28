@@ -8,8 +8,7 @@ from django.db import IntegrityError
 from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
 from authn.services.email.auth_email import normalize_email, registration_email_conflicts
-
-from .email_challenges import (
+from authn.services.email_challenges import (
     AuthChallengeInvalid,
     consume_login_or_registration_challenge,
     issue_email_challenge,

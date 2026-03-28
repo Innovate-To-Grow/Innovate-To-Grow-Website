@@ -2,7 +2,6 @@ import logging
 
 from django.db import IntegrityError
 from django.db.models import Count, Q
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -14,7 +13,6 @@ from event.serializers import (
     build_event_registration_option_payload,
     build_registration_payload,
 )
-from event.services import EventTicketEmailError, send_event_ticket_email
 
 logger = logging.getLogger(__name__)
 
@@ -144,12 +142,6 @@ class EventRegistrationCreateView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        try:
-            send_event_ticket_email(registration, request=request, performed_by=request.user)
-        except EventTicketEmailError:
-            logger.exception("Failed to send ticket email for registration %s", registration.pk)
-
-        registration.refresh_from_db()
         return Response(build_registration_payload(registration, request=request), status=status.HTTP_201_CREATED)
 
 
@@ -167,22 +159,4 @@ class ResendTicketEmailView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
-        try:
-            registration = EventRegistration.objects.select_related("event", "ticket", "member").get(pk=pk)
-        except EventRegistration.DoesNotExist:
-            return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        if registration.member_id != request.user.pk:
-            return Response({"detail": "You do not own this ticket."}, status=status.HTTP_403_FORBIDDEN)
-
-        if registration.ticket_email_sent_at:
-            elapsed = (timezone.now() - registration.ticket_email_sent_at).total_seconds()
-            if elapsed < 60:
-                return Response({"detail": "Please wait before resending."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-        try:
-            send_event_ticket_email(registration, request=request, performed_by=request.user)
-        except EventTicketEmailError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-
-        return Response({"message": "Ticket email sent."})
+        return Response({"detail": "Email sending is not configured."}, status=status.HTTP_501_NOT_IMPLEMENTED)

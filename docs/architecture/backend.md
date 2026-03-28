@@ -8,8 +8,7 @@
 - `event`: registration models, ticket generation, and attendee APIs.
 - `news`: article ingestion, feed sources, and public news APIs.
 - `projects`: semester and project data plus archive and sharing APIs.
-- `mail`: Gmail and SES sending plus audit models and admin tools.
-- `analytics`, `sheets`, and `sponsors`: supporting integrations and public read APIs.
+- `analytics` and `sponsors`: supporting integrations and public read APIs.
 
 ## Routing
 

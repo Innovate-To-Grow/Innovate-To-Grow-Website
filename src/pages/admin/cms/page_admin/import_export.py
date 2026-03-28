@@ -8,9 +8,6 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from pages.management.commands.cms_seed import SEED_PAGES as SEED_PAGES_PHASE1
-from pages.management.commands.cms_seed_batch_ab import SEED_PAGES as SEED_PAGES_AB
-from pages.management.commands.cms_seed_batch_cd import SEED_PAGES as SEED_PAGES_CD
 from pages.models import BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
 
 
@@ -69,10 +66,6 @@ def render_json_import(
         }
     )
     return render(request, template_name, context)
-
-
-def get_all_seed_pages():
-    return [*SEED_PAGES_PHASE1, *SEED_PAGES_AB, *SEED_PAGES_CD]
 
 
 def load_uploaded_pages(request, context, template_name):

@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 Repository guidance is split into short references so local instructions stay easy to scan.
 
 ## Quick links
@@ -12,7 +14,9 @@ Repository guidance is split into short references so local instructions stay ea
 
 ## Working assumptions
 
-- Backend lives under `src/`.
-- Frontend lives under `pages/`.
+- Backend lives under `src/` (Django 5.2 + DRF).
+- Frontend lives under `pages/` (React 19 + TypeScript + Vite).
 - Active docs live under `docs/`.
 - Historical material lives under `archive/`.
+- Dev database is SQLite; prod is PostgreSQL.
+- Settings use `--settings=core.settings.dev` for local work.

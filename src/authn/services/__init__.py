@@ -17,8 +17,6 @@ from .email.auth_email import (
     registration_email_conflicts,
     resolve_auth_email,
 )
-from .email.auth_mail import AuthEmailError, send_auth_code_email
-from .email.invitation_mail import InvitationEmailError, send_admin_invitation_email
 from .email_challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeError,
@@ -56,8 +54,6 @@ __all__ = [
     "resolve_auth_email",
     "get_member_auth_emails",
     "registration_email_conflicts",
-    "send_auth_code_email",
-    "AuthEmailError",
     "issue_email_challenge",
     "verify_email_code",
     "verify_email_code_for_purposes",
@@ -83,7 +79,4 @@ __all__ = [
     "decrypt_password",
     "is_encrypted_password",
     "RSADecryptionError",
-    # Invitation email
-    "send_admin_invitation_email",
-    "InvitationEmailError",
 ]

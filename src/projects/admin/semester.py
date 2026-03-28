@@ -23,12 +23,12 @@ class ProjectInline(TabularInline):
 
 @admin.register(Semester)
 class SemesterAdmin(ModelAdmin):
-    list_display = ("label", "year", "season", "is_published", "project_count", "updated_at")
-    list_filter = ("is_published", "season", "year")
+    list_display = ("label", "year", "season", "is_published", "is_current", "project_count", "updated_at")
+    list_filter = ("is_published", "is_current", "season", "year")
     readonly_fields = ("label", "created_at", "updated_at")
     inlines = [ProjectInline]
     change_list_template = "admin/projects/semester_changelist.html"
-    actions = ["publish_selected", "unpublish_selected"]
+    actions = ["publish_selected", "unpublish_selected", "set_as_current"]
 
     @admin.action(description="Publish selected semesters")
     def publish_selected(self, request, queryset):
@@ -38,15 +38,26 @@ class SemesterAdmin(ModelAdmin):
 
     @admin.action(description="Unpublish selected semesters")
     def unpublish_selected(self, request, queryset):
-        updated = queryset.filter(is_published=True).update(is_published=False)
+        updated = queryset.filter(is_published=True).update(is_published=False, is_current=False)
         transaction.on_commit(_clear_project_caches)
         self.message_user(request, f"{updated} semester(s) unpublished.", messages.SUCCESS)
+
+    @admin.action(description="Set as current semester")
+    def set_as_current(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Please select exactly one semester.", messages.ERROR)
+            return
+        semester = queryset.first()
+        semester.is_current = True
+        semester.save()  # save() handles auto-publish and clearing others
+        transaction.on_commit(_clear_project_caches)
+        self.message_user(request, f"{semester.label} is now the current semester.", messages.SUCCESS)
 
     fieldsets = (
         (
             "Semester Info",
             {
-                "fields": ("year", "season", "label", "is_published"),
+                "fields": ("year", "season", "label", "is_published", "is_current"),
             },
         ),
         (

@@ -12,6 +12,9 @@ from .pages import (
     CMSPage,
     FooterContent,
     Menu,
+    NewsArticle,
+    NewsFeedSource,
+    NewsSyncLog,
     SiteSettings,
     validate_block_data,
 )
@@ -28,4 +31,8 @@ __all__ = [
     "BLOCK_TYPE_KEYS",
     "BLOCK_SCHEMAS",
     "validate_block_data",
+    # News
+    "NewsArticle",
+    "NewsFeedSource",
+    "NewsSyncLog",
 ]

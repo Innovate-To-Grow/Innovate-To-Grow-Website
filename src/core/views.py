@@ -11,6 +11,12 @@ from rest_framework.views import APIView
 from core.models import SiteMaintenanceControl
 
 
+def root_index(request):
+    """Static landing page"""
+
+    return render(request, "index.html", status=200)
+
+
 class MaintenanceBypassView(APIView):
     """Verify a bypass password to skip maintenance mode."""
 

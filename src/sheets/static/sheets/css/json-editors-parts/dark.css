@@ -1,8 +1,0 @@
-.dark .fk-config-editor .fk-card { background: var(--color-base-800, #1f2937); border-color: var(--color-base-700, #374151); }
-.dark .fk-config-editor .fk-card-field-input, .dark .fk-config-editor .fk-defaults-input, .dark .lookup-fields-editor .lookup-input { background: var(--color-base-900, #111827); border-color: var(--color-base-700, #374151); color: var(--color-font-default-dark, #f9fafb); }
-.dark .fk-config-editor .fk-toggle-row label { color: var(--color-font-default-dark, #f9fafb); }
-.dark .fk-config-editor .fk-card-remove-btn, .dark .fk-config-editor .fk-defaults-remove-btn, .dark .lookup-fields-editor .lookup-remove-btn { background: var(--color-base-900, #111827); border-color: var(--color-base-700, #374151); color: var(--color-base-400, #9ca3af); }
-.dark .fk-config-editor .fk-card-remove-btn:hover, .dark .fk-config-editor .fk-defaults-remove-btn:hover, .dark .lookup-fields-editor .lookup-remove-btn:hover { background: #450a0a; border-color: #dc2626; color: #fca5a5; }
-.dark .fk-config-editor .fk-add-btn, .dark .fk-config-editor .fk-add-default-btn, .dark .lookup-fields-editor .lookup-add-btn { border-color: var(--color-base-700, #374151); color: var(--color-primary-500, #6366f1); }
-.dark .fk-config-editor .fk-add-btn:hover, .dark .fk-config-editor .fk-add-default-btn:hover, .dark .lookup-fields-editor .lookup-add-btn:hover { border-color: var(--color-primary-500, #6366f1); background: rgba(99, 102, 241, 0.08); }
-.dark .fk-config-editor .fk-empty, .dark .lookup-fields-editor .lookup-empty { border-color: var(--color-base-700, #374151); color: var(--color-base-500, #6b7280); }

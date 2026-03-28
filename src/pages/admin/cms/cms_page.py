@@ -10,7 +10,7 @@ from pages.admin.cms.page_admin.editor import (
     route_conflict_response,
     save_blocks_from_json,
 )
-from pages.admin.cms.page_admin.import_export import export_pages_response, get_all_seed_pages, render_json_import
+from pages.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from pages.models import CMSPage
 from pages.models.pages.cms.cms_page import validate_cms_route
 
@@ -85,7 +85,6 @@ class CMSPageAdmin(ModelAdmin):
                 name="pages_cmspage_route_conflict",
             ),
             path("import/", self.admin_site.admin_view(self.import_view), name="pages_cmspage_import"),
-            path("import-all/", self.admin_site.admin_view(self.import_all_view), name="pages_cmspage_import_all"),
         ]
         return custom_urls + super().get_urls()
 
@@ -126,11 +125,3 @@ class CMSPageAdmin(ModelAdmin):
             validate_required=True,
         )
 
-    def import_all_view(self, request):
-        return render_json_import(
-            self,
-            request,
-            title="Import All Seed Pages",
-            template_name="admin/pages/cmspage/import_all_form.html",
-            pages_data=get_all_seed_pages(),
-        )

@@ -1,4 +1,5 @@
 from .cms import CMSBlockSerializer, CMSPageSerializer
+from .news import NewsArticleDetailSerializer, NewsArticleSerializer
 from .serializers import FooterContentSerializer, MenuSerializer
 
 __all__ = [
@@ -6,4 +7,6 @@ __all__ = [
     "FooterContentSerializer",
     "CMSBlockSerializer",
     "CMSPageSerializer",
+    "NewsArticleSerializer",
+    "NewsArticleDetailSerializer",
 ]
