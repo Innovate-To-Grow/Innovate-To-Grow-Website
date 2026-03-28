@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   fetchAllPastProjects,
   fetchCurrentProjectsFull,
@@ -12,6 +12,7 @@ interface ProjectGridDataResult {
   rows: ProjectGridRow[];
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 interface PastProjectShareResult {
@@ -33,12 +34,15 @@ interface PastProjectShareState {
 }
 
 export function useCurrentProjectGridData(enabled: boolean = true): ProjectGridDataResult {
-  const requestKey = useMemo(() => (enabled ? Symbol('current-project-grid') : null), [enabled]);
+  const [refetchCount, setRefetchCount] = useState(0);
+  const requestKey = useMemo(() => (enabled ? Symbol('current-project-grid') : null), [enabled, refetchCount]);
   const [state, setState] = useState<ProjectGridRowsState>({
     requestKey: null,
     rows: [],
     error: null,
   });
+
+  const refetch = useCallback(() => setRefetchCount((c) => c + 1), []);
 
   useEffect(() => {
     if (!requestKey) {
@@ -71,7 +75,7 @@ export function useCurrentProjectGridData(enabled: boolean = true): ProjectGridD
   }, [requestKey]);
 
   if (!requestKey) {
-    return {rows: [], loading: false, error: null};
+    return {rows: [], loading: false, error: null, refetch};
   }
 
   const hasResolved = state.requestKey === requestKey;
@@ -79,16 +83,20 @@ export function useCurrentProjectGridData(enabled: boolean = true): ProjectGridD
     rows: hasResolved ? state.rows : [],
     loading: !hasResolved,
     error: hasResolved ? state.error : null,
+    refetch,
   };
 }
 
 export function usePastProjectGridData(enabled: boolean = true): ProjectGridDataResult {
-  const requestKey = useMemo(() => (enabled ? Symbol('past-project-grid') : null), [enabled]);
+  const [refetchCount, setRefetchCount] = useState(0);
+  const requestKey = useMemo(() => (enabled ? Symbol('past-project-grid') : null), [enabled, refetchCount]);
   const [state, setState] = useState<ProjectGridRowsState>({
     requestKey: null,
     rows: [],
     error: null,
   });
+
+  const refetch = useCallback(() => setRefetchCount((c) => c + 1), []);
 
   useEffect(() => {
     if (!requestKey) {
@@ -121,7 +129,7 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
   }, [requestKey]);
 
   if (!requestKey) {
-    return {rows: [], loading: false, error: null};
+    return {rows: [], loading: false, error: null, refetch};
   }
 
   const hasResolved = state.requestKey === requestKey;
@@ -129,6 +137,7 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
     rows: hasResolved ? state.rows : [],
     loading: !hasResolved,
     error: hasResolved ? state.error : null,
+    refetch,
   };
 }
 

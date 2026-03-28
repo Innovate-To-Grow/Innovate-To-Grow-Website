@@ -262,7 +262,7 @@ UNFOLD = {
     "SITE_HEADER": "Innovate To Grow",
     "SITE_ICON": lambda request: static("images/i2glogo.png"),
     "SITE_LOGO": lambda request: static("images/i2glogo.png"),
-    "THEME": "light",  # Force light theme only (disable dark mode)
+    "THEME": "light",
     "COLORS": {
         "primary": {
             "50": "oklch(97.7% .014 308.299)",

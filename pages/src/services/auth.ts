@@ -10,6 +10,7 @@ export interface User {
   email: string;
   username: string;
   profile_image?: string;
+  is_staff?: boolean;
 }
 
 export interface AuthTokens {
@@ -62,6 +63,7 @@ export interface ProfileResponse {
   last_name: string;
   organization: string;
   email_subscribe: boolean;
+  is_staff: boolean;
   is_active: boolean;
   date_joined: string;
   profile_image?: string;
