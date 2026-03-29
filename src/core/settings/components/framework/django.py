@@ -32,7 +32,6 @@ INSTALLED_APPS = [
     "authn.apps.AuthnConfig",
     "event.apps.EventConfig",
     "projects.apps.ProjectsConfig",
-    "analytics.apps.AnalyticsConfig",
     "sponsors.apps.SponsorsConfig",
     # Third-party
     "corsheaders",

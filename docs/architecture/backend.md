@@ -8,7 +8,7 @@
 - `event`: registration models, ticket generation, and attendee APIs.
 - `news`: article ingestion, feed sources, and public news APIs.
 - `projects`: semester and project data plus archive and sharing APIs.
-- `analytics` and `sponsors`: supporting integrations and public read APIs.
+- `sponsors`: supporting integrations and public read APIs.
 
 ## Routing
 

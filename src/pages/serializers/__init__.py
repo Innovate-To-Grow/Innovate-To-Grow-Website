@@ -1,3 +1,4 @@
+from .analytics import PageViewCreateSerializer
 from .cms import CMSBlockSerializer, CMSPageSerializer
 from .news import NewsArticleDetailSerializer, NewsArticleSerializer
 from .serializers import FooterContentSerializer, MenuSerializer
@@ -9,4 +10,5 @@ __all__ = [
     "CMSPageSerializer",
     "NewsArticleSerializer",
     "NewsArticleDetailSerializer",
+    "PageViewCreateSerializer",
 ]

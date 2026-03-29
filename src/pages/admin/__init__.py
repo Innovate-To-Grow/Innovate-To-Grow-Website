@@ -5,8 +5,10 @@ Organized into modules by feature:
 - layout/: Menu, FooterContent, SiteSettings admin
 - cms/: CMSPage admin (block editor, import/export, preview)
 - news/: NewsArticle, NewsFeedSource, NewsSyncLog admin
+- analytics/: PageView admin (read-only dashboard)
 """
 
+from .analytics import PageViewAdmin
 from .cms import CMSPageAdmin
 from .layout.footer_content import FooterContentAdmin
 from .layout.menu import MenuAdmin
@@ -24,4 +26,6 @@ __all__ = [
     "NewsArticleAdmin",
     "NewsFeedSourceAdmin",
     "NewsSyncLogAdmin",
+    # Analytics
+    "PageViewAdmin",
 ]

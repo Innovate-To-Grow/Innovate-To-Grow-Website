@@ -5,7 +5,8 @@
 - Django apps stay isolated by domain under `src/`.
 - Thin entrypoints should delegate to services, serializers, admin helpers, or models.
 - `core/settings/*.py` remain stable import targets even when implementation moves to submodules.
-- Settings are modular: `core/settings/base.py` imports from `core/settings/components/` (django, api, admin, environment, editor, production).
+- Settings are modular: `core/settings/base.py` wildcard-imports from `core/settings/components/` (framework/environment, framework/django, integrations/api, integrations/admin, integrations/editor, production). `dev.py`, `prod.py`, and `ci.py` extend `base.py`.
+- Main URL router: `core/urls.py` delegates to each app's `urls.py`.
 
 ### Django apps
 
@@ -13,11 +14,10 @@
 |-----|---------|
 | `authn` | Auth, Member model, registration, login, JWT, admin invitations |
 | `core` | Base models, middleware, management commands, shared utilities |
-| `pages` | CMS pages and blocks, menus, footer, site settings, media |
+| `pages` | CMS pages and blocks, menus, footer, site settings, media, page view analytics |
 | `projects` | Projects, semesters, past project shares |
 | `event` | Events, tickets, questions, registrations |
 | `news` | Articles, feed sources, sync from external feeds |
-| `analytics` | Page view tracking |
 | `sponsors` | Sponsor management |
 
 ### Base model: `ProjectControlModel`
@@ -38,9 +38,12 @@ Nearly all models inherit from `core.models.ProjectControlModel`, which provides
 ## Frontend
 
 - `app/` owns bootstrap and router setup.
+- `pages/` (within `src/`) owns routed page components (HomePage, NewsPage, etc.).
 - `features/` owns domain code such as auth, CMS, layout, projects, events, and news.
 - `shared/` owns reusable auth helpers, API clients, hooks, styles, and utilities.
-- Three React roots: `#root` (main app with router), `#menu-root` (MainMenu only, no BrowserRouter), `#footer-root` (Footer).
+- `services/api/` houses feature-specific API service modules.
+- Three React roots: `#root` (main app with router), `#menu-root` (MainMenu only, no BrowserRouter), `#footer-root` (Footer). This means menu and footer render independently and share auth state via the `i2g-auth-state-change` custom event.
+- Vite dev server proxies `/api`, `/media`, `/static` to Django backend (configurable via `VITE_BACKEND_URL` env var, defaults to `http://localhost:8000`).
 
 ## Product behavior to preserve
 
