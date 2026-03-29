@@ -2,7 +2,11 @@
 
 ## Backend
 
-- Use Ruff for linting and formatting.
+- Use Ruff for linting and formatting (config in `pyproject.toml`).
+- Line length: 120. Target: Python 3.11. Double quotes, LF endings.
+- Enabled rule sets: E, W, F, I, B, C4, UP, DJ. E501 is disabled (length handled by formatter).
+- Known first-party imports: core, authn, pages, event, news, projects, mail, sheets, sponsors.
+- Star imports (`F403`/`F405`) are allowed in `settings/` files; unused imports (`F401`) are allowed in `__init__.py`.
 - Keep command, view, and serializer entrypoints thin.
 - Prefer subpackages over growing new oversized modules.
 

@@ -8,15 +8,15 @@ from django.utils import timezone
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
-from analytics.models import PageView
+from pages.models import PageView
 
-_DASHBOARD_CACHE_KEY = "analytics:dashboard"
+_DASHBOARD_CACHE_KEY = "pages:analytics:dashboard"
 _DASHBOARD_CACHE_TTL = 60  # seconds
 
 
 @admin.register(PageView)
 class PageViewAdmin(ModelAdmin):
-    change_list_template = "admin/analytics/pageview/change_list.html"
+    change_list_template = "admin/pages/pageview/change_list.html"
     list_display = ("path", "short_referrer", "ip_address", "member_display", "session_key_short", "timestamp")
     list_filter = ("timestamp",)
     search_fields = (
@@ -35,28 +35,16 @@ class PageViewAdmin(ModelAdmin):
     list_select_related = ("member",)
 
     fieldsets = (
-        (
-            "Request",
-            {
-                "fields": ("id", "path", "referrer", "timestamp"),
-            },
-        ),
-        (
-            "Visitor",
-            {
-                "fields": ("member", "ip_address", "session_key", "user_agent"),
-            },
-        ),
+        ("Request", {"fields": ("id", "path", "referrer", "timestamp")}),
+        ("Visitor", {"fields": ("member", "ip_address", "session_key", "user_agent")}),
     )
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-
         cached = cache.get(_DASHBOARD_CACHE_KEY)
         if cached is None:
             cached = self._compute_dashboard_stats()
             cache.set(_DASHBOARD_CACHE_KEY, cached, _DASHBOARD_CACHE_TTL)
-
         extra_context.update(cached)
         return super().changelist_view(request, extra_context=extra_context)
 
@@ -66,7 +54,6 @@ class PageViewAdmin(ModelAdmin):
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         seven_days_ago = today_start - timedelta(days=6)
 
-        # .order_by() clears the default ordering so COUNT avoids a needless sort
         qs = PageView.objects.order_by()
 
         stats = {
@@ -77,6 +64,7 @@ class PageViewAdmin(ModelAdmin):
             "top_pages": list(qs.values("path").annotate(view_count=Count("id")).order_by("-view_count")[:10]),
         }
 
+        # Daily breakdown for the past 7 days
         daily_views = (
             qs.filter(timestamp__gte=seven_days_ago)
             .annotate(date=TruncDate("timestamp"))
@@ -92,12 +80,11 @@ class PageViewAdmin(ModelAdmin):
         stats["last_7_days"] = last_7_days
         stats["max_daily_count"] = max((d["count"] for d in last_7_days), default=1) or 1
 
-        # Week total & daily average (derived from last_7_days, no extra query)
         week_views = sum(d["count"] for d in last_7_days)
         stats["week_views"] = week_views
         stats["avg_daily_views"] = round(week_views / 7, 1)
 
-        # Unique visitors per day for the 7-day chart second dataset
+        # Unique visitors per day (second dataset for the 7-day chart)
         daily_visitors = (
             qs.filter(timestamp__gte=seven_days_ago)
             .annotate(date=TruncDate("timestamp"))
@@ -108,7 +95,7 @@ class PageViewAdmin(ModelAdmin):
         visitor_map = {entry["date"]: entry["visitor_count"] for entry in daily_visitors}
         stats["last_7_days_visitors"] = [visitor_map.get(d["date"], 0) for d in last_7_days]
 
-        # Today's hourly views
+        # Hourly breakdown for today
         hourly_qs = (
             qs.filter(timestamp__gte=today_start)
             .annotate(hour=TruncHour("timestamp"))
@@ -119,7 +106,7 @@ class PageViewAdmin(ModelAdmin):
         hourly_map = {entry["hour"].hour: entry["count"] for entry in hourly_qs}
         stats["hourly_views"] = [{"hour": h, "count": hourly_map.get(h, 0)} for h in range(24)]
 
-        # Top referrers (exclude empty/direct)
+        # Top referrers (excluding direct / empty)
         stats["top_referrers"] = list(
             qs.exclude(referrer="").values("referrer").annotate(ref_count=Count("id")).order_by("-ref_count")[:10]
         )
@@ -146,14 +133,11 @@ class PageViewAdmin(ModelAdmin):
             return "-"
         return f"{obj.session_key[:8]}…"
 
-    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
         return False
 
-    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_change_permission(self, request, obj=None):
         return False
 
-    # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         return False

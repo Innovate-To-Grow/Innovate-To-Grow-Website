@@ -1,6 +1,6 @@
 from django.urls import path
 
-from analytics.views import PageViewCreateView
+from pages.views.analytics import PageViewCreateView
 
 app_name = "analytics"
 

@@ -5,6 +5,13 @@ from django.db import models
 
 
 class PageView(models.Model):
+    """Tracks individual page visits across the site.
+
+    This is a high-volume write model that intentionally does NOT extend
+    ProjectControlModel — soft delete and version tracking add unnecessary
+    overhead for ephemeral analytics data.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     path = models.CharField(max_length=2048, db_index=True)
     referrer = models.URLField(max_length=2048, blank=True, default="")
@@ -21,11 +28,12 @@ class PageView(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        db_table = "analytics_pageview"
         ordering = ["-timestamp"]
         verbose_name = "Page View"
         verbose_name_plural = "Page Views"
         indexes = [
-            models.Index(fields=["path", "timestamp"]),
+            models.Index(fields=["path", "timestamp"], name="analytics_p_path_51c7b7_idx"),
         ]
 
     def __str__(self):

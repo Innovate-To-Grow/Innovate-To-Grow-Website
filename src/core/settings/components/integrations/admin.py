@@ -44,7 +44,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
                     {"title": "Pages", "link": "/admin/pages/cmspage/"},
-                    {"title": "Page Analytics", "link": "/admin/analytics/pageview/"},
+                    {"title": "Page Analytics", "link": "/admin/pages/pageview/"},
                     {"title": "Menus", "link": "/admin/pages/menu/"},
                     {"title": "Footer", "link": "/admin/pages/footercontent/"},
                 ],

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from analytics.models import PageView
+from pages.models import PageView
 
 
 class PageViewCreateSerializer(serializers.ModelSerializer):

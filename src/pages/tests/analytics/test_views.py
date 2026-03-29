@@ -1,16 +1,13 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from analytics.models import PageView
-from analytics.services.buffer import flush_sync
+from pages.models import PageView
+from pages.services.analytics import flush_sync
 
 
 class PageViewCreateViewTest(TestCase):
-    # noinspection PyPep8Naming
     def setUp(self):
-        from analytics.services.buffer import flush_sync as _flush
-
-        _flush()
+        flush_sync()
         PageView.objects.all().delete()
         self.client = APIClient()
 

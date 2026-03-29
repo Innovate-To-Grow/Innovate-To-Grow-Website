@@ -52,7 +52,7 @@ urlpatterns = [
     # authn
     path("authn/", include("authn.urls")),
     # analytics
-    path("analytics/", include("analytics.urls")),
+    path("analytics/", include("pages.analytics_urls")),
     # sponsors
     path("sponsors/", include("sponsors.urls")),
 ]

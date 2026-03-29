@@ -1,3 +1,4 @@
+from .analytics import PageView
 from .cms import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, BLOCK_TYPE_KEYS, CMSBlock, CMSPage, validate_block_data
 from .layout.footer_content import FooterContent
 from .layout.menu import Menu
@@ -20,4 +21,6 @@ __all__ = [
     "NewsArticle",
     "NewsFeedSource",
     "NewsSyncLog",
+    # Analytics
+    "PageView",
 ]

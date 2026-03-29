@@ -1,11 +1,17 @@
+"""In-memory write buffer for page-view analytics.
+
+Page views are enqueued into a thread-safe deque and bulk-inserted into the
+database either every ``_FLUSH_INTERVAL`` seconds or when the buffer reaches
+``_BATCH_SIZE`` entries, whichever comes first.  A synchronous drain runs at
+process exit via ``atexit`` to avoid data loss.
+"""
+
 import atexit
 import logging
 import threading
 from collections import deque
 
 from django.db import DatabaseError
-
-from analytics.models import PageView
 
 logger = logging.getLogger(__name__)
 
@@ -17,20 +23,21 @@ _MAX_BUFFER_SIZE = 10_000
 _buffer: deque[dict] = deque()
 _lock = threading.Lock()
 _timer: threading.Timer | None = None
-_flush_done = threading.Event()  # signaled when no flush is in progress
+_flush_done = threading.Event()
 _flush_done.set()
 _initialized = False
 
 
 def _do_bulk_insert(batch: list[dict]) -> None:
-    """Attempt bulk insert with retry. On final failure, drop and log."""
+    from pages.models import PageView
+
     for attempt in range(_MAX_RETRIES):
         try:
             PageView.objects.bulk_create([PageView(**data) for data in batch])
             return
         except DatabaseError:
             if attempt < _MAX_RETRIES - 1:
-                logger.warning("bulk-insert attempt %d failed, retrying…", attempt + 1)
+                logger.warning("bulk-insert attempt %d failed, retrying", attempt + 1)
             else:
                 logger.exception(
                     "Failed to bulk-insert %d page views after %d attempts — dropping batch",
@@ -40,10 +47,8 @@ def _do_bulk_insert(batch: list[dict]) -> None:
 
 
 def _flush():
-    """Drain the buffer and bulk-insert into the database."""
     with _lock:
         if not _flush_done.is_set():
-            # Another flush is already in progress; reschedule and skip.
             _schedule_flush_locked()
             return
         if not _buffer:
@@ -62,7 +67,6 @@ def _flush():
 
 
 def _schedule_flush_locked():
-    """Schedule the next periodic flush. Caller MUST hold _lock."""
     global _timer
     if _timer is not None:
         _timer.cancel()
@@ -72,7 +76,6 @@ def _schedule_flush_locked():
 
 
 def _ensure_initialized():
-    """Start the periodic flush timer on first use (lazy init)."""
     global _initialized
     if _initialized:
         return
@@ -81,11 +84,7 @@ def _ensure_initialized():
 
 
 def enqueue(data: dict) -> None:
-    """Add a page-view record to the in-memory buffer.
-
-    Triggers an immediate flush when the buffer reaches _BATCH_SIZE.
-    Drops oldest entries if the buffer exceeds _MAX_BUFFER_SIZE.
-    """
+    """Add a page-view record to the in-memory buffer."""
     with _lock:
         _ensure_initialized()
         _buffer.append(data)
@@ -103,10 +102,11 @@ def enqueue(data: dict) -> None:
 
 
 def flush_sync() -> None:
-    """Immediately flush the buffer. Waits for any in-flight flush to finish first."""
+    """Immediately flush all buffered records (blocking)."""
+    from pages.models import PageView
+
     global _timer, _initialized
 
-    # Wait for any background flush to complete (with timeout to avoid deadlock).
     _flush_done.wait(timeout=10)
 
     with _lock:
@@ -126,5 +126,4 @@ def flush_sync() -> None:
         logger.exception("Failed to bulk-insert %d page views on flush_sync", len(batch))
 
 
-# Ensure remaining records are written when the process exits.
 atexit.register(flush_sync)

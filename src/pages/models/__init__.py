@@ -15,6 +15,7 @@ from .pages import (
     NewsArticle,
     NewsFeedSource,
     NewsSyncLog,
+    PageView,
     SiteSettings,
     validate_block_data,
 )
@@ -35,4 +36,6 @@ __all__ = [
     "NewsArticle",
     "NewsFeedSource",
     "NewsSyncLog",
+    # Analytics
+    "PageView",
 ]

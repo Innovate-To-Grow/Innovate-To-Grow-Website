@@ -1,3 +1,4 @@
+from .analytics import PageViewCreateView
 from .cms import CMSPageView, CMSPreviewFetchView
 from .news import NewsDetailAPIView, NewsListAPIView
 from .views import LayoutAPIView
@@ -8,4 +9,5 @@ __all__ = [
     "CMSPreviewFetchView",
     "NewsListAPIView",
     "NewsDetailAPIView",
+    "PageViewCreateView",
 ]
