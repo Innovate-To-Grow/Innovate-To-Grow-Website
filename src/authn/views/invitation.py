@@ -96,7 +96,6 @@ class AcceptInvitationView(View):
             last_name=form.cleaned_data["last_name"],
             organization=form.cleaned_data.get("organization", ""),
             is_staff=True,
-            is_superuser=(invitation.role == AdminInvitation.Role.SUPERUSER),
             is_active=True,
         )
         member.set_password(form.cleaned_data["password1"])
@@ -134,7 +133,5 @@ class AcceptInvitationView(View):
     # noinspection PyMethodMayBeStatic
     def _upgrade_member(self, member, invitation):
         member.is_staff = True
-        if invitation.role == AdminInvitation.Role.SUPERUSER:
-            member.is_superuser = True
-        member.save(update_fields=["is_staff", "is_superuser", "updated_at"])
+        member.save(update_fields=["is_staff", "updated_at"])
         invitation.mark_accepted(member)

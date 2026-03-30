@@ -9,7 +9,12 @@ from .contact_emails import (
     ContactEmailUpdateSerializer,
     ContactEmailVerifyCodeSerializer,
 )
-from .contact_phones import ContactPhoneCreateSerializer, ContactPhoneSerializer, ContactPhoneUpdateSerializer
+from .contact_phones import (
+    ContactPhoneCreateSerializer,
+    ContactPhoneSerializer,
+    ContactPhoneUpdateSerializer,
+    ContactPhoneVerifyCodeSerializer,
+)
 from .email_code import (
     AccountEmailsSerializer,
     ChangePasswordCodeConfirmSerializer,
@@ -55,5 +60,6 @@ __all__ = [
     "ContactPhoneSerializer",
     "ContactPhoneCreateSerializer",
     "ContactPhoneUpdateSerializer",
+    "ContactPhoneVerifyCodeSerializer",
     "SubscribeSerializer",
 ]

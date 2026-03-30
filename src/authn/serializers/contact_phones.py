@@ -71,3 +71,16 @@ class ContactPhoneUpdateSerializer(serializers.Serializer):
     """Serializer for updating a contact phone (subscribe only)."""
 
     subscribe = serializers.BooleanField(required=True)
+
+
+class ContactPhoneVerifyCodeSerializer(serializers.Serializer):
+    """Serializer for verifying a contact phone with a 6-digit code."""
+
+    code = serializers.CharField(required=True, min_length=6, max_length=6)
+
+    # noinspection PyMethodMayBeStatic
+    def validate_code(self, value):
+        cleaned = value.strip()
+        if not re.match(r"^\d{6}$", cleaned):
+            raise serializers.ValidationError("Code must be exactly 6 digits.")
+        return cleaned

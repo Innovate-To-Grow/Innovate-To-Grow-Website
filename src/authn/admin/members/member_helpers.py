@@ -20,12 +20,12 @@ def get_groups_display(member):
 
 
 def activate_members(admin_obj, request, queryset):
-    updated = queryset.update(is_active_member=True, is_active=True)
+    updated = queryset.update(is_active=True)
     admin_obj.message_user(request, f"{updated} member(s) activated.")
 
 
 def deactivate_members(admin_obj, request, queryset):
-    updated = queryset.update(is_active_member=False)
+    updated = queryset.update(is_active=False)
     admin_obj.message_user(request, f"{updated} member(s) deactivated.")
 
 

@@ -3,7 +3,7 @@
 from django.test import TestCase
 from django.utils import timezone
 
-from pages.models import NewsArticle
+from cms.models import NewsArticle
 
 
 def _make_article(**kwargs):

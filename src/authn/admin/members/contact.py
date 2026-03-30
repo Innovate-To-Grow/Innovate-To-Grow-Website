@@ -61,19 +61,31 @@ class ContactEmailAdmin(ModelAdmin):
 class ContactPhoneAdmin(ModelAdmin):
     """Admin for ContactPhone model."""
 
-    list_display = ("phone_number", "member", "region", "get_formatted_number", "subscribe", "created_at")
-    list_filter = ("region", "subscribe", "created_at")
+    list_display = ("phone_number", "member", "region", "get_formatted_number", "verified", "subscribe", "created_at")
+    list_filter = ("region", "verified", "subscribe", "created_at")
     search_fields = ("phone_number", "member__username")
     readonly_fields = ("created_at", "updated_at")
-    list_editable = ("subscribe",)
+    list_editable = ("verified", "subscribe")
     autocomplete_fields = ["member"]
 
     fieldsets = (
         (None, {"fields": ("member", "phone_number", "region")}),
-        (_("Status"), {"fields": ("subscribe",)}),
+        (_("Status"), {"fields": ("verified", "subscribe")}),
         (_("Timestamps"), {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+    actions = ["mark_verified", "mark_unverified"]
 
     @admin.display(description="Formatted Number")
     def get_formatted_number(self, obj):
         return obj.get_formatted_number()
+
+    @admin.action(description="Mark selected phones as verified")
+    def mark_verified(self, request, queryset):
+        updated = queryset.update(verified=True)
+        self.message_user(request, f"{updated} phone(s) marked as verified.")
+
+    @admin.action(description="Mark selected phones as unverified")
+    def mark_unverified(self, request, queryset):
+        updated = queryset.update(verified=False)
+        self.message_user(request, f"{updated} phone(s) marked as unverified.")

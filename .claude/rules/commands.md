@@ -26,7 +26,7 @@ cd src && python manage.py test authn.tests.test_api.LoginTest.test_login --sett
 ### Fixtures
 
 ```bash
-cd src && python manage.py loaddata pages/fixtures/footer_content.json
+cd src && python manage.py loaddata cms/fixtures/footer_content.json
 ```
 
 ## Frontend

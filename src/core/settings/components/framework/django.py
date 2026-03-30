@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Project apps
     "core.apps.CoreConfig",
-    "pages.apps.PagesConfig",
+    "cms.apps.CmsConfig",
     "authn.apps.AuthnConfig",
     "event.apps.EventConfig",
     "projects.apps.ProjectsConfig",

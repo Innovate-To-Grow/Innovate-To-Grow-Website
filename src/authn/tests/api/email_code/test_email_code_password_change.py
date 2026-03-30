@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
@@ -7,6 +9,8 @@ from authn.models import ContactEmail
 Member = get_user_model()
 
 
+@patch("authn.services.email.send_email.send_verification_email")
+@patch("authn.services.email_challenges._random_code", return_value="654321")
 class EmailCodePasswordChangeTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
@@ -69,7 +73,7 @@ class EmailCodePasswordChangeTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/change-password/verify-code/",
-            {"email": self.alias.email_address, "code": "444444"},
+            {"email": self.alias.email_address, "code": "654321"},
             format="json",
         )
         self.assertEqual(verify_response.status_code, 200)
@@ -99,7 +103,7 @@ class EmailCodePasswordChangeTests(APITestCase):
         )
         verify_response = self.client.post(
             "/authn/password-reset/verify-code/",
-            {"email": self.primary_email.email_address, "code": "777777"},
+            {"email": self.primary_email.email_address, "code": "654321"},
             format="json",
         )
         self.assertEqual(verify_response.status_code, 200)
@@ -139,7 +143,7 @@ class EmailCodePasswordChangeTests(APITestCase):
         )
         verify_response = self.client.post(
             "/authn/password-reset/verify-code/",
-            {"email": self.primary_email.email_address, "code": "888888"},
+            {"email": self.primary_email.email_address, "code": "654321"},
             format="json",
         )
         self.assertEqual(verify_response.status_code, 200)

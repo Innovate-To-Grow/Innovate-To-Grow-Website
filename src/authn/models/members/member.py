@@ -27,9 +27,6 @@ class Member(AbstractUser, ProjectControlModel):
         verbose_name="Organization",
     )
 
-    # user status
-    is_active_member = models.BooleanField(default=True, help_text="Designates whether this user is an active member.")
-
     # email subscription
     email_subscribe = models.BooleanField(
         default=True,

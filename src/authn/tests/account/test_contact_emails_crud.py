@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
@@ -6,6 +8,8 @@ from authn.models import ContactEmail
 Member = get_user_model()
 
 
+@patch("authn.services.email.send_email.send_verification_email")
+@patch("authn.services.email_challenges._random_code", return_value="654321")
 class ContactEmailCrudTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
@@ -31,7 +35,7 @@ class ContactEmailCrudTests(APITestCase):
 
     # ── List ─────────────────────────────────────────────
 
-    def test_list_contact_emails_shows_primary(self):
+    def test_list_contact_emails_shows_primary(self, _mock_code, _mock_send):
         response = self.client.get("/authn/contact-emails/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
@@ -50,7 +54,7 @@ class ContactEmailCrudTests(APITestCase):
         self.assertTrue(response.data["subscribe"])
         mock_send.assert_called_once()
 
-    def test_create_rejects_duplicate_member_email(self, _mock_send):
+    def test_create_rejects_duplicate_member_email(self, _mock_code, _mock_send):
         response = self.client.post(
             "/authn/contact-emails/",
             {"email_address": "primary@example.com"},
@@ -71,7 +75,7 @@ class ContactEmailCrudTests(APITestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-    def test_create_rejects_primary_type(self):
+    def test_create_rejects_primary_type(self, _mock_code, _mock_send):
         response = self.client.post(
             "/authn/contact-emails/",
             {"email_address": "new@example.com", "email_type": "primary"},
@@ -130,7 +134,7 @@ class ContactEmailCrudTests(APITestCase):
         self.assertEqual(patch_resp.data["email_type"], "other")
         self.assertTrue(patch_resp.data["subscribe"])
 
-    def test_update_rejects_primary_type(self):
+    def test_update_rejects_primary_type(self, _mock_code, _mock_send):
         contact = ContactEmail.objects.create(
             member=self.member,
             email_address="existing@example.com",

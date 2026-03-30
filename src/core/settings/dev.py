@@ -23,6 +23,9 @@ if extra:
 # Plain-text passwords are acceptable for local dev/test convenience
 REQUIRE_ENCRYPTED_PASSWORDS = False
 
+# Print emails to console instead of sending
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 # ---------------------------------------------------------------------------
 # Frontend integration
 # ---------------------------------------------------------------------------

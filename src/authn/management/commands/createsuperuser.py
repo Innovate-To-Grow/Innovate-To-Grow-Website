@@ -26,7 +26,7 @@ class Command(BaseCommand):
         if not username:
             # The parent command stores the username on the instance
             # We need to get it from the database - find the most recently created superuser
-            member = Member.objects.filter(is_superuser=True).order_by("-date_joined").first()
+            member = Member.objects.filter(is_staff=True).order_by("-date_joined").first()
         else:
             member = Member.objects.filter(**{Member.USERNAME_FIELD: username}).first()
 

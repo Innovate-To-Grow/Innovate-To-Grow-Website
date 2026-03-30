@@ -1,5 +1,5 @@
 """
-Admin invitation model for inviting staff/superusers via email.
+Admin invitation model for inviting admin users via email.
 """
 
 import secrets
@@ -12,11 +12,10 @@ from core.models import ProjectControlModel
 
 
 class AdminInvitation(ProjectControlModel):
-    """Tracks email invitations for admin (staff/superuser) registration."""
+    """Tracks email invitations for admin registration."""
 
     class Role(models.TextChoices):
-        STAFF = "staff", "Staff"
-        SUPERUSER = "superuser", "Superuser"
+        ADMIN = "admin", "Admin"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -26,7 +25,7 @@ class AdminInvitation(ProjectControlModel):
 
     email = models.EmailField()
     token = models.CharField(max_length=64, unique=True, db_index=True, editable=False)
-    role = models.CharField(max_length=16, choices=Role.choices, default=Role.STAFF)
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.ADMIN)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

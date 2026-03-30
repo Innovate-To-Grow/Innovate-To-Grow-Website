@@ -8,7 +8,18 @@ from .contacts.contact_emails import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
-from .contacts.contact_phones import create_contact_phone, delete_contact_phone
+from .contacts.contact_phones import (
+    create_contact_phone,
+    delete_contact_phone,
+    request_phone_verification,
+    verify_phone_code,
+)
+from .sms import (
+    PhoneVerificationDeliveryError,
+    PhoneVerificationError,
+    PhoneVerificationInvalid,
+    PhoneVerificationThrottled,
+)
 from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
@@ -72,6 +83,13 @@ __all__ = [
     # Contact phones
     "create_contact_phone",
     "delete_contact_phone",
+    "request_phone_verification",
+    "verify_phone_code",
+    # SMS exceptions
+    "PhoneVerificationError",
+    "PhoneVerificationInvalid",
+    "PhoneVerificationThrottled",
+    "PhoneVerificationDeliveryError",
     # RSA Manager
     "get_or_create_auth_keypair",
     "rotate_auth_keypair",

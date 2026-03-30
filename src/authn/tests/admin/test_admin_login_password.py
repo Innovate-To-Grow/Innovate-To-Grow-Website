@@ -106,9 +106,9 @@ class AdminPasswordLoginTest(TestCase):
         self.assertContains(resp, "Invalid email or password")
 
     def test_password_next_redirect(self):
-        url = LOGIN_URL + "?next=/admin/pages/cmspage/"
+        url = LOGIN_URL + "?next=/admin/cms/cmspage/"
         resp = self.client.post(url, {"mode": "password", "email": "admin@example.com", "password": "testpass123"})
-        self.assertRedirects(resp, "/admin/pages/cmspage/", fetch_redirect_response=False)
+        self.assertRedirects(resp, "/admin/cms/cmspage/", fetch_redirect_response=False)
 
     @patch("authn.views.admin_login.issue_email_challenge")
     # noinspection PyUnusedLocal

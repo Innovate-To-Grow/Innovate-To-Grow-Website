@@ -29,7 +29,7 @@ def export_members_to_excel(queryset) -> bytes:
         "username",
         "organization",
         "is_active",
-        "is_active_member",
+
         "is_staff",
         "email_subscribe",
         "date_joined",
@@ -47,7 +47,7 @@ def export_members_to_excel(queryset) -> bytes:
         ("Primary Email", 30),
         ("Organization", 25),
         ("Active", 10),
-        ("Active Member", 14),
+
         ("Staff", 10),
         ("Email Subscribe", 16),
         ("Date Joined", 18),
@@ -97,7 +97,7 @@ def export_members_to_excel(queryset) -> bytes:
                 member.get_primary_email(),
                 member.organization or "",
                 "Yes" if member.is_active else "No",
-                "Yes" if member.is_active_member else "No",
+
                 "Yes" if member.is_staff else "No",
                 "Yes" if member.email_subscribe else "No",
                 member.date_joined.strftime("%Y-%m-%d %H:%M") if member.date_joined else "",
