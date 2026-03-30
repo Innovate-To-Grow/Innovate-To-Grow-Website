@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
@@ -6,6 +8,8 @@ from authn.models import ContactEmail
 Member = get_user_model()
 
 
+@patch("authn.services.email.send_email.send_verification_email")
+@patch("authn.services.email_challenges._random_code", return_value="654321")
 class ContactEmailAccessTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
@@ -31,7 +35,7 @@ class ContactEmailAccessTests(APITestCase):
 
     # ── List ─────────────────────────────────────────────
 
-    def test_cannot_access_other_users_email(self):
+    def test_cannot_access_other_users_email(self, _mock_code, _mock_send):
         contact = ContactEmail.objects.create(
             member=self.other_member,
             email_address="not-mine@example.com",
@@ -67,7 +71,7 @@ class ContactEmailAccessTests(APITestCase):
         self.assertEqual(resend_resp.status_code, 202)
         mock_send.assert_called_once()
 
-    def test_resend_rejects_already_verified(self):
+    def test_resend_rejects_already_verified(self, _mock_code, _mock_send):
         contact = ContactEmail.objects.create(
             member=self.member,
             email_address="already-verified@example.com",
@@ -76,13 +80,13 @@ class ContactEmailAccessTests(APITestCase):
         response = self.client.post(f"/authn/contact-emails/{contact.pk}/request-verification/")
         self.assertEqual(response.status_code, 400)
 
-    def test_profile_includes_email_subscribe(self):
+    def test_profile_includes_email_subscribe(self, _mock_code, _mock_send):
         response = self.client.get("/authn/profile/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("email_subscribe", response.data)
         self.assertTrue(response.data["email_subscribe"])
 
-    def test_patch_profile_email_subscribe(self):
+    def test_patch_profile_email_subscribe(self, _mock_code, _mock_send):
         response = self.client.patch(
             "/authn/profile/",
             {"email_subscribe": False},
@@ -94,7 +98,7 @@ class ContactEmailAccessTests(APITestCase):
         self.member.refresh_from_db()
         self.assertFalse(self.member.email_subscribe)
 
-    def test_unverified_email_excluded_from_account_emails(self):
+    def test_unverified_email_excluded_from_account_emails(self, _mock_code, _mock_send):
         ContactEmail.objects.create(
             member=self.member,
             email_address="unverified@example.com",
@@ -114,7 +118,7 @@ class ContactEmailAccessTests(APITestCase):
 
         self.client.post(
             f"/authn/contact-emails/{contact_id}/verify-code/",
-            {"code": "999999"},
+            {"code": "654321"},
             format="json",
         )
 
@@ -122,7 +126,7 @@ class ContactEmailAccessTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("will-verify@example.com", response.data["emails"])
 
-    def test_cannot_verify_other_users_email(self, _mock_send):
+    def test_cannot_verify_other_users_email(self, _mock_code, _mock_send):
         """Verify that a user cannot verify another user's contact email."""
         # Create contact email for other_member
         self.client.force_authenticate(user=self.other_member)
@@ -142,7 +146,7 @@ class ContactEmailAccessTests(APITestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-    def test_cannot_request_verification_for_other_users_email(self, _mock_send):
+    def test_cannot_request_verification_for_other_users_email(self, _mock_code, _mock_send):
         """Verify that a user cannot request verification for another user's contact email."""
         self.client.force_authenticate(user=self.other_member)
         create_resp = self.client.post(

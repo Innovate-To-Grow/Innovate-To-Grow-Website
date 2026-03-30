@@ -36,17 +36,19 @@ UNFOLD = {
                 "title": "Site Settings",
                 "items": [
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
+                    {"title": "Email Service Config", "link": "/admin/core/emailserviceconfig/"},
+                    {"title": "SMS Service Config", "link": "/admin/core/smsserviceconfig/"},
                     {"title": "Version History", "link": "/admin/core/modelversion/"},
                 ],
             },
             {
                 "title": "Content Management System",
                 "items": [
-                    {"title": "Home Page", "link": "/admin/pages/sitesettings/"},
-                    {"title": "Pages", "link": "/admin/pages/cmspage/"},
-                    {"title": "Page Analytics", "link": "/admin/pages/pageview/"},
-                    {"title": "Menus", "link": "/admin/pages/menu/"},
-                    {"title": "Footer", "link": "/admin/pages/footercontent/"},
+                    {"title": "Home Page", "link": "/admin/cms/sitesettings/"},
+                    {"title": "Pages", "link": "/admin/cms/cmspage/"},
+                    {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
+                    {"title": "Menus", "link": "/admin/cms/menu/"},
+                    {"title": "Footer", "link": "/admin/cms/footercontent/"},
                 ],
             },
             {
@@ -68,6 +70,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Members", "link": "/admin/authn/member/"},
                     {"title": "Contact Emails", "link": "/admin/authn/contactemail/"},
+                    {"title": "Contact Phones", "link": "/admin/authn/contactphone/"},
                     {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
                     {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
                 ],
@@ -75,9 +78,9 @@ UNFOLD = {
             {
                 "title": "News",
                 "items": [
-                    {"title": "News Articles", "link": "/admin/pages/newsarticle/"},
-                    {"title": "Feed Sources", "link": "/admin/pages/newsfeedsource/"},
-                    {"title": "Sync Logs", "link": "/admin/pages/newssynclog/"},
+                    {"title": "News Articles", "link": "/admin/cms/newsarticle/"},
+                    {"title": "Feed Sources", "link": "/admin/cms/newsfeedsource/"},
+                    {"title": "Sync Logs", "link": "/admin/cms/newssynclog/"},
                 ],
             },
         ],

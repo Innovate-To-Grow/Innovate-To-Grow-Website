@@ -157,7 +157,7 @@ class AdminLoginViewTest(TestCase):
     # noinspection PyUnusedLocal
     def test_next_redirect_parameter(self, mock_issue):
         # Step 1
-        url = LOGIN_URL + "?next=/admin/pages/cmspage/"
+        url = LOGIN_URL + "?next=/admin/cms/cmspage/"
         self.client.post(url, {"email": "admin@example.com"})
 
         challenge = _create_pending_challenge(self.staff, "admin@example.com")
@@ -165,7 +165,7 @@ class AdminLoginViewTest(TestCase):
         with patch("authn.views.admin_login.verify_email_code", return_value=challenge):
             resp = self.client.post(url, {"code": "123456"})
 
-        self.assertRedirects(resp, "/admin/pages/cmspage/", fetch_redirect_response=False)
+        self.assertRedirects(resp, "/admin/cms/cmspage/", fetch_redirect_response=False)
 
     @patch("authn.views.admin_login.issue_email_challenge")
     # noinspection PyUnusedLocal

@@ -12,7 +12,7 @@ Member = get_user_model()
 
 class AcceptInvitationViewTests(TestCase):
     # noinspection PyMethodMayBeStatic
-    def _create_invitation(self, email="invite@example.com", role=AdminInvitation.Role.STAFF, **kwargs):
+    def _create_invitation(self, email="invite@example.com", role=AdminInvitation.Role.ADMIN, **kwargs):
         defaults = {
             "email": email,
             "token": AdminInvitation.generate_token(),
@@ -61,25 +61,7 @@ class AcceptInvitationViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         member = Member.objects.get(username="newstaff")
         self.assertTrue(member.is_staff)
-        self.assertFalse(member.is_superuser)
         self.assertTrue(member.is_active)
-
-    def test_post_superuser_invitation_creates_superuser(self):
-        invitation = self._create_invitation(role=AdminInvitation.Role.SUPERUSER)
-        self.client.post(
-            f"/authn/invite/{invitation.token}/",
-            {
-                "email": invitation.email,
-                "username": "newsuperuser",
-                "first_name": "Super",
-                "last_name": "User",
-                "password1": "StrongPass123!",
-                "password2": "StrongPass123!",
-            },
-        )
-        member = Member.objects.get(username="newsuperuser")
-        self.assertTrue(member.is_staff)
-        self.assertTrue(member.is_superuser)
 
     def test_post_existing_member_upgrades_to_staff(self):
         existing = Member.objects.create_user(

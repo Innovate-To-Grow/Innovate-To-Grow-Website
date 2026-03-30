@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 from collections.abc import Sequence
 from datetime import timedelta
@@ -10,6 +11,8 @@ from django.utils import timezone
 
 from authn.models.security import EmailAuthChallenge
 from authn.services.email.auth_email import normalize_email
+
+logger = logging.getLogger(__name__)
 
 CHALLENGE_TTL = timedelta(minutes=10)
 RESEND_COOLDOWN = timedelta(seconds=60)
@@ -88,7 +91,8 @@ def _assert_within_limit(*, member, purpose: str, target_email: str, now):
 
 
 @transaction.atomic
-def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAuthChallenge:
+def _create_challenge_record(*, member, purpose: str, target_email: str) -> tuple[EmailAuthChallenge, str]:
+    """Create the challenge DB record (atomic). Returns (challenge, plain_code)."""
     normalized_email = normalize_email(target_email)
     now = timezone.now()
     _assert_within_limit(member=member, purpose=purpose, target_email=normalized_email, now=now)
@@ -112,6 +116,27 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
         max_attempts=5,
         last_sent_at=now,
     )
+
+    return challenge, code
+
+
+def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAuthChallenge:
+    """Create a challenge and send the verification code email."""
+    from authn.services.email.send_email import send_verification_email
+
+    challenge, plain_code = _create_challenge_record(
+        member=member, purpose=purpose, target_email=target_email,
+    )
+
+    try:
+        send_verification_email(
+            recipient=challenge.target_email,
+            code=plain_code,
+            purpose=purpose,
+        )
+    except Exception as exc:
+        logger.exception("Failed to send verification email to %s", challenge.target_email)
+        raise AuthChallengeDeliveryError("Failed to send verification email.") from exc
 
     return challenge
 

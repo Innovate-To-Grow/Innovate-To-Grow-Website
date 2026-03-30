@@ -20,9 +20,8 @@ class CreateMemberService:
         middle_name: str = "",
         organization: str = "",
         is_active: bool = True,
-        is_active_member: bool = True,
+
         is_staff: bool = False,
-        is_superuser: bool = False,
     ) -> dict[str, Any]:
         """
         Create a new member account.
@@ -36,9 +35,8 @@ class CreateMemberService:
             middle_name: Member's middle name (optional)
             organization: Organization or company name (optional)
             is_active: Whether the account is active (default: True)
-            is_active_member: Whether user is an active member (default: True)
-            is_staff: Whether user has staff permissions (default: False)
-            is_superuser: Whether user has superuser permissions (default: False)
+
+            is_staff: Whether user has admin permissions (default: False)
 
         Returns:
             dict: {
@@ -120,9 +118,8 @@ class CreateMemberService:
                 last_name=last_name.strip(),
                 organization=organization.strip() if organization else "",
                 is_active=is_active,
-                is_active_member=is_active_member,
+
                 is_staff=is_staff,
-                is_superuser=is_superuser,
             )
 
             # Create primary ContactEmail if email was provided

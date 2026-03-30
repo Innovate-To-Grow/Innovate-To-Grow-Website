@@ -3,8 +3,8 @@
 from django.test import TestCase
 from django.utils import timezone
 
+from cms.models import NewsArticle
 from core.models.versioning import ModelVersion
-from pages.models import NewsArticle
 
 
 def _make_article(**kwargs):

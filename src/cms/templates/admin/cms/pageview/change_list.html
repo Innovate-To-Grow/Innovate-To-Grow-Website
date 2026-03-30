@@ -1,0 +1,43 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    <div class="mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary-600" style="font-size:28px">visibility</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Total Views</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ total_views|default:"0" }}</p></div></div></div>
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-green-600" style="font-size:28px">today</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Today</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ today_views|default:"0" }}</p></div></div></div>
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-blue-600" style="font-size:28px">description</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Unique Pages</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ unique_paths|default:"0" }}</p></div></div></div>
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-orange-600" style="font-size:28px">group</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Unique Visitors</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ unique_visitors|default:"0" }}</p></div></div></div>
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-purple-600" style="font-size:28px">date_range</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">This Week</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ week_views|default:"0" }}</p></div></div></div>
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-teal-600" style="font-size:28px">speed</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Avg Daily</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ avg_daily_views|default:"0" }}</p></div></div></div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>Last 7 Days</h3>
+                <div style="position:relative; height:240px;"><canvas id="last7DaysChart"></canvas></div>
+            </div>
+            {% include "admin/cms/pageview/includes/last7_chart_script.html" %}
+
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">schedule</span>Today's Hourly Views</h3>
+                <div style="position:relative; height:240px;"><canvas id="hourlyChart"></canvas></div>
+            </div>
+            {% include "admin/cms/pageview/includes/hourly_chart_script.html" %}
+
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">trending_up</span>Top Pages</h3>
+                <div class="space-y-1">{% for page in top_pages %}<div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}"><span class="text-sm text-font-default-light dark:text-font-default-dark truncate mr-2" title="{{ page.path }}">{{ page.path }}</span><span class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0">{{ page.view_count }}</span></div>{% empty %}<p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No page views recorded yet.</p>{% endfor %}</div>
+            </div>
+
+            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">link</span>Top Referrers</h3>
+                <div class="space-y-1">{% for ref in top_referrers %}<div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}"><span class="text-sm text-font-default-light dark:text-font-default-dark truncate mr-2" title="{{ ref.referrer }}">{{ ref.referrer }}</span><span class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0">{{ ref.ref_count }}</span></div>{% empty %}<p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No referrers recorded yet.</p>{% endfor %}</div>
+            </div>
+        </div>
+    </div>
+
+    {{ block.super }}
+{% endblock %}

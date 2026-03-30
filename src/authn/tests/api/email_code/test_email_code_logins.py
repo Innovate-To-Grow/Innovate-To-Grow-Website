@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
@@ -7,6 +9,8 @@ from authn.models import ContactEmail, EmailAuthChallenge
 Member = get_user_model()
 
 
+@patch("authn.services.email.send_email.send_verification_email")
+@patch("authn.services.email_challenges._random_code", return_value="654321")
 class EmailCodeAuthLoginTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
@@ -30,7 +34,7 @@ class EmailCodeAuthLoginTests(APITestCase):
             verified=True,
         )
 
-    def test_password_login_accepts_verified_contact_email(self):
+    def test_password_login_accepts_verified_contact_email(self, _mock_code, _mock_send):
         response = self.client.post(
             "/authn/login/",
             {"email": self.alias.email_address, "password": self.password},
@@ -41,7 +45,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(response.data["user"]["email"], self.primary_email.email_address)
         self.assertIn("access", response.data)
 
-    def test_password_login_rejects_unverified_contact_email(self):
+    def test_password_login_rejects_unverified_contact_email(self, _mock_code, _mock_send):
         unverified = ContactEmail.objects.create(
             member=self.member,
             email_address="pending@example.com",
@@ -70,7 +74,7 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/login/verify-code/",
-            {"email": self.alias.email_address, "code": "123456"},
+            {"email": self.alias.email_address, "code": "654321"},
             format="json",
         )
 
@@ -91,7 +95,7 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
-            {"email": self.primary_email.email_address, "code": "112233"},
+            {"email": self.primary_email.email_address, "code": "654321"},
             format="json",
         )
 
@@ -112,7 +116,7 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
-            {"email": self.alias.email_address, "code": "223344"},
+            {"email": self.alias.email_address, "code": "654321"},
             format="json",
         )
 
@@ -138,7 +142,7 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
-            {"email": "new-flow@example.com", "code": "334455"},
+            {"email": "new-flow@example.com", "code": "654321"},
             format="json",
         )
 
@@ -173,7 +177,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(ContactEmail.objects.filter(email_address="pending-flow@example.com").count(), 1)
         self.assertEqual(pending.first_name, "Existing")
 
-    def test_unified_email_auth_rejects_conflicting_contact_email(self, _mock_send):
+    def test_unified_email_auth_rejects_conflicting_contact_email(self, _mock_code, _mock_send):
         ContactEmail.objects.create(
             member=self.member,
             email_address="blocked@example.com",

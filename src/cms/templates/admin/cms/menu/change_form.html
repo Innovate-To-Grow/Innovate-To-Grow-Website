@@ -1,0 +1,52 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}?v=3">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+{% endblock %}
+
+{% block after_field_sets %}
+    {{ block.super }}
+
+    <!-- Visual Editor -->
+    <div class="visual-editor-wrapper">
+        <div class="visual-editor-header">
+            <h3>Menu Items Editor</h3>
+        </div>
+
+        <div class="visual-editor-content">
+            <div id="menu-items-container" class="menu-items-container"></div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn-add" onclick="addMenuItem('home')">+ Add Home</button>
+                <button type="button" class="btn-add" onclick="addMenuItem('app')">+ Add App Route</button>
+                <button type="button" class="btn-add" onclick="addMenuItem('external')">+ Add External Link</button>
+            </div>
+
+            <!-- JSON Toggle -->
+            <div class="json-toggle">
+                <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+                <div id="json-raw-view" class="json-raw-view">
+                    <textarea id="json-editor"></textarea>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" class="json-toggle-btn" onclick="copyJson()">Copy JSON</button>
+                        <button type="button" class="json-toggle-btn" onclick="applyJson()">Apply JSON</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block after_related_objects %}
+    {{ block.super }}
+
+    <script>
+        window.APP_ROUTES = {{ app_routes_json|safe }};
+        window.CMS_ROUTES = {{ cms_routes_json|safe }};
+    </script>
+    <script src="{% static 'layout/js/menu/editor/render.js' %}?v=1"></script>
+    <script src="{% static 'layout/js/menu/menu-editor.js' %}?v=7"></script>
+{% endblock %}

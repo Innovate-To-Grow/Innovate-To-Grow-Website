@@ -14,7 +14,7 @@
 |-----|---------|
 | `authn` | Auth, Member model, registration, login, JWT, admin invitations |
 | `core` | Base models, middleware, management commands, shared utilities |
-| `pages` | CMS pages and blocks, menus, footer, site settings, media, page view analytics |
+| `cms` | CMS pages and blocks, menus, footer, site settings, media, page view analytics |
 | `projects` | Projects, semesters, past project shares |
 | `event` | Events, tickets, questions, registrations |
 | `news` | Articles, feed sources, sync from external feeds |

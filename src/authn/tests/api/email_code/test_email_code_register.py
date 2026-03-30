@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
@@ -7,6 +9,8 @@ from authn.models import ContactEmail
 Member = get_user_model()
 
 
+@patch("authn.services.email.send_email.send_verification_email")
+@patch("authn.services.email_challenges._random_code", return_value="654321")
 class EmailCodeAuthRegisterTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):

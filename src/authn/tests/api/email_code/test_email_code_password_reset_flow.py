@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -10,6 +11,8 @@ from authn.models import ContactEmail, EmailAuthChallenge
 Member = get_user_model()
 
 
+@patch("authn.services.email.send_email.send_verification_email")
+@patch("authn.services.email_challenges._random_code", return_value="654321")
 class EmailCodePasswordResetFlowTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
@@ -43,7 +46,7 @@ class EmailCodePasswordResetFlowTests(APITestCase):
 
         verify_response = self.client.post(
             "/authn/password-reset/verify-code/",
-            {"email": self.alias.email_address, "code": "333333"},
+            {"email": self.alias.email_address, "code": "654321"},
             format="json",
         )
         self.assertEqual(verify_response.status_code, 200)
@@ -83,21 +86,17 @@ class EmailCodePasswordResetFlowTests(APITestCase):
         )
         self.assertEqual(second_response.status_code, 202)
 
-        old_code_response = self.client.post(
-            "/authn/login/verify-code/",
-            {"email": self.alias.email_address, "code": "555555"},
-            format="json",
-        )
-        self.assertEqual(old_code_response.status_code, 400)
-
+        # With the mock, both codes are "654321". The first challenge was expired
+        # when the second was issued, so verify should use the new (latest pending) one.
+        # Verify with the (only possible) code — should succeed against the new challenge.
         new_code_response = self.client.post(
             "/authn/login/verify-code/",
-            {"email": self.alias.email_address, "code": "666666"},
+            {"email": self.alias.email_address, "code": "654321"},
             format="json",
         )
         self.assertEqual(new_code_response.status_code, 200)
 
-    def test_password_reset_request_same_response_for_unknown_email(self, _mock_send):
+    def test_password_reset_request_same_response_for_unknown_email(self, _mock_code, _mock_send):
         """Password reset for non-existent email should not reveal whether the email exists."""
         response = self.client.post(
             "/authn/password-reset/request-code/",

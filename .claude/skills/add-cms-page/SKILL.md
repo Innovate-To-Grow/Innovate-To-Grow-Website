@@ -17,7 +17,7 @@ Use this skill when the user asks to add a CMS-managed page to the site.
 
 ## Checks
 
-- Query `pages.models.CMSPage` before creating anything.
+- Query `cms.models.CMSPage` before creating anything.
 - Inspect `pages/src/app/router.tsx` and any CMS route fallthrough before editing routes.
 - Stop if the route is already owned by a bespoke React page or redirect.
 

@@ -9,9 +9,9 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
+from cms.models import NewsArticle
 from core.admin.mixins_core import SoftDeleteAdminMixin, TimestampedAdminMixin, VersionControlAdminMixin
 from core.admin.mixins_export import ExportMixin, ImportExportMixin
-from pages.models import NewsArticle
 
 User = get_user_model()
 
@@ -108,8 +108,8 @@ class SoftDeleteAdminMixinTest(TestCase):
 
     def _request_with_messages(self):
         request = self.factory.post("/admin/")
-        setattr(request, "session", "session")
-        setattr(request, "_messages", FallbackStorage(request))
+        request.session = "session"
+        request._messages = FallbackStorage(request)
         return request
 
     def test_restore_selected_action(self):

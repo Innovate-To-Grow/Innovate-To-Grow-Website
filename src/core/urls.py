@@ -19,9 +19,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+
 from authn.views.admin_login import AdminLoginView
+from cms.views import LayoutAPIView
 from core.views import MaintenanceBypassView, root_index
-from pages.views import LayoutAPIView
 
 # Customize Django Admin
 admin.site.site_header = "Innovate To Grow Admin"
@@ -42,17 +43,17 @@ urlpatterns = [
     # event
     path("event/", include("event.urls")),
     # news
-    path("news/", include("pages.news_urls")),
+    path("news/", include("cms.news_urls")),
     # projects
     path("projects/", include("projects.urls")),
     # ckeditor 5
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # cms
-    path("cms/", include("pages.cms_urls")),
+    path("cms/", include("cms.cms_urls")),
     # authn
     path("authn/", include("authn.urls")),
     # analytics
-    path("analytics/", include("pages.analytics_urls")),
+    path("analytics/", include("cms.analytics_urls")),
     # sponsors
     path("sponsors/", include("sponsors.urls")),
 ]

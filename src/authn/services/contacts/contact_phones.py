@@ -67,3 +67,32 @@ def delete_contact_phone(*, member, contact_phone_id):
         raise AuthChallengeInvalid("Contact phone not found.")
 
     contact_phone.delete()
+
+
+def request_phone_verification(*, member, contact_phone_id):
+    """Start Twilio OTP verification for a contact phone."""
+    from authn.services.sms import start_phone_verification
+
+    contact_phone = ContactPhone.objects.filter(pk=contact_phone_id, member=member).first()
+    if contact_phone is None:
+        raise AuthChallengeInvalid("Contact phone not found.")
+    if contact_phone.verified:
+        raise AuthChallengeInvalid("This phone number is already verified.")
+
+    start_phone_verification(contact_phone.phone_number)
+    return {"message": "Verification code sent via SMS."}
+
+
+def verify_phone_code(*, member, contact_phone_id, code: str):
+    """Verify a Twilio OTP code and mark the phone as verified."""
+    from authn.services.sms import check_phone_verification
+
+    contact_phone = ContactPhone.objects.filter(pk=contact_phone_id, member=member).first()
+    if contact_phone is None:
+        raise AuthChallengeInvalid("Contact phone not found.")
+
+    check_phone_verification(contact_phone.phone_number, code)
+
+    contact_phone.verified = True
+    contact_phone.save(update_fields=["verified", "updated_at"])
+    return contact_phone

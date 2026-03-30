@@ -37,12 +37,11 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         "get_full_name_display",
         "organization",
         "is_active",
-        "is_active_member",
         "is_staff",
         "date_joined",
         "get_groups_display",
     )
-    list_filter = ("is_active", "is_active_member", "is_staff", "is_superuser", "groups", "date_joined")
+    list_filter = ("is_active", "is_staff", "groups", "date_joined")
     search_fields = (
         "username",
         "contact_emails__email_address",
@@ -60,12 +59,12 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
         (
             _("Member Info"),
-            {"fields": ("member_uuid", "is_active_member"), "description": "Member-specific information"},
+            {"fields": ("member_uuid",), "description": "Member-specific information"},
         ),
         (
             _("Permissions"),
             {
-                "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
+                "fields": ("is_active", "is_staff", "groups", "user_permissions"),
                 "classes": ("collapse",),
             },
         ),
@@ -74,7 +73,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("username", "password1", "password2")}),
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
-        (_("Member Status"), {"fields": ("is_active_member",)}),
+        (_("Member Status"), {"fields": ("is_active",)}),
     )
     inlines = [MemberProfileInline, ContactEmailInline, ContactPhoneInline]
     change_list_template = "admin/authn/member/change_list.html"

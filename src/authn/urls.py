@@ -17,6 +17,8 @@ from .views import (
     ContactEmailVerifyCodeView,
     ContactPhoneDetailView,
     ContactPhoneListCreateView,
+    ContactPhoneRequestVerificationView,
+    ContactPhoneVerifyCodeView,
     EmailAuthRequestCodeView,
     EmailAuthVerifyCodeView,
     LoginCodeRequestView,
@@ -81,6 +83,16 @@ urlpatterns = [
     # Contact Phones (authenticated)
     path("contact-phones/", ContactPhoneListCreateView.as_view(), name="contact-phone-list-create"),
     path("contact-phones/<uuid:pk>/", ContactPhoneDetailView.as_view(), name="contact-phone-detail"),
+    path(
+        "contact-phones/<uuid:pk>/request-verification/",
+        ContactPhoneRequestVerificationView.as_view(),
+        name="contact-phone-request-verification",
+    ),
+    path(
+        "contact-phones/<uuid:pk>/verify-code/",
+        ContactPhoneVerifyCodeView.as_view(),
+        name="contact-phone-verify-code",
+    ),
     # Admin invitation acceptance (public)
     path("invite/<str:token>/", AcceptInvitationView.as_view(), name="accept-invitation"),
     # Subscribe (public)
