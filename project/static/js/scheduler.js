@@ -69,7 +69,7 @@ var sectionOrder = ["CAP", "CEE", "CSE"];
 var sectionConfig = {
     "CAP": {
         "container": ".capTable",
-        "wrapperClass": "span7",
+        "wrapperClass": "span12",
         "wrapperStyle": "",
         "title": "Engineering Capstone (CAP)",
         "slotColor": "#002856",
@@ -79,8 +79,8 @@ var sectionConfig = {
     },
     "CEE": {
         "container": ".engslTable",
-        "wrapperClass": "span4",
-        "wrapperStyle": "margin-left:40px;",
+        "wrapperClass": "span12",
+        "wrapperStyle": "",
         "title": "Civil & Env. Eng. (CEE)",
         "slotColor": "#002856",
         "topicColor": "#002856",
@@ -89,7 +89,7 @@ var sectionConfig = {
     },
     "CSE": {
         "container": ".cseTable",
-        "wrapperClass": "span11",
+        "wrapperClass": "span12",
         "wrapperStyle": "margin-top:0px; padding: unset;",
         "title": "Software Engineering Capstone (CSE)",
         "slotColor": "#FFBF3C",
