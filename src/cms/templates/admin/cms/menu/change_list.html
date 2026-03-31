@@ -1,0 +1,6 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+    {% include "admin/cms/includes/layout_tabs.html" with active_layout_tab="menu" %}
+    {{ block.super }}
+{% endblock %}

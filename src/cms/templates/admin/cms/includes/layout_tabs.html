@@ -1,0 +1,18 @@
+<nav class="mb-4 flex flex-col gap-1 rounded-default border border-base-200 bg-white p-1 dark:border-base-700 dark:bg-white/[.06] md:inline-flex md:flex-row md:w-auto">
+    <a href="/admin/cms/sitesettings/"
+       class="rounded-default px-4 py-2 text-sm font-medium transition-colors {% if active_layout_tab == 'home' %}bg-primary-600 text-white{% else %}text-font-default-light hover:bg-base-100 dark:text-font-default-dark dark:hover:bg-base-800{% endif %}">
+        Home Page
+    </a>
+    <a href="/admin/cms/cmspage/"
+       class="rounded-default px-4 py-2 text-sm font-medium transition-colors {% if active_layout_tab == 'pages' %}bg-primary-600 text-white{% else %}text-font-default-light hover:bg-base-100 dark:text-font-default-dark dark:hover:bg-base-800{% endif %}">
+        Pages
+    </a>
+    <a href="/admin/cms/menu/"
+       class="rounded-default px-4 py-2 text-sm font-medium transition-colors {% if active_layout_tab == 'menu' %}bg-primary-600 text-white{% else %}text-font-default-light hover:bg-base-100 dark:text-font-default-dark dark:hover:bg-base-800{% endif %}">
+        Menus
+    </a>
+    <a href="/admin/cms/footercontent/"
+       class="rounded-default px-4 py-2 text-sm font-medium transition-colors {% if active_layout_tab == 'footer' %}bg-primary-600 text-white{% else %}text-font-default-light hover:bg-base-100 dark:text-font-default-dark dark:hover:bg-base-800{% endif %}">
+        Footer
+    </a>
+</nav>

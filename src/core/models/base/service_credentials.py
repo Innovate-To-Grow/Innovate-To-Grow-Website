@@ -3,11 +3,24 @@ from django.db import models
 
 class EmailServiceConfig(models.Model):
     """
-    Singleton model for email delivery configuration.
+    Email delivery configuration.
 
     Stores AWS SES credentials (primary) and SMTP settings (fallback).
+    Multiple configs can exist but only one may be active at a time.
     Managed via Django admin under Site Settings.
     """
+
+    name = models.CharField(
+        max_length=128,
+        default="Default",
+        verbose_name="Config Name",
+        help_text="A label to identify this configuration (e.g. 'Production SES', 'Dev SMTP').",
+    )
+    is_active = models.BooleanField(
+        default=False,
+        verbose_name="Active",
+        help_text="Only one config can be active. Activating this will deactivate others.",
+    )
 
     # AWS SES
     ses_access_key_id = models.CharField(
@@ -75,23 +88,31 @@ class EmailServiceConfig(models.Model):
 
     class Meta:
         verbose_name = "Email Service Config"
-        verbose_name_plural = "Email Service Config"
+        verbose_name_plural = "Email Service Configs"
 
     def __str__(self):
+        status = " (active)" if self.is_active else ""
         if self.ses_access_key_id:
-            return f"Email: SES ({self.ses_region}) + SMTP fallback"
-        return f"Email: SMTP ({self.smtp_host})"
+            return f"{self.name}: SES ({self.ses_region}) + SMTP fallback{status}"
+        return f"{self.name}: SMTP ({self.smtp_host}){status}"
 
-    # noinspection PyAttributeOutsideInit
     def save(self, *args, **kwargs):
-        self.pk = 1
+        if self.is_active:
+            EmailServiceConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
         super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        """Load the singleton instance, creating it with defaults if needed."""
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
+        """Load the active config, falling back to the most recently updated one.
+
+        Returns an unsaved instance with defaults when no rows exist so that
+        callers can safely access properties like ``ses_configured`` without
+        guarding against ``None``.
+        """
+        obj = cls.objects.filter(is_active=True).first()
+        if obj is None:
+            obj = cls.objects.order_by("-updated_at").first()
+        return obj if obj is not None else cls()
 
     @property
     def source_address(self):
@@ -107,11 +128,24 @@ class EmailServiceConfig(models.Model):
 
 class SMSServiceConfig(models.Model):
     """
-    Singleton model for Twilio SMS verification configuration.
+    Twilio SMS verification configuration.
 
-    Stores Twilio Verify API credentials. Managed via Django admin
+    Stores Twilio Verify API credentials. Multiple configs can exist
+    but only one may be active at a time. Managed via Django admin
     under Site Settings.
     """
+
+    name = models.CharField(
+        max_length=128,
+        default="Default",
+        verbose_name="Config Name",
+        help_text="A label to identify this configuration.",
+    )
+    is_active = models.BooleanField(
+        default=False,
+        verbose_name="Active",
+        help_text="Only one config can be active. Activating this will deactivate others.",
+    )
 
     account_sid = models.CharField(
         max_length=64,
@@ -138,23 +172,31 @@ class SMSServiceConfig(models.Model):
 
     class Meta:
         verbose_name = "SMS Service Config"
-        verbose_name_plural = "SMS Service Config"
+        verbose_name_plural = "SMS Service Configs"
 
     def __str__(self):
+        status = " (active)" if self.is_active else ""
         if self.account_sid:
-            return f"SMS: Twilio (SID: ...{self.account_sid[-4:]})"
-        return "SMS: Not configured"
+            return f"{self.name}: Twilio (SID: ...{self.account_sid[-4:]}){status}"
+        return f"{self.name}: Not configured{status}"
 
-    # noinspection PyAttributeOutsideInit
     def save(self, *args, **kwargs):
-        self.pk = 1
+        if self.is_active:
+            SMSServiceConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
         super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        """Load the singleton instance, creating it with defaults if needed."""
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
+        """Load the active config, falling back to the most recently updated one.
+
+        Returns an unsaved instance with defaults when no rows exist so that
+        callers can safely access properties like ``is_configured`` without
+        guarding against ``None``.
+        """
+        obj = cls.objects.filter(is_active=True).first()
+        if obj is None:
+            obj = cls.objects.order_by("-updated_at").first()
+        return obj if obj is not None else cls()
 
     @property
     def is_configured(self):

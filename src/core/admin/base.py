@@ -33,21 +33,6 @@ class BaseModelAdmin(ModelAdmin):
 
         return readonly
 
-    def has_add_permission(self, request):
-        """Check if user has permission to add objects."""
-        return super().has_add_permission(request)
-
-    def has_change_permission(self, request, obj=None):
-        """Check if user has permission to change objects."""
-        return super().has_change_permission(request, obj)
-
-    def has_delete_permission(self, request, obj=None):
-        """Check if user has permission to delete objects."""
-        return super().has_delete_permission(request, obj)
-
-    def has_view_permission(self, request, obj=None):
-        """Check if user has permission to view objects."""
-        return super().has_view_permission(request, obj)
 
 
 class ReadOnlyModelAdmin(BaseModelAdmin):

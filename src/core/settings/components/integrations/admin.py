@@ -29,6 +29,15 @@ UNFOLD = {
             "950": "oklch(29.1% .149 302.717)",
         },
     },
+    "TABS": [
+        {
+            "models": ["core.emailserviceconfig", "core.smsserviceconfig"],
+            "items": [
+                {"title": "Email Config", "link": "/admin/core/emailserviceconfig/"},
+                {"title": "SMS Config", "link": "/admin/core/smsserviceconfig/"},
+            ],
+        },
+    ],
     "SIDEBAR": {
         "show_search": True,
         "navigation": [
@@ -36,19 +45,16 @@ UNFOLD = {
                 "title": "Site Settings",
                 "items": [
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
-                    {"title": "Email Service Config", "link": "/admin/core/emailserviceconfig/"},
-                    {"title": "SMS Service Config", "link": "/admin/core/smsserviceconfig/"},
+                    {"title": "Service Configs", "link": "/admin/core/emailserviceconfig/"},
                     {"title": "Version History", "link": "/admin/core/modelversion/"},
                 ],
             },
             {
                 "title": "Content Management System",
                 "items": [
-                    {"title": "Home Page", "link": "/admin/cms/sitesettings/"},
-                    {"title": "Pages", "link": "/admin/cms/cmspage/"},
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
-                    {"title": "Menus", "link": "/admin/cms/menu/"},
-                    {"title": "Footer", "link": "/admin/cms/footercontent/"},
+                    {"title": "Page Content", "link": "/admin/cms/cmspage/"},
+                    {"title": "News Management", "link": "/admin/cms/newsfeedsource/"},
                 ],
             },
             {
@@ -73,14 +79,6 @@ UNFOLD = {
                     {"title": "Contact Phones", "link": "/admin/authn/contactphone/"},
                     {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
                     {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
-                ],
-            },
-            {
-                "title": "News",
-                "items": [
-                    {"title": "News Articles", "link": "/admin/cms/newsarticle/"},
-                    {"title": "Feed Sources", "link": "/admin/cms/newsfeedsource/"},
-                    {"title": "Sync Logs", "link": "/admin/cms/newssynclog/"},
                 ],
             },
         ],

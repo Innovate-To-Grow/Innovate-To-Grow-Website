@@ -33,7 +33,7 @@ def export_members_to_excel(queryset) -> bytes:
         "is_staff",
         "email_subscribe",
         "date_joined",
-    ).prefetch_related("contact_emails", "contact_phones", "groups")
+    ).prefetch_related("contact_emails", "contact_phones")
 
     wb = Workbook(write_only=True)
     ws = wb.create_sheet("Members")
@@ -53,7 +53,6 @@ def export_members_to_excel(queryset) -> bytes:
         ("Date Joined", 18),
         ("Contact Emails", 40),
         ("Contact Phones", 25),
-        ("Groups", 30),
     ]
 
     # Set column widths before appending rows
@@ -79,7 +78,6 @@ def export_members_to_excel(queryset) -> bytes:
     for member in queryset:
         contact_emails = member.contact_emails.all()
         contact_phones = member.contact_phones.all()
-        groups = member.groups.all()
 
         email_parts = []
         for ce in contact_emails:
@@ -103,7 +101,6 @@ def export_members_to_excel(queryset) -> bytes:
                 member.date_joined.strftime("%Y-%m-%d %H:%M") if member.date_joined else "",
                 ", ".join(email_parts),
                 ", ".join(cp.phone_number for cp in contact_phones),
-                ", ".join(g.name for g in groups),
             ]
         )
 

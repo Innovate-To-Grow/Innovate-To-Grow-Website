@@ -14,6 +14,7 @@ class FooterContentAdmin(ModelAdmin):
     search_fields = ("name", "slug")
     readonly_fields = ("created_at", "updated_at")
     prepopulated_fields = {"slug": ("name",)}
+    change_list_template = "admin/cms/footer_content/change_list.html"
     change_form_template = "admin/cms/footer_content/change_form.html"
 
     fieldsets = (

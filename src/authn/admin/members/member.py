@@ -13,13 +13,11 @@ from .forms import MemberChangeForm, MemberCreationForm
 from .inlines import ContactEmailInline, ContactPhoneInline, MemberProfileInline
 from .member_helpers import (
     activate_members,
-    assign_default_groups,
     deactivate_members,
     download_template_view,
     export_excel_view,
     export_members_response,
     get_full_name_display,
-    get_groups_display,
     get_primary_email_display,
     import_excel_view,
 )
@@ -39,9 +37,8 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         "is_active",
         "is_staff",
         "date_joined",
-        "get_groups_display",
     )
-    list_filter = ("is_active", "is_staff", "groups", "date_joined")
+    list_filter = ("is_active", "is_staff", "date_joined")
     search_fields = (
         "username",
         "contact_emails__email_address",
@@ -53,7 +50,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     )
     ordering = ("-date_joined",)
     readonly_fields = ("member_uuid", "date_joined", "last_login")
-    filter_horizontal = ("groups", "user_permissions")
+    filter_horizontal = ("user_permissions",)
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
@@ -64,7 +61,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (
             _("Permissions"),
             {
-                "fields": ("is_active", "is_staff", "groups", "user_permissions"),
+                "fields": ("is_active", "is_staff", "user_permissions"),
                 "classes": ("collapse",),
             },
         ),
@@ -77,7 +74,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     )
     inlines = [MemberProfileInline, ContactEmailInline, ContactPhoneInline]
     change_list_template = "admin/authn/member/change_list.html"
-    actions = ["activate_members", "deactivate_members", "assign_default_groups", "export_members_to_excel"]
+    actions = ["activate_members", "deactivate_members", "export_members_to_excel"]
 
     @admin.display(description="Primary Email")
     def get_primary_email_display(self, obj):
@@ -87,10 +84,6 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     def get_full_name_display(self, obj):
         return get_full_name_display(obj)
 
-    @admin.display(description="Groups")
-    def get_groups_display(self, obj):
-        return get_groups_display(obj)
-
     @admin.action(description="Activate selected members")
     def activate_members(self, request, queryset):
         activate_members(self, request, queryset)
@@ -98,10 +91,6 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     @admin.action(description="Deactivate selected members")
     def deactivate_members(self, request, queryset):
         deactivate_members(self, request, queryset)
-
-    @admin.action(description="Create default I2G groups")
-    def assign_default_groups(self, request, queryset):
-        assign_default_groups(self, request)
 
     @admin.action(description="Export selected members to Excel")
     def export_members_to_excel(self, request, queryset):
