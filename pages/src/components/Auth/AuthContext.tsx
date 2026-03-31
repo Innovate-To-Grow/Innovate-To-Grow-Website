@@ -24,22 +24,16 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({children}: AuthProviderProps) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [requiresProfileCompletion, setRequiresProfileCompletion] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    // Initialize auth state from localStorage
-    useEffect(() => {
+    const [user, setUser] = useState<User | null>(() => {
         const storedUser = getStoredUser();
-        if (storedUser && checkIsAuthenticated()) {
-            setUser(storedUser);
-            setRequiresProfileCompletion(checkProfileCompletionRequired());
-        } else {
-            setRequiresProfileCompletion(false);
-        }
-        setIsLoading(false);
-    }, []);
+        return storedUser && checkIsAuthenticated() ? storedUser : null;
+    });
+    const [requiresProfileCompletion, setRequiresProfileCompletion] = useState(() => {
+        const storedUser = getStoredUser();
+        return storedUser && checkIsAuthenticated() ? checkProfileCompletionRequired() : false;
+    });
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Listen for auth state changes from other React roots
     useEffect(() => {
