@@ -133,7 +133,9 @@ project/db/data.sqlite3
 *.ini
 
 # IDE
-.idea/
+.idea/*
+!.idea/.gitignore
+!.idea/runConfigurations/
 .vscode/
 
 # Claude Code
