@@ -1,11 +1,5 @@
 # Production Architecture
 
-## Backend
-
-- Backend deploys to AWS ECS Fargate from the Docker image built in `src/`.
-- Production commonly uses PostgreSQL, Redis, S3-compatible static storage, and environment-managed secrets.
-- Health and CORS smoke checks remain part of deployment validation.
-
 ## Frontend
 
 - Frontend deploys to AWS Amplify from the Vite build output in `pages/dist/`.

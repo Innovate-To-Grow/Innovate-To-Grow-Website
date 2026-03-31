@@ -1,12 +1,7 @@
-from django.contrib.auth.models import (
-    AbstractUser,
-    Group,
-)
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from core.models import ProjectControlModel
-
-from .user_group import MemberGroup
 
 
 class Member(AbstractUser, ProjectControlModel):
@@ -34,29 +29,6 @@ class Member(AbstractUser, ProjectControlModel):
         verbose_name="Email Subscribe",
     )
 
-    # assign to a group
-    def assign_group(self, group_name: str):
-        # handle group not found
-        if group_name not in MemberGroup.GROUP_CHOICES:
-            raise ValueError(f"Group '{group_name}' not found")
-
-        # get or create the group
-        group, created = Group.objects.get_or_create(name=group_name)
-
-        # add user to the group
-        self.groups.add(group)
-
-    # remove user from a group
-    def remove_from_group(self, group_name: str):
-        # get group
-        group = Group.objects.filter(name=group_name).first()
-
-        if group:
-            # remove user from the group
-            self.groups.remove(group)
-        else:
-            raise ValueError(f"Group '{group_name}' not found")
-
     # get full name including middle name
     def get_full_name(self):
         """
@@ -69,20 +41,6 @@ class Member(AbstractUser, ProjectControlModel):
             full_name += f" {self.last_name}"
         return full_name.strip()
 
-    # check if user is in a specific group
-    def is_in_group(self, group_name: str) -> bool:
-        """
-        Check if the user is in a specific group.
-        """
-        return self.groups.filter(name=group_name).exists()
-
-    # get all user groups as list
-    def get_group_names(self) -> list:
-        """
-        Return a list of all group names the user belongs to.
-        """
-        return list(self.groups.values_list("name", flat=True))
-
     def get_primary_email(self) -> str:
         """Return the primary ContactEmail address, or empty string."""
         contact = self.contact_emails.filter(email_type="primary").order_by("created_at").first()
@@ -91,13 +49,6 @@ class Member(AbstractUser, ProjectControlModel):
     def get_primary_contact_email(self):
         """Return the primary ContactEmail object, or None."""
         return self.contact_emails.filter(email_type="primary").order_by("created_at").first()
-
-    # check if user has a specific role
-    def has_role(self, role_name: str) -> bool:
-        """
-        Check if the user has a specific role (same as is_in_group for now).
-        """
-        return self.is_in_group(role_name)
 
     # get user profile
     def get_profile(self):

@@ -20,12 +20,19 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, connections
 
-from .resetdb_helpers import create_default_admin, delete_migration_files, reset_mysql, reset_postgresql, reset_sqlite
+from .resetdb_helpers import (
+    create_default_admin,
+    delete_migration_files,
+    reset_mysql,
+    reset_postgresql,
+    reset_sqlite,
+    seed_archive_data,
+)
 
 
 class Command(BaseCommand):
     help = "Resets database and migration files, then recreates everything (DEV ONLY)."
-    DEV_ADD_ADMIN_USER = False
+    DEV_ADD_ADMIN_USER = True
     DEV_DEFAULT_ADMIN_USERNAME = "hongzhe"
     DEV_DEFAULT_ADMIN_EMAIL = "xiehongzhe04@gmail.com"
     DEV_DEFAULT_ADMIN_PASSWORD = "1"
@@ -87,6 +94,10 @@ class Command(BaseCommand):
         call_command("migrate", database=db_alias, interactive=False)
         self.stdout.write(self.style.SUCCESS("Migrations applied."))
         create_default_admin(self)
+        self.stdout.write(self.style.NOTICE("Seeding service configs..."))
+        call_command("seed_service_configs")
+        self.stdout.write(self.style.NOTICE("Seeding archive data (CMS pages, menus, footer)..."))
+        seed_archive_data(self)
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("=" * 60))
         self.stdout.write(self.style.SUCCESS("DATABASE RESET COMPLETE"))

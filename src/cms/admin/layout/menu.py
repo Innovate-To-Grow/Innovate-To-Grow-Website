@@ -13,6 +13,7 @@ class MenuAdmin(ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name",)
     readonly_fields = ("created_at", "updated_at")
+    change_list_template = "admin/cms/menu/change_list.html"
     change_form_template = "admin/cms/menu/change_form.html"
 
     fieldsets = (

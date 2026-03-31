@@ -22,4 +22,4 @@ Repository guidance is split into short references so local instructions stay ea
 - Settings use `--settings=core.settings.dev` for local work.
 - Vite dev server (port 5173) proxies `/api`, `/media`, `/static` to Django (port 8000).
 - Ruff: line length 120, target Python 3.11, double quotes, LF endings.
-- Deployment: AWS ECS (backend) + Amplify (frontend); CI settings: `core.settings.ci`.
+- Deployment: Amplify (frontend); CI settings: `core.settings.ci`.

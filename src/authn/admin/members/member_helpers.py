@@ -2,7 +2,6 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
-from ...models import I2GMemberGroup
 from .forms import MemberImportForm
 
 
@@ -14,11 +13,6 @@ def get_full_name_display(member):
     return member.get_full_name() or "-"
 
 
-def get_groups_display(member):
-    groups = member.groups.all()[:3]
-    return ", ".join(group.name for group in groups) if groups else "-"
-
-
 def activate_members(admin_obj, request, queryset):
     updated = queryset.update(is_active=True)
     admin_obj.message_user(request, f"{updated} member(s) activated.")
@@ -27,11 +21,6 @@ def activate_members(admin_obj, request, queryset):
 def deactivate_members(admin_obj, request, queryset):
     updated = queryset.update(is_active=False)
     admin_obj.message_user(request, f"{updated} member(s) deactivated.")
-
-
-def assign_default_groups(admin_obj, request):
-    I2GMemberGroup.create_default_groups()
-    admin_obj.message_user(request, "Default I2G groups created successfully.")
 
 
 def build_excel_response(content, filename):

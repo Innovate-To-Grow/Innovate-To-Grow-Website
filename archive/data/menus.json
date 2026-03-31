@@ -1,0 +1,257 @@
+[
+  {
+    "url": "/",
+    "icon": "",
+    "type": "home",
+    "title": "Home",
+    "children": [],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/about",
+    "icon": "",
+    "type": "app",
+    "title": "About",
+    "children": [
+      {
+        "url": "/engineering-capstone",
+        "icon": "",
+        "type": "app",
+        "title": "Engineering Capstone",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/software-capstone",
+        "icon": "",
+        "type": "app",
+        "title": "Software Eng. Capstone",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/about-engsl",
+        "icon": "",
+        "type": "app",
+        "title": "Eng. Service Learning",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/partnership",
+        "icon": "",
+        "type": "app",
+        "title": "Partnership",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/sponsorship",
+        "icon": "",
+        "type": "app",
+        "title": "Sponsorship",
+        "children": [],
+        "open_in_new_tab": false
+      }
+    ],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/event",
+    "icon": "",
+    "type": "app",
+    "title": "Events",
+    "children": [
+      {
+        "url": "/event-registration",
+        "type": "app",
+        "title": "Register Event",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/schedule",
+        "icon": "",
+        "type": "app",
+        "title": "Schedule",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/projects-teams",
+        "icon": "",
+        "type": "app",
+        "title": "Projects & Teams",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/judges",
+        "icon": "",
+        "type": "app",
+        "title": "Judges",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/attendees",
+        "icon": "",
+        "type": "app",
+        "title": "Attendees",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/judging",
+        "icon": "",
+        "type": "app",
+        "title": "Judging Forms",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/past-events",
+        "icon": "",
+        "type": "app",
+        "title": "Past Events",
+        "children": [],
+        "open_in_new_tab": false
+      }
+    ],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/projects",
+    "icon": "",
+    "type": "app",
+    "title": "Projects",
+    "children": [
+      {
+        "url": "/current-projects",
+        "icon": "",
+        "type": "app",
+        "title": "Current Projects",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/past-projects",
+        "icon": "",
+        "type": "app",
+        "title": "Past Projects",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/project-submission",
+        "icon": "",
+        "type": "app",
+        "title": "Project Submission",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/sample-proposals",
+        "icon": "",
+        "type": "app",
+        "title": "Sample Proposals",
+        "children": [],
+        "open_in_new_tab": false
+      }
+    ],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/partnership",
+    "type": "app",
+    "title": "Partner with Us",
+    "children": [
+      {
+        "url": "/judges",
+        "type": "app",
+        "title": "Judge",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/acknowledgement",
+        "type": "app",
+        "title": "Partners & Sponsors",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/faqs",
+        "type": "app",
+        "title": "FAQs",
+        "children": [],
+        "open_in_new_tab": false
+      }
+    ],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/students",
+    "icon": "",
+    "type": "app",
+    "title": "Students",
+    "children": [
+      {
+        "url": "/student-agreement",
+        "icon": "",
+        "type": "app",
+        "title": "Student Agreement",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/ferpa",
+        "icon": "",
+        "type": "app",
+        "title": "FERPA Agreement",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/event-preparation",
+        "icon": "",
+        "type": "app",
+        "title": "Event Preparation",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/video-preparation",
+        "icon": "",
+        "type": "app",
+        "title": "Video Preparation",
+        "children": [],
+        "open_in_new_tab": false
+      },
+      {
+        "url": "/purchasing-reimbursement",
+        "icon": "",
+        "type": "app",
+        "title": "Purchasing & Reimbursement",
+        "children": [],
+        "open_in_new_tab": false
+      }
+    ],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/project-submission",
+    "type": "app",
+    "title": "Project Submission",
+    "children": [],
+    "open_in_new_tab": false
+  },
+  {
+    "url": "/news",
+    "icon": "",
+    "type": "app",
+    "title": "News",
+    "children": [],
+    "open_in_new_tab": false
+  }
+]
