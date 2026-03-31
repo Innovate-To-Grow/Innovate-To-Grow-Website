@@ -14,12 +14,6 @@ from .contacts.contact_phones import (
     request_phone_verification,
     verify_phone_code,
 )
-from .sms import (
-    PhoneVerificationDeliveryError,
-    PhoneVerificationError,
-    PhoneVerificationInvalid,
-    PhoneVerificationThrottled,
-)
 from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
@@ -52,6 +46,12 @@ from .rsa_manager import (
     get_public_key_pem,
     is_encrypted_password,
     rotate_auth_keypair,
+)
+from .sms import (
+    PhoneVerificationDeliveryError,
+    PhoneVerificationError,
+    PhoneVerificationInvalid,
+    PhoneVerificationThrottled,
 )
 
 __all__ = [

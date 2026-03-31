@@ -15,13 +15,13 @@ from authn.serializers import (
     ContactPhoneVerifyCodeSerializer,
 )
 from authn.services import (
+    PhoneVerificationDeliveryError,
+    PhoneVerificationInvalid,
+    PhoneVerificationThrottled,
     create_contact_phone,
     delete_contact_phone,
     request_phone_verification,
     verify_phone_code,
-    PhoneVerificationDeliveryError,
-    PhoneVerificationInvalid,
-    PhoneVerificationThrottled,
 )
 from authn.services.email_challenges import AuthChallengeInvalid
 

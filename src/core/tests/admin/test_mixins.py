@@ -10,7 +10,13 @@ from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
 from cms.models import NewsArticle
-from core.admin.mixins import ExportMixin, ImportExportMixin, SoftDeleteAdminMixin, TimestampedAdminMixin, VersionControlAdminMixin
+from core.admin.mixins import (
+    ExportMixin,
+    ImportExportMixin,
+    SoftDeleteAdminMixin,
+    TimestampedAdminMixin,
+    VersionControlAdminMixin,
+)
 
 User = get_user_model()
 

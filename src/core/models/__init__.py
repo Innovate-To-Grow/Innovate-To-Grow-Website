@@ -1,6 +1,6 @@
 """Shared core models."""
 
-from .base import EmailServiceConfig, ProjectControlModel, SMSServiceConfig, SiteMaintenanceControl
+from .base import EmailServiceConfig, ProjectControlModel, SiteMaintenanceControl, SMSServiceConfig
 from .managers import AllObjectsManager, ProjectControlManager, ProjectControlQuerySet
 from .mixins import ActiveModel, AuthoredModel, OrderedModel
 from .versioning import ModelVersion

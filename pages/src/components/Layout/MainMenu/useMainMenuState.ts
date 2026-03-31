@@ -13,7 +13,7 @@ export const useMainMenuState = () => {
   const prevLayoutStateRef = useRef<typeof state | undefined>(undefined);
   const introFadePlayedRef = useRef(false);
   const [navIntroFade, setNavIntroFade] = useState(false);
-  const currentDate = useMemo(formatCurrentMenuDate, []);
+  const currentDate = useMemo(() => formatCurrentMenuDate(), []);
   const menuItems = menu?.items ?? [];
 
   useEffect(() => {
