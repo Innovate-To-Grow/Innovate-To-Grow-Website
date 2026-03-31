@@ -961,31 +961,28 @@
 
                             var datas = [];
                             var test;
+
+                            function setStatusMessage(message, isError) {
+                                var status = $("#current-projects-status");
+                                status.text(message);
+                                status.css("display", "block");
+                                status.css("color", isError ? "#b42318" : "#475467");
+                            }
+
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1o9xGjsaaS3BBOB4qLKVfRXWP0W-YDLa20TxPCEnRSik/values/A1:Y76?alt=json&key=***REMOVED_API_KEY***", function (data) {
-                                    var length = data.values.length;
-                                    console.log(length);
-                                    for (var i = 1; i < length; i++) {
-                                        const subArray = data.values[i];
-                                        subdata = {
-                                            "Track": subArray[0],
-                                            "Order": subArray[1],
-                                            "Year-Semester": subArray[2],
-                                            "Class": subArray[3],
-                                            "Team#": subArray[4],
-                                            "TeamName": subArray[5],
-                                            "Project Title": subArray[6],
-                                            "Organization": subArray[7],
-                                            "Industry": subArray[8],
-                                            "Abstract": subArray[9],
-                                            "Student Names": subArray[10],
-                                            "NameTitle": subArray[11],
-                                        };
-                                        JSON.stringify(subdata);
-                                        datas.push(subdata);
+                                $.getJSON("{{ url_for('home.current_projects_data') }}", function (data) {
+                                    datas = Array.isArray(data) ? data : [];
+                                    console.log(datas.length);
+                                    if (!datas.length) {
+                                        setStatusMessage("No current project data is available yet.", false);
+                                    } else {
+                                        $("#current-projects-status").css("display", "none");
                                     }
                                     console.log("first");
-                                    fnLoadDataTableInstance()
+                                    fnLoadDataTableInstance();
+                                }).fail(function (jqXHR) {
+                                    console.error("Unable to load current projects data.", jqXHR.responseJSON || jqXHR.responseText);
+                                    setStatusMessage("Current projects are temporarily unavailable. Please check the Google Sheet sharing settings and try again.", true);
                                 });
 
                             });
@@ -1064,6 +1061,8 @@
                         </style>
                         <style class="darkreader darkreader--sync" media="screen" type="text/css">
                         </style>
+                        <div id="current-projects-status"
+                             style="display:none; margin: 16px 0 20px; font-size: 18px; font-weight: 600;"></div>
                         <table class="display" id="example" style="width:100%">
                             <thead>
                             <tr>

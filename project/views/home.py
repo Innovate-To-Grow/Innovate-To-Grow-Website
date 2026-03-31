@@ -1,7 +1,82 @@
+import os
 import gspread, uuid
 from threading import Thread
 from flask import Blueprint, render_template, request, jsonify
+from gspread.exceptions import APIError
 from project import cache
+
+CURRENT_PROJECTS_SPREADSHEET_ID = "1KRFQ7UX35du1VJCNs4naykynTtLAr0rgtKrNOEWMkgI"
+CURRENT_PROJECTS_WORKSHEET_GID = 1913722874
+SERVICE_ACCOUNT_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "service_account.json",
+)
+
+
+def _normalize_sheet_header(value):
+    return "".join(character.lower() for character in value if character.isalnum())
+
+
+def _build_current_projects_payload(rows):
+    if not rows:
+        return []
+
+    headers = rows[0]
+    normalized_headers = {
+        _normalize_sheet_header(header): index for index, header in enumerate(headers)
+    }
+    fallback_indices = {
+        "Track": 0,
+        "Order": 1,
+        "Year-Semester": 2,
+        "Class": 3,
+        "Team#": 4,
+        "TeamName": 5,
+        "Project Title": 6,
+        "Organization": 7,
+        "Industry": 8,
+        "Abstract": 9,
+        "Student Names": 10,
+        "NameTitle": 11,
+    }
+    field_aliases = {
+        "Track": ["Track"],
+        "Order": ["Order"],
+        "Year-Semester": ["Year-Semester", "Year Semester", "Semester"],
+        "Class": ["Class"],
+        "Team#": ["Team#", "Team Number", "Team"],
+        "TeamName": ["TeamName", "Team Name"],
+        "Project Title": ["Project Title", "Title"],
+        "Organization": ["Organization", "Partner Organization", "Partner"],
+        "Industry": ["Industry"],
+        "Abstract": ["Abstract", "Project Abstract"],
+        "Student Names": ["Student Names", "Students"],
+        "NameTitle": ["NameTitle", "Name Title", "Contact Name Title"],
+    }
+
+    def get_cell(row, field_name):
+        for alias in field_aliases[field_name]:
+            alias_index = normalized_headers.get(_normalize_sheet_header(alias))
+            if alias_index is not None and alias_index < len(row):
+                return row[alias_index]
+
+        fallback_index = fallback_indices[field_name]
+        if fallback_index < len(row):
+            return row[fallback_index]
+        return ""
+
+    projects = []
+    for row in rows[1:]:
+        if not any(cell.strip() for cell in row):
+            continue
+
+        project = {
+            field_name: get_cell(row, field_name) for field_name in field_aliases
+        }
+        if project["Team#"] or project["Project Title"] or project["TeamName"]:
+            projects.append(project)
+
+    return projects
 
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
 
@@ -104,6 +179,45 @@ def projects():
 @cache.cached()
 def current_projects():
     return render_template("current-projects.html")
+
+
+@home_blueprint.route("/api/current-projects", methods=["GET"])
+def current_projects_data():
+    try:
+        spreadsheet = gspread.service_account(filename=SERVICE_ACCOUNT_PATH).open_by_key(
+            CURRENT_PROJECTS_SPREADSHEET_ID
+        )
+        worksheet = next(
+            (
+                sheet
+                for sheet in spreadsheet.worksheets()
+                if sheet.id == CURRENT_PROJECTS_WORKSHEET_GID
+            ),
+            None,
+        )
+
+        if worksheet is None:
+            return jsonify({"error": "Current projects worksheet not found."}), 404
+
+        rows = worksheet.get("A:Y")
+        return jsonify(_build_current_projects_payload(rows))
+    except APIError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 502
+        if status_code == 403:
+            return (
+                jsonify(
+                    {
+                        "error": "Google Sheet permission denied for the current-projects service account."
+                    }
+                ),
+                403,
+            )
+        return jsonify({"error": f"Unable to load current projects data: {exc}"}), 502
+    except Exception as exc:
+        return (
+            jsonify({"error": f"Unable to load current projects data: {exc}"}),
+            502,
+        )
 
 
 @home_blueprint.route("/project-submission", methods=["GET", "POST"])
