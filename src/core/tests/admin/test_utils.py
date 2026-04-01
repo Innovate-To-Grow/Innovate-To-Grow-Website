@@ -48,14 +48,12 @@ class FormatJsonTest(TestCase):
 
 class GetFieldValueTest(TestCase):
     def test_simple_attribute(self):
-
         class Obj:
             name = "test"
 
         self.assertEqual(get_field_value(Obj(), "name"), "test")
 
     def test_nested_attribute(self):
-
         class Inner:
             value = 42
 
@@ -68,14 +66,12 @@ class GetFieldValueTest(TestCase):
         self.assertIsNone(get_field_value(None, "name"))
 
     def test_missing_attribute_returns_none(self):
-
         class Obj:
             pass
 
         self.assertIsNone(get_field_value(Obj(), "nonexistent"))
 
     def test_broken_chain_returns_none(self):
-
         class Obj:
             middle = None
 
