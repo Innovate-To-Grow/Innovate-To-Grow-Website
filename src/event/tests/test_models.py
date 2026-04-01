@@ -138,10 +138,10 @@ class EventRegistrationModelTest(TestCase):
         self.assertIn("Jane Doe", str(reg))
 
     def test_str_falls_back_to_member_email(self):
-        member_no_name = make_member(username="noname", email="noname@example.com", first_name="", last_name="")
+        member_no_name = make_member(email="noname@example.com", first_name="", last_name="")
         reg = self._make_registration(member=member_no_name)
-        # save() falls back: first_name -> username -> email; last_name -> ""
-        self.assertIn("noname", str(reg))
+        # save() falls back: first_name -> email; last_name -> ""
+        self.assertIn("noname@example.com", str(reg))
 
     def test_ticket_code_auto_generated(self):
         reg = self._make_registration()
@@ -153,7 +153,7 @@ class EventRegistrationModelTest(TestCase):
 
     def test_ticket_code_unique(self):
         r1 = self._make_registration()
-        member2 = make_member(username="user2", email="user2@example.com")
+        member2 = make_member(email="user2@example.com")
         r2 = self._make_registration(member=member2)
         self.assertNotEqual(r1.ticket_code, r2.ticket_code)
 
@@ -162,7 +162,7 @@ class EventRegistrationModelTest(TestCase):
         self.assertEqual(reg.attendee_name, "John Smith")
 
     def test_attendee_name_property_strips_whitespace(self):
-        member_no_last = make_member(username="nolast", email="nolast@example.com", first_name="John", last_name="")
+        member_no_last = make_member(email="nolast@example.com", first_name="John", last_name="")
         reg = self._make_registration(member=member_no_last, attendee_first_name="John", attendee_last_name="")
         self.assertEqual(reg.attendee_name, "John")
 
@@ -183,16 +183,8 @@ class EventRegistrationModelTest(TestCase):
         reg = self._make_registration()
         self.assertEqual(reg.attendee_email, "test@example.com")
 
-    def test_save_first_name_fallback_to_username(self):
-        member = make_member(username="fallbackuser", email="fb@example.com", first_name="", last_name="")
-        reg = self._make_registration(member=member)
-        self.assertEqual(reg.attendee_first_name, "fallbackuser")
-
     def test_save_first_name_fallback_to_email(self):
-        member = make_member(username="emailfallback", email="emailonly@example.com", first_name="", last_name="")
-        # Clear username after creation to simulate edge case
-        member.username = ""
-        member.save(update_fields=["username"])
+        member = make_member(email="emailonly@example.com", first_name="", last_name="")
         reg = self._make_registration(member=member)
         self.assertEqual(reg.attendee_first_name, "emailonly@example.com")
 
@@ -207,7 +199,7 @@ class EventRegistrationModelTest(TestCase):
             self._make_registration()
 
     def test_ordering_by_created_at_descending(self):
-        member2 = make_member(username="user2", email="user2@example.com")
+        member2 = make_member(email="user2@example.com")
         r1 = self._make_registration()
         r2 = self._make_registration(member=member2)
         regs = list(EventRegistration.objects.all())

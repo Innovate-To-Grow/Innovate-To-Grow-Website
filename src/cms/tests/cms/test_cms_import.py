@@ -13,8 +13,6 @@ class CMSImportTest(TestCase):
     def setUp(self):
         cache.clear()
         self.staff = Member.objects.create_superuser(
-            username="importadmin",
-            email="importadmin@test.com",
             password="testpass123",
         )
         self.client = APIClient()

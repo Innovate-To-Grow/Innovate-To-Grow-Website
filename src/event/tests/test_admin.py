@@ -9,7 +9,7 @@ from event.tests.helpers import make_event, make_superuser
 class EventAdminTest(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
-        self.client.login(username="admin", password="testpass123")
+        self.client.login(username="admin@example.com", password="testpass123")
 
     def test_changelist_accessible(self):
         response = self.client.get("/admin/event/event/")
@@ -32,7 +32,7 @@ class EventAdminTest(TestCase):
 class EventRegistrationAdminTest(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
-        self.client.login(username="admin", password="testpass123")
+        self.client.login(username="admin@example.com", password="testpass123")
 
     def test_changelist_accessible(self):
         response = self.client.get("/admin/event/eventregistration/")
@@ -66,7 +66,7 @@ class EventRegistrationAdminTest(TestCase):
         self.assertTrue(admin_instance.has_delete_permission(request))
 
     def test_search_by_attendee_fields(self):
-        member = Member.objects.create_user(username="user1", email="u@e.com", password="testpass123")
+        member = Member.objects.create_user(password="testpass123")
         ContactEmail.objects.create(member=member, email_address="u@e.com", email_type="primary", verified=True)
         event = make_event()
         ticket = Ticket.objects.create(event=event, name="GA")

@@ -13,7 +13,7 @@ from authn.services import (
     verify_email_code_for_purposes,
 )
 
-from .base import _CODE_RE, PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer, build_unique_username
+from .base import _CODE_RE, PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer
 
 Member = get_user_model()
 
@@ -39,8 +39,6 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
         from authn.models import ContactEmail
 
         member = Member(
-            username=build_unique_username(email),
-            email="",
             is_active=False,
             first_name="",
             last_name="",

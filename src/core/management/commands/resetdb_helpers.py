@@ -88,20 +88,19 @@ def create_default_admin(command):
     if not command.DEV_ADD_ADMIN_USER:
         command.stdout.write("  Skipping admin user creation (DEV_ADD_ADMIN_USER=False).")
         return
-    if Member.objects.filter(username=command.DEV_DEFAULT_ADMIN_USERNAME).exists():
-        command.stdout.write(f"  Admin user '{command.DEV_DEFAULT_ADMIN_USERNAME}' already exists.")
+    if ContactEmail.objects.filter(email_address__iexact=command.DEV_DEFAULT_ADMIN_EMAIL).exists():
+        command.stdout.write(f"  Admin user with email '{command.DEV_DEFAULT_ADMIN_EMAIL}' already exists.")
         return
     member = Member.objects.create_superuser(
-        username=command.DEV_DEFAULT_ADMIN_USERNAME,
-        email=command.DEV_DEFAULT_ADMIN_EMAIL,
         password=command.DEV_DEFAULT_ADMIN_PASSWORD,
     )
-    ContactEmail.objects.get_or_create(
-        email_address=member.email,
-        defaults={"member": member, "email_type": "primary", "verified": True},
+    ContactEmail.objects.create(
+        member=member,
+        email_address=command.DEV_DEFAULT_ADMIN_EMAIL,
+        email_type="primary",
+        verified=True,
     )
     command.stdout.write(command.style.SUCCESS("  Created admin user:"))
-    command.stdout.write(f"    Username: {command.DEV_DEFAULT_ADMIN_USERNAME}")
     command.stdout.write(f"    Email:    {command.DEV_DEFAULT_ADMIN_EMAIL}")
     command.stdout.write(f"    Password: {command.DEV_DEFAULT_ADMIN_PASSWORD}")
     command.stdout.write(f"    ContactEmail: {command.DEV_DEFAULT_ADMIN_EMAIL} (verified)")

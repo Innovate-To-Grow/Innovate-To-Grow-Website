@@ -17,8 +17,6 @@ class EmailCodeAuthRegisterTests(APITestCase):
         cache.clear()
         self.password = "StrongPass123!"
         self.member = Member.objects.create_user(
-            username="member",
-            email="",
             password=self.password,
             is_active=True,
         )
@@ -64,8 +62,6 @@ class EmailCodeAuthRegisterTests(APITestCase):
 
     def test_register_reuses_pending_member(self, _mock_code, _mock_send):
         pending = Member.objects.create_user(
-            username="pending",
-            email="",
             password="OldPass123!",
             is_active=False,
             first_name="Old",

@@ -14,8 +14,6 @@ class ProfileUpdateTests(APITestCase):
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(
-            username="profuser",
-            email="",
             password="StrongPass123!",
             first_name="Original",
             last_name="Name",
@@ -32,7 +30,6 @@ class ProfileUpdateTests(APITestCase):
         data = response.data
         self.assertIn("member_uuid", data)
         self.assertIn("email", data)
-        self.assertIn("username", data)
         self.assertIn("first_name", data)
         self.assertIn("last_name", data)
         self.assertIn("middle_name", data)
@@ -95,19 +92,15 @@ class ProfileUpdateTests(APITestCase):
         self.assertEqual(self.member.organization, "TestOrg")
 
     def test_patch_ignores_readonly_fields(self):
-        original_email = self.member.email
-        original_username = self.member.username
         original_uuid = str(self.member.member_uuid)
 
         response = self.client.patch(
             "/authn/profile/",
-            {"email": "hacked@evil.com", "username": "hacked", "member_uuid": "00000000-0000-0000-0000-000000000000"},
+            {"email": "hacked@evil.com", "member_uuid": "00000000-0000-0000-0000-000000000000"},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
         self.member.refresh_from_db()
-        self.assertEqual(self.member.email, original_email)
-        self.assertEqual(self.member.username, original_username)
         self.assertEqual(str(self.member.member_uuid), original_uuid)
 
     def test_unauthenticated_returns_401(self):

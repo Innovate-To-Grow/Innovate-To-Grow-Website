@@ -13,8 +13,6 @@ Member = get_user_model()
 class NewsArticleAdminTest(TestCase):
     def setUp(self):
         self.admin = Member.objects.create_superuser(
-            email="",
-            username="admin",
             password="testpass123",
         )
         ContactEmail.objects.get_or_create(
@@ -30,8 +28,6 @@ class NewsArticleAdminTest(TestCase):
 class NewsFeedSourceAdminTest(TestCase):
     def setUp(self):
         self.admin = Member.objects.create_superuser(
-            email="",
-            username="admin",
             password="testpass123",
         )
         ContactEmail.objects.get_or_create(
@@ -109,8 +105,6 @@ class NewsFeedSourceAdminTest(TestCase):
 class NewsSyncLogAdminTest(TestCase):
     def setUp(self):
         self.admin = Member.objects.create_superuser(
-            email="",
-            username="admin",
             password="testpass123",
         )
         ContactEmail.objects.get_or_create(

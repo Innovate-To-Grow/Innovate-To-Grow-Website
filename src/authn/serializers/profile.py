@@ -17,7 +17,6 @@ class ProfileSerializer(serializers.Serializer):
 
     member_uuid = serializers.UUIDField(read_only=True)
     email = serializers.EmailField(read_only=True)
-    username = serializers.CharField(read_only=True)
     first_name = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -68,7 +67,6 @@ class ProfileSerializer(serializers.Serializer):
         return {
             "member_uuid": str(instance.member_uuid),
             "email": instance.get_primary_email(),
-            "username": instance.username,
             "first_name": instance.first_name or "",
             "middle_name": instance.middle_name or "",
             "last_name": instance.last_name or "",

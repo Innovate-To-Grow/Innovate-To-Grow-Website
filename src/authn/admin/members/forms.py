@@ -13,7 +13,7 @@ class MemberCreationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = Member
-        fields = ("username",)
+        fields = ()
 
 
 class MemberChangeForm(UserChangeForm):

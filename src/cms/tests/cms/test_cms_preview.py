@@ -13,8 +13,6 @@ class CMSPreviewAPITest(TestCase):
         cache.clear()
         self.client = APIClient()
         self.staff = Member.objects.create_user(
-            username="admin",
-            email="admin@test.com",
             password="testpass123",
             is_staff=True,
         )

@@ -17,8 +17,6 @@ class EmailCodePasswordChangeTests(APITestCase):
         cache.clear()
         self.password = "StrongPass123!"
         self.member = Member.objects.create_user(
-            username="member",
-            email="",
             password=self.password,
             is_active=True,
         )
@@ -36,8 +34,6 @@ class EmailCodePasswordChangeTests(APITestCase):
 
     def test_authenticated_password_change_code_flow_uses_own_verified_emails(self, _mock_code, _mock_send):
         other_member = Member.objects.create_user(
-            username="other",
-            email="",
             password="OtherPass123!",
             is_active=True,
         )
@@ -126,8 +122,6 @@ class EmailCodePasswordChangeTests(APITestCase):
     def test_password_reset_confirm_rejects_other_users_token(self, _mock_code, _mock_send):
         """Member B's email + member A's token → 400 'Verification token is invalid' (S10 fix)."""
         other_member = Member.objects.create_user(
-            username="other-reset",
-            email="",
             password="OtherPass123!",
             is_active=True,
         )

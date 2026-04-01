@@ -84,7 +84,7 @@ class PageViewAuthTests(TestCase):
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        user = User.objects.create_user(username="viewer", password="pass")
+        user = User.objects.create_user(password="pass")
         self.client.force_authenticate(user)
         self.client.post("/analytics/pageview/", {"path": "/about"}, format="json")
 

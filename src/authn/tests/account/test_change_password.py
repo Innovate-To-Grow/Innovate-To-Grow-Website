@@ -15,8 +15,6 @@ class ChangePasswordViewTests(APITestCase):
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(
-            username="chgpwduser",
-            email="",
             password="OldPass123!",
             is_active=True,
         )

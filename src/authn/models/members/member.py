@@ -3,8 +3,24 @@ from django.db import models
 
 from core.models import ProjectControlModel
 
+from .manager import MemberManager
+
 
 class Member(AbstractUser, ProjectControlModel):
+    username = None
+
+    USERNAME_FIELD = "id"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    objects = MemberManager()
+
+    def get_username(self):
+        """Return UUID as a string so templates and admin can handle it."""
+        return str(self.id)
+
+    def __str__(self):
+        return self.get_full_name() or self.get_primary_email() or str(self.id)
+
     # add field for user models
     middle_name = models.CharField(max_length=255, null=True, blank=True, help_text="Middle Name")
 
@@ -76,7 +92,7 @@ class MemberProfile(ProjectControlModel):
     )
 
     def __str__(self):
-        return f"{self.model_user.username} - User Profile"
+        return f"{self.model_user.get_full_name() or str(self.model_user.id)} - User Profile"
 
     # check if profile image exists
     def has_profile_image(self):

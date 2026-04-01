@@ -4,8 +4,10 @@ from authn.models import ContactEmail, Member
 from event.models import Event, Ticket
 
 
-def make_member(username="testuser", email="test@example.com", **kwargs):
-    member = Member.objects.create_user(username=username, email=email, password="testpass123", **kwargs)
+def make_member(email="test@example.com", **kwargs):
+    # Accept and discard legacy 'username' kwarg for backward compatibility
+    kwargs.pop("username", None)
+    member = Member.objects.create_user(password="testpass123", **kwargs)
     ContactEmail.objects.create(member=member, email_address=email, email_type="primary", verified=True)
     return member
 
@@ -25,7 +27,7 @@ def make_ticket(event, name="General Admission", **kwargs):
     return Ticket.objects.create(event=event, name=name, **kwargs)
 
 
-def make_superuser(username="admin", email="admin@example.com"):
-    user = Member.objects.create_superuser(username=username, email=email, password="testpass123")
+def make_superuser(email="admin@example.com"):
+    user = Member.objects.create_superuser(password="testpass123")
     ContactEmail.objects.create(member=user, email_address=email, email_type="primary", verified=True)
     return user

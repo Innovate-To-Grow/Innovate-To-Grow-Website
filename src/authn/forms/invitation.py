@@ -22,15 +22,6 @@ class AcceptInvitationForm(forms.Form):
             }
         ),
     )
-    username = forms.CharField(
-        max_length=150,
-        widget=forms.TextInput(
-            attrs={
-                "class": "border bg-white font-medium min-w-full rounded-md text-font-default-light text-sm px-3 py-2 dark:bg-base-900 dark:text-font-default-dark",
-                "placeholder": "Username",
-            }
-        ),
-    )
     first_name = forms.CharField(
         max_length=150,
         widget=forms.TextInput(
@@ -81,12 +72,6 @@ class AcceptInvitationForm(forms.Form):
             }
         ),
     )
-
-    def clean_username(self):
-        username = self.cleaned_data["username"]
-        if Member.objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError("This username is already taken.")
-        return username
 
     def clean_first_name(self):
         value = self.cleaned_data["first_name"]

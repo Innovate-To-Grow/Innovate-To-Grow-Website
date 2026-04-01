@@ -17,7 +17,6 @@ from authn.services import (
     normalize_email,
     verify_email_code,
 )
-from authn.utils import generate_unique_username
 
 _CODE_RE = re.compile(r"^\d{6}$")
 
@@ -52,10 +51,6 @@ def decrypt_new_passwords(attrs: dict, *, user=None) -> str:
         raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
 
     return new_password
-
-
-def build_unique_username(email: str) -> str:
-    return generate_unique_username(email)
 
 
 class BaseEmailSerializer(serializers.Serializer):

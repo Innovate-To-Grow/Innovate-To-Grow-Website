@@ -15,8 +15,6 @@ class UnsubscribeAutoLoginViewTests(APITestCase):
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(
-            username="unsubuser",
-            email="",
             password="StrongPass123!",
             is_active=True,
         )

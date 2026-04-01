@@ -79,7 +79,7 @@ class VersionControlAdminMixin:
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if hasattr(obj, "save_version") and change:
-            obj.save_version(comment=f"Updated via admin by {request.user.username}", user=request.user)
+            obj.save_version(comment=f"Updated via admin by {request.user.get_primary_email()}", user=request.user)
 
     @admin.display(description="Versions")
     def version_count(self, obj):

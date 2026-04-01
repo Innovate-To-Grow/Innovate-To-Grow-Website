@@ -75,7 +75,7 @@ class EventRegistration(ProjectControlModel):
 
     def save(self, *args, **kwargs):
         if not self.attendee_first_name:
-            self.attendee_first_name = self.member.first_name or self.member.username or self.member.get_primary_email()
+            self.attendee_first_name = self.member.first_name or self.member.get_primary_email()
         if not self.attendee_last_name:
             self.attendee_last_name = self.member.last_name or ""
         if not self.attendee_email:

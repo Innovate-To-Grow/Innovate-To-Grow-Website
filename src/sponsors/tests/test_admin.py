@@ -7,13 +7,11 @@ from sponsors.models import Sponsor
 
 class SponsorAdminTest(TestCase):
     def setUp(self):
-        self.admin_user = Member.objects.create_superuser(
-            username="admin", email="admin@example.com", password="testpass123"
-        )
+        self.admin_user = Member.objects.create_superuser(password="testpass123")
         ContactEmail.objects.create(
             member=self.admin_user, email_address="admin@example.com", email_type="primary", verified=True
         )
-        self.client.login(username="admin", password="testpass123")
+        self.client.login(username="admin@example.com", password="testpass123")
 
     def test_changelist_accessible(self):
         response = self.client.get("/admin/sponsors/sponsor/")
