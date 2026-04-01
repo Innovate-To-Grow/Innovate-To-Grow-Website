@@ -19,14 +19,4 @@ __all__ = [
     # Security
     "EmailAuthChallenge",
     "RSAKeypair",
-    # Schol (lazy export to avoid app-start model registration side effects)
-    "SSOProfile",
 ]
-
-
-def __getattr__(name):
-    if name == "SSOProfile":
-        from .schol import SSOProfile
-
-        return SSOProfile
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
