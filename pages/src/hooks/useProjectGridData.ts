@@ -35,6 +35,7 @@ interface PastProjectShareState {
 
 export function useCurrentProjectGridData(enabled: boolean = true): ProjectGridDataResult {
   const [refetchCount, setRefetchCount] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refetchCount forces a new Symbol to trigger the fetch useEffect
   const requestKey = useMemo(() => (enabled ? Symbol('current-project-grid') : null), [enabled, refetchCount]);
   const [state, setState] = useState<ProjectGridRowsState>({
     requestKey: null,
@@ -89,6 +90,7 @@ export function useCurrentProjectGridData(enabled: boolean = true): ProjectGridD
 
 export function usePastProjectGridData(enabled: boolean = true): ProjectGridDataResult {
   const [refetchCount, setRefetchCount] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refetchCount forces a new Symbol to trigger the fetch useEffect
   const requestKey = useMemo(() => (enabled ? Symbol('past-project-grid') : null), [enabled, refetchCount]);
   const [state, setState] = useState<ProjectGridRowsState>({
     requestKey: null,

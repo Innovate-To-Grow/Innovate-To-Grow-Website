@@ -122,8 +122,3 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 768px) {
-  .event-reg-page {
-    padding: var(--itg-page-padding-mobile);
-  }
-}

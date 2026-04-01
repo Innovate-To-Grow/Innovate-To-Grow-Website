@@ -13,36 +13,10 @@ function formatExpiryTime(isoString: string): string {
 // CMS block styling
 import './CMS.css';
 
-// Per-page wrapper CSS (provides max-width, padding, responsive for page_css_class)
-import './page-styles/core/AboutPage.css';
-import './page-styles/core/ContactUsPage.css';
-import './page-styles/core/FaqPage.css';
+// Page-specific CSS for pages with unique layouts (hero, grid, buttons)
 import './page-styles/core/HomePage.css';
-import './page-styles/core/PrivacyPolicyPage.css';
-import './page-styles/core/ProjectsHubPage.css';
-import './page-styles/event/AttendeesPage.css';
 import './page-styles/event/EventPage.css';
-import './page-styles/event/JudgesPage.css';
-import './page-styles/event/JudgingPage.css';
-import './page-styles/event/PastEventsPage.css';
 import './page-styles/event/PostEventHomePage.css';
-import './page-styles/event/TemplateEmailPage.css';
-import './page-styles/event/VideoPreparationPage.css';
-import './page-styles/partnerships/PartnershipPage.css';
-import './page-styles/partnerships/ProjectSubmissionPage.css';
-import './page-styles/partnerships/SampleProposalsPage.css';
-import './page-styles/partnerships/SponsorAcknowledgementPage.css';
-import './page-styles/partnerships/SponsorshipPage.css';
-import './page-styles/programs/EngSLPage.css';
-import './page-styles/programs/EngineeringCapstonePage.css';
-import './page-styles/programs/SoftwareCapstonePage.css';
-import './page-styles/programs/capstone-page.css';
-import './page-styles/students/EventPreparationPage.css';
-import './page-styles/students/FerpaAgreementPage.css';
-import './page-styles/students/PurchasingReimbursementPage.css';
-import './page-styles/students/StudentAgreementPage.css';
-import './page-styles/students/StudentsPage.css';
-import './page-styles/students/student-page.css';
 
 interface CMSPageComponentProps {
   routeOverride?: string;

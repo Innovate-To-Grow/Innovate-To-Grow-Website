@@ -1,7 +1,6 @@
 .project-detail {
   max-width: var(--itg-page-narrow-width);
   margin: 0 auto;
-  padding: var(--itg-page-padding);
 }
 
 .project-detail-back {
@@ -77,10 +76,6 @@
 }
 
 @media (max-width: 768px) {
-  .project-detail {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   .project-detail-title {
     font-size: var(--itg-font-size-h1-mobile);
   }

@@ -1,9 +1,3 @@
-.past-projects-page {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: var(--itg-page-padding);
-}
-
 .past-projects-hero {
   display: grid;
   gap: 0.75rem;
@@ -34,10 +28,6 @@
 }
 
 @media (max-width: 768px) {
-  .past-projects-page {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   .past-projects-title {
     font-size: var(--itg-font-size-h1-mobile);
   }

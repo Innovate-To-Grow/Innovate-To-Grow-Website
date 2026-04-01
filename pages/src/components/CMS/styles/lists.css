@@ -74,10 +74,9 @@
 
 /* ==========================================================================
    Navigation Grid Block (.cms-navigation-grid)
-   Uses existing ProjectsHubPage.css classes
    ========================================================================== */
 
-.cms-navigation-grid .projects-hub-page-title {
+.cms-navigation-grid h1 {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
@@ -108,16 +107,15 @@
 
 /* ==========================================================================
    Contact Info Block (.cms-contact-info)
-   Uses existing ContactUsPage.css classes
    ========================================================================== */
 
-.cms-contact-info .contact-page-title {
+.cms-contact-info h1 {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
 }
 
-.cms-contact-info .contact-text {
+.cms-contact-info p {
   color: var(--itg-color-text);
   font-size: var(--itg-font-size-body);
   line-height: var(--itg-line-height-body);

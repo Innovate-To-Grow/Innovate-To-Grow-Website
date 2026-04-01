@@ -4,13 +4,6 @@
    dedicated page components in src/pages/.
    ========================================================================== */
 
-/* --- Default page wrapper (fallback when no page_css_class is set) --- */
-.cms-page {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: var(--itg-page-padding);
-}
-
 /* --- Live Preview Modal --- */
 .cms-live-preview-overlay {
   position: fixed;
@@ -121,9 +114,6 @@
 }
 
 .cms-page-error {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: var(--itg-page-padding);
   color: var(--itg-color-text);
 }
 
