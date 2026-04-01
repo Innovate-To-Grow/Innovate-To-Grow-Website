@@ -16,7 +16,7 @@ interface ProposalCardsData {
 export const ProposalCardsBlock: React.FC<{ data: ProposalCardsData }> = ({ data }) => {
   return (
     <div className="cms-proposal-cards">
-      {data.heading && <h1 className="proposals-page-title">{data.heading}</h1>}
+      {data.heading && <h1>{data.heading}</h1>}
       {data.proposals.map((proposal, i) => (
         <div key={i} className="proposal-card">
           <div className="proposal-card-header">

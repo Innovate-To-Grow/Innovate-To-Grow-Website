@@ -15,7 +15,7 @@ interface NavigationGridData {
 export const NavigationGridBlock: React.FC<{ data: NavigationGridData }> = ({ data }) => {
   return (
     <section className="cms-navigation-grid">
-      {data.heading && <h1 className="projects-hub-page-title">{data.heading}</h1>}
+      {data.heading && <h1>{data.heading}</h1>}
       <div className="projects-hub-list">
         {data.items.map((item, i) =>
           item.is_external ? (

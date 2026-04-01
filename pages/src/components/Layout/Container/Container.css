@@ -1,6 +1,8 @@
 .app-layout {
   min-height: 50vh;
-  padding: 10px 0;
+  max-width: var(--itg-page-max-width);
+  margin: 0 auto;
+  padding: var(--itg-page-padding);
   width: 100%;
   box-sizing: border-box;
 }
@@ -28,12 +30,6 @@
 
 @media (max-width: 768px) {
   .app-layout {
-    padding: 8px 0;
-  }
-}
-
-@media (max-width: 480px) {
-  .app-layout {
-    padding: 5px 0;
+    padding: var(--itg-page-padding-mobile);
   }
 }

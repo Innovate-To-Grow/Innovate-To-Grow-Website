@@ -3,6 +3,12 @@
    Used by: AboutPage, SponsorshipPage, EngSLPage, and many others
    ========================================================================== */
 
+.cms-rich-text h1 {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  margin: 0 0 2rem;
+}
+
 .cms-rich-text .section-title {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-h2);

@@ -44,12 +44,8 @@
    ========================================================================== */
 
 @media (max-width: 768px) {
-  .cms-page {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   /* Rich text */
-  .cms-rich-text h1.section-title {
+  .cms-rich-text h1 {
     font-size: var(--itg-font-size-h1-mobile);
   }
 
@@ -94,11 +90,11 @@
   }
 
   /* FAQ */
-  .cms-faq-list .faq-page-title {
+  .cms-faq-list h1 {
     font-size: var(--itg-font-size-h1-mobile);
   }
 
-  .cms-faq-list .faq-question {
+  .cms-faq-list h2 {
     font-size: var(--itg-font-size-h3-mobile);
   }
 
@@ -112,7 +108,7 @@
   }
 
   /* Navigation grid */
-  .cms-navigation-grid .projects-hub-page-title {
+  .cms-navigation-grid h1 {
     font-size: var(--itg-font-size-h1-mobile);
   }
 
@@ -121,7 +117,7 @@
   }
 
   /* Contact info */
-  .cms-contact-info .contact-page-title {
+  .cms-contact-info h1 {
     font-size: var(--itg-font-size-h1-mobile);
   }
 
@@ -137,7 +133,7 @@
   }
 
   /* Proposal cards */
-  .cms-proposal-cards .proposals-page-title {
+  .cms-proposal-cards h1 {
     font-size: var(--itg-font-size-h1-mobile);
   }
 
@@ -158,5 +154,19 @@
   .cms-table-block-table td {
     font-size: var(--itg-font-size-table-mobile);
     padding: 0.5rem;
+  }
+
+  /* Body classes */
+  .about-lead {
+    font-size: var(--itg-font-size-lead-mobile);
+  }
+
+  .judges-section-header,
+  .past-events-page-section-title {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .student-hub-item {
+    font-size: var(--itg-font-size-body);
   }
 }

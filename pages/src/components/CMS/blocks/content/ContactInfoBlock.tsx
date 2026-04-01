@@ -29,12 +29,12 @@ function renderValue(item: ContactItem) {
 export const ContactInfoBlock: React.FC<{ data: ContactInfoData }> = ({ data }) => {
   return (
     <section className="cms-contact-info">
-      {data.heading && <h1 className="contact-page-title">{data.heading}</h1>}
-      <p className="contact-text">
+      {data.heading && <h1>{data.heading}</h1>}
+      <p>
         For any questions, comments, or inquiries about the Innovate to Grow program, please reach out to us:
       </p>
       {data.items.map((item, i) => (
-        <p key={i} className="contact-text">
+        <p key={i}>
           <strong>{item.label}:</strong> {renderValue(item)}
         </p>
       ))}

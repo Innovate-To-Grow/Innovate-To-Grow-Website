@@ -72,11 +72,12 @@
 
 @media (max-width: 768px) {
   .post-event-home-page {
-    padding: 0 1rem 1rem;
+    padding-top: 0;
+    padding-bottom: 1rem;
   }
 
   .peh-hero {
-    margin-top: -8px;
+    margin-top: -1rem;
   }
 
   .peh-two-col {
@@ -99,8 +100,3 @@
   }
 }
 
-@media (max-width: 480px) {
-  .peh-hero {
-    margin-top: -5px;
-  }
-}

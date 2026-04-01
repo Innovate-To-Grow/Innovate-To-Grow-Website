@@ -46,3 +46,36 @@ class SponsorListAPIViewTest(TestCase):
         self.assertIn("logo", sponsor)
         self.assertIn("website", sponsor)
         self.assertEqual(sponsor["website"], "https://acme.com")
+
+
+class SponsorListEdgeCasesTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_single_year_returns_one_group(self):
+        Sponsor.objects.create(name="A", year=2025)
+        Sponsor.objects.create(name="B", year=2025)
+        response = self.client.get("/sponsors/")
+        self.assertEqual(len(response.json()), 1)
+
+    def test_three_years_ordered_newest_first(self):
+        Sponsor.objects.create(name="A", year=2023)
+        Sponsor.objects.create(name="B", year=2025)
+        Sponsor.objects.create(name="C", year=2024)
+        data = self.client.get("/sponsors/").json()
+        years = [g["year"] for g in data]
+        self.assertEqual(years, [2025, 2024, 2023])
+
+    def test_sponsors_within_year_respect_display_order(self):
+        Sponsor.objects.create(name="Second", year=2025, display_order=2)
+        Sponsor.objects.create(name="First", year=2025, display_order=1)
+        data = self.client.get("/sponsors/").json()
+        names = [s["name"] for s in data[0]["sponsors"]]
+        self.assertEqual(names, ["First", "Second"])
+
+    def test_serializer_fields_present(self):
+        Sponsor.objects.create(name="Test", year=2025, website="https://test.com")
+        data = self.client.get("/sponsors/").json()
+        sponsor = data[0]["sponsors"][0]
+        expected_keys = {"id", "name", "logo", "website"}
+        self.assertTrue(expected_keys.issubset(set(sponsor.keys())))

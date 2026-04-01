@@ -1,7 +1,6 @@
 .news-detail {
   max-width: var(--itg-page-narrow-width);
   margin: 0 auto;
-  padding: var(--itg-page-padding);
 }
 
 .news-detail-back {
@@ -97,10 +96,6 @@
 }
 
 @media (max-width: 768px) {
-  .news-detail {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   .news-detail-title {
     font-size: var(--itg-font-size-h1-mobile);
   }

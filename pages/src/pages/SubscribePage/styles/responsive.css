@@ -98,10 +98,6 @@
 }
 
 @media (max-width: 768px) {
-  .subscribe-page {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   .subscribe-form-row {
     grid-template-columns: 1fr;
   }

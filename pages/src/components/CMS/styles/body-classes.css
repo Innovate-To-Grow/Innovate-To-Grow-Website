@@ -1,0 +1,178 @@
+/* ==========================================================================
+   Shared body_html class patterns
+   Reusable class-based styles used in CMS rich text content across pages.
+   Element-level styling (p, h1-h4, ul, ol, a, table) is in content.css
+   and info.css. This file covers unique visual patterns only.
+   ========================================================================== */
+
+/* --- Lead text (emphasized intro paragraph) --- */
+.about-lead {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-lead);
+  font-weight: 600;
+  line-height: var(--itg-line-height-body);
+  margin: 0 0 1.5rem;
+}
+
+/* --- Boxed section header --- */
+.judges-section-header,
+.past-events-page-section-title {
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--itg-radius-button);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 2rem 0 1rem;
+}
+
+/* --- Bordered link list (past events) --- */
+.past-events-page-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.past-events-page-list-item {
+  border-bottom: 1px solid var(--itg-color-border);
+}
+
+.past-events-page-list-item:first-child {
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.past-events-page-link {
+  display: block;
+  padding: 0.875rem 1rem;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  text-decoration: none;
+  transition: background-color var(--itg-transition-link);
+}
+
+.past-events-page-link:hover {
+  background-color: var(--itg-color-bg-light);
+  text-decoration: underline;
+}
+
+/* --- Navigation button row (shared across projects-hub, submission pages) --- */
+.projects-hub-nav,
+.submission-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.projects-hub-nav-btn,
+.submission-nav-btn {
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-meta);
+  text-decoration: none;
+  transition: background var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.projects-hub-nav-btn-primary,
+.submission-nav-btn-primary {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.projects-hub-nav-btn-primary:hover,
+.submission-nav-btn-primary:hover {
+  background: var(--itg-color-primary-hover);
+}
+
+.projects-hub-nav-btn-accent,
+.submission-nav-btn-accent {
+  background: var(--itg-color-accent-gold);
+  color: var(--itg-color-white);
+}
+
+.projects-hub-nav-btn-accent:hover,
+.submission-nav-btn-accent:hover {
+  background: var(--itg-color-accent-gold-hover);
+}
+
+/* --- Contact footer (centered contact text below nav) --- */
+.projects-hub-contact,
+.submission-contact {
+  text-align: center;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-meta);
+  margin-top: 1.5rem;
+}
+
+.projects-hub-contact a,
+.submission-contact a {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.projects-hub-contact a:hover,
+.submission-contact a:hover {
+  text-decoration: underline;
+}
+
+/* --- Submission button (inline CTA) --- */
+.submission-button {
+  display: inline-block;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  padding: 0.75rem 2rem;
+  border-radius: var(--itg-radius-button);
+  font-size: var(--itg-font-size-body);
+  text-decoration: none;
+  transition: background var(--itg-transition-fast);
+  margin-top: 0.25rem;
+}
+
+.submission-button:hover {
+  background: var(--itg-color-primary-hover);
+}
+
+/* --- Student hub navigation list --- */
+.student-hub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.student-hub-item {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-subtitle);
+  line-height: var(--itg-line-height-body);
+  margin: 0;
+}
+
+.student-hub-link {
+  color: var(--itg-color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.student-hub-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Centered text --- */
+.sponsor-ack-center {
+  text-align: center;
+}
+
+/* --- Bold closing text --- */
+.attendees-page-closing {
+  font-weight: 600;
+  color: var(--itg-color-primary);
+  margin-top: 1rem;
+}
+
+/* --- Construction placeholder --- */
+.student-construction {
+  color: #888;
+  font-style: italic;
+}

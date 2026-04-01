@@ -1,9 +1,3 @@
-.subscribe-page {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: var(--itg-page-padding);
-}
-
 .subscribe-title {
   font-size: 1.75rem;
   font-weight: 700;

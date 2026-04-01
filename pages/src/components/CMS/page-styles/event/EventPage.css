@@ -1,10 +1,4 @@
 /* CMS Event page styling */
-.event-page {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: var(--itg-page-padding);
-}
-
 /* Two-column grid layout */
 .event-grid {
   display: grid;
@@ -128,10 +122,6 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .event-page {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   .event-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;

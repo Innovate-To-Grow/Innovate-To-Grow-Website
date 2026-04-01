@@ -1,15 +1,14 @@
 /* Post-Event Home Page */
 .post-event-home-page {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: 0 1rem 2rem;
+  padding-top: 0;
+  padding-bottom: 2rem;
 }
 
 /* Hero banner — full width, break out of page container */
 .peh-hero {
   width: 100vw;
   margin-left: calc(-50vw + 50%);
-  margin-top: -10px;
+  margin-top: -2rem;
   margin-bottom: 2rem;
   overflow: hidden;
 }

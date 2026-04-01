@@ -1,10 +1,4 @@
 /* CMS Homepage styling */
-.home-page {
-  max-width: var(--itg-page-max-width);
-  margin: 0 auto;
-  padding: var(--itg-page-padding);
-}
-
 /* Hero */
 .home-hero {
   text-align: center;
@@ -132,10 +126,6 @@
 }
 
 @media (max-width: 768px) {
-  .home-page {
-    padding: var(--itg-page-padding-mobile);
-  }
-
   .home-hero-title {
     font-size: var(--itg-font-size-hero-mobile);
   }

@@ -86,7 +86,7 @@
    Uses existing SampleProposalsPage.css classes
    ========================================================================== */
 
-.cms-proposal-cards .proposals-page-title {
+.cms-proposal-cards h1 {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-h1);
   margin: 0 0 2rem;
