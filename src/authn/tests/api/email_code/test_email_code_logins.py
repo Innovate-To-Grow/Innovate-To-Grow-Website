@@ -41,6 +41,7 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["user"]["email"], self.primary_email.email_address)
+        self.assertNotIn("username", response.data["user"])
         self.assertIn("access", response.data)
 
     def test_password_login_rejects_unverified_contact_email(self, _mock_code, _mock_send):

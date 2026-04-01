@@ -38,6 +38,7 @@ class ProfileUpdateTests(APITestCase):
         self.assertIn("is_active", data)
         self.assertIn("date_joined", data)
         self.assertIn("profile_image", data)
+        self.assertNotIn("username", data)
 
     def test_patch_first_name(self):
         response = self.client.patch(

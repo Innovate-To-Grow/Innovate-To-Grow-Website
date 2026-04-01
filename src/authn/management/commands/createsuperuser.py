@@ -6,7 +6,7 @@ prompts for email + password and creates the superuser with a ContactEmail.
 """
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from authn.models import ContactEmail
 
@@ -59,10 +59,11 @@ class Command(BaseCommand):
                 first_name = input("First name (optional): ").strip()
             if not last_name:
                 last_name = input("Last name (optional): ").strip()
-
-        if not email or not password:
-            self.stderr.write("Error: --email and --password are required in non-interactive mode.")
-            return
+        else:
+            if not email or not password:
+                raise CommandError("--email and --password are required in non-interactive mode.")
+            if ContactEmail.objects.filter(email_address__iexact=email).exists():
+                raise CommandError(f"A contact email with address '{email}' already exists.")
 
         member = Member.objects.create_superuser(
             password=password,
