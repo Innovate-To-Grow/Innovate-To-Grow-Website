@@ -10,6 +10,8 @@ class MemberManager(BaseUserManager):
     Integrates soft-delete filtering from ProjectControlManager.
     """
 
+    use_in_migrations = True
+
     def get_queryset(self):
         return ProjectControlQuerySet(self.model, using=self._db).filter(is_deleted=False)
 

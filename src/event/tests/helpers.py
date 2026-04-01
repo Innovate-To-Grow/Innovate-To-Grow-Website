@@ -5,8 +5,6 @@ from event.models import Event, Ticket
 
 
 def make_member(email="test@example.com", **kwargs):
-    # Accept and discard legacy 'username' kwarg for backward compatibility
-    kwargs.pop("username", None)
     member = Member.objects.create_user(password="testpass123", **kwargs)
     ContactEmail.objects.create(member=member, email_address=email, email_type="primary", verified=True)
     return member
