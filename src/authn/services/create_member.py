@@ -20,7 +20,6 @@ class CreateMemberService:
         middle_name: str = "",
         organization: str = "",
         is_active: bool = True,
-
         is_staff: bool = False,
     ) -> dict[str, Any]:
         """
@@ -118,7 +117,6 @@ class CreateMemberService:
                 last_name=last_name.strip(),
                 organization=organization.strip() if organization else "",
                 is_active=is_active,
-
                 is_staff=is_staff,
             )
 

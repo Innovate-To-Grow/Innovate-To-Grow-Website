@@ -93,7 +93,6 @@ def import_members_from_excel(file, default_password: str | None = None, update_
                 organization=parsed["organization"],
                 email_subscribe=parsed["primary_subscribed"],
                 is_active=True,
-
                 date_joined=parsed["date_joined"] or now,
             )
             members_to_create.append(member)

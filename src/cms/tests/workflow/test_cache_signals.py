@@ -75,7 +75,10 @@ class NewsArticleCacheInvalidationTests(TestCase):
             from django.utils import timezone
 
             NewsArticle.objects.create(
-                source_guid="cache-test", title="Cache Test", source_url="https://example.com", published_at=timezone.now()
+                source_guid="cache-test",
+                title="Cache Test",
+                source_url="https://example.com",
+                published_at=timezone.now(),
             )
         self.assertIsNone(cache.get("news:list"))
 

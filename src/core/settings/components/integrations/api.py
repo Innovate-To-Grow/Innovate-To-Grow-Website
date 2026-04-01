@@ -38,6 +38,6 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,  # Old refresh tokens are blacklisted on rotation
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",             # DB column (UUID PK)
-    "USER_ID_CLAIM": "member_uuid",    # JWT payload claim name
+    "USER_ID_FIELD": "id",  # DB column (UUID PK)
+    "USER_ID_CLAIM": "member_uuid",  # JWT payload claim name
 }

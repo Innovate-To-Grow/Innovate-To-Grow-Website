@@ -132,4 +132,3 @@ class CMSPageAdmin(ModelAdmin):
             require_upload=True,
             validate_required=True,
         )
-

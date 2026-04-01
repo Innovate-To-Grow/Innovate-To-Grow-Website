@@ -121,10 +121,14 @@ class ModelVersionAdmin(ReadOnlyModelAdmin):
 
     def diff_view(self, request, pk):
         version = get_object_or_404(ModelVersion, pk=pk)
-        siblings = ModelVersion.objects.filter(
-            content_type=version.content_type,
-            object_id=version.object_id,
-        ).exclude(pk=pk).order_by("-version_number")
+        siblings = (
+            ModelVersion.objects.filter(
+                content_type=version.content_type,
+                object_id=version.object_id,
+            )
+            .exclude(pk=pk)
+            .order_by("-version_number")
+        )
 
         context = {
             **self.admin_site.each_context(request),
@@ -152,17 +156,21 @@ class ModelVersionAdmin(ReadOnlyModelAdmin):
             for field in all_fields:
                 left_val = (v_left.data or {}).get(field, "-")
                 right_val = (v_right.data or {}).get(field, "-")
-                rows.append({
-                    "field": field,
-                    "left": left_val if left_val is not None else "-",
-                    "right": right_val if right_val is not None else "-",
-                    "changed": field in diff,
-                })
-            context.update({
-                "v_left": v_left,
-                "v_right": v_right,
-                "rows": rows,
-            })
+                rows.append(
+                    {
+                        "field": field,
+                        "left": left_val if left_val is not None else "-",
+                        "right": right_val if right_val is not None else "-",
+                        "changed": field in diff,
+                    }
+                )
+            context.update(
+                {
+                    "v_left": v_left,
+                    "v_right": v_right,
+                    "rows": rows,
+                }
+            )
 
         return render(request, "admin/core/modelversion/diff.html", context)
 

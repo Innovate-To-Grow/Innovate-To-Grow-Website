@@ -11,7 +11,9 @@ User = get_user_model()
 
 
 def _make_page(slug, route, status="published", **kwargs):
-    return CMSPage.objects.create(slug=slug, route=route, title=kwargs.pop("title", slug.title()), status=status, **kwargs)
+    return CMSPage.objects.create(
+        slug=slug, route=route, title=kwargs.pop("title", slug.title()), status=status, **kwargs
+    )
 
 
 class CMSPageViewPublicTests(TestCase):
@@ -65,7 +67,9 @@ class CMSPageViewPublicTests(TestCase):
     def test_soft_deleted_blocks_excluded(self):
         page = _make_page("del-blocks", "/del-blocks")
         CMSBlock.objects.create(page=page, block_type="hero", sort_order=0, data={})
-        deleted_block = CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=1, data={"body_html": "<p>Gone</p>"})
+        deleted_block = CMSBlock.objects.create(
+            page=page, block_type="rich_text", sort_order=1, data={"body_html": "<p>Gone</p>"}
+        )
         deleted_block.delete()  # soft delete
 
         resp = self.client.get("/cms/pages/del-blocks/")
@@ -161,7 +165,9 @@ class CMSLivePreviewTests(TestCase):
         self.page = _make_page("live", "/live")
 
     def test_post_requires_staff(self):
-        resp = self.client.post(f"/cms/live-preview/{self.page.pk}/", '{"title":"Test"}', content_type="application/json")
+        resp = self.client.post(
+            f"/cms/live-preview/{self.page.pk}/", '{"title":"Test"}', content_type="application/json"
+        )
         self.assertIn(resp.status_code, (401, 403))
 
     def test_post_staff_stores_data(self):

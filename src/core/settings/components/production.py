@@ -27,7 +27,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,            # Persistent connections (seconds)
+        "CONN_MAX_AGE": 60,  # Persistent connections (seconds)
         "OPTIONS": {"sslmode": "require"},
     }
 }
@@ -39,12 +39,12 @@ REQUIRE_ENCRYPTED_PASSWORDS = True
 RSA_KEY_PASSPHRASE = os.environ.get("RSA_KEY_PASSPHRASE")
 
 # HTTP security headers
-SECURE_SERVER_HEADER = None             # Do not expose server software
-SECURE_CONTENT_TYPE_NOSNIFF = True      # Prevent MIME-type sniffing
+SECURE_SERVER_HEADER = None  # Do not expose server software
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent MIME-type sniffing
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SECURE_HSTS_SECONDS = 31536000          # 1 year
-SECURE_SSL_REDIRECT = False             # Handled by reverse proxy
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_SSL_REDIRECT = False  # Handled by reverse proxy
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Cookie security
@@ -70,9 +70,9 @@ CORS_ALLOW_CREDENTIALS = True
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
-AWS_DEFAULT_ACL = None                  # Inherit bucket policy
-AWS_S3_FILE_OVERWRITE = False           # Never silently overwrite uploads
-AWS_QUERYSTRING_AUTH = False            # Public URLs (no signed query strings)
+AWS_DEFAULT_ACL = None  # Inherit bucket policy
+AWS_S3_FILE_OVERWRITE = False  # Never silently overwrite uploads
+AWS_QUERYSTRING_AUTH = False  # Public URLs (no signed query strings)
 AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}  # 1-day browser cache
 
 STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
@@ -140,7 +140,7 @@ CACHES = (
             "LOCATION": REDIS_URL,
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
             "KEY_PREFIX": "i2g",
-            "TIMEOUT": 300,             # 5-minute default TTL
+            "TIMEOUT": 300,  # 5-minute default TTL
         }
     }
     if REDIS_URL
