@@ -35,8 +35,6 @@ class AdminLoginViewTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         self.staff = Member.objects.create_user(
-            username="admin",
-            email="",
             password="testpass123",
             is_staff=True,
             is_active=True,
@@ -45,8 +43,6 @@ class AdminLoginViewTest(TestCase):
             member=self.staff, email_address="admin@example.com", email_type="primary", verified=True
         )
         self.non_staff = Member.objects.create_user(
-            username="regular",
-            email="",
             password="testpass123",
             is_staff=False,
             is_active=True,

@@ -70,7 +70,7 @@ class EventRegistrationCreateViewTest(TestCase):
     def test_sold_out_ticket_returns_400(self):
         self.ticket.quantity = 1
         self.ticket.save()
-        other_member = make_member(username="other", email="other@example.com")
+        other_member = make_member(email="other@example.com")
         EventRegistration.objects.create(member=other_member, event=self.event, ticket=self.ticket)
         response = self._post()
         self.assertEqual(response.status_code, 400)

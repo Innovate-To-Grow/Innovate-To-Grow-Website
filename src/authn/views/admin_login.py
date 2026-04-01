@@ -95,7 +95,7 @@ class AdminLoginView(View):
             return render_admin_login(request, step="password", form=form)
 
         clear_password_rate_limit(request)
-        auth.login(request, member, backend="authn.backends.EmailOrUsernameBackend")
+        auth.login(request, member, backend="authn.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via password: %s", member.get_primary_email())
         return redirect(safe_admin_next(request))
@@ -165,7 +165,7 @@ class AdminLoginView(View):
                 error="You do not have access to the admin panel.",
             )
 
-        auth.login(request, member, backend="authn.backends.EmailOrUsernameBackend")
+        auth.login(request, member, backend="authn.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via email code: %s", member.get_primary_email())
         return redirect(safe_admin_next(request))

@@ -116,8 +116,8 @@ class CMSPagePreviewModeTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = User.objects.create_user(username="staff", password="pass", is_staff=True)
-        self.regular = User.objects.create_user(username="regular", password="pass")
+        self.staff = User.objects.create_user(password="pass", is_staff=True)
+        self.regular = User.objects.create_user(password="pass")
 
     def test_preview_mode_shows_draft_for_staff(self):
         _make_page("draft-preview", "/draft-preview", status="draft")
@@ -161,7 +161,7 @@ class CMSLivePreviewTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = User.objects.create_user(username="staff", password="pass", is_staff=True)
+        self.staff = User.objects.create_user(password="pass", is_staff=True)
         self.page = _make_page("live", "/live")
 
     def test_post_requires_staff(self):

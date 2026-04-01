@@ -30,7 +30,6 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     form = MemberChangeForm
     add_form = MemberCreationForm
     list_display = (
-        "username",
         "get_primary_email_display",
         "get_full_name_display",
         "organization",
@@ -40,7 +39,6 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     )
     list_filter = ("is_active", "is_staff", "date_joined")
     search_fields = (
-        "username",
         "contact_emails__email_address",
         "first_name",
         "middle_name",
@@ -52,7 +50,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     readonly_fields = ("member_uuid", "date_joined", "last_login")
     filter_horizontal = ("user_permissions",)
     fieldsets = (
-        (None, {"fields": ("username", "password")}),
+        (None, {"fields": ("password",)}),
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
         (
             _("Member Info"),
@@ -68,7 +66,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (_("Important Dates"), {"fields": ("last_login", "date_joined"), "classes": ("collapse",)}),
     )
     add_fieldsets = (
-        (None, {"classes": ("wide",), "fields": ("username", "password1", "password2")}),
+        (None, {"classes": ("wide",), "fields": ("password1", "password2")}),
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
         (_("Member Status"), {"fields": ("is_active",)}),
     )

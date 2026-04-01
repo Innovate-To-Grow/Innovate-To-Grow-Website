@@ -90,8 +90,6 @@ class AcceptInvitationView(View):
         # noinspection PyPep8Naming
         MemberModel = _get_member_model()
         member = MemberModel(
-            email="",
-            username=form.cleaned_data["username"],
             first_name=form.cleaned_data["first_name"],
             last_name=form.cleaned_data["last_name"],
             organization=form.cleaned_data.get("organization", ""),

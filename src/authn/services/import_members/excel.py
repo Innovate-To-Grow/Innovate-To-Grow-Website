@@ -14,7 +14,7 @@ except ImportError:  # pragma: no cover - guarded at runtime
 from authn.models import ContactEmail, ContactPhone, Member
 
 from .operations import bulk_update_members
-from .parsing import generate_random_password, generate_unique_username, normalize_header, parse_row
+from .parsing import generate_random_password, normalize_header, parse_row
 from .types import ImportResult
 
 BATCH_SIZE = 500
@@ -61,7 +61,6 @@ def import_members_from_excel(file, default_password: str | None = None, update_
             return result
 
         existing_emails = {email.lower() for email in ContactEmail.objects.values_list("email_address", flat=True)}
-        taken_usernames = set(Member.all_objects.values_list("username", flat=True))
         existing_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
         hashed_pw = make_password(default_password or generate_random_password())
         members_to_create: list[Member] = []
@@ -85,8 +84,6 @@ def import_members_from_excel(file, default_password: str | None = None, update_
                 continue
 
             member = Member(
-                username=generate_unique_username(parsed["primary_email"], taken_usernames),
-                email="",
                 password=hashed_pw,
                 first_name=parsed["first_name"],
                 last_name=parsed["last_name"],

@@ -124,7 +124,7 @@ class PageViewAdmin(ModelAdmin):
     @admin.display(description="Member")
     def member_display(self, obj):
         if obj.member:
-            return obj.member.get_primary_email() or obj.member.username
+            return obj.member.get_primary_email() or str(obj.member.id)
         return "-"
 
     @admin.display(description="Session")

@@ -32,7 +32,7 @@ class MyTicketsViewTest(TestCase):
         self.assertEqual(len(response.data), 0)
 
     def test_does_not_return_other_users_tickets(self):
-        other = make_member(username="other", email="other@example.com")
+        other = make_member(email="other@example.com")
         EventRegistration.objects.create(member=other, event=self.event, ticket=self.ticket)
         self.client.force_authenticate(self.member)
         response = self.client.get("/event/my-tickets/")

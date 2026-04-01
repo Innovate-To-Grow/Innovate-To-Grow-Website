@@ -1,58 +1,74 @@
 """
 Custom createsuperuser command that prompts for email and creates a ContactEmail record.
 
-Since Member.email is no longer used (emails are stored in ContactEmail),
-the default createsuperuser would create a superuser without any email.
-This override prompts for email and creates the corresponding ContactEmail.
+Since Member has no username field (UUID is the primary key), this command
+prompts for email + password and creates the superuser with a ContactEmail.
 """
 
-from django.contrib.auth.management.commands.createsuperuser import Command as BaseCommand
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+
+from authn.models import ContactEmail
 
 
 class Command(BaseCommand):
+    help = "Create a superuser with an email address and ContactEmail record."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--email", type=str, help="Email address for the superuser.")
+        parser.add_argument("--password", type=str, help="Password for the superuser.")
+        parser.add_argument("--first-name", type=str, default="", help="First name.")
+        parser.add_argument("--last-name", type=str, default="", help="Last name.")
+        parser.add_argument(
+            "--noinput",
+            "--no-input",
+            action="store_false",
+            dest="interactive",
+            help="Non-interactive mode.",
+        )
+
     def handle(self, *args, **options):
-        # Run the default createsuperuser first
-        super().handle(*args, **options)
-
-        # After successful creation, prompt for email and create ContactEmail
-        from django.contrib.auth import get_user_model
-
-        from authn.models import ContactEmail
-
         Member = get_user_model()
-        username = options.get(Member.USERNAME_FIELD)
+        interactive = options.get("interactive", True)
+        email = options.get("email")
+        password = options.get("password")
+        first_name = options.get("first_name") or ""
+        last_name = options.get("last_name") or ""
 
-        # In interactive mode, we need to find the just-created user
-        if not username:
-            # The parent command stores the username on the instance
-            # We need to get it from the database - find the most recently created superuser
-            member = Member.objects.filter(is_staff=True).order_by("-date_joined").first()
-        else:
-            member = Member.objects.filter(**{Member.USERNAME_FIELD: username}).first()
+        if interactive:
+            while not email:
+                email = input("Email address: ").strip()
+                if not email:
+                    self.stderr.write("Error: Email address cannot be blank.")
+                    email = None
+                    continue
+                if ContactEmail.objects.filter(email_address__iexact=email).exists():
+                    self.stderr.write(f"Error: A contact email with address '{email}' already exists.")
+                    email = None
 
-        if not member:
+            while not password:
+                import getpass
+
+                password = getpass.getpass("Password: ")
+                password2 = getpass.getpass("Password (again): ")
+                if password != password2:
+                    self.stderr.write("Error: Passwords do not match.")
+                    password = None
+
+            if not first_name:
+                first_name = input("First name (optional): ").strip()
+            if not last_name:
+                last_name = input("Last name (optional): ").strip()
+
+        if not email or not password:
+            self.stderr.write("Error: --email and --password are required in non-interactive mode.")
             return
 
-        # Check if this member already has a primary ContactEmail
-        if member.contact_emails.filter(email_type="primary").exists():
-            return
-
-        # Prompt for email
-        email = None
-        if not options.get("interactive", True):
-            return
-
-        while not email:
-            email = input("Email address: ").strip()
-            if not email:
-                self.stderr.write("Error: Email address cannot be blank.")
-                email = None
-                continue
-
-            # Check for uniqueness
-            if ContactEmail.objects.filter(email_address__iexact=email).exists():
-                self.stderr.write(f"Error: A contact email with address '{email}' already exists.")
-                email = None
+        member = Member.objects.create_superuser(
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+        )
 
         ContactEmail.objects.create(
             member=member,
@@ -61,4 +77,5 @@ class Command(BaseCommand):
             verified=True,
             subscribe=True,
         )
-        self.stdout.write(f"ContactEmail '{email}' created for superuser '{member.username}'.")
+
+        self.stdout.write(self.style.SUCCESS(f"Superuser created with email '{email}' (UUID: {member.id})."))

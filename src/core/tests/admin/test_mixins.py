@@ -139,7 +139,7 @@ class VersionControlAdminMixinTest(TestCase):
     def setUp(self):
         self.admin = _VersionAdmin()
         self.factory = RequestFactory()
-        self.user = User.objects.create_user(username="admin", password="pass")
+        self.user = User.objects.create_user(password="pass")
 
     def test_save_model_creates_version_on_change(self):
         article = _make_article()

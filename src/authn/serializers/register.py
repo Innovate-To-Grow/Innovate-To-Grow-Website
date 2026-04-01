@@ -20,7 +20,6 @@ from authn.services import (
     normalize_email,
     registration_email_conflicts,
 )
-from authn.utils import generate_unique_username
 
 Member = get_user_model()
 
@@ -160,11 +159,7 @@ class RegisterSerializer(serializers.Serializer):
 
         member = getattr(self, "_pending_member", None)
         if member is None:
-            username = generate_unique_username(email)
-
             member = Member.objects.create_user(
-                username=username,
-                email="",
                 password=password,
                 first_name=first_name,
                 last_name=last_name,

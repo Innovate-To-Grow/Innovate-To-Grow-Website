@@ -16,8 +16,6 @@ class CMSLivePreviewSyncPostingTest(TestCase):
         cache.clear()
         self.client = APIClient()
         self.staff = Member.objects.create_user(
-            username="livepreview_staff",
-            email="livepreview@test.com",
             password="testpass123",
             is_staff=True,
         )
@@ -151,8 +149,6 @@ class CMSLivePreviewSyncPostingTest(TestCase):
     def test_post_non_staff_returns_403(self):
         """Authenticated non-staff user POST returns 403."""
         regular_user = Member.objects.create_user(
-            username="regular_user",
-            email="regular@test.com",
             password="testpass123",
             is_staff=False,
         )

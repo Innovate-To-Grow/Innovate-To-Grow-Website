@@ -51,7 +51,6 @@ class AcceptInvitationViewTests(TestCase):
             f"/authn/invite/{invitation.token}/",
             {
                 "email": "invite@example.com",
-                "username": "newstaff",
                 "first_name": "Staff",
                 "last_name": "User",
                 "password1": "StrongPass123!",
@@ -59,14 +58,12 @@ class AcceptInvitationViewTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        member = Member.objects.get(username="newstaff")
+        member = ContactEmail.objects.get(email_address="invite@example.com").member
         self.assertTrue(member.is_staff)
         self.assertTrue(member.is_active)
 
     def test_post_existing_member_upgrades_to_staff(self):
         existing = Member.objects.create_user(
-            username="existinguser",
-            email="",
             password="StrongPass123!",
             is_staff=False,
         )
@@ -78,7 +75,6 @@ class AcceptInvitationViewTests(TestCase):
             f"/authn/invite/{invitation.token}/",
             {
                 "email": "invite@example.com",
-                "username": "ignored",
                 "first_name": "Ignored",
                 "last_name": "Ignored",
                 "password1": "StrongPass123!",
@@ -95,7 +91,6 @@ class AcceptInvitationViewTests(TestCase):
             f"/authn/invite/{invitation.token}/",
             {
                 "email": invitation.email,
-                "username": "accepted",
                 "first_name": "Accepted",
                 "last_name": "User",
                 "password1": "StrongPass123!",
@@ -109,11 +104,11 @@ class AcceptInvitationViewTests(TestCase):
 
     def test_post_password_mismatch_rejected(self):
         invitation = self._create_invitation()
+        member_count_before = Member.objects.count()
         response = self.client.post(
             f"/authn/invite/{invitation.token}/",
             {
                 "email": invitation.email,
-                "username": "mismatch",
                 "first_name": "Mis",
                 "last_name": "Match",
                 "password1": "StrongPass123!",
@@ -122,4 +117,4 @@ class AcceptInvitationViewTests(TestCase):
         )
         # Should re-render form, not create member
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Member.objects.filter(username="mismatch").exists())
+        self.assertEqual(Member.objects.count(), member_count_before)

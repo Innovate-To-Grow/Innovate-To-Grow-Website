@@ -14,8 +14,6 @@ class ContactEmailAccessTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         self.member = Member.objects.create_user(
-            username="testuser",
-            email="",
             password="StrongPass123!",
             is_active=True,
         )
@@ -23,8 +21,6 @@ class ContactEmailAccessTests(APITestCase):
             member=self.member, email_address="primary@example.com", email_type="primary", verified=True
         )
         self.other_member = Member.objects.create_user(
-            username="otheruser",
-            email="",
             password="StrongPass123!",
             is_active=True,
         )

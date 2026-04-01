@@ -12,7 +12,6 @@ class CreateMemberService:
     @staticmethod
     @transaction.atomic
     def create_member(
-        username: str,
         password: str,
         first_name: str,
         last_name: str,
@@ -26,7 +25,6 @@ class CreateMemberService:
         Create a new member account.
 
         Args:
-            username: Username for login (required, unique)
             password: Plain text password (will be hashed)
             first_name: Member's first name (required)
             last_name: Member's last name (required)
@@ -34,7 +32,6 @@ class CreateMemberService:
             middle_name: Member's middle name (optional)
             organization: Organization or company name (optional)
             is_active: Whether the account is active (default: True)
-
             is_staff: Whether user has admin permissions (default: False)
 
         Returns:
@@ -42,29 +39,17 @@ class CreateMemberService:
                 "success": bool,
                 "member": Member instance or None,
                 "member_uuid": UUID str or None,
-                "username": str,
                 "error": str or None
             }
 
         Raises:
             ValueError: If required fields are missing or invalid
         """
-        # Validate required fields
-        if not username or not username.strip():
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "username": None,
-                "error": "Username is required",
-            }
-
         if not password or not password.strip():
             return {
                 "success": False,
                 "member": None,
                 "member_uuid": None,
-                "username": username,
                 "error": "Password is required",
             }
 
@@ -73,7 +58,6 @@ class CreateMemberService:
                 "success": False,
                 "member": None,
                 "member_uuid": None,
-                "username": username,
                 "error": "First name is required",
             }
 
@@ -82,36 +66,22 @@ class CreateMemberService:
                 "success": False,
                 "member": None,
                 "member_uuid": None,
-                "username": username,
                 "error": "Last name is required",
             }
 
         try:
-            # Check if username already exists
-            if Member.objects.filter(username=username).exists():
-                return {
-                    "success": False,
-                    "member": None,
-                    "member_uuid": None,
-                    "username": username,
-                    "error": f"Username '{username}' already exists",
-                }
-
             # Check if email already exists (if provided)
             if email and ContactEmail.objects.filter(email_address__iexact=email.strip()).exists():
                 return {
                     "success": False,
                     "member": None,
                     "member_uuid": None,
-                    "username": username,
                     "error": f"Email '{email}' already exists",
                 }
 
             # Create the member using create_user which handles password hashing
             member = Member.objects.create_user(
-                username=username.strip(),
                 password=password,
-                email="",
                 first_name=first_name.strip(),
                 middle_name=middle_name.strip() if middle_name else "",
                 last_name=last_name.strip(),
@@ -133,7 +103,6 @@ class CreateMemberService:
                 "success": True,
                 "member": member,
                 "member_uuid": str(member.member_uuid),
-                "username": member.username,
                 "error": None,
             }
 
@@ -142,7 +111,6 @@ class CreateMemberService:
                 "success": False,
                 "member": None,
                 "member_uuid": None,
-                "username": username,
                 "error": f"Database integrity error: {str(e)}",
             }
 
@@ -151,7 +119,6 @@ class CreateMemberService:
                 "success": False,
                 "member": None,
                 "member_uuid": None,
-                "username": username,
                 "error": f"Validation error: {str(e)}",
             }
 
@@ -160,6 +127,5 @@ class CreateMemberService:
                 "success": False,
                 "member": None,
                 "member_uuid": None,
-                "username": username,
                 "error": f"Unexpected error: {str(e)}",
             }

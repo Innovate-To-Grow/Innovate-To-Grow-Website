@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
+from authn.models import ContactEmail
 from cms.admin.cms.cms_page import CMSPageAdminForm
 from cms.models import CMSPage
 
@@ -59,11 +60,12 @@ class CMSPageAdminViewTests(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         self.admin_user = Member.objects.create_superuser(
-            username="admin",
-            email="admin@example.com",
             password="testpass123",
         )
-        self.client.login(username="admin", password="testpass123")
+        ContactEmail.objects.create(
+            member=self.admin_user, email_address="admin@example.com", email_type="primary", verified=True
+        )
+        self.client.login(username="admin@example.com", password="testpass123")
 
     def test_route_conflict_endpoint_reports_conflict(self):
         page = CMSPage.objects.create(
@@ -90,11 +92,12 @@ class CMSPageChangeFormRenderTests(TestCase):
     def setUp(self):
         cache.clear()
         self.admin_user = Member.objects.create_superuser(
-            username="editor",
-            email="editor@example.com",
             password="testpass123",
         )
-        self.client.login(username="editor", password="testpass123")
+        ContactEmail.objects.create(
+            member=self.admin_user, email_address="editor@example.com", email_type="primary", verified=True
+        )
+        self.client.login(username="editor@example.com", password="testpass123")
         self.page = CMSPage.objects.create(
             slug="test-editor-page",
             route="/test-editor-page",

@@ -1,7 +1,6 @@
 export interface User {
   member_uuid: string;
   email: string;
-  username: string;
   profile_image?: string;
   is_staff?: boolean;
 }
@@ -50,7 +49,6 @@ export interface AccountEmailsResponse {
 export interface ProfileResponse {
   member_uuid: string;
   email: string;
-  username: string;
   first_name: string;
   middle_name: string;
   last_name: string;

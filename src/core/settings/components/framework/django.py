@@ -19,6 +19,8 @@ INSTALLED_APPS = [
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
+    # authn before django.contrib.auth so our createsuperuser command wins
+    "authn.apps.AuthnConfig",
     # Django built-ins
     "django.contrib.admin",
     "django.contrib.auth",
@@ -29,7 +31,6 @@ INSTALLED_APPS = [
     # Project apps
     "core.apps.CoreConfig",
     "cms.apps.CmsConfig",
-    "authn.apps.AuthnConfig",
     "event.apps.EventConfig",
     "projects.apps.ProjectsConfig",
     "sponsors.apps.SponsorsConfig",
@@ -113,6 +114,5 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "authn.Member"
 AUTHENTICATION_BACKENDS = [
-    "authn.backends.EmailOrUsernameBackend",  # Login by email or username
-    "django.contrib.auth.backends.ModelBackend",
+    "authn.backends.EmailAuthBackend",
 ]

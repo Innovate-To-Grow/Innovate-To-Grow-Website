@@ -107,18 +107,6 @@ def clean_phone(value) -> str | None:
     return stripped[:-2] if stripped.endswith(".0") else stripped
 
 
-def generate_unique_username(email: str, taken: set[str]) -> str:
-    base = email.split("@")[0].lower()
-    base = "".join(c for c in base if c.isalnum() or c in "._-") or "user"
-    username = base
-    counter = 2
-    while username in taken:
-        username = f"{base}_{counter}"
-        counter += 1
-    taken.add(username)
-    return username
-
-
 def parse_row(row_num: int, row_data: dict) -> dict:
     primary_email = str(row_data.get("primary_email", "")).strip() if row_data.get("primary_email") else None
     secondary_email = str(row_data.get("secondary_email", "")).strip() if row_data.get("secondary_email") else None

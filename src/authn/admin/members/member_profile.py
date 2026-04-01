@@ -11,7 +11,7 @@ class MemberProfileAdmin(UnfoldModelAdmin):
 
     list_display = ("model_user", "has_profile_image_display", "updated_at")
     list_filter = ("updated_at",)
-    search_fields = ("model_user__username", "model_user__contact_emails__email_address")
+    search_fields = ("model_user__first_name", "model_user__last_name", "model_user__contact_emails__email_address")
     readonly_fields = ("updated_at",)
     autocomplete_fields = ["model_user"]
 

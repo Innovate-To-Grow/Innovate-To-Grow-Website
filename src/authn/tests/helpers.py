@@ -11,7 +11,6 @@ def create_test_member(email, password="testpass123", **kwargs):
     Member.email is left blank; the email is stored in ContactEmail.
     """
     member = Member.objects.create_user(
-        email="",
         password=password,
         **kwargs,
     )

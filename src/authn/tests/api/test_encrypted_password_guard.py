@@ -19,8 +19,6 @@ class RequireEncryptedPasswordsTests(APITestCase):
         cache.clear()
         self.password = "StrongPass123!"
         self.member = Member.objects.create_user(
-            username="enctest",
-            email="",
             password=self.password,
             is_active=True,
         )

@@ -1,4 +1,4 @@
-"""Tests for token refresh, image magic-byte validation, profile GET, and username generation."""
+"""Tests for token refresh, image magic-byte validation, and profile GET."""
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -10,7 +10,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 # noinspection PyProtectedMember
 from authn.models import ContactEmail
 from authn.models.members.member import MemberProfile
-from authn.utils import generate_unique_username
 from authn.views.account.profile import _validate_image_bytes
 
 Member = get_user_model()
@@ -23,8 +22,6 @@ class PublicTokenRefreshTests(APITestCase):
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(
-            username="refresher",
-            email="",
             password="StrongPass123!",
             is_active=True,
         )
@@ -92,8 +89,6 @@ class ProfileImageUploadTests(APITestCase):
     def setUp(self):
         cache.clear()
         self.member = Member.objects.create_user(
-            username="uploader",
-            email="",
             password="StrongPass123!",
             is_active=True,
         )
@@ -117,19 +112,3 @@ class ProfileImageUploadTests(APITestCase):
         response = self.client.get("/authn/profile/")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(MemberProfile.objects.filter(model_user=self.member).exists())
-
-
-class GenerateUniqueUsernameTests(SimpleTestCase):
-    """Tests for generate_unique_username helper (B9 fix)."""
-
-    def test_returns_local_part_with_hex_suffix(self):
-        result = generate_unique_username("alice@example.com")
-        self.assertTrue(result.startswith("alice_"))
-        suffix = result[len("alice_") :]
-        self.assertEqual(len(suffix), 8)
-        int(suffix, 16)  # should not raise for valid hex
-
-    def test_two_calls_produce_different_results(self):
-        result1 = generate_unique_username("alice@example.com")
-        result2 = generate_unique_username("alice@example.com")
-        self.assertNotEqual(result1, result2)

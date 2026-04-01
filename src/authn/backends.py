@@ -1,33 +1,27 @@
-from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
 from authn.models import ContactEmail
 
 
-class EmailOrUsernameBackend(ModelBackend):
+class EmailAuthBackend(ModelBackend):
     """
-    Allow authentication with either username or email.
-    Email lookup goes through ContactEmail (verified).
+    Authenticate by email via ContactEmail (verified).
     """
 
-    # noinspection PyUnusedLocal,PyPep8Naming
+    # noinspection PyUnusedLocal
     def authenticate(self, request, username=None, password=None, **kwargs):
-        UserModel = get_user_model()
         if username is None:
-            username = kwargs.get(UserModel.USERNAME_FIELD) or kwargs.get("email")
+            username = kwargs.get("email")
         if not username or password is None:
             return None
 
-        user = UserModel.objects.filter(**{f"{UserModel.USERNAME_FIELD}__iexact": username}).first()
-        if user is None and "@" in username:
-            contact = (
-                ContactEmail.objects.select_related("member")
-                .filter(email_address__iexact=username, verified=True)
-                .first()
-            )
-            if contact:
-                user = contact.member
+        contact = (
+            ContactEmail.objects.select_related("member").filter(email_address__iexact=username, verified=True).first()
+        )
+        if contact is None:
+            return None
 
-        if user and user.check_password(password) and self.user_can_authenticate(user):
+        user = contact.member
+        if user.check_password(password) and self.user_can_authenticate(user):
             return user
         return None

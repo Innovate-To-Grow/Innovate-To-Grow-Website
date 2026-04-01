@@ -16,8 +16,6 @@ class CMSLivePreviewSyncCacheTest(TestCase):
         cache.clear()
         self.client = APIClient()
         self.staff = Member.objects.create_user(
-            username="livepreview_staff",
-            email="livepreview@test.com",
             password="testpass123",
             is_staff=True,
         )

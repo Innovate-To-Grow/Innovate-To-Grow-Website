@@ -57,10 +57,11 @@ class Command(BaseCommand):
     def _seed_staff_contact_emails(self):
         """Ensure every staff member has a verified primary ContactEmail so admin login works."""
         for member in Member.objects.filter(is_staff=True, is_active=True):
-            if not member.email:
+            primary_email = member.get_primary_email()
+            if not primary_email:
                 continue
             _, created = ContactEmail.objects.get_or_create(
-                email_address=member.email,
+                email_address=primary_email,
                 defaults={
                     "member": member,
                     "email_type": "primary",
@@ -68,8 +69,6 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f"Created verified ContactEmail for staff '{member.username}'."))
+                self.stdout.write(self.style.SUCCESS(f"Created verified ContactEmail for staff '{primary_email}'."))
             else:
-                self.stdout.write(
-                    self.style.WARNING(f"ContactEmail already exists for '{member.username}' — skipping.")
-                )
+                self.stdout.write(self.style.WARNING(f"ContactEmail already exists for '{primary_email}' — skipping."))
