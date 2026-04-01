@@ -70,7 +70,7 @@ class ModelVersionAdmin(ReadOnlyModelAdmin):
                 instance = model_class.all_objects.get(pk=obj.object_id)
                 label = truncate_text(str(instance), 40)
             except (model_class.DoesNotExist, AttributeError):
-                pass
+                pass  # Fall back to truncated UUID label
             return format_html('<a href="{}">{}</a>', url, label)
         except NoReverseMatch:
             return str(obj.object_id)[:8]

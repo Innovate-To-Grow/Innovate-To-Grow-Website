@@ -46,7 +46,7 @@ class CMSPreviewAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("token", data)
-        self.assertTrue(len(data["token"]) > 0)
+        self.assertGreater(len(data["token"]), 0)
 
     def test_preview_fetch_returns_data(self):
         """GET with valid token returns cached data."""
