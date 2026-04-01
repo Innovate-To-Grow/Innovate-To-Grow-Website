@@ -125,7 +125,9 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
     from authn.services.email.send_email import send_verification_email
 
     challenge, plain_code = _create_challenge_record(
-        member=member, purpose=purpose, target_email=target_email,
+        member=member,
+        purpose=purpose,
+        target_email=target_email,
     )
 
     try:

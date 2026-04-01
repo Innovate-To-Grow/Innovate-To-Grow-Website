@@ -34,7 +34,6 @@ class BaseModelAdmin(ModelAdmin):
         return readonly
 
 
-
 class ReadOnlyModelAdmin(BaseModelAdmin):
     """
     Admin class for read-only models.

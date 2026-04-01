@@ -90,10 +90,7 @@ class VersionControlAdminMixin:
         if count == 0:
             return "0 versions"
         ct = ContentType.objects.get_for_model(obj)
-        url = (
-            reverse("admin:core_modelversion_changelist")
-            + f"?content_type__id__exact={ct.pk}&object_id={obj.pk}"
-        )
+        url = reverse("admin:core_modelversion_changelist") + f"?content_type__id__exact={ct.pk}&object_id={obj.pk}"
         return format_html('<a href="{}">{} version{}</a>', url, count, "s" if count != 1 else "")
 
 

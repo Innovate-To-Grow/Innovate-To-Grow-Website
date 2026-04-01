@@ -83,7 +83,6 @@ class AdminInvitationAdmin(UnfoldModelAdmin):
         else:
             super().save_model(request, obj, form, change)
 
-
     @admin.action(description="Cancel selected invitations")
     def cancel_invitations(self, request, queryset):
         count = queryset.filter(status=AdminInvitation.Status.PENDING).update(

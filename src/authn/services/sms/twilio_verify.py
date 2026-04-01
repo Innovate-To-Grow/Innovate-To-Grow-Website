@@ -48,10 +48,7 @@ def start_phone_verification(phone_number: str) -> str:
     """
     client, verify_sid = _get_client_and_sid()
     try:
-        verification = (
-            client.verify.v2.services(verify_sid)
-            .verifications.create(to=phone_number, channel="sms")
-        )
+        verification = client.verify.v2.services(verify_sid).verifications.create(to=phone_number, channel="sms")
         logger.info(
             "Phone verification started for %s: status=%s",
             phone_number,
@@ -61,16 +58,10 @@ def start_phone_verification(phone_number: str) -> str:
     except TwilioRestException as exc:
         logger.exception("Twilio verification start failed for %s", phone_number)
         if exc.code == 60203:
-            raise PhoneVerificationThrottled(
-                "Too many verification attempts. Please try again later."
-            ) from exc
+            raise PhoneVerificationThrottled("Too many verification attempts. Please try again later.") from exc
         if exc.code in (60200, 21211, 21608):
-            raise PhoneVerificationInvalid(
-                f"Invalid phone number: {phone_number}"
-            ) from exc
-        raise PhoneVerificationDeliveryError(
-            "Failed to send verification SMS."
-        ) from exc
+            raise PhoneVerificationInvalid(f"Invalid phone number: {phone_number}") from exc
+        raise PhoneVerificationDeliveryError("Failed to send verification SMS.") from exc
 
 
 def check_phone_verification(phone_number: str, code: str) -> str:
@@ -80,22 +71,13 @@ def check_phone_verification(phone_number: str, code: str) -> str:
     """
     client, verify_sid = _get_client_and_sid()
     try:
-        check = (
-            client.verify.v2.services(verify_sid)
-            .verification_checks.create(to=phone_number, code=code)
-        )
+        check = client.verify.v2.services(verify_sid).verification_checks.create(to=phone_number, code=code)
         if check.status == "approved":
             logger.info("Phone verification approved for %s", phone_number)
             return check.status
-        raise PhoneVerificationInvalid(
-            "Verification code is invalid or has expired."
-        )
+        raise PhoneVerificationInvalid("Verification code is invalid or has expired.")
     except TwilioRestException as exc:
         logger.exception("Twilio verification check failed for %s", phone_number)
         if exc.code == 60202:
-            raise PhoneVerificationThrottled(
-                "Too many failed attempts. Please request a new code."
-            ) from exc
-        raise PhoneVerificationInvalid(
-            "Verification code is invalid or has expired."
-        ) from exc
+            raise PhoneVerificationThrottled("Too many failed attempts. Please request a new code.") from exc
+        raise PhoneVerificationInvalid("Verification code is invalid or has expired.") from exc

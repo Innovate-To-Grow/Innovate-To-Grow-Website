@@ -109,9 +109,7 @@ class EmailServiceConfigAdmin(ModelAdmin):
 
     @action(description="Send test email", url_path="test-send", icon="send")
     def test_send_action(self, request, object_id):
-        return HttpResponseRedirect(
-            reverse("admin:core_emailserviceconfig_test_send", args=[object_id])
-        )
+        return HttpResponseRedirect(reverse("admin:core_emailserviceconfig_test_send", args=[object_id]))
 
     def test_send_view(self, request, object_id):
         obj = EmailServiceConfig.objects.get(pk=object_id)
@@ -213,9 +211,7 @@ class SMSServiceConfigAdmin(ModelAdmin):
 
     @action(description="Send test SMS", url_path="test-send", icon="send")
     def test_send_action(self, request, object_id):
-        return HttpResponseRedirect(
-            reverse("admin:core_smsserviceconfig_test_send", args=[object_id])
-        )
+        return HttpResponseRedirect(reverse("admin:core_smsserviceconfig_test_send", args=[object_id]))
 
     def test_send_view(self, request, object_id):
         obj = SMSServiceConfig.objects.get(pk=object_id)
@@ -312,7 +308,5 @@ def _send_test_sms(*, config, phone_number):
     from twilio.rest import Client
 
     client = Client(config.account_sid, config.auth_token)
-    verification = client.verify.v2.services(config.verify_sid).verifications.create(
-        to=phone_number, channel="sms"
-    )
+    verification = client.verify.v2.services(config.verify_sid).verifications.create(to=phone_number, channel="sms")
     return verification.status

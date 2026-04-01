@@ -70,4 +70,6 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(self.style.SUCCESS(f"Created verified ContactEmail for staff '{member.username}'."))
             else:
-                self.stdout.write(self.style.WARNING(f"ContactEmail already exists for '{member.username}' — skipping."))
+                self.stdout.write(
+                    self.style.WARNING(f"ContactEmail already exists for '{member.username}' — skipping.")
+                )
