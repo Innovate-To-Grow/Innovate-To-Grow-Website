@@ -9,10 +9,9 @@ from django.utils.timesince import timesince
 from unfold.admin import TabularInline
 from unfold.decorators import action, display
 
-from core.admin import BaseModelAdmin
-
 from cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
 from cms.services.news import sync_news
+from core.admin import BaseModelAdmin
 
 
 class NewsSyncLogInline(TabularInline):

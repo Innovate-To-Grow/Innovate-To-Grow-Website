@@ -6,9 +6,9 @@ import logging
 
 from django.contrib import admin, messages
 from django.utils import timezone
-from core.admin import BaseModelAdmin
 
 from authn.models import AdminInvitation
+from core.admin import BaseModelAdmin
 
 logger = logging.getLogger(__name__)
 

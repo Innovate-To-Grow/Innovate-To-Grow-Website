@@ -2,7 +2,7 @@ import logging
 
 from django import forms
 from django.contrib import admin, messages
-from core.admin import BaseModelAdmin
+
 from cms.admin.cms.page_admin.editor import (
     build_editor_context,
     preview_store_response,
@@ -12,6 +12,7 @@ from cms.admin.cms.page_admin.editor import (
 from cms.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from cms.models import CMSPage
 from cms.models.content.cms.cms_page import validate_cms_route
+from core.admin import BaseModelAdmin
 
 logger = logging.getLogger(__name__)
 
