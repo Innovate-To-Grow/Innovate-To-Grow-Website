@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
+from unfold.forms import AdminPasswordChangeForm
 
 from core.admin import BaseModelAdmin
 
@@ -30,6 +31,9 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
 
     form = MemberChangeForm
     add_form = MemberCreationForm
+    # Django's default AdminPasswordChangeForm does not apply Unfold INPUT_CLASSES;
+    # password fields render with no visible borders on the themed admin page.
+    change_password_form = AdminPasswordChangeForm
     list_display = (
         "get_full_name_display",
         "get_primary_email_display",
@@ -51,12 +55,9 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     readonly_fields = ("member_uuid", "date_joined", "last_login")
     filter_horizontal = ("user_permissions",)
     fieldsets = (
+        (_("Member Info"), {"fields": ("member_uuid",)}),
         (None, {"fields": ("password",)}),
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization", "profile_image")}),
-        (
-            _("Member Info"),
-            {"fields": ("member_uuid",), "description": "Member-specific information"},
-        ),
         (
             _("Permissions"),
             {

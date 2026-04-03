@@ -8,7 +8,11 @@ from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 from unfold.decorators import action, display
-from unfold.widgets import UnfoldAdminFileFieldWidget, UnfoldAdminTextareaWidget
+from unfold.widgets import (
+    UnfoldAdminFileFieldWidget,
+    UnfoldAdminPasswordToggleWidget,
+    UnfoldAdminTextareaWidget,
+)
 
 from core.models import EmailServiceConfig, GoogleCredentialConfig, SMSServiceConfig
 
@@ -24,8 +28,9 @@ class EmailServiceConfigForm(forms.ModelForm):
         model = EmailServiceConfig
         fields = "__all__"
         widgets = {
-            "ses_secret_access_key": forms.PasswordInput(render_value=True),
-            "smtp_password": forms.PasswordInput(render_value=True),
+            # First positional arg is `attrs`, not `render_value` — pass attrs explicitly.
+            "ses_secret_access_key": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
+            "smtp_password": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
         }
 
 
@@ -336,7 +341,7 @@ class SMSServiceConfigForm(forms.ModelForm):
         model = SMSServiceConfig
         fields = "__all__"
         widgets = {
-            "auth_token": forms.PasswordInput(render_value=True),
+            "auth_token": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
         }
 
 

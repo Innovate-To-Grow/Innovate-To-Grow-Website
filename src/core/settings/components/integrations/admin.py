@@ -31,6 +31,7 @@ UNFOLD = {
     },
     "STYLES": [
         lambda request: static("admin/css/tabs.css"),
+        lambda request: static("admin/css/file-input.css"),
     ],
     "TABS": [
         {
@@ -56,13 +57,10 @@ UNFOLD = {
                 {"title": "Sync Logs", "link": "/admin/cms/newssynclog/"},
             ],
         },
-        {
-            "models": ["projects.semester", "projects.project"],
-            "items": [
-                {"title": "Semesters", "link": "/admin/projects/semester/"},
-                {"title": "Projects", "link": "/admin/projects/project/"},
-            ],
-        },
+        # projects.semester / projects.project are intentionally omitted from TABS.
+        # Duplicating the same links in TABS and SIDEBAR triggers Unfold's
+        # _get_is_tab_active(), which marks both sidebar rows active when either
+        # changelist is open (peer tabs, not parent/child).
         {
             "models": ["cms.sitesettings", "cms.cmspage", "cms.menu", "cms.footercontent"],
             "items": [

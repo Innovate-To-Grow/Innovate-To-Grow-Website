@@ -11,12 +11,9 @@ from ...models import Member
 class Base64ImageWidget(forms.ClearableFileInput):
     """File upload widget that stores the image as a base64-encoded string in a TextField."""
 
+    # i2g-admin-file-input: see admin/css/file-input.css (WebKit file button styling).
     _file_classes = (
-        "block w-full text-sm text-font-default-light dark:text-font-default-dark"
-        " file:mr-4 file:py-2 file:px-4 file:rounded-default file:border file:border-base-200"
-        " file:dark:border-base-700 file:text-sm file:font-medium file:bg-base-50"
-        " file:dark:bg-base-800 file:text-font-default-light file:dark:text-font-default-dark"
-        " hover:file:bg-base-100 dark:hover:file:bg-base-700 file:cursor-pointer file:transition-colors"
+        "i2g-admin-file-input block w-full text-sm text-font-default-light dark:text-font-default-dark"
     )
 
     def __init__(self, attrs=None):
@@ -96,11 +93,7 @@ class MemberImportForm(forms.Form):
         " text-font-default-light dark:text-font-default-dark rounded-default px-3 py-2 text-sm"
     )
     _file_classes = (
-        "block w-full text-sm text-font-default-light dark:text-font-default-dark"
-        " file:mr-4 file:py-2 file:px-4 file:rounded-default file:border file:border-base-200"
-        " file:dark:border-base-700 file:text-sm file:font-medium file:bg-base-50"
-        " file:dark:bg-base-800 file:text-font-default-light file:dark:text-font-default-dark"
-        " hover:file:bg-base-100 dark:hover:file:bg-base-700 file:cursor-pointer file:transition-colors"
+        "i2g-admin-file-input block w-full text-sm text-font-default-light dark:text-font-default-dark"
     )
 
     excel_file = forms.FileField(

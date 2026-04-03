@@ -1,0 +1,48 @@
+/*
+ * Native <input type="file"> styling for Unfold admin.
+ * Tailwind's file: variants target ::file-selector-button but Safari/WebKit
+ * often needs explicit -webkit-file-upload-button rules; without them the
+ * control looks like plain text.
+ */
+
+.i2g-admin-file-input {
+    min-height: 2.75rem;
+    padding: 0.25rem 0;
+    line-height: 1.5;
+}
+
+.i2g-admin-file-input::file-selector-button,
+.i2g-admin-file-input::-webkit-file-upload-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-right: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid oklch(91.4% 0.006 286.029);
+    background-color: oklch(96.7% 0.001 286.029);
+    color: oklch(21.3% 0.006 286.029);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.i2g-admin-file-input::file-selector-button:hover,
+.i2g-admin-file-input::-webkit-file-upload-button:hover {
+    background-color: oklch(94.6% 0.001 286.029);
+    border-color: oklch(87.1% 0.006 286.029);
+}
+
+.dark .i2g-admin-file-input::file-selector-button,
+.dark .i2g-admin-file-input::-webkit-file-upload-button {
+    border-color: oklch(37.1% 0.006 286.029);
+    background-color: oklch(27.8% 0.006 286.029);
+    color: oklch(87.1% 0.006 286.029);
+}
+
+.dark .i2g-admin-file-input::file-selector-button:hover,
+.dark .i2g-admin-file-input::-webkit-file-upload-button:hover {
+    background-color: oklch(37.1% 0.006 286.029);
+    border-color: oklch(43.8% 0.006 286.029);
+}
