@@ -1,20 +1,20 @@
 import json
 
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ...app_routes import APP_ROUTES
 from ...models import CMSPage, FooterContent
 
 
 @admin.register(FooterContent)
-class FooterContentAdmin(ModelAdmin):
+class FooterContentAdmin(BaseModelAdmin):
     list_display = ("name", "slug", "is_active", "updated_at")
     list_filter = ("is_active",)
     search_fields = ("name", "slug")
     readonly_fields = ("created_at", "updated_at")
     prepopulated_fields = {"slug": ("name",)}
-    change_list_template = "admin/cms/footer_content/change_list.html"
     change_form_template = "admin/cms/footer_content/change_form.html"
 
     fieldsets = (

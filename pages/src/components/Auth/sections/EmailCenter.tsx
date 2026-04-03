@@ -25,7 +25,17 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
             <PrimaryEmailCard
                 profile={profile}
                 subscribeSaving={emailCenter.subscribeSaving}
+                verifying={emailCenter.primaryVerifying}
+                verifyCode={emailCenter.primaryVerifyCode}
+                verifyLoading={emailCenter.primaryVerifyLoading}
+                verifyError={emailCenter.primaryVerifyError}
+                resendLoading={emailCenter.primaryResendLoading}
                 onToggleSubscribe={emailCenter.handlePrimarySubscribeToggle}
+                onToggleVerify={emailCenter.handlePrimaryToggleVerify}
+                onVerifyCodeChange={emailCenter.setPrimaryVerifyCode}
+                onVerifySubmit={emailCenter.handlePrimaryVerifySubmit}
+                onResend={emailCenter.handlePrimaryResend}
+                onCancelVerify={emailCenter.handlePrimaryCancelVerify}
             />
 
             {emailCenter.loading ? (

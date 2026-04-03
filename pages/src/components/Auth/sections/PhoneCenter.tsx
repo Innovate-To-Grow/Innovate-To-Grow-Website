@@ -4,6 +4,8 @@ import {
     createContactPhone,
     updateContactPhone,
     deleteContactPhone,
+    requestContactPhoneVerification,
+    verifyContactPhoneCode,
     type ContactPhone,
 } from '../../../services/auth';
 import {PhoneAddForm} from './PhoneAddForm';
@@ -25,6 +27,13 @@ export const PhoneCenter = () => {
     const [addSubscribe, setAddSubscribe] = useState(false);
     const [addLoading, setAddLoading] = useState(false);
     const [addError, setAddError] = useState<string | null>(null);
+
+    // Verification state
+    const [verifyingId, setVerifyingId] = useState<string | null>(null);
+    const [verifyCode, setVerifyCode] = useState('');
+    const [verifyLoading, setVerifyLoading] = useState(false);
+    const [verifyError, setVerifyError] = useState<string | null>(null);
+    const [resendLoading, setResendLoading] = useState(false);
 
     useEffect(() => {
         const fetchPhones = async () => {
@@ -71,12 +80,75 @@ export const PhoneCenter = () => {
             setAddRegion('1-US');
             setAddSubscribe(false);
             setShowAddForm(false);
-            setSuccessMessage('Phone number added.');
+
+            // Auto-trigger verification for the newly created phone
+            try {
+                await requestContactPhoneVerification(created.id);
+                setVerifyingId(created.id);
+                setVerifyCode('');
+                setSuccessMessage('Phone number added. Please enter the verification code sent via SMS.');
+            } catch {
+                setSuccessMessage('Phone number added. Click "Verify" to receive a verification code.');
+            }
         } catch (err) {
             setAddError(getAuthApiErrorMessage(err));
         } finally {
             setAddLoading(false);
         }
+    };
+
+    const handleToggleVerify = async (phoneId: string) => {
+        clearMessages();
+        setVerifyError(null);
+        setVerifyCode('');
+        setResendLoading(true);
+        try {
+            await requestContactPhoneVerification(phoneId);
+            setVerifyingId(phoneId);
+            setSuccessMessage('Verification code sent via SMS.');
+        } catch (err) {
+            setError(getAuthApiErrorMessage(err));
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
+    const handleVerifySubmit = async (event: FormEvent) => {
+        event.preventDefault();
+        if (!verifyingId || verifyCode.length !== 6) return;
+        setVerifyLoading(true);
+        setVerifyError(null);
+        clearMessages();
+        try {
+            const updated = await verifyContactPhoneCode(verifyingId, verifyCode);
+            setPhones((prev) => prev.map((p) => (p.id === verifyingId ? updated : p)));
+            setVerifyingId(null);
+            setVerifyCode('');
+            setSuccessMessage('Phone number verified successfully.');
+        } catch (err) {
+            setVerifyError(getAuthApiErrorMessage(err));
+        } finally {
+            setVerifyLoading(false);
+        }
+    };
+
+    const handleResend = async (phoneId: string) => {
+        setResendLoading(true);
+        setVerifyError(null);
+        try {
+            await requestContactPhoneVerification(phoneId);
+            setSuccessMessage('Verification code resent.');
+        } catch (err) {
+            setVerifyError(getAuthApiErrorMessage(err));
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
+    const handleCancelVerify = () => {
+        setVerifyingId(null);
+        setVerifyCode('');
+        setVerifyError(null);
     };
 
     const handleDelete = async (phoneId: string) => {
@@ -85,6 +157,10 @@ export const PhoneCenter = () => {
         try {
             await deleteContactPhone(phoneId);
             setPhones((prev) => prev.filter((p) => p.id !== phoneId));
+            if (verifyingId === phoneId) {
+                setVerifyingId(null);
+                setVerifyCode('');
+            }
             setSuccessMessage('Phone number removed.');
         } catch (err) {
             setError(getAuthApiErrorMessage(err));
@@ -102,7 +178,22 @@ export const PhoneCenter = () => {
                 <p style={{color: '#6b7280', fontSize: '0.875rem'}}>Loading phone numbers...</p>
             ) : (
                 phones.map((phone) => (
-                    <PhoneCard key={phone.id} phone={phone} onToggleSubscribe={handleSubscribeToggle} onDelete={handleDelete} />
+                    <PhoneCard
+                        key={phone.id}
+                        phone={phone}
+                        verifyingId={verifyingId}
+                        verifyCode={verifyCode}
+                        verifyLoading={verifyLoading}
+                        verifyError={verifyError}
+                        resendLoading={resendLoading}
+                        onToggleSubscribe={handleSubscribeToggle}
+                        onToggleVerify={handleToggleVerify}
+                        onVerifyCodeChange={setVerifyCode}
+                        onVerifySubmit={handleVerifySubmit}
+                        onResend={handleResend}
+                        onCancelVerify={handleCancelVerify}
+                        onDelete={handleDelete}
+                    />
                 ))
             )}
 

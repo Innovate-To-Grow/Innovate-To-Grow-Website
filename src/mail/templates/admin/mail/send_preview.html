@@ -1,0 +1,76 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;">
+    <!-- Campaign metadata -->
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        <h3 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-2">
+            <span class="material-symbols-outlined !text-[18px]">info</span>
+            Campaign Details
+        </h3>
+        <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <div>
+                <span class="text-base-400">Name:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ campaign.name }}</span>
+            </div>
+            <div>
+                <span class="text-base-400">Subject:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ campaign.subject }}</span>
+            </div>
+            <div>
+                <span class="text-base-400">Audience:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ campaign.get_audience_type_display }}{% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}
+                </span>
+            </div>
+            <div>
+                <span class="text-base-400">Recipients:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ recipient_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email preview -->
+    <div class="mb-6 rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
+        <div class="bg-base-50 dark:bg-base-800 px-4 py-2 border-b border-base-200 dark:border-base-700 flex items-center gap-2">
+            <span class="material-symbols-outlined !text-[16px] text-base-400">visibility</span>
+            <span class="text-xs font-medium text-base-400">Email Preview (sample data: Jane Doe)</span>
+        </div>
+        <iframe id="email-preview"
+                sandbox=""
+                style="width:100%;height:600px;border:none;background:#f4f4f7;"
+                title="Email preview"></iframe>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3">
+        {% if confirm_url %}
+            {% if recipient_count > 0 %}
+            <a href="{{ confirm_url }}"
+               class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">send</span>
+                Proceed to Send
+            </a>
+            {% else %}
+            <span class="bg-base-200 text-base-400 px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">block</span>
+                No Recipients Found
+            </span>
+            {% endif %}
+        {% endif %}
+        <a href="{{ cancel_url }}"
+           class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
+            <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+            Back to Campaign
+        </a>
+    </div>
+</div>
+
+<script>
+    document.getElementById('email-preview').srcdoc = {{ preview_html_json|safe }};
+</script>
+{% endblock %}

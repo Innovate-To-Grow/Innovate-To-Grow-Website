@@ -29,12 +29,47 @@ UNFOLD = {
             "950": "oklch(29.1% .149 302.717)",
         },
     },
+    "STYLES": [
+        lambda request: static("admin/css/tabs.css"),
+    ],
     "TABS": [
         {
-            "models": ["core.emailserviceconfig", "core.smsserviceconfig"],
+            "models": ["core.emailserviceconfig", "core.smsserviceconfig", "core.googlecredentialconfig"],
             "items": [
                 {"title": "Email Config", "link": "/admin/core/emailserviceconfig/"},
                 {"title": "SMS Config", "link": "/admin/core/smsserviceconfig/"},
+                {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
+            ],
+        },
+        {
+            "models": ["authn.contactemail", "authn.contactphone"],
+            "items": [
+                {"title": "Emails", "link": "/admin/authn/contactemail/"},
+                {"title": "Phones", "link": "/admin/authn/contactphone/"},
+            ],
+        },
+        {
+            "models": ["cms.newsarticle", "cms.newsfeedsource", "cms.newssynclog"],
+            "items": [
+                {"title": "Articles", "link": "/admin/cms/newsarticle/"},
+                {"title": "Feed Sources", "link": "/admin/cms/newsfeedsource/"},
+                {"title": "Sync Logs", "link": "/admin/cms/newssynclog/"},
+            ],
+        },
+        {
+            "models": ["projects.semester", "projects.project"],
+            "items": [
+                {"title": "Semesters", "link": "/admin/projects/semester/"},
+                {"title": "Projects", "link": "/admin/projects/project/"},
+            ],
+        },
+        {
+            "models": ["cms.sitesettings", "cms.cmspage", "cms.menu", "cms.footercontent"],
+            "items": [
+                {"title": "Home Page", "link": "/admin/cms/sitesettings/"},
+                {"title": "Pages", "link": "/admin/cms/cmspage/"},
+                {"title": "Menus", "link": "/admin/cms/menu/"},
+                {"title": "Footer", "link": "/admin/cms/footercontent/"},
             ],
         },
     ],
@@ -46,7 +81,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
                     {"title": "Service Configs", "link": "/admin/core/emailserviceconfig/"},
-                    {"title": "Version History", "link": "/admin/core/modelversion/"},
+                    {"title": "Admin Log", "link": "/admin/admin/logentry/"},
                 ],
             },
             {
@@ -54,7 +89,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
-                    {"title": "News Management", "link": "/admin/cms/newsfeedsource/"},
+                    {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                 ],
             },
             {
@@ -72,12 +107,17 @@ UNFOLD = {
                 ],
             },
             {
+                "title": "Amazon SES Mail",
+                "items": [
+                    {"title": "Sent Email", "link": "/admin/mail/emailcampaign/"},
+                    {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
+                ],
+            },
+            {
                 "title": "Members & Authentication",
                 "items": [
                     {"title": "Members", "link": "/admin/authn/member/"},
-                    {"title": "Contact Emails", "link": "/admin/authn/contactemail/"},
-                    {"title": "Contact Phones", "link": "/admin/authn/contactphone/"},
-                    {"title": "Groups", "link": "/admin/authn/i2gmembergroup/"},
+                    {"title": "Contact Info", "link": "/admin/authn/contactemail/"},
                     {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
                 ],
             },

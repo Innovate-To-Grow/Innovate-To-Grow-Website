@@ -5,13 +5,14 @@ Includes RSA Keypair management.
 
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ...models import RSAKeypair
 
 
 @admin.register(RSAKeypair)
-class RSAKeypairAdmin(ModelAdmin):
+class RSAKeypairAdmin(BaseModelAdmin):
     """Admin for RSAKeypair model - security settings."""
 
     list_display = ("name", "key_id", "is_active", "created_at", "rotated_at")

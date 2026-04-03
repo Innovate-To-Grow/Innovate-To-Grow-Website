@@ -26,6 +26,7 @@ const EventRegistrationPage = React.lazy(() => import('../pages/EventRegistratio
 const TicketLoginPage = React.lazy(() => import('../pages/TicketLoginPage').then(m => ({default: m.TicketLoginPage})));
 const SubscribePage = React.lazy(() => import('../pages/SubscribePage').then(m => ({default: m.SubscribePage})));
 const UnsubscribeLoginPage = React.lazy(() => import('../pages/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
+const MagicLoginPage = React.lazy(() => import('../pages/MagicLoginPage').then(m => ({default: m.MagicLoginPage})));
 
 export const router = createBrowserRouter([
     {
@@ -115,6 +116,7 @@ export const router = createBrowserRouter([
             // Auto-login from email links
             {path: 'ticket-login', element: <TicketLoginPage/>},
             {path: 'unsubscribe-login', element: <UnsubscribeLoginPage/>},
+            {path: 'magic-login', element: <MagicLoginPage/>},
 
             // Convenience redirects
             {path: 'profile', element: <Navigate to="/account" replace/>},

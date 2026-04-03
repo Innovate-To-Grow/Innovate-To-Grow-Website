@@ -61,6 +61,7 @@ class LoginCodeVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        _mark_contact_email_verified(challenge.member, challenge.target_email)
         consume_login_or_registration_challenge(challenge)
         return Response(
             build_auth_success_payload(challenge.member, "Login successful."),
@@ -93,6 +94,7 @@ class EmailAuthVerifyCodeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        _mark_contact_email_verified(member, challenge.target_email)
         consume_login_or_registration_challenge(challenge)
         return Response(
             build_auth_success_payload(
@@ -122,6 +124,7 @@ class RegisterVerifyCodeView(APIView):
             member.is_active = True
             member.save(update_fields=["is_active"])
             _link_email_subscriber(member)
+        _mark_contact_email_verified(member, challenge.target_email)
         consume_login_or_registration_challenge(challenge)
         return Response(
             build_auth_success_payload(member, "Email verified. Registration successful."),
@@ -179,3 +182,14 @@ def _link_email_subscriber(member):
             email_address__iexact=primary_email,
             member__isnull=True,
         ).update(member=member)
+
+
+def _mark_contact_email_verified(member, email_address):
+    """Mark the member's ContactEmail as verified after successful code verification."""
+    from authn.models import ContactEmail
+
+    ContactEmail.objects.filter(
+        member=member,
+        email_address__iexact=email_address,
+        verified=False,
+    ).update(verified=True)

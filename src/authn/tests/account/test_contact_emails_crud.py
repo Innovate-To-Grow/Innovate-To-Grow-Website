@@ -31,11 +31,10 @@ class ContactEmailCrudTests(APITestCase):
 
     # ── List ─────────────────────────────────────────────
 
-    def test_list_contact_emails_shows_primary(self, _mock_code, _mock_send):
+    def test_list_contact_emails_excludes_primary(self, _mock_code, _mock_send):
         response = self.client.get("/authn/contact-emails/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["email_address"], "primary@example.com")
+        self.assertEqual(len(response.data), 0)
 
     def test_create_sends_verification_code(self, _mock_code, mock_send):
         response = self.client.post(

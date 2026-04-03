@@ -1,11 +1,6 @@
 {% extends "admin/change_list.html" %}
 {% load i18n %}
 
-{% block content %}
-    {% include "admin/cms/includes/layout_tabs.html" with active_layout_tab="pages" %}
-    {{ block.super }}
-{% endblock %}
-
 {% block object-tools-items %}
     <div class="flex flex-row items-center gap-3">
         {% if show_import_buttons %}

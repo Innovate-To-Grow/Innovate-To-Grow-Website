@@ -10,7 +10,6 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
         self.assertIn("Site Maintenance Control", item_titles)
         self.assertIn("Service Configs", item_titles)
-        self.assertIn("Version History", item_titles)
 
     def test_members_navigation_includes_auth_entries(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
@@ -18,6 +17,5 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         item_titles = {item["title"] for item in members_section["items"]}
 
         self.assertIn("Members", item_titles)
-        self.assertIn("Contact Emails", item_titles)
-        self.assertIn("Contact Phones", item_titles)
+        self.assertIn("Contact Info", item_titles)
         self.assertIn("Admin Invitations", item_titles)

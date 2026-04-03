@@ -1,4 +1,4 @@
-"""Tests for core admin mixins (soft-delete, versioning, timestamped, export)."""
+"""Tests for core admin mixins (soft-delete, timestamped, export)."""
 
 import csv
 import io
@@ -15,7 +15,6 @@ from core.admin.mixins import (
     ImportExportMixin,
     SoftDeleteAdminMixin,
     TimestampedAdminMixin,
-    VersionControlAdminMixin,
 )
 
 User = get_user_model()
@@ -58,10 +57,6 @@ class _MockSuperAdmin:
 
 
 class _SoftDeleteAdmin(SoftDeleteAdminMixin, _MockSuperAdmin):
-    pass
-
-
-class _VersionAdmin(VersionControlAdminMixin, _MockSuperAdmin):
     pass
 
 
@@ -133,37 +128,6 @@ class SoftDeleteAdminMixinTest(TestCase):
         self.admin.soft_delete_selected(self._request_with_messages(), qs)
         article.refresh_from_db()
         self.assertTrue(article.is_deleted)
-
-
-class VersionControlAdminMixinTest(TestCase):
-    def setUp(self):
-        self.admin = _VersionAdmin()
-        self.factory = RequestFactory()
-        self.user = User.objects.create_user(password="pass")
-
-    def test_save_model_creates_version_on_change(self):
-        article = _make_article()
-        request = self.factory.post("/admin/")
-        request.user = self.user
-
-        self.admin.save_model(request, article, form=None, change=True)
-
-        self.assertEqual(article.version, 1)
-        self.assertEqual(article.get_versions().count(), 1)
-
-    def test_save_model_skips_version_on_create(self):
-        article = _make_article()
-        request = self.factory.post("/admin/")
-        request.user = self.user
-
-        self.admin.save_model(request, article, form=None, change=False)
-
-        self.assertEqual(article.version, 0)
-
-    def test_version_count_display(self):
-        article = _make_article()
-        result = self.admin.version_count(article)
-        self.assertIn("0 versions", result)
 
 
 class TimestampedAdminMixinTest(TestCase):

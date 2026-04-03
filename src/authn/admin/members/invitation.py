@@ -6,7 +6,7 @@ import logging
 
 from django.contrib import admin, messages
 from django.utils import timezone
-from unfold.admin import ModelAdmin as UnfoldModelAdmin
+from core.admin import BaseModelAdmin
 
 from authn.models import AdminInvitation
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @admin.register(AdminInvitation)
-class AdminInvitationAdmin(UnfoldModelAdmin):
+class AdminInvitationAdmin(BaseModelAdmin):
     list_display = ["email", "role", "status_badge", "invited_by", "created_at", "expires_at"]
     list_filter = ["status", "role"]
     search_fields = ["email"]

@@ -1,19 +1,19 @@
 import json
 
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ...app_routes import APP_ROUTES
 from ...models import CMSPage, Menu
 
 
 @admin.register(Menu)
-class MenuAdmin(ModelAdmin):
+class MenuAdmin(BaseModelAdmin):
     list_display = ("name", "is_active", "items_count", "created_at")
     list_filter = ("is_active",)
     search_fields = ("name",)
     readonly_fields = ("created_at", "updated_at")
-    change_list_template = "admin/cms/menu/change_list.html"
     change_form_template = "admin/cms/menu/change_form.html"
 
     fieldsets = (

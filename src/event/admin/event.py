@@ -1,7 +1,7 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import TabularInline
 
-from core.admin.mixins import SoftDeleteAdminMixin
+from core.admin import BaseModelAdmin
 
 from ..models import Event, Question, Ticket
 
@@ -19,7 +19,7 @@ class QuestionInline(TabularInline):
 
 
 @admin.register(Event)
-class EventAdmin(SoftDeleteAdminMixin, ModelAdmin):
+class EventAdmin(BaseModelAdmin):
     list_display = ("name", "date", "location", "is_live")
     list_filter = ("is_live", "date")
     search_fields = ("name", "location")

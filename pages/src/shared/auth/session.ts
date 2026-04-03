@@ -10,6 +10,14 @@ export const ticketAutoLogin = async (token: string): Promise<LoginResponse> => 
   return response.data;
 };
 
+export const magicAutoLogin = async (token: string): Promise<LoginResponse> => {
+  const response = await authApi.post<LoginResponse>('/mail/magic-login/', { token });
+  const { access, refresh, user } = response.data;
+  setTokens({ access, refresh }, user);
+  clearProfileCompletionRequired();
+  return response.data;
+};
+
 export const unsubscribeAutoLogin = async (token: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/unsubscribe-login/', { token });
   const { access, refresh, user } = response.data;

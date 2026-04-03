@@ -1,11 +1,11 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
 
 from cms.models import NewsArticle
+from core.admin import BaseModelAdmin
 
 
 @admin.register(NewsArticle)
-class NewsArticleAdmin(ModelAdmin):
+class NewsArticleAdmin(BaseModelAdmin):
     list_display = ("title", "published_at", "source", "created_at")
     list_filter = ("source", "published_at")
     search_fields = ("title", "summary")

@@ -165,3 +165,16 @@
   color: #c0392b;
 }
 
+/* ---------- Tighten layout when member is authenticated ---------- */
+.site-header-bottom-inner:has(.site-header-member.is-authenticated) .menu-bar-list {
+  gap: 16px;
+}
+
+.site-header-bottom-inner:has(.site-header-member.is-authenticated) .menu-bar-link {
+  font-size: 13px;
+}
+
+.site-header-bottom-inner:has(.site-header-member.is-authenticated) .site-header-date {
+  display: none;
+}
+

@@ -1,16 +1,21 @@
 """Shared core models."""
 
-from .base import EmailServiceConfig, ProjectControlModel, SiteMaintenanceControl, SMSServiceConfig
+from .base import (
+    EmailServiceConfig,
+    GoogleCredentialConfig,
+    ProjectControlModel,
+    SiteMaintenanceControl,
+    SMSServiceConfig,
+)
 from .managers import AllObjectsManager, ProjectControlManager, ProjectControlQuerySet
 from .mixins import ActiveModel, AuthoredModel, OrderedModel
-from .versioning import ModelVersion
 
 __all__ = [
     "ActiveModel",
     "AllObjectsManager",
     "AuthoredModel",
     "EmailServiceConfig",
-    "ModelVersion",
+    "GoogleCredentialConfig",
     "OrderedModel",
     "ProjectControlManager",
     "ProjectControlModel",

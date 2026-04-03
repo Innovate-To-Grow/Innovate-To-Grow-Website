@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:720px">
+    <p class="text-sm mb-4">
+        <strong>Campaign:</strong> {{ campaign.name }}<br>
+        <strong>Audience:</strong> {{ campaign.get_audience_type_display }}
+        {% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}<br>
+        <strong>Total recipients:</strong> {{ recipients|length }}
+    </p>
+
+    {% if recipients %}
+    <table class="w-full text-sm border border-base-200 rounded-md overflow-hidden mb-6">
+        <thead>
+            <tr class="bg-base-50">
+                <th class="text-left px-3 py-2 border-b border-base-200">#</th>
+                <th class="text-left px-3 py-2 border-b border-base-200">Name</th>
+                <th class="text-left px-3 py-2 border-b border-base-200">Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in recipients %}
+            <tr class="{% if forloop.counter|divisibleby:2 %}bg-base-50{% endif %}">
+                <td class="px-3 py-2 border-b border-base-100">{{ forloop.counter }}</td>
+                <td class="px-3 py-2 border-b border-base-100">{{ r.full_name|default:"—" }}</td>
+                <td class="px-3 py-2 border-b border-base-100">{{ r.email }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-sm text-base-400">No recipients found for this audience.</p>
+    {% endif %}
+
+    <a href="{{ back_url }}" class="border border-base-300 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 inline-block">
+        &larr; Back to Campaign
+    </a>
+</div>
+{% endblock %}

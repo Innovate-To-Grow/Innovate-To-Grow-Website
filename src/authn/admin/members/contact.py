@@ -5,7 +5,8 @@ Includes ContactEmail and ContactPhone.
 
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ...models import ContactEmail, ContactPhone
 
@@ -15,7 +16,7 @@ from ...models import ContactEmail, ContactPhone
 
 
 @admin.register(ContactEmail)
-class ContactEmailAdmin(ModelAdmin):
+class ContactEmailAdmin(BaseModelAdmin):
     """Admin for ContactEmail model."""
 
     list_display = ("email_address", "member", "email_type", "verified", "subscribe", "created_at")
@@ -58,7 +59,7 @@ class ContactEmailAdmin(ModelAdmin):
 
 
 @admin.register(ContactPhone)
-class ContactPhoneAdmin(ModelAdmin):
+class ContactPhoneAdmin(BaseModelAdmin):
     """Admin for ContactPhone model."""
 
     list_display = ("phone_number", "member", "region", "get_formatted_number", "verified", "subscribe", "created_at")

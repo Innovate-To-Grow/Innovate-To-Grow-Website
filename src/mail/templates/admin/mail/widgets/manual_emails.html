@@ -1,0 +1,76 @@
+<div class="max-w-2xl w-full">
+    <textarea name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}
+        class="block w-full rounded-default border border-base-200 bg-white px-3 py-2 font-mono text-sm leading-relaxed text-font-default-light placeholder:text-base-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-base-600 dark:bg-base-900 dark:text-font-default-dark dark:placeholder:text-base-600 dark:focus:border-primary-500"
+    >{% if widget.value %}{{ widget.value }}{% endif %}</textarea>
+
+    <div class="mt-2 flex items-center justify-between">
+        <div class="flex items-center gap-3 text-xs">
+            <span class="text-base-400">
+                <span id="manual-email-count" class="font-medium text-font-default-light dark:text-font-default-dark">0</span> email(s)
+            </span>
+            <span id="manual-email-invalid" class="hidden text-red-500">
+                <span class="material-symbols-outlined !text-[14px] align-middle">error</span>
+                <span id="manual-email-invalid-count">0</span> invalid
+            </span>
+        </div>
+        <button type="button" id="manual-email-dedup-btn"
+                class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hidden"
+                title="Remove duplicate emails">
+            Remove duplicates
+        </button>
+    </div>
+</div>
+
+<script>
+(function() {
+    var textarea = document.querySelector('textarea[name="{{ widget.name }}"]');
+    if (!textarea) return;
+
+    var countEl = document.getElementById('manual-email-count');
+    var invalidEl = document.getElementById('manual-email-invalid');
+    var invalidCountEl = document.getElementById('manual-email-invalid-count');
+    var dedupBtn = document.getElementById('manual-email-dedup-btn');
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function analyze() {
+        var lines = textarea.value.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+        var valid = 0, invalid = 0;
+        var seen = {};
+        var dupes = 0;
+        lines.forEach(function(line) {
+            if (emailRegex.test(line)) { valid++; } else { invalid++; }
+            if (seen[line.toLowerCase()]) { dupes++; } else { seen[line.toLowerCase()] = true; }
+        });
+
+        countEl.textContent = valid;
+        if (invalid > 0) {
+            invalidEl.classList.remove('hidden');
+            invalidCountEl.textContent = invalid;
+        } else {
+            invalidEl.classList.add('hidden');
+        }
+        if (dupes > 0) {
+            dedupBtn.classList.remove('hidden');
+        } else {
+            dedupBtn.classList.add('hidden');
+        }
+    }
+
+    textarea.addEventListener('input', analyze);
+    textarea.addEventListener('paste', function() { setTimeout(analyze, 50); });
+
+    dedupBtn.addEventListener('click', function() {
+        var lines = textarea.value.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+        var seen = {};
+        var unique = [];
+        lines.forEach(function(line) {
+            var key = line.toLowerCase();
+            if (!seen[key]) { seen[key] = true; unique.push(line); }
+        });
+        textarea.value = unique.join('\n');
+        analyze();
+    });
+
+    analyze();
+})();
+</script>

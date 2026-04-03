@@ -8,24 +8,22 @@ from unfold.forms import UserChangeForm, UserCreationForm
 from ...models import Member
 
 
-class MemberCreationForm(UserCreationForm):
-    """User creation form for the Member model with Unfold-styled password widgets."""
-
-    class Meta(UserCreationForm.Meta):
-        model = Member
-        fields = ()
-
-
-class MemberChangeForm(UserChangeForm):
-    """User change form for the Member model with Unfold-styled password widget."""
-
-    class Meta(UserChangeForm.Meta):
-        model = Member
-        fields = "__all__"
-
-
 class Base64ImageWidget(forms.ClearableFileInput):
     """File upload widget that stores the image as a base64-encoded string in a TextField."""
+
+    _file_classes = (
+        "block w-full text-sm text-font-default-light dark:text-font-default-dark"
+        " file:mr-4 file:py-2 file:px-4 file:rounded-default file:border file:border-base-200"
+        " file:dark:border-base-700 file:text-sm file:font-medium file:bg-base-50"
+        " file:dark:bg-base-800 file:text-font-default-light file:dark:text-font-default-dark"
+        " hover:file:bg-base-100 dark:hover:file:bg-base-700 file:cursor-pointer file:transition-colors"
+    )
+
+    def __init__(self, attrs=None):
+        defaults = {"class": self._file_classes}
+        if attrs:
+            defaults.update(attrs)
+        super().__init__(attrs=defaults)
 
     def value_from_datadict(self, data, files, name):
         upload = files.get(name)
@@ -53,12 +51,11 @@ class Base64ImageWidget(forms.ClearableFileInput):
         # If there's existing base64 data, show a thumbnail preview above the upload control
         if value and isinstance(value, str) and len(value) > 50:
             preview = format_html(
-                '<div style="margin-bottom:8px">'
-                '<p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-1">Current image:</p>'
+                '<div class="mb-3 flex items-center gap-4">'
                 '<img src="data:image/png;base64,{}" alt="Profile preview"'
-                ' style="max-width:96px;max-height:96px;border-radius:6px;'
-                'border:1px solid #e5e7eb;object-fit:cover"'
-                " />"
+                ' class="rounded-default border border-base-200 dark:border-base-700 object-cover"'
+                ' style="width:80px;height:80px" />'
+                '<span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">Current image</span>'
                 "</div>",
                 value,
             )
@@ -66,17 +63,29 @@ class Base64ImageWidget(forms.ClearableFileInput):
         return widget_html
 
 
-class MemberProfileInlineForm(forms.ModelForm):
-    """Form for MemberProfile inline that uses a file upload for the base64 profile_image field."""
+class MemberCreationForm(UserCreationForm):
+    """User creation form for the Member model with Unfold-styled password widgets."""
 
-    class Meta:
-        from ...models import MemberProfile
+    class Meta(UserCreationForm.Meta):
+        model = Member
+        fields = ()
 
-        model = MemberProfile
+
+class MemberChangeForm(UserChangeForm):
+    """User change form for the Member model with Unfold-styled password widget."""
+
+    class Meta(UserChangeForm.Meta):
+        model = Member
         fields = "__all__"
         widgets = {
             "profile_image": Base64ImageWidget(attrs={"accept": "image/png,image/jpeg"}),
         }
+
+    def clean_profile_image(self):
+        value = self.cleaned_data.get("profile_image")
+        if value is None and self.instance.pk:
+            return self.instance.profile_image
+        return value
 
 
 class MemberImportForm(forms.Form):

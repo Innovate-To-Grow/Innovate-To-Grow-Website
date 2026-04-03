@@ -2,15 +2,19 @@
 {% load i18n admin_urls %}
 
 {% block object-tools-items %}
-    <li>
-        <a href="{% url 'admin:authn_member_export_excel' %}" class="addlink">
-            Export to Excel
+    <div class="flex flex-row items-center gap-2">
+        <a href="{% url 'admin:authn_member_export_excel' %}"
+           class="border border-base-200 dark:border-base-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-sm font-medium transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark"
+           title="Export to Excel">
+            <span class="material-symbols-outlined !text-[18px]">download</span>
+            Export Excel
         </a>
-    </li>
-    <li>
-        <a href="{% url 'admin:authn_member_import_excel' %}" class="addlink">
-            Import from Excel
+        <a href="{% url 'admin:authn_member_import_excel' %}"
+           class="border border-base-200 dark:border-base-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-sm font-medium transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark"
+           title="Import from Excel">
+            <span class="material-symbols-outlined !text-[18px]">upload_file</span>
+            Import Excel
         </a>
-    </li>
+    </div>
     {{ block.super }}
 {% endblock %}

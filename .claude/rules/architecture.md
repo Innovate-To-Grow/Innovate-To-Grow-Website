@@ -26,14 +26,46 @@ Nearly all models inherit from `core.models.ProjectControlModel`, which provides
 - **UUID primary key** (not auto-increment integers)
 - **Timestamps**: `created_at`, `updated_at`
 - **Soft delete**: `is_deleted`, `deleted_at`; `objects` excludes deleted, `all_objects` includes all
-- **Version tracking**: JSON snapshots via `save_version()`, `rollback()`, `get_versions()`
+- **Version tracking**: JSON snapshots via `save_version()`, `rollback()`, `get_versions()`; stored in `core.models.ModelVersion` (generic FK by content type + object UUID)
 
 ### Auth system
 
 - JWT via `rest_framework_simplejwt` (access 1h, refresh 7d, rotation + blacklist).
 - `Member` extends `AbstractUser` + `ProjectControlModel` — the PK (`id`) is a UUID.
 - `EmailOrUsernameBackend` allows login by username or verified email.
+- Admin login is overridden: `authn.views.AdminLoginView` at `/admin/login/`.
 - Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
+
+### URL routing
+
+Root router in `core/urls.py`:
+- `/admin/` — Unfold-themed admin (custom login at `/admin/login/`)
+- `/authn/` — authentication endpoints
+- `/cms/` — CMS API
+- `/event/` — event endpoints
+- `/news/` — news API (routed to `cms.news_urls`)
+- `/projects/` — project endpoints
+- `/sponsors/` — sponsor endpoints
+- `/analytics/` — page view analytics (routed to `cms.analytics_urls`)
+- `/layout/` — combined menu + footer API
+- `/health/` — ALB health check (intercepted by middleware, returns JSON status)
+- `/maintenance/bypass/` — maintenance mode toggle
+- `/ckeditor5/` — rich text editor uploads
+
+### Settings differences
+
+| | Dev | CI | Prod |
+|---|---|---|---|
+| Database | SQLite | PostgreSQL (GH Actions service) | PostgreSQL + SSL |
+| Cache | Local memory | Local memory | Redis (file-based fallback) |
+| Email | Console backend | Console backend | SMTP |
+| Storage | Local filesystem | Local filesystem | S3/R2 via boto3 |
+| Passwords | Plain text OK | Plain text OK | Encrypted required |
+
+### Middleware
+
+- `HealthCheckMiddleware` intercepts `/health/` before other middleware; returns JSON with database + maintenance status (always 200 for ALB probes).
+- `SiteMaintenanceControl` model drives maintenance mode.
 
 ## Frontend
 
@@ -44,6 +76,21 @@ Nearly all models inherit from `core.models.ProjectControlModel`, which provides
 - `services/api/` houses feature-specific API service modules.
 - Three React roots: `#root` (main app with router), `#menu-root` (MainMenu only, no BrowserRouter), `#footer-root` (Footer). This means menu and footer render independently and share auth state via the `i2g-auth-state-change` custom event.
 - Vite dev server proxies `/api`, `/media`, `/static` to Django backend (configurable via `VITE_BACKEND_URL` env var, defaults to `http://localhost:8000`).
+- Manual code-splitting: react-vendor and router chunks are split separately in `vite.config.ts`.
+- Testing: vitest + @testing-library/react.
+
+## Admin theme
+
+- Unfold admin with custom OKLch color palette (purple primary).
+- All admin classes must inherit from `core.admin.BaseModelAdmin` (or `ReadOnlyModelAdmin`), not Django's stock `ModelAdmin`.
+- Sidebar organized into 5 sections: Site Settings, CMS, Events, Projects, Members & Auth.
+- Tab groups for domain-related models configured in `core/settings/components/integrations/admin.py`.
+
+## CI/CD
+
+- **GitHub Actions** runs on push/PR: Ruff lint + format check, Django tests (SQLite), PostgreSQL migration validation (Docker), frontend lint + type check + vitest + build.
+- **Deployment**: frontend builds are zipped and uploaded to S3 via AWS Amplify API (triggered on main after CI passes).
+- Backend Docker image: Python 3.11-slim + Gunicorn (3 workers, 120s timeout, port 8000).
 
 ## Product behavior to preserve
 

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    a { color: #0f2d52; text-decoration: underline; }
+    @media only screen and (max-width: 620px) {
+      .email-container { width: 100% !important; }
+      .email-body { padding: 24px 20px !important; }
+      .email-header { padding: 24px 20px !important; }
+      .email-footer { padding: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,Helvetica,sans-serif;">
+  <!-- Top gold accent stripe -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="email-container">
+        <tr><td style="height:4px;background-color:#daa520;border-radius:4px 4px 0 0;"></td></tr>
+      </table>
+    </td></tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:0 0 40px;">
+    <tr>
+      <td align="center">
+        <table class="email-container" role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td class="email-header" style="background-color:#0b1f3f;padding:24px 32px;border-bottom:4px solid #daa520;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  {% if logo_url %}
+                  <td style="width:48px;vertical-align:middle;">
+                    <img src="{{ logo_url }}" alt="Innovate to Grow" width="48" height="48" style="display:block;border-radius:8px;" />
+                  </td>
+                  <td style="width:14px;"></td>
+                  {% endif %}
+                  <td style="vertical-align:middle;">
+                    <span style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;">Innovate to Grow</span>
+                    <br>
+                    <span style="color:#8899b0;font-size:12px;letter-spacing:0.3px;">University of California, Merced</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td class="email-body" style="padding:36px 32px 24px;font-size:16px;color:#333333;line-height:1.6;">
+              {{ body|safe }}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td class="email-footer" style="padding:24px 32px;background-color:#f8f9fa;border-top:1px solid #eeeeee;text-align:center;">
+              <p style="margin:0 0 8px;font-size:12px;color:#0b2653;">
+                Innovate to Grow &mdash; University of California, Merced
+              </p>
+              <p style="margin:0;font-size:11px;color:#999999;">
+                You received this email because you are subscribed to Innovate to Grow updates.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
