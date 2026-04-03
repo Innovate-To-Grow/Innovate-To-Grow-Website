@@ -2,6 +2,7 @@
 Core views for system-level endpoints.
 """
 
+from django.http import HttpResponse
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -9,6 +10,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import SiteMaintenanceControl
+
+
+def robots_txt(request):
+    """Serve robots.txt for search engine crawlers."""
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "",
+        "Sitemap: https://www.innovatetogrow.org/sitemap.xml",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")
 
 
 def root_index(request):

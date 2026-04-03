@@ -22,7 +22,7 @@ from django.urls import include, path
 
 from authn.views.admin_login import AdminLoginView
 from cms.views import LayoutAPIView
-from core.views import MaintenanceBypassView, root_index
+from core.views import MaintenanceBypassView, robots_txt, root_index
 
 # Customize Django Admin
 admin.site.site_header = "Innovate To Grow Admin"
@@ -32,6 +32,8 @@ admin.site.index_title = "Welcome to I2G Admin"
 urlpatterns = [
     # root → API index
     path("", root_index, name="root-index"),
+    # robots.txt
+    path("robots.txt", robots_txt, name="robots-txt"),
     # custom admin login (before admin.site.urls to override default)
     path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
     # admin site
