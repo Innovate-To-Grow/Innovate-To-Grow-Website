@@ -13,6 +13,7 @@ from .preview import render_email_html
 
 logger = logging.getLogger(__name__)
 
+
 def _build_login_link(member_id, campaign):
     """Create a MagicLoginToken and return the frontend magic-login URL."""
     if not member_id:

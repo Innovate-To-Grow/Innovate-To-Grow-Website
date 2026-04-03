@@ -260,12 +260,14 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def send_campaign_status_json(self, request, object_id):
         """JSON endpoint for polling send progress."""
         obj = EmailCampaign.objects.get(pk=object_id)
-        return JsonResponse({
-            "status": obj.status,
-            "total": obj.total_recipients,
-            "sent": obj.sent_count,
-            "failed": obj.failed_count,
-        })
+        return JsonResponse(
+            {
+                "status": obj.status,
+                "total": obj.total_recipients,
+                "sent": obj.sent_count,
+                "failed": obj.failed_count,
+            }
+        )
 
     def inline_preview_view(self, request):
         """Render email preview from POST data (subject + body). Opens in a new tab."""
