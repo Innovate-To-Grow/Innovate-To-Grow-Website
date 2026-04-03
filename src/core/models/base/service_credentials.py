@@ -298,5 +298,3 @@ class SMSServiceConfig(models.Model):
     @property
     def is_configured(self):
         return bool(self.account_sid and self.auth_token and self.verify_sid)
-
-

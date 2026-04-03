@@ -131,4 +131,3 @@ class SemesterAdmin(BaseModelAdmin):
         extra_context["import_url"] = reverse("admin:projects_import_excel")
         extra_context["publish_all_url"] = reverse("admin:projects_publish_all")
         return super().changelist_view(request, extra_context=extra_context)
-
