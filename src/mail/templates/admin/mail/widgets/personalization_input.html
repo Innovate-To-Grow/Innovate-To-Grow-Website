@@ -1,0 +1,9 @@
+{% include "unfold/widgets/text.html" %}
+<div class="mt-2 rounded-default border border-pink-200 bg-pink-50 px-3 py-2.5 dark:border-pink-800 dark:bg-pink-900/20">
+    <div class="flex flex-wrap items-center gap-1.5 text-xs text-pink-700 dark:text-pink-300">
+        <span class="font-medium">Available tags:</span>
+        {% for tag_value, tag_label in tags %}
+        <code class="rounded bg-pink-100 px-1.5 py-0.5 font-mono text-pink-800 dark:bg-pink-800/40 dark:text-pink-200">{{ tag_value }}</code>
+        {% endfor %}
+    </div>
+</div>

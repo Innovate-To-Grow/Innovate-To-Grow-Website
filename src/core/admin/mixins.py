@@ -1,12 +1,10 @@
-"""Admin mixins for soft-delete, versioning, timestamps, and export formats."""
+"""Admin mixins for soft-delete, timestamps, and export formats."""
 
 import json
 from datetime import datetime
 
 from django.contrib import admin, messages
-from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
-from django.urls import reverse
 from django.utils.html import format_html
 
 # ---------------------------------------------------------------------------
@@ -63,8 +61,16 @@ class SoftDeleteAdminMixin:
             return
         messages.warning(request, "No items were deleted.")
 
+    def delete_model(self, request, obj):
+        obj.delete()
+
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
+
     def get_actions(self, request):
         actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
         if hasattr(self.model, "is_deleted"):
             actions["restore_selected"] = (self.restore_selected, "restore_selected", "Restore selected items")
             actions["soft_delete_selected"] = (
@@ -73,25 +79,6 @@ class SoftDeleteAdminMixin:
                 "Soft delete selected items",
             )
         return actions
-
-
-class VersionControlAdminMixin:
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        if hasattr(obj, "save_version") and change:
-            obj.save_version(comment=f"Updated via admin by {request.user.get_primary_email()}", user=request.user)
-
-    @admin.display(description="Versions")
-    def version_count(self, obj):
-        if not hasattr(obj, "get_versions"):
-            return "-"
-        versions = obj.get_versions()
-        count = versions.count() if versions else 0
-        if count == 0:
-            return "0 versions"
-        ct = ContentType.objects.get_for_model(obj)
-        url = reverse("admin:core_modelversion_changelist") + f"?content_type__id__exact={ct.pk}&object_id={obj.pk}"
-        return format_html('<a href="{}">{} version{}</a>', url, count, "s" if count != 1 else "")
 
 
 class TimestampedAdminMixin:

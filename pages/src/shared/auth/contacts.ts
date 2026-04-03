@@ -27,6 +27,16 @@ export const deleteContactPhone = async (id: string): Promise<void> => {
   await authApi.delete(`/authn/contact-phones/${id}/`);
 };
 
+export const requestContactPhoneVerification = async (id: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>(`/authn/contact-phones/${id}/request-verification/`);
+  return response.data;
+};
+
+export const verifyContactPhoneCode = async (id: string, code: string): Promise<ContactPhone> => {
+  const response = await authApi.post<ContactPhone>(`/authn/contact-phones/${id}/verify-code/`, { code });
+  return response.data;
+};
+
 export const getContactEmails = async (): Promise<ContactEmail[]> => {
   const response = await authApi.get<ContactEmail[]>('/authn/contact-emails/');
   return response.data;

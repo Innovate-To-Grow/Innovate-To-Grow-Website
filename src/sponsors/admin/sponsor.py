@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ..models import Sponsor
 
 
 @admin.register(Sponsor)
-class SponsorAdmin(ModelAdmin):
+class SponsorAdmin(BaseModelAdmin):
     list_display = ("name", "year", "display_order", "logo_preview_small", "website")
     list_filter = ("year",)
     list_editable = ("display_order",)

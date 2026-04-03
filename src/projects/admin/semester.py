@@ -5,7 +5,9 @@ from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import TabularInline
+
+from core.admin import BaseModelAdmin
 
 from ..models import Project, Semester
 from ..services.import_excel import import_projects_from_excel
@@ -22,7 +24,7 @@ class ProjectInline(TabularInline):
 
 
 @admin.register(Semester)
-class SemesterAdmin(ModelAdmin):
+class SemesterAdmin(BaseModelAdmin):
     list_display = ("label", "year", "season", "is_published", "is_current", "project_count", "updated_at")
     list_filter = ("is_published", "is_current", "season", "year")
     readonly_fields = ("label", "created_at", "updated_at")
@@ -32,13 +34,13 @@ class SemesterAdmin(ModelAdmin):
 
     @admin.action(description="Publish selected semesters")
     def publish_selected(self, request, queryset):
-        updated = queryset.filter(is_published=False).update(is_published=True)
+        updated = queryset.filter(is_published=False, is_deleted=False).update(is_published=True)
         transaction.on_commit(_clear_project_caches)
         self.message_user(request, f"{updated} semester(s) published.", messages.SUCCESS)
 
     @admin.action(description="Unpublish selected semesters")
     def unpublish_selected(self, request, queryset):
-        updated = queryset.filter(is_published=True).update(is_published=False, is_current=False)
+        updated = queryset.filter(is_published=True, is_deleted=False).update(is_published=False, is_current=False)
         transaction.on_commit(_clear_project_caches)
         self.message_user(request, f"{updated} semester(s) unpublished.", messages.SUCCESS)
 
@@ -48,6 +50,9 @@ class SemesterAdmin(ModelAdmin):
             self.message_user(request, "Please select exactly one semester.", messages.ERROR)
             return
         semester = queryset.first()
+        if semester.is_deleted:
+            self.message_user(request, "Cannot set a deleted semester as current.", messages.ERROR)
+            return
         semester.is_current = True
         semester.save()  # save() handles auto-publish and clearing others
         transaction.on_commit(_clear_project_caches)
@@ -127,5 +132,3 @@ class SemesterAdmin(ModelAdmin):
         extra_context["publish_all_url"] = reverse("admin:projects_publish_all")
         return super().changelist_view(request, extra_context=extra_context)
 
-    def delete_queryset(self, request, queryset):
-        super().delete_queryset(request, queryset)

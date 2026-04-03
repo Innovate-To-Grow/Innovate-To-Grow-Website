@@ -53,20 +53,22 @@ class ProfileSerializer(serializers.Serializer):
         """
         Get profile data from the user instance.
         """
-        profile = instance.get_profile()
         profile_image = None
-        if profile.profile_image:
+        if instance.profile_image:
             try:
                 profile_image = (
-                    profile.profile_image
-                    if profile.profile_image.startswith("data:")
-                    else f"data:application/octet-stream;base64,{profile.profile_image}"
+                    instance.profile_image
+                    if instance.profile_image.startswith("data:")
+                    else f"data:application/octet-stream;base64,{instance.profile_image}"
                 )
             except (AttributeError, TypeError):
                 profile_image = None
+        primary_contact = instance.get_primary_contact_email()
         return {
             "member_uuid": str(instance.member_uuid),
-            "email": instance.get_primary_email(),
+            "email": primary_contact.email_address if primary_contact else "",
+            "email_verified": primary_contact.verified if primary_contact else False,
+            "primary_email_id": str(primary_contact.pk) if primary_contact else None,
             "first_name": instance.first_name or "",
             "middle_name": instance.middle_name or "",
             "last_name": instance.last_name or "",

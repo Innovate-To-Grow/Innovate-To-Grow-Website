@@ -6,8 +6,10 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.timesince import timesince
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import TabularInline
 from unfold.decorators import action, display
+
+from core.admin import BaseModelAdmin
 
 from cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
 from cms.services.news import sync_news
@@ -24,7 +26,7 @@ class NewsSyncLogInline(TabularInline):
 
 
 @admin.register(NewsFeedSource)
-class NewsFeedSourceAdmin(ModelAdmin):
+class NewsFeedSourceAdmin(BaseModelAdmin):
     list_display = (
         "name",
         "source_key",
@@ -114,7 +116,10 @@ class NewsFeedSourceAdmin(ModelAdmin):
 
     @action(description="Sync this feed", url_path="sync-this-feed", icon="sync")
     def sync_this_feed(self, request, object_id):
-        source = NewsFeedSource.objects.get(id=object_id)
+        source = NewsFeedSource.all_objects.get(id=object_id)
+        if source.is_deleted:
+            messages.error(request, f"Feed '{source.name}' is deleted and cannot be synced.")
+            return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))
         if not source.is_active:
             messages.warning(request, f"Feed '{source.name}' is not active.")
             return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))

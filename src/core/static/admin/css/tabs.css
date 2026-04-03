@@ -1,0 +1,53 @@
+/*
+ * Branded tab styling for Unfold TABS navigation.
+ * Overrides the default bg-white/shadow active state with
+ * a filled primary-600 pill, matching the project's design language.
+ */
+
+/* Container: white background with subtle border */
+#tabs-items {
+    background-color: white !important;
+    border: 1px solid oklch(91.4% .006 286.029) !important;   /* base-200 */
+}
+
+/* Tab links: slightly larger hit targets */
+#tabs-items > a {
+    padding: 0.5rem 1rem !important;       /* py-2 px-4 */
+    font-size: 0.875rem !important;        /* text-sm  */
+    transition: background-color 0.15s, color 0.15s;
+}
+
+/* Active tab: filled primary pill */
+#tabs-items > .active,
+#tabs-items > .active:hover {
+    background-color: oklch(55.8% .288 302.321) !important;  /* primary-600 */
+    color: white !important;
+    box-shadow: none !important;
+}
+
+/* Inactive hover */
+#tabs-items > a:not(.active):hover {
+    background-color: oklch(96.7% .001 286.029) !important;  /* base-100 */
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    #tabs-items {
+        background-color: rgba(255, 255, 255, 0.06) !important;
+        border-color: oklch(37.1% .006 286.029) !important;  /* base-700 */
+    }
+
+    #tabs-items > .active,
+    #tabs-items > .active:hover {
+        background-color: oklch(55.8% .288 302.321) !important;
+        color: white !important;
+    }
+
+    #tabs-items > a:not(.active) {
+        color: oklch(87.1% .006 286.029) !important;         /* font-default-dark */
+    }
+
+    #tabs-items > a:not(.active):hover {
+        background-color: oklch(27.8% .006 286.029) !important; /* base-800 */
+    }
+}

@@ -1,0 +1,112 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;">
+    <!-- Campaign info -->
+    <div class="mb-4 text-sm space-y-1">
+        <p><span class="text-base-400">Campaign:</span> <strong>{{ campaign.name }}</strong></p>
+        <p><span class="text-base-400">Subject:</span> {{ campaign.subject }}</p>
+    </div>
+
+    <!-- Status badge -->
+    <div class="mb-4 flex items-center gap-2">
+        <span id="status-icon" class="material-symbols-outlined !text-[20px] text-yellow-500">sync</span>
+        <span id="status-text" class="text-sm font-semibold text-yellow-600 dark:text-yellow-400">Sending...</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="mb-4">
+        <div class="h-3 w-full rounded-full bg-base-200 dark:bg-base-700 overflow-hidden">
+            <div class="h-full flex">
+                <div id="bar-sent" class="bg-green-500 transition-all duration-500" style="width:0%"></div>
+                <div id="bar-failed" class="bg-red-500 transition-all duration-500" style="width:0%"></div>
+            </div>
+        </div>
+        <div class="flex justify-between mt-1 text-xs text-base-400">
+            <span id="progress-label">0 / {{ campaign.total_recipients }}</span>
+            <span id="progress-pct">0%</span>
+        </div>
+    </div>
+
+    <!-- Counts -->
+    <div class="mb-6 grid grid-cols-3 gap-4 text-center">
+        <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
+            <div id="count-sent" class="text-2xl font-bold text-green-600 dark:text-green-400">0</div>
+            <div class="text-xs text-base-400 mt-1">Sent</div>
+        </div>
+        <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
+            <div id="count-failed" class="text-2xl font-bold text-red-600 dark:text-red-400">0</div>
+            <div class="text-xs text-base-400 mt-1">Failed</div>
+        </div>
+        <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
+            <div id="count-pending" class="text-2xl font-bold text-base-500">{{ campaign.total_recipients }}</div>
+            <div class="text-xs text-base-400 mt-1">Pending</div>
+        </div>
+    </div>
+
+    <!-- Back button -->
+    <a id="back-btn" href="{{ back_url }}"
+       class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
+        <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+        Back to Campaign
+    </a>
+</div>
+
+<script>
+(function() {
+    var statusUrl = "{{ status_json_url }}";
+    var total = {{ campaign.total_recipients }};
+    var polling = null;
+
+    function update(data) {
+        var sent = data.sent || 0;
+        var failed = data.failed || 0;
+        var done = sent + failed;
+        var pending = total - done;
+        var pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+        document.getElementById('count-sent').textContent = sent;
+        document.getElementById('count-failed').textContent = failed;
+        document.getElementById('count-pending').textContent = pending;
+        document.getElementById('progress-label').textContent = done + ' / ' + total;
+        document.getElementById('progress-pct').textContent = pct + '%';
+
+        if (total > 0) {
+            document.getElementById('bar-sent').style.width = (sent / total * 100) + '%';
+            document.getElementById('bar-failed').style.width = (failed / total * 100) + '%';
+        }
+
+        if (data.status !== 'sending') {
+            clearInterval(polling);
+            var icon = document.getElementById('status-icon');
+            var text = document.getElementById('status-text');
+            if (data.status === 'sent') {
+                icon.textContent = 'check_circle';
+                icon.className = 'material-symbols-outlined !text-[20px] text-green-500';
+                text.textContent = 'Campaign Sent';
+                text.className = 'text-sm font-semibold text-green-600 dark:text-green-400';
+            } else {
+                icon.textContent = 'error';
+                icon.className = 'material-symbols-outlined !text-[20px] text-red-500';
+                text.textContent = 'Campaign Failed';
+                text.className = 'text-sm font-semibold text-red-600 dark:text-red-400';
+            }
+        }
+    }
+
+    function poll() {
+        fetch(statusUrl, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function(r) { return r.json(); })
+            .then(update)
+            .catch(function() {});
+    }
+
+    poll();
+    polling = setInterval(poll, 2000);
+})();
+</script>
+{% endblock %}

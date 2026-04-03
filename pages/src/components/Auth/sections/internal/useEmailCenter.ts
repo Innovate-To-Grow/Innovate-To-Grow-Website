@@ -3,6 +3,7 @@ import {
   createContactEmail,
   deleteContactEmail,
   getContactEmails,
+  getProfile,
   requestContactEmailVerification,
   updateContactEmail,
   updateProfileFields,
@@ -34,6 +35,13 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
+
+  // Primary email verification state
+  const [primaryVerifying, setPrimaryVerifying] = useState(false);
+  const [primaryVerifyCode, setPrimaryVerifyCode] = useState('');
+  const [primaryVerifyLoading, setPrimaryVerifyLoading] = useState(false);
+  const [primaryVerifyError, setPrimaryVerifyError] = useState<string | null>(null);
+  const [primaryResendLoading, setPrimaryResendLoading] = useState(false);
 
   useEffect(() => {
     const fetchEmails = async () => {
@@ -141,6 +149,64 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     }
   };
 
+  const handlePrimaryToggleVerify = async () => {
+    if (!profile.primary_email_id) return;
+    clearMessages();
+    setPrimaryVerifyError(null);
+    setPrimaryVerifyCode('');
+    setPrimaryResendLoading(true);
+    try {
+      await requestContactEmailVerification(profile.primary_email_id);
+      setPrimaryVerifying(true);
+      setSuccessMessage('Verification code sent to your primary email.');
+    } catch (err) {
+      setError(getAuthApiErrorMessage(err));
+    } finally {
+      setPrimaryResendLoading(false);
+    }
+  };
+
+  const handlePrimaryVerifySubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!profile.primary_email_id || primaryVerifyCode.length !== 6) return;
+    setPrimaryVerifyLoading(true);
+    setPrimaryVerifyError(null);
+    clearMessages();
+    try {
+      await verifyContactEmailCode(profile.primary_email_id, primaryVerifyCode);
+      setPrimaryVerifying(false);
+      setPrimaryVerifyCode('');
+      // Refresh profile to pick up the updated verified status
+      const updated = await getProfile();
+      onProfileUpdate(updated);
+      setSuccessMessage('Primary email verified successfully.');
+    } catch (err) {
+      setPrimaryVerifyError(getAuthApiErrorMessage(err));
+    } finally {
+      setPrimaryVerifyLoading(false);
+    }
+  };
+
+  const handlePrimaryResend = async () => {
+    if (!profile.primary_email_id) return;
+    setPrimaryResendLoading(true);
+    setPrimaryVerifyError(null);
+    try {
+      await requestContactEmailVerification(profile.primary_email_id);
+      setSuccessMessage('Verification code resent.');
+    } catch (err) {
+      setPrimaryVerifyError(getAuthApiErrorMessage(err));
+    } finally {
+      setPrimaryResendLoading(false);
+    }
+  };
+
+  const handlePrimaryCancelVerify = () => {
+    setPrimaryVerifying(false);
+    setPrimaryVerifyCode('');
+    setPrimaryVerifyError(null);
+  };
+
   const handleDelete = async (contactId: string) => {
     if (!window.confirm('Are you sure you want to remove this email?')) return;
     clearMessages();
@@ -174,6 +240,11 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     verifyError,
     verifyLoading,
     verifyingId,
+    primaryVerifying,
+    primaryVerifyCode,
+    primaryVerifyLoading,
+    primaryVerifyError,
+    primaryResendLoading,
     setAddEmail,
     setAddError,
     setAddSubscribe,
@@ -188,6 +259,11 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     handleContactTypeChange,
     handleDelete,
     handlePrimarySubscribeToggle,
+    handlePrimaryToggleVerify,
+    handlePrimaryVerifySubmit,
+    handlePrimaryResend,
+    handlePrimaryCancelVerify,
+    setPrimaryVerifyCode,
     handleResend,
     handleVerifySubmit,
   };

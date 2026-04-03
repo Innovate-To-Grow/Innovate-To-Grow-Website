@@ -49,6 +49,8 @@ export interface AccountEmailsResponse {
 export interface ProfileResponse {
   member_uuid: string;
   email: string;
+  email_verified: boolean;
+  primary_email_id: string | null;
   first_name: string;
   middle_name: string;
   last_name: string;

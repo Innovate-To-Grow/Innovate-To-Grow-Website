@@ -1,11 +1,12 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ..models import EventRegistration
 
 
 @admin.register(EventRegistration)
-class EventRegistrationAdmin(ModelAdmin):
+class EventRegistrationAdmin(BaseModelAdmin):
     list_display = (
         "event",
         "attendee_first_name",

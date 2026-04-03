@@ -9,7 +9,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 # noinspection PyProtectedMember
 from authn.models import ContactEmail
-from authn.models.members.member import MemberProfile
 from authn.views.account.profile import _validate_image_bytes
 
 Member = get_user_model()
@@ -108,7 +107,7 @@ class ProfileImageUploadTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("does not match", response.data["detail"])
 
-    def test_get_profile_does_not_create_member_profile_row(self):
+    def test_get_profile_returns_null_image_by_default(self):
         response = self.client.get("/authn/profile/")
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(MemberProfile.objects.filter(model_user=self.member).exists())
+        self.assertIsNone(response.data["profile_image"])

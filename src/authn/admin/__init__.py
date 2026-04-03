@@ -8,16 +8,19 @@ Organized into modules by functionality:
 - security: RSAKeypair admin
 """
 
+from django.contrib import admin
+from django.contrib.auth.models import Group
+
 from .members.contact import ContactEmailAdmin, ContactPhoneAdmin
 from .members.invitation import AdminInvitationAdmin
 from .members.member import MemberAdmin
-from .members.member_profile import MemberProfileAdmin
 from .security.security import RSAKeypairAdmin
+
+admin.site.unregister(Group)
 
 __all__ = [
     # Member
     "MemberAdmin",
-    "MemberProfileAdmin",
     # Contact
     "ContactEmailAdmin",
     "ContactPhoneAdmin",

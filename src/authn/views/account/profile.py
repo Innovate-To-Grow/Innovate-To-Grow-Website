@@ -58,7 +58,6 @@ class ProfileView(APIView):
 
         # Handle multipart form (profile image upload)
         if request.FILES.get("profile_image"):
-            profile = user.get_profile()
             file = request.FILES["profile_image"]
 
             _MAX_SIZE = 5 * 1024 * 1024  # 5 MB
@@ -84,8 +83,8 @@ class ProfileView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             b64 = base64.b64encode(content).decode("utf-8")
-            profile.profile_image = f"data:{file_content_type};base64,{b64}"
-            profile.save(update_fields=["profile_image", "updated_at"])
+            user.profile_image = f"data:{file_content_type};base64,{b64}"
+            user.save(update_fields=["profile_image", "updated_at"])
             serializer = ProfileSerializer(instance=user)
             return Response(serializer.data, status=status.HTTP_200_OK)
 

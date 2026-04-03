@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "event.apps.EventConfig",
     "projects.apps.ProjectsConfig",
     "sponsors.apps.SponsorsConfig",
+    "mail.apps.MailConfig",
     # Third-party
     "corsheaders",
     "rest_framework",

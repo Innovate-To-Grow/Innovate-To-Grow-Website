@@ -2,8 +2,7 @@ import logging
 
 from django import forms
 from django.contrib import admin, messages
-from unfold.admin import ModelAdmin
-
+from core.admin import BaseModelAdmin
 from cms.admin.cms.page_admin.editor import (
     build_editor_context,
     preview_store_response,
@@ -46,7 +45,7 @@ class CMSPageAdminForm(forms.ModelForm):
 
 
 @admin.register(CMSPage)
-class CMSPageAdmin(ModelAdmin):
+class CMSPageAdmin(BaseModelAdmin):
     form = CMSPageAdminForm
     change_form_template = "admin/cms/cmspage/change_form.html"
     list_display = ("title", "route", "status", "block_count", "updated_at")

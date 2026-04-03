@@ -34,7 +34,7 @@ class ContactEmailListCreateView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):
-        emails = ContactEmail.objects.filter(member=request.user)
+        emails = ContactEmail.objects.filter(member=request.user).exclude(email_type="primary")
         serializer = ContactEmailSerializer(emails, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

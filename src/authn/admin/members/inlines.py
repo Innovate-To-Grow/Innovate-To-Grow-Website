@@ -1,21 +1,6 @@
-from unfold.admin import StackedInline, TabularInline
+from unfold.admin import TabularInline
 
-from ...models import ContactEmail, ContactPhone, MemberProfile
-from .forms import MemberProfileInlineForm
-
-
-class MemberProfileInline(StackedInline):
-    """Inline admin for MemberProfile displayed inside the member editor."""
-
-    model = MemberProfile
-    form = MemberProfileInlineForm
-    can_delete = False
-    verbose_name = "Profile"
-    verbose_name_plural = "Profile"
-    extra = 0
-    max_num = 1
-    fields = ("profile_image", "updated_at")
-    readonly_fields = ("updated_at",)
+from ...models import ContactEmail, ContactPhone
 
 
 class ContactEmailInline(TabularInline):

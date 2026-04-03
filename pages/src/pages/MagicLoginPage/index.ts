@@ -1,0 +1,1 @@
+export {MagicLoginPage} from './MagicLoginPage';

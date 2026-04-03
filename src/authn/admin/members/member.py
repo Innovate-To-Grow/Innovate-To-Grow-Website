@@ -6,11 +6,12 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import ModelAdmin as UnfoldModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ...models import Member
 from .forms import MemberChangeForm, MemberCreationForm
-from .inlines import ContactEmailInline, ContactPhoneInline, MemberProfileInline
+from .inlines import ContactEmailInline, ContactPhoneInline
 from .member_helpers import (
     activate_members,
     deactivate_members,
@@ -24,14 +25,14 @@ from .member_helpers import (
 
 
 @admin.register(Member)
-class MemberAdmin(UnfoldModelAdmin, UserAdmin):
+class MemberAdmin(BaseModelAdmin, UserAdmin):
     """Custom admin for Member with profile, contact, import, and export tooling."""
 
     form = MemberChangeForm
     add_form = MemberCreationForm
     list_display = (
-        "get_primary_email_display",
         "get_full_name_display",
+        "get_primary_email_display",
         "organization",
         "is_active",
         "is_staff",
@@ -51,7 +52,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
     filter_horizontal = ("user_permissions",)
     fieldsets = (
         (None, {"fields": ("password",)}),
-        (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
+        (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization", "profile_image")}),
         (
             _("Member Info"),
             {"fields": ("member_uuid",), "description": "Member-specific information"},
@@ -70,7 +71,7 @@ class MemberAdmin(UnfoldModelAdmin, UserAdmin):
         (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
         (_("Member Status"), {"fields": ("is_active",)}),
     )
-    inlines = [MemberProfileInline, ContactEmailInline, ContactPhoneInline]
+    inlines = [ContactEmailInline, ContactPhoneInline]
     change_list_template = "admin/authn/member/change_list.html"
     actions = ["activate_members", "deactivate_members", "export_members_to_excel"]
 
