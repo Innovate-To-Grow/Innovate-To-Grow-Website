@@ -70,6 +70,83 @@ export interface EventRegistrationOptions {
   registration: Registration | null;
 }
 
+export interface ScheduleAgendaItem {
+  id: string;
+  time: string;
+  title: string;
+  location: string;
+}
+
+export interface ScheduleAgendaSection {
+  title: string;
+  location: string;
+  items: ScheduleAgendaItem[];
+}
+
+export interface ScheduleSlot {
+  id: string;
+  order: number;
+  is_break: boolean;
+  display_text: string;
+  team_number: string;
+  team_name: string;
+  project_title: string;
+  organization: string;
+  industry: string;
+  abstract: string;
+  student_names: string;
+  tooltip: string;
+  project_id: string | null;
+}
+
+export interface ScheduleTrack {
+  id: string;
+  track_number: number;
+  label: string;
+  room: string;
+  zoom_link: string;
+  topic: string;
+  display_order: number;
+  slots: ScheduleSlot[];
+}
+
+export interface ScheduleSection {
+  id: string;
+  code: string;
+  label: string;
+  display_order: number;
+  start_time: string;
+  slot_minutes: number;
+  accent_color: string;
+  max_order: number;
+  tracks: ScheduleTrack[];
+}
+
+export interface ScheduleProjectRow {
+  id: string;
+  track: number;
+  order: number;
+  year_semester: string;
+  class_code: string;
+  team_number: string;
+  team_name: string;
+  project_title: string;
+  organization: string;
+  industry: string;
+  abstract: string;
+  student_names: string;
+  tooltip: string;
+}
+
+export interface EventSchedulePayload {
+  event: RegistrationEvent;
+  expo: ScheduleAgendaSection;
+  presentations_title: string;
+  sections: ScheduleSection[];
+  awards: ScheduleAgendaSection;
+  projects: ScheduleProjectRow[];
+}
+
 // --- API Functions ---
 
 function authHeaders() {
@@ -81,6 +158,11 @@ export async function fetchRegistrationOptions(): Promise<EventRegistrationOptio
   const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
     headers: authHeaders(),
   });
+  return response.data;
+}
+
+export async function fetchCurrentSchedule(): Promise<EventSchedulePayload> {
+  const response = await api.get<EventSchedulePayload>('/event/schedule/');
   return response.data;
 }
 

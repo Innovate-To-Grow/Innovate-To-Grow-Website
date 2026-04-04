@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 from django.test import TestCase
 
 from authn.models import ContactEmail, Member
 from event.admin.registration import EventRegistrationAdmin
 from event.models import EventRegistration, Ticket
+from event.services import ScheduleSyncStats
 from event.tests.helpers import make_event, make_superuser
 
 
@@ -27,6 +30,16 @@ class EventAdminTest(TestCase):
     def test_list_filter_by_is_live(self):
         response = self.client.get("/admin/event/event/?is_live__exact=1")
         self.assertEqual(response.status_code, 200)
+
+    @patch("event.admin.event.sync_event_schedule")
+    def test_pull_schedule_action_triggers_sync(self, mock_sync):
+        mock_sync.return_value = ScheduleSyncStats(sections_created=3, tracks_created=3, slots_created=4)
+        event = make_event(name="Schedule Event")
+
+        response = self.client.get(f"/admin/event/event/{event.pk}/pull-schedule/")
+
+        self.assertEqual(response.status_code, 302)
+        mock_sync.assert_called_once_with(event)
 
 
 class EventRegistrationAdminTest(TestCase):

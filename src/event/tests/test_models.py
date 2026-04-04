@@ -37,6 +37,14 @@ class EventModelTest(TestCase):
         event = make_event()
         self.assertFalse(event.is_live)
 
+    def test_only_one_live_event_is_preserved(self):
+        first = make_event(name="First", is_live=True)
+        second = make_event(name="Second", is_live=True)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertFalse(first.is_live)
+        self.assertTrue(second.is_live)
+
     def test_soft_delete_excludes_from_default_manager(self):
         event = make_event()
         event.delete()
