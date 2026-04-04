@@ -4,6 +4,7 @@ from .registration import (
     MyTicketsView,
     ResendTicketEmailView,
 )
+from .schedule import CurrentEventScheduleView
 from .ticket_login import TicketAutoLoginView
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "EventRegistrationOptionsView",
     "MyTicketsView",
     "ResendTicketEmailView",
+    "CurrentEventScheduleView",
     "TicketAutoLoginView",
 ]

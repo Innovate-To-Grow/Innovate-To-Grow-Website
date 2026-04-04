@@ -1,36 +1,405 @@
-.schedule-page-title {
-  color: var(--itg-color-primary);
-  font-size: var(--itg-font-size-h1);
-  margin: 0 0 2rem;
+.schedule-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding-bottom: 2rem;
+  color: #102f64;
 }
 
-.schedule-page-text {
-  color: var(--itg-color-text);
-  font-size: var(--itg-font-size-body);
-  line-height: var(--itg-line-height-body);
-  margin: 0 0 1.5rem;
+.schedule-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schedule-page-title {
+  margin: 0;
+  color: #102f64;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.schedule-page-meta {
+  margin: 0;
+  color: #4f6488;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.schedule-page-text,
+.schedule-page-section-text {
+  margin: 0;
+  max-width: 64rem;
+  color: #52647f;
+  font-size: 1rem;
+  line-height: 1.7;
 }
 
 .schedule-page-section {
-  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .schedule-page-section-title {
-  background: var(--itg-color-bg-light);
-  border: 1px solid var(--itg-color-border);
-  padding: 0.5rem 1rem;
-  border-radius: var(--itg-radius-button);
-  color: var(--itg-color-primary);
-  font-size: var(--itg-font-size-h3);
-  margin: 0 0 1.5rem;
+  margin: 0;
+  color: #102f64;
+  font-size: clamp(1.6rem, 2vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: center;
 }
 
-@media (max-width: 768px) {
-  .schedule-page-title {
-    font-size: var(--itg-font-size-h1-mobile);
+.schedule-page-section-title-main {
+  margin-bottom: 0.25rem;
+}
+
+.schedule-page-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.schedule-page-agenda-wrap,
+.schedule-page-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.schedule-page-agenda-table,
+.schedule-presentation-table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: separate;
+  border-spacing: 1px;
+  background: #fff;
+}
+
+.schedule-presentation-table {
+  table-layout: fixed;
+}
+
+.schedule-page-agenda-table th,
+.schedule-page-agenda-table td,
+.schedule-presentation-table th,
+.schedule-presentation-table td {
+  padding: 0.95rem 0.85rem;
+  vertical-align: top;
+}
+
+.schedule-page-agenda-table thead th,
+.schedule-page-agenda-table tbody th,
+.schedule-presentation-table thead th,
+.schedule-presentation-table tbody th {
+  background: #ececec;
+  color: #102f64;
+}
+
+.schedule-page-agenda-table thead th,
+.schedule-presentation-table thead th {
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.schedule-page-agenda-table tbody th,
+.schedule-presentation-time {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.schedule-page-agenda-table td {
+  background: #f5f5f5;
+  color: #102f64;
+  font-weight: 700;
+  text-align: center;
+}
+
+.schedule-presentation-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.schedule-presentation-heading {
+  margin: 0;
+  color: #102f64;
+  font-size: clamp(1.25rem, 1.4vw, 1.75rem);
+  font-weight: 800;
+  text-align: center;
+}
+
+.schedule-presentation-corner,
+.schedule-presentation-room,
+.schedule-presentation-track {
+  min-width: 0;
+}
+
+.schedule-presentation-corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.schedule-presentation-room,
+.schedule-presentation-track {
+  font-weight: 800;
+}
+
+.schedule-presentation-track {
+  font-size: 1.1rem;
+}
+
+.schedule-presentation-time {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.schedule-presentation-topic-cell,
+.schedule-presentation-slot {
+  background: var(--schedule-column-bg);
+  color: var(--schedule-cell-text);
+}
+
+.schedule-presentation-topic-cell {
+  font-weight: 800;
+}
+
+.schedule-presentation-topic {
+  display: block;
+  color: var(--schedule-topic-color);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.schedule-presentation-team,
+.schedule-mobile-team {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--schedule-cell-text);
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.schedule-presentation-team:hover,
+.schedule-mobile-team:hover {
+  opacity: 0.88;
+}
+
+.schedule-presentation-org,
+.schedule-mobile-org {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--schedule-org-color);
+  font-size: 0.83rem;
+  line-height: 1.65;
+}
+
+.schedule-presentation-break,
+.schedule-mobile-break {
+  display: block;
+  color: var(--schedule-cell-text);
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.schedule-presentation-slot-break {
+  vertical-align: middle;
+}
+
+.schedule-presentation-empty,
+.schedule-mobile-empty {
+  color: var(--schedule-cell-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.72;
+}
+
+.schedule-page-mobile-grid {
+  display: none;
+}
+
+.schedule-mobile-card {
+  border-radius: 0;
+  overflow: hidden;
+  border: 1px solid #dbe3ee;
+  background: #f8fafc;
+  box-shadow: 0 10px 30px rgba(16, 47, 100, 0.08);
+}
+
+.schedule-mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1rem 0.9rem;
+  background: #ececec;
+}
+
+.schedule-mobile-track-label {
+  margin: 0 0 0.15rem;
+  color: #5a6f91;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.schedule-mobile-topic {
+  margin: 0;
+  color: #102f64;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.schedule-mobile-room {
+  margin: 0;
+  color: #102f64;
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.schedule-mobile-slots {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-mobile-slot {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  min-height: 4.5rem;
+}
+
+.schedule-mobile-time {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0.95rem 0.85rem;
+  background: #ececec;
+  color: #102f64;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.schedule-mobile-slot-content {
+  padding: 0.95rem 1rem;
+  background: var(--schedule-column-bg);
+}
+
+.schedule-mobile-slot + .schedule-mobile-slot {
+  border-top: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.schedule-mobile-slot-content.is-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.schedule-page-state {
+  border: 1px solid #d9e2ee;
+  border-radius: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: #5c6f8b;
+  background: #fff;
+}
+
+.schedule-page-state-error {
+  color: #b42318;
+}
+
+@media (max-width: 960px) {
+  .schedule-page-agenda-table,
+  .schedule-presentation-table {
+    min-width: 760px;
   }
 
+  .schedule-page {
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .schedule-page {
+    gap: 1.75rem;
+  }
+
+  .schedule-page-header {
+    gap: 0.4rem;
+  }
+
+  .schedule-page-title {
+    font-size: 1.8rem;
+  }
+
+  .schedule-page-meta,
+  .schedule-page-text,
+  .schedule-page-section-text {
+    font-size: 0.94rem;
+  }
+
+  .schedule-page-agenda-table {
+    min-width: 100%;
+  }
+
+  .schedule-page-agenda-table th,
+  .schedule-page-agenda-table td {
+    padding: 0.8rem 0.7rem;
+  }
+
+  .schedule-page-table-wrap-desktop {
+    display: none;
+  }
+
+  .schedule-page-mobile-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .schedule-presentation-heading {
+    font-size: 1.15rem;
+  }
+}
+
+@media (max-width: 480px) {
   .schedule-page-section-title {
-    font-size: var(--itg-font-size-h3-mobile);
+    font-size: 1.35rem;
+  }
+
+  .schedule-mobile-card-header {
+    padding: 0.9rem;
+  }
+
+  .schedule-mobile-slot {
+    grid-template-columns: 3.7rem minmax(0, 1fr);
+  }
+
+  .schedule-mobile-time,
+  .schedule-mobile-slot-content {
+    padding: 0.85rem 0.8rem;
+  }
+
+  .schedule-presentation-team,
+  .schedule-mobile-team {
+    font-size: 1rem;
+  }
+
+  .schedule-presentation-org,
+  .schedule-mobile-org {
+    font-size: 0.78rem;
   }
 }

@@ -11,6 +11,11 @@ class Event(ProjectControlModel):
     location = models.CharField(max_length=255)
     description = models.TextField()
     is_live = models.BooleanField(default=False)
+    schedule_sheet_id = models.CharField(max_length=255, blank=True, default="")
+    schedule_tracks_gid = models.PositiveBigIntegerField(null=True, blank=True)
+    schedule_projects_gid = models.PositiveBigIntegerField(null=True, blank=True)
+    schedule_last_synced_at = models.DateTimeField(null=True, blank=True, editable=False)
+    schedule_sync_error = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["-date"]
@@ -22,3 +27,6 @@ class Event(ProjectControlModel):
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+        update_fields = kwargs.get("update_fields")
+        if self.is_live and (update_fields is None or "is_live" in update_fields):
+            Event.objects.exclude(pk=self.pk).filter(is_live=True).update(is_live=False)
