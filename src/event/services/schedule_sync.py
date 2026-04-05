@@ -8,8 +8,15 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.models import GoogleCredentialConfig
-from event.models import Event, EventAgendaItem, EventScheduleSection, EventScheduleSlot, EventScheduleTrack
-from projects.models import Project, Semester
+from event.models import (
+    CurrentProjectSchedule,
+    Event,
+    EventAgendaItem,
+    EventScheduleSection,
+    EventScheduleSlot,
+    EventScheduleTrack,
+)
+from projects.models import Project
 
 SECTION_DEFAULTS = {
     "CAP": {
@@ -139,7 +146,8 @@ def _get_worksheet_by_gid(spreadsheet, worksheet_gid: int):
 
 
 def fetch_schedule_sheet_records(event: Event) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    if not event.schedule_sheet_id or not event.schedule_tracks_gid or not event.schedule_projects_gid:
+    source = CurrentProjectSchedule.load()
+    if not source.pk or not source.sheet_id or not source.tracks_gid or not source.projects_gid:
         raise ScheduleSyncError("Google Sheets source is not fully configured for this event.")
 
     credentials = GoogleCredentialConfig.load()
@@ -148,9 +156,9 @@ def fetch_schedule_sheet_records(event: Event) -> tuple[list[dict[str, Any]], li
 
     try:
         client = gspread.service_account_from_dict(credentials.get_credentials_info())
-        spreadsheet = client.open_by_key(event.schedule_sheet_id)
-        tracks_worksheet = _get_worksheet_by_gid(spreadsheet, int(event.schedule_tracks_gid))
-        projects_worksheet = _get_worksheet_by_gid(spreadsheet, int(event.schedule_projects_gid))
+        spreadsheet = client.open_by_key(source.sheet_id)
+        tracks_worksheet = _get_worksheet_by_gid(spreadsheet, int(source.tracks_gid))
+        projects_worksheet = _get_worksheet_by_gid(spreadsheet, int(source.projects_gid))
     except Exception as exc:  # pragma: no cover - exercised via service tests with mocked fetch
         raise ScheduleSyncError(f"Unable to open the configured Google Sheet: {exc}") from exc
 
@@ -182,6 +190,7 @@ def _build_track_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "room": _get_record_value(normalized, ["Room"]),
                 "zoom_link": _get_record_value(normalized, ["Zoom live", "Zoom"]),
                 "topic": _get_record_value(normalized, ["Topic"]),
+                "winner": _get_record_value(normalized, ["Winner"]),
                 "label": f"Track {track_number}",
             }
         )
@@ -208,10 +217,12 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             project_title,
         )
         is_break = any(value.lower() == "break" for value in [team_name, project_title, organization])
-        if not is_break and not any([team_number, team_name, project_title, organization]):
+        if is_break:
+            continue
+        if not any([team_number, team_name, project_title, organization]):
             continue
 
-        display_text = team_number or team_name or project_title or ("Break" if is_break else "")
+        display_text = team_number or team_name or project_title
         slots.append(
             {
                 "track_number": track_number,
@@ -229,16 +240,21 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     normalized,
                     ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],
                 ),
-                "is_break": is_break,
-                "display_text": "Break" if is_break else display_text,
+                "is_break": False,
+                "display_text": display_text,
             }
         )
     return sorted(slots, key=lambda item: (item["track_number"], item["slot_order"], item["team_number"]))
 
 
 def _current_project_lookup() -> dict[tuple[str, str], Project]:
+    from projects.models import Semester
+
+    newest = Semester.objects.filter(is_published=True).first()
+    if newest is None:
+        return {}
     queryset = (
-        Project.objects.filter(semester__pk__in=Semester.current_pk_subquery())
+        Project.objects.filter(semester=newest)
         .select_related("semester")
         .order_by("class_code", "team_number", "-updated_at")
     )
@@ -299,6 +315,7 @@ def sync_event_schedule(
                     room=track["room"],
                     zoom_link=track["zoom_link"],
                     topic=track["topic"],
+                    winner=track["winner"],
                     display_order=display_order,
                 )
                 tracks_by_number[track_obj.track_number] = track_obj
@@ -327,23 +344,23 @@ def sync_event_schedule(
                     display_text=slot["display_text"],
                 )
                 stats.slots_created += 1
-                if slot["is_break"]:
-                    stats.break_slots += 1
-                elif project is None:
+                if project is None:
                     stats.unmatched_slots += 1
 
             for agenda_item in DEFAULT_AGENDA_ITEMS:
                 EventAgendaItem.objects.create(event=event, **agenda_item)
                 stats.agenda_items_created += 1
 
-        Event.objects.filter(pk=event.pk).update(
-            schedule_last_synced_at=timezone.now(),
-            schedule_sync_error="",
+        CurrentProjectSchedule.objects.filter(pk=CurrentProjectSchedule.load().pk).update(
+            last_synced_at=timezone.now(),
+            sync_error="",
         )
         return stats
     except Exception as exc:
         error_message = str(exc)
-        Event.objects.filter(pk=event.pk).update(schedule_sync_error=error_message[:4000])
+        config = CurrentProjectSchedule.load()
+        if config.pk:
+            CurrentProjectSchedule.objects.filter(pk=config.pk).update(sync_error=error_message[:4000])
         if isinstance(exc, ScheduleSyncError):
             raise
         raise ScheduleSyncError(error_message) from exc

@@ -2,7 +2,13 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from event.models import EventAgendaItem, EventScheduleSection, EventScheduleSlot, EventScheduleTrack
+from event.models import (
+    CurrentProjectSchedule,
+    EventAgendaItem,
+    EventScheduleSection,
+    EventScheduleSlot,
+    EventScheduleTrack,
+)
 from event.services import ScheduleSyncError, sync_event_schedule
 from event.tests.helpers import make_event
 from projects.models import Project, Semester
@@ -69,8 +75,9 @@ def _projects_records():
 
 class ScheduleSyncServiceTest(TestCase):
     def setUp(self):
+        self.semester = Semester.objects.create(year=2025, season=1, is_published=True)
         self.event = make_event(is_live=True)
-        self.semester = Semester.objects.create(year=2025, season=1, is_published=True, is_current=True)
+        self.config = CurrentProjectSchedule.objects.create()
         self.cap_project = Project.objects.create(
             semester=self.semester,
             class_code="CAP",
@@ -93,25 +100,24 @@ class ScheduleSyncServiceTest(TestCase):
             projects_records=_projects_records(),
         )
 
-        self.event.refresh_from_db()
+        self.config.refresh_from_db()
         self.assertEqual(stats.sections_created, 3)
         self.assertEqual(stats.tracks_created, 3)
-        self.assertEqual(stats.slots_created, 4)
-        self.assertEqual(stats.break_slots, 1)
+        self.assertEqual(stats.slots_created, 3)
         self.assertEqual(stats.unmatched_slots, 1)
-        self.assertIsNotNone(self.event.schedule_last_synced_at)
-        self.assertEqual(self.event.schedule_sync_error, "")
+        self.assertIsNotNone(self.config.last_synced_at)
+        self.assertEqual(self.config.sync_error, "")
         self.assertEqual(EventScheduleSection.objects.filter(event=self.event).count(), 3)
         self.assertEqual(EventScheduleTrack.objects.count(), 3)
-        self.assertEqual(EventScheduleSlot.objects.count(), 4)
+        self.assertEqual(EventScheduleSlot.objects.count(), 3)
         self.assertEqual(EventAgendaItem.objects.filter(event=self.event).count(), 4)
 
         cap_slot = EventScheduleSlot.objects.get(team_number="CAP-101")
         self.assertEqual(cap_slot.project, self.cap_project)
         self.assertEqual(cap_slot.display_text, "CAP-101")
 
-        break_slot = EventScheduleSlot.objects.get(is_break=True)
-        self.assertEqual(break_slot.display_text, "Break")
+        # Break rows are skipped — not imported as slots
+        self.assertFalse(EventScheduleSlot.objects.filter(is_break=True).exists())
 
         unmatched_slot = EventScheduleSlot.objects.get(team_number="CEE-999")
         self.assertIsNone(unmatched_slot.project)
@@ -147,12 +153,10 @@ class ScheduleSyncServiceTest(TestCase):
         self.assertEqual(EventScheduleSlot.objects.filter(track__section__event=self.event).count(), 1)
         self.assertEqual(EventScheduleSlot.objects.filter(track__section__event=other_event).count(), 1)
 
-    def test_sync_raises_when_sheet_source_is_missing(self):
+    def test_sync_raises_when_no_config(self):
+        self.config.delete()
         with self.assertRaises(ScheduleSyncError):
             sync_event_schedule(self.event)
-
-        self.event.refresh_from_db()
-        self.assertIn("not fully configured", self.event.schedule_sync_error)
 
     @patch("event.services.schedule_sync.GoogleCredentialConfig.load")
     @patch("event.services.schedule_sync.gspread.service_account_from_dict")
@@ -160,13 +164,13 @@ class ScheduleSyncServiceTest(TestCase):
         mock_service_account.side_effect = RuntimeError("boom")
         mock_load_credentials.return_value.is_configured = True
         mock_load_credentials.return_value.get_credentials_info.return_value = {"client_email": "test@example.com"}
-        self.event.schedule_sheet_id = "sheet-id"
-        self.event.schedule_tracks_gid = 1
-        self.event.schedule_projects_gid = 2
-        self.event.save(update_fields=["schedule_sheet_id", "schedule_tracks_gid", "schedule_projects_gid"])
+        self.config.sheet_id = "sheet-id"
+        self.config.tracks_gid = 1
+        self.config.projects_gid = 2
+        self.config.save(update_fields=["sheet_id", "tracks_gid", "projects_gid"])
 
         with self.assertRaises(ScheduleSyncError):
             sync_event_schedule(self.event)
 
-        self.event.refresh_from_db()
-        self.assertIn("Unable to open the configured Google Sheet", self.event.schedule_sync_error)
+        self.config.refresh_from_db()
+        self.assertIn("Unable to open the configured Google Sheet", self.config.sync_error)

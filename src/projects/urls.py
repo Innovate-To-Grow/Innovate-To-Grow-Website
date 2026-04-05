@@ -1,8 +1,8 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from .views import (
     AllPastProjectsAPIView,
-    CurrentProjectsAPIView,
     PastProjectsAPIView,
     PastProjectShareCreateAPIView,
     PastProjectShareDetailAPIView,
@@ -12,7 +12,7 @@ from .views import (
 app_name = "projects"
 
 urlpatterns = [
-    path("current/", CurrentProjectsAPIView.as_view(), name="projects-current"),
+    path("current/", RedirectView.as_view(url="/event/projects/", permanent=True), name="projects-current-redirect"),
     path("past/", PastProjectsAPIView.as_view(), name="projects-past"),
     path("past-all/", AllPastProjectsAPIView.as_view(), name="projects-past-all"),
     path("past-shares/", PastProjectShareCreateAPIView.as_view(), name="projects-past-share-create"),

@@ -1,14 +1,13 @@
-from .event import Event
-from .question import Question
-from .registration import EventRegistration
+from .current_project import CurrentProjectSchedule
+from .registration import Event, EventRegistration, Question, Ticket
 from .schedule import EventAgendaItem, EventScheduleSection, EventScheduleSlot, EventScheduleTrack
-from .ticket import Ticket
 
 __all__ = [
+    "CurrentProjectSchedule",
     "Event",
-    "Ticket",
-    "Question",
     "EventRegistration",
+    "Question",
+    "Ticket",
     "EventAgendaItem",
     "EventScheduleSection",
     "EventScheduleSlot",

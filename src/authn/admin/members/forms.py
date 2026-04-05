@@ -25,7 +25,9 @@ class Base64ImageWidget(forms.ClearableFileInput):
         if upload:
             import base64
 
-            return base64.b64encode(upload.read()).decode("utf-8")
+            content_type = getattr(upload, "content_type", "image/png") or "image/png"
+            b64 = base64.b64encode(upload.read()).decode("utf-8")
+            return f"data:{content_type};base64,{b64}"
         # Check if the clear checkbox was checked
         checkbox_name = self.clear_checkbox_name(name)
         if checkbox_name in data:
@@ -45,14 +47,15 @@ class Base64ImageWidget(forms.ClearableFileInput):
         widget_html = super().render(name, None, attrs, renderer)
         # If there's existing base64 data, show a thumbnail preview above the upload control
         if value and isinstance(value, str) and len(value) > 50:
+            src = value if value.startswith("data:") else f"data:image/png;base64,{value}"
             preview = format_html(
                 '<div class="mb-3 flex items-center gap-4">'
-                '<img src="data:image/png;base64,{}" alt="Profile preview"'
+                '<img src="{}" alt="Profile preview"'
                 ' class="rounded-default border border-base-200 dark:border-base-700 object-cover"'
                 ' style="width:80px;height:80px" />'
                 '<span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">Current image</span>'
                 "</div>",
-                value,
+                src,
             )
             return mark_safe(preview + widget_html)
         return widget_html

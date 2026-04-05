@@ -94,6 +94,7 @@ UNFOLD = {
                 "title": "Events",
                 "items": [
                     {"title": "Events", "link": "/admin/event/event/"},
+                    {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
                     {"title": "Registrations", "link": "/admin/event/eventregistration/"},
                 ],
             },

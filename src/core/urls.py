@@ -56,8 +56,6 @@ urlpatterns = [
     path("authn/", include("authn.urls")),
     # analytics
     path("analytics/", include("cms.analytics_urls")),
-    # sponsors
-    path("sponsors/", include("sponsors.urls")),
     # mail (magic login links)
     path("mail/", include("mail.urls")),
 ]

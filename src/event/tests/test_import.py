@@ -4,8 +4,8 @@ import openpyxl
 from django.core.cache import cache
 from django.test import TestCase
 
+from event.services.import_excel import import_projects_from_excel
 from projects.models import Project, Semester
-from projects.services.import_excel import import_projects_from_excel
 
 
 def _make_excel(semesters_data, projects_data):

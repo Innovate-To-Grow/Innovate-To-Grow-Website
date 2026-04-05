@@ -1,0 +1,140 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    <div class="flex flex-row items-center gap-2">
+        <form method="post" action="{{ pull_url }}" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="bg-primary-600 hover:bg-primary-700 flex items-center gap-1.5 justify-center rounded-default px-3 py-1.5 text-white text-xs font-medium transition-colors whitespace-nowrap">
+                <span class="material-symbols-outlined text-white !text-[16px]">sync</span>
+                Pull Current Projects &amp; Schedule
+            </button>
+        </form>
+    </div>
+    {{ block.super }}
+{% endblock %}
+
+{% block content %}
+    <div class="mb-6 grid gap-4 sm:grid-cols-2">
+        {# Google Account Card #}
+        <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-primary-600 !text-[20px]">account_circle</span>
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Google Service Account</span>
+            </div>
+            {% if google_configured %}
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Project:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ google_project_id }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Email:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium break-all">{{ google_client_email }}</span>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-xs text-red-600 dark:text-red-400">
+                    <span class="material-symbols-outlined !text-[14px] align-middle">warning</span>
+                    No active Google service account configured.
+                    <a href="{% url 'admin:core_googlecredentialconfig_changelist' %}" class="underline hover:text-red-800 dark:hover:text-red-300">Configure</a>
+                </p>
+            {% endif %}
+        </div>
+
+        {# Current Semester Card #}
+        <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-primary-600 !text-[20px]">school</span>
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Current Semester</span>
+            </div>
+            {% if current_semester %}
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Semester:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ current_semester.label }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Projects:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ current_projects|length }}</span>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                    No published semesters found.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Current Projects Table #}
+    {% if current_projects %}
+        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+                    Current Projects ({{ current_semester.label }})
+                </span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
+                            <th class="px-3 py-2 text-left font-medium">Class</th>
+                            <th class="px-3 py-2 text-left font-medium">Team #</th>
+                            <th class="px-3 py-2 text-left font-medium">Team Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Project Title</th>
+                            <th class="px-3 py-2 text-left font-medium">Organization</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for project in current_projects %}
+                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.class_code }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_number }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_name }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark font-medium">{{ project.project_title }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.organization }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Winners #}
+    {% if winners %}
+        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-1.5">
+                    <span class="material-symbols-outlined !text-[18px] text-yellow-500">emoji_events</span>
+                    Winners
+                </span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
+                            <th class="px-3 py-2 text-left font-medium">Section</th>
+                            <th class="px-3 py-2 text-left font-medium">Track</th>
+                            <th class="px-3 py-2 text-left font-medium">Topic</th>
+                            <th class="px-3 py-2 text-left font-medium">Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for track in winners %}
+                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ track.section.label }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">Track {{ track.track_number }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ track.topic }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark font-semibold text-yellow-600 dark:text-yellow-400">{{ track.winner }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {{ block.super }}
+{% endblock %}

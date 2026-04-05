@@ -31,12 +31,12 @@ class EventAdminTest(TestCase):
         response = self.client.get("/admin/event/event/?is_live__exact=1")
         self.assertEqual(response.status_code, 200)
 
-    @patch("event.admin.event.sync_event_schedule")
+    @patch("event.admin.current_project.sync_event_schedule")
     def test_pull_schedule_action_triggers_sync(self, mock_sync):
         mock_sync.return_value = ScheduleSyncStats(sections_created=3, tracks_created=3, slots_created=4)
-        event = make_event(name="Schedule Event")
+        event = make_event(name="Schedule Event", is_live=True)
 
-        response = self.client.get(f"/admin/event/event/{event.pk}/pull-schedule/")
+        response = self.client.post("/admin/event/currentprojectschedule/pull/")
 
         self.assertEqual(response.status_code, 302)
         mock_sync.assert_called_once_with(event)

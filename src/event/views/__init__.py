@@ -1,3 +1,5 @@
+from .current_projects import CurrentProjectsAPIView
+from .import_projects import ProjectImportAPIView
 from .registration import (
     EventRegistrationCreateView,
     EventRegistrationOptionsView,
@@ -8,6 +10,8 @@ from .schedule import CurrentEventScheduleView
 from .ticket_login import TicketAutoLoginView
 
 __all__ = [
+    "CurrentProjectsAPIView",
+    "ProjectImportAPIView",
     "EventRegistrationCreateView",
     "EventRegistrationOptionsView",
     "MyTicketsView",

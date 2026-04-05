@@ -91,12 +91,12 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
 });
 
 export const fetchCurrentProjects = async (): Promise<SemesterWithProjects> => {
-  const response = await api.get<SemesterWithProjects>('/projects/current/');
+  const response = await api.get<SemesterWithProjects>('/event/projects/');
   return response.data;
 };
 
 export const fetchCurrentProjectsFull = async (): Promise<SemesterWithFullProjects> => {
-  const response = await api.get<SemesterWithFullProjects>('/projects/current/');
+  const response = await api.get<SemesterWithFullProjects>('/event/projects/');
   return response.data;
 };
 
@@ -143,12 +143,12 @@ export interface ImportStats {
 export const importProjectsFromExcel = async (file: File): Promise<ImportStats> => {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await authApi.post<ImportStats>('/projects/import/', formData);
+  const response = await authApi.post<ImportStats>('/event/import/', formData);
   return response.data;
 };
 
 export const downloadImportTemplate = async (): Promise<void> => {
-  const response = await authApi.get('/projects/import/template/', {
+  const response = await authApi.get('/event/import/template/', {
     responseType: 'blob',
   });
   const url = window.URL.createObjectURL(new Blob([response.data]));
