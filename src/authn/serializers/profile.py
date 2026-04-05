@@ -59,7 +59,7 @@ class ProfileSerializer(serializers.Serializer):
                 profile_image = (
                     instance.profile_image
                     if instance.profile_image.startswith("data:")
-                    else f"data:application/octet-stream;base64,{instance.profile_image}"
+                    else f"data:image/png;base64,{instance.profile_image}"
                 )
             except (AttributeError, TypeError):
                 profile_image = None

@@ -29,6 +29,7 @@ class EventScheduleTrack(ProjectControlModel):
     room = models.CharField(max_length=255, blank=True, default="")
     zoom_link = models.CharField(max_length=500, blank=True, default="")
     topic = models.CharField(max_length=255, blank=True, default="")
+    winner = models.CharField(max_length=255, blank=True, default="")
     display_order = models.PositiveIntegerField(default=0)
 
     class Meta:

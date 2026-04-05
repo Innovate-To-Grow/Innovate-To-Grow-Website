@@ -21,7 +21,7 @@ export const ProjectImport = ({onImportComplete}: ProjectImportProps) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/projects/import/', {
+      const res = await fetch('/api/event/import/', {
         method: 'POST',
         headers: {Authorization: `Bearer ${localStorage.getItem('access_token')}`},
         body: formData,

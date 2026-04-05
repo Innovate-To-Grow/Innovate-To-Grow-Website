@@ -7,7 +7,7 @@ from .models import Project, Semester
 
 
 def _clear_project_caches():
-    cache.delete("projects:current")
+    cache.delete("event:current-projects")
     cache.delete("projects:past-all")
 
 

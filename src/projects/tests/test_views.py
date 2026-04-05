@@ -5,99 +5,13 @@ from rest_framework.test import APIClient
 from projects.models import Project, Semester
 
 
-class CurrentProjectsAPIViewTest(TestCase):
-    # noinspection PyPep8Naming
-    def setUp(self):
-        self.client = APIClient()
-        cache.clear()
-
-    def test_returns_most_recent_published_semester(self):
-        spring = Semester.objects.create(year=2025, season=1, is_published=True)
-        fall = Semester.objects.create(year=2025, season=2, is_published=True)
-        Project.objects.create(semester=spring, project_title="Spring Project")
-        Project.objects.create(semester=fall, project_title="Fall Project")
-
-        response = self.client.get("/projects/current/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["label"], fall.label)
-        self.assertEqual(len(response.data["projects"]), 1)
-        self.assertEqual(response.data["projects"][0]["project_title"], "Fall Project")
-
-    def test_includes_project_fields(self):
-        sem = Semester.objects.create(year=2025, season=1, is_published=True)
-        Project.objects.create(
-            semester=sem,
-            project_title="Test Project",
-            team_name="Team Alpha",
-            organization="Acme Corp",
-            industry="Tech",
-            class_code="CSE123",
-        )
-
-        response = self.client.get("/projects/current/")
-
-        project = response.data["projects"][0]
-        self.assertEqual(project["project_title"], "Test Project")
-        self.assertEqual(project["team_name"], "Team Alpha")
-        self.assertEqual(project["organization"], "Acme Corp")
-        self.assertEqual(project["industry"], "Tech")
-        self.assertEqual(project["class_code"], "CSE123")
-        self.assertIn("id", project)
-
-    def test_excludes_unpublished_semesters(self):
-        Semester.objects.create(year=2025, season=2, is_published=False)
-        published = Semester.objects.create(year=2025, season=1, is_published=True)
-        Project.objects.create(semester=published, project_title="Visible")
-
-        response = self.client.get("/projects/current/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["label"], published.label)
-
-    def test_returns_404_when_no_published_semesters(self):
-        Semester.objects.create(year=2025, season=1, is_published=False)
-
-        response = self.client.get("/projects/current/")
-
-        self.assertEqual(response.status_code, 404)
-
-    def test_no_auth_required(self):
-        Semester.objects.create(year=2025, season=1, is_published=True)
-
-        response = self.client.get("/projects/current/")
-
-        self.assertEqual(response.status_code, 200)
-
-    def test_returns_explicit_current_semester(self):
-        """When is_current is set, that semester is returned even if not the newest."""
-        spring = Semester.objects.create(year=2025, season=1, is_published=True, is_current=True)
-        Semester.objects.create(year=2025, season=2, is_published=True)
-        Project.objects.create(semester=spring, project_title="Spring Project")
-
-        response = self.client.get("/projects/current/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["label"], spring.label)
-
-    def test_fallback_when_no_current_set(self):
-        """When no semester has is_current=True, falls back to newest published."""
-        Semester.objects.create(year=2025, season=1, is_published=True)
-        fall = Semester.objects.create(year=2025, season=2, is_published=True)
-
-        response = self.client.get("/projects/current/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["label"], fall.label)
-
-
 class PastProjectsAPIViewTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         self.client = APIClient()
         cache.clear()
 
-    def test_excludes_current_semester(self):
+    def test_excludes_newest_published_semester(self):
         Semester.objects.create(year=2025, season=2, is_published=True)
         Semester.objects.create(year=2025, season=1, is_published=True)
         Semester.objects.create(year=2024, season=2, is_published=True)
@@ -106,15 +20,14 @@ class PastProjectsAPIViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         labels = [s["label"] for s in response.data["results"]]
-        # Fall 2025 is current, should not appear in past
+        # Fall 2025 is newest, should not appear in past
         self.assertNotIn("2025-2 Fall", labels)
         self.assertIn("2025-1 Spring", labels)
         self.assertIn("2024-2 Fall", labels)
 
     def test_includes_nested_projects(self):
-        sem = Semester.objects.create(year=2024, season=1, is_published=True)
-        # Need a "current" semester so 2024 Spring becomes "past"
         Semester.objects.create(year=2025, season=1, is_published=True)
+        sem = Semester.objects.create(year=2024, season=1, is_published=True)
         Project.objects.create(semester=sem, project_title="Old Project")
 
         response = self.client.get("/projects/past/")
@@ -125,7 +38,6 @@ class PastProjectsAPIViewTest(TestCase):
         self.assertEqual(response.data["results"][0]["projects"][0]["project_title"], "Old Project")
 
     def test_returns_paginated_response(self):
-        # Create current + 6 past semesters (page_size=5)
         Semester.objects.create(year=2026, season=1, is_published=True)
         for year in range(2020, 2026):
             Semester.objects.create(year=year, season=1, is_published=True)
@@ -150,19 +62,6 @@ class PastProjectsAPIViewTest(TestCase):
         response = self.client.get("/projects/past/")
 
         self.assertEqual(response.status_code, 200)
-
-    def test_excludes_explicit_current_not_newest(self):
-        """When an older semester is marked is_current, it is excluded from past."""
-        spring = Semester.objects.create(year=2025, season=1, is_published=True, is_current=True)
-        fall = Semester.objects.create(year=2025, season=2, is_published=True)
-        Semester.objects.create(year=2024, season=2, is_published=True)
-
-        response = self.client.get("/projects/past/")
-
-        labels = [s["label"] for s in response.data["results"]]
-        self.assertNotIn(spring.label, labels)
-        # Fall 2025 is NOT current, so it should appear in past
-        self.assertIn(fall.label, labels)
 
 
 class ProjectDetailAPIViewTest(TestCase):

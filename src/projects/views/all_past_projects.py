@@ -16,9 +16,10 @@ class AllPastProjectsAPIView(ListAPIView):
 
     # noinspection PyMethodMayBeStatic
     def get_queryset(self):
+        newest_pk = Semester.objects.filter(is_published=True).values("pk")[:1]
         return (
             Project.objects.filter(semester__is_published=True)
-            .exclude(semester__pk__in=Semester.current_pk_subquery())
+            .exclude(semester__pk__in=newest_pk)
             .select_related("semester")
             .order_by("-semester__year", "-semester__season", "class_code", "team_number")
         )

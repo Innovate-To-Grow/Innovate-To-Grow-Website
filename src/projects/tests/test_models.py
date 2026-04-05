@@ -12,17 +12,6 @@ class SemesterModelTest(TestCase):
         sem = Semester.objects.create(year=2025, season=Semester.Season.FALL)
         self.assertEqual(sem.label, "2025-2 Fall")
 
-    def test_is_current_forces_is_published(self):
-        sem = Semester.objects.create(year=2025, season=Semester.Season.SPRING, is_current=True, is_published=False)
-        self.assertTrue(sem.is_published)
-
-    def test_is_current_clears_other_semesters(self):
-        sem1 = Semester.objects.create(year=2024, season=Semester.Season.FALL, is_current=True)
-        sem2 = Semester.objects.create(year=2025, season=Semester.Season.SPRING, is_current=True)
-        sem1.refresh_from_db()
-        self.assertFalse(sem1.is_current)
-        self.assertTrue(sem2.is_current)
-
     def test_ordering_by_year_desc_season_desc(self):
         s1 = Semester.objects.create(year=2024, season=Semester.Season.SPRING)
         s2 = Semester.objects.create(year=2025, season=Semester.Season.FALL)
@@ -32,12 +21,6 @@ class SemesterModelTest(TestCase):
     def test_season_choices(self):
         self.assertEqual(Semester.Season.SPRING, 1)
         self.assertEqual(Semester.Season.FALL, 2)
-
-    def test_current_pk_subquery_returns_current(self):
-        Semester.objects.create(year=2024, season=Semester.Season.FALL, is_published=True)
-        current = Semester.objects.create(year=2025, season=Semester.Season.SPRING, is_current=True, is_published=True)
-        qs = Semester.current_pk_subquery()
-        self.assertEqual(list(qs), [{"pk": current.pk}])
 
 
 class ProjectModelTest(TestCase):
