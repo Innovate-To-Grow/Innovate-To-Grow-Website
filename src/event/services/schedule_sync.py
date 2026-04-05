@@ -196,6 +196,20 @@ def _build_track_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(tracks, key=lambda item: item["track_number"])
 
 
+def _build_grand_winners(records: list[dict[str, Any]]) -> list[dict[str, str]]:
+    winners: list[dict[str, str]] = []
+    for record in records:
+        normalized = _normalize_record(record)
+        track_value = _get_record_value(normalized, ["Track"])
+        if track_value.lower() != "award:":
+            continue
+        section_code = _normalize_section_code(_get_record_value(normalized, ["Class"]))
+        winner = _get_record_value(normalized, ["Winner"])
+        if section_code and winner:
+            winners.append({"section": section_code, "winner": winner})
+    return winners
+
+
 def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     slots: list[dict[str, Any]] = []
     for record in records:
@@ -314,6 +328,7 @@ def sync_schedule(
             tracks_records, projects_records = fetch_schedule_sheet_records()
 
         parsed_tracks = _build_track_rows(tracks_records)
+        grand_winners = _build_grand_winners(tracks_records)
         parsed_slots = _build_slot_rows(projects_records)
         if not parsed_tracks or not parsed_slots:
             raise ScheduleSyncError("The configured sheet does not contain any schedule tracks or slots.")
@@ -393,6 +408,7 @@ def sync_schedule(
         CurrentProjectSchedule.objects.filter(pk=config.pk).update(
             last_synced_at=timezone.now(),
             sync_error="",
+            grand_winners=grand_winners,
         )
 
         from django.core.cache import cache

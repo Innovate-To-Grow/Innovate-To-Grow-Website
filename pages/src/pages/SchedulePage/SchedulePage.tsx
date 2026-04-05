@@ -7,6 +7,12 @@ import type {ProjectGridRow} from '../../features/projects/api';
 import './SchedulePage.css';
 
 const SECTION_ORDER = ['CAP', 'CEE', 'ENGSL', 'CSE'] as const;
+const GRAND_AWARD_LABELS: Record<string, string> = {
+  CAP: 'F3 Innovate Engineering Award',
+  CSE: 'F3 Innovate Software Award',
+  CEE: 'F3 Innovate Civil & Environmental Award',
+  ENGSL: 'F3 Innovate Engineering Award',
+};
 
 const SECTION_THEMES: Record<
   string,
@@ -153,6 +159,26 @@ export const SchedulePage = () => {
     });
   }, [data]);
 
+  const winnerSections = useMemo(
+    () =>
+      orderedSections
+        .map((section) => ({
+          ...section,
+          winnerTracks: section.tracks.filter((track) => track.winner),
+        }))
+        .filter((section) => section.winnerTracks.length > 0),
+    [orderedSections],
+  );
+
+  const grandWinnerLines = useMemo(
+    () =>
+      (data?.grand_winners ?? []).map((grandWinner) => ({
+        ...grandWinner,
+        label: GRAND_AWARD_LABELS[grandWinner.section] ?? 'F3 Innovate Award',
+      })),
+    [data],
+  );
+
   const projectGridRows = useMemo(() => (data ? data.projects.map(toGridRow) : []), [data]);
   const projectItems = useMemo(() => createProjectGridItems(projectGridRows, 'schedule-projects'), [projectGridRows]);
   const projectTable = useProjectGridTable({
@@ -212,33 +238,53 @@ export const SchedulePage = () => {
       </header>
 
       {data.show_winners && orderedSections.some((s) => s.tracks.some((t) => t.winner)) && (
-        <section className="schedule-page-section">
-          <h2 className="schedule-page-section-title">Winners</h2>
-          <div className="schedule-winners-wrap">
-            <table className="schedule-winners-table">
-              <thead>
-                <tr>
-                  <th>Section</th>
-                  <th>Track</th>
-                  <th>Topic</th>
-                  <th>Winner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orderedSections.flatMap((section) =>
-                  section.tracks
-                    .filter((t) => t.winner)
-                    .map((track) => (
-                      <tr key={track.id}>
-                        <td>{section.label}</td>
-                        <td>Track {track.track_number}</td>
-                        <td>{track.topic}</td>
-                        <td className="schedule-winners-name">{track.winner}</td>
-                      </tr>
-                    )),
-                )}
-              </tbody>
-            </table>
+        <section className="schedule-page-section schedule-page-section-winners">
+          <div className="schedule-winners-hero">
+            <h2 className="schedule-page-section-title schedule-winners-title">
+              <span className="schedule-winners-title-emphasis">Winners!</span>{' '}
+              <span className="schedule-winners-title-event">{data.event.name}</span>
+            </h2>
+            {grandWinnerLines.length > 0 && (
+              <div className="schedule-grand-winners">
+                {grandWinnerLines.map((grandWinner) => (
+                  <p
+                    className={`schedule-grand-winner-line is-${grandWinner.section.toLowerCase()}`}
+                    key={`${grandWinner.section}-${grandWinner.winner}`}
+                  >
+                    <span className="schedule-grand-winner-label">{grandWinner.label}:</span> {grandWinner.winner}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="schedule-winners">
+            {winnerSections.map((section) => (
+              <div className="schedule-winners-group" key={section.id}>
+                <h3 className="schedule-winners-group-title">
+                  {section.label} ({section.code})
+                </h3>
+                <div
+                  className="schedule-winners-grid"
+                  style={
+                    {
+                      '--winner-column-count': section.winnerTracks.length,
+                    } as CSSProperties
+                  }
+                >
+                  {section.winnerTracks.map((track, index) => (
+                    <article className="schedule-winner-card" key={track.id} style={columnStyle(section.code, index)}>
+                      <div className="schedule-winner-card-header">
+                        <p className="schedule-winner-track">Track {track.track_number}</p>
+                      </div>
+                      <div className="schedule-winner-card-body">
+                        <p className="schedule-winner-topic">{track.topic}</p>
+                        <p className="schedule-winner-name">{track.winner}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}

@@ -61,6 +61,155 @@
   gap: 2rem;
 }
 
+.schedule-page-section-winners {
+  gap: 1.5rem;
+}
+
+.schedule-winners-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 0.2rem 1rem 0;
+}
+
+.schedule-winners-title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.schedule-winners-title-emphasis {
+  color: #37a8ee;
+}
+
+.schedule-winners-title-event {
+  color: var(--itg-color-primary);
+}
+
+.schedule-winners {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+}
+
+.schedule-winners-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.schedule-winners-group-title {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  font-weight: 800;
+  text-align: center;
+}
+
+.schedule-winners-grid {
+  display: grid;
+  width: min(100%, max-content);
+  grid-template-columns: repeat(var(--winner-column-count, 1), minmax(180px, 1fr));
+  gap: 0;
+  align-items: stretch;
+  margin: 0 auto;
+}
+
+.schedule-winner-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 9.25rem;
+  border: 1px solid var(--itg-color-border);
+  background: var(--schedule-column-bg);
+  color: var(--schedule-cell-text);
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.schedule-winner-card + .schedule-winner-card {
+  border-left-width: 0;
+}
+
+.schedule-winner-card-header {
+  padding: 0.8rem 1rem;
+  background: #ececec;
+  color: var(--itg-color-primary);
+}
+
+.schedule-winner-track {
+  margin: 0;
+  font-size: var(--itg-font-size-body);
+  font-weight: 800;
+}
+
+.schedule-winner-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: stretch;
+  gap: 0;
+  background: var(--schedule-column-bg);
+}
+
+.schedule-winner-topic {
+  margin: 0;
+  padding: 0.8rem 1rem 0.7rem;
+  color: var(--schedule-cell-text);
+  font-size: var(--itg-font-size-body);
+  font-weight: 800;
+  line-height: 1.25;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.schedule-winner-name {
+  margin: 0;
+  padding: 0.8rem 1rem 0.95rem;
+  color: var(--schedule-cell-text);
+  font-size: var(--itg-font-size-body);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.schedule-grand-winners {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.schedule-grand-winner-line {
+  margin: 0;
+  font-size: clamp(1.15rem, 1.9vw, 1.65rem);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.schedule-grand-winner-line.is-cap {
+  color: #d2a820;
+}
+
+.schedule-grand-winner-line.is-cse {
+  color: var(--itg-color-primary);
+}
+
+.schedule-grand-winner-line.is-cee,
+.schedule-grand-winner-line.is-engsl {
+  color: #2f8d8b;
+}
+
+.schedule-grand-winner-label {
+  font-weight: 800;
+}
+
 .schedule-page-agenda-wrap,
 .schedule-page-table-wrap {
   overflow-x: auto;
@@ -157,46 +306,6 @@
   position: sticky;
   left: 0;
   z-index: 1;
-}
-
-.schedule-winners-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.schedule-winners-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid var(--itg-color-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.schedule-winners-table th,
-.schedule-winners-table td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-size: var(--itg-font-size-body);
-}
-
-.schedule-winners-table thead th {
-  background: #fef9e7;
-  color: var(--itg-color-primary);
-  font-weight: 800;
-  border-bottom: 2px solid #f0d860;
-}
-
-.schedule-winners-table tbody tr {
-  border-bottom: 1px solid var(--itg-color-border);
-}
-
-.schedule-winners-table tbody tr:hover {
-  background: #fffdf0;
-}
-
-.schedule-winners-name {
-  font-weight: 800;
-  color: #b8860b;
 }
 
 .schedule-presentation-topic-cell,
@@ -410,6 +519,33 @@
     gap: 1rem;
   }
 
+  .schedule-winners {
+    gap: 1.75rem;
+  }
+
+  .schedule-winners-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .schedule-winner-card + .schedule-winner-card {
+    border-left-width: 1px;
+    border-top-width: 0;
+  }
+
+  .schedule-winners-title {
+    font-size: var(--itg-font-size-h1-mobile);
+  }
+
+  .schedule-winners-hero {
+    width: 100%;
+    padding-inline: 0;
+  }
+
+  .schedule-grand-winner-line {
+    font-size: var(--itg-font-size-lead);
+  }
+
   .schedule-presentation-heading {
     font-size: var(--itg-font-size-body);
   }
@@ -418,6 +554,16 @@
 @media (max-width: 480px) {
   .schedule-page-section-title {
     font-size: var(--itg-font-size-lead);
+  }
+
+  .schedule-winner-card-header {
+    padding: 0.9rem;
+  }
+
+  .schedule-winner-topic,
+  .schedule-winner-name {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
   }
 
   .schedule-mobile-card-header {

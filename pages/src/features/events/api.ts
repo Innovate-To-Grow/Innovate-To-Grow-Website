@@ -142,6 +142,7 @@ export interface ScheduleProjectRow {
 export interface EventSchedulePayload {
   event: RegistrationEvent;
   show_winners: boolean;
+  grand_winners: {section: string; winner: string}[];
   expo: ScheduleAgendaSection;
   presentations_title: string;
   sections: ScheduleSection[];

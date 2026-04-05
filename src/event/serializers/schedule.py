@@ -107,6 +107,7 @@ def build_schedule_payload(config: CurrentProjectSchedule) -> dict:
             "name": config.name,
         },
         "show_winners": config.show_winners,
+        "grand_winners": config.grand_winners or [],
         "expo": _serialize_agenda_group(config, EventAgendaItem.SectionType.EXPO, "EXPO: POSTERS AND DEMOS"),
         "presentations_title": "PRESENTATIONS",
         "sections": sections,
