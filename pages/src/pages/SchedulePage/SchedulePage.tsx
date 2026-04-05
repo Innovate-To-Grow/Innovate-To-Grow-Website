@@ -1,9 +1,9 @@
 import type {CSSProperties} from 'react';
 import {useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {SheetsDataTable} from '../../components/SheetsDataTable';
-import type {SheetRow} from '../../components/SheetsDataTable';
+import {ProjectGridTable, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentEventSchedule} from '../../features/events/useCurrentEventSchedule';
+import type {ProjectGridRow} from '../../features/projects/api';
 import './SchedulePage.css';
 
 const SECTION_ORDER = ['CAP', 'CEE', 'ENGSL', 'CSE'] as const;
@@ -59,9 +59,7 @@ function addMinutes(time: string, minutes: number): string {
   return `${hours}:${mins < 10 ? `0${mins}` : mins}`;
 }
 
-function toSheetRow(row: {
-  track: number;
-  order: number;
+function toGridRow(row: {
   year_semester: string;
   class_code: string;
   team_number: string;
@@ -71,21 +69,17 @@ function toSheetRow(row: {
   industry: string;
   abstract: string;
   student_names: string;
-  tooltip: string;
-}): SheetRow {
+}): ProjectGridRow {
   return {
-    Track: String(row.track),
-    Order: String(row.order),
-    'Year-Semester': row.year_semester,
-    Class: row.class_code,
-    'Team#': row.team_number,
-    TeamName: row.team_name,
-    'Project Title': row.project_title,
-    Organization: row.organization,
-    Industry: row.industry,
-    Abstract: row.abstract,
-    'Student Names': row.student_names,
-    NameTitle: row.tooltip,
+    semester_label: row.year_semester,
+    class_code: row.class_code,
+    team_number: row.team_number,
+    team_name: row.team_name,
+    project_title: row.project_title,
+    organization: row.organization,
+    industry: row.industry,
+    abstract: row.abstract,
+    student_names: row.student_names,
   };
 }
 
@@ -159,7 +153,21 @@ export const SchedulePage = () => {
     });
   }, [data]);
 
-  const projectRows = useMemo(() => (data ? data.projects.map(toSheetRow) : []), [data]);
+  const projectGridRows = useMemo(() => (data ? data.projects.map(toGridRow) : []), [data]);
+  const projectItems = useMemo(() => createProjectGridItems(projectGridRows, 'schedule-projects'), [projectGridRows]);
+  const projectTable = useProjectGridTable({
+    rows: projectItems,
+    pageSize: 10,
+    defaultSortField: 'class_code',
+    defaultSortDirection: 'asc',
+    initialSearch: teamSearch,
+  });
+
+  useEffect(() => {
+    if (teamSearch && data) {
+      document.getElementById('projects')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+  }, [teamSearch, data]);
 
   const handleTeamClick = (searchValue: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -169,6 +177,7 @@ export const SchedulePage = () => {
       nextParams.delete('value');
     }
     setSearchParams(nextParams, {replace: true});
+    projectTable.setSearch(searchValue);
     document.getElementById('projects')?.scrollIntoView({behavior: 'smooth', block: 'start'});
   };
 
@@ -201,6 +210,38 @@ export const SchedulePage = () => {
         </p>
         <p className="schedule-page-text">{data.event.description}</p>
       </header>
+
+      {data.show_winners && orderedSections.some((s) => s.tracks.some((t) => t.winner)) && (
+        <section className="schedule-page-section">
+          <h2 className="schedule-page-section-title">Winners</h2>
+          <div className="schedule-winners-wrap">
+            <table className="schedule-winners-table">
+              <thead>
+                <tr>
+                  <th>Section</th>
+                  <th>Track</th>
+                  <th>Topic</th>
+                  <th>Winner</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderedSections.flatMap((section) =>
+                  section.tracks
+                    .filter((t) => t.winner)
+                    .map((track) => (
+                      <tr key={track.id}>
+                        <td>{section.label}</td>
+                        <td>Track {track.track_number}</td>
+                        <td>{track.topic}</td>
+                        <td className="schedule-winners-name">{track.winner}</td>
+                      </tr>
+                    )),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {data.expo.items.length > 0 && (
         <section className="schedule-page-section">
@@ -414,17 +455,31 @@ export const SchedulePage = () => {
         </section>
       )}
 
-      <section className="schedule-page-section">
+      <section id="projects" className="schedule-page-section">
         <h2 className="schedule-page-section-title">Projects &amp; Teams</h2>
         <p className="schedule-page-section-text">
           Click a team number above or search by title, organization, class, or track below.
         </p>
-        <SheetsDataTable
-          key={teamSearch || 'all-projects'}
-          rows={projectRows}
+        <ProjectGridTable
+          columns={CURRENT_PROJECT_GRID_COLUMNS}
+          rows={projectItems}
+          pagedRows={projectTable.pagedRows}
+          filteredCount={projectTable.filteredRows.length}
+          totalCount={projectItems.length}
+          search={projectTable.search}
+          sortField={projectTable.sortField}
+          sortDirection={projectTable.sortDirection}
+          onSearchChange={projectTable.setSearch}
+          onSortChange={projectTable.toggleSort}
+          expandedKeys={projectTable.expandedKeys}
+          onToggleExpanded={projectTable.toggleExpanded}
+          page={projectTable.page}
+          totalPages={projectTable.totalPages}
+          onPageChange={projectTable.setPage}
           loading={false}
           error={null}
-          initialSearch={teamSearch}
+          emptyMessage="No projects available."
+          countLabel="projects"
         />
       </section>
     </div>

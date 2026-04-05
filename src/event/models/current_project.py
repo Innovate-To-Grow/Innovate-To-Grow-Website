@@ -4,6 +4,7 @@ from core.models import ProjectControlModel
 
 
 class CurrentProjectSchedule(ProjectControlModel):
+    name = models.CharField(max_length=255, blank=True, default="", verbose_name="Event Name")
     sheet_id = models.CharField(
         max_length=255,
         blank=True,
@@ -23,6 +24,7 @@ class CurrentProjectSchedule(ProjectControlModel):
         verbose_name="Projects Worksheet GID",
         help_text="The GID of the worksheet containing project/slot data.",
     )
+    show_winners = models.BooleanField(default=False, verbose_name="Show Winners", help_text="Display winner data on the schedule page.")
     last_synced_at = models.DateTimeField(null=True, blank=True, editable=False)
     sync_error = models.TextField(blank=True, default="")
 
@@ -31,9 +33,7 @@ class CurrentProjectSchedule(ProjectControlModel):
         verbose_name_plural = "Current Project and Schedule"
 
     def __str__(self):
-        if self.sheet_id:
-            return f"Sheet: {self.sheet_id[:20]}..."
-        return "Not configured"
+        return self.name or "Not configured"
 
     @classmethod
     def load(cls):

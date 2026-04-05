@@ -10,7 +10,6 @@ from django.utils import timezone
 from core.models import GoogleCredentialConfig
 from event.models import (
     CurrentProjectSchedule,
-    Event,
     EventAgendaItem,
     EventScheduleSection,
     EventScheduleSlot,
@@ -145,7 +144,7 @@ def _get_worksheet_by_gid(spreadsheet, worksheet_gid: int):
     return next((worksheet for worksheet in spreadsheet.worksheets() if worksheet.id == worksheet_gid), None)
 
 
-def fetch_schedule_sheet_records(event: Event) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def fetch_schedule_sheet_records() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     source = CurrentProjectSchedule.load()
     if not source.pk or not source.sheet_id or not source.tracks_gid or not source.projects_gid:
         raise ScheduleSyncError("Google Sheets source is not fully configured for this event.")
@@ -217,12 +216,10 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             project_title,
         )
         is_break = any(value.lower() == "break" for value in [team_name, project_title, organization])
-        if is_break:
-            continue
-        if not any([team_number, team_name, project_title, organization]):
+        if not is_break and not any([team_number, team_name, project_title, organization]):
             continue
 
-        display_text = team_number or team_name or project_title
+        display_text = team_number or team_name or project_title or ("Break" if is_break else "")
         slots.append(
             {
                 "track_number": track_number,
@@ -240,55 +237,95 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     normalized,
                     ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],
                 ),
-                "is_break": False,
-                "display_text": display_text,
+                "is_break": is_break,
+                "display_text": "Break" if is_break else display_text,
             }
         )
     return sorted(slots, key=lambda item: (item["track_number"], item["slot_order"], item["team_number"]))
 
 
-def _current_project_lookup() -> dict[tuple[str, str], Project]:
+def _sync_projects_from_slots(parsed_slots: list[dict[str, Any]]) -> dict[tuple[str, str], Project]:
+    """Create/update Semester + Project records from parsed slot data and return a lookup dict."""
     from projects.models import Semester
 
-    newest = Semester.objects.filter(is_published=True).first()
-    if newest is None:
-        return {}
-    queryset = (
-        Project.objects.filter(semester=newest)
-        .select_related("semester")
-        .order_by("class_code", "team_number", "-updated_at")
-    )
+    semester_cache: dict[tuple[int, int], Semester] = {}
     lookup: dict[tuple[str, str], Project] = {}
-    for project in queryset:
-        key = (_normalize_section_code(project.class_code), project.team_number.strip().upper())
+
+    for slot in parsed_slots:
+        if slot["is_break"]:
+            continue
+        title = slot["project_title"]
+        if not title or title.lower() == "break":
+            continue
+
+        # Parse year-semester (e.g. "2026-1 Spring" → year=2026, season=1)
+        year_semester = slot.get("year_semester", "")
+        year, season = None, None
+        if year_semester:
+            parts = year_semester.split("-", 1)
+            if len(parts) == 2:
+                year = _coerce_int(parts[0])
+                season = _coerce_int(parts[1].split()[0]) if parts[1] else None
+
+        if not year or not season:
+            continue
+
+        cache_key = (year, season)
+        if cache_key not in semester_cache:
+            sem, _ = Semester.objects.get_or_create(year=year, season=season)
+            if not sem.is_published:
+                sem.is_published = True
+                sem.save(update_fields=["is_published"])
+            semester_cache[cache_key] = sem
+
+        semester = semester_cache[cache_key]
+        team_number = slot["team_number"].strip()
+        section_code = _normalize_section_code(slot["class_code"])
+
+        project, _ = Project.objects.update_or_create(
+            semester=semester,
+            team_number=team_number,
+            project_title=title,
+            defaults={
+                "class_code": slot["class_code"],
+                "team_name": slot["team_name"],
+                "organization": slot["organization"],
+                "industry": slot["industry"],
+                "abstract": slot["abstract"],
+                "student_names": slot["student_names"],
+            },
+        )
+
+        key = (section_code, team_number.upper())
         if key[0] and key[1] and key not in lookup:
             lookup[key] = project
+
     return lookup
 
 
-def sync_event_schedule(
-    event: Event,
+def sync_schedule(
+    config: CurrentProjectSchedule,
     *,
     tracks_records: list[dict[str, Any]] | None = None,
     projects_records: list[dict[str, Any]] | None = None,
 ) -> ScheduleSyncStats:
     try:
         if tracks_records is None or projects_records is None:
-            tracks_records, projects_records = fetch_schedule_sheet_records(event)
+            tracks_records, projects_records = fetch_schedule_sheet_records()
 
         parsed_tracks = _build_track_rows(tracks_records)
         parsed_slots = _build_slot_rows(projects_records)
         if not parsed_tracks or not parsed_slots:
             raise ScheduleSyncError("The configured sheet does not contain any schedule tracks or slots.")
 
-        current_projects = _current_project_lookup()
+        current_projects = _sync_projects_from_slots(parsed_slots)
         stats = ScheduleSyncStats()
 
         with transaction.atomic():
-            EventScheduleSlot.all_objects.filter(track__section__event=event).hard_delete()
-            EventScheduleTrack.all_objects.filter(section__event=event).hard_delete()
-            EventScheduleSection.all_objects.filter(event=event).hard_delete()
-            EventAgendaItem.all_objects.filter(event=event).hard_delete()
+            EventScheduleSlot.all_objects.filter(track__section__config=config).hard_delete()
+            EventScheduleTrack.all_objects.filter(section__config=config).hard_delete()
+            EventScheduleSection.all_objects.filter(config=config).hard_delete()
+            EventAgendaItem.all_objects.filter(config=config).hard_delete()
 
             sections_by_code: dict[str, EventScheduleSection] = {}
             for code in sorted(
@@ -298,7 +335,7 @@ def sync_event_schedule(
                 },
                 key=lambda item: (_build_section_defaults(item)["display_order"], item),
             ):
-                section = EventScheduleSection.objects.create(event=event, **_build_section_defaults(code))
+                section = EventScheduleSection.objects.create(config=config, **_build_section_defaults(code))
                 sections_by_code[code] = section
                 stats.sections_created += 1
 
@@ -344,21 +381,28 @@ def sync_event_schedule(
                     display_text=slot["display_text"],
                 )
                 stats.slots_created += 1
-                if project is None:
+                if slot["is_break"]:
+                    stats.break_slots += 1
+                elif project is None:
                     stats.unmatched_slots += 1
 
             for agenda_item in DEFAULT_AGENDA_ITEMS:
-                EventAgendaItem.objects.create(event=event, **agenda_item)
+                EventAgendaItem.objects.create(config=config, **agenda_item)
                 stats.agenda_items_created += 1
 
-        CurrentProjectSchedule.objects.filter(pk=CurrentProjectSchedule.load().pk).update(
+        CurrentProjectSchedule.objects.filter(pk=config.pk).update(
             last_synced_at=timezone.now(),
             sync_error="",
         )
+
+        from django.core.cache import cache
+
+        cache.delete("event:current-projects")
+        cache.delete("projects:past-all")
+
         return stats
     except Exception as exc:
         error_message = str(exc)
-        config = CurrentProjectSchedule.load()
         if config.pk:
             CurrentProjectSchedule.objects.filter(pk=config.pk).update(sync_error=error_message[:4000])
         if isinstance(exc, ScheduleSyncError):

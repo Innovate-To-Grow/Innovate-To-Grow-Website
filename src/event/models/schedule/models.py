@@ -4,7 +4,9 @@ from core.models import ProjectControlModel
 
 
 class EventScheduleSection(ProjectControlModel):
-    event = models.ForeignKey("event.Event", on_delete=models.CASCADE, related_name="schedule_sections")
+    config = models.ForeignKey(
+        "event.CurrentProjectSchedule", on_delete=models.CASCADE, related_name="schedule_sections", null=True
+    )
     code = models.CharField(max_length=32)
     label = models.CharField(max_length=255)
     display_order = models.PositiveIntegerField(default=0)
@@ -15,11 +17,11 @@ class EventScheduleSection(ProjectControlModel):
     class Meta:
         ordering = ["display_order", "code"]
         constraints = [
-            models.UniqueConstraint(fields=["event", "code"], name="unique_schedule_section_per_event"),
+            models.UniqueConstraint(fields=["config", "code"], name="unique_schedule_section_per_config"),
         ]
 
     def __str__(self):
-        return f"{self.event.name} - {self.code}"
+        return f"{self.config} - {self.code}"
 
 
 class EventScheduleTrack(ProjectControlModel):
@@ -40,7 +42,7 @@ class EventScheduleTrack(ProjectControlModel):
         ]
 
     def __str__(self):
-        return f"{self.section.event.name} - Track {self.track_number}"
+        return f"{self.section.config} - Track {self.track_number}"
 
 
 class EventScheduleSlot(ProjectControlModel):
@@ -81,7 +83,9 @@ class EventAgendaItem(ProjectControlModel):
         EXPO = "expo", "Expo"
         AWARDS = "awards", "Awards & Reception"
 
-    event = models.ForeignKey("event.Event", on_delete=models.CASCADE, related_name="agenda_items")
+    config = models.ForeignKey(
+        "event.CurrentProjectSchedule", on_delete=models.CASCADE, related_name="agenda_items", null=True
+    )
     section_type = models.CharField(max_length=20, choices=SectionType.choices)
     time_label = models.CharField(max_length=20)
     title = models.CharField(max_length=255)
@@ -92,10 +96,10 @@ class EventAgendaItem(ProjectControlModel):
         ordering = ["section_type", "display_order", "time_label"]
         constraints = [
             models.UniqueConstraint(
-                fields=["event", "section_type", "display_order"],
-                name="unique_agenda_order_per_event_section",
+                fields=["config", "section_type", "display_order"],
+                name="unique_agenda_order_per_config_section",
             ),
         ]
 
     def __str__(self):
-        return f"{self.event.name} - {self.title}"
+        return f"{self.config} - {self.title}"
