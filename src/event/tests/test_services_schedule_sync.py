@@ -9,8 +9,7 @@ from event.models import (
     EventScheduleSlot,
     EventScheduleTrack,
 )
-from event.services import ScheduleSyncError, sync_event_schedule
-from event.tests.helpers import make_event
+from event.services import ScheduleSyncError, sync_schedule
 from projects.models import Project, Semester
 
 
@@ -76,8 +75,7 @@ def _projects_records():
 class ScheduleSyncServiceTest(TestCase):
     def setUp(self):
         self.semester = Semester.objects.create(year=2025, season=1, is_published=True)
-        self.event = make_event(is_live=True)
-        self.config = CurrentProjectSchedule.objects.create()
+        self.config = CurrentProjectSchedule.objects.create(name="Demo Day")
         self.cap_project = Project.objects.create(
             semester=self.semester,
             class_code="CAP",
@@ -94,8 +92,8 @@ class ScheduleSyncServiceTest(TestCase):
         )
 
     def test_sync_creates_sections_tracks_slots_and_agenda_items(self):
-        stats = sync_event_schedule(
-            self.event,
+        stats = sync_schedule(
+            self.config,
             tracks_records=_tracks_records(),
             projects_records=_projects_records(),
         )
@@ -103,38 +101,39 @@ class ScheduleSyncServiceTest(TestCase):
         self.config.refresh_from_db()
         self.assertEqual(stats.sections_created, 3)
         self.assertEqual(stats.tracks_created, 3)
-        self.assertEqual(stats.slots_created, 3)
-        self.assertEqual(stats.unmatched_slots, 1)
+        self.assertEqual(stats.slots_created, 4)
+        self.assertEqual(stats.break_slots, 1)
+        self.assertEqual(stats.unmatched_slots, 0)
         self.assertIsNotNone(self.config.last_synced_at)
         self.assertEqual(self.config.sync_error, "")
-        self.assertEqual(EventScheduleSection.objects.filter(event=self.event).count(), 3)
+        self.assertEqual(EventScheduleSection.objects.filter(config=self.config).count(), 3)
         self.assertEqual(EventScheduleTrack.objects.count(), 3)
-        self.assertEqual(EventScheduleSlot.objects.count(), 3)
-        self.assertEqual(EventAgendaItem.objects.filter(event=self.event).count(), 4)
+        self.assertEqual(EventScheduleSlot.objects.count(), 4)
+        self.assertEqual(EventAgendaItem.objects.filter(config=self.config).count(), 4)
 
         cap_slot = EventScheduleSlot.objects.get(team_number="CAP-101")
         self.assertEqual(cap_slot.project, self.cap_project)
         self.assertEqual(cap_slot.display_text, "CAP-101")
 
-        # Break rows are skipped — not imported as slots
-        self.assertFalse(EventScheduleSlot.objects.filter(is_break=True).exists())
+        break_slot = EventScheduleSlot.objects.get(is_break=True)
+        self.assertEqual(break_slot.display_text, "Break")
 
-        unmatched_slot = EventScheduleSlot.objects.get(team_number="CEE-999")
-        self.assertIsNone(unmatched_slot.project)
+        cee_slot = EventScheduleSlot.objects.get(team_number="CEE-999")
+        self.assertIsNotNone(cee_slot.project)
 
-    def test_sync_replaces_existing_schedule_only_for_target_event(self):
-        other_event = make_event(name="Other Event")
-        other_section = EventScheduleSection.objects.create(event=other_event, code="CAP", label="Other")
+    def test_sync_replaces_existing_schedule(self):
+        other_config = CurrentProjectSchedule.objects.create(name="Other")
+        other_section = EventScheduleSection.objects.create(config=other_config, code="CAP", label="Other")
         other_track = EventScheduleTrack.objects.create(section=other_section, track_number=1)
         EventScheduleSlot.objects.create(track=other_track, slot_order=1, display_text="OTHER-1")
 
-        sync_event_schedule(
-            self.event,
+        sync_schedule(
+            self.config,
             tracks_records=_tracks_records(),
             projects_records=_projects_records(),
         )
-        sync_event_schedule(
-            self.event,
+        sync_schedule(
+            self.config,
             tracks_records=[{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}],
             projects_records=[
                 {
@@ -149,14 +148,14 @@ class ScheduleSyncServiceTest(TestCase):
             ],
         )
 
-        self.assertEqual(EventScheduleSection.objects.filter(event=self.event).count(), 1)
-        self.assertEqual(EventScheduleSlot.objects.filter(track__section__event=self.event).count(), 1)
-        self.assertEqual(EventScheduleSlot.objects.filter(track__section__event=other_event).count(), 1)
+        self.assertEqual(EventScheduleSection.objects.filter(config=self.config).count(), 1)
+        self.assertEqual(EventScheduleSlot.objects.filter(track__section__config=self.config).count(), 1)
+        self.assertEqual(EventScheduleSlot.objects.filter(track__section__config=other_config).count(), 1)
 
     def test_sync_raises_when_no_config(self):
-        self.config.delete()
+        empty_config = CurrentProjectSchedule()
         with self.assertRaises(ScheduleSyncError):
-            sync_event_schedule(self.event)
+            sync_schedule(empty_config)
 
     @patch("event.services.schedule_sync.GoogleCredentialConfig.load")
     @patch("event.services.schedule_sync.gspread.service_account_from_dict")
@@ -170,7 +169,7 @@ class ScheduleSyncServiceTest(TestCase):
         self.config.save(update_fields=["sheet_id", "tracks_gid", "projects_gid"])
 
         with self.assertRaises(ScheduleSyncError):
-            sync_event_schedule(self.event)
+            sync_schedule(self.config)
 
         self.config.refresh_from_db()
         self.assertIn("Unable to open the configured Google Sheet", self.config.sync_error)

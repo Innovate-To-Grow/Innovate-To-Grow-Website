@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from event.models import Event, EventAgendaItem
+from event.models import CurrentProjectSchedule, EventAgendaItem
 
 
-def _serialize_agenda_group(event: Event, section_type: str, title: str) -> dict:
-    items = [item for item in event.agenda_items.all() if item.section_type == section_type]
+def _serialize_agenda_group(config: CurrentProjectSchedule, section_type: str, title: str) -> dict:
+    items = [item for item in config.agenda_items.all() if item.section_type == section_type]
     location = items[0].location if items else ""
     return {
         "title": title,
@@ -23,11 +23,11 @@ def _serialize_agenda_group(event: Event, section_type: str, title: str) -> dict
     }
 
 
-def build_schedule_payload(event: Event) -> dict:
+def build_schedule_payload(config: CurrentProjectSchedule) -> dict:
     sections = []
     project_rows = []
 
-    for section in event.schedule_sections.all():
+    for section in config.schedule_sections.all():
         slot_map = defaultdict(list)
         max_order = 0
         tracks = list(section.tracks.all())
@@ -73,6 +73,7 @@ def build_schedule_payload(event: Event) -> dict:
                         "room": track.room,
                         "zoom_link": track.zoom_link,
                         "topic": track.topic,
+                        "winner": track.winner,
                         "display_order": track.display_order,
                         "slots": [
                             {
@@ -102,16 +103,13 @@ def build_schedule_payload(event: Event) -> dict:
 
     return {
         "event": {
-            "id": str(event.pk),
-            "name": event.name,
-            "slug": event.slug,
-            "date": event.date.isoformat(),
-            "location": event.location,
-            "description": event.description,
+            "id": str(config.pk),
+            "name": config.name,
         },
-        "expo": _serialize_agenda_group(event, EventAgendaItem.SectionType.EXPO, "EXPO: POSTERS AND DEMOS"),
+        "show_winners": config.show_winners,
+        "expo": _serialize_agenda_group(config, EventAgendaItem.SectionType.EXPO, "EXPO: POSTERS AND DEMOS"),
         "presentations_title": "PRESENTATIONS",
         "sections": sections,
-        "awards": _serialize_agenda_group(event, EventAgendaItem.SectionType.AWARDS, "AWARDS & RECEPTION"),
+        "awards": _serialize_agenda_group(config, EventAgendaItem.SectionType.AWARDS, "AWARDS & RECEPTION"),
         "projects": project_rows,
     }

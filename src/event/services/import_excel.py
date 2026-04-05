@@ -127,7 +127,7 @@ def import_projects_from_excel(file):
         season = _to_int(get_cell(row, "season"))
         title = _to_str(get_cell(row, "project_title"))
 
-        if not year or not season or not title:
+        if not year or not season or not title or title.lower() == "break":
             stats["rows_skipped"] += 1
             continue
 

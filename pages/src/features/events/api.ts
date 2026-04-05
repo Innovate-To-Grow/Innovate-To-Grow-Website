@@ -106,6 +106,7 @@ export interface ScheduleTrack {
   room: string;
   zoom_link: string;
   topic: string;
+  winner: string;
   display_order: number;
   slots: ScheduleSlot[];
 }
@@ -140,6 +141,7 @@ export interface ScheduleProjectRow {
 
 export interface EventSchedulePayload {
   event: RegistrationEvent;
+  show_winners: boolean;
   expo: ScheduleAgendaSection;
   presentations_title: string;
   sections: ScheduleSection[];

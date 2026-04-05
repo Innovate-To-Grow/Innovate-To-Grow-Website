@@ -5,17 +5,23 @@ from django.urls import path, reverse
 from core.admin import BaseModelAdmin
 from core.models import GoogleCredentialConfig
 
-from ..models import CurrentProjectSchedule, Event
-from ..services import ScheduleSyncError, sync_event_schedule
+from ..models import CurrentProjectSchedule, EventScheduleTrack
+from ..services import ScheduleSyncError, sync_schedule
 
 
 @admin.register(CurrentProjectSchedule)
 class CurrentProjectScheduleAdmin(BaseModelAdmin):
-    list_display = ("__str__", "last_synced_at", "sync_error_short")
+    list_display = ("name", "last_synced_at", "sync_error_short")
     readonly_fields = ("last_synced_at", "sync_error", "created_at", "updated_at")
     change_list_template = "admin/event/currentprojectschedule_changelist.html"
 
     fieldsets = (
+        (
+            "Event",
+            {
+                "fields": ("name", "show_winners"),
+            },
+        ),
         (
             "Google Sheet Source",
             {
@@ -64,12 +70,12 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
 
     def pull_view(self, request):
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
-        live_event = Event.objects.filter(is_live=True).first()
-        if not live_event:
-            messages.error(request, "No live event found. Create an event and set it as live first.")
+        config = CurrentProjectSchedule.load()
+        if not config.pk:
+            messages.error(request, "No configuration found. Add one first.")
             return redirect(changelist_url)
         try:
-            stats = sync_event_schedule(live_event)
+            stats = sync_schedule(config)
             messages.success(
                 request,
                 (
@@ -107,13 +113,10 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         else:
             extra_context["current_projects"] = []
 
-        # Winners from schedule tracks (live event)
-        from event.models import EventScheduleTrack
-
-        live_event = Event.objects.filter(is_live=True).first()
-        if live_event:
+        # Winners from schedule tracks
+        if config.pk:
             winners = (
-                EventScheduleTrack.objects.filter(section__event=live_event)
+                EventScheduleTrack.objects.filter(section__config=config)
                 .exclude(winner="")
                 .select_related("section")
                 .order_by("section__display_order", "display_order")
