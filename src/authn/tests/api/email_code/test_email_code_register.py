@@ -41,6 +41,7 @@ class EmailCodeAuthRegisterTests(APITestCase):
                 "password_confirm": self.password,
                 "first_name": "New",
                 "last_name": "Member",
+                "organization": "Personal",
             },
             format="json",
         )
@@ -78,6 +79,7 @@ class EmailCodeAuthRegisterTests(APITestCase):
                 "password_confirm": self.password,
                 "first_name": "Updated",
                 "last_name": "User",
+                "organization": "Personal",
             },
             format="json",
         )
@@ -97,6 +99,7 @@ class EmailCodeAuthRegisterTests(APITestCase):
                 "password_confirm": self.password,
                 "first_name": "Alias",
                 "last_name": "Conflict",
+                "organization": "Personal",
             },
             format="json",
         )

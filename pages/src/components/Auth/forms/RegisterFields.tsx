@@ -1,8 +1,11 @@
 type LocalErrors = Record<string, string>;
 
+type OrganizationType = 'personal' | 'organization';
+
 interface RegisterFieldsProps {
   firstName: string;
   lastName: string;
+  organizationType: OrganizationType;
   organization: string;
   email: string;
   password: string;
@@ -10,6 +13,7 @@ interface RegisterFieldsProps {
   localErrors: LocalErrors;
   onFirstNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
+  onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
@@ -21,6 +25,7 @@ const fieldError = (value?: string) => value ? <span className="auth-form-error"
 export const RegisterFields = ({
   firstName,
   lastName,
+  organizationType,
   organization,
   email,
   password,
@@ -28,6 +33,7 @@ export const RegisterFields = ({
   localErrors,
   onFirstNameChange,
   onLastNameChange,
+  onOrganizationTypeChange,
   onOrganizationChange,
   onEmailChange,
   onPasswordChange,
@@ -55,10 +61,38 @@ export const RegisterFields = ({
           {fieldError(localErrors.email)}
         </div>
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="register-organization">
-            Organization <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
-          </label>
-          <input id="register-organization" type="text" className="auth-form-input" value={organization} onChange={(e) => onOrganizationChange(e.target.value)} placeholder="Company or organization" autoComplete="organization" />
+          <label className="auth-form-label">Organization</label>
+          <div className="auth-org-toggle">
+            <button
+              type="button"
+              className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('personal')}
+            >
+              Personal
+            </button>
+            <button
+              type="button"
+              className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('organization')}
+            >
+              Organization
+            </button>
+          </div>
+          {organizationType === 'organization' && (
+            <>
+              <input
+                id="register-organization"
+                type="text"
+                className={`auth-form-input ${localErrors.organization ? 'has-error' : ''}`}
+                value={organization}
+                onChange={(e) => onOrganizationChange(e.target.value)}
+                placeholder="Company or organization name"
+                required
+                autoComplete="organization"
+              />
+              {fieldError(localErrors.organization)}
+            </>
+          )}
         </div>
       </div>
 

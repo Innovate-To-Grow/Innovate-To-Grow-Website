@@ -78,8 +78,27 @@
     gap: 1rem;
   }
 
+  .account-column,
+  .account-column--primary,
+  .account-column--secondary {
+    gap: 1rem;
+  }
+
   .account-section {
     padding: 1rem;
+  }
+
+  .account-profile-form {
+    padding: 1rem;
+  }
+
+  .profile-image-section {
+    margin-bottom: 1rem;
+  }
+
+  .profile-image-container {
+    width: 92px;
+    height: 92px;
   }
 
   .auth-inline-links {

@@ -1,18 +1,24 @@
 import type {FormEvent} from 'react';
 import type {EventRegistrationOptions} from '../../../features/events/api';
+import type {OrganizationType} from '../useEventRegistration';
 
 interface RegistrationFormStepProps {
   options: EventRegistrationOptions;
   selectedTicketId: string | null;
   answers: Record<string, string>;
   submitting: boolean;
+  hideAttendeeInfo?: boolean;
   attendeeFirstName: string;
   attendeeLastName: string;
+  attendeeOrgType: OrganizationType;
+  attendeeOrganization: string;
   attendeeSecondaryEmail: string;
   attendeePhone: string;
   phoneRegion: string;
   onFirstNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
+  onOrgTypeChange: (value: OrganizationType) => void;
+  onOrganizationChange: (value: string) => void;
   onTicketChange: (ticketId: string) => void;
   onAnswerChange: (questionId: string, answer: string) => void;
   onSecondaryEmailChange: (value: string) => void;
@@ -34,13 +40,18 @@ export const RegistrationFormStep = ({
   selectedTicketId,
   answers,
   submitting,
+  hideAttendeeInfo,
   attendeeFirstName,
   attendeeLastName,
+  attendeeOrgType,
+  attendeeOrganization,
   attendeeSecondaryEmail,
   attendeePhone,
   phoneRegion,
   onFirstNameChange,
   onLastNameChange,
+  onOrgTypeChange,
+  onOrganizationChange,
   onTicketChange,
   onAnswerChange,
   onSecondaryEmailChange,
@@ -57,34 +68,72 @@ export const RegistrationFormStep = ({
   onSubmit,
 }: RegistrationFormStepProps) => (
   <form onSubmit={onSubmit}>
-    <div className="event-reg-form-group">
-      <label className="event-reg-label" htmlFor="first-name">
-        First Name <span className="required-mark">*</span>
-      </label>
-      <input
-        id="first-name"
-        type="text"
-        className="event-reg-input"
-        value={attendeeFirstName}
-        onChange={(e) => onFirstNameChange(e.target.value)}
-        autoComplete="given-name"
-        required
-      />
-    </div>
+    {!hideAttendeeInfo && (
+      <>
+        <div className="event-reg-form-group">
+          <label className="event-reg-label" htmlFor="first-name">
+            First Name <span className="required-mark">*</span>
+          </label>
+          <input
+            id="first-name"
+            type="text"
+            className="event-reg-input"
+            value={attendeeFirstName}
+            onChange={(e) => onFirstNameChange(e.target.value)}
+            autoComplete="given-name"
+            required
+          />
+        </div>
 
-    <div className="event-reg-form-group">
-      <label className="event-reg-label" htmlFor="last-name">
-        Last Name
-      </label>
-      <input
-        id="last-name"
-        type="text"
-        className="event-reg-input"
-        value={attendeeLastName}
-        onChange={(e) => onLastNameChange(e.target.value)}
-        autoComplete="family-name"
-      />
-    </div>
+        <div className="event-reg-form-group">
+          <label className="event-reg-label" htmlFor="last-name">
+            Last Name
+          </label>
+          <input
+            id="last-name"
+            type="text"
+            className="event-reg-input"
+            value={attendeeLastName}
+            onChange={(e) => onLastNameChange(e.target.value)}
+            autoComplete="family-name"
+          />
+        </div>
+
+        <div className="event-reg-form-group">
+          <label className="event-reg-label">
+            Organization <span className="required-mark">*</span>
+          </label>
+          <div className="auth-org-toggle">
+            <button
+              type="button"
+              className={`auth-org-toggle-btn ${attendeeOrgType === 'personal' ? 'is-active' : ''}`}
+              onClick={() => onOrgTypeChange('personal')}
+            >
+              Personal
+            </button>
+            <button
+              type="button"
+              className={`auth-org-toggle-btn ${attendeeOrgType === 'organization' ? 'is-active' : ''}`}
+              onClick={() => onOrgTypeChange('organization')}
+            >
+              Organization
+            </button>
+          </div>
+          {attendeeOrgType === 'organization' && (
+            <input
+              id="attendee-organization"
+              type="text"
+              className="event-reg-input"
+              value={attendeeOrganization}
+              onChange={(e) => onOrganizationChange(e.target.value)}
+              placeholder="Company or organization name"
+              autoComplete="organization"
+              required
+            />
+          )}
+        </div>
+      </>
+    )}
 
     <div className="event-reg-form-group">
       <label className="event-reg-label">
@@ -215,7 +264,7 @@ export const RegistrationFormStep = ({
     <button
       type="submit"
       className="event-reg-submit"
-      disabled={submitting || !selectedTicketId || (options.verify_phone && !phoneVerified)}
+      disabled={submitting || !selectedTicketId || (options.verify_phone && !phoneVerified) || (attendeeOrgType === 'organization' && !attendeeOrganization.trim())}
     >
       {submitting ? <><span className="event-reg-spinner" /> Registering...</> : 'Register'}
     </button>

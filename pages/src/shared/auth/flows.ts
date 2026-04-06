@@ -20,9 +20,9 @@ export const register = async (
   email: string,
   password: string,
   passwordConfirm: string,
-  firstName?: string,
-  lastName?: string,
-  organization?: string,
+  firstName: string,
+  lastName: string,
+  organization: string,
 ): Promise<RegisterResponse> => {
   try {
     const { encryptedPassword, keyId } = await encryptPasswordWithCurrentKey(password);
@@ -32,9 +32,9 @@ export const register = async (
       password: encryptedPassword,
       password_confirm: encryptedConfirm,
       key_id: keyId,
-      ...(firstName && { first_name: firstName }),
-      ...(lastName && { last_name: lastName }),
-      ...(organization && { organization }),
+      first_name: firstName,
+      last_name: lastName,
+      organization,
     });
     clearProfileCompletionRequired();
     return response.data;

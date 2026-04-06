@@ -65,16 +65,11 @@ export const EmailAddForm = ({
           </label>
         </div>
       </div>
-      <div style={{display: 'flex', gap: '0.75rem'}}>
-        <button type="submit" className="auth-form-submit" disabled={addLoading || !addEmail.trim()} style={{flex: 1}}>
+      <div className="account-action-row">
+        <button type="submit" className="auth-form-submit account-action-primary" disabled={addLoading || !addEmail.trim()}>
           {addLoading ? <><span className="auth-spinner" /> Adding...</> : 'Add & Send Verification'}
         </button>
-        <button
-          type="button"
-          className="auth-form-submit"
-          onClick={onCancel}
-          style={{flex: 1, background: '#fff', color: '#003366', border: '1px solid #003366'}}
-        >
+        <button type="button" className="auth-form-submit account-action-secondary" onClick={onCancel}>
           Cancel
         </button>
       </div>

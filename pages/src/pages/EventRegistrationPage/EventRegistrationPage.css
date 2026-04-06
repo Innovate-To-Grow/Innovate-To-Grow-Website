@@ -1,3 +1,4 @@
 @import "./styles/layout.css";
 @import "./styles/form.css";
 @import "./styles/states.css";
+@import "../../components/Auth/styles/forms.css";

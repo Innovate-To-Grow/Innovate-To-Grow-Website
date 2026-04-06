@@ -8,15 +8,23 @@
 
 .account-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 1.5rem;
   align-items: start;
 }
 
 .account-column {
   display: flex;
   flex-direction: column;
+  gap: 1.25rem;
+}
+
+.account-column--primary {
   gap: 1.5rem;
+}
+
+.account-column--secondary {
+  gap: 1rem;
 }
 
 .account-page-title {
@@ -39,6 +47,10 @@
   font-weight: 600;
   color: #1f2937;
   margin: 0 0 1.25rem 0;
+}
+
+.account-profile-section .account-section-title {
+  margin-bottom: 1rem;
 }
 
 .account-section-header {
@@ -85,20 +97,6 @@
   cursor: not-allowed;
 }
 
-.account-edit-btn.auth-form-submit {
-  background: linear-gradient(135deg, #003366 0%, #00254d 100%);
-  color: #fff;
-  border-color: transparent;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  box-shadow: none;
-  margin-top: 0;
-}
-
-.account-edit-btn.auth-form-submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, #00254d 0%, #001a3a 100%);
-}
-
 .account-details-rows .account-readonly-group {
   flex-direction: row;
   justify-content: space-between;
@@ -135,10 +133,95 @@
   color: #1f2937;
 }
 
+/* Unified account dashboard CTAs (use with .auth-form-submit for gradient + disabled states) */
+.auth-form-submit.account-action-primary {
+  margin-top: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  box-shadow: 0 1px 6px rgba(0, 51, 102, 0.18);
+}
+
+.auth-form-submit.account-action-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(0, 51, 102, 0.24);
+}
+
+.auth-form-submit.account-action-primary--inline {
+  margin-top: 0.75rem;
+  width: fit-content;
+}
+
+.auth-form-submit.account-action-secondary {
+  background: #fff;
+  color: #003366;
+  border: 1.5px solid #003366;
+  box-shadow: none;
+  margin-top: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.auth-form-submit.account-action-secondary:hover:not(:disabled) {
+  background: #f0f4f8;
+  box-shadow: none;
+}
+
+.account-action-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.account-action-row .auth-form-submit.account-action-primary,
+.account-action-row .auth-form-submit.account-action-secondary {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-action-row .account-edit-btn {
+  flex: 1;
+  min-width: 0;
+}
+
 .account-code-password {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.account-password-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.account-password-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.account-password-header .account-subsection-title {
+  margin-bottom: 0.35rem;
+}
+
+.account-password-help {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.account-profile-form {
+  gap: 0.875rem;
+  padding: 1.25rem 1.5rem 1.5rem;
 }
 
 

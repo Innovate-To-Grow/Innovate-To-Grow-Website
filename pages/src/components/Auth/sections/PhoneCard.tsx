@@ -67,12 +67,11 @@ export const PhoneCard = ({
       <div className="email-center-verify-inline">
         <form onSubmit={onVerifySubmit} className="email-center-verify-form">
           <CodeInput value={verifyCode} onChange={onVerifyCodeChange} disabled={verifyLoading} />
-          <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+          <div className="account-action-row">
             <button
               type="submit"
-              className="auth-form-submit"
+              className="auth-form-submit account-action-primary"
               disabled={verifyLoading || verifyCode.length !== 6}
-              style={{flex: 1, marginTop: 0, fontSize: '0.875rem', padding: '0.625rem 1rem'}}
             >
               {verifyLoading ? <><span className="auth-spinner" /> Verifying...</> : 'Submit Code'}
             </button>
@@ -81,7 +80,6 @@ export const PhoneCard = ({
               className="email-center-btn verify"
               disabled={resendLoading}
               onClick={() => onResend(phone.id)}
-              style={{fontSize: '0.8125rem'}}
             >
               {resendLoading ? 'Sending...' : 'Resend Code'}
             </button>
@@ -89,7 +87,6 @@ export const PhoneCard = ({
               type="button"
               className="email-center-btn delete"
               onClick={onCancelVerify}
-              style={{fontSize: '0.8125rem'}}
             >
               Cancel
             </button>

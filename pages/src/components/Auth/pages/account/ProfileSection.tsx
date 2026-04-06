@@ -1,10 +1,13 @@
 import type {ChangeEvent, FormEvent} from 'react';
 import {StatusAlert} from '../../shared/StatusAlert';
 
+type OrganizationType = 'personal' | 'organization';
+
 interface ProfileSectionProps {
   firstName: string;
   middleName: string;
   lastName: string;
+  organizationType: OrganizationType;
   organization: string;
   profileImage: string | null;
   imageUploading: boolean;
@@ -18,6 +21,7 @@ interface ProfileSectionProps {
   onFirstNameChange: (value: string) => void;
   onMiddleNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
+  onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
   onRetryProfile: () => void;
   onStartEditing: () => void;
@@ -33,6 +37,7 @@ export const ProfileSection = ({
   firstName,
   middleName,
   lastName,
+  organizationType,
   organization,
   profileImage,
   imageUploading,
@@ -46,12 +51,13 @@ export const ProfileSection = ({
   onFirstNameChange,
   onMiddleNameChange,
   onLastNameChange,
+  onOrganizationTypeChange,
   onOrganizationChange,
   onRetryProfile,
   onStartEditing,
   onCancelEditing,
 }: ProfileSectionProps) => (
-  <div className="account-section">
+  <div className="account-section account-profile-section">
     <h2 className="account-section-title">Profile Information</h2>
 
     <div className="profile-image-section">
@@ -103,7 +109,7 @@ export const ProfileSection = ({
       </div>
     ) : null}
 
-    <form className="auth-form" onSubmit={onSubmit}>
+    <form className="auth-form account-profile-form" onSubmit={onSubmit}>
       <div className="account-form-row">
         <div className="auth-form-group">
           <label className="auth-form-label" htmlFor="account-first-name">First Name</label>
@@ -131,7 +137,7 @@ export const ProfileSection = ({
           />
         </div>
 
-        <div className="auth-form-group">
+        <div className="auth-form-group auth-form-group--full-width">
           <label className="auth-form-label" htmlFor="account-last-name">Last Name</label>
           <input
             id="account-last-name"
@@ -146,25 +152,46 @@ export const ProfileSection = ({
       </div>
 
       <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="account-organization">Organization</label>
-        <input
-          id="account-organization"
-          type="text"
-          className="auth-form-input"
-          value={organization}
-          onChange={(event) => onOrganizationChange(event.target.value)}
-          placeholder="Company or organization"
-          autoComplete="organization"
-          disabled={!isEditingProfile}
-        />
+        <label className="auth-form-label">Organization</label>
+        <div className="auth-org-toggle">
+          <button
+            type="button"
+            className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('personal')}
+            disabled={!isEditingProfile}
+          >
+            Personal
+          </button>
+          <button
+            type="button"
+            className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('organization')}
+            disabled={!isEditingProfile}
+          >
+            Organization
+          </button>
+        </div>
+        {organizationType === 'organization' && (
+          <input
+            id="account-organization"
+            type="text"
+            className="auth-form-input"
+            value={organization}
+            onChange={(event) => onOrganizationChange(event.target.value)}
+            placeholder="Company or organization name"
+            autoComplete="organization"
+            disabled={!isEditingProfile}
+            required
+          />
+        )}
       </div>
 
       {isEditingProfile ? (
-        <div style={{display: 'flex', gap: '1rem'}}>
-          <button type="submit" className="auth-form-submit account-edit-btn" disabled={profileSaving} style={{flex: 1}}>
+        <div className="account-action-row">
+          <button type="submit" className="auth-form-submit account-action-primary" disabled={profileSaving}>
             {profileSaving ? <><span className="auth-spinner" /> Saving...</> : 'Save Profile'}
           </button>
-          <button type="button" className="account-edit-btn" onClick={onCancelEditing} style={{flex: 1}}>
+          <button type="button" className="account-edit-btn" onClick={onCancelEditing}>
             Cancel
           </button>
         </div>

@@ -17,7 +17,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
 
     return (
         <div className="account-section">
-            <h2 className="account-section-title">Subscriptions</h2>
+            <h2 className="account-section-title">Emails</h2>
 
             {emailCenter.successMessage ? <StatusAlert tone="success" message={emailCenter.successMessage} style={{marginBottom: '1rem'}} /> : null}
             {emailCenter.error ? <StatusAlert tone="error" message={emailCenter.error} style={{marginBottom: '1rem'}} /> : null}
@@ -66,6 +66,8 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
                             emailCenter.setVerifyCode('');
                             emailCenter.setVerifyError(null);
                         }}
+                        onMakePrimary={emailCenter.handleMakePrimary}
+                        makePrimaryLoadingId={emailCenter.makePrimaryLoadingId}
                     />
                 ))
             )}
@@ -89,12 +91,11 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
             ) : (
                 <button
                     type="button"
-                    className="auth-form-submit"
+                    className="auth-form-submit account-action-primary account-action-primary--inline"
                     onClick={() => {
                         emailCenter.setShowAddForm(true);
                         emailCenter.clearMessages();
                     }}
-                    style={{marginTop: '0.75rem'}}
                 >
                     Add Email
                 </button>

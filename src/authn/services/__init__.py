@@ -5,6 +5,7 @@ Authn app services.
 from .contacts.contact_emails import (
     create_contact_email,
     delete_contact_email,
+    make_contact_email_primary,
     resend_contact_email_verification,
     verify_contact_email_code,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "verify_contact_email_code",
     "resend_contact_email_verification",
     "delete_contact_email",
+    "make_contact_email_primary",
     # Contact phones
     "create_contact_phone",
     "delete_contact_phone",

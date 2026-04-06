@@ -4,6 +4,7 @@ import {
   deleteContactEmail,
   getContactEmails,
   getProfile,
+  makeContactEmailPrimary,
   requestContactEmailVerification,
   updateContactEmail,
   updateProfileFields,
@@ -27,7 +28,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
   const [showAddForm, setShowAddForm] = useState(false);
   const [addEmail, setAddEmail] = useState('');
   const [addType, setAddType] = useState<'secondary' | 'other'>('secondary');
-  const [addSubscribe, setAddSubscribe] = useState(false);
+  const [addSubscribe, setAddSubscribe] = useState(true);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
   const [primaryVerifyLoading, setPrimaryVerifyLoading] = useState(false);
   const [primaryVerifyError, setPrimaryVerifyError] = useState<string | null>(null);
   const [primaryResendLoading, setPrimaryResendLoading] = useState(false);
+  const [makePrimaryLoadingId, setMakePrimaryLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEmails = async () => {
@@ -105,7 +107,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
       setContactEmails((current) => [created, ...current]);
       setAddEmail('');
       setAddType('secondary');
-      setAddSubscribe(false);
+      setAddSubscribe(true);
       setShowAddForm(false);
       setVerifyingId(created.id);
       setVerifyCode('');
@@ -207,6 +209,21 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     setPrimaryVerifyError(null);
   };
 
+  const handleMakePrimary = async (contactId: string) => {
+    clearMessages();
+    setMakePrimaryLoadingId(contactId);
+    try {
+      await makeContactEmailPrimary(contactId);
+      onProfileUpdate(await getProfile());
+      setContactEmails(await getContactEmails());
+      setSuccessMessage('Primary email updated. Your previous primary address is now listed as a connected email.');
+    } catch (err) {
+      setError(getAuthApiErrorMessage(err));
+    } finally {
+      setMakePrimaryLoadingId(null);
+    }
+  };
+
   const handleDelete = async (contactId: string) => {
     if (!window.confirm('Are you sure you want to remove this email?')) return;
     clearMessages();
@@ -245,6 +262,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     primaryVerifyLoading,
     primaryVerifyError,
     primaryResendLoading,
+    makePrimaryLoadingId,
     setAddEmail,
     setAddError,
     setAddSubscribe,
@@ -266,5 +284,6 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     setPrimaryVerifyCode,
     handleResend,
     handleVerifySubmit,
+    handleMakePrimary,
   };
 };

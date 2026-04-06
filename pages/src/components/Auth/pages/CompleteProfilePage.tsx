@@ -19,6 +19,7 @@ export const CompleteProfilePage = () => {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [organizationType, setOrganizationType] = useState<'personal' | 'organization'>('personal');
   const [organization, setOrganization] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +34,10 @@ export const CompleteProfilePage = () => {
         setFirstName(profile.first_name ?? '');
         setMiddleName(profile.middle_name ?? '');
         setLastName(profile.last_name ?? '');
-        setOrganization(profile.organization ?? '');
+        const org = profile.organization ?? '';
+        const isPersonal = !org || org.toLowerCase() === 'personal';
+        setOrganizationType(isPersonal ? 'personal' : 'organization');
+        setOrganization(isPersonal ? '' : org);
       } catch (err: unknown) {
         setError(getAuthErrorMessage(err));
       } finally {
@@ -64,11 +68,12 @@ export const CompleteProfilePage = () => {
     setError(null);
 
     try {
+      const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
       await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
         last_name: lastName.trim(),
-        organization: organization.trim(),
+        organization: orgValue,
       });
       clearProfileCompletionRequirement();
       navigate('/account', { replace: true });
@@ -109,11 +114,16 @@ export const CompleteProfilePage = () => {
             firstName={firstName}
             middleName={middleName}
             lastName={lastName}
+            organizationType={organizationType}
             organization={organization}
             isSaving={isSaving}
             setFirstName={setFirstName}
             setMiddleName={setMiddleName}
             setLastName={setLastName}
+            onOrganizationTypeChange={(value) => {
+              setOrganizationType(value);
+              setOrganization('');
+            }}
             setOrganization={setOrganization}
             clearError={() => setError(null)}
             onSubmit={handleSubmit}

@@ -6,6 +6,7 @@ from .account.change_password import ChangePasswordView
 from .account.contact_emails import (
     ContactEmailDetailView,
     ContactEmailListCreateView,
+    ContactEmailMakePrimaryView,
     ContactEmailRequestVerificationView,
     ContactEmailVerifyCodeView,
 )
@@ -65,6 +66,7 @@ __all__ = [
     "ContactEmailDetailView",
     "ContactEmailRequestVerificationView",
     "ContactEmailVerifyCodeView",
+    "ContactEmailMakePrimaryView",
     "ContactPhoneListCreateView",
     "ContactPhoneDetailView",
     "ContactPhoneRequestVerificationView",

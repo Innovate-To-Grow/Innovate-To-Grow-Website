@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { RegisterFields } from './RegisterFields';
 
+type OrganizationType = 'personal' | 'organization';
+
 export const RegisterForm = () => {
   const { register, error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('personal');
   const [organization, setOrganization] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +32,10 @@ export const RegisterForm = () => {
       errors.email = 'Please enter a valid email address';
     }
 
+    if (organizationType === 'organization' && !organization.trim()) {
+      errors.organization = 'Organization name is required';
+    }
+
     if (password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
     }
@@ -48,6 +55,8 @@ export const RegisterForm = () => {
       return;
     }
 
+    const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+
     try {
       await register(
         email,
@@ -55,13 +64,22 @@ export const RegisterForm = () => {
         passwordConfirm,
         firstName.trim(),
         lastName.trim(),
-        organization.trim() || undefined,
+        orgValue,
       );
       navigate(`/verify-email?flow=register&email=${encodeURIComponent(email.trim().toLowerCase())}`, { replace: true });
     } catch {
       // Error is handled by context
     }
   };
+
+  const isSubmitDisabled =
+    isLoading ||
+    !firstName ||
+    !lastName ||
+    !email ||
+    !password ||
+    !passwordConfirm ||
+    (organizationType === 'organization' && !organization);
 
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
@@ -75,6 +93,7 @@ export const RegisterForm = () => {
       <RegisterFields
         firstName={firstName}
         lastName={lastName}
+        organizationType={organizationType}
         organization={organization}
         email={email}
         password={password}
@@ -90,8 +109,15 @@ export const RegisterForm = () => {
           setLocalErrors((prev) => ({ ...prev, lastName: '' }));
           clearError();
         }}
+        onOrganizationTypeChange={(value) => {
+          setOrganizationType(value);
+          setOrganization('');
+          setLocalErrors((prev) => ({ ...prev, organization: '' }));
+          clearError();
+        }}
         onOrganizationChange={(value) => {
           setOrganization(value);
+          setLocalErrors((prev) => ({ ...prev, organization: '' }));
           clearError();
         }}
         onEmailChange={(value) => {
@@ -114,7 +140,7 @@ export const RegisterForm = () => {
       <button
         type="submit"
         className="auth-form-submit"
-        disabled={isLoading || !firstName || !lastName || !email || !password || !passwordConfirm}
+        disabled={isSubmitDisabled}
       >
         {isLoading ? (
           <>

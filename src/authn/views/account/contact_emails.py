@@ -18,6 +18,7 @@ from authn.services import (
     AuthChallengeInvalid,
     create_contact_email,
     delete_contact_email,
+    make_contact_email_primary,
     resend_contact_email_verification,
     verify_contact_email_code,
 )
@@ -134,6 +135,25 @@ class ContactEmailVerifyCodeView(APIView):
                 contact_email_id=pk,
                 code=serializer.validated_data["code"],
             )
+        except AuthChallengeInvalid as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:  # noqa: BLE001
+            return challenge_error_response(exc)
+
+        return Response(ContactEmailSerializer(updated).data, status=status.HTTP_200_OK)
+
+
+class ContactEmailMakePrimaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request, pk):
+        contact_email = _get_contact_email(request, pk)
+        if contact_email is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            updated = make_contact_email_primary(member=request.user, contact_email_id=pk)
         except AuthChallengeInvalid as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:  # noqa: BLE001

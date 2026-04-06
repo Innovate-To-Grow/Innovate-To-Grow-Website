@@ -72,3 +72,8 @@ export const verifyContactEmailCode = async (id: string, code: string): Promise<
   const response = await authApi.post<ContactEmail>(`/authn/contact-emails/${id}/verify-code/`, { code });
   return response.data;
 };
+
+export const makeContactEmailPrimary = async (id: string): Promise<ContactEmail> => {
+  const response = await authApi.post<ContactEmail>(`/authn/contact-emails/${id}/make-primary/`);
+  return response.data;
+};

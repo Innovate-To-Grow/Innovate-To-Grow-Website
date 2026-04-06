@@ -222,12 +222,11 @@ export const PhoneCenter = () => {
             ) : (
                 <button
                     type="button"
-                    className="auth-form-submit"
+                    className="auth-form-submit account-action-primary account-action-primary--inline"
                     onClick={() => {
                         setShowAddForm(true);
                         clearMessages();
                     }}
-                    style={{marginTop: '0.75rem'}}
                 >
                     Add Phone
                 </button>

@@ -170,3 +170,50 @@ class ContactEmailCrudTests(APITestCase):
         self.assertEqual(delete_resp.status_code, 204)
 
         self.assertFalse(ContactEmail.objects.filter(pk=contact_id).exists())
+
+    def test_make_primary_swaps_types(self, _mock_code, _mock_send):
+        create_resp = self.client.post(
+            "/authn/contact-emails/",
+            {"email_address": "new-primary@example.com"},
+            format="json",
+        )
+        self.assertEqual(create_resp.status_code, 201)
+        new_id = create_resp.data["id"]
+
+        verify_resp = self.client.post(
+            f"/authn/contact-emails/{new_id}/verify-code/",
+            {"code": "654321"},
+            format="json",
+        )
+        self.assertEqual(verify_resp.status_code, 200)
+
+        make_resp = self.client.post(f"/authn/contact-emails/{new_id}/make-primary/")
+        self.assertEqual(make_resp.status_code, 200)
+        self.assertEqual(make_resp.data["email_type"], "primary")
+        self.assertEqual(make_resp.data["email_address"], "new-primary@example.com")
+
+        old_primary = ContactEmail.objects.get(email_address="primary@example.com")
+        self.assertEqual(old_primary.email_type, "secondary")
+
+        profile_resp = self.client.get("/authn/profile/")
+        self.assertEqual(profile_resp.status_code, 200)
+        self.assertEqual(profile_resp.data["email"], "new-primary@example.com")
+        self.assertEqual(str(profile_resp.data["primary_email_id"]), str(new_id))
+
+    def test_make_primary_rejects_unverified(self, _mock_code, _mock_send):
+        create_resp = self.client.post(
+            "/authn/contact-emails/",
+            {"email_address": "not-verified@example.com"},
+            format="json",
+        )
+        contact_id = create_resp.data["id"]
+
+        make_resp = self.client.post(f"/authn/contact-emails/{contact_id}/make-primary/")
+        self.assertEqual(make_resp.status_code, 400)
+        self.assertIn("detail", make_resp.data)
+
+    def test_make_primary_idempotent_on_primary(self, _mock_code, _mock_send):
+        primary = ContactEmail.objects.get(member=self.member, email_type="primary")
+        make_resp = self.client.post(f"/authn/contact-emails/{primary.pk}/make-primary/")
+        self.assertEqual(make_resp.status_code, 200)
+        self.assertEqual(make_resp.data["email_type"], "primary")

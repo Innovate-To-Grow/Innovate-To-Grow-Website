@@ -1,14 +1,17 @@
 import type {FormEvent} from 'react';
+import type {OrganizationType} from '../useEventRegistration';
 
 interface ProfileStepProps {
   firstName: string;
   middleName: string;
   lastName: string;
+  organizationType: OrganizationType;
   organization: string;
   saving: boolean;
   onFirstNameChange: (value: string) => void;
   onMiddleNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
+  onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
 }
@@ -17,11 +20,13 @@ export const ProfileStep = ({
   firstName,
   middleName,
   lastName,
+  organizationType,
   organization,
   saving,
   onFirstNameChange,
   onMiddleNameChange,
   onLastNameChange,
+  onOrganizationTypeChange,
   onOrganizationChange,
   onSubmit,
 }: ProfileStepProps) => (
@@ -63,7 +68,7 @@ export const ProfileStep = ({
         </div>
         <div className="event-reg-form-group">
           <label className="event-reg-label" htmlFor="reg-last-name">
-            Last Name <span className="event-reg-optional">(optional)</span>
+            Last Name <span className="required-mark">*</span>
           </label>
           <input
             id="reg-last-name"
@@ -73,26 +78,52 @@ export const ProfileStep = ({
             onChange={(event) => onLastNameChange(event.target.value)}
             placeholder="Last name"
             autoComplete="family-name"
+            required
             disabled={saving}
           />
         </div>
       </div>
       <div className="event-reg-form-group">
-        <label className="event-reg-label" htmlFor="reg-org">
-          Organization <span className="event-reg-optional">(optional)</span>
+        <label className="event-reg-label">
+          Organization <span className="required-mark">*</span>
         </label>
-        <input
-          id="reg-org"
-          type="text"
-          className="event-reg-input"
-          value={organization}
-          onChange={(event) => onOrganizationChange(event.target.value)}
-          placeholder="Company or organization"
-          autoComplete="organization"
-          disabled={saving}
-        />
+        <div className="auth-org-toggle">
+          <button
+            type="button"
+            className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('personal')}
+            disabled={saving}
+          >
+            Personal
+          </button>
+          <button
+            type="button"
+            className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('organization')}
+            disabled={saving}
+          >
+            Organization
+          </button>
+        </div>
+        {organizationType === 'organization' && (
+          <input
+            id="reg-org"
+            type="text"
+            className="event-reg-input"
+            value={organization}
+            onChange={(event) => onOrganizationChange(event.target.value)}
+            placeholder="Company or organization name"
+            autoComplete="organization"
+            required
+            disabled={saving}
+          />
+        )}
       </div>
-      <button type="submit" className="event-reg-submit" disabled={saving || !firstName.trim()}>
+      <button
+        type="submit"
+        className="event-reg-submit"
+        disabled={saving || !firstName.trim() || !lastName.trim() || (organizationType === 'organization' && !organization.trim())}
+      >
         {saving ? <><span className="event-reg-spinner" /> Saving...</> : 'Continue'}
       </button>
     </form>

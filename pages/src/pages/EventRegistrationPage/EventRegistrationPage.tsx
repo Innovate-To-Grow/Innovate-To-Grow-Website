@@ -9,14 +9,14 @@ import {useEventRegistration} from './useEventRegistration';
 import './EventRegistrationPage.css';
 
 export const EventRegistrationPage = () => {
-  const registrationPage = useEventRegistration();
+  const reg = useEventRegistration();
 
-  if (registrationPage.step === 'loading') {
-    return <LoadingState error={registrationPage.error} />;
+  if (reg.step === 'loading') {
+    return <LoadingState error={reg.error} />;
   }
 
-  if (registrationPage.step === 'done' && registrationPage.registration) {
-    return <DoneState registration={registrationPage.registration} />;
+  if (reg.step === 'done' && reg.registration) {
+    return <DoneState registration={reg.registration} />;
   }
 
   return (
@@ -24,96 +24,110 @@ export const EventRegistrationPage = () => {
       <h1 className="event-reg-title">Event Registration</h1>
 
       {/* Event info banner */}
-      {registrationPage.options ? (
+      {reg.options ? (
         <div className="event-reg-info">
-          <h2>{registrationPage.options.name}</h2>
-          <p><strong>Date:</strong> {formatEventDate(registrationPage.options.date)}</p>
-          <p><strong>Location:</strong> {registrationPage.options.location}</p>
-          {registrationPage.options.description ? <p style={{marginTop: '0.5rem'}}>{registrationPage.options.description}</p> : null}
+          <h2>{reg.options.name}</h2>
+          <p><strong>Date:</strong> {formatEventDate(reg.options.date)}</p>
+          <p><strong>Location:</strong> {reg.options.location}</p>
+          {reg.options.description ? <p style={{marginTop: '0.5rem'}}>{reg.options.description}</p> : null}
         </div>
       ) : null}
 
-      {registrationPage.error ? <div className="event-reg-alert error">{registrationPage.error}</div> : null}
+      {reg.error ? <div className="event-reg-alert error">{reg.error}</div> : null}
 
-      {registrationPage.step === 'email' ? (
+      {reg.step === 'email' ? (
         <EmailAuthStep
-          email={registrationPage.email}
-          authLoading={registrationPage.authLoading}
-          onEmailChange={registrationPage.setEmail}
-          onSubmit={registrationPage.handleEmailSubmit}
+          email={reg.email}
+          authLoading={reg.authLoading}
+          onEmailChange={reg.setEmail}
+          onSubmit={reg.handleEmailSubmit}
         />
       ) : null}
 
-      {registrationPage.step === 'code' ? (
+      {reg.step === 'code' ? (
         <CodeVerificationStep
-          email={registrationPage.email}
-          code={registrationPage.code}
-          authFlow={registrationPage.authFlow}
-          authLoading={registrationPage.authLoading}
-          onCodeChange={registrationPage.setCode}
-          onSubmit={registrationPage.handleCodeSubmit}
+          email={reg.email}
+          code={reg.code}
+          authFlow={reg.authFlow}
+          authLoading={reg.authLoading}
+          onCodeChange={reg.setCode}
+          onSubmit={reg.handleCodeSubmit}
           onBack={() => {
-            registrationPage.setCode('');
-            registrationPage.setError(null);
-            registrationPage.setStep('email');
+            reg.setCode('');
+            reg.setError(null);
+            reg.setStep('email');
           }}
         />
       ) : null}
 
-      {registrationPage.step === 'profile' ? (
+      {reg.step === 'profile' ? (
         <ProfileStep
-          firstName={registrationPage.firstName}
-          middleName={registrationPage.middleName}
-          lastName={registrationPage.lastName}
-          organization={registrationPage.organization}
-          saving={registrationPage.saving}
+          firstName={reg.firstName}
+          middleName={reg.middleName}
+          lastName={reg.lastName}
+          organizationType={reg.organizationType}
+          organization={reg.organization}
+          saving={reg.saving}
           onFirstNameChange={(value) => {
-            registrationPage.setFirstName(value);
-            registrationPage.setError(null);
+            reg.setFirstName(value);
+            reg.setError(null);
           }}
           onMiddleNameChange={(value) => {
-            registrationPage.setMiddleName(value);
-            registrationPage.setError(null);
+            reg.setMiddleName(value);
+            reg.setError(null);
           }}
           onLastNameChange={(value) => {
-            registrationPage.setLastName(value);
-            registrationPage.setError(null);
+            reg.setLastName(value);
+            reg.setError(null);
+          }}
+          onOrganizationTypeChange={(value) => {
+            reg.setOrganizationType(value);
+            reg.setOrganization('');
+            reg.setError(null);
           }}
           onOrganizationChange={(value) => {
-            registrationPage.setOrganization(value);
-            registrationPage.setError(null);
+            reg.setOrganization(value);
+            reg.setError(null);
           }}
-          onSubmit={registrationPage.handleProfileSubmit}
+          onSubmit={reg.handleProfileSubmit}
         />
       ) : null}
 
-      {registrationPage.step === 'form' && registrationPage.options ? (
+      {reg.step === 'form' && reg.options ? (
         <RegistrationFormStep
-          options={registrationPage.options}
-          selectedTicketId={registrationPage.selectedTicketId}
-          answers={registrationPage.answers}
-          submitting={registrationPage.submitting}
-          attendeeFirstName={registrationPage.attendeeFirstName}
-          attendeeLastName={registrationPage.attendeeLastName}
-          attendeeSecondaryEmail={registrationPage.attendeeSecondaryEmail}
-          attendeePhone={registrationPage.attendeePhone}
-          phoneRegion={registrationPage.phoneRegion}
-          onFirstNameChange={registrationPage.setAttendeeFirstName}
-          onLastNameChange={registrationPage.setAttendeeLastName}
-          onTicketChange={registrationPage.setSelectedTicketId}
-          onAnswerChange={(questionId, answer) => registrationPage.setAnswers((current) => ({...current, [questionId]: answer}))}
-          onSecondaryEmailChange={registrationPage.setAttendeeSecondaryEmail}
-          onPhoneChange={registrationPage.setAttendeePhone}
-          onPhoneRegionChange={registrationPage.setPhoneRegion}
-          phoneCode={registrationPage.phoneCode}
-          phoneCodeSent={registrationPage.phoneCodeSent}
-          phoneSending={registrationPage.phoneSending}
-          phoneVerified={registrationPage.phoneVerified}
-          verifyingPhone={registrationPage.verifyingPhone}
-          onPhoneCodeChange={registrationPage.setPhoneCode}
-          onSendPhoneCode={registrationPage.handleSendPhoneCode}
-          onVerifyPhoneCode={registrationPage.handleVerifyPhoneCode}
-          onSubmit={registrationPage.handleRegistrationSubmit}
+          options={reg.options}
+          selectedTicketId={reg.selectedTicketId}
+          answers={reg.answers}
+          submitting={reg.submitting}
+          hideAttendeeInfo={reg.profileCompleted}
+          attendeeFirstName={reg.attendeeFirstName}
+          attendeeLastName={reg.attendeeLastName}
+          attendeeOrgType={reg.attendeeOrgType}
+          attendeeOrganization={reg.attendeeOrganization}
+          attendeeSecondaryEmail={reg.attendeeSecondaryEmail}
+          attendeePhone={reg.attendeePhone}
+          phoneRegion={reg.phoneRegion}
+          onFirstNameChange={reg.setAttendeeFirstName}
+          onLastNameChange={reg.setAttendeeLastName}
+          onOrgTypeChange={(value) => {
+            reg.setAttendeeOrgType(value);
+            reg.setAttendeeOrganization('');
+          }}
+          onOrganizationChange={reg.setAttendeeOrganization}
+          onTicketChange={reg.setSelectedTicketId}
+          onAnswerChange={(questionId, answer) => reg.setAnswers((current) => ({...current, [questionId]: answer}))}
+          onSecondaryEmailChange={reg.setAttendeeSecondaryEmail}
+          onPhoneChange={reg.setAttendeePhone}
+          onPhoneRegionChange={reg.setPhoneRegion}
+          phoneCode={reg.phoneCode}
+          phoneCodeSent={reg.phoneCodeSent}
+          phoneSending={reg.phoneSending}
+          phoneVerified={reg.phoneVerified}
+          verifyingPhone={reg.verifyingPhone}
+          onPhoneCodeChange={reg.setPhoneCode}
+          onSendPhoneCode={reg.handleSendPhoneCode}
+          onVerifyPhoneCode={reg.handleVerifyPhoneCode}
+          onSubmit={reg.handleRegistrationSubmit}
         />
       ) : null}
 

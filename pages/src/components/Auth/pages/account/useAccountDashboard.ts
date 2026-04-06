@@ -1,7 +1,15 @@
 import {useCallback, useEffect, useState, type ChangeEvent, type FormEvent} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../../AuthContext';
-import {getProfile, updateProfileFields, uploadProfileImage, type ProfileResponse} from '../../../../services/auth';
+import {
+  confirmPasswordChange,
+  getProfile,
+  requestPasswordChangeCode,
+  updateProfileFields,
+  uploadProfileImage,
+  verifyPasswordChangeCode,
+  type ProfileResponse,
+} from '../../../../services/auth';
 import {fetchMyTickets, resendTicketEmail, type Registration} from '../../../../features/events/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
 
@@ -17,10 +25,19 @@ export const useAccountDashboard = () => {
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
+  const [organizationType, setOrganizationType] = useState<'personal' | 'organization'>('personal');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [passwordCodeRequested, setPasswordCodeRequested] = useState(false);
+  const [passwordCode, setPasswordCode] = useState('');
+  const [passwordVerificationToken, setPasswordVerificationToken] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Registration[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
@@ -38,7 +55,10 @@ export const useAccountDashboard = () => {
     setFirstName(data.first_name ?? '');
     setMiddleName(data.middle_name ?? '');
     setLastName(data.last_name ?? '');
-    setOrganization(data.organization ?? '');
+    const org = data.organization ?? '';
+    const isPersonal = !org || org.toLowerCase() === 'personal';
+    setOrganizationType(isPersonal ? 'personal' : 'organization');
+    setOrganization(isPersonal ? '' : org);
     setProfileError(null);
     if (data.profile_image) setProfileImage(data.profile_image);
   }, []);
@@ -110,11 +130,12 @@ export const useAccountDashboard = () => {
     setProfileMessage(null);
     setProfileError(null);
     try {
+      const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
       const updated = await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
         last_name: lastName.trim(),
-        organization: organization.trim(),
+        organization: orgValue,
       });
       setProfile(updated);
       setProfileMessage('Profile updated successfully.');
@@ -131,9 +152,99 @@ export const useAccountDashboard = () => {
     setFirstName(profile?.first_name || '');
     setMiddleName(profile?.middle_name || '');
     setLastName(profile?.last_name || '');
-    setOrganization(profile?.organization || '');
+    const org = profile?.organization || '';
+    const isPersonal = !org || org.toLowerCase() === 'personal';
+    setOrganizationType(isPersonal ? 'personal' : 'organization');
+    setOrganization(isPersonal ? '' : org);
     setProfileMessage(null);
     setProfileError(null);
+  };
+
+  const clearPasswordFeedback = useCallback(() => {
+    setPasswordMessage(null);
+    setPasswordError(null);
+  }, []);
+
+  const resetPasswordForm = useCallback(() => {
+    setPasswordCodeRequested(false);
+    setPasswordCode('');
+    setPasswordVerificationToken(null);
+    setNewPassword('');
+    setConfirmPassword('');
+  }, []);
+
+  const getPasswordEmail = useCallback(() => profile?.email || user?.email || '', [profile?.email, user?.email]);
+
+  const handlePasswordRequestCode = async () => {
+    const email = getPasswordEmail();
+    if (!email) {
+      setPasswordError('No account email is available for password verification.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    clearPasswordFeedback();
+    setPasswordVerificationToken(null);
+    setNewPassword('');
+    setConfirmPassword('');
+
+    try {
+      const response = await requestPasswordChangeCode(email);
+      setPasswordCodeRequested(true);
+      setPasswordCode('');
+      setPasswordMessage(response.message || 'Verification code sent.');
+    } catch (err: unknown) {
+      setPasswordError(getAuthApiErrorMessage(err));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordVerifyCode = async (event: FormEvent) => {
+    event.preventDefault();
+    const email = getPasswordEmail();
+    if (!email) {
+      setPasswordError('No account email is available for password verification.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    clearPasswordFeedback();
+
+    try {
+      const response = await verifyPasswordChangeCode(email, passwordCode);
+      setPasswordVerificationToken(response.verification_token);
+      setPasswordMessage(response.message || 'Code verified. You can now enter a new password.');
+    } catch (err: unknown) {
+      setPasswordError(getAuthApiErrorMessage(err));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordConfirm = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!passwordVerificationToken) {
+      setPasswordError('Verify your code before changing your password.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    clearPasswordFeedback();
+
+    try {
+      const response = await confirmPasswordChange(passwordVerificationToken, newPassword, confirmPassword);
+      resetPasswordForm();
+      setPasswordMessage(response.message || 'Password changed successfully.');
+    } catch (err: unknown) {
+      setPasswordError(getAuthApiErrorMessage(err));
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return {
@@ -144,12 +255,21 @@ export const useAccountDashboard = () => {
     isEditingProfile,
     logout,
     organization,
+    organizationType,
     profile,
     profileError,
     profileImage,
     profileLoading,
     profileMessage,
     profileSaving,
+    passwordCodeRequested,
+    passwordCode,
+    passwordVerificationToken,
+    newPassword,
+    confirmPassword,
+    passwordLoading,
+    passwordMessage,
+    passwordError,
     resendingId,
     firstName,
     lastName,
@@ -160,8 +280,15 @@ export const useAccountDashboard = () => {
     setFirstName,
     setMiddleName,
     setLastName,
+    setPasswordCode,
+    setNewPassword,
+    setConfirmPassword,
     setOrganization,
+    setOrganizationType,
     setIsEditingProfile,
+    handlePasswordConfirm,
+    handlePasswordRequestCode,
+    handlePasswordVerifyCode,
     handleCancelEditing,
     handleImageChange,
     handleProfileSubmit,

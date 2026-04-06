@@ -1,0 +1,24 @@
+{% include "django/forms/widgets/select.html" %}
+<script>
+(function() {
+    const ticketSel = document.getElementById('{{ widget.attrs.id }}');
+    if (!ticketSel) return;
+    const eventSel = document.getElementById('id_event');
+    if (!eventSel) return;
+
+    function filterTickets() {
+        const eventId = eventSel.value;
+        Array.from(ticketSel.options).forEach(function(opt) {
+            if (!opt.value) return;  // keep blank option visible
+            opt.hidden = eventId ? opt.dataset.event !== eventId : false;
+            if (opt.hidden && opt.selected) {
+                opt.selected = false;
+                ticketSel.value = '';
+            }
+        });
+    }
+
+    eventSel.addEventListener('change', filterTickets);
+    filterTickets();
+})();
+</script>

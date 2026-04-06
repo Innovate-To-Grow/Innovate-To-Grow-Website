@@ -12,10 +12,12 @@ from unfold.widgets import UnfoldAdminTextInputWidget
 
 from core.admin import BaseModelAdmin
 from core.models import EmailServiceConfig
+from event.models import Ticket
 
 from ..models import EmailCampaign, RecipientLog
+from ..models.campaign import ALL_AUDIENCE_CHOICES
 from ..services.audience import get_recipients
-from ..services.preview import render_preview
+from ..services.preview import HTML_MARKER, render_preview
 
 
 class PersonalizationTextInput(UnfoldAdminTextInputWidget):
@@ -46,7 +48,47 @@ class ManualEmailsWidget(forms.Textarea):
         super().__init__(attrs=defaults)
 
 
+class TicketSelectWidget(forms.Select):
+    """Select widget that carries ``data-event`` on each option for JS filtering."""
+
+    template_name = "admin/mail/widgets/ticket_select.html"
+
+    def _get_event_map(self):
+        """Build ticket-pk → event-id mapping (single query, fresh per render)."""
+        try:
+            return {str(pk): str(eid) for pk, eid in self.choices.queryset.values_list("pk", "event_id")}
+        except AttributeError:
+            return {}
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            if not hasattr(self, "_event_map"):
+                self._event_map = self._get_event_map()
+            event_id = self._event_map.get(str(value))
+            if event_id:
+                option["attrs"]["data-event"] = event_id
+        return option
+
+
+BODY_FORMAT_CHOICES = [("plain", "Plain Text"), ("html", "HTML")]
+
+
 class EmailCampaignForm(forms.ModelForm):
+    ticket = forms.ModelChoiceField(
+        queryset=Ticket.objects.select_related("event").order_by("event__name", "order", "name"),
+        required=False,
+        label="Ticket type",
+        widget=TicketSelectWidget,
+    )
+    body_format = forms.ChoiceField(
+        choices=BODY_FORMAT_CHOICES,
+        initial="plain",
+        required=False,
+        label="Email format",
+        widget=forms.RadioSelect,
+    )
+
     class Meta:
         model = EmailCampaign
         fields = "__all__"
@@ -54,6 +96,59 @@ class EmailCampaignForm(forms.ModelForm):
             "subject": PersonalizationTextInput,
             "manual_emails": ManualEmailsWidget,
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Override choices to include all audience types (model field keeps the
+        # original 4 to avoid a migration; extended list is form-only).
+        self.fields["audience_type"].choices = ALL_AUDIENCE_CHOICES
+
+        # Restore ticket selection from manual_emails for ticket_type campaigns
+        if self.instance and self.instance.pk and self.instance.audience_type == "ticket_type":
+            ticket_id = self.instance.manual_emails.strip()
+            if ticket_id:
+                try:
+                    self.initial["ticket"] = Ticket.objects.get(pk=ticket_id).pk
+                except Ticket.DoesNotExist:
+                    pass
+
+        # Detect raw-html marker in body and set body_format accordingly
+        body_val = self.initial.get("body") or (self.instance.body if self.instance and self.instance.pk else "")
+        if body_val.startswith(HTML_MARKER):
+            self.initial["body_format"] = "html"
+            self.initial["body"] = body_val[len(HTML_MARKER) :]
+
+    def clean(self):
+        cleaned = super().clean()
+        # For ticket_type: store ticket UUID in manual_emails so the model's
+        # clean() sees it, and validate that the ticket belongs to the event.
+        if cleaned.get("audience_type") == "ticket_type":
+            ticket = cleaned.get("ticket")
+            if not ticket:
+                self.add_error("ticket", "A ticket type must be selected.")
+            else:
+                event = cleaned.get("event")
+                if event and ticket.event_id != event.pk:
+                    self.add_error("ticket", "Selected ticket does not belong to the selected event.")
+                cleaned["manual_emails"] = str(ticket.pk)
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Safety net: ensure ticket UUID is in manual_emails
+        if instance.audience_type == "ticket_type":
+            ticket = self.cleaned_data.get("ticket")
+            if ticket:
+                instance.manual_emails = str(ticket.pk)
+
+        # Prepend raw-html marker when HTML format is selected
+        if self.cleaned_data.get("body_format") == "html" and not instance.body.startswith(HTML_MARKER):
+            instance.body = HTML_MARKER + instance.body
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class RecipientLogInline(TabularInline):
@@ -69,9 +164,26 @@ class RecipientLogInline(TabularInline):
         return False
 
 
+class AudienceTypeFilter(admin.SimpleListFilter):
+    title = "audience type"
+    parameter_name = "audience_type"
+
+    def lookups(self, request, model_admin):
+        return ALL_AUDIENCE_CHOICES
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(audience_type=self.value())
+        return queryset
+
+
 @admin.register(EmailCampaign)
 class EmailCampaignAdmin(BaseModelAdmin):
     form = EmailCampaignForm
+
+    class Media:
+        js = ("mail/js/body_format_toggle.js",)
+
     list_display = (
         "subject_preview",
         "audience_badge",
@@ -80,7 +192,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
         "failed_count",
         "sent_at",
     )
-    list_filter = ("status", "audience_type")
+    list_filter = ("status", AudienceTypeFilter)
     search_fields = ("subject",)
     ordering = ("-created_at",)
     actions_detail = ["preview_email_action", "preview_recipients_action", "send_campaign_action"]
@@ -89,17 +201,28 @@ class EmailCampaignAdmin(BaseModelAdmin):
         (
             "Audience",
             {
-                "fields": ("audience_type", "event", "selected_members", "member_email_scope", "manual_emails"),
+                "fields": (
+                    "audience_type",
+                    "event",
+                    "ticket",
+                    "selected_members",
+                    "member_email_scope",
+                    "manual_emails",
+                ),
             },
         ),
         (
             "Campaign",
-            {"fields": ("subject", "body")},
+            {"fields": ("subject", "body_format", "body")},
         ),
     )
     filter_horizontal = ("selected_members",)
     conditional_fields = {
-        "event": "audience_type === 'event_registrants'",
+        "event": (
+            "audience_type === 'event_registrants' || audience_type === 'ticket_type'"
+            " || audience_type === 'checked_in' || audience_type === 'not_checked_in'"
+        ),
+        "ticket": "audience_type === 'ticket_type'",
         "selected_members": "audience_type === 'selected_members'",
         "member_email_scope": "audience_type === 'selected_members'",
         "manual_emails": "audience_type === 'manual'",
@@ -111,9 +234,18 @@ class EmailCampaignAdmin(BaseModelAdmin):
 
     @display(description="Audience", label=True)
     def audience_badge(self, obj):
-        if obj.audience_type == "subscribers":
-            return "Subscribers", "info"
-        return "Event", "warning"
+        badge_colors = {
+            "subscribers": ("Subscribers", "info"),
+            "event_registrants": ("Event", "warning"),
+            "ticket_type": ("Ticket Type", "warning"),
+            "checked_in": ("Checked In", "success"),
+            "not_checked_in": ("No-Shows", "danger"),
+            "all_members": ("All Members", "info"),
+            "staff": ("Staff", "info"),
+            "selected_members": ("Selected", "info"),
+            "manual": ("Manual", "info"),
+        }
+        return badge_colors.get(obj.audience_type, (obj.get_audience_type_display(), "info"))
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
@@ -123,7 +255,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if obj and obj.status != "draft":
-            readonly.extend(["name", "subject", "body", "audience_type", "event"])
+            readonly.extend(["name", "subject", "body", "body_format", "audience_type", "event", "ticket"])
         return readonly
 
     def changelist_view(self, request, extra_context=None):
@@ -278,7 +410,11 @@ class EmailCampaignAdmin(BaseModelAdmin):
         from ..services.personalize import personalize
         from ..services.preview import SAMPLE_CONTEXT, render_email_html
 
-        body_html = personalize(request.POST.get("body", ""), SAMPLE_CONTEXT)
+        body = request.POST.get("body", "")
+        body_format = request.POST.get("body_format", "plain")
+        if body_format == "html":
+            body = HTML_MARKER + body
+        body_html = personalize(body, SAMPLE_CONTEXT)
         html = render_email_html(body_html)
         return HttpResponse(html)
 

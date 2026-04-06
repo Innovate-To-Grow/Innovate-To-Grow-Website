@@ -3,7 +3,7 @@ Service layer for managing contact emails (add, verify, delete).
 """
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
@@ -75,3 +75,40 @@ def delete_contact_email(*, member, contact_email_id):
         raise AuthChallengeInvalid("Contact email not found.")
 
     contact_email.delete()
+
+
+@transaction.atomic
+def make_contact_email_primary(*, member, contact_email_id):
+    """
+    Set a verified non-primary contact email as primary.
+
+    The previous primary becomes ``secondary`` (not deleted). Requires the target email to be verified.
+    """
+    contact = (
+        ContactEmail.objects.select_for_update()
+        .filter(pk=contact_email_id, member=member)
+        .first()
+    )
+    if contact is None:
+        raise AuthChallengeInvalid("Contact email not found.")
+
+    if contact.email_type == "primary":
+        return contact
+
+    if not contact.verified:
+        raise AuthChallengeInvalid("Verify this email before setting it as primary.")
+
+    old_primary = (
+        ContactEmail.objects.select_for_update()
+        .filter(member=member, email_type="primary")
+        .order_by("created_at")
+        .first()
+    )
+    if old_primary:
+        old_primary.email_type = "secondary"
+        old_primary.save(update_fields=["email_type", "updated_at"])
+
+    contact.email_type = "primary"
+    contact.save(update_fields=["email_type", "updated_at"])
+
+    return contact

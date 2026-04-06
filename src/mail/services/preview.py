@@ -5,6 +5,8 @@ from django.utils.html import escape
 
 from .personalize import personalize
 
+HTML_MARKER = "<!-- raw-html -->\n"
+
 SAMPLE_CONTEXT = {
     "first_name": "Hongzhe",
     "last_name": "Xie",
@@ -31,8 +33,16 @@ def _text_to_html(text):
 
 
 def render_email_html(body_text):
-    """Wrap *body_text* in the campaign email layout with logo. Converts plain text to HTML."""
-    body_html = _text_to_html(body_text)
+    """Wrap *body_text* in the campaign email layout with logo.
+
+    If the body starts with ``HTML_MARKER`` it is treated as raw HTML
+    (marker stripped, no escaping/conversion).  Otherwise plain-text
+    conversion is applied.
+    """
+    if body_text.startswith(HTML_MARKER):
+        body_html = body_text[len(HTML_MARKER) :]
+    else:
+        body_html = _text_to_html(body_text)
     return render_to_string("mail/email/campaign_wrapper.html", {"body": body_html, "logo_url": _get_logo_url()})
 
 

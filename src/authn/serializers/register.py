@@ -53,20 +53,17 @@ class RegisterSerializer(serializers.Serializer):
         help_text="Key ID used for encryption (for key rotation handling).",
     )
     first_name = serializers.CharField(
-        required=False,
-        allow_blank=True,
+        required=True,
         max_length=150,
         help_text="User's first name.",
     )
     last_name = serializers.CharField(
-        required=False,
-        allow_blank=True,
+        required=True,
         max_length=150,
         help_text="User's last name.",
     )
     organization = serializers.CharField(
-        required=False,
-        allow_blank=True,
+        required=True,
         max_length=255,
         help_text="Organization or company the user belongs to.",
     )

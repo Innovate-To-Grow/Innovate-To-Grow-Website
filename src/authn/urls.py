@@ -13,6 +13,7 @@ from .views import (
     ChangePasswordView,
     ContactEmailDetailView,
     ContactEmailListCreateView,
+    ContactEmailMakePrimaryView,
     ContactEmailRequestVerificationView,
     ContactEmailVerifyCodeView,
     ContactPhoneDetailView,
@@ -79,6 +80,11 @@ urlpatterns = [
         "contact-emails/<uuid:pk>/verify-code/",
         ContactEmailVerifyCodeView.as_view(),
         name="contact-email-verify-code",
+    ),
+    path(
+        "contact-emails/<uuid:pk>/make-primary/",
+        ContactEmailMakePrimaryView.as_view(),
+        name="contact-email-make-primary",
     ),
     # Contact Phones (authenticated)
     path("contact-phones/", ContactPhoneListCreateView.as_view(), name="contact-phone-list-create"),

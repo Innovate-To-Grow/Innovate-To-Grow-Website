@@ -44,7 +44,6 @@ export const TicketsSection = ({
             <button
               type="button"
               className="account-edit-btn"
-              style={{fontSize: '0.8rem', padding: '0.4rem 0.8rem'}}
               disabled={resendingId === ticket.id}
               onClick={() => onResendTicketEmail(ticket.id)}
             >

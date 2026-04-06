@@ -62,22 +62,17 @@ export const PhoneAddForm = ({
         />
       </div>
       <div className="auth-form-group" style={{justifyContent: 'center'}}>
-        <label className="email-center-toggle" style={{marginTop: '0.25rem'}}>
+        <label className="email-center-toggle" style={{marginTop: '0.25rem'}} aria-label="Allow SMS Messages">
           <input type="checkbox" checked={addSubscribe} onChange={(event) => onSubscribeChange(event.target.checked)} disabled={addLoading} />
           <span className="email-center-toggle-slider" />
-          <span className="email-center-toggle-label">Receive notifications</span>
+          <span className="email-center-toggle-label">Allow SMS Messages</span>
         </label>
       </div>
-      <div style={{display: 'flex', gap: '0.75rem'}}>
-        <button type="submit" className="auth-form-submit" disabled={addLoading || !addPhoneNumber.trim()} style={{flex: 1}}>
+      <div className="account-action-row">
+        <button type="submit" className="auth-form-submit account-action-primary" disabled={addLoading || !addPhoneNumber.trim()}>
           {addLoading ? <><span className="auth-spinner" /> Adding...</> : 'Add Phone'}
         </button>
-        <button
-          type="button"
-          className="auth-form-submit"
-          onClick={onCancel}
-          style={{flex: 1, background: '#fff', color: '#003366', border: '1px solid #003366'}}
-        >
+        <button type="button" className="auth-form-submit account-action-secondary" onClick={onCancel}>
           Cancel
         </button>
       </div>

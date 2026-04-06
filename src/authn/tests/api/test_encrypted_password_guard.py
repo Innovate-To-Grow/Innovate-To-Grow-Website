@@ -43,6 +43,8 @@ class RequireEncryptedPasswordsTests(APITestCase):
                 "password": self.password,
                 "password_confirm": self.password,
                 "first_name": "New",
+                "last_name": "User",
+                "organization": "Personal",
             },
             format="json",
         )

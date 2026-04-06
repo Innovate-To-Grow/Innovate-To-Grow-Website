@@ -38,6 +38,10 @@
   gap: 0.375rem;
 }
 
+.auth-form-group--full-width {
+  grid-column: 1 / -1;
+}
+
 .auth-form-label {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -137,5 +141,35 @@
   background: #9ca3af;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+.auth-org-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.auth-org-toggle-btn {
+  border: 1.5px solid #d1d5db;
+  background: #f9fafb;
+  color: #4b5563;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-org-toggle-btn.is-active {
+  background: #003366;
+  color: #fff;
+  border-color: #003366;
+}
+
+.auth-org-toggle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 

@@ -1,4 +1,5 @@
 import {DetailsSection} from './account/DetailsSection';
+import {PasswordSection} from './account/PasswordSection';
 import {ProfileSection} from './account/ProfileSection';
 import {TicketsSection} from './account/TicketsSection';
 import {useAccountDashboard} from './account/useAccountDashboard';
@@ -25,11 +26,12 @@ export const AccountPage = () => {
             <h1 className="account-page-title">Account Dashboard</h1>
 
             <div className="account-grid">
-                <div className="account-column">
+                <div className="account-column account-column--primary">
                     <ProfileSection
                         firstName={account.firstName}
                         middleName={account.middleName}
                         lastName={account.lastName}
+                        organizationType={account.organizationType}
                         organization={account.organization}
                         profileImage={account.profileImage}
                         imageUploading={account.imageUploading}
@@ -43,23 +45,43 @@ export const AccountPage = () => {
                         onFirstNameChange={account.setFirstName}
                         onMiddleNameChange={account.setMiddleName}
                         onLastNameChange={account.setLastName}
+                        onOrganizationTypeChange={(value) => {
+                            account.setOrganizationType(value);
+                            account.setOrganization('');
+                        }}
                         onOrganizationChange={account.setOrganization}
                         onRetryProfile={() => void account.loadProfile()}
                         onStartEditing={() => account.setIsEditingProfile(true)}
                         onCancelEditing={account.handleCancelEditing}
                     />
-                </div>
-
-                <div className="account-column">
-                    {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
-                    {account.profile ? <PhoneCenter/> : null}
                     <TicketsSection
                         tickets={account.tickets}
                         ticketsLoading={account.ticketsLoading}
                         resendingId={account.resendingId}
                         onResendTicketEmail={(registrationId) => void account.handleResendTicketEmail(registrationId)}
                     />
+                </div>
+
+                <div className="account-column account-column--secondary">
+                    {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
+                    {account.profile ? <PhoneCenter/> : null}
                     <DetailsSection displayEmail={account.displayEmail} dateJoined={account.profile?.date_joined}/>
+                    <PasswordSection
+                        passwordCodeRequested={account.passwordCodeRequested}
+                        passwordCode={account.passwordCode}
+                        passwordVerificationToken={account.passwordVerificationToken}
+                        newPassword={account.newPassword}
+                        confirmPassword={account.confirmPassword}
+                        passwordLoading={account.passwordLoading}
+                        passwordMessage={account.passwordMessage}
+                        passwordError={account.passwordError}
+                        onPasswordRequestCode={account.handlePasswordRequestCode}
+                        onPasswordVerifyCode={account.handlePasswordVerifyCode}
+                        onPasswordConfirm={account.handlePasswordConfirm}
+                        onPasswordCodeChange={account.setPasswordCode}
+                        onNewPasswordChange={account.setNewPassword}
+                        onConfirmPasswordChange={account.setConfirmPassword}
+                    />
                     <div className="account-section">
                         <button
                             type="button"

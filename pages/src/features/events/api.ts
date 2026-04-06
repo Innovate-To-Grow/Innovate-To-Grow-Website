@@ -57,6 +57,12 @@ export interface Registration {
   answers: RegistrationAnswer[];
 }
 
+export interface MemberProfile {
+  first_name: string;
+  last_name: string;
+  organization: string;
+}
+
 export interface EventRegistrationOptions {
   id: string;
   name: string;
@@ -71,6 +77,7 @@ export interface EventRegistrationOptions {
   questions: QuestionOption[];
   registration: Registration | null;
   member_emails: string[];
+  member_profile: MemberProfile | null;
   phone_regions: Array<{code: string; label: string}>;
 }
 
@@ -178,6 +185,7 @@ export async function createRegistration(data: {
   ticket_id: string;
   attendee_first_name: string;
   attendee_last_name?: string;
+  attendee_organization?: string;
   answers: Array<{question_id: string; answer: string}>;
   attendee_secondary_email?: string;
   attendee_phone?: string;

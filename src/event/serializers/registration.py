@@ -82,10 +82,20 @@ def _get_member_emails(user) -> list[str]:
     return [c.email_address for c in contacts]
 
 
+def _get_member_profile(user) -> dict:
+    return {
+        "first_name": user.first_name or "",
+        "last_name": user.last_name or "",
+        "organization": getattr(user, "organization", "") or "",
+    }
+
+
 def build_event_registration_option_payload(event, registration=None, request=None) -> dict:
     member_emails = []
+    member_profile = None
     if request and getattr(request, "user", None) and request.user.is_authenticated:
         member_emails = _get_member_emails(request.user)
+        member_profile = _get_member_profile(request.user)
     return {
         "id": str(event.pk),
         "name": event.name,
@@ -100,5 +110,6 @@ def build_event_registration_option_payload(event, registration=None, request=No
         "questions": [_serialize_question(question) for question in event.questions.all()],
         "registration": build_registration_payload(registration, request=request) if registration else None,
         "member_emails": member_emails,
+        "member_profile": member_profile,
         "phone_regions": [{"code": code, "label": label} for code, label in PHONE_REGION_CHOICES],
     }

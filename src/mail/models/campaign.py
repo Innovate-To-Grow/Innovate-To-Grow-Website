@@ -11,6 +11,22 @@ AUDIENCE_CHOICES = [
     ("manual", "Manual Emails"),
 ]
 
+# Extended choices used by the admin form — kept separate so the model field
+# definition stays unchanged and no migration is needed.
+ALL_AUDIENCE_CHOICES = [
+    ("subscribers", "All Email Subscribers"),
+    ("event_registrants", "Event Registrants"),
+    ("ticket_type", "Event Ticket Type"),
+    ("checked_in", "Checked-In Attendees"),
+    ("not_checked_in", "No-Shows (Not Checked In)"),
+    ("all_members", "All Active Members"),
+    ("staff", "Staff Members"),
+    ("selected_members", "Selected Members"),
+    ("manual", "Manual Emails"),
+]
+
+_ALL_AUDIENCE_LABELS = dict(ALL_AUDIENCE_CHOICES)
+
 MEMBER_EMAIL_CHOICES = [
     ("primary", "Primary email only"),
     ("all", "All emails (primary + secondary)"),
@@ -75,6 +91,9 @@ class EmailCampaign(ProjectControlModel):
         verbose_name = "Amazon SES Mail"
         verbose_name_plural = "Amazon SES Mails"
 
+    def get_audience_type_display(self):
+        return _ALL_AUDIENCE_LABELS.get(self.audience_type, self.audience_type)
+
     def __str__(self):
         label = self.name or self.subject[:60] or "Untitled"
         return f"{label} ({self.get_status_display()})"
@@ -86,7 +105,12 @@ class EmailCampaign(ProjectControlModel):
 
     def clean(self):
         super().clean()
-        if self.audience_type == "event_registrants" and not self.event_id:
-            raise ValidationError({"event": "An event must be selected for the 'Event Registrants' audience."})
+        event_required_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
+        if self.audience_type in event_required_types and not self.event_id:
+            raise ValidationError(
+                {"event": f"An event must be selected for the '{self.get_audience_type_display()}' audience."}
+            )
+        if self.audience_type == "ticket_type" and not self.manual_emails.strip():
+            raise ValidationError({"manual_emails": "A ticket type must be selected."})
         if self.audience_type == "manual" and not self.manual_emails.strip():
             raise ValidationError({"manual_emails": "Please enter at least one email address."})
