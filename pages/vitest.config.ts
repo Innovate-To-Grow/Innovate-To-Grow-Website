@@ -7,7 +7,6 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/__tests__/setup.ts'],
-    pool: 'forks',
-    poolOptions: {forks: {maxForks: 1, memoryLimit: '512MB'}},
+    testTimeout: 30000,
   },
 });

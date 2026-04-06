@@ -1,6 +1,3 @@
-import {jsPDF} from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import {utils, writeFile} from 'xlsx';
 import {PROJECT_GRID_COLUMNS, type ProjectGridRow} from './projectGrid';
 
 const toExportRows = (rows: ProjectGridRow[]) =>
@@ -16,21 +13,26 @@ const toExportRows = (rows: ProjectGridRow[]) =>
     'Student Names': row.student_names,
   }));
 
-export const exportProjectRowsCsv = (rows: ProjectGridRow[], fileBaseName: string) => {
+export const exportProjectRowsCsv = async (rows: ProjectGridRow[], fileBaseName: string) => {
+  const {utils, writeFile} = await import('xlsx');
   const worksheet = utils.json_to_sheet(toExportRows(rows));
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, 'Projects');
   writeFile(workbook, `${fileBaseName}.csv`, {bookType: 'csv'});
 };
 
-export const exportProjectRowsExcel = (rows: ProjectGridRow[], fileBaseName: string) => {
+export const exportProjectRowsExcel = async (rows: ProjectGridRow[], fileBaseName: string) => {
+  const {utils, writeFile} = await import('xlsx');
   const worksheet = utils.json_to_sheet(toExportRows(rows));
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, 'Projects');
   writeFile(workbook, `${fileBaseName}.xlsx`, {bookType: 'xlsx'});
 };
 
-export const exportProjectRowsPdf = (rows: ProjectGridRow[], fileBaseName: string, title: string) => {
+export const exportProjectRowsPdf = async (rows: ProjectGridRow[], fileBaseName: string, title: string) => {
+  const {jsPDF} = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+
   const document = new jsPDF({orientation: 'landscape'});
 
   document.setFontSize(16);
