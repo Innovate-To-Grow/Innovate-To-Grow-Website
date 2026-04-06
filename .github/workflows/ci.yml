@@ -182,6 +182,8 @@ jobs:
 
       - name: Run tests
         run: npm test
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
   # Frontend Build
   frontend-build:
