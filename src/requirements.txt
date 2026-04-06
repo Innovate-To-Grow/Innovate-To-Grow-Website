@@ -22,6 +22,7 @@ openpyxl>=3.1.0
 # Google APIs
 google-api-python-client>=2.170.0
 google-auth>=2.35.0
+gspread>=5.5.0
 
 # Cryptography (RSA key generation)
 cryptography>=41.0.0

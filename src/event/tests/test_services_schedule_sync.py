@@ -158,7 +158,7 @@ class ScheduleSyncServiceTest(TestCase):
             sync_schedule(empty_config)
 
     @patch("event.services.schedule_sync.GoogleCredentialConfig.load")
-    @patch("event.services.schedule_sync.gspread.service_account_from_dict")
+    @patch("gspread.service_account_from_dict")
     def test_sync_surfaces_sheet_open_errors(self, mock_service_account, mock_load_credentials):
         mock_service_account.side_effect = RuntimeError("boom")
         mock_load_credentials.return_value.is_configured = True

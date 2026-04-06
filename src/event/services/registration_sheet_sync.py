@@ -14,7 +14,6 @@ Three sync modes:
 import logging
 import threading
 
-import gspread
 from django.db import close_old_connections
 from django.utils import timezone
 
@@ -42,6 +41,8 @@ def _get_worksheet(event: Event):
     credentials = GoogleCredentialConfig.load()
     if not credentials.is_configured:
         raise RegistrationSyncError("No active Google service account is configured.")
+
+    import gspread
 
     client = gspread.service_account_from_dict(credentials.get_credentials_info())
     spreadsheet = client.open_by_key(event.registration_sheet_id)
