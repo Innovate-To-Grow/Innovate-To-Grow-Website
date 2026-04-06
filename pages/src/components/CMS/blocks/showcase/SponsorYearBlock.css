@@ -1,0 +1,75 @@
+.cms-sponsor-year {
+  margin: 0 0 2.5rem;
+}
+
+.cms-sponsor-year-title {
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-button);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 1rem;
+}
+
+.cms-sponsor-year-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.cms-sponsor-card {
+  align-items: center;
+  background: var(--itg-color-bg-light);
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: 1.25rem;
+  text-align: center;
+  text-decoration: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.cms-sponsor-card:hover {
+  border-color: var(--itg-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cms-sponsor-logo {
+  max-height: 80px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.cms-sponsor-card-placeholder {
+  align-items: center;
+  background: var(--itg-color-primary);
+  border-radius: var(--itg-radius-button);
+  color: #fff;
+  display: flex;
+  font-size: 2rem;
+  font-weight: 700;
+  height: 80px;
+  justify-content: center;
+  width: 80px;
+}
+
+.cms-sponsor-name {
+  color: var(--itg-color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .cms-sponsor-year-title {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .cms-sponsor-year-grid {
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}

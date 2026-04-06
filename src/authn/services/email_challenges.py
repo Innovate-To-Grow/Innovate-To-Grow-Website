@@ -15,8 +15,8 @@ from authn.services.email.auth_email import normalize_email
 logger = logging.getLogger(__name__)
 
 CHALLENGE_TTL = timedelta(minutes=10)
-RESEND_COOLDOWN = timedelta(seconds=60)
-MAX_CHALLENGES_PER_HOUR = 5
+RESEND_COOLDOWN = timedelta(seconds=30)
+MAX_CHALLENGES_PER_HOUR = 20
 
 
 class AuthChallengeError(RuntimeError):

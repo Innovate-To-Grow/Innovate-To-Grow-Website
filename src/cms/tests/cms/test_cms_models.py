@@ -74,7 +74,7 @@ class CMSPageModelTest(TestCase):
         with self.assertRaises(ValidationError):
             block.full_clean()
 
-    def test_soft_delete(self):
+    def test_delete(self):
         page = CMSPage.objects.create(
             slug="soft-del",
             route="/soft-del",
@@ -83,4 +83,3 @@ class CMSPageModelTest(TestCase):
         )
         page.delete()
         self.assertEqual(CMSPage.objects.filter(slug="soft-del").count(), 0)
-        self.assertEqual(CMSPage.all_objects.filter(slug="soft-del").count(), 1)

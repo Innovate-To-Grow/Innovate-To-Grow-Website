@@ -23,7 +23,7 @@ class SiteSettingsForm(forms.ModelForm):
 
         current_page_id = getattr(self.instance, "homepage_page_id", None)
         if current_page_id:
-            queryset = queryset | CMSPage.all_objects.filter(pk=current_page_id)
+            queryset = queryset | CMSPage.objects.filter(pk=current_page_id)
 
         self.fields["homepage_page"].queryset = queryset.distinct()
         # Match Unfold styling of other form controls (e.g., Title input)
@@ -40,7 +40,7 @@ class SiteSettingsForm(forms.ModelForm):
 
     def clean_homepage_page(self):
         page = self.cleaned_data.get("homepage_page")
-        if page and (page.status != "published" or page.is_deleted):
+        if page and page.status != "published":
             raise forms.ValidationError("Homepage must be a published CMS page.")
         return page
 
@@ -65,7 +65,7 @@ class SiteSettingsAdmin(ModelAdmin):
     )
 
     def homepage_page_display(self, obj):
-        page = CMSPage.all_objects.filter(pk=obj.homepage_page_id).first() if obj.homepage_page_id else None
+        page = CMSPage.objects.filter(pk=obj.homepage_page_id).first() if obj.homepage_page_id else None
         if not page:
             return "Fallback to /"
         return f"{page.title} ({page.route})"

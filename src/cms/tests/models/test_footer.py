@@ -72,7 +72,7 @@ class FooterContentCacheTests(TestCase):
         FooterContent.get_active()
 
         # Delete from DB but cache should still return it
-        FooterContent.all_objects.filter(slug="v1").delete()
+        FooterContent.objects.filter(slug="v1").delete()
         footer = FooterContent.get_active()
         self.assertIsNotNone(footer)
         self.assertEqual(footer.slug, "v1")

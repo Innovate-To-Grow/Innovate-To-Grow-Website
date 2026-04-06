@@ -140,7 +140,7 @@ def upsert_page(page_data, existing, default_status):
         for key, value in payload.items():
             setattr(existing, key, value)
         existing.save()
-        existing.blocks.filter(is_deleted=False).update(is_deleted=True, deleted_at=timezone.now())
+        existing.blocks.all().delete()
         return existing
     return CMSPage.objects.create(**payload)
 
@@ -173,6 +173,6 @@ def serialize_page(page):
                 "admin_label": block.admin_label,
                 "data": block.data,
             }
-            for block in page.blocks.filter(is_deleted=False).order_by("sort_order")
+            for block in page.blocks.all().order_by("sort_order")
         ],
     }

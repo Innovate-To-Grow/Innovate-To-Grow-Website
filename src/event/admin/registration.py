@@ -8,21 +8,24 @@ from ..models import EventRegistration
 @admin.register(EventRegistration)
 class EventRegistrationAdmin(BaseModelAdmin):
     list_display = (
-        "event",
+        "ticket_code",
         "attendee_first_name",
         "attendee_last_name",
         "attendee_email",
-        "attendee_organization",
+        "attendee_secondary_email",
+        "attendee_phone",
+        "phone_verified",
         "ticket",
-        "ticket_code",
+        "event",
         "created_at",
-        "ticket_email_sent_at",
     )
     list_filter = ("event", "ticket")
     search_fields = (
         "attendee_first_name",
         "attendee_last_name",
         "attendee_email",
+        "attendee_secondary_email",
+        "attendee_phone",
         "attendee_organization",
         "ticket_code",
     )
@@ -34,6 +37,9 @@ class EventRegistrationAdmin(BaseModelAdmin):
         "attendee_first_name",
         "attendee_last_name",
         "attendee_email",
+        "attendee_secondary_email",
+        "attendee_phone",
+        "phone_verified",
         "attendee_organization",
         "question_answers",
         "ticket_email_sent_at",
@@ -42,6 +48,50 @@ class EventRegistrationAdmin(BaseModelAdmin):
         "updated_at",
     )
     ordering = ("-created_at",)
+
+    fieldsets = (
+        (
+            "Attendee",
+            {
+                "fields": (
+                    "attendee_first_name",
+                    "attendee_last_name",
+                    "attendee_email",
+                    "attendee_secondary_email",
+                    "attendee_phone",
+                    "phone_verified",
+                    "attendee_organization",
+                ),
+            },
+        ),
+        (
+            "Ticket",
+            {
+                "fields": ("event", "ticket", "ticket_code", "member"),
+            },
+        ),
+        (
+            "Questions & Answers",
+            {
+                "classes": ("collapse",),
+                "fields": ("question_answers",),
+            },
+        ),
+        (
+            "Email Status",
+            {
+                "classes": ("collapse",),
+                "fields": ("ticket_email_sent_at", "ticket_email_error"),
+            },
+        ),
+        (
+            "System",
+            {
+                "classes": ("collapse",),
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):

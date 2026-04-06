@@ -18,5 +18,5 @@ class CMSPageSerializer(serializers.ModelSerializer):
 
     # noinspection PyMethodMayBeStatic
     def get_blocks(self, obj):
-        blocks = obj.blocks.filter(is_deleted=False).order_by("sort_order")
+        blocks = obj.blocks.all().order_by("sort_order")
         return CMSBlockSerializer(blocks, many=True).data

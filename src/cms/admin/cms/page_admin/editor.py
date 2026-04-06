@@ -29,7 +29,7 @@ def build_editor_context(obj=None):
         context["initial_blocks_json"] = "[]"
         return context
 
-    blocks = obj.blocks.filter(is_deleted=False).order_by("sort_order")
+    blocks = obj.blocks.all().order_by("sort_order")
     context["initial_blocks_json"] = json.dumps(
         [
             {
@@ -58,7 +58,7 @@ def save_blocks_from_json(request, page, messages):
         messages.error(request, f"Invalid blocks JSON: {exc}")
         return
 
-    page.blocks.filter(is_deleted=False).update(is_deleted=True, deleted_at=timezone.now())
+    page.blocks.all().delete()
     for index, block_data in enumerate(blocks_data):
         block_type = block_data.get("block_type", "")
         data = block_data.get("data", {})
@@ -106,7 +106,7 @@ def route_conflict_response(request):
             }
         )
 
-    conflict_qs = CMSPage.all_objects.filter(route=normalized_route)
+    conflict_qs = CMSPage.objects.filter(route=normalized_route)
     if page_id:
         conflict_qs = conflict_qs.exclude(pk=page_id)
     conflict = conflict_qs.values("title", "status").first()

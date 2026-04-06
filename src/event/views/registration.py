@@ -1,7 +1,6 @@
 import logging
 
 from django.db import IntegrityError
-from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -13,6 +12,9 @@ from event.serializers import (
     build_event_registration_option_payload,
     build_registration_payload,
 )
+from event.services.registration_sheet_sync import schedule_registration_sync
+from event.services.sync_registration_email import sync_secondary_email_to_account
+from event.services.sync_registration_to_account import sync_name_to_account, sync_phone_to_account
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +34,6 @@ class EventRegistrationOptionsView(APIView):
         )
         if event is None:
             return Response({"detail": "No live event available."}, status=status.HTTP_404_NOT_FOUND)
-
-        tickets = event.tickets.annotate(
-            registration_count=Count("registrations", filter=Q(registrations__is_deleted=False))
-        )
-        event._prefetched_objects_cache["tickets"] = list(tickets)
 
         registration = None
         if request.user.is_authenticated:
@@ -83,11 +80,6 @@ class EventRegistrationCreateView(APIView):
         except Ticket.DoesNotExist:
             return Response({"detail": "Invalid ticket for this event."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if ticket.quantity > 0:
-            current_count = EventRegistration.objects.filter(ticket=ticket).count()
-            if current_count >= ticket.quantity:
-                return Response({"detail": "This ticket is sold out."}, status=status.HTTP_400_BAD_REQUEST)
-
         questions = {str(q.pk): q for q in Question.objects.filter(event=event)}
         required_ids = {qid for qid, q in questions.items() if q.is_required}
         answers = data.get("answers", [])
@@ -127,6 +119,19 @@ class EventRegistrationCreateView(APIView):
                 create_kwargs["attendee_last_name"] = data["attendee_last_name"]
             if data.get("attendee_organization"):
                 create_kwargs["attendee_organization"] = data["attendee_organization"]
+            if data.get("attendee_secondary_email") and event.allow_secondary_email:
+                create_kwargs["attendee_secondary_email"] = data["attendee_secondary_email"]
+            phone_verified_inline = False
+            if data.get("attendee_phone") and event.collect_phone:
+                phone = data["attendee_phone"].strip()
+                if phone and not phone.startswith("+"):
+                    region = data.get("attendee_phone_region", "1-US")
+                    country_code = region.split("-")[0] if "-" in region else region
+                    phone = f"+{country_code}{phone}"
+                create_kwargs["attendee_phone"] = phone
+                if data.get("phone_verified"):
+                    create_kwargs["phone_verified"] = True
+                    phone_verified_inline = True
             registration = EventRegistration.objects.create(**create_kwargs)
         except IntegrityError:
             existing = (
@@ -142,6 +147,27 @@ class EventRegistrationCreateView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        sync_name_to_account(request.user, registration.attendee_first_name, registration.attendee_last_name)
+
+        if event.allow_secondary_email and registration.attendee_secondary_email:
+            sync_secondary_email_to_account(request.user, registration.attendee_secondary_email)
+
+        if event.collect_phone and registration.attendee_phone:
+            phone_region = data.get("attendee_phone_region", "1-US")
+            sync_phone_to_account(
+                request.user, registration.attendee_phone, region=phone_region, verified=phone_verified_inline
+            )
+
+        schedule_registration_sync(event)
+
+        try:
+            from event.services.ticket_mail import send_ticket_email
+
+            send_ticket_email(registration)
+        except Exception:
+            logger.exception("Failed to send initial ticket email for registration %s", registration.pk)
+
+        registration.refresh_from_db()
         return Response(build_registration_payload(registration, request=request), status=status.HTTP_201_CREATED)
 
 
@@ -154,9 +180,86 @@ class MyTicketsView(APIView):
         return Response([build_registration_payload(r, request=request) for r in registrations])
 
 
+class SendPhoneCodeView(APIView):
+    """Send a verification SMS to a phone number (pre-registration, inline)."""
+
+    permission_classes = [IsAuthenticated]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request):
+        phone = request.data.get("phone", "").strip()
+        region = request.data.get("region", "1-US")
+        if not phone:
+            return Response({"detail": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not phone.startswith("+"):
+            country_code = region.split("-")[0] if "-" in region else region
+            phone = f"+{country_code}{phone}"
+
+        try:
+            from authn.services.sms import start_phone_verification
+
+            start_phone_verification(phone)
+        except Exception as exc:
+            logger.exception("Failed to send phone verification SMS to %s", phone)
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response({"detail": "Verification code sent.", "phone": phone})
+
+
+class VerifyPhoneCodeView(APIView):
+    """Verify a phone SMS code (pre-registration, inline)."""
+
+    permission_classes = [IsAuthenticated]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request):
+        phone = request.data.get("phone", "").strip()
+        code = request.data.get("code", "").strip()
+        if not phone or not code:
+            return Response({"detail": "Phone and code are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from authn.services.sms import check_phone_verification
+            from authn.services.sms.twilio_verify import PhoneVerificationInvalid, PhoneVerificationThrottled
+
+            check_phone_verification(phone, code)
+        except PhoneVerificationThrottled:
+            return Response(
+                {"detail": "Too many failed attempts. Please request a new code."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        except PhoneVerificationInvalid:
+            return Response({"detail": "Invalid or expired verification code."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.exception("Phone verification failed for %s", phone)
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response({"detail": "Phone verified.", "phone": phone, "verified": True})
+
+
 class ResendTicketEmailView(APIView):
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
-        return Response({"detail": "Email sending is not configured."}, status=status.HTTP_501_NOT_IMPLEMENTED)
+        try:
+            registration = (
+                EventRegistration.objects.select_related("event", "ticket", "member").get(pk=pk, member=request.user)
+            )
+        except EventRegistration.DoesNotExist:
+            return Response({"detail": "Registration not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            from event.services.ticket_mail import send_ticket_email
+
+            send_ticket_email(registration)
+        except Exception:
+            logger.exception("Failed to send ticket email for registration %s", pk)
+            return Response(
+                {"detail": "Failed to send email. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        registration.refresh_from_db()
+        return Response(build_registration_payload(registration, request=request))

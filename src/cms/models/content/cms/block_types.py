@@ -14,6 +14,7 @@ BLOCK_TYPE_CHOICES = [
     ("numbered_list", "Numbered List"),
     ("proposal_cards", "Proposal Cards"),
     ("navigation_grid", "Navigation Grid"),
+    ("sponsor_year", "Sponsor Year"),
 ]
 
 BLOCK_TYPE_KEYS = {choice[0] for choice in BLOCK_TYPE_CHOICES}
@@ -33,6 +34,7 @@ BLOCK_SCHEMAS = {
     "numbered_list": {"required": ["items"], "optional": ["heading", "preamble_html"]},
     "proposal_cards": {"required": ["proposals"], "optional": ["heading", "footer_html"]},
     "navigation_grid": {"required": ["items"], "optional": ["heading"]},
+    "sponsor_year": {"required": ["year", "sponsors"], "optional": []},
 }
 
 
@@ -45,3 +47,18 @@ def validate_block_data(block_type, data):
     for field in schema["required"]:
         if field not in data:
             raise ValidationError(f"Block type '{block_type}' requires field '{field}'.")
+
+    if block_type == "sponsor_year":
+        year = str(data.get("year", "")).strip()
+        sponsors = data.get("sponsors")
+
+        if not year:
+            raise ValidationError("Block type 'sponsor_year' requires a non-empty 'year'.")
+        if not isinstance(sponsors, list):
+            raise ValidationError("Block type 'sponsor_year' requires 'sponsors' to be a list.")
+
+        for index, sponsor in enumerate(sponsors):
+            if not isinstance(sponsor, dict):
+                raise ValidationError(f"Sponsor #{index + 1} must be an object.")
+            if not str(sponsor.get("name", "")).strip():
+                raise ValidationError(f"Sponsor #{index + 1} requires a non-empty 'name'.")

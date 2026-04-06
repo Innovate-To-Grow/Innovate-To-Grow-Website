@@ -1,3 +1,3 @@
-from .base import AllObjectsManager, ProjectControlManager, ProjectControlQuerySet
+from .base import ProjectControlManager, ProjectControlQuerySet
 
-__all__ = ["AllObjectsManager", "ProjectControlManager", "ProjectControlQuerySet"]
+__all__ = ["ProjectControlManager", "ProjectControlQuerySet"]

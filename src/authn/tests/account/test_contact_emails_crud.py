@@ -169,5 +169,4 @@ class ContactEmailCrudTests(APITestCase):
         delete_resp = self.client.delete(f"/authn/contact-emails/{contact_id}/")
         self.assertEqual(delete_resp.status_code, 204)
 
-        # Soft-deleted: visible via all_objects only
         self.assertFalse(ContactEmail.objects.filter(pk=contact_id).exists())

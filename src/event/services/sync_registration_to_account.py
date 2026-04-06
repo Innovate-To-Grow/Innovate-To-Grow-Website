@@ -1,0 +1,64 @@
+"""
+Sync event registration data back to the member's Django account.
+
+Updates: first_name, last_name, and creates ContactPhone if phone was collected.
+"""
+
+import logging
+
+from django.db import IntegrityError
+
+from authn.models import ContactPhone
+
+logger = logging.getLogger(__name__)
+
+
+def sync_name_to_account(member, first_name: str, last_name: str) -> None:
+    """Update the member's first_name and last_name from the registration form."""
+    changed = False
+    if first_name and first_name != member.first_name:
+        member.first_name = first_name
+        changed = True
+    if last_name is not None and last_name != member.last_name:
+        member.last_name = last_name
+        changed = True
+    if changed:
+        member.save(update_fields=["first_name", "last_name", "updated_at"])
+        logger.info("Synced name to member %s: %s %s", member.pk, first_name, last_name)
+
+
+def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:
+    """Sync event registration phone to the member's ContactPhone.
+
+    Conflict rules (same pattern as sync_secondary_email_to_account):
+    - Already on this member → update verified status if needed.
+    - Owned by a different member → skip (don't steal).
+    - Brand new → create.
+    - Race condition → swallow IntegrityError.
+    """
+    if not phone_number or not phone_number.strip():
+        return
+
+    normalized = phone_number.strip()
+
+    existing = ContactPhone.objects.filter(phone_number=normalized).first()
+    if existing:
+        if existing.member_id == member.pk:
+            if verified and not existing.verified:
+                existing.verified = True
+                existing.save(update_fields=["verified", "updated_at"])
+                logger.info("Marked phone %s as verified for member %s.", normalized, member.pk)
+        else:
+            logger.info("Phone %s belongs to another member, not syncing to member %s.", normalized, member.pk)
+        return
+
+    try:
+        ContactPhone.objects.create(
+            member=member,
+            phone_number=normalized,
+            region=region,
+            verified=verified,
+        )
+        logger.info("Synced phone %s to member %s account.", normalized, member.pk)
+    except IntegrityError:
+        logger.warning("Phone %s was claimed concurrently, skipping sync for member %s.", normalized, member.pk)

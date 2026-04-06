@@ -1,0 +1,426 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<style>
+  .scanner-container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .scanner-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .scanner-header h2 { margin: 0 0 4px; font-size: 24px; }
+  .scanner-header p { margin: 0; color: #6b7280; font-size: 14px; }
+
+  .scanner-stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: #6b7280;
+  }
+  .scanner-stats strong { color: #111827; }
+
+  /* Mode toggle */
+  .scanner-mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .scanner-mode-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #fff;
+    color: #6b7280;
+    transition: background 0.15s, color 0.15s;
+  }
+  .scanner-mode-btn.active {
+    background: #003366;
+    color: #fff;
+  }
+  .scanner-mode-btn:not(.active):hover {
+    background: #f3f4f6;
+  }
+
+  /* Manual input */
+  .scanner-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .scanner-input {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    outline: none;
+    font-family: "Courier New", monospace;
+    letter-spacing: 1px;
+  }
+  .scanner-input:focus {
+    border-color: #003366;
+    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+  }
+  .scanner-btn {
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #003366;
+    color: #fff;
+  }
+  .scanner-btn:hover { background: #002244; }
+  .scanner-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Camera */
+  .scanner-camera-section { margin-bottom: 20px; }
+  #camera-reader {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #camera-reader video { border-radius: 8px; }
+  /* Override html5-qrcode default styles */
+  #camera-reader img[alt="Info icon"] { display: none; }
+  #camera-reader__dashboard { padding: 8px 0 !important; }
+  #camera-reader__dashboard_section { padding: 0 !important; }
+  #camera-reader__dashboard_section_csr button {
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    background: #003366 !important;
+    color: #fff !important;
+    border: none !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+  }
+  #camera-reader__dashboard_section_csr select {
+    padding: 6px 8px !important;
+    border-radius: 6px !important;
+    border: 1px solid #d1d5db !important;
+    font-size: 14px !important;
+  }
+
+  /* Result */
+  .scanner-result {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .scanner-result.success { background: #ecfdf5; border: 1px solid #6ee7b7; display: block; }
+  .scanner-result.duplicate { background: #fffbeb; border: 1px solid #fcd34d; display: block; }
+  .scanner-result.error { background: #fef2f2; border: 1px solid #fca5a5; display: block; }
+  .scanner-result h3 { margin: 0 0 8px; font-size: 16px; }
+  .scanner-result p { margin: 4px 0; font-size: 14px; }
+
+  /* History */
+  .scanner-history { margin-top: 32px; }
+  .scanner-history h3 { font-size: 16px; margin-bottom: 12px; }
+  .scanner-history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+  }
+  .scanner-history-item:first-child { border-top: 1px solid #e5e7eb; }
+
+  /* Not checked in list */
+  .scanner-remaining { margin-top: 32px; }
+  .scanner-remaining h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .scanner-remaining-count {
+    font-size: 13px;
+    font-weight: 400;
+    color: #6b7280;
+  }
+  .scanner-remaining-list {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .scanner-remaining-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+  }
+  .scanner-remaining-item:last-child { border-bottom: none; }
+  .scanner-remaining-item .name { font-weight: 600; color: #1f2937; }
+  .scanner-remaining-item .meta { color: #6b7280; font-size: 13px; }
+  .scanner-remaining-empty {
+    padding: 24px;
+    text-align: center;
+    color: #16a34a;
+    font-weight: 600;
+  }
+
+  .hidden { display: none; }
+</style>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<div class="scanner-container">
+  <div class="scanner-header">
+    <h2>{{ check_in.name }}</h2>
+    <p>{{ check_in.event.name }}</p>
+  </div>
+
+  <div class="scanner-stats">
+    <span>Scanned: <strong id="scan-count">{{ scan_count }}</strong> / <strong id="total-count">-</strong></span>
+    <span>Remaining: <strong id="remaining-count">-</strong></span>
+    <span>Status: <strong>{% if check_in.is_active %}Active{% else %}Closed{% endif %}</strong></span>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="scanner-mode-toggle">
+    <button class="scanner-mode-btn active" id="mode-camera" onclick="switchMode('camera')">Camera</button>
+    <button class="scanner-mode-btn" id="mode-manual" onclick="switchMode('manual')">Manual Input</button>
+  </div>
+
+  <!-- Camera scanner -->
+  <div id="camera-section" class="scanner-camera-section">
+    <div id="camera-reader"></div>
+  </div>
+
+  <!-- Manual input -->
+  <div id="manual-section" class="hidden">
+    <form id="scanner-form" onsubmit="return handleManualScan(event)">
+      <div class="scanner-input-group">
+        <input
+          type="text"
+          id="barcode-input"
+          class="scanner-input"
+          placeholder="Scan barcode or type ticket code..."
+          autocomplete="off"
+        />
+        <button type="submit" class="scanner-btn" id="scan-btn">Scan</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="scan-result" class="scanner-result"></div>
+
+  <div class="scanner-history">
+    <h3>Recent Scans</h3>
+    <div id="scan-history"></div>
+  </div>
+
+  <div class="scanner-remaining">
+    <h3>
+      Not Checked In
+      <span class="scanner-remaining-count" id="remaining-label"></span>
+    </h3>
+    <div class="scanner-remaining-list" id="remaining-list">
+      <div class="scanner-remaining-empty">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SCAN_URL = "{{ scan_url }}";
+  const STATUS_URL = SCAN_URL.replace("/scan/", "/status/");
+  const CSRF_TOKEN = "{{ csrf_token }}";
+  let html5QrCode = null;
+  let cameraRunning = false;
+  let cameraAvailable = true;
+  let processingBarcode = false;
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+  }
+
+  // ---- Mode switching ----
+  function switchMode(mode) {
+    if (mode === "camera" && !cameraAvailable) return; // Camera not available on this device
+    document.getElementById("mode-camera").classList.toggle("active", mode === "camera");
+    document.getElementById("mode-manual").classList.toggle("active", mode === "manual");
+    document.getElementById("camera-section").classList.toggle("hidden", mode !== "camera");
+    document.getElementById("manual-section").classList.toggle("hidden", mode !== "manual");
+
+    if (mode === "camera") {
+      startCamera();
+    } else {
+      stopCamera();
+      document.getElementById("barcode-input").focus();
+    }
+  }
+
+  // ---- Camera scanner ----
+  function startCamera() {
+    if (cameraRunning) return;
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("camera-reader");
+    }
+    html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 300, height: 150 },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.PDF_417,
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+        ],
+      },
+      onCameraResult,
+      () => {} // ignore errors (no barcode in frame)
+    ).then(() => {
+      cameraRunning = true;
+    }).catch(() => {
+      cameraAvailable = false;
+      document.getElementById("mode-camera").disabled = true;
+      document.getElementById("mode-camera").style.opacity = "0.4";
+      document.getElementById("mode-camera").style.cursor = "not-allowed";
+      document.getElementById("mode-camera").textContent = "Camera (unavailable)";
+      switchMode("manual");
+    });
+  }
+
+  function stopCamera() {
+    if (html5QrCode && cameraRunning) {
+      html5QrCode.stop().then(() => { cameraRunning = false; }).catch(() => {});
+    }
+  }
+
+  function onCameraResult(decodedText) {
+    if (processingBarcode) return;
+    processingBarcode = true;
+    submitBarcode(decodedText).finally(() => {
+      setTimeout(() => { processingBarcode = false; }, 2000); // 2s cooldown between scans
+    });
+  }
+
+  // ---- Manual input ----
+  function handleManualScan(e) {
+    e.preventDefault();
+    const input = document.getElementById("barcode-input");
+    const value = input.value.trim();
+    if (!value) return false;
+    submitBarcode(value).then(() => {
+      input.value = "";
+      input.focus();
+    });
+    return false;
+  }
+
+  // ---- Submit barcode to API ----
+  async function submitBarcode(value) {
+    const resultDiv = document.getElementById("scan-result");
+    try {
+      const resp = await fetch(SCAN_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || CSRF_TOKEN,
+        },
+        body: JSON.stringify({ barcode: value }),
+      });
+      const data = await resp.json();
+
+      if (data.status === "success") {
+        resultDiv.className = "scanner-result success";
+        resultDiv.innerHTML = `
+          <h3>Checked In</h3>
+          <p><strong>${data.attendee.name}</strong></p>
+          <p>${data.attendee.email} &middot; ${data.attendee.ticket_type}</p>
+          <p>Code: ${data.attendee.ticket_code}</p>
+        `;
+        addToHistory(data.attendee.name, data.attendee.ticket_type, "success");
+        loadStatus();
+      } else if (data.status === "duplicate") {
+        resultDiv.className = "scanner-result duplicate";
+        resultDiv.innerHTML = `
+          <h3>Already Checked In</h3>
+          <p><strong>${data.attendee.name}</strong></p>
+          <p>${data.attendee.email} &middot; ${data.attendee.ticket_type}</p>
+          <p>${data.detail}</p>
+        `;
+        addToHistory(data.attendee.name, "Duplicate", "duplicate");
+      } else {
+        resultDiv.className = "scanner-result error";
+        resultDiv.innerHTML = `<h3>Not Found</h3><p>${data.detail || "Unknown error"}</p>`;
+        addToHistory(value.substring(0, 20), "Not Found", "error");
+      }
+    } catch (err) {
+      resultDiv.className = "scanner-result error";
+      resultDiv.innerHTML = `<h3>Error</h3><p>${err.message}</p>`;
+    }
+  }
+
+  function addToHistory(name, type, status) {
+    const history = document.getElementById("scan-history");
+    const time = new Date().toLocaleTimeString();
+    const item = document.createElement("div");
+    item.className = "scanner-history-item";
+    item.innerHTML = `<span>${name} &middot; ${type}</span><span>${time}</span>`;
+    history.insertBefore(item, history.firstChild);
+  }
+
+  // ---- Load status (not-checked-in list) ----
+  async function loadStatus() {
+    try {
+      const resp = await fetch(STATUS_URL, {
+        headers: { "X-CSRFToken": getCookie("csrftoken") || CSRF_TOKEN },
+      });
+      const data = await resp.json();
+
+      document.getElementById("total-count").textContent = data.total;
+      document.getElementById("scan-count").textContent = data.scanned;
+      document.getElementById("remaining-count").textContent = data.not_checked_in.length;
+      document.getElementById("remaining-label").textContent = `${data.not_checked_in.length} of ${data.total}`;
+
+      const list = document.getElementById("remaining-list");
+      if (data.not_checked_in.length === 0) {
+        list.innerHTML = '<div class="scanner-remaining-empty">Everyone is checked in!</div>';
+      } else {
+        list.innerHTML = data.not_checked_in.map(a =>
+          `<div class="scanner-remaining-item">
+            <div>
+              <span class="name">${a.name}</span>
+              <span class="meta"> &middot; ${a.ticket_type}</span>
+            </div>
+            <span class="meta">${a.email}</span>
+          </div>`
+        ).join("");
+      }
+    } catch (err) {
+      console.error("Failed to load check-in status", err);
+    }
+  }
+
+  // Auto-start camera + load status on load
+  document.addEventListener("DOMContentLoaded", () => {
+    startCamera();
+    loadStatus();
+  });
+</script>
+{% endblock %}

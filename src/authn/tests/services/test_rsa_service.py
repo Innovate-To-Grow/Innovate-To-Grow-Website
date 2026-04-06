@@ -19,7 +19,7 @@ from authn.services.rsa_manager import (
 class RSAManagerServiceTests(TestCase):
     # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
-        RSAKeypair.all_objects.all().hard_delete()
+        RSAKeypair.objects.all().delete()
 
     def test_get_public_key_creates_keypair(self):
         pem, key_id = get_public_key_pem()

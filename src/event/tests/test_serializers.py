@@ -97,35 +97,11 @@ class SerializeTicketOptionTest(TestCase):
     def setUp(self):
         self.event = make_event()
 
-    def test_unlimited_ticket_remaining_is_none(self):
-        ticket = Ticket.objects.create(event=self.event, name="GA", quantity=0)
-        ticket.registration_count = 5
+    def test_contains_id_and_name(self):
+        ticket = Ticket.objects.create(event=self.event, name="GA")
         result = _serialize_ticket_option(ticket)
-        self.assertIsNone(result["remaining_quantity"])
-
-    def test_limited_ticket_remaining_calculated(self):
-        ticket = Ticket.objects.create(event=self.event, name="GA", quantity=100)
-        ticket.registration_count = 30
-        result = _serialize_ticket_option(ticket)
-        self.assertEqual(result["remaining_quantity"], 70)
-
-    def test_sold_out_ticket_is_sold_out_true(self):
-        ticket = Ticket.objects.create(event=self.event, name="GA", quantity=10)
-        ticket.registration_count = 10
-        result = _serialize_ticket_option(ticket)
-        self.assertTrue(result["is_sold_out"])
-
-    def test_unlimited_ticket_is_sold_out_false(self):
-        ticket = Ticket.objects.create(event=self.event, name="GA", quantity=0)
-        ticket.registration_count = 999
-        result = _serialize_ticket_option(ticket)
-        self.assertFalse(result["is_sold_out"])
-
-    def test_price_formatted_two_decimals(self):
-        ticket = Ticket.objects.create(event=self.event, name="GA", price=25)
-        ticket.registration_count = 0
-        result = _serialize_ticket_option(ticket)
-        self.assertEqual(result["price"], "25.00")
+        self.assertEqual(result["id"], str(ticket.pk))
+        self.assertEqual(result["name"], "GA")
 
 
 # ---------- _serialize_question ----------
@@ -151,7 +127,7 @@ class BuildRegistrationPayloadTest(TestCase):
     def setUp(self):
         self.member = make_member(first_name="Jane", last_name="Doe")
         self.event = make_event()
-        self.ticket = Ticket.objects.create(event=self.event, name="GA", price=10)
+        self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 
     def test_contains_all_expected_keys(self):
@@ -163,6 +139,10 @@ class BuildRegistrationPayloadTest(TestCase):
             "attendee_last_name",
             "attendee_name",
             "attendee_email",
+            "attendee_secondary_email",
+            "attendee_phone",
+            "phone_verified",
+            "phone_verification_required",
             "attendee_organization",
             "registered_at",
             "ticket_email_sent_at",
@@ -189,7 +169,6 @@ class BuildRegistrationPayloadTest(TestCase):
         result = build_registration_payload(self.registration)
         ticket_data = result["ticket"]
         self.assertEqual(ticket_data["name"], "GA")
-        self.assertEqual(ticket_data["price"], "10.00")
 
     def test_ticket_email_sent_at_none_when_not_sent(self):
         result = build_registration_payload(self.registration)

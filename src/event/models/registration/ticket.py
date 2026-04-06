@@ -13,8 +13,6 @@ class Ticket(ProjectControlModel):
     event = models.ForeignKey("event.Event", on_delete=models.CASCADE, related_name="tickets")
     name = models.CharField(max_length=255)
     barcode = models.CharField(max_length=64, unique=True, default=generate_barcode, editable=False)
-    price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    quantity = models.PositiveIntegerField(default=0, help_text="0 means unlimited")
     order = models.PositiveIntegerField(default=0)
 
     BARCODE_FORMAT = "PDF417"

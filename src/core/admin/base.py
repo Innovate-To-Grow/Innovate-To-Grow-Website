@@ -4,17 +4,16 @@ Base admin classes for consistent admin interface across the project.
 
 from unfold.admin import ModelAdmin
 
-from .mixins import SoftDeleteAdminMixin, TimestampedAdminMixin
+from .mixins import TimestampedAdminMixin
 
 
-class BaseModelAdmin(SoftDeleteAdminMixin, TimestampedAdminMixin, ModelAdmin):
+class BaseModelAdmin(TimestampedAdminMixin, ModelAdmin):
     """
     Base admin class with common configuration for all model admins.
 
     Provides:
     - Unfold theme integration
     - Common readonly fields for ProjectControlModel
-    - Soft-delete awareness (shows deleted items, restore/delete actions)
     - Timestamp readonly fields
     - Standard list display configuration
     """

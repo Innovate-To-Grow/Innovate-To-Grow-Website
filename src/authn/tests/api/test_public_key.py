@@ -12,7 +12,7 @@ class PublicKeyViewTests(APITestCase):
     # noinspection PyMethodMayBeStatic,PyPep8Naming
     def setUp(self):
         cache.clear()
-        RSAKeypair.all_objects.all().hard_delete()
+        RSAKeypair.objects.all().delete()
 
     def test_get_public_key_returns_200(self):
         response = self.client.get("/authn/public-key/")

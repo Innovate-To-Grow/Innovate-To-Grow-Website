@@ -1,3 +1,6 @@
+import uuid
+from unittest.mock import patch
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -75,9 +78,32 @@ class ResendTicketEmailViewTest(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 401)
 
-    def test_returns_501_not_implemented(self):
+    @patch("event.services.ticket_mail.send_ticket_email")
+    def test_resend_sends_email_successfully(self, mock_send):
         self.client.force_authenticate(self.member)
         url = f"/event/my-tickets/{self.registration.pk}/resend-email/"
         response = self.client.post(url)
-        self.assertEqual(response.status_code, 501)
-        self.assertIn("not configured", response.data["detail"])
+        self.assertEqual(response.status_code, 200)
+        mock_send.assert_called_once()
+        self.assertIn("ticket_code", response.data)
+
+    def test_resend_other_users_registration_returns_404(self):
+        other = make_member(email="other@example.com")
+        self.client.force_authenticate(other)
+        url = f"/event/my-tickets/{self.registration.pk}/resend-email/"
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_resend_nonexistent_registration_returns_404(self):
+        self.client.force_authenticate(self.member)
+        url = f"/event/my-tickets/{uuid.uuid4()}/resend-email/"
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+
+    @patch("event.services.ticket_mail.send_ticket_email", side_effect=Exception("SMTP error"))
+    def test_resend_email_failure_returns_503(self, mock_send):
+        self.client.force_authenticate(self.member)
+        url = f"/event/my-tickets/{self.registration.pk}/resend-email/"
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("Failed to send", response.data["detail"])

@@ -1,11 +1,10 @@
-"""Tests for core admin mixins (soft-delete, timestamped, export)."""
+"""Tests for core admin mixins (timestamped, export)."""
 
 import csv
 import io
 import json
 
 from django.contrib.auth import get_user_model
-from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
@@ -13,7 +12,6 @@ from cms.models import NewsArticle
 from core.admin.mixins import (
     ExportMixin,
     ImportExportMixin,
-    SoftDeleteAdminMixin,
     TimestampedAdminMixin,
 )
 
@@ -56,10 +54,6 @@ class _MockSuperAdmin:
         obj.save()
 
 
-class _SoftDeleteAdmin(SoftDeleteAdminMixin, _MockSuperAdmin):
-    pass
-
-
 class _TimestampAdmin(TimestampedAdminMixin, _MockSuperAdmin):
     pass
 
@@ -72,64 +66,6 @@ class _ExportCsvAdmin(ExportMixin, _MockSuperAdmin):
     pass
 
 
-class SoftDeleteAdminMixinTest(TestCase):
-    def setUp(self):
-        self.admin = _SoftDeleteAdmin()
-        self.factory = RequestFactory()
-        self.request = self.factory.get("/admin/")
-
-    def test_queryset_includes_deleted(self):
-        active = _make_article(source_guid="sd-active")
-        deleted = _make_article(source_guid="sd-deleted")
-        deleted.delete()
-
-        qs = self.admin.get_queryset(self.request)
-        self.assertIn(active, qs)
-        self.assertIn(deleted, qs)
-
-    def test_list_display_adds_deletion_status(self):
-        display = self.admin.get_list_display(self.request)
-        self.assertIn("deletion_status", display)
-
-    def test_list_filter_adds_is_deleted(self):
-        filters = self.admin.get_list_filter(self.request)
-        self.assertIn("is_deleted", filters)
-
-    def test_deletion_status_active(self):
-        article = _make_article()
-        result = self.admin.deletion_status(article)
-        self.assertIn("Active", result)
-
-    def test_deletion_status_deleted(self):
-        article = _make_article()
-        article.is_deleted = True
-        result = self.admin.deletion_status(article)
-        self.assertIn("Deleted", result)
-
-    def _request_with_messages(self):
-        request = self.factory.post("/admin/")
-        request.session = "session"
-        request._messages = FallbackStorage(request)
-        return request
-
-    def test_restore_selected_action(self):
-        article = _make_article()
-        article.delete()
-        qs = NewsArticle.all_objects.filter(pk=article.pk)
-
-        self.admin.restore_selected(self._request_with_messages(), qs)
-        article.refresh_from_db()
-        self.assertFalse(article.is_deleted)
-
-    def test_soft_delete_selected_action(self):
-        article = _make_article()
-        qs = NewsArticle.objects.filter(pk=article.pk)
-
-        self.admin.soft_delete_selected(self._request_with_messages(), qs)
-        article.refresh_from_db()
-        self.assertTrue(article.is_deleted)
-
-
 class TimestampedAdminMixinTest(TestCase):
     def setUp(self):
         self.admin = _TimestampAdmin()
@@ -138,7 +74,7 @@ class TimestampedAdminMixinTest(TestCase):
 
     def test_readonly_includes_timestamp_fields(self):
         readonly = self.admin.get_readonly_fields(self.request)
-        for field in ("created_at", "updated_at", "deleted_at"):
+        for field in ("created_at", "updated_at"):
             self.assertIn(field, readonly)
 
     def test_list_display_includes_created_at(self):

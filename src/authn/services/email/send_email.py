@@ -76,10 +76,11 @@ def _send_via_ses(*, config, recipient: str, subject: str, html_body: str) -> bo
 
 
 def _send_via_smtp(*, config, recipient: str, subject: str, html_body: str):
-    """Send via Django's SMTP backend using DB-stored credentials."""
+    """Send via SMTP using DB-stored credentials, bypassing EMAIL_BACKEND setting."""
     from django.core.mail import get_connection
 
     connection = get_connection(
+        backend="django.core.mail.backends.smtp.EmailBackend",
         host=config.smtp_host,
         port=config.smtp_port,
         username=config.smtp_username,

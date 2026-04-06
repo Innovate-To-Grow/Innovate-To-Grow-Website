@@ -41,8 +41,8 @@ class SiteSettings(models.Model):
         from cms.models import CMSPage
 
         if self.homepage_page_id:
-            selected_page = CMSPage.all_objects.filter(pk=self.homepage_page_id).first()
-            if selected_page and not selected_page.is_deleted and selected_page.status == "published":
+            selected_page = CMSPage.objects.filter(pk=self.homepage_page_id, status="published").first()
+            if selected_page:
                 return selected_page.route
 
         root_page = CMSPage.objects.filter(route="/", status="published").first()

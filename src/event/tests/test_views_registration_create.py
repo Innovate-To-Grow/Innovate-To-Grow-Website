@@ -67,21 +67,6 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertIn("registration", response.data)
         self.assertIn("id", response.data["registration"])
 
-    def test_sold_out_ticket_returns_400(self):
-        self.ticket.quantity = 1
-        self.ticket.save()
-        other_member = make_member(email="other@example.com")
-        EventRegistration.objects.create(member=other_member, event=self.event, ticket=self.ticket)
-        response = self._post()
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("sold out", response.data["detail"])
-
-    def test_unlimited_ticket_never_sold_out(self):
-        self.ticket.quantity = 0
-        self.ticket.save()
-        response = self._post()
-        self.assertEqual(response.status_code, 201)
-
     def test_required_question_missing_answer_returns_400(self):
         Question.objects.create(event=self.event, text="Required Q", is_required=True)
         response = self._post()
@@ -157,3 +142,49 @@ class EventRegistrationCreateViewTest(TestCase):
         }
         response = self._post(data)
         self.assertEqual(response.status_code, 201)
+
+    # ---------- Feature-flag gating ----------
+
+    def test_secondary_email_stored_when_flag_on(self):
+        self.event.allow_secondary_email = True
+        self.event.save()
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_secondary_email": "second@example.com",
+        }
+        self._post(data)
+        reg = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertEqual(reg.attendee_secondary_email, "second@example.com")
+
+    def test_secondary_email_ignored_when_flag_off(self):
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_secondary_email": "second@example.com",
+        }
+        self._post(data)
+        reg = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertEqual(reg.attendee_secondary_email, "")
+
+    def test_phone_stored_when_flag_on(self):
+        self.event.collect_phone = True
+        self.event.save()
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_phone": "+15551234567",
+        }
+        self._post(data)
+        reg = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertEqual(reg.attendee_phone, "+15551234567")
+
+    def test_phone_ignored_when_flag_off(self):
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_phone": "+15551234567",
+        }
+        self._post(data)
+        reg = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertEqual(reg.attendee_phone, "")

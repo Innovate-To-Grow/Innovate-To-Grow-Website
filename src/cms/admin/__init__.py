@@ -9,7 +9,7 @@ Organized into modules by feature:
 """
 
 from .analytics import PageViewAdmin
-from .cms import CMSPageAdmin
+from .cms import CMSAssetAdmin, CMSPageAdmin
 from .layout.footer_content import FooterContentAdmin
 from .layout.menu import MenuAdmin
 from .layout.site_settings import SiteSettingsAdmin
@@ -22,6 +22,7 @@ __all__ = [
     "SiteSettingsAdmin",
     # CMS
     "CMSPageAdmin",
+    "CMSAssetAdmin",
     # News
     "NewsArticleAdmin",
     "NewsFeedSourceAdmin",

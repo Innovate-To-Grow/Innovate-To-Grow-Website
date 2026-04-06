@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 
 from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
@@ -45,27 +44,6 @@ class ContactEmail(ProjectControlModel):
     verified = models.BooleanField(
         default=False, help_text="Whether the email address has been verified", verbose_name="Verified"
     )
-
-    def validate_unique(self, exclude=None):
-        super().validate_unique(exclude=exclude)
-        # The default manager excludes soft-deleted rows, but the DB unique
-        # constraint covers all rows.  Only reject truly active duplicates —
-        # soft-deleted ones are cleaned up in save().
-        if exclude is None or "email_address" not in exclude:
-            qs = ContactEmail.all_objects.filter(email_address=self.email_address, is_deleted=False)
-            if self.pk:
-                qs = qs.exclude(pk=self.pk)
-            if qs.exists():
-                raise ValidationError({"email_address": "A contact email with this address already exists."})
-
-    def save(self, *args, **kwargs):
-        # Hard-delete any soft-deleted record with the same email so the DB
-        # unique constraint does not block the insert.
-        qs = ContactEmail.all_objects.filter(email_address=self.email_address, is_deleted=True)
-        if self.pk:
-            qs = qs.exclude(pk=self.pk)
-        qs.hard_delete()
-        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Contact Email"
@@ -119,22 +97,6 @@ class ContactPhone(ProjectControlModel):
         help_text="Whether the phone number has been verified",
         verbose_name="Verified",
     )
-
-    def validate_unique(self, exclude=None):
-        super().validate_unique(exclude=exclude)
-        if exclude is None or "phone_number" not in exclude:
-            qs = ContactPhone.all_objects.filter(phone_number=self.phone_number, is_deleted=False)
-            if self.pk:
-                qs = qs.exclude(pk=self.pk)
-            if qs.exists():
-                raise ValidationError({"phone_number": "A contact phone with this number already exists."})
-
-    def save(self, *args, **kwargs):
-        qs = ContactPhone.all_objects.filter(phone_number=self.phone_number, is_deleted=True)
-        if self.pk:
-            qs = qs.exclude(pk=self.pk)
-        qs.hard_delete()
-        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Contact Phone"

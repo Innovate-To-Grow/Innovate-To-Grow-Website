@@ -1,11 +1,9 @@
-import json
-
 from django.contrib import admin
 
 from core.admin import BaseModelAdmin
 
-from ...app_routes import APP_ROUTES
-from ...models import CMSPage, Menu
+from ...models import Menu
+from .route_options import build_route_editor_context
 
 
 @admin.register(Menu)
@@ -25,12 +23,7 @@ class MenuAdmin(BaseModelAdmin):
     # noinspection PyMethodMayBeStatic
     def _get_editor_context(self):
         """Build context with app routes and CMS pages for the menu editor."""
-        cms_pages = list(CMSPage.objects.filter(status="published").order_by("title").values("route", "title"))
-        cms_routes = [{"url": p["route"], "title": p["title"]} for p in cms_pages]
-        return {
-            "app_routes_json": json.dumps(APP_ROUTES),
-            "cms_routes_json": json.dumps(cms_routes),
-        }
+        return build_route_editor_context()
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = {**(extra_context or {}), **self._get_editor_context()}

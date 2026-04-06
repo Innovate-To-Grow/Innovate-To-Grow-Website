@@ -53,7 +53,18 @@
     function renderNumberedListFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.htmlField('Preamble HTML', data.preamble_html, idx, 'preamble_html') + P.renderRepeater('Items', data.items || [], idx, 'items', (item, itemIdx) => P.textFieldDirect('Item Text', item, idx, 'items.' + itemIdx)); }
     function renderProposalCardsFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.htmlField('Footer HTML', data.footer_html, idx, 'footer_html') + P.renderRepeater('Proposals', data.proposals || [], idx, 'proposals', (proposal, proposalIdx) => '<div class="cms-block-field-row">' + P.textField('Type', proposal.type, idx, 'proposals.' + proposalIdx + '.type') + P.textField('Title', proposal.title, idx, 'proposals.' + proposalIdx + '.title') + P.textField('Organization', proposal.organization, idx, 'proposals.' + proposalIdx + '.organization') + '</div>' + P.htmlField('Background', proposal.background, idx, 'proposals.' + proposalIdx + '.background') + P.htmlField('Problem', proposal.problem, idx, 'proposals.' + proposalIdx + '.problem') + P.htmlField('Objectives', proposal.objectives, idx, 'proposals.' + proposalIdx + '.objectives')); }
     function renderNavigationGridFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.renderRepeater('Grid Items', data.items || [], idx, 'items', (item, itemIdx) => '<div class="cms-block-field-row">' + P.textField('Title', item.title, idx, 'items.' + itemIdx + '.title') + P.textField('URL', item.url, idx, 'items.' + itemIdx + '.url') + '</div>' + P.textField('Description', item.description, idx, 'items.' + itemIdx + '.description') + P.checkboxField('External link', item.is_external, idx, 'items.' + itemIdx + '.is_external')); }
+    function renderSponsorYearFields(data, idx) {
+        return P.textField('Year', data.year, idx, 'year')
+            + '<div class="cms-block-field"><span class="field-hint">Upload logos under CMS Assets, then paste the public media URL into each sponsor item.</span></div>'
+            + P.renderRepeater('Sponsors', data.sponsors || [], idx, 'sponsors', (sponsor, sponsorIdx) =>
+                '<div class="cms-block-field-row">'
+                + P.textField('Name', sponsor.name, idx, 'sponsors.' + sponsorIdx + '.name')
+                + P.textField('Website', sponsor.website, idx, 'sponsors.' + sponsorIdx + '.website')
+                + '</div>'
+                + P.textField('Logo URL', sponsor.logo_url, idx, 'sponsors.' + sponsorIdx + '.logo_url')
+            );
+    }
 
-    const renderers = { hero: renderHeroFields, rich_text: renderRichTextField, faq_list: renderFaqListFields, link_list: renderLinkListFields, cta_group: renderCtaGroupFields, image_text: renderImageTextFields, notice: renderNoticeFields, contact_info: renderContactInfoFields, section_group: renderSectionGroupFields, table: renderTableFields, numbered_list: renderNumberedListFields, proposal_cards: renderProposalCardsFields, navigation_grid: renderNavigationGridFields };
+    const renderers = { hero: renderHeroFields, rich_text: renderRichTextField, faq_list: renderFaqListFields, link_list: renderLinkListFields, cta_group: renderCtaGroupFields, image_text: renderImageTextFields, notice: renderNoticeFields, contact_info: renderContactInfoFields, section_group: renderSectionGroupFields, table: renderTableFields, numbered_list: renderNumberedListFields, proposal_cards: renderProposalCardsFields, navigation_grid: renderNavigationGridFields, sponsor_year: renderSponsorYearFields };
     window.ITGCmsBlockRenderers = { renderAll: renderAll };
 })();
