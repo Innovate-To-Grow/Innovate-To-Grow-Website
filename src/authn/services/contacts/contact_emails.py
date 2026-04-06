@@ -84,11 +84,7 @@ def make_contact_email_primary(*, member, contact_email_id):
 
     The previous primary becomes ``secondary`` (not deleted). Requires the target email to be verified.
     """
-    contact = (
-        ContactEmail.objects.select_for_update()
-        .filter(pk=contact_email_id, member=member)
-        .first()
-    )
+    contact = ContactEmail.objects.select_for_update().filter(pk=contact_email_id, member=member).first()
     if contact is None:
         raise AuthChallengeInvalid("Contact email not found.")
 
