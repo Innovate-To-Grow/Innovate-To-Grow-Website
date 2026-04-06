@@ -16,25 +16,19 @@ function normalizeSponsors(sponsors: SponsorYearSponsor[] | unknown): SponsorYea
     return [];
   }
 
-  return sponsors
-    .map((sponsor) => {
-      if (!sponsor || typeof sponsor !== 'object') {
-        return null;
-      }
-
-      const candidate = sponsor as Partial<SponsorYearSponsor>;
-      const name = typeof candidate.name === 'string' ? candidate.name.trim() : '';
-      if (!name) {
-        return null;
-      }
-
-      return {
-        name,
-        logo_url: typeof candidate.logo_url === 'string' ? candidate.logo_url.trim() : '',
-        website: typeof candidate.website === 'string' ? candidate.website.trim() : '',
-      };
-    })
-    .filter((sponsor): sponsor is SponsorYearSponsor => sponsor !== null);
+  const result: SponsorYearSponsor[] = [];
+  for (const sponsor of sponsors) {
+    if (!sponsor || typeof sponsor !== 'object') continue;
+    const candidate = sponsor as Partial<SponsorYearSponsor>;
+    const name = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+    if (!name) continue;
+    result.push({
+      name,
+      logo_url: typeof candidate.logo_url === 'string' ? candidate.logo_url.trim() : undefined,
+      website: typeof candidate.website === 'string' ? candidate.website.trim() : undefined,
+    });
+  }
+  return result;
 }
 
 export const SponsorYearBlock: React.FC<{ data: SponsorYearBlockData }> = ({ data }) => {

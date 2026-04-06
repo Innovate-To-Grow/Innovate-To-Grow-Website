@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import gspread
 from django.db import transaction
 from django.utils import timezone
 
@@ -154,6 +153,8 @@ def fetch_schedule_sheet_records() -> tuple[list[dict[str, Any]], list[dict[str,
         raise ScheduleSyncError("No active Google service account is configured.")
 
     try:
+        import gspread
+
         client = gspread.service_account_from_dict(credentials.get_credentials_info())
         spreadsheet = client.open_by_key(source.sheet_id)
         tracks_worksheet = _get_worksheet_by_gid(spreadsheet, int(source.tracks_gid))

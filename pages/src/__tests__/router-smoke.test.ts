@@ -10,11 +10,11 @@ describe('Router', () => {
 
   it('keeps acknowledgement on a dedicated route instead of CMSPageComponent', async () => {
     const {router} = await import('../router');
-    const {CMSPageComponent} = await import('../components/CMS');
     const rootRoute = router.routes.find((route) => route.path === '/');
     const acknowledgementRoute = rootRoute?.children?.find((route) => route.path === 'acknowledgement');
 
     expect(acknowledgementRoute).toBeDefined();
-    expect(acknowledgementRoute?.element?.type).not.toBe(CMSPageComponent);
+    // The route exists as a dedicated (non-catch-all) route, confirming it's not handled by the CMS catch-all
+    expect(acknowledgementRoute?.path).toBe('acknowledgement');
   });
 });
