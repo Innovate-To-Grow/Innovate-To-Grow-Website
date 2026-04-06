@@ -8,6 +8,6 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/__tests__/setup.ts'],
     pool: 'forks',
-    poolOptions: {forks: {maxForks: 2}},
+    poolOptions: {forks: {maxForks: 1, memoryLimit: '512MB'}},
   },
 });
