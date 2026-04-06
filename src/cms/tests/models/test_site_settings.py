@@ -72,12 +72,13 @@ class SiteSettingsHomepageRouteTests(TestCase):
         s = SiteSettings.load()
         self.assertEqual(s.get_homepage_route(), "/")
 
-    def test_selected_page_soft_deleted_falls_back(self):
-        page = CMSPage.objects.create(slug="soft-del", route="/soft-del", title="Soft", status="published")
+    def test_selected_page_deleted_falls_back(self):
+        page = CMSPage.objects.create(slug="del", route="/del", title="Del", status="published")
         root = CMSPage.objects.create(slug="root", route="/", title="Root", status="published")
         s = SiteSettings.load()
         s.homepage_page = page
         s.save()
 
-        page.delete()  # soft delete
+        page.delete()
+        s.refresh_from_db()
         self.assertEqual(s.get_homepage_route(), root.route)

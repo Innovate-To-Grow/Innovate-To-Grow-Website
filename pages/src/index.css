@@ -27,3 +27,8 @@ body {
 .content-wrapper {
   width: 100%;
 }
+
+/* Nudge the third-party accessibility widget downward using the outer wrapper only. */
+.userway_buttons_wrapper {
+  margin-top: 5.5rem !important;
+}

@@ -26,35 +26,13 @@ def create_contact_phone(*, member, phone_number: str, region: str, subscribe: b
     normalized = _normalize_phone_number(phone_number, region)
 
     try:
-        # Reclaim a soft-deleted row to avoid unique-constraint violation
-        deleted_qs = ContactPhone.all_objects.filter(phone_number=normalized, is_deleted=True)
-        if deleted_qs.exists():
-            contact_phone = deleted_qs.first()
-            contact_phone.member = member
-            contact_phone.region = region
-            contact_phone.verified = False
-            contact_phone.subscribe = subscribe
-            contact_phone.is_deleted = False
-            contact_phone.deleted_at = None
-            contact_phone.save(
-                update_fields=[
-                    "member_id",
-                    "region",
-                    "verified",
-                    "subscribe",
-                    "is_deleted",
-                    "deleted_at",
-                    "updated_at",
-                ]
-            )
-        else:
-            contact_phone = ContactPhone.objects.create(
-                member=member,
-                phone_number=normalized,
-                region=region,
-                verified=False,
-                subscribe=subscribe,
-            )
+        contact_phone = ContactPhone.objects.create(
+            member=member,
+            phone_number=normalized,
+            region=region,
+            verified=False,
+            subscribe=subscribe,
+        )
     except IntegrityError:
         raise AuthChallengeInvalid("This phone number is already in use.")
 

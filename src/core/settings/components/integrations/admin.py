@@ -94,13 +94,15 @@ UNFOLD = {
                 "title": "Events",
                 "items": [
                     {"title": "Events", "link": "/admin/event/event/"},
-                    {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
                     {"title": "Registrations", "link": "/admin/event/eventregistration/"},
+                    {"title": "Check-ins", "link": "/admin/event/checkin/"},
+                    {"title": "Sheet Sync Logs", "link": "/admin/event/registrationsheetsynclog/"},
                 ],
             },
             {
                 "title": "Projects",
                 "items": [
+                    {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
                     {"title": "Semesters", "link": "/admin/projects/semester/"},
                     {"title": "Projects", "link": "/admin/projects/project/"},
                 ],

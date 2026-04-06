@@ -29,7 +29,7 @@ def stash_old_cms_route(sender, instance, **kwargs):
     """Remember the old route before save so we can clear its cache in post_save."""
     if instance.pk:
         try:
-            old = CMSPage.all_objects.filter(pk=instance.pk).values_list("route", flat=True).first()
+            old = CMSPage.objects.filter(pk=instance.pk).values_list("route", flat=True).first()
             instance._old_route = old
         except (CMSPage.DoesNotExist, ValueError):
             instance._old_route = None

@@ -23,8 +23,6 @@ class CMSPageAdminFormTests(TestCase):
             "page_css_class": "",
             "status": "draft",
             "sort_order": 0,
-            "is_deleted": False,
-            "deleted_at": "",
             "published_at": "",
         }
         data.update(overrides)

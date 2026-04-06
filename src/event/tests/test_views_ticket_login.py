@@ -40,6 +40,6 @@ class TicketAutoLoginViewTest(TestCase):
 
     def test_deleted_member_returns_400(self):
         token = build_ticket_login_token(self.member)
-        self.member.hard_delete()
+        self.member.delete()
         response = self.client.post("/event/ticket-login/", {"token": token}, format="json")
         self.assertEqual(response.status_code, 400)

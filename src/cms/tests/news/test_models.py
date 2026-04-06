@@ -50,16 +50,15 @@ class NewsArticleModelTest(TestCase):
                 published_at=timezone.now(),
             )
 
-    def test_soft_delete(self):
+    def test_delete(self):
         article = NewsArticle.objects.create(
             source_guid="soft-del",
-            title="Soft Delete",
+            title="Delete",
             source_url="https://example.com/soft",
             published_at=timezone.now(),
         )
         article.delete()
         self.assertEqual(NewsArticle.objects.count(), 0)
-        self.assertEqual(NewsArticle.all_objects.count(), 1)
 
 
 class NewsFeedSourceModelTest(TestCase):

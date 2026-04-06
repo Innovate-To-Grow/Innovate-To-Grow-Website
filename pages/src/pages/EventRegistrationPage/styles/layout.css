@@ -70,6 +70,13 @@
   margin-left: 0.125rem;
 }
 
+.event-reg-field-hint {
+  margin: 0 0 0.375rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
 .event-reg-input {
   width: 100%;
   padding: 0.625rem 0.875rem;

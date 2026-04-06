@@ -8,6 +8,7 @@ import { TableBlock } from './blocks/content/TableBlock';
 import { NavigationGridBlock } from './blocks/navigation/NavigationGridBlock';
 import { SectionGroupBlock } from './blocks/navigation/SectionGroupBlock';
 import { ProposalCardsBlock } from './blocks/showcase/ProposalCardsBlock';
+import { SponsorYearBlock } from './blocks/showcase/SponsorYearBlock';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type BlockComponent = React.FC<{ data: any }>;
@@ -22,6 +23,7 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   section_group: SectionGroupBlock,
   proposal_cards: ProposalCardsBlock,
   table: TableBlock,
+  sponsor_year: SponsorYearBlock,
 };
 
 interface BlockRendererProps {

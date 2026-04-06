@@ -5,15 +5,12 @@ from core.models.managers.base import ProjectControlQuerySet
 
 
 class MemberManager(BaseUserManager):
-    """Custom manager for Member without a username field.
-
-    Integrates soft-delete filtering from ProjectControlManager.
-    """
+    """Custom manager for Member without a username field."""
 
     use_in_migrations = True
 
     def get_queryset(self):
-        return ProjectControlQuerySet(self.model, using=self._db).filter(is_deleted=False)
+        return ProjectControlQuerySet(self.model, using=self._db)
 
     def _create_user(self, password=None, **extra_fields):
         user = self.model(**extra_fields)

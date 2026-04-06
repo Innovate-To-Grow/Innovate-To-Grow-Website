@@ -19,6 +19,7 @@ from .content import (
     SiteSettings,
     validate_block_data,
 )
+from .media import CMSAsset
 
 __all__ = [
     # Layout
@@ -28,6 +29,7 @@ __all__ = [
     # CMS
     "CMSPage",
     "CMSBlock",
+    "CMSAsset",
     "BLOCK_TYPE_CHOICES",
     "BLOCK_TYPE_KEYS",
     "BLOCK_SCHEMAS",

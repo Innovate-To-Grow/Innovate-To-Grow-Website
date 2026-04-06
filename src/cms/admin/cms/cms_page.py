@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class CMSPageAdminForm(forms.ModelForm):
     def clean_route(self):
         route = validate_cms_route(self.cleaned_data.get("route"))
-        conflict = CMSPage.all_objects.filter(route=route).exclude(pk=self.instance.pk).first()
+        conflict = CMSPage.objects.filter(route=route).exclude(pk=self.instance.pk).first()
         if conflict:
             raise forms.ValidationError(f'Route "{route}" is already used by "{conflict.title}".')
         return route
@@ -64,7 +64,7 @@ class CMSPageAdmin(BaseModelAdmin):
     )
 
     def block_count(self, obj):
-        return obj.blocks.filter(is_deleted=False).count()
+        return obj.blocks.count()
 
     block_count.short_description = "Blocks"
 

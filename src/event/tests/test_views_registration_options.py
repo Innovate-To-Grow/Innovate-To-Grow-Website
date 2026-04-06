@@ -1,6 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from authn.models import ContactEmail
 from event.models import EventRegistration, Question, Ticket
 from event.tests.helpers import make_event, make_member
 
@@ -46,26 +47,6 @@ class EventRegistrationOptionsViewTest(TestCase):
         self.assertEqual(len(response.data["questions"]), 1)
         self.assertEqual(response.data["questions"][0]["text"], "Role?")
 
-    def test_unlimited_ticket_remaining_is_null(self):
-        event = make_event(is_live=True)
-        Ticket.objects.create(event=event, name="GA", quantity=0)
-        response = self.client.get("/event/registration-options/")
-        self.assertIsNone(response.data["tickets"][0]["remaining_quantity"])
-
-    def test_limited_ticket_shows_remaining(self):
-        event = make_event(is_live=True)
-        Ticket.objects.create(event=event, name="GA", quantity=100)
-        response = self.client.get("/event/registration-options/")
-        self.assertEqual(response.data["tickets"][0]["remaining_quantity"], 100)
-
-    def test_sold_out_ticket_shows_is_sold_out(self):
-        event = make_event(is_live=True)
-        ticket = Ticket.objects.create(event=event, name="GA", quantity=1)
-        member = make_member()
-        EventRegistration.objects.create(member=member, event=event, ticket=ticket)
-        response = self.client.get("/event/registration-options/")
-        self.assertTrue(response.data["tickets"][0]["is_sold_out"])
-
     def test_anonymous_user_sees_registration_null(self):
         make_event(is_live=True)
         response = self.client.get("/event/registration-options/")
@@ -87,3 +68,25 @@ class EventRegistrationOptionsViewTest(TestCase):
         response = self.client.get("/event/registration-options/")
         self.assertIsNotNone(response.data["registration"])
         self.assertEqual(response.data["registration"]["id"], str(reg.pk))
+
+    # ---------- Feature flags + member_emails ----------
+
+    def test_options_include_feature_flags(self):
+        make_event(is_live=True, allow_secondary_email=True, collect_phone=True)
+        response = self.client.get("/event/registration-options/")
+        self.assertTrue(response.data["allow_secondary_email"])
+        self.assertTrue(response.data["collect_phone"])
+        self.assertFalse(response.data["verify_phone"])
+
+    def test_options_include_member_emails_when_authenticated(self):
+        make_event(is_live=True)
+        member = make_member(email="primary@example.com")
+        ContactEmail.objects.create(member=member, email_address="secondary@example.com", email_type="secondary")
+        self.client.force_authenticate(member)
+        response = self.client.get("/event/registration-options/")
+        self.assertEqual(response.data["member_emails"], ["primary@example.com", "secondary@example.com"])
+
+    def test_options_member_emails_empty_when_anonymous(self):
+        make_event(is_live=True)
+        response = self.client.get("/event/registration-options/")
+        self.assertEqual(response.data["member_emails"], [])

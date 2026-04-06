@@ -1,9 +1,11 @@
 import datetime
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.test import TestCase
 
+from authn.models import ContactEmail
 from event.models import Event, EventRegistration, Question, Ticket
 from event.tests.helpers import make_event, make_member, make_ticket
 
@@ -45,23 +47,32 @@ class EventModelTest(TestCase):
         self.assertFalse(first.is_live)
         self.assertTrue(second.is_live)
 
-    def test_soft_delete_excludes_from_default_manager(self):
+    def test_delete_removes_from_database(self):
         event = make_event()
         event.delete()
         self.assertEqual(Event.objects.count(), 0)
-
-    def test_soft_delete_visible_via_all_objects(self):
-        event = make_event()
-        event.delete()
-        self.assertEqual(Event.all_objects.count(), 1)
 
     def test_cascade_deletes_tickets_and_questions(self):
         event = make_event()
         make_ticket(event)
         _make_question(event)
-        event.hard_delete()
-        self.assertEqual(Ticket.all_objects.count(), 0)
-        self.assertEqual(Question.all_objects.count(), 0)
+        event.delete()
+        self.assertEqual(Ticket.objects.count(), 0)
+        self.assertEqual(Question.objects.count(), 0)
+
+    def test_clean_rejects_verify_phone_without_collect_phone(self):
+        event = make_event(collect_phone=False, verify_phone=True)
+        with self.assertRaises(ValidationError) as ctx:
+            event.clean()
+        self.assertIn("verify_phone", ctx.exception.message_dict)
+
+    def test_clean_allows_verify_phone_with_collect_phone(self):
+        event = make_event(collect_phone=True, verify_phone=True)
+        event.clean()  # should not raise
+
+    def test_clean_allows_no_verify_no_collect(self):
+        event = make_event()
+        event.clean()  # should not raise
 
 
 # ---------- Ticket ----------
@@ -88,14 +99,6 @@ class TicketModelTest(TestCase):
         t_b = make_ticket(self.event, name="Beta", order=1)
         t_a = make_ticket(self.event, name="Alpha", order=0)
         self.assertEqual(list(self.event.tickets.all()), [t_a, t_b])
-
-    def test_price_default_is_zero(self):
-        ticket = make_ticket(self.event)
-        self.assertEqual(ticket.price, 0)
-
-    def test_quantity_default_is_zero(self):
-        ticket = make_ticket(self.event)
-        self.assertEqual(ticket.quantity, 0)
 
     def test_barcode_format_constant(self):
         self.assertEqual(Ticket.BARCODE_FORMAT, "PDF417")
@@ -220,4 +223,23 @@ class EventRegistrationModelTest(TestCase):
     def test_ticket_protect_prevents_deletion(self):
         reg = self._make_registration()
         with self.assertRaises(ProtectedError):
-            reg.ticket.hard_delete()
+            reg.ticket.delete()
+
+    def test_save_auto_populates_secondary_email_when_flag_on(self):
+        self.event.allow_secondary_email = True
+        self.event.save()
+        ContactEmail.objects.create(member=self.member, email_address="sec@example.com", email_type="secondary")
+        reg = self._make_registration()
+        self.assertEqual(reg.attendee_secondary_email, "sec@example.com")
+
+    def test_save_does_not_auto_populate_secondary_email_when_flag_off(self):
+        ContactEmail.objects.create(member=self.member, email_address="sec@example.com", email_type="secondary")
+        reg = self._make_registration()
+        self.assertEqual(reg.attendee_secondary_email, "")
+
+    def test_save_preserves_explicit_secondary_email(self):
+        self.event.allow_secondary_email = True
+        self.event.save()
+        ContactEmail.objects.create(member=self.member, email_address="sec@example.com", email_type="secondary")
+        reg = self._make_registration(attendee_secondary_email="custom@example.com")
+        self.assertEqual(reg.attendee_secondary_email, "custom@example.com")

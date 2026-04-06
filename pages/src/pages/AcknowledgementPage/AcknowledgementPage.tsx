@@ -1,18 +1,29 @@
-import {useEffect, useState} from 'react';
-import {Link} from 'react-router-dom';
-import {fetchSponsors, type SponsorYear} from '../../features/sponsors/api';
+import type {CMSBlock} from '../../features/cms/api';
+import {Link, useLocation} from 'react-router-dom';
+import {
+  SponsorYearBlock,
+  type SponsorYearBlockData,
+} from '../../components/CMS/blocks/showcase/SponsorYearBlock';
+import {useCMSPage} from '../../components/CMS/useCMSPage';
 import './AcknowledgementPage.css';
 
-export const AcknowledgementPage = () => {
-  const [sponsorYears, setSponsorYears] = useState<SponsorYear[]>([]);
-  const [loading, setLoading] = useState(true);
+function isSponsorYearBlock(
+  block: CMSBlock,
+): block is CMSBlock & {block_type: 'sponsor_year'; data: SponsorYearBlockData} {
+  if (block.block_type !== 'sponsor_year' || !block.data || typeof block.data !== 'object') {
+    return false;
+  }
 
-  useEffect(() => {
-    fetchSponsors()
-      .then(setSponsorYears)
-      .catch(() => setSponsorYears([]))
-      .finally(() => setLoading(false));
-  }, []);
+  const data = block.data as Partial<SponsorYearBlockData>;
+  return typeof data.year === 'string' && Array.isArray(data.sponsors);
+}
+
+export const AcknowledgementPage = () => {
+  const location = useLocation();
+  const preview = new URLSearchParams(location.search).has('cms_preview');
+  const {page, loading} = useCMSPage('/acknowledgement', preview);
+
+  const sponsorBlocks = (page?.blocks ?? []).filter(isSponsorYearBlock);
 
   return (
     <div className="ack-page">
@@ -33,34 +44,9 @@ export const AcknowledgementPage = () => {
 
       {loading ? (
         <div className="ack-page-loading">Loading sponsors...</div>
-      ) : sponsorYears.length > 0 ? (
-        sponsorYears.map(({year, sponsors}) => (
-          <section key={year} className="ack-page-section">
-            <h2 className="ack-page-section-title">{year} Sponsors</h2>
-            <div className="ack-sponsor-grid">
-              {sponsors.map((sponsor) => (
-                <a
-                  key={sponsor.id}
-                  href={sponsor.website || undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`ack-sponsor-card${sponsor.website ? '' : ' no-link'}`}
-                >
-                  {sponsor.logo ? (
-                    <img
-                      src={sponsor.logo}
-                      alt={sponsor.name}
-                      className="ack-sponsor-logo"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="ack-sponsor-logo-placeholder">{sponsor.name[0]}</div>
-                  )}
-                  <span className="ack-sponsor-name">{sponsor.name}</span>
-                </a>
-              ))}
-            </div>
-          </section>
+      ) : sponsorBlocks.length > 0 ? (
+        sponsorBlocks.map((block) => (
+          <SponsorYearBlock key={`${block.sort_order}-${block.data.year}`} data={block.data} />
         ))
       ) : (
         <section className="ack-page-section">

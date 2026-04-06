@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models.functions import Lower
 
 from authn.models import ContactEmail, ContactPhone
 
@@ -16,7 +17,11 @@ def bulk_update_members(
     claimed_phones: set[str],
 ):
     emails = [row["primary_email"] for row in rows]
-    contacts = ContactEmail.objects.filter(email_address__in=emails, email_type="primary").select_related("member")
+    contacts = (
+        ContactEmail.objects.annotate(email_lower=Lower("email_address"))
+        .filter(email_lower__in=[e.lower() for e in emails], email_type="primary")
+        .select_related("member")
+    )
     member_map = {contact.email_address.lower(): contact.member for contact in contacts if contact.member}
 
     for parsed in rows:
@@ -47,35 +52,49 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
     primary_email = primary_contact.email_address if primary_contact else parsed["primary_email"]
     email_key = primary_email.lower()
     if email_key not in claimed_contact_emails:
-        ContactEmail.objects.update_or_create(
-            member=member,
-            email_address=primary_email,
-            defaults={
-                "email_type": "primary",
-                "verified": parsed["primary_verified"],
-                "subscribe": parsed["primary_subscribed"],
-            },
-        )
+        existing = ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).first()
+        if existing:
+            existing.verified = parsed["primary_verified"]
+            existing.subscribe = parsed["primary_subscribed"]
+            existing.email_type = "primary"
+            existing.save(update_fields=["verified", "subscribe", "email_type", "updated_at"])
+        else:
+            ContactEmail.objects.create(
+                member=member,
+                email_address=primary_email,
+                email_type="primary",
+                verified=parsed["primary_verified"],
+                subscribe=parsed["primary_subscribed"],
+            )
         claimed_contact_emails.add(email_key)
     else:
-        ContactEmail.objects.filter(member=member, email_address=primary_email).update(
+        ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).update(
             verified=parsed["primary_verified"],
             subscribe=parsed["primary_subscribed"],
         )
 
     if parsed["secondary_email"]:
         secondary_key = parsed["secondary_email"].lower()
-        member.contact_emails.filter(email_type="secondary").exclude(email_address=parsed["secondary_email"]).delete()
+        member.contact_emails.filter(email_type="secondary").exclude(
+            email_address__iexact=parsed["secondary_email"]
+        ).delete()
         if secondary_key not in claimed_contact_emails:
-            ContactEmail.objects.update_or_create(
-                member=member,
-                email_address=parsed["secondary_email"],
-                defaults={
-                    "email_type": "secondary",
-                    "verified": parsed["secondary_verified"],
-                    "subscribe": parsed["secondary_subscribed"],
-                },
-            )
+            existing_sec = ContactEmail.objects.filter(
+                member=member, email_address__iexact=parsed["secondary_email"]
+            ).first()
+            if existing_sec:
+                existing_sec.email_type = "secondary"
+                existing_sec.verified = parsed["secondary_verified"]
+                existing_sec.subscribe = parsed["secondary_subscribed"]
+                existing_sec.save(update_fields=["email_type", "verified", "subscribe", "updated_at"])
+            else:
+                ContactEmail.objects.create(
+                    member=member,
+                    email_address=parsed["secondary_email"],
+                    email_type="secondary",
+                    verified=parsed["secondary_verified"],
+                    subscribe=parsed["secondary_subscribed"],
+                )
             claimed_contact_emails.add(secondary_key)
     else:
         member.contact_emails.filter(email_type="secondary").delete()

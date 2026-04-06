@@ -59,7 +59,7 @@ class CMSImportTest(TestCase):
         page = CMSPage.objects.filter(slug="new-page").first()
         self.assertIsNotNone(page)
         self.assertEqual(page.title, "New Page")
-        self.assertEqual(page.blocks.filter(is_deleted=False).count(), 1)
+        self.assertEqual(page.blocks.count(), 1)
 
     def test_import_updates_existing_page(self):
         """Import updates an existing page matched by slug."""
@@ -107,7 +107,7 @@ class CMSImportTest(TestCase):
         page.refresh_from_db()
         self.assertEqual(page.title, "New Title")
         # Old block should be soft-deleted, new block created
-        active_blocks = page.blocks.filter(is_deleted=False)
+        active_blocks = page.blocks
         self.assertEqual(active_blocks.count(), 1)
         self.assertEqual(active_blocks.first().block_type, "faq_list")
 

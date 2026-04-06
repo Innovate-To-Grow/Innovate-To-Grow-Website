@@ -82,6 +82,29 @@ class ValidateBlockDataTests(TestCase):
         with self.assertRaises(ValidationError):
             validate_block_data("navigation_grid", {})
 
+    def test_sponsor_year_requires_year_and_sponsors(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data("sponsor_year", {})
+        with self.assertRaises(ValidationError):
+            validate_block_data("sponsor_year", {"year": "", "sponsors": []})
+        with self.assertRaises(ValidationError):
+            validate_block_data("sponsor_year", {"year": "2025", "sponsors": [{}]})
+
+    def test_sponsor_year_valid(self):
+        validate_block_data(
+            "sponsor_year",
+            {
+                "year": "2025",
+                "sponsors": [
+                    {
+                        "name": "Acme Labs",
+                        "logo_url": "/media/cms/assets/acme.svg",
+                        "website": "https://example.com",
+                    }
+                ],
+            },
+        )
+
     def test_all_block_types_have_schemas(self):
         """Every block type in BLOCK_TYPE_KEYS must have a corresponding schema."""
         for key in BLOCK_TYPE_KEYS:
@@ -109,11 +132,10 @@ class CMSBlockCleanTests(TestCase):
         block = CMSBlock(page=self.page, block_type="hero", sort_order=0)
         self.assertEqual(str(block), "Hero Banner (#0)")
 
-    def test_block_soft_delete_independent_of_page(self):
+    def test_block_delete_independent_of_page(self):
         b1 = CMSBlock.objects.create(page=self.page, block_type="hero", sort_order=0, data={})
         CMSBlock.objects.create(page=self.page, block_type="rich_text", sort_order=1, data={"body_html": "<p>Hi</p>"})
         self.assertEqual(CMSBlock.objects.filter(page=self.page).count(), 2)
 
-        b1.delete()  # soft delete one block
+        b1.delete()
         self.assertEqual(CMSBlock.objects.filter(page=self.page).count(), 1)
-        self.assertEqual(CMSBlock.all_objects.filter(page=self.page).count(), 2)

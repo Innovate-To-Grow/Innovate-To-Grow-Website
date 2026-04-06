@@ -64,6 +64,89 @@
   font-size: 0.8rem;
 }
 
+/* Phone input group */
+.event-reg-phone-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.event-reg-phone-region {
+  width: auto;
+  min-width: 140px;
+  flex-shrink: 0;
+  padding: 0.625rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #1f2937;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.event-reg-phone-region:focus {
+  outline: none;
+  border-color: #003366;
+  box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+}
+
+.event-reg-phone-row .event-reg-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-reg-phone-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  background: #003366;
+  color: #fff;
+}
+
+.event-reg-phone-action:hover:not(:disabled) {
+  background: #002244;
+}
+
+.event-reg-phone-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.event-reg-phone-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #16a34a;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+}
+
+.event-reg-phone-code-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.event-reg-phone-code-row .event-reg-input {
+  flex: 1;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 4px;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
 /* Submit */
 .event-reg-submit {
   display: inline-flex;

@@ -93,11 +93,30 @@ export const EventRegistrationPage = () => {
           selectedTicketId={registrationPage.selectedTicketId}
           answers={registrationPage.answers}
           submitting={registrationPage.submitting}
+          attendeeFirstName={registrationPage.attendeeFirstName}
+          attendeeLastName={registrationPage.attendeeLastName}
+          attendeeSecondaryEmail={registrationPage.attendeeSecondaryEmail}
+          attendeePhone={registrationPage.attendeePhone}
+          phoneRegion={registrationPage.phoneRegion}
+          onFirstNameChange={registrationPage.setAttendeeFirstName}
+          onLastNameChange={registrationPage.setAttendeeLastName}
           onTicketChange={registrationPage.setSelectedTicketId}
           onAnswerChange={(questionId, answer) => registrationPage.setAnswers((current) => ({...current, [questionId]: answer}))}
+          onSecondaryEmailChange={registrationPage.setAttendeeSecondaryEmail}
+          onPhoneChange={registrationPage.setAttendeePhone}
+          onPhoneRegionChange={registrationPage.setPhoneRegion}
+          phoneCode={registrationPage.phoneCode}
+          phoneCodeSent={registrationPage.phoneCodeSent}
+          phoneSending={registrationPage.phoneSending}
+          phoneVerified={registrationPage.phoneVerified}
+          verifyingPhone={registrationPage.verifyingPhone}
+          onPhoneCodeChange={registrationPage.setPhoneCode}
+          onSendPhoneCode={registrationPage.handleSendPhoneCode}
+          onVerifyPhoneCode={registrationPage.handleVerifyPhoneCode}
           onSubmit={registrationPage.handleRegistrationSubmit}
         />
       ) : null}
+
     </div>
   );
 };

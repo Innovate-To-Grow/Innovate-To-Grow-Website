@@ -6,10 +6,6 @@ import {getAccessToken} from '../../services/auth';
 export interface TicketOption {
   id: string;
   name: string;
-  price: string;
-  quantity: number;
-  remaining_quantity: number | null;
-  is_sold_out: boolean;
 }
 
 export interface QuestionOption {
@@ -31,7 +27,6 @@ export interface RegistrationEvent {
 export interface RegistrationTicket {
   id: string;
   name: string;
-  price: string;
 }
 
 export interface RegistrationAnswer {
@@ -47,6 +42,10 @@ export interface Registration {
   attendee_last_name: string;
   attendee_name: string;
   attendee_email: string;
+  attendee_secondary_email: string;
+  attendee_phone: string;
+  phone_verified: boolean;
+  phone_verification_required: boolean;
   attendee_organization: string;
   registered_at: string;
   ticket_email_sent_at: string | null;
@@ -65,9 +64,14 @@ export interface EventRegistrationOptions {
   date: string;
   location: string;
   description: string;
+  allow_secondary_email: boolean;
+  collect_phone: boolean;
+  verify_phone: boolean;
   tickets: TicketOption[];
   questions: QuestionOption[];
   registration: Registration | null;
+  member_emails: string[];
+  phone_regions: Array<{code: string; label: string}>;
 }
 
 export interface ScheduleAgendaItem {
@@ -172,7 +176,13 @@ export async function fetchCurrentSchedule(): Promise<EventSchedulePayload> {
 export async function createRegistration(data: {
   event_slug: string;
   ticket_id: string;
+  attendee_first_name: string;
+  attendee_last_name?: string;
   answers: Array<{question_id: string; answer: string}>;
+  attendee_secondary_email?: string;
+  attendee_phone?: string;
+  attendee_phone_region?: string;
+  phone_verified?: boolean;
 }): Promise<Registration> {
   const response = await api.post<Registration>('/event/registrations/', data, {
     headers: authHeaders(),
@@ -191,6 +201,24 @@ export async function resendTicketEmail(registrationId: string): Promise<{messag
   const response = await api.post<{message: string}>(
     `/event/my-tickets/${registrationId}/resend-email/`,
     {},
+    {headers: authHeaders()},
+  );
+  return response.data;
+}
+
+export async function sendPhoneCode(phone: string, region: string): Promise<{detail: string; phone: string}> {
+  const response = await api.post<{detail: string; phone: string}>(
+    '/event/send-phone-code/',
+    {phone, region},
+    {headers: authHeaders()},
+  );
+  return response.data;
+}
+
+export async function verifyPhoneCode(phone: string, code: string): Promise<{detail: string; verified: boolean}> {
+  const response = await api.post<{detail: string; verified: boolean}>(
+    '/event/verify-phone-code/',
+    {phone, code},
     {headers: authHeaders()},
   );
   return response.data;

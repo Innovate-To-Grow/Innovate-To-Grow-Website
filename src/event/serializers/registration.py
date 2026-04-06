@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
 from event.services import generate_ticket_barcode_data_url
 
 
@@ -15,20 +16,16 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
     attendee_first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
     attendee_last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
     attendee_organization = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    attendee_secondary_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    attendee_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    attendee_phone_region = serializers.CharField(max_length=10, required=False, default="1-US")
+    phone_verified = serializers.BooleanField(required=False, default=False)
 
 
 def _serialize_ticket_option(ticket) -> dict:
-    registration_count = getattr(ticket, "registration_count", None)
-    if registration_count is None:
-        registration_count = ticket.registrations.count()
-    remaining_quantity = None if ticket.quantity == 0 else max(ticket.quantity - registration_count, 0)
     return {
         "id": str(ticket.pk),
         "name": ticket.name,
-        "price": f"{ticket.price:.2f}",
-        "quantity": ticket.quantity,
-        "remaining_quantity": remaining_quantity,
-        "is_sold_out": remaining_quantity == 0 if remaining_quantity is not None else False,
     }
 
 
@@ -50,6 +47,12 @@ def build_registration_payload(registration, request=None) -> dict:
         "attendee_last_name": registration.attendee_last_name,
         "attendee_name": registration.attendee_name,
         "attendee_email": registration.attendee_email,
+        "attendee_secondary_email": registration.attendee_secondary_email,
+        "attendee_phone": registration.attendee_phone,
+        "phone_verified": registration.phone_verified,
+        "phone_verification_required": (
+            registration.event.verify_phone and registration.attendee_phone and not registration.phone_verified
+        ),
         "attendee_organization": registration.attendee_organization,
         "registered_at": registration.created_at.isoformat(),
         "ticket_email_sent_at": registration.ticket_email_sent_at.isoformat()
@@ -69,13 +72,20 @@ def build_registration_payload(registration, request=None) -> dict:
         "ticket": {
             "id": str(registration.ticket.pk),
             "name": registration.ticket.name,
-            "price": f"{registration.ticket.price:.2f}",
         },
         "answers": registration.question_answers,
     }
 
 
+def _get_member_emails(user) -> list[str]:
+    contacts = user.contact_emails.filter(email_type__in=["primary", "secondary"]).order_by("email_type", "created_at")
+    return [c.email_address for c in contacts]
+
+
 def build_event_registration_option_payload(event, registration=None, request=None) -> dict:
+    member_emails = []
+    if request and getattr(request, "user", None) and request.user.is_authenticated:
+        member_emails = _get_member_emails(request.user)
     return {
         "id": str(event.pk),
         "name": event.name,
@@ -83,7 +93,12 @@ def build_event_registration_option_payload(event, registration=None, request=No
         "date": event.date.isoformat(),
         "location": event.location,
         "description": event.description,
+        "allow_secondary_email": event.allow_secondary_email,
+        "collect_phone": event.collect_phone,
+        "verify_phone": event.verify_phone,
         "tickets": [_serialize_ticket_option(ticket) for ticket in event.tickets.all()],
         "questions": [_serialize_question(question) for question in event.questions.all()],
         "registration": build_registration_payload(registration, request=request) if registration else None,
+        "member_emails": member_emails,
+        "phone_regions": [{"code": code, "label": label} for code, label in PHONE_REGION_CHOICES],
     }

@@ -21,7 +21,7 @@
         const schema = BLOCK_SCHEMAS[blockType];
         if (!schema) return {};
         const data = {};
-        schema.required.forEach(field => { data[field] = ['items', 'sections', 'columns', 'rows', 'proposals'].includes(field) ? [] : ''; });
+        schema.required.forEach(field => { data[field] = ['items', 'sections', 'columns', 'rows', 'proposals', 'sponsors'].includes(field) ? [] : ''; });
         return data;
     }
 
@@ -66,6 +66,7 @@
             'numbered_list.items': () => '',
             'proposal_cards.proposals': () => ({type: '', title: '', organization: '', background: '', problem: '', objectives: ''}),
             'navigation_grid.items': () => ({title: '', url: '', description: '', is_external: false}),
+            'sponsor_year.sponsors': () => ({name: '', logo_url: '', website: ''}),
         };
         return defaults[blockType + '.' + fieldName] ? defaults[blockType + '.' + fieldName]() : {};
     }

@@ -1,90 +1,20 @@
-"""Admin mixins for soft-delete, timestamps, and export formats."""
+"""Admin mixins for timestamps and export formats."""
 
 import json
 from datetime import datetime
 
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.http import HttpResponse
-from django.utils.html import format_html
 
 # ---------------------------------------------------------------------------
 # Core mixins
 # ---------------------------------------------------------------------------
 
 
-class SoftDeleteAdminMixin:
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return self.model.all_objects.all() if hasattr(self.model, "all_objects") else qs
-
-    def get_list_display(self, request):
-        list_display = list(super().get_list_display(request))
-        if hasattr(self.model, "is_deleted") and "deletion_status" not in list_display:
-            list_display.append("deletion_status")
-        return list_display
-
-    @admin.display(description="Status", boolean=False)
-    def deletion_status(self, obj):
-        if not hasattr(obj, "is_deleted"):
-            return "-"
-        if obj.is_deleted:
-            return format_html('<span style="color: red;">✗ Deleted</span>')
-        return format_html('<span style="color: green;">✓ Active</span>')
-
-    def get_list_filter(self, request):
-        filters = list(super().get_list_filter(request))
-        if hasattr(self.model, "is_deleted"):
-            filters.insert(0, "is_deleted")
-        return filters
-
-    @admin.action(description="Restore selected items")
-    def restore_selected(self, request, queryset):
-        restored = 0
-        for obj in queryset:
-            if hasattr(obj, "restore") and obj.is_deleted:
-                obj.restore()
-                restored += 1
-        if restored:
-            messages.success(request, f"Successfully restored {restored} item(s).")
-            return
-        messages.warning(request, "No items were restored.")
-
-    @admin.action(description="Soft delete selected items")
-    def soft_delete_selected(self, request, queryset):
-        deleted = 0
-        for obj in queryset:
-            if not obj.is_deleted:
-                obj.delete()
-                deleted += 1
-        if deleted:
-            messages.success(request, f"Successfully soft deleted {deleted} item(s).")
-            return
-        messages.warning(request, "No items were deleted.")
-
-    def delete_model(self, request, obj):
-        obj.delete()
-
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.delete()
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        actions.pop("delete_selected", None)
-        if hasattr(self.model, "is_deleted"):
-            actions["restore_selected"] = (self.restore_selected, "restore_selected", "Restore selected items")
-            actions["soft_delete_selected"] = (
-                self.soft_delete_selected,
-                "soft_delete_selected",
-                "Soft delete selected items",
-            )
-        return actions
-
-
 class TimestampedAdminMixin:
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
-        for field in ("created_at", "updated_at", "deleted_at"):
+        for field in ("created_at", "updated_at"):
             if hasattr(self.model, field) and field not in readonly:
                 readonly.append(field)
         return readonly

@@ -115,10 +115,7 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
 
     @action(description="Sync this feed", url_path="sync-this-feed", icon="sync")
     def sync_this_feed(self, request, object_id):
-        source = NewsFeedSource.all_objects.get(id=object_id)
-        if source.is_deleted:
-            messages.error(request, f"Feed '{source.name}' is deleted and cannot be synced.")
-            return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))
+        source = NewsFeedSource.objects.get(id=object_id)
         if not source.is_active:
             messages.warning(request, f"Feed '{source.name}' is not active.")
             return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))

@@ -28,13 +28,13 @@ class SemesterAdmin(BaseModelAdmin):
 
     @admin.action(description="Publish selected semesters")
     def publish_selected(self, request, queryset):
-        updated = queryset.filter(is_published=False, is_deleted=False).update(is_published=True)
+        updated = queryset.filter(is_published=False).update(is_published=True)
         transaction.on_commit(_clear_project_caches)
         self.message_user(request, f"{updated} semester(s) published.", messages.SUCCESS)
 
     @admin.action(description="Unpublish selected semesters")
     def unpublish_selected(self, request, queryset):
-        updated = queryset.filter(is_published=True, is_deleted=False).update(is_published=False)
+        updated = queryset.filter(is_published=True).update(is_published=False)
         transaction.on_commit(_clear_project_caches)
         self.message_user(request, f"{updated} semester(s) unpublished.", messages.SUCCESS)
 

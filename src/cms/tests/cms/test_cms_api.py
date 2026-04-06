@@ -116,3 +116,34 @@ class CMSPageAPITest(TestCase):
         cached = cache.get("cms:page:/cached")
         self.assertIsNotNone(cached)
         self.assertEqual(cached["slug"], "cached")
+
+    def test_sponsor_year_block_is_returned(self):
+        page = CMSPage.objects.create(
+            slug="acknowledgement-api",
+            route="/acknowledgement-api",
+            title="Partners & Sponsors",
+            status="published",
+        )
+        CMSBlock.objects.create(
+            page=page,
+            block_type="sponsor_year",
+            sort_order=0,
+            data={
+                "year": "2025",
+                "sponsors": [
+                    {
+                        "name": "Acme Labs",
+                        "logo_url": "/media/cms/assets/acme.svg",
+                        "website": "https://example.com",
+                    }
+                ],
+            },
+        )
+
+        response = self.client.get("/cms/pages/acknowledgement-api/")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["blocks"][0]["block_type"], "sponsor_year")
+        self.assertEqual(data["blocks"][0]["data"]["year"], "2025")
+        self.assertEqual(data["blocks"][0]["data"]["sponsors"][0]["name"], "Acme Labs")

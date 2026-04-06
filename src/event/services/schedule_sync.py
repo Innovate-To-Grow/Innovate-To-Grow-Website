@@ -337,10 +337,10 @@ def sync_schedule(
         stats = ScheduleSyncStats()
 
         with transaction.atomic():
-            EventScheduleSlot.all_objects.filter(track__section__config=config).hard_delete()
-            EventScheduleTrack.all_objects.filter(section__config=config).hard_delete()
-            EventScheduleSection.all_objects.filter(config=config).hard_delete()
-            EventAgendaItem.all_objects.filter(config=config).hard_delete()
+            EventScheduleSlot.objects.filter(track__section__config=config).delete()
+            EventScheduleTrack.objects.filter(section__config=config).delete()
+            EventScheduleSection.objects.filter(config=config).delete()
+            EventAgendaItem.objects.filter(config=config).delete()
 
             sections_by_code: dict[str, EventScheduleSection] = {}
             for code in sorted(

@@ -40,11 +40,10 @@ class ProjectModelTest(TestCase):
         project = Project.objects.create(semester=self.semester, project_title=title)
         self.assertEqual(str(project), title[:60])
 
-    def test_soft_delete(self):
+    def test_delete(self):
         project = Project.objects.create(semester=self.semester, project_title="Test")
         project.delete()
         self.assertEqual(Project.objects.count(), 0)
-        self.assertEqual(Project.all_objects.count(), 1)
 
     def test_blank_field_defaults(self):
         project = Project.objects.create(semester=self.semester, project_title="Test")

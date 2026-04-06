@@ -10,7 +10,6 @@ from .maintenance import SiteMaintenanceControlAdmin  # noqa: F401 - register ad
 from .mixins import (
     ExportMixin,
     ImportExportMixin,
-    SoftDeleteAdminMixin,
     TimestampedAdminMixin,
 )
 from .service_credentials import (  # noqa: F401 - register admin
@@ -25,7 +24,6 @@ __all__ = [
     "BaseModelAdmin",
     "ReadOnlyModelAdmin",
     # Mixins
-    "SoftDeleteAdminMixin",
     "TimestampedAdminMixin",
     "ImportExportMixin",
     "ExportMixin",

@@ -64,7 +64,7 @@ class GetRegistrationFromAccessTokenTest(TestCase):
 
     def test_deleted_registration_raises_value_error(self):
         token = build_ticket_access_token(self.registration)
-        self.registration.hard_delete()
+        self.registration.delete()
         with self.assertRaises(ValueError):
             get_registration_from_access_token(token)
 
@@ -109,7 +109,7 @@ class GetMemberFromLoginTokenTest(TestCase):
 
     def test_nonexistent_member_raises_value_error(self):
         token = build_ticket_login_token(self.member)
-        self.member.hard_delete()
+        self.member.delete()
         with self.assertRaises(ValueError):
             get_member_from_login_token(token)
 
