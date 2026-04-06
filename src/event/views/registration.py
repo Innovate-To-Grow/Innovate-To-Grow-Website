@@ -244,8 +244,8 @@ class ResendTicketEmailView(APIView):
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
         try:
-            registration = (
-                EventRegistration.objects.select_related("event", "ticket", "member").get(pk=pk, member=request.user)
+            registration = EventRegistration.objects.select_related("event", "ticket", "member").get(
+                pk=pk, member=request.user
             )
         except EventRegistration.DoesNotExist:
             return Response({"detail": "Registration not found."}, status=status.HTTP_404_NOT_FOUND)

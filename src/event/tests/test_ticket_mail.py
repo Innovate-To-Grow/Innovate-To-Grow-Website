@@ -27,9 +27,7 @@ class SendTicketEmailTest(TestCase):
         self.member = make_member()
         self.event = make_event(is_live=True)
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
-        self.registration = EventRegistration.objects.create(
-            member=self.member, event=self.event, ticket=self.ticket
-        )
+        self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 
     @patch("event.services.ticket_mail.boto3")
     @patch("event.services.ticket_mail._load_config")

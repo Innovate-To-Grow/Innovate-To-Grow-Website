@@ -24,8 +24,12 @@ class CurrentProjectSchedule(ProjectControlModel):
         verbose_name="Projects Worksheet GID",
         help_text="The GID of the worksheet containing project/slot data.",
     )
-    show_winners = models.BooleanField(default=False, verbose_name="Show Winners", help_text="Display winner data on the schedule page.")
-    grand_winners = models.JSONField(default=list, blank=True, verbose_name="Grand Winners", help_text="Auto-synced from Google Sheet Award rows.")
+    show_winners = models.BooleanField(
+        default=False, verbose_name="Show Winners", help_text="Display winner data on the schedule page."
+    )
+    grand_winners = models.JSONField(
+        default=list, blank=True, verbose_name="Grand Winners", help_text="Auto-synced from Google Sheet Award rows."
+    )
     last_synced_at = models.DateTimeField(null=True, blank=True, editable=False)
     sync_error = models.TextField(blank=True, default="")
 

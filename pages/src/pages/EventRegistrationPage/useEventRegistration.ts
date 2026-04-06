@@ -5,7 +5,7 @@ import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhone
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export const useEventRegistration = () => {
-  const {isAuthenticated, requiresProfileCompletion, requestEmailAuthCode, verifyEmailAuthCode, clearProfileCompletionRequirement} = useAuth();
+  const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode, clearProfileCompletionRequirement} = useAuth();
   const [step, setStep] = useState<EventRegistrationStep>('loading');
   const [options, setOptions] = useState<EventRegistrationOptions | null>(null);
   const [registration, setRegistration] = useState<Registration | null>(null);

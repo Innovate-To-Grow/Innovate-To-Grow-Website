@@ -15,9 +15,7 @@ class CMSAssetAdminForm(forms.ModelForm):
         model = CMSAsset
         fields = "__all__"
         widgets = {
-            "file": forms.ClearableFileInput(
-                attrs={"accept": ".svg,.png,.jpg,.jpeg,.webp,.gif"}
-            ),
+            "file": forms.ClearableFileInput(attrs={"accept": ".svg,.png,.jpg,.jpeg,.webp,.gif"}),
         }
 
 
