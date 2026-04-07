@@ -7,14 +7,24 @@ come from environment variables -- nothing is hard-coded for production use.
 
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .framework.environment import BASE_DIR
+
+
+def _get_required_env(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise ImproperlyConfigured(f"{name} must be set in production.")
+    return value
+
 
 # ---------------------------------------------------------------------------
 # Core
 # ---------------------------------------------------------------------------
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "change-me-in-production")
+SECRET_KEY = _get_required_env("DJANGO_SECRET_KEY")
 DEBUG = False
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = [host.strip() for host in _get_required_env("DJANGO_ALLOWED_HOSTS").split(",") if host.strip()]
 
 # ---------------------------------------------------------------------------
 # Database (PostgreSQL with SSL required)
@@ -22,10 +32,10 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
 DATABASES = {
     "default": {
         "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.environ.get("DB_NAME", "innovate_to_grow"),
-        "USER": os.environ.get("DB_USER", "user"),
-        "PASSWORD": os.environ.get("DB_PASSWORD", "password"),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "NAME": _get_required_env("DB_NAME"),
+        "USER": _get_required_env("DB_USER"),
+        "PASSWORD": _get_required_env("DB_PASSWORD"),
+        "HOST": _get_required_env("DB_HOST"),
         "PORT": os.environ.get("DB_PORT", "5432"),
         "CONN_MAX_AGE": 60,  # Persistent connections (seconds)
         "OPTIONS": {"sslmode": "require"},
@@ -36,7 +46,7 @@ DATABASES = {
 # Security hardening
 # ---------------------------------------------------------------------------
 REQUIRE_ENCRYPTED_PASSWORDS = True
-RSA_KEY_PASSPHRASE = os.environ.get("RSA_KEY_PASSPHRASE")
+RSA_KEY_PASSPHRASE = _get_required_env("RSA_KEY_PASSPHRASE")
 
 # HTTP security headers
 SECURE_SERVER_HEADER = None  # Do not expose server software
@@ -67,7 +77,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ---------------------------------------------------------------------------
 # AWS S3 storage (static files and media uploads)
 # ---------------------------------------------------------------------------
-AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "itg-static-assets")
+AWS_STORAGE_BUCKET_NAME = _get_required_env("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
 AWS_DEFAULT_ACL = None  # Inherit bucket policy

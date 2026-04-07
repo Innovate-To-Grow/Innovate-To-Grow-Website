@@ -77,4 +77,35 @@ jobs:
             --branch-name "$AMPLIFY_BRANCH" \
             --job-id "$JOB_ID"
 
-          echo "Deployment started successfully!"
+          echo "Waiting for Amplify deployment to finish..."
+
+          for attempt in $(seq 1 40); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --query 'job.summary.status' \
+              --output text)
+
+            echo "Amplify status: $STATUS"
+
+            case "$STATUS" in
+              SUCCEED)
+                echo "Deployment completed successfully!"
+                exit 0
+                ;;
+              FAILED|CANCELLED)
+                echo "::error::Amplify deployment ended with status $STATUS"
+                aws amplify get-job \
+                  --app-id "$AMPLIFY_APP_ID" \
+                  --branch-name "$AMPLIFY_BRANCH" \
+                  --job-id "$JOB_ID"
+                exit 1
+                ;;
+            esac
+
+            sleep 30
+          done
+
+          echo "::error::Timed out waiting for Amplify deployment to finish"
+          exit 1
