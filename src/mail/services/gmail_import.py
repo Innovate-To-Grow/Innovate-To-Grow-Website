@@ -100,12 +100,7 @@ def list_recent_sent_messages(limit: int = 5, mailbox: str = DEFAULT_GMAIL_MAILB
     service = _get_gmail_service(mailbox)
 
     try:
-        response = (
-            service.users()
-            .messages()
-            .list(userId="me", labelIds=["SENT"], maxResults=limit)
-            .execute()
-        )
+        response = service.users().messages().list(userId="me", labelIds=["SENT"], maxResults=limit).execute()
         messages = response.get("messages", []) or []
         summaries: list[dict[str, Any]] = []
 

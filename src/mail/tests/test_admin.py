@@ -56,9 +56,7 @@ class EmailCampaignAdminImportTest(TestCase):
                 }
             ]
 
-            response = self.client.get(
-                reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk])
-            )
+            response = self.client.get(reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sent Newsletter")
@@ -70,9 +68,7 @@ class EmailCampaignAdminImportTest(TestCase):
         self.campaign.status = "sent"
         self.campaign.save(update_fields=["status", "updated_at"])
 
-        response = self.client.get(
-            reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk])
-        )
+        response = self.client.get(reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]))
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
@@ -106,9 +102,7 @@ class EmailCampaignAdminImportTest(TestCase):
         self.campaign.body = HTML_MARKER + "<p><strong>Imported</strong> HTML</p>"
         self.campaign.save(update_fields=["body", "updated_at"])
 
-        response = self.client.get(
-            reverse("admin:mail_emailcampaign_send_preview", args=[self.campaign.pk])
-        )
+        response = self.client.get(reverse("admin:mail_emailcampaign_send_preview", args=[self.campaign.pk]))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Preview Email")

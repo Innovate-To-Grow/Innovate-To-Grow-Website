@@ -175,16 +175,22 @@ class GmailImportServiceTest(TestCase):
         base_credentials = Mock()
         base_credentials.with_subject.return_value = delegated
 
-        with patch(
-            "mail.services.gmail_import.GoogleCredentialConfig.load",
-            return_value=SimpleNamespace(is_configured=True, get_credentials_info=lambda: {"client_email": "svc@test"}),
-        ), patch(
-            "mail.services.gmail_import.service_account.Credentials.from_service_account_info",
-            return_value=base_credentials,
-        ) as mock_from_info, patch(
-            "mail.services.gmail_import.build",
-            return_value=object(),
-        ) as mock_build:
+        with (
+            patch(
+                "mail.services.gmail_import.GoogleCredentialConfig.load",
+                return_value=SimpleNamespace(
+                    is_configured=True, get_credentials_info=lambda: {"client_email": "svc@test"}
+                ),
+            ),
+            patch(
+                "mail.services.gmail_import.service_account.Credentials.from_service_account_info",
+                return_value=base_credentials,
+            ) as mock_from_info,
+            patch(
+                "mail.services.gmail_import.build",
+                return_value=object(),
+            ) as mock_build,
+        ):
             list_recent = None
             try:
                 from mail.services.gmail_import import _get_gmail_service
