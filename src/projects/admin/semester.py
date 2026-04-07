@@ -99,10 +99,14 @@ class SemesterAdmin(BaseModelAdmin):
 
             return redirect(reverse("admin:projects_semester_changelist"))
 
-        return TemplateResponse(request, "admin/projects/import_csv.html", {
-            **self.admin_site.each_context(request),
-            "title": "Import Projects from CSV",
-        })
+        return TemplateResponse(
+            request,
+            "admin/projects/import_csv.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": "Import Projects from CSV",
+            },
+        )
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
