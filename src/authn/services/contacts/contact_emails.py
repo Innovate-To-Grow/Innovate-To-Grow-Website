@@ -2,6 +2,10 @@
 Service layer for managing contact emails (add, verify, delete).
 """
 
+import logging
+import threading
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 
@@ -15,15 +19,41 @@ from authn.services.email_challenges import (
     verify_email_code,
 )
 
+logger = logging.getLogger(__name__)
+
 Member = get_user_model()
 
 PURPOSE = EmailAuthChallenge.Purpose.CONTACT_EMAIL_VERIFY
+
+
+def _notify_email_owner_in_background(email: str):
+    """Send a claim-attempt notification to the owner of the email, in a daemon thread."""
+
+    def _send():
+        try:
+            from authn.services.email.send_email import send_notification_email
+
+            frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
+            account_url = f"{frontend_url}/account" if frontend_url else ""
+
+            send_notification_email(
+                recipient=email,
+                subject="Security notice - Innovate to Grow",
+                template="authn/email/email_claim_notification.html",
+                context={"account_url": account_url},
+            )
+        except Exception:
+            logger.exception("Failed to send email claim notification to %s", email)
+
+    thread = threading.Thread(target=_send, daemon=True)
+    thread.start()
 
 
 def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = False):
     normalized = normalize_email(email_address)
 
     if registration_email_conflicts(normalized):
+        _notify_email_owner_in_background(normalized)
         raise AuthChallengeInvalid("This email address is already in use.")
 
     try:
@@ -35,6 +65,7 @@ def create_contact_email(*, member, email_address: str, email_type: str = "secon
             verified=False,
         )
     except IntegrityError:
+        _notify_email_owner_in_background(normalized)
         raise AuthChallengeInvalid("This email address is already in use.")
 
     issue_email_challenge(member=member, purpose=PURPOSE, target_email=normalized)

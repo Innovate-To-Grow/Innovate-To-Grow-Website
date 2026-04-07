@@ -101,6 +101,27 @@ def _send_via_smtp(*, config, recipient: str, subject: str, html_body: str):
     msg.send()
 
 
+def send_notification_email(*, recipient: str, subject: str, template: str, context: dict):
+    """
+    Send an informational (non-code) notification email.
+
+    Uses SES primary, SMTP fallback. Best-effort: logs but does not raise on failure.
+    """
+    config = _load_config()
+    html_body = render_to_string(template, context)
+
+    if _send_via_ses(config=config, recipient=recipient, subject=subject, html_body=html_body):
+        logger.info("Notification email sent via SES to %s", recipient)
+        return
+
+    logger.info("SES unavailable; falling back to SMTP for notification to %s", recipient)
+    try:
+        _send_via_smtp(config=config, recipient=recipient, subject=subject, html_body=html_body)
+        logger.info("Notification email sent via SMTP to %s", recipient)
+    except Exception:
+        logger.exception("Failed to send notification email to %s", recipient)
+
+
 def send_verification_email(*, recipient: str, code: str, purpose: str):
     """
     Send a verification code email.

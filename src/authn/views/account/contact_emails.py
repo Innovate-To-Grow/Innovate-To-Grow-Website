@@ -22,6 +22,7 @@ from authn.services import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
+from authn.throttles import ContactEmailCreateThrottle
 
 from ..helpers import challenge_error_response
 
@@ -32,6 +33,11 @@ def _get_contact_email(request, pk):
 
 class ContactEmailListCreateView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [ContactEmailCreateThrottle()]
+        return []
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):

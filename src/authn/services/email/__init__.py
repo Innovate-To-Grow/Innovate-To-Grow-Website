@@ -7,7 +7,7 @@ from .auth_email import (
     registration_email_conflicts,
     resolve_auth_email,
 )
-from .send_email import send_verification_email
+from .send_email import send_notification_email, send_verification_email
 
 __all__ = [
     "ResolvedAuthEmail",
@@ -15,5 +15,6 @@ __all__ = [
     "normalize_email",
     "registration_email_conflicts",
     "resolve_auth_email",
+    "send_notification_email",
     "send_verification_email",
 ]

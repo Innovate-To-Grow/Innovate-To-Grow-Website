@@ -1,3 +1,0 @@
-Current data,
-
-this

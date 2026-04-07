@@ -2,7 +2,13 @@
 Custom throttle classes for auth endpoints.
 """
 
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+
+
+class ContactEmailCreateThrottle(UserRateThrottle):
+    """Throttle for adding contact emails: 5 requests per hour."""
+
+    scope = "contact_email_create"
 
 
 class LoginRateThrottle(AnonRateThrottle):

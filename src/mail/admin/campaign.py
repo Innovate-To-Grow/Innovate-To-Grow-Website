@@ -11,12 +11,18 @@ from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminTextInputWidget
 
 from core.admin import BaseModelAdmin
-from core.models import EmailServiceConfig
+from core.models import EmailServiceConfig, GoogleCredentialConfig
 from event.models import Ticket
 
 from ..models import EmailCampaign, RecipientLog
 from ..models.campaign import ALL_AUDIENCE_CHOICES
 from ..services.audience import get_recipients
+from ..services.gmail_import import (
+    DEFAULT_GMAIL_MAILBOX,
+    GmailImportError,
+    import_message_into_campaign,
+    list_recent_sent_messages,
+)
 from ..services.preview import HTML_MARKER, render_preview
 
 
@@ -195,7 +201,12 @@ class EmailCampaignAdmin(BaseModelAdmin):
     list_filter = ("status", AudienceTypeFilter)
     search_fields = ("subject",)
     ordering = ("-created_at",)
-    actions_detail = ["preview_email_action", "preview_recipients_action", "send_campaign_action"]
+    actions_detail = [
+        "preview_email_action",
+        "preview_recipients_action",
+        "import_gmail_html_action",
+        "send_campaign_action",
+    ]
 
     fieldsets = (
         (
@@ -261,6 +272,8 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context["email_config"] = EmailServiceConfig.load()
+        extra_context["google_config"] = GoogleCredentialConfig.load()
+        extra_context["gmail_mailbox"] = DEFAULT_GMAIL_MAILBOX
         return super().changelist_view(request, extra_context=extra_context)
 
     # -- Custom URLs -----------------------------------------------------------
@@ -271,6 +284,16 @@ class EmailCampaignAdmin(BaseModelAdmin):
                 "inline-preview/",
                 self.admin_site.admin_view(self.inline_preview_view),
                 name="mail_emailcampaign_inline_preview",
+            ),
+            path(
+                "<path:object_id>/import-gmail-html/",
+                self.admin_site.admin_view(self.import_gmail_html_view),
+                name="mail_emailcampaign_import_gmail_html",
+            ),
+            path(
+                "<path:object_id>/import-gmail-html/confirm/",
+                self.admin_site.admin_view(self.import_gmail_html_confirm_view),
+                name="mail_emailcampaign_import_gmail_html_confirm",
             ),
             path(
                 "<path:object_id>/preview-recipients/",
@@ -310,6 +333,10 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def preview_recipients_action(self, request, object_id):
         return HttpResponseRedirect(reverse("admin:mail_emailcampaign_preview_recipients", args=[object_id]))
 
+    @action(description="Import Gmail HTML", url_path="import-gmail-html", icon="download")
+    def import_gmail_html_action(self, request, object_id):
+        return HttpResponseRedirect(reverse("admin:mail_emailcampaign_import_gmail_html", args=[object_id]))
+
     @action(description="Send Campaign", url_path="send-campaign", icon="send")
     def send_campaign_action(self, request, object_id):
         obj = EmailCampaign.objects.get(pk=object_id)
@@ -331,6 +358,59 @@ class EmailCampaignAdmin(BaseModelAdmin):
             "back_url": reverse("admin:mail_emailcampaign_change", args=[object_id]),
         }
         return TemplateResponse(request, "admin/mail/preview_recipients.html", context)
+
+    def import_gmail_html_view(self, request, object_id):
+        obj = EmailCampaign.objects.get(pk=object_id)
+        change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
+        if obj.status != "draft":
+            messages.warning(request, "Only draft campaigns can import Gmail HTML.")
+            return HttpResponseRedirect(change_url)
+
+        try:
+            gmail_messages = list_recent_sent_messages(limit=5, mailbox=DEFAULT_GMAIL_MAILBOX)
+        except GmailImportError as exc:
+            messages.error(request, str(exc))
+            return HttpResponseRedirect(change_url)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Import Gmail HTML — {obj.name}",
+            "campaign": obj,
+            "gmail_messages": gmail_messages,
+            "google_config": GoogleCredentialConfig.load(),
+            "mailbox": DEFAULT_GMAIL_MAILBOX,
+            "confirm_url": reverse("admin:mail_emailcampaign_import_gmail_html_confirm", args=[object_id]),
+            "cancel_url": change_url,
+        }
+        return TemplateResponse(request, "admin/mail/import_gmail_html.html", context)
+
+    def import_gmail_html_confirm_view(self, request, object_id):
+        obj = EmailCampaign.objects.get(pk=object_id)
+        change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
+        selection_url = reverse("admin:mail_emailcampaign_import_gmail_html", args=[object_id])
+
+        if obj.status != "draft":
+            messages.warning(request, "Only draft campaigns can import Gmail HTML.")
+            return HttpResponseRedirect(change_url)
+        if request.method != "POST":
+            return HttpResponseRedirect(selection_url)
+
+        message_id = request.POST.get("message_id", "").strip()
+        if not message_id:
+            messages.error(request, "Please choose a Gmail message to import.")
+            return HttpResponseRedirect(selection_url)
+
+        try:
+            import_message_into_campaign(obj, message_id, mailbox=DEFAULT_GMAIL_MAILBOX)
+        except GmailImportError as exc:
+            messages.error(request, str(exc))
+            return HttpResponseRedirect(selection_url)
+
+        messages.success(
+            request,
+            "Imported Gmail HTML into the campaign body. Use Preview Email to verify the result before sending.",
+        )
+        return HttpResponseRedirect(change_url)
 
     def send_campaign_preview_view(self, request, object_id):
         """Show email preview with rendered layout. Also serves as Step 1 of send flow for drafts."""

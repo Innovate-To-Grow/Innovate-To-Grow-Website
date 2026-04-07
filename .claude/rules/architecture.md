@@ -17,6 +17,7 @@
 | `cms` | CMS pages and blocks, menus, footer, site settings, media, page view analytics |
 | `projects` | Projects, semesters, past project shares |
 | `event` | Events, tickets, questions, registrations |
+| `mail` | Email campaigns, recipient logs, magic login links, Gmail import |
 | `news` | Articles, feed sources, sync from external feeds |
 | `sponsors` | Sponsor management |
 

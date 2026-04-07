@@ -1,0 +1,1 @@
+"""Mail app tests."""
