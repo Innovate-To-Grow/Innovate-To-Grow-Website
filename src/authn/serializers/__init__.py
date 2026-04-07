@@ -20,6 +20,9 @@ from .email_code import (
     ChangePasswordCodeConfirmSerializer,
     ChangePasswordCodeRequestSerializer,
     ChangePasswordCodeVerifySerializer,
+    DeleteAccountCodeConfirmSerializer,
+    DeleteAccountCodeRequestSerializer,
+    DeleteAccountCodeVerifySerializer,
     LoginCodeRequestSerializer,
     LoginCodeVerifySerializer,
     PasswordResetConfirmSerializer,
@@ -62,4 +65,7 @@ __all__ = [
     "ContactPhoneUpdateSerializer",
     "ContactPhoneVerifyCodeSerializer",
     "SubscribeSerializer",
+    "DeleteAccountCodeRequestSerializer",
+    "DeleteAccountCodeVerifySerializer",
+    "DeleteAccountCodeConfirmSerializer",
 ]

@@ -2,6 +2,12 @@
 
 {% block object-tools-items %}
     <div class="flex flex-row items-center gap-2">
+        <a href="{{ import_csv_url }}"
+           class="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors"
+           title="Import Projects from CSV">
+            <span class="material-symbols-outlined text-white !text-[18px]">upload_file</span>
+            Import CSV
+        </a>
         <form method="post" action="{{ publish_all_url }}" class="inline">
             {% csrf_token %}
             <button type="submit"

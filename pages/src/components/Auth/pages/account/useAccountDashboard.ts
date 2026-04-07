@@ -2,11 +2,14 @@ import {useCallback, useEffect, useState, type ChangeEvent, type FormEvent} from
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../../AuthContext';
 import {
+  confirmAccountDeletion,
   confirmPasswordChange,
   getProfile,
+  requestAccountDeletionCode,
   requestPasswordChangeCode,
   updateProfileFields,
   uploadProfileImage,
+  verifyAccountDeletionCode,
   verifyPasswordChangeCode,
   type ProfileResponse,
 } from '../../../../services/auth';
@@ -38,6 +41,12 @@ export const useAccountDashboard = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [deleteCodeRequested, setDeleteCodeRequested] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteVerificationToken, setDeleteVerificationToken] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Registration[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
@@ -165,12 +174,23 @@ export const useAccountDashboard = () => {
     setPasswordError(null);
   }, []);
 
+  const clearDeleteFeedback = useCallback(() => {
+    setDeleteMessage(null);
+    setDeleteError(null);
+  }, []);
+
   const resetPasswordForm = useCallback(() => {
     setPasswordCodeRequested(false);
     setPasswordCode('');
     setPasswordVerificationToken(null);
     setNewPassword('');
     setConfirmPassword('');
+  }, []);
+
+  const resetDeleteForm = useCallback(() => {
+    setDeleteCodeRequested(false);
+    setDeleteCode('');
+    setDeleteVerificationToken(null);
   }, []);
 
   const getPasswordEmail = useCallback(() => profile?.email || user?.email || '', [profile?.email, user?.email]);
@@ -247,6 +267,62 @@ export const useAccountDashboard = () => {
     }
   };
 
+  const handleDeleteRequestCode = async () => {
+    setDeleteLoading(true);
+    clearDeleteFeedback();
+    setDeleteVerificationToken(null);
+
+    try {
+      const response = await requestAccountDeletionCode();
+      setDeleteCodeRequested(true);
+      setDeleteCode('');
+      setDeleteMessage(response.message || 'Deletion verification code sent.');
+    } catch (err: unknown) {
+      setDeleteError(getAuthApiErrorMessage(err));
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleDeleteVerifyCode = async (event: FormEvent) => {
+    event.preventDefault();
+    setDeleteLoading(true);
+    clearDeleteFeedback();
+
+    try {
+      const response = await verifyAccountDeletionCode(deleteCode);
+      setDeleteVerificationToken(response.verification_token);
+      setDeleteMessage(response.message || 'Deletion code verified.');
+    } catch (err: unknown) {
+      setDeleteError(getAuthApiErrorMessage(err));
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!deleteVerificationToken) {
+      setDeleteError('Verify your deletion code before deleting your account.');
+      return;
+    }
+
+    setDeleteLoading(true);
+    clearDeleteFeedback();
+
+    try {
+      const response = await confirmAccountDeletion(deleteVerificationToken);
+      resetDeleteForm();
+      setDeleteMessage(response.message || 'Account deleted successfully.');
+      logout();
+      navigate('/login', {replace: true});
+    } catch (err: unknown) {
+      setDeleteError(getAuthApiErrorMessage(err));
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return {
     canRender: isAuthenticated && !requiresProfileCompletion,
     displayEmail: profile?.email || user?.email,
@@ -270,6 +346,12 @@ export const useAccountDashboard = () => {
     passwordLoading,
     passwordMessage,
     passwordError,
+    deleteCodeRequested,
+    deleteCode,
+    deleteVerificationToken,
+    deleteLoading,
+    deleteMessage,
+    deleteError,
     resendingId,
     firstName,
     lastName,
@@ -283,12 +365,16 @@ export const useAccountDashboard = () => {
     setPasswordCode,
     setNewPassword,
     setConfirmPassword,
+    setDeleteCode,
     setOrganization,
     setOrganizationType,
     setIsEditingProfile,
     handlePasswordConfirm,
     handlePasswordRequestCode,
     handlePasswordVerifyCode,
+    handleDeleteRequestCode,
+    handleDeleteVerifyCode,
+    handleDeleteConfirm,
     handleCancelEditing,
     handleImageChange,
     handleProfileSubmit,

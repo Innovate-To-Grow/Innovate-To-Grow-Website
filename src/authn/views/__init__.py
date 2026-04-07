@@ -21,6 +21,9 @@ from .account.email_code import (
     ChangePasswordCodeConfirmView,
     ChangePasswordCodeRequestView,
     ChangePasswordCodeVerifyView,
+    DeleteAccountCodeConfirmView,
+    DeleteAccountCodeRequestView,
+    DeleteAccountCodeVerifyView,
 )
 from .account.profile import ProfileView
 from .admin_login import AdminLoginView
@@ -58,6 +61,9 @@ __all__ = [
     "ChangePasswordCodeRequestView",
     "ChangePasswordCodeVerifyView",
     "ChangePasswordCodeConfirmView",
+    "DeleteAccountCodeRequestView",
+    "DeleteAccountCodeVerifyView",
+    "DeleteAccountCodeConfirmView",
     "PasswordResetRequestView",
     "PasswordResetVerifyView",
     "PasswordResetConfirmView",

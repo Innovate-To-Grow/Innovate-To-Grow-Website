@@ -63,6 +63,12 @@ export interface MemberProfile {
   organization: string;
 }
 
+export interface MemberPhone {
+  phone_number: string;
+  region: string;
+  verified: boolean;
+}
+
 export interface EventRegistrationOptions {
   id: string;
   name: string;
@@ -78,6 +84,7 @@ export interface EventRegistrationOptions {
   registration: Registration | null;
   member_emails: string[];
   member_profile: MemberProfile | null;
+  member_phone: MemberPhone | null;
   phone_regions: Array<{code: string; label: string}>;
 }
 

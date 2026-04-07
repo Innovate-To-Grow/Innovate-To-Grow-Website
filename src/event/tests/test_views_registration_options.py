@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from authn.models import ContactEmail
+from authn.models import ContactEmail, ContactPhone
 from event.models import EventRegistration, Question, Ticket
 from event.tests.helpers import make_event, make_member
 
@@ -90,3 +90,23 @@ class EventRegistrationOptionsViewTest(TestCase):
         make_event(is_live=True)
         response = self.client.get("/event/registration-options/")
         self.assertEqual(response.data["member_emails"], [])
+
+    def test_options_include_member_phone_when_authenticated(self):
+        make_event(is_live=True, collect_phone=True, verify_phone=True)
+        member = make_member(email="primary@example.com")
+        ContactPhone.objects.create(
+            member=member,
+            phone_number="+15551234567",
+            region="1-US",
+            verified=True,
+        )
+        self.client.force_authenticate(member)
+        response = self.client.get("/event/registration-options/")
+        self.assertEqual(
+            response.data["member_phone"],
+            {
+                "phone_number": "+15551234567",
+                "region": "1-US",
+                "verified": True,
+            },
+        )

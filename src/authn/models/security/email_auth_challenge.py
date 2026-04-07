@@ -19,6 +19,7 @@ class EmailAuthChallenge(ProjectControlModel):
         LOGIN = "login", "Login"
         PASSWORD_RESET = "password_reset", "Password Reset"
         PASSWORD_CHANGE = "password_change", "Password Change"
+        ACCOUNT_DELETE = "account_delete", "Account Delete"
         CONTACT_EMAIL_VERIFY = "contact_email_verify", "Contact Email Verify"
         ADMIN_LOGIN = "admin_login", "Admin Login"
 

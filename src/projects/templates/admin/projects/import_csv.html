@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Import Projects from CSV{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-8">
+    <h2 class="text-lg font-semibold mb-4">Import Projects from CSV</h2>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        Upload a CSV exported from the "Past Projects" Google Sheet.
+        Duplicate rows (same semester + class code + team number) will be skipped.
+    </p>
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label for="csv_file" class="block text-sm font-medium mb-1">CSV File</label>
+            <input type="file" name="csv_file" id="csv_file" accept=".csv" required
+                   class="block w-full text-sm border border-gray-300 dark:border-gray-600 rounded-default p-2 bg-white dark:bg-gray-800">
+        </div>
+        <div class="flex items-center gap-2">
+            <input type="checkbox" name="publish" id="publish" value="1"
+                   class="rounded border-gray-300 dark:border-gray-600">
+            <label for="publish" class="text-sm">Auto-publish created semesters</label>
+        </div>
+        <div class="flex items-center gap-2">
+            <input type="checkbox" name="dry_run" id="dry_run" value="1"
+                   class="rounded border-gray-300 dark:border-gray-600">
+            <label for="dry_run" class="text-sm">Dry run (preview only, no changes)</label>
+        </div>
+        <div class="flex gap-3 pt-2">
+            <button type="submit"
+                    class="bg-primary-600 hover:bg-primary-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors">
+                <span class="material-symbols-outlined text-white !text-[18px]">upload_file</span>
+                Import
+            </button>
+            <a href="{% url 'admin:projects_semester_changelist' %}"
+               class="flex items-center gap-2 justify-center rounded-default px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

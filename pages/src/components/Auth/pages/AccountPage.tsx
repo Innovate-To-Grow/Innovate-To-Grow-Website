@@ -1,3 +1,4 @@
+import {DeleteAccountSection} from './account/DeleteAccountSection';
 import {DetailsSection} from './account/DetailsSection';
 import {PasswordSection} from './account/PasswordSection';
 import {ProfileSection} from './account/ProfileSection';
@@ -92,6 +93,18 @@ export const AccountPage = () => {
                             Sign Out
                         </button>
                     </div>
+                    <DeleteAccountSection
+                        deleteCodeRequested={account.deleteCodeRequested}
+                        deleteCode={account.deleteCode}
+                        deleteVerificationToken={account.deleteVerificationToken}
+                        deleteLoading={account.deleteLoading}
+                        deleteMessage={account.deleteMessage}
+                        deleteError={account.deleteError}
+                        onDeleteRequestCode={account.handleDeleteRequestCode}
+                        onDeleteVerifyCode={account.handleDeleteVerifyCode}
+                        onDeleteConfirm={account.handleDeleteConfirm}
+                        onDeleteCodeChange={account.setDeleteCode}
+                    />
                 </div>
             </div>
         </div>

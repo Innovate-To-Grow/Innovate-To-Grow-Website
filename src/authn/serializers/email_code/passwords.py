@@ -5,11 +5,14 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from authn.services import (
+    AuthChallengeInvalid,
     consume_verification_token,
+    delete_member_account,
     get_member_auth_emails,
     issue_email_challenge,
     mark_challenge_verified,
     resolve_auth_email,
+    verify_email_code,
 )
 
 from .base import PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer, decrypt_new_passwords
@@ -122,3 +125,67 @@ class ChangePasswordCodeConfirmSerializer(serializers.Serializer):
         member.set_password(self.validated_data["decrypted_new_password"])
         member.save(update_fields=["password"])
         return {"message": "Password changed successfully."}
+
+
+class DeleteAccountCodeRequestSerializer(serializers.Serializer):
+    def save(self):
+        member = self.context["request"].user
+        email = member.get_primary_email()
+        if not email:
+            raise serializers.ValidationError({"detail": "No primary email is available for account deletion."})
+
+        issue_email_challenge(
+            member=member,
+            purpose=PURPOSE.ACCOUNT_DELETE,
+            target_email=email,
+        )
+        return {"message": "Deletion verification code sent."}
+
+
+class DeleteAccountCodeVerifySerializer(serializers.Serializer):
+    code = serializers.CharField(required=True, max_length=6, min_length=6)
+
+    def validate_code(self, value: str) -> str:
+        return BaseCodeVerifySerializer().validate_code(value)
+
+    def validate(self, attrs: dict) -> dict:
+        member = self.context["request"].user
+        email = member.get_primary_email()
+        if not email:
+            raise serializers.ValidationError({"detail": "No primary email is available for account deletion."})
+
+        try:
+            challenge = verify_email_code(
+                purpose=PURPOSE.ACCOUNT_DELETE,
+                target_email=email,
+                code=attrs["code"],
+            )
+        except AuthChallengeInvalid as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        if challenge.member != member:
+            raise serializers.ValidationError({"detail": "Verification code is invalid or has expired."})
+
+        attrs["challenge"] = challenge
+        return attrs
+
+    def save(self):
+        challenge = self.validated_data["challenge"]
+        return {
+            "message": "Deletion verification code accepted.",
+            "verification_token": mark_challenge_verified(challenge),
+        }
+
+
+class DeleteAccountCodeConfirmSerializer(serializers.Serializer):
+    verification_token = serializers.CharField(required=True)
+
+    def save(self):
+        member = self.context["request"].user
+        consume_verification_token(
+            purpose=PURPOSE.ACCOUNT_DELETE,
+            verification_token=self.validated_data["verification_token"],
+            member=member,
+        )
+        delete_member_account(member=member)
+        return {"message": "Account deleted successfully."}

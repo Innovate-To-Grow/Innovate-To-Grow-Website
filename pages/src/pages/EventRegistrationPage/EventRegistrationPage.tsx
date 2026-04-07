@@ -106,6 +106,10 @@ export const EventRegistrationPage = () => {
           attendeeOrganization={reg.attendeeOrganization}
           attendeeSecondaryEmail={reg.attendeeSecondaryEmail}
           attendeePhone={reg.attendeePhone}
+          primaryEmail={reg.primaryEmail}
+          accountInfoLocked={reg.accountInfoLocked}
+          accountSecondaryEmailLocked={reg.accountSecondaryEmailLocked}
+          accountPhoneLocked={reg.accountPhoneLocked}
           phoneRegion={reg.phoneRegion}
           onFirstNameChange={reg.setAttendeeFirstName}
           onLastNameChange={reg.setAttendeeLastName}

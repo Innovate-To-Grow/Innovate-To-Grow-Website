@@ -19,6 +19,7 @@ PURPOSE_SUBJECTS = {
     "login": "Your login code - Innovate to Grow",
     "password_reset": "Password reset code - Innovate to Grow",
     "password_change": "Password change code - Innovate to Grow",
+    "account_delete": "Delete account code - Innovate to Grow",
     "contact_email_verify": "Verify your contact email - Innovate to Grow",
     "admin_login": "Admin login code - Innovate to Grow",
 }
@@ -28,6 +29,7 @@ PURPOSE_DISPLAY = {
     "login": "sign in to your account",
     "password_reset": "reset your password",
     "password_change": "change your password",
+    "account_delete": "delete your account",
     "contact_email_verify": "verify your contact email",
     "admin_login": "sign in to the admin panel",
 }

@@ -162,6 +162,23 @@ export const confirmPasswordChange = async (
   return response.data;
 };
 
+export const requestAccountDeletionCode = async (): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/delete-account/request-code/', {});
+  return response.data;
+};
+
+export const verifyAccountDeletionCode = async (code: string): Promise<VerificationTokenResponse> => {
+  const response = await authApi.post<VerificationTokenResponse>('/authn/delete-account/verify-code/', { code });
+  return response.data;
+};
+
+export const confirmAccountDeletion = async (verificationToken: string): Promise<MessageResponse> => {
+  const response = await authApi.post<MessageResponse>('/authn/delete-account/confirm/', {
+    verification_token: verificationToken,
+  });
+  return response.data;
+};
+
 export const subscribe = async (email: string): Promise<MessageResponse> => {
   const response = await authApi.post<MessageResponse>('/authn/subscribe/', { email });
   return response.data;

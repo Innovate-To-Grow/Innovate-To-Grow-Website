@@ -8,7 +8,6 @@ from event.views import (
     EventRegistrationCreateView,
     EventRegistrationOptionsView,
     MyTicketsView,
-    ProjectImportAPIView,
     ResendTicketEmailView,
     SendPhoneCodeView,
     TicketAutoLoginView,
@@ -19,7 +18,6 @@ app_name = "event"
 
 urlpatterns = [
     path("projects/", CurrentProjectsAPIView.as_view(), name="current-projects"),
-    path("import/", ProjectImportAPIView.as_view(), name="project-import"),
     path("schedule/", CurrentEventScheduleView.as_view(), name="schedule"),
     path("registration-options/", EventRegistrationOptionsView.as_view(), name="registration-options"),
     path("registrations/", EventRegistrationCreateView.as_view(), name="registration-create"),

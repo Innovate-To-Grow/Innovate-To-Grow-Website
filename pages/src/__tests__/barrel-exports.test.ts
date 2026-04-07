@@ -47,7 +47,6 @@ describe('Component barrel exports', () => {
     expect(mod.MergedResultsTable).toBeDefined();
     expect(mod.PastProjectsBuilder).toBeDefined();
     expect(mod.ProjectGridTable).toBeDefined();
-    expect(mod.ProjectImport).toBeDefined();
     expect(mod.useProjectGridTable).toBeDefined();
     expect(mod.CURRENT_PROJECT_GRID_COLUMNS).toBeDefined();
     expect(mod.PAST_PROJECT_GRID_COLUMNS).toBeDefined();

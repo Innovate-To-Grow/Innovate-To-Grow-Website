@@ -8,7 +8,7 @@
 
 .account-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
 }
@@ -222,6 +222,89 @@
 .account-profile-form {
   gap: 0.875rem;
   padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.account-danger-section {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.account-danger-toggle {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.account-danger-toggle .account-section-title {
+  color: #7f1d1d;
+}
+
+.account-danger-toggle .account-section-toggle {
+  color: #b91c1c;
+}
+
+.account-danger-content {
+  margin-top: 0.5rem;
+}
+
+.account-danger-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.account-danger-help,
+.account-danger-confirmation {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+.account-danger-section .auth-alert {
+  border-radius: 8px;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+}
+
+.account-danger-section .auth-alert.error {
+  background: #fff1f2;
+  border-color: #fda4af;
+  color: #9f1239;
+}
+
+.account-danger-section .auth-alert.success {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.account-danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dc2626;
+  background: #fff;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.account-danger-button:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.account-danger-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 

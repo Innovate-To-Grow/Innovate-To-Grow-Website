@@ -90,12 +90,25 @@ def _get_member_profile(user) -> dict:
     }
 
 
+def _get_member_phone(user) -> dict | None:
+    phone = user.contact_phones.order_by("-verified", "created_at").first()
+    if phone is None:
+        return None
+    return {
+        "phone_number": phone.phone_number,
+        "region": phone.region,
+        "verified": phone.verified,
+    }
+
+
 def build_event_registration_option_payload(event, registration=None, request=None) -> dict:
     member_emails = []
     member_profile = None
+    member_phone = None
     if request and getattr(request, "user", None) and request.user.is_authenticated:
         member_emails = _get_member_emails(request.user)
         member_profile = _get_member_profile(request.user)
+        member_phone = _get_member_phone(request.user)
     return {
         "id": str(event.pk),
         "name": event.name,
@@ -111,5 +124,6 @@ def build_event_registration_option_payload(event, registration=None, request=No
         "registration": build_registration_payload(registration, request=request) if registration else None,
         "member_emails": member_emails,
         "member_profile": member_profile,
+        "member_phone": member_phone,
         "phone_regions": [{"code": code, "label": label} for code, label in PHONE_REGION_CHOICES],
     }

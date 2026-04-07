@@ -1,6 +1,5 @@
 from .checkin import CheckInScanView, CheckInStatusView
 from .current_projects import CurrentProjectsAPIView
-from .import_projects import ProjectImportAPIView
 from .registration import (
     EventRegistrationCreateView,
     EventRegistrationOptionsView,
@@ -19,7 +18,6 @@ __all__ = [
     "EventRegistrationCreateView",
     "EventRegistrationOptionsView",
     "MyTicketsView",
-    "ProjectImportAPIView",
     "ResendTicketEmailView",
     "SendPhoneCodeView",
     "VerifyPhoneCodeView",

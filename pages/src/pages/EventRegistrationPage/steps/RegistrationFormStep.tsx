@@ -1,6 +1,22 @@
 import type {FormEvent} from 'react';
+import {Link} from 'react-router-dom';
 import type {EventRegistrationOptions} from '../../../features/events/api';
 import type {OrganizationType} from '../useEventRegistration';
+
+const PERSONAL_EMAIL_DOMAINS = new Set([
+  'gmail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'msn.com',
+  'yahoo.com',
+  'icloud.com',
+  'me.com',
+  'mac.com',
+  'aol.com',
+  'proton.me',
+  'protonmail.com',
+]);
 
 interface RegistrationFormStepProps {
   options: EventRegistrationOptions;
@@ -14,6 +30,10 @@ interface RegistrationFormStepProps {
   attendeeOrganization: string;
   attendeeSecondaryEmail: string;
   attendeePhone: string;
+  primaryEmail: string;
+  accountInfoLocked?: boolean;
+  accountSecondaryEmailLocked?: boolean;
+  accountPhoneLocked?: boolean;
   phoneRegion: string;
   onFirstNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
@@ -35,6 +55,13 @@ interface RegistrationFormStepProps {
   onSubmit: (event: FormEvent) => void;
 }
 
+const looksLikePersonalEmail = (value: string) => {
+  const email = value.trim().toLowerCase();
+  if (!email.includes('@')) return true;
+  const domain = email.split('@')[1] || '';
+  return PERSONAL_EMAIL_DOMAINS.has(domain);
+};
+
 export const RegistrationFormStep = ({
   options,
   selectedTicketId,
@@ -47,6 +74,10 @@ export const RegistrationFormStep = ({
   attendeeOrganization,
   attendeeSecondaryEmail,
   attendeePhone,
+  primaryEmail,
+  accountInfoLocked,
+  accountSecondaryEmailLocked,
+  accountPhoneLocked,
   phoneRegion,
   onFirstNameChange,
   onLastNameChange,
@@ -66,200 +97,249 @@ export const RegistrationFormStep = ({
   onSendPhoneCode,
   onVerifyPhoneCode,
   onSubmit,
-}: RegistrationFormStepProps) => (
+}: RegistrationFormStepProps) => {
+  const showPersonalEmailHint = !accountSecondaryEmailLocked && attendeeSecondaryEmail.trim() && !looksLikePersonalEmail(attendeeSecondaryEmail);
+
+  return (
   <form onSubmit={onSubmit}>
-    {!hideAttendeeInfo && (
-      <>
-        <div className="event-reg-form-group">
-          <label className="event-reg-label" htmlFor="first-name">
-            First Name <span className="required-mark">*</span>
-          </label>
-          <input
-            id="first-name"
-            type="text"
-            className="event-reg-input"
-            value={attendeeFirstName}
-            onChange={(e) => onFirstNameChange(e.target.value)}
-            autoComplete="given-name"
-            required
-          />
+    {!hideAttendeeInfo ? (
+      <div className="event-reg-section-card">
+        <div className="event-reg-section-header">
+          <h3 className="event-reg-section-title">Personal Information</h3>
+          {accountInfoLocked || accountSecondaryEmailLocked || accountPhoneLocked ? (
+            <p className="event-reg-locked-note">
+              Some information was filled from your account and is locked here. Update it from the{' '}
+              <Link to="/account" className="event-reg-locked-link">Account Dashboard</Link>.
+            </p>
+          ) : null}
         </div>
 
-        <div className="event-reg-form-group">
-          <label className="event-reg-label" htmlFor="last-name">
-            Last Name
-          </label>
-          <input
-            id="last-name"
-            type="text"
-            className="event-reg-input"
-            value={attendeeLastName}
-            onChange={(e) => onLastNameChange(e.target.value)}
-            autoComplete="family-name"
-          />
-        </div>
-
-        <div className="event-reg-form-group">
-          <label className="event-reg-label">
-            Organization <span className="required-mark">*</span>
-          </label>
-          <div className="auth-org-toggle">
-            <button
-              type="button"
-              className={`auth-org-toggle-btn ${attendeeOrgType === 'personal' ? 'is-active' : ''}`}
-              onClick={() => onOrgTypeChange('personal')}
-            >
-              Personal
-            </button>
-            <button
-              type="button"
-              className={`auth-org-toggle-btn ${attendeeOrgType === 'organization' ? 'is-active' : ''}`}
-              onClick={() => onOrgTypeChange('organization')}
-            >
-              Organization
-            </button>
-          </div>
-          {attendeeOrgType === 'organization' && (
-            <input
-              id="attendee-organization"
-              type="text"
-              className="event-reg-input"
-              value={attendeeOrganization}
-              onChange={(e) => onOrganizationChange(e.target.value)}
-              placeholder="Company or organization name"
-              autoComplete="organization"
-              required
-            />
-          )}
-        </div>
-      </>
-    )}
-
-    <div className="event-reg-form-group">
-      <label className="event-reg-label">
-        Select a Ticket <span className="required-mark">*</span>
-      </label>
-      <div className="event-reg-tickets">
-        {options.tickets.map((ticket) => (
-            <label
-              key={ticket.id}
-              className={`event-reg-ticket-option${selectedTicketId === ticket.id ? ' selected' : ''}`}
-            >
+        <>
+          {primaryEmail ? (
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="primary-email">
+                Primary Email
+              </label>
               <input
-                type="radio"
-                name="ticket"
-                value={ticket.id}
-                checked={selectedTicketId === ticket.id}
-                onChange={() => onTicketChange(ticket.id)}
+                id="primary-email"
+                type="email"
+                className="event-reg-input"
+                value={primaryEmail}
+                autoComplete="email"
+                disabled
               />
-              <span className="event-reg-ticket-name">{ticket.name}</span>
-            </label>
-          ))}
-      </div>
-    </div>
-
-    {options.allow_secondary_email ? (
-      <div className="event-reg-form-group">
-        <label className="event-reg-label" htmlFor="secondary-email">
-          Additional Email
-        </label>
-        <p className="event-reg-field-hint">
-          Please provide a second email address so we can reach you if needed.
-        </p>
-        <input
-          id="secondary-email"
-          type="email"
-          className="event-reg-input"
-          value={attendeeSecondaryEmail}
-          onChange={(e) => onSecondaryEmailChange(e.target.value)}
-          placeholder="e.g. your personal or work email"
-        />
-      </div>
-    ) : null}
-
-    {options.collect_phone ? (
-      <div className="event-reg-form-group">
-        <label className="event-reg-label" htmlFor="phone">
-          Phone Number {options.verify_phone ? <span className="required-mark">*</span> : null}
-        </label>
-        <div className="event-reg-phone-row">
-          <select
-            className="event-reg-phone-region"
-            value={phoneRegion}
-            onChange={(e) => onPhoneRegionChange(e.target.value)}
-            disabled={phoneVerified}
-          >
-            {options.phone_regions.map((r) => (
-              <option key={r.code} value={r.code}>
-                +{r.code.split('-')[0]} {r.label}
-              </option>
-            ))}
-          </select>
-          <input
-            id="phone"
-            type="tel"
-            className="event-reg-input"
-            value={attendeePhone}
-            onChange={(e) => onPhoneChange(e.target.value.replace(/\D/g, ''))}
-            placeholder="Phone number"
-            disabled={phoneVerified}
-          />
-          {options.verify_phone && !phoneVerified ? (
-            <button
-              type="button"
-              className="event-reg-phone-action"
-              disabled={!attendeePhone.trim() || phoneSending}
-              onClick={onSendPhoneCode}
-            >
-              {phoneSending ? 'Sending...' : phoneCodeSent ? 'Resend' : 'Send Code'}
-            </button>
+            </div>
           ) : null}
-          {phoneVerified ? (
-            <span className="event-reg-phone-verified">Verified</span>
-          ) : null}
-        </div>
-        {options.verify_phone && phoneCodeSent && !phoneVerified ? (
-          <div className="event-reg-phone-code-row">
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              className="event-reg-input"
-              value={phoneCode}
-              onChange={(e) => onPhoneCodeChange(e.target.value.replace(/\D/g, ''))}
-              placeholder="6-digit code"
-            />
-            <button
-              type="button"
-              className="event-reg-phone-action"
-              disabled={phoneCode.length !== 6 || verifyingPhone}
-              onClick={onVerifyPhoneCode}
-            >
-              {verifyingPhone ? 'Verifying...' : 'Verify'}
-            </button>
+
+          <div className="event-reg-form-row">
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="first-name">
+                First Name <span className="required-mark">*</span>
+              </label>
+              <input
+                id="first-name"
+                type="text"
+                className={`event-reg-input ${!accountInfoLocked ? 'event-reg-input--editable' : ''}`}
+                value={attendeeFirstName}
+                onChange={(e) => onFirstNameChange(e.target.value)}
+                autoComplete="given-name"
+                required
+                disabled={accountInfoLocked}
+              />
+            </div>
+
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="last-name">
+                Last Name
+              </label>
+              <input
+                id="last-name"
+                type="text"
+                className={`event-reg-input ${!accountInfoLocked ? 'event-reg-input--editable' : ''}`}
+                value={attendeeLastName}
+                onChange={(e) => onLastNameChange(e.target.value)}
+                autoComplete="family-name"
+                disabled={accountInfoLocked}
+              />
+            </div>
           </div>
-        ) : null}
+
+          <div className="event-reg-form-group">
+            <label className="event-reg-label">
+              Organization <span className="required-mark">*</span>
+            </label>
+            <div className={`auth-org-toggle ${!accountInfoLocked ? 'event-reg-org-toggle--editable' : ''}`}>
+              <button
+                type="button"
+                className={`auth-org-toggle-btn ${attendeeOrgType === 'personal' ? 'is-active' : ''}`}
+                onClick={() => onOrgTypeChange('personal')}
+                disabled={accountInfoLocked}
+              >
+                Personal
+              </button>
+              <button
+                type="button"
+                className={`auth-org-toggle-btn ${attendeeOrgType === 'organization' ? 'is-active' : ''}`}
+                onClick={() => onOrgTypeChange('organization')}
+                disabled={accountInfoLocked}
+              >
+                Organization
+              </button>
+            </div>
+            {attendeeOrgType === 'organization' && (
+              <input
+                id="attendee-organization"
+                type="text"
+                className={`event-reg-input ${!accountInfoLocked ? 'event-reg-input--editable' : ''}`}
+                value={attendeeOrganization}
+                onChange={(e) => onOrganizationChange(e.target.value)}
+                placeholder="Company or organization name"
+                autoComplete="organization"
+                required
+                disabled={accountInfoLocked}
+              />
+            )}
+          </div>
+
+          {options.allow_secondary_email ? (
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="secondary-email">
+                Additional Email
+              </label>
+              <p className="event-reg-field-hint">
+                Please provide a second email address so we can reach you if needed.
+              </p>
+              <input
+                id="secondary-email"
+                type="email"
+                className={`event-reg-input ${!accountSecondaryEmailLocked ? 'event-reg-input--editable' : ''}`}
+                value={attendeeSecondaryEmail}
+                onChange={(e) => onSecondaryEmailChange(e.target.value)}
+                placeholder="We recommend using your personal email"
+                disabled={accountSecondaryEmailLocked}
+              />
+              {showPersonalEmailHint ? (
+                <p className="event-reg-field-warning">
+                  <span className="event-reg-field-warning-icon" aria-hidden>i</span>
+                  <span>This looks like a work or school email. We recommend using a personal email if possible.</span>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {options.collect_phone ? (
+            <div className="event-reg-form-group">
+              <label className="event-reg-label" htmlFor="phone">
+                Phone Number {options.verify_phone ? <span className="required-mark">*</span> : null}
+              </label>
+              <div className="event-reg-phone-row">
+                <select
+                  className={`event-reg-phone-region ${!accountPhoneLocked && !phoneVerified ? 'event-reg-input--editable' : ''}`}
+                  value={phoneRegion}
+                  onChange={(e) => onPhoneRegionChange(e.target.value)}
+                  disabled={phoneVerified || accountPhoneLocked}
+                >
+                  {options.phone_regions.map((r) => (
+                    <option key={r.code} value={r.code}>
+                      +{r.code.split('-')[0]} {r.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  id="phone"
+                  type="tel"
+                  className={`event-reg-input ${!accountPhoneLocked && !phoneVerified ? 'event-reg-input--editable' : ''}`}
+                  value={attendeePhone}
+                  onChange={(e) => onPhoneChange(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Phone number"
+                  disabled={phoneVerified || accountPhoneLocked}
+                />
+                {options.verify_phone && !phoneVerified && !accountPhoneLocked ? (
+                  <button
+                    type="button"
+                    className="event-reg-phone-action"
+                    disabled={!attendeePhone.trim() || phoneSending}
+                    onClick={onSendPhoneCode}
+                  >
+                    {phoneSending ? 'Sending...' : phoneCodeSent ? 'Resend' : 'Send Code'}
+                  </button>
+                ) : null}
+                {phoneVerified ? (
+                  <span className="event-reg-phone-verified">Verified</span>
+                ) : null}
+              </div>
+              {options.verify_phone && phoneCodeSent && !phoneVerified && !accountPhoneLocked ? (
+                <div className="event-reg-phone-code-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    className="event-reg-input"
+                    value={phoneCode}
+                    onChange={(e) => onPhoneCodeChange(e.target.value.replace(/\D/g, ''))}
+                    placeholder="6-digit code"
+                  />
+                  <button
+                    type="button"
+                    className="event-reg-phone-action"
+                    disabled={phoneCode.length !== 6 || verifyingPhone}
+                    onClick={onVerifyPhoneCode}
+                  >
+                    {verifyingPhone ? 'Verifying...' : 'Verify'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </>
       </div>
     ) : null}
 
-    {options.questions
-      .sort((left, right) => left.order - right.order)
-      .map((question) => (
-        <div key={question.id} className="event-reg-form-group">
-          <label className="event-reg-label" htmlFor={`q-${question.id}`}>
-            {question.text}
-            {question.is_required ? <span className="required-mark">*</span> : null}
-          </label>
-          <textarea
-            id={`q-${question.id}`}
-            className="event-reg-input event-reg-textarea"
-            value={answers[question.id] || ''}
-            onChange={(event) => onAnswerChange(question.id, event.target.value)}
-            required={question.is_required}
-          />
+    <div className="event-reg-section-card event-reg-section-card--spaced">
+      <h3 className="event-reg-section-title">Registration Details</h3>
+
+      <div className="event-reg-form-group">
+        <label className="event-reg-label">
+          Select a Ticket <span className="required-mark">*</span>
+        </label>
+        <div className="event-reg-tickets">
+          {options.tickets.map((ticket) => (
+              <label
+                key={ticket.id}
+                className={`event-reg-ticket-option${selectedTicketId === ticket.id ? ' selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="ticket"
+                  value={ticket.id}
+                  checked={selectedTicketId === ticket.id}
+                  onChange={() => onTicketChange(ticket.id)}
+                />
+                <span className="event-reg-ticket-name">{ticket.name}</span>
+              </label>
+            ))}
         </div>
-      ))}
+      </div>
+
+      {options.questions
+        .sort((left, right) => left.order - right.order)
+        .map((question) => (
+          <div key={question.id} className="event-reg-form-group">
+            <label className="event-reg-label" htmlFor={`q-${question.id}`}>
+              {question.text}
+              {question.is_required ? <span className="required-mark">*</span> : null}
+            </label>
+            <textarea
+              id={`q-${question.id}`}
+              className="event-reg-input event-reg-textarea"
+              value={answers[question.id] || ''}
+              onChange={(event) => onAnswerChange(question.id, event.target.value)}
+              required={question.is_required}
+            />
+          </div>
+        ))}
+    </div>
 
     <button
       type="submit"
@@ -269,4 +349,5 @@ export const RegistrationFormStep = ({
       {submitting ? <><span className="event-reg-spinner" /> Registering...</> : 'Register'}
     </button>
   </form>
-);
+  );
+};

@@ -77,6 +77,87 @@
   line-height: 1.4;
 }
 
+.event-reg-field-warning {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.event-reg-field-warning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.event-reg-section-title {
+  margin: 0 0 0.875rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #003366;
+}
+
+.event-reg-section-header {
+  margin-bottom: 0.875rem;
+}
+
+.event-reg-section-header .event-reg-section-title {
+  margin-bottom: 0.5rem;
+}
+
+.event-reg-section-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.event-reg-section-title--spaced {
+  margin-top: 0;
+}
+
+.event-reg-section-card--spaced {
+  margin-top: 1.25rem;
+}
+
+.event-reg-locked-note {
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.event-reg-locked-link {
+  color: #1d4ed8;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.event-reg-locked-link:hover {
+  color: #1e40af;
+}
+
 .event-reg-input {
   width: 100%;
   padding: 0.625rem 0.875rem;
@@ -89,6 +170,22 @@
   box-sizing: border-box;
 }
 
+.event-reg-input--editable {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.event-reg-input:disabled,
+.event-reg-phone-region:disabled {
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.event-reg-org-toggle--editable .auth-org-toggle-btn {
+  border-color: #93c5fd;
+}
+
 .event-reg-input:focus {
   outline: none;
   border-color: #003366;
@@ -96,7 +193,8 @@
 }
 
 .event-reg-textarea {
-  resize: vertical;
-  min-height: 60px;
+  resize: none;
+  min-height: 72px;
+  height: 72px;
 }
 

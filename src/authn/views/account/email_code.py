@@ -13,6 +13,9 @@ from authn.serializers import (
     ChangePasswordCodeConfirmSerializer,
     ChangePasswordCodeRequestSerializer,
     ChangePasswordCodeVerifySerializer,
+    DeleteAccountCodeConfirmSerializer,
+    DeleteAccountCodeRequestSerializer,
+    DeleteAccountCodeVerifySerializer,
 )
 from authn.services import AuthChallengeInvalid
 
@@ -63,6 +66,50 @@ class ChangePasswordCodeConfirmView(APIView):
     # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = ChangePasswordCodeConfirmSerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            payload = serializer.save()
+        except AuthChallengeInvalid as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class DeleteAccountCodeRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request):
+        serializer = DeleteAccountCodeRequestSerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            payload = serializer.save()
+        except serializers.ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:  # noqa: BLE001
+            return challenge_error_response(exc)
+        return Response(payload, status=status.HTTP_202_ACCEPTED)
+
+
+class DeleteAccountCodeVerifyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request):
+        serializer = DeleteAccountCodeVerifySerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        payload = serializer.save()
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class DeleteAccountCodeConfirmView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request):
+        serializer = DeleteAccountCodeConfirmSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:

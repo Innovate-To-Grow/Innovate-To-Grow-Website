@@ -31,6 +31,7 @@ export const useEventRegistration = () => {
   const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('personal');
   const [attendeeSecondaryEmail, setAttendeeSecondaryEmail] = useState('');
   const [attendeePhone, setAttendeePhone] = useState('');
+  const [primaryEmail, setPrimaryEmail] = useState('');
   const [phoneRegion, setPhoneRegion] = useState('1-US');
   const [phoneCode, setPhoneCode] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -39,6 +40,9 @@ export const useEventRegistration = () => {
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
+  const [accountInfoLocked, setAccountInfoLocked] = useState(false);
+  const [accountPhoneLocked, setAccountPhoneLocked] = useState(false);
+  const [accountSecondaryEmailLocked, setAccountSecondaryEmailLocked] = useState(false);
   const optionsLoaded = useRef(false);
 
   // Pre-fill attendee fields from member profile
@@ -51,6 +55,9 @@ export const useEventRegistration = () => {
       const isPersonal = !org || org.toLowerCase() === 'personal';
       setAttendeeOrgType((prev) => prev !== 'organization' ? (isPersonal ? 'personal' : 'organization') : prev);
       setAttendeeOrganization((prev) => prev || (isPersonal ? '' : org));
+      setAccountInfoLocked(Boolean(p.first_name || p.last_name || org));
+    } else {
+      setAccountInfoLocked(false);
     }
   }, []);
 
@@ -69,6 +76,24 @@ export const useEventRegistration = () => {
 
       if (data.allow_secondary_email && data.member_emails?.length >= 2) {
         setAttendeeSecondaryEmail((prev) => prev || data.member_emails[1]);
+        setAccountSecondaryEmailLocked(true);
+      } else {
+        setAccountSecondaryEmailLocked(false);
+      }
+      setPrimaryEmail(data.member_emails?.[0] || '');
+
+      if (data.collect_phone && data.member_phone) {
+        const phone = data.member_phone.phone_number || '';
+        const region = data.member_phone.region || '1-US';
+        const countryCode = region.split('-')[0];
+        const normalizedDigits = phone.startsWith(`+${countryCode}`) ? phone.slice(countryCode.length + 1) : phone;
+        setAttendeePhone((prev) => prev || normalizedDigits || phone);
+        setPhoneRegion(region);
+        setPhoneVerified(Boolean(data.member_phone.verified));
+        setPhoneCodeSent(Boolean(data.member_phone.verified));
+        setAccountPhoneLocked(Boolean(phone));
+      } else {
+        setAccountPhoneLocked(false);
       }
       prefillFromProfile(data);
       setStep('form');
@@ -243,6 +268,10 @@ export const useEventRegistration = () => {
     attendeeOrgType,
     attendeePhone,
     attendeeSecondaryEmail,
+    primaryEmail,
+    accountInfoLocked,
+    accountPhoneLocked,
+    accountSecondaryEmailLocked,
     phoneRegion,
     authFlow,
     phoneCode,

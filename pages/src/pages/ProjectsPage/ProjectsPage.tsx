@@ -1,12 +1,11 @@
-import {useMemo, useCallback} from 'react';
+import {useMemo} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {ProjectGridTable, ProjectImport, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
+import {ProjectGridTable, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentProjectGridData} from '../../hooks/useProjectGridData';
-import {getStoredUser} from '../../services/auth';
 import './ProjectsPage.css';
 
 export const ProjectsPage = () => {
-  const {rows, loading, error, refetch} = useCurrentProjectGridData();
+  const {rows, loading, error} = useCurrentProjectGridData();
   const [searchParams] = useSearchParams();
   const items = useMemo(() => createProjectGridItems(rows, 'current-projects'), [rows]);
   const table = useProjectGridTable({
@@ -17,13 +16,6 @@ export const ProjectsPage = () => {
     initialSearch: searchParams.get('value') || '',
   });
 
-  const user = getStoredUser();
-  const isStaff = user?.is_staff === true;
-
-  const handleImportComplete = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
   return (
     <div className="projects-page">
       <header className="projects-page-hero">
@@ -32,12 +24,6 @@ export const ProjectsPage = () => {
           Browse the current Innovate to Grow projects, search by team or organization, and expand rows to view abstracts and student names.
         </p>
       </header>
-
-      {isStaff && (
-        <section className="projects-page-card">
-          <ProjectImport onImportComplete={handleImportComplete} />
-        </section>
-      )}
 
       <section className="projects-page-card">
         <ProjectGridTable

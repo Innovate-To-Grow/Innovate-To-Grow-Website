@@ -2,6 +2,7 @@
 Authn app services.
 """
 
+from .account import delete_member_account
 from .contacts.contact_emails import (
     create_contact_email,
     delete_contact_email,
@@ -60,6 +61,7 @@ __all__ = [
     "import_members_from_excel",
     "generate_template_excel",
     "ImportResult",
+    "delete_member_account",
     # Auth email helpers
     "ResolvedAuthEmail",
     "normalize_email",
