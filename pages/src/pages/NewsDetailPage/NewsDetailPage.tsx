@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchNewsDetail, type NewsArticle } from '../../features/news/api';
+import {SafeHtml} from '../../components/SafeHtml/SafeHtml';
 import './NewsDetailPage.css';
 
 export const NewsDetailPage = () => {
@@ -78,10 +79,7 @@ export const NewsDetailPage = () => {
         </time>
       </div>
       {article.content ? (
-        <div
-          className="news-detail-content"
-          dangerouslySetInnerHTML={{ __html: article.content }}
-        />
+        <SafeHtml className="news-detail-content" html={article.content} />
       ) : (
         article.summary && <p className="news-detail-content">{article.summary}</p>
       )}

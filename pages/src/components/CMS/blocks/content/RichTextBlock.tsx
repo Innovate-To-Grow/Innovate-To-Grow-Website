@@ -1,3 +1,5 @@
+import {SafeHtml} from '../../../SafeHtml/SafeHtml';
+
 interface RichTextData {
   heading?: string;
   heading_level?: number;
@@ -10,7 +12,7 @@ export const RichTextBlock: React.FC<{ data: RichTextData }> = ({ data }) => {
   return (
     <section className="cms-rich-text">
       {data.heading && <HeadingTag className="section-title">{data.heading}</HeadingTag>}
-      <div dangerouslySetInnerHTML={{ __html: data.body_html }} />
+      <SafeHtml html={data.body_html} />
     </section>
   );
 };

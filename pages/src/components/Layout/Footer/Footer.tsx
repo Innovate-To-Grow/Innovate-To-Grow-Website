@@ -3,6 +3,7 @@ import {
   type FooterLink,
   type FooterSocialLink,
 } from '../../../services/api';
+import {SafeHtml} from '../../SafeHtml/SafeHtml';
 import { useFooter } from '../LayoutProvider/context';
 import './Footer.css';
 
@@ -72,9 +73,7 @@ export const Footer = () => {
             );
           })}
 
-          {content.contact_html ? (
-            <div className="i2gHome" dangerouslySetInnerHTML={{ __html: content.contact_html }} />
-          ) : null}
+          {content.contact_html ? <SafeHtml className="i2gHome" html={content.contact_html} /> : null}
         </div>
       ) : null}
 
@@ -99,9 +98,7 @@ export const Footer = () => {
                       </ul>
                     ) : null}
 
-                    {column.body_html ? (
-                      <div className="footer-column__body" dangerouslySetInnerHTML={{ __html: column.body_html }} />
-                    ) : null}
+                    {column.body_html ? <SafeHtml className="footer-column__body" html={column.body_html} /> : null}
 
                     {isAddressColumn && socialLinks.length ? (
                       <div className="socialIcons">

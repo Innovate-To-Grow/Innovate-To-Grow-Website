@@ -1,3 +1,5 @@
+import {SafeHtml} from '../../../SafeHtml/SafeHtml';
+
 interface Section {
   heading: string;
   heading_level?: number;
@@ -18,7 +20,7 @@ export const SectionGroupBlock: React.FC<{ data: SectionGroupData }> = ({ data }
         return (
           <section key={i}>
             <HeadingTag className="section-title">{section.heading}</HeadingTag>
-            <div dangerouslySetInnerHTML={{ __html: section.body_html }} />
+            <SafeHtml html={section.body_html} />
           </section>
         );
       })}

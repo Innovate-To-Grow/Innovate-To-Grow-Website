@@ -1,3 +1,5 @@
+import {SafeHtml} from '../../../SafeHtml/SafeHtml';
+
 interface ImageTextData {
   heading?: string;
   image_url?: string;
@@ -19,7 +21,7 @@ export const ImageTextBlock: React.FC<{ data: ImageTextData }> = ({ data }) => {
             loading="lazy"
           />
         )}
-        <div dangerouslySetInnerHTML={{ __html: data.body_html }} />
+        <SafeHtml html={data.body_html} />
       </div>
     </section>
   );

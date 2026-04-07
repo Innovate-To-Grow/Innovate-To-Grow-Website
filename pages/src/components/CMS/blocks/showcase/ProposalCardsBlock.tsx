@@ -1,3 +1,5 @@
+import {SafeHtml} from '../../../SafeHtml/SafeHtml';
+
 interface Proposal {
   type: string;
   title: string;
@@ -51,12 +53,7 @@ export const ProposalCardsBlock: React.FC<{ data: ProposalCardsData }> = ({ data
             <h3 className="proposal-section-title">Objectives</h3>
             <p className="proposal-text">{proposal.objectives}</p>
 
-            {data.footer_html && (
-              <div
-                className="proposal-footer"
-                dangerouslySetInnerHTML={{ __html: data.footer_html }}
-              />
-            )}
+            {data.footer_html ? <SafeHtml className="proposal-footer" html={data.footer_html} /> : null}
           </div>
         </div>
       ))}

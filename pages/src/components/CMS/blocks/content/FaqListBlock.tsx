@@ -1,3 +1,5 @@
+import {SafeHtml} from '../../../SafeHtml/SafeHtml';
+
 interface FaqItem {
   question: string;
   answer_html: string;
@@ -16,7 +18,7 @@ export const FaqListBlock: React.FC<{ data: FaqListData }> = ({ data }) => {
         {data.items.map((item, i) => (
           <div key={i}>
             <h2>{item.question}</h2>
-            <div dangerouslySetInnerHTML={{ __html: item.answer_html }} />
+            <SafeHtml html={item.answer_html} />
           </div>
         ))}
       </div>
