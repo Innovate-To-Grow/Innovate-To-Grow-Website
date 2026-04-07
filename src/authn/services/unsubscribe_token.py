@@ -6,8 +6,8 @@ Follows the same pattern as event/services/ticket_assets.py.
 
 from hashlib import sha256
 
-from django.core.cache import cache
 from django.core import signing
+from django.core.cache import cache
 
 from event.services.ticket_assets import build_frontend_absolute_url
 

@@ -4,7 +4,6 @@ from unittest.mock import patch
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
-
 PROD_ENV = {
     "DJANGO_SECRET_KEY": "test-secret-key",
     "DJANGO_ALLOWED_HOSTS": "api.example.com",

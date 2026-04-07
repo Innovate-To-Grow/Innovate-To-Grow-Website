@@ -5,8 +5,8 @@ from io import BytesIO
 from urllib.parse import urljoin
 
 from django.conf import settings
-from django.core.cache import cache
 from django.core import signing
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from pdf417gen import encode, render_image
