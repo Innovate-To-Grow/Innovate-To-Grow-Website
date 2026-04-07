@@ -11,6 +11,41 @@ const authApi = axios.create({
   },
 });
 
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+
+  if (!refreshInFlight) {
+    refreshInFlight = axios
+      .post(`${API_BASE_URL}/authn/refresh/`, {
+        refresh: refreshToken,
+      })
+      .then((response) => {
+        const { access, refresh: newRefresh } = response.data;
+        const user = getStoredUser();
+        if (user) {
+          setTokens({ access, refresh: newRefresh ?? refreshToken }, user);
+        }
+        window.dispatchEvent(new Event('i2g-auth-state-change'));
+        return access as string;
+      })
+      .catch(() => {
+        clearTokens();
+        window.dispatchEvent(new Event('i2g-auth-state-change'));
+        return null;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+
+  return refreshInFlight;
+}
+
 authApi.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -30,24 +65,10 @@ authApi.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = getRefreshToken();
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/authn/refresh/`, {
-            refresh: refreshToken,
-          });
-          const { access, refresh: newRefresh } = response.data;
-          const user = getStoredUser();
-          if (user) {
-            setTokens({ access, refresh: newRefresh ?? refreshToken }, user);
-          }
-          window.dispatchEvent(new Event('i2g-auth-state-change'));
-          originalRequest.headers.Authorization = `Bearer ${access}`;
-          return authApi(originalRequest);
-        } catch {
-          clearTokens();
-          window.dispatchEvent(new Event('i2g-auth-state-change'));
-        }
+      const access = await refreshAccessToken();
+      if (access) {
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+        return authApi(originalRequest);
       }
     }
 

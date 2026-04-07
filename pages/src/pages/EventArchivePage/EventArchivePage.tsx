@@ -1,4 +1,4 @@
-import {useState, useCallback} from 'react';
+import {useState, useCallback, useMemo} from 'react';
 import {useParams, Link} from 'react-router-dom';
 import {usePastProjectsData} from '../../hooks/usePastProjectsData';
 import {ScheduleGrid} from '../../components/ScheduleGrid';
@@ -12,6 +12,24 @@ export const EventArchivePage = () => {
 
   const {rows, loading, error} = usePastProjectsData();
   const trackInfos: {name: string; room: string; zoomLink: string}[] = [];
+
+  const filteredRows = useMemo(() => {
+    if (!eventSlug) {
+      return rows;
+    }
+
+    const match = eventSlug.match(/^(\d{4})-(spring|fall)$/i);
+    if (!match) {
+      return rows;
+    }
+
+    const [, year, seasonRaw] = match;
+    const season = seasonRaw.toLowerCase() === 'spring' ? 'Spring' : 'Fall';
+    const seasonCode = season === 'Spring' ? '1' : '2';
+    const allowedLabels = new Set([`${year}-${seasonCode} ${season}`, `${season} ${year}`]);
+
+    return rows.filter((row) => allowedLabels.has(String(row['Year-Semester'] || '').trim()));
+  }, [eventSlug, rows]);
 
   const [teamSearch, setTeamSearch] = useState('');
 
@@ -51,7 +69,7 @@ export const EventArchivePage = () => {
           <h2 className="ea-section-title">Presentation Schedule</h2>
           <ScheduleGrid
             classes={config.classes}
-            rows={rows}
+            rows={filteredRows}
             trackInfos={trackInfos}
             loading={loading}
             error={error}
@@ -64,7 +82,7 @@ export const EventArchivePage = () => {
         <h2 className="ea-section-title">Projects &amp; Teams</h2>
         <SheetsDataTable
           key={teamSearch || 'all-projects'}
-          rows={rows}
+          rows={filteredRows}
           loading={loading}
           error={error}
           initialSearch={teamSearch}
