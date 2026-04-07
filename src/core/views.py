@@ -52,7 +52,7 @@ class MaintenanceBypassView(APIView):
                 {"success": False, "error": "Bypass is not configured."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        if password == config.bypass_password:
+        if config.check_bypass_password(password):
             return Response({"success": True})
 
         return Response({"success": False, "error": "Incorrect password."}, status=status.HTTP_403_FORBIDDEN)

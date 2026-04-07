@@ -40,3 +40,12 @@ class MaintenanceBypassViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["success"])
+
+    def test_legacy_plaintext_password_still_works(self):
+        SiteMaintenanceControl.objects.create(pk=1, is_maintenance=True, bypass_password="secret123")
+        SiteMaintenanceControl.objects.filter(pk=1).update(bypass_password="legacy-secret")
+
+        response = self.client.post(self.URL, data={"password": "legacy-secret"}, content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])

@@ -1,4 +1,5 @@
 import datetime
+from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase, override_settings
 
@@ -68,6 +69,14 @@ class GetRegistrationFromAccessTokenTest(TestCase):
         with self.assertRaises(ValueError):
             get_registration_from_access_token(token)
 
+    def test_expired_token_raises_value_error(self):
+        with patch("django.core.signing.time.time", return_value=1_000_000):
+            token = build_ticket_access_token(self.registration)
+
+        with patch("django.core.signing.time.time", return_value=1_000_000 + (60 * 60 * 24 * 30) + 1):
+            with self.assertRaises(ValueError):
+                get_registration_from_access_token(token)
+
 
 # ---------- Ticket Login Token ----------
 
@@ -89,6 +98,9 @@ class BuildTicketLoginTokenTest(TestCase):
 
 class GetMemberFromLoginTokenTest(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
         self.member = make_member()
 
     def test_valid_token_returns_member(self):
@@ -111,6 +123,14 @@ class GetMemberFromLoginTokenTest(TestCase):
         token = build_ticket_login_token(self.member)
         self.member.delete()
         with self.assertRaises(ValueError):
+            get_member_from_login_token(token)
+
+    def test_token_can_only_be_used_once(self):
+        token = build_ticket_login_token(self.member)
+        result = get_member_from_login_token(token)
+
+        self.assertEqual(result.pk, self.member.pk)
+        with self.assertRaisesMessage(ValueError, "This login link has already been used."):
             get_member_from_login_token(token)
 
 

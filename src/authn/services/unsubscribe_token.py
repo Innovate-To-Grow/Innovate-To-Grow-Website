@@ -4,12 +4,20 @@ Signed auto-login tokens for email unsubscribe / preference management.
 Follows the same pattern as event/services/ticket_assets.py.
 """
 
+from hashlib import sha256
+
+from django.core.cache import cache
 from django.core import signing
 
 from event.services.ticket_assets import build_frontend_absolute_url
 
 _UNSUBSCRIBE_LOGIN_SALT = "email-unsubscribe-login"
 _UNSUBSCRIBE_LOGIN_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
+
+
+def _consume_one_time_token(token: str) -> bool:
+    token_digest = sha256(token.encode("utf-8")).hexdigest()
+    return cache.add(f"authn:unsubscribe-login-used:{token_digest}", True, timeout=_UNSUBSCRIBE_LOGIN_MAX_AGE)
 
 
 def build_unsubscribe_login_token(member) -> str:
@@ -28,9 +36,14 @@ def get_member_from_unsubscribe_token(token: str):
         raise ValueError("Invalid or expired login link.") from exc
 
     try:
-        return Member.objects.get(pk=member_id, is_active=True)
+        member = Member.objects.get(pk=member_id, is_active=True)
     except Member.DoesNotExist as exc:
         raise ValueError("Account not found.") from exc
+
+    if not _consume_one_time_token(token):
+        raise ValueError("This login link has already been used.")
+
+    return member
 
 
 def build_unsubscribe_url(member) -> str:

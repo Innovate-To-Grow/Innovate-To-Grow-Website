@@ -31,6 +31,16 @@ class TicketAutoLoginViewTest(TestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
 
+    def test_token_can_only_be_used_once(self):
+        token = build_ticket_login_token(self.member)
+
+        first_response = self.client.post("/event/ticket-login/", {"token": token}, format="json")
+        self.assertEqual(first_response.status_code, 200)
+
+        second_response = self.client.post("/event/ticket-login/", {"token": token}, format="json")
+        self.assertEqual(second_response.status_code, 400)
+        self.assertEqual(second_response.data["detail"], "This login link has already been used.")
+
     def test_inactive_member_returns_400(self):
         token = build_ticket_login_token(self.member)
         self.member.is_active = False

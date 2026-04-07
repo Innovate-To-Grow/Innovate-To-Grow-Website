@@ -61,3 +61,21 @@ class UnsubscribeAutoLoginViewTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_token_can_only_be_used_once(self):
+        token = build_unsubscribe_login_token(self.member)
+
+        first_response = self.client.post(
+            "/authn/unsubscribe-login/",
+            {"token": token},
+            format="json",
+        )
+        self.assertEqual(first_response.status_code, 200)
+
+        second_response = self.client.post(
+            "/authn/unsubscribe-login/",
+            {"token": token},
+            format="json",
+        )
+        self.assertEqual(second_response.status_code, 400)
+        self.assertEqual(second_response.data["detail"], "This login link has already been used.")

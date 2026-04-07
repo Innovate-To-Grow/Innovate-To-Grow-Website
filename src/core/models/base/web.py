@@ -1,4 +1,16 @@
+from django.contrib.auth.hashers import check_password, identify_hasher, make_password
 from django.db import models
+from django.utils.crypto import constant_time_compare
+
+
+def _looks_like_password_hash(value: str) -> bool:
+    if not value:
+        return False
+    try:
+        identify_hasher(value)
+        return True
+    except ValueError:
+        return False
 
 
 class SiteMaintenanceControl(models.Model):
@@ -42,7 +54,16 @@ class SiteMaintenanceControl(models.Model):
     def save(self, *args, **kwargs):
         # Enforce singleton: always use pk=1
         self.pk = 1
+        if self.bypass_password and not _looks_like_password_hash(self.bypass_password):
+            self.bypass_password = make_password(self.bypass_password)
         super().save(*args, **kwargs)
+
+    def check_bypass_password(self, password: str) -> bool:
+        if not self.bypass_password:
+            return False
+        if _looks_like_password_hash(self.bypass_password):
+            return check_password(password, self.bypass_password)
+        return constant_time_compare(password, self.bypass_password)
 
     @classmethod
     def load(cls):

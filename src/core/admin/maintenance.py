@@ -1,13 +1,44 @@
+from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
 from core.models import SiteMaintenanceControl
 
 
+class SiteMaintenanceControlAdminForm(forms.ModelForm):
+    bypass_password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text="Enter a new bypass password to replace the current one.",
+    )
+    clear_bypass_password = forms.BooleanField(
+        required=False,
+        label="Clear bypass password",
+        help_text="Remove the existing bypass password.",
+    )
+
+    class Meta:
+        model = SiteMaintenanceControl
+        fields = ("is_maintenance", "message", "bypass_password")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bypass_password"].initial = ""
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("clear_bypass_password"):
+            cleaned_data["bypass_password"] = ""
+        elif not cleaned_data.get("bypass_password") and self.instance.pk:
+            cleaned_data["bypass_password"] = self.instance.bypass_password
+        return cleaned_data
+
+
 @admin.register(SiteMaintenanceControl)
 class SiteMaintenanceControlAdmin(ModelAdmin):
+    form = SiteMaintenanceControlAdminForm
     list_display = ("__str__", "is_maintenance", "updated_at")
-    fields = ("is_maintenance", "message", "bypass_password", "updated_at")
+    fields = ("is_maintenance", "message", "bypass_password", "clear_bypass_password", "updated_at")
     readonly_fields = ("updated_at",)
 
     def has_add_permission(self, request):

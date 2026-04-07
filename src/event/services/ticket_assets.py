@@ -1,9 +1,11 @@
 import base64
 from datetime import datetime
+from hashlib import sha256
 from io import BytesIO
 from urllib.parse import urljoin
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core import signing
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
@@ -13,7 +15,13 @@ from event.models import EventRegistration
 
 _TICKET_TOKEN_SALT = "event-ticket-access"
 _TICKET_LOGIN_SALT = "event-ticket-login"
+_TICKET_ACCESS_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 _TICKET_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+
+
+def _consume_one_time_token(prefix: str, token: str, ttl: int) -> bool:
+    token_digest = sha256(token.encode("utf-8")).hexdigest()
+    return cache.add(f"{prefix}:{token_digest}", True, timeout=ttl)
 
 
 def build_ticket_access_token(registration: EventRegistration) -> str:
@@ -22,7 +30,7 @@ def build_ticket_access_token(registration: EventRegistration) -> str:
 
 def get_registration_from_access_token(token: str) -> EventRegistration:
     try:
-        payload = signing.loads(token, salt=_TICKET_TOKEN_SALT)
+        payload = signing.loads(token, salt=_TICKET_TOKEN_SALT, max_age=_TICKET_ACCESS_MAX_AGE)
         registration_id = payload["registration_id"]
     except signing.BadSignature as exc:
         raise ValueError("Invalid ticket access token.") from exc
@@ -49,9 +57,14 @@ def get_member_from_login_token(token: str):
         raise ValueError("Invalid or expired login link.") from exc
 
     try:
-        return Member.objects.get(pk=member_id, is_active=True)
+        member = Member.objects.get(pk=member_id, is_active=True)
     except Member.DoesNotExist as exc:
         raise ValueError("Account not found.") from exc
+
+    if not _consume_one_time_token("event:ticket-login-used", token, _TICKET_LOGIN_MAX_AGE):
+        raise ValueError("This login link has already been used.")
+
+    return member
 
 
 def build_backend_absolute_url(path: str, request=None) -> str:
