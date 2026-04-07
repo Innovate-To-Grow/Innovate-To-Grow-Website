@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import base64
 import logging
-from email.utils import parsedate_to_datetime
+from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
 
 from bs4 import BeautifulSoup
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-from core.models import GoogleCredentialConfig
+from core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from .preview import HTML_MARKER
 
@@ -25,7 +25,30 @@ class GmailImportError(RuntimeError):
     """Raised when Gmail message import cannot be completed."""
 
 
-def _get_gmail_service(mailbox: str = DEFAULT_GMAIL_MAILBOX):
+def _normalize_mailbox(value: str) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return ""
+    parsed = parseaddr(normalized)[1]
+    return parsed or normalized
+
+
+def resolve_gmail_mailbox(mailbox: str | None = None) -> str:
+    explicit_mailbox = _normalize_mailbox(str(mailbox or "").strip())
+    if explicit_mailbox:
+        return explicit_mailbox
+
+    email_config = EmailServiceConfig.load()
+    for candidate in (email_config.ses_from_email, email_config.smtp_username):
+        resolved = _normalize_mailbox(candidate)
+        if resolved:
+            return resolved
+
+    return DEFAULT_GMAIL_MAILBOX
+
+
+def _get_gmail_service(mailbox: str | None = None):
+    mailbox = resolve_gmail_mailbox(mailbox)
     config = GoogleCredentialConfig.load()
     if not config.is_configured:
         raise GmailImportError("No active Google service account is configured.")
@@ -95,8 +118,9 @@ def _get_full_message(service, message_id: str) -> dict[str, Any]:
     return service.users().messages().get(userId="me", id=message_id, format="full").execute()
 
 
-def list_recent_sent_messages(limit: int = 5, mailbox: str = DEFAULT_GMAIL_MAILBOX) -> list[dict[str, Any]]:
+def list_recent_sent_messages(limit: int = 5, mailbox: str | None = None) -> list[dict[str, Any]]:
     """Return summaries for the most recent sent Gmail messages."""
+    mailbox = resolve_gmail_mailbox(mailbox)
     service = _get_gmail_service(mailbox)
 
     try:
@@ -126,8 +150,9 @@ def list_recent_sent_messages(limit: int = 5, mailbox: str = DEFAULT_GMAIL_MAILB
         raise GmailImportError("Failed to load recent sent Gmail messages.") from exc
 
 
-def fetch_message_html_fragment(message_id: str, mailbox: str = DEFAULT_GMAIL_MAILBOX) -> str:
+def fetch_message_html_fragment(message_id: str, mailbox: str | None = None) -> str:
     """Fetch a Gmail message and return a wrapper-safe HTML fragment."""
+    mailbox = resolve_gmail_mailbox(mailbox)
     service = _get_gmail_service(mailbox)
 
     try:
@@ -145,7 +170,7 @@ def fetch_message_html_fragment(message_id: str, mailbox: str = DEFAULT_GMAIL_MA
     return html
 
 
-def import_message_into_campaign(campaign, message_id: str, mailbox: str = DEFAULT_GMAIL_MAILBOX) -> str:
+def import_message_into_campaign(campaign, message_id: str, mailbox: str | None = None) -> str:
     """Import a Gmail HTML message into the given draft campaign."""
     html_fragment = fetch_message_html_fragment(message_id, mailbox=mailbox)
     campaign.body = HTML_MARKER + html_fragment

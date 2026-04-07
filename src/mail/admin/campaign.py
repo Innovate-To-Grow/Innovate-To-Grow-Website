@@ -8,20 +8,26 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.admin import TabularInline
 from unfold.decorators import action, display
-from unfold.widgets import UnfoldAdminTextInputWidget
+from unfold.widgets import (
+    UnfoldAdminRadioSelectWidget,
+    UnfoldAdminSelectWidget,
+    UnfoldAdminTextareaWidget,
+    UnfoldAdminTextInputWidget,
+)
 
 from core.admin import BaseModelAdmin
 from core.models import EmailServiceConfig, GoogleCredentialConfig
 from event.models import Ticket
 
+from ..login_redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 from ..models import EmailCampaign, RecipientLog
 from ..models.campaign import ALL_AUDIENCE_CHOICES
 from ..services.audience import get_recipients
 from ..services.gmail_import import (
-    DEFAULT_GMAIL_MAILBOX,
     GmailImportError,
     import_message_into_campaign,
     list_recent_sent_messages,
+    resolve_gmail_mailbox,
 )
 from ..services.preview import HTML_MARKER, render_preview
 
@@ -54,7 +60,7 @@ class ManualEmailsWidget(forms.Textarea):
         super().__init__(attrs=defaults)
 
 
-class TicketSelectWidget(forms.Select):
+class TicketSelectWidget(UnfoldAdminSelectWidget):
     """Select widget that carries ``data-event`` on each option for JS filtering."""
 
     template_name = "admin/mail/widgets/ticket_select.html"
@@ -92,7 +98,14 @@ class EmailCampaignForm(forms.ModelForm):
         initial="plain",
         required=False,
         label="Email format",
-        widget=forms.RadioSelect,
+        widget=UnfoldAdminRadioSelectWidget,
+    )
+    login_redirect_path = forms.ChoiceField(
+        choices=(),
+        initial=DEFAULT_LOGIN_REDIRECT_PATH,
+        label="Post-login destination",
+        help_text="Choose the internal page recipients should see after using {{login_link}}.",
+        widget=UnfoldAdminSelectWidget,
     )
 
     class Meta:
@@ -101,6 +114,10 @@ class EmailCampaignForm(forms.ModelForm):
         widgets = {
             "subject": PersonalizationTextInput,
             "manual_emails": ManualEmailsWidget,
+            "body": UnfoldAdminTextareaWidget,
+            "audience_type": UnfoldAdminSelectWidget,
+            "event": UnfoldAdminSelectWidget,
+            "member_email_scope": UnfoldAdminSelectWidget,
         }
 
     def __init__(self, *args, **kwargs):
@@ -108,6 +125,8 @@ class EmailCampaignForm(forms.ModelForm):
         # Override choices to include all audience types (model field keeps the
         # original 4 to avoid a migration; extended list is form-only).
         self.fields["audience_type"].choices = ALL_AUDIENCE_CHOICES
+        current_path = self.initial.get("login_redirect_path") or getattr(self.instance, "login_redirect_path", None)
+        self.fields["login_redirect_path"].choices = get_login_redirect_choices(current_path=current_path)
 
         # Restore ticket selection from manual_emails for ticket_type campaigns
         if self.instance and self.instance.pk and self.instance.audience_type == "ticket_type":
@@ -224,7 +243,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
         ),
         (
             "Campaign",
-            {"fields": ("subject", "body_format", "body")},
+            {"fields": ("subject", "login_redirect_path", "body_format", "body")},
         ),
     )
     filter_horizontal = ("selected_members",)
@@ -266,14 +285,16 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if obj and obj.status != "draft":
-            readonly.extend(["name", "subject", "body", "body_format", "audience_type", "event", "ticket"])
+            readonly.extend(
+                ["name", "subject", "login_redirect_path", "body", "body_format", "audience_type", "event", "ticket"]
+            )
         return readonly
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context["email_config"] = EmailServiceConfig.load()
         extra_context["google_config"] = GoogleCredentialConfig.load()
-        extra_context["gmail_mailbox"] = DEFAULT_GMAIL_MAILBOX
+        extra_context["gmail_mailbox"] = resolve_gmail_mailbox()
         return super().changelist_view(request, extra_context=extra_context)
 
     # -- Custom URLs -----------------------------------------------------------
@@ -362,12 +383,13 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def import_gmail_html_view(self, request, object_id):
         obj = EmailCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
+        mailbox = resolve_gmail_mailbox()
         if obj.status != "draft":
             messages.warning(request, "Only draft campaigns can import Gmail HTML.")
             return HttpResponseRedirect(change_url)
 
         try:
-            gmail_messages = list_recent_sent_messages(limit=5, mailbox=DEFAULT_GMAIL_MAILBOX)
+            gmail_messages = list_recent_sent_messages(limit=5, mailbox=mailbox)
         except GmailImportError as exc:
             messages.error(request, str(exc))
             return HttpResponseRedirect(change_url)
@@ -378,7 +400,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
             "campaign": obj,
             "gmail_messages": gmail_messages,
             "google_config": GoogleCredentialConfig.load(),
-            "mailbox": DEFAULT_GMAIL_MAILBOX,
+            "mailbox": mailbox,
             "confirm_url": reverse("admin:mail_emailcampaign_import_gmail_html_confirm", args=[object_id]),
             "cancel_url": change_url,
         }
@@ -388,6 +410,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
         obj = EmailCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
         selection_url = reverse("admin:mail_emailcampaign_import_gmail_html", args=[object_id])
+        mailbox = resolve_gmail_mailbox()
 
         if obj.status != "draft":
             messages.warning(request, "Only draft campaigns can import Gmail HTML.")
@@ -401,7 +424,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
             return HttpResponseRedirect(selection_url)
 
         try:
-            import_message_into_campaign(obj, message_id, mailbox=DEFAULT_GMAIL_MAILBOX)
+            import_message_into_campaign(obj, message_id, mailbox=mailbox)
         except GmailImportError as exc:
             messages.error(request, str(exc))
             return HttpResponseRedirect(selection_url)

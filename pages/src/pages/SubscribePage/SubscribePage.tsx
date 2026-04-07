@@ -1,141 +1,139 @@
-import {useState, useEffect, type FormEvent} from 'react';
+import {useEffect, useState, type FormEvent} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../../components/Auth';
-import {getProfile, updateProfileFields} from '../../services/auth';
-import {CodeStep} from './steps/CodeStep';
+import {RegisterFields} from '../../components/Auth/forms/RegisterFields';
+import '../../components/Auth/Auth.css';
+import {updateProfileFields} from '../../services/auth';
 import {DoneStep} from './steps/DoneStep';
-import {EmailStep} from './steps/EmailStep';
-import {getSubscribeErrorMessage, type SubscribeStep} from './steps/helpers';
-import {ProfileStep} from './steps/ProfileStep';
+import {getSubscribeErrorMessage} from './steps/helpers';
 import './SubscribePage.css';
 
+type OrganizationType = 'personal' | 'organization';
+
 export const SubscribePage = () => {
-  const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode, clearProfileCompletionRequirement} = useAuth();
+  const {user, isAuthenticated, register, error: authError, isLoading, clearError} = useAuth();
+  const navigate = useNavigate();
 
-  const [step, setStep] = useState<SubscribeStep>('email');
-  const [error, setError] = useState<string | null>(null);
-
-  // Auth state
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authFlow, setAuthFlow] = useState<string | null>(null);
-
-  // Profile state
   const [firstName, setFirstName] = useState('');
-  const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('personal');
   const [organization, setOrganization] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [profileReady, setProfileReady] = useState(false);
-
-  // If already authenticated, skip to profile step to set subscribe
-  useEffect(() => {
-    if (isAuthenticated && (step === 'email' || step === 'code')) {
-      setStep('profile');
-    }
-  }, [isAuthenticated, step]);
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [subscribeLoading, setSubscribeLoading] = useState(false);
+  const [doneEmail, setDoneEmail] = useState('');
 
   useEffect(() => {
-    if (!isAuthenticated || step !== 'profile' || profileReady) {
+    if (isAuthenticated) {
+      setEmail(user?.email ?? '');
+      setPageError(null);
+      setLocalErrors({});
       return;
     }
 
-    let cancelled = false;
+    setEmail('');
+    setDoneEmail('');
+  }, [isAuthenticated, user?.email]);
 
-    const loadProfile = async () => {
-      try {
-        const profile = await getProfile();
-        if (cancelled) {
-          return;
-        }
-        setEmail((current) => current || profile.email || '');
-        setFirstName(profile.first_name || '');
-        setMiddleName(profile.middle_name || '');
-        setLastName(profile.last_name || '');
-        setOrganization(profile.organization || '');
-      } catch (err: unknown) {
-        if (!cancelled) {
-          setError(getSubscribeErrorMessage(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setProfileReady(true);
-        }
-      }
-    };
+  const validateRegistration = () => {
+    const errors: Record<string, string> = {};
 
-    void loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, profileReady, step]);
-
-  const handleEmailSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setError(null);
-    try {
-      const result = await requestEmailAuthCode(email.trim());
-      setAuthFlow(result.flow);
-      setStep('code');
-    } catch (err: unknown) {
-      setError(getSubscribeErrorMessage(err));
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleCodeSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setError(null);
-    try {
-      const result = await verifyEmailAuthCode(email.trim(), code.trim());
-      // If existing user (login flow), go straight to subscribing
-      if (result.requires_profile_completion) {
-        setStep('profile');
-      } else {
-        // Existing user — set subscribe and done
-        await updateProfileFields({email_subscribe: true});
-        clearProfileCompletionRequirement();
-        setStep('done');
-      }
-    } catch (err: unknown) {
-      setError(getSubscribeErrorMessage(err));
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleProfileSubmit = async (e: FormEvent) => {
-    e.preventDefault();
     if (!firstName.trim()) {
-      setError('First name is required.');
+      errors.firstName = 'First name is required';
+    }
+
+    if (!lastName.trim()) {
+      errors.lastName = 'Last name is required';
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (organizationType === 'organization' && !organization.trim()) {
+      errors.organization = 'Organization name is required';
+    }
+
+    if (password.length < 8) {
+      errors.password = 'Password must be at least 8 characters';
+    }
+
+    if (password !== passwordConfirm) {
+      errors.passwordConfirm = 'Passwords do not match';
+    }
+
+    setLocalErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleRegisterSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    clearError();
+    setPageError(null);
+
+    if (!validateRegistration()) {
       return;
     }
-    setSaving(true);
-    setError(null);
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+
     try {
-      await updateProfileFields({
-        first_name: firstName.trim(),
-        middle_name: middleName.trim(),
-        last_name: lastName.trim(),
-        organization: organization.trim(),
-        email_subscribe: true,
-      });
-      clearProfileCompletionRequirement();
-      setStep('done');
-    } catch (err: unknown) {
-      setError(getSubscribeErrorMessage(err));
-    } finally {
-      setSaving(false);
+      await register(
+        normalizedEmail,
+        password,
+        passwordConfirm,
+        firstName.trim(),
+        lastName.trim(),
+        orgValue,
+      );
+
+      navigate(
+        `/verify-email?flow=register&email=${encodeURIComponent(normalizedEmail)}&returnTo=${encodeURIComponent('/subscribe')}`,
+        {replace: true},
+      );
+    } catch {
+      // Error is handled by the auth context.
     }
   };
 
-  if (step === 'done') {
-    return <DoneStep email={email} />;
+  const handleSubscribeSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!email.trim()) {
+      setPageError('We could not find an email address for your account.');
+      return;
+    }
+
+    setSubscribeLoading(true);
+    setPageError(null);
+    try {
+      const profile = await updateProfileFields({email_subscribe: true});
+      const subscribedEmail = profile.email || email.trim();
+      setDoneEmail(subscribedEmail);
+      setEmail(subscribedEmail);
+    } catch (err: unknown) {
+      setPageError(getSubscribeErrorMessage(err));
+    } finally {
+      setSubscribeLoading(false);
+    }
+  };
+
+  if (doneEmail) {
+    return <DoneStep email={doneEmail} />;
   }
+
+  const error = pageError ?? authError;
+  const registerDisabled =
+    isLoading ||
+    !firstName.trim() ||
+    !lastName.trim() ||
+    !email.trim() ||
+    !password ||
+    !passwordConfirm ||
+    (organizationType === 'organization' && !organization.trim());
 
   return (
     <div className="subscribe-page">
@@ -143,63 +141,108 @@ export const SubscribePage = () => {
 
       <div className="subscribe-info">
         <h2>Stay Updated</h2>
-        <p>Subscribe to receive the latest updates and announcements. Your email will be used to create an account so you can manage your preferences.</p>
+        <p>
+          {isAuthenticated
+            ? 'You are signed in. Confirm your account email below to receive updates and announcements.'
+            : 'Create your account with the standard registration flow, then subscribe your email to receive updates and announcements.'}
+        </p>
       </div>
 
       {error && <div className="subscribe-alert error">{error}</div>}
 
-      {step === 'email' ? (
-        <EmailStep email={email} authLoading={authLoading} onEmailChange={setEmail} onSubmit={handleEmailSubmit} />
-      ) : null}
+      {isAuthenticated ? (
+        <div className="subscribe-section">
+          <p className="subscribe-hint">This page uses your signed-in account email for subscription preferences.</p>
+          <form onSubmit={handleSubscribeSubmit}>
+            <div className="subscribe-form-group">
+              <label className="subscribe-label" htmlFor="subscribe-account-email">
+                Email
+              </label>
+              <input
+                id="subscribe-account-email"
+                type="email"
+                className="subscribe-input"
+                value={email}
+                readOnly
+                disabled
+              />
+            </div>
+            <button type="submit" className="subscribe-submit" disabled={subscribeLoading || !email.trim()}>
+              {subscribeLoading ? <><span className="subscribe-spinner" /> Subscribing...</> : 'Subscribe'}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="subscribe-section">
+          <p className="subscribe-hint">Register with your email and password first. We will ask you to verify your email before continuing.</p>
+          <form className="auth-form" onSubmit={handleRegisterSubmit}>
+            <RegisterFields
+              firstName={firstName}
+              lastName={lastName}
+              organizationType={organizationType}
+              organization={organization}
+              email={email}
+              password={password}
+              passwordConfirm={passwordConfirm}
+              localErrors={localErrors}
+              onFirstNameChange={(value) => {
+                setFirstName(value);
+                setLocalErrors((prev) => ({...prev, firstName: ''}));
+                clearError();
+                setPageError(null);
+              }}
+              onLastNameChange={(value) => {
+                setLastName(value);
+                setLocalErrors((prev) => ({...prev, lastName: ''}));
+                clearError();
+                setPageError(null);
+              }}
+              onOrganizationTypeChange={(value) => {
+                setOrganizationType(value);
+                setOrganization('');
+                setLocalErrors((prev) => ({...prev, organization: ''}));
+                clearError();
+                setPageError(null);
+              }}
+              onOrganizationChange={(value) => {
+                setOrganization(value);
+                setLocalErrors((prev) => ({...prev, organization: ''}));
+                clearError();
+                setPageError(null);
+              }}
+              onEmailChange={(value) => {
+                setEmail(value);
+                setLocalErrors((prev) => ({...prev, email: ''}));
+                clearError();
+                setPageError(null);
+              }}
+              onPasswordChange={(value) => {
+                setPassword(value);
+                setLocalErrors((prev) => ({...prev, password: ''}));
+                clearError();
+                setPageError(null);
+              }}
+              onPasswordConfirmChange={(value) => {
+                setPasswordConfirm(value);
+                setLocalErrors((prev) => ({...prev, passwordConfirm: ''}));
+                clearError();
+                setPageError(null);
+              }}
+            />
 
-      {step === 'code' ? (
-        <CodeStep
-          email={email}
-          code={code}
-          authFlow={authFlow}
-          authLoading={authLoading}
-          onCodeChange={setCode}
-          onSubmit={handleCodeSubmit}
-          onBack={() => {
-            setCode('');
-            setError(null);
-            setStep('email');
-          }}
-        />
-      ) : null}
+            <button type="submit" className="subscribe-submit" disabled={registerDisabled}>
+              {isLoading ? <><span className="subscribe-spinner" /> Sending verification code...</> : 'Create Account and Continue'}
+            </button>
+          </form>
 
-      {step === 'profile' ? (
-        profileReady ? (
-          <ProfileStep
-            firstName={firstName}
-            middleName={middleName}
-            lastName={lastName}
-            organization={organization}
-            saving={saving}
-            onFirstNameChange={(value) => {
-              setFirstName(value);
-              setError(null);
-            }}
-            onMiddleNameChange={(value) => {
-              setMiddleName(value);
-              setError(null);
-            }}
-            onLastNameChange={(value) => {
-              setLastName(value);
-              setError(null);
-            }}
-            onOrganizationChange={(value) => {
-              setOrganization(value);
-              setError(null);
-            }}
-            onSubmit={handleProfileSubmit}
-          />
-        ) : (
-          <div className="subscribe-section">
-            <p className="subscribe-hint">Loading your profile...</p>
+          <div className="auth-switch">
+            <p>Already have an account?</p>
+            <button type="button" className="auth-switch-link" onClick={() => navigate('/login')}>
+              Sign In
+            </button>
           </div>
-        )
-      ) : null}
+        </div>
+      )}
     </div>
   );
 };

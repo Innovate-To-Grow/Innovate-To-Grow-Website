@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from authn.views.helpers import build_auth_success_payload
 
+from .login_redirects import get_magic_login_redirect_path
 from .models import MagicLoginToken
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class MagicLoginView(APIView):
             return Response({"detail": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            magic = MagicLoginToken.objects.select_related("member").get(token=token)
+            magic = MagicLoginToken.objects.select_related("member", "campaign").get(token=token)
         except MagicLoginToken.DoesNotExist:
             return Response({"detail": "Invalid login link."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -34,4 +35,5 @@ class MagicLoginView(APIView):
 
         magic.consume()
         payload = build_auth_success_payload(magic.member, "Login successful.")
+        payload["redirect_to"] = get_magic_login_redirect_path(magic.campaign)
         return Response(payload, status=status.HTTP_200_OK)

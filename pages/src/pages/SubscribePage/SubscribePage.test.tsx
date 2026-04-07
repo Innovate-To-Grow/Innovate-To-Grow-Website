@@ -5,64 +5,108 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {SubscribePage} from './SubscribePage';
 
 const mockUseAuth = vi.fn();
-const mockGetProfile = vi.fn();
 const mockUpdateProfileFields = vi.fn();
+const mockNavigate = vi.fn();
 
 vi.mock('../../components/Auth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock('../../services/auth', () => ({
-  getProfile: (...args: unknown[]) => mockGetProfile(...args),
-  updateProfileFields: (...args: unknown[]) => mockUpdateProfileFields(...args),
-}));
+vi.mock('../../services/auth', async () => {
+  const actual = await vi.importActual<typeof import('../../services/auth')>('../../services/auth');
+  return {
+    ...actual,
+    updateProfileFields: (...args: unknown[]) => mockUpdateProfileFields(...args),
+  };
+});
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 describe('SubscribePage', () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
-    mockGetProfile.mockReset();
     mockUpdateProfileFields.mockReset();
+    mockNavigate.mockReset();
 
     mockUseAuth.mockReturnValue({
+      user: {email: 'member@example.com'},
       isAuthenticated: true,
-      requestEmailAuthCode: vi.fn(),
-      verifyEmailAuthCode: vi.fn(),
-      clearProfileCompletionRequirement: vi.fn(),
+      register: vi.fn(),
+      error: null,
+      isLoading: false,
+      clearError: vi.fn(),
     });
-    mockGetProfile.mockResolvedValue({
-      email: 'member@example.com',
-      first_name: 'Ada',
-      middle_name: 'M',
-      last_name: 'Lovelace',
-      organization: 'Analytical Engine',
-    });
-    mockUpdateProfileFields.mockResolvedValue({});
+    mockUpdateProfileFields.mockResolvedValue({email: 'member@example.com'});
   });
 
-  it('preloads the authenticated profile before subscribing', async () => {
+  it('shows only the signed-in email and subscribes it', async () => {
     render(
       <MemoryRouter>
         <SubscribePage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Loading your profile...')).toBeInTheDocument();
-
-    await waitFor(() => expect(screen.getByDisplayValue('Ada')).toBeInTheDocument());
-    expect(screen.getByDisplayValue('M')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Lovelace')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Analytical Engine')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('member@example.com')).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', {name: 'Subscribe'}));
 
     await waitFor(() => {
       expect(mockUpdateProfileFields).toHaveBeenCalledWith({
-        first_name: 'Ada',
-        middle_name: 'M',
-        last_name: 'Lovelace',
-        organization: 'Analytical Engine',
         email_subscribe: true,
       });
     });
+
+    expect(await screen.findByText("You're Subscribed!")).toBeInTheDocument();
+    expect(screen.getByText(/member@example\.com/)).toBeInTheDocument();
+  });
+
+  it('uses the standard registration flow for signed-out users', async () => {
+    const register = vi.fn().mockResolvedValue({message: 'ok', next_step: 'verify_code'});
+    const clearError = vi.fn();
+
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      register,
+      error: null,
+      isLoading: false,
+      clearError,
+    });
+
+    render(
+      <MemoryRouter>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('First Name'), {target: {value: 'Ada'}});
+    fireEvent.change(screen.getByLabelText('Last Name'), {target: {value: 'Lovelace'}});
+    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'ada@example.com'}});
+    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'password123'}});
+    fireEvent.change(screen.getByLabelText('Confirm Password'), {target: {value: 'password123'}});
+
+    fireEvent.click(screen.getByRole('button', {name: 'Create Account and Continue'}));
+
+    await waitFor(() => {
+      expect(register).toHaveBeenCalledWith(
+        'ada@example.com',
+        'password123',
+        'password123',
+        'Ada',
+        'Lovelace',
+        'Personal',
+      );
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/verify-email?flow=register&email=ada%40example.com&returnTo=%2Fsubscribe',
+      {replace: true},
+    );
   });
 });

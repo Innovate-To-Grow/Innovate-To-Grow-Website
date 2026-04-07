@@ -1,10 +1,13 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.contrib.admin.sites import AdminSite
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
+from cms.models import CMSPage
 from core.models import EmailServiceConfig, GoogleCredentialConfig
 from event.tests.helpers import make_superuser
+from mail.admin.campaign import EmailCampaignAdmin
 from mail.models import EmailCampaign
 from mail.services.preview import HTML_MARKER
 
@@ -13,7 +16,11 @@ class EmailCampaignAdminImportTest(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
-        self.campaign = EmailCampaign.objects.create(subject="Spring Update", body="Draft body")
+        self.campaign = EmailCampaign.objects.create(
+            subject="Spring Update",
+            body="Draft body",
+            login_redirect_path="/account",
+        )
         self.google_config = GoogleCredentialConfig.objects.create(
             name="Primary Google",
             is_active=True,
@@ -31,7 +38,7 @@ class EmailCampaignAdminImportTest(TestCase):
             ses_access_key_id="AKIAXXXXXXXX",
             ses_secret_access_key="secret",
             ses_region="us-west-2",
-            ses_from_email="i2g@g.ucmerced.edu",
+            ses_from_email="campaigns@ucmerced.edu",
             ses_from_name="Innovate to Grow",
         )
 
@@ -41,8 +48,8 @@ class EmailCampaignAdminImportTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Gmail Import Account")
         self.assertContains(response, "mailer@innovate-prod.iam.gserviceaccount.com")
-        self.assertContains(response, "i2g@g.ucmerced.edu")
-        self.assertContains(response, "Innovate to Grow &lt;i2g@g.ucmerced.edu&gt;")
+        self.assertContains(response, "campaigns@ucmerced.edu")
+        self.assertContains(response, "Innovate to Grow &lt;campaigns@ucmerced.edu&gt;")
 
     def test_import_gmail_html_view_renders_recent_messages(self):
         with patch("mail.admin.campaign.list_recent_sent_messages") as mock_list:
@@ -59,10 +66,12 @@ class EmailCampaignAdminImportTest(TestCase):
             response = self.client.get(reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]))
 
         self.assertEqual(response.status_code, 200)
+        mock_list.assert_called_once_with(limit=5, mailbox="campaigns@ucmerced.edu")
         self.assertContains(response, "Sent Newsletter")
         self.assertContains(response, "Import will replace the current campaign body")
         self.assertContains(response, "mailer@innovate-prod.iam.gserviceaccount.com")
         self.assertContains(response, "innovate-prod")
+        self.assertContains(response, "campaigns@ucmerced.edu")
 
     def test_import_gmail_html_view_redirects_for_non_draft_campaign(self):
         self.campaign.status = "sent"
@@ -93,7 +102,7 @@ class EmailCampaignAdminImportTest(TestCase):
             response.url,
             reverse("admin:mail_emailcampaign_change", args=[self.campaign.pk]),
         )
-        mock_import.assert_called_once()
+        mock_import.assert_called_once_with(self.campaign, "msg-1", mailbox="campaigns@ucmerced.edu")
         self.campaign.refresh_from_db()
         self.assertTrue(self.campaign.body.startswith(HTML_MARKER))
         self.assertIn("Imported from Gmail", self.campaign.body)
@@ -106,3 +115,67 @@ class EmailCampaignAdminImportTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Preview Email")
+
+
+class EmailCampaignAdminRedirectTest(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser()
+        self.request_factory = RequestFactory()
+        self.model_admin = EmailCampaignAdmin(EmailCampaign, AdminSite())
+        self.published_page = CMSPage.objects.create(
+            slug="campaign-destination",
+            route="/campaign-destination",
+            title="Campaign Destination",
+            status="published",
+        )
+        self.archived_page = CMSPage.objects.create(
+            slug="old-campaign-destination",
+            route="/old-campaign-destination",
+            title="Old Campaign Destination",
+            status="archived",
+        )
+
+    def test_new_campaign_form_requires_redirect_destination(self):
+        form = self._get_form(
+            data={
+                "audience_type": "subscribers",
+                "member_email_scope": "primary",
+                "subject": "Spring Update",
+                "body_format": "plain",
+                "body": "Draft body",
+                "login_redirect_path": "",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("login_redirect_path", form.errors)
+
+    def test_redirect_choices_include_account_app_routes_and_published_cms_pages(self):
+        form = self._get_form()
+        choices = dict(form.fields["login_redirect_path"].choices)
+
+        self.assertIn("/account", choices)
+        self.assertIn("/schedule", choices)
+        self.assertIn("/campaign-destination", choices)
+        self.assertNotIn("/old-campaign-destination", choices)
+
+    def test_sent_campaign_marks_redirect_destination_read_only(self):
+        campaign = EmailCampaign.objects.create(
+            subject="Sent Update",
+            body="Sent body",
+            login_redirect_path="/campaign-destination",
+            status="sent",
+        )
+
+        readonly_fields = self.model_admin.get_readonly_fields(self._build_request(), obj=campaign)
+
+        self.assertIn("login_redirect_path", readonly_fields)
+
+    def _get_form(self, *, data=None, instance=None):
+        form_class = self.model_admin.get_form(self._build_request(), obj=instance)
+        return form_class(data=data, instance=instance)
+
+    def _build_request(self):
+        request = self.request_factory.get("/admin/mail/emailcampaign/")
+        request.user = self.admin_user
+        return request

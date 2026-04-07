@@ -11,6 +11,7 @@ from mail.services.gmail_import import (
     fetch_message_html_fragment,
     import_message_into_campaign,
     list_recent_sent_messages,
+    resolve_gmail_mailbox,
 )
 from mail.services.preview import HTML_MARKER, render_preview
 
@@ -122,7 +123,11 @@ class GmailImportServiceTest(TestCase):
         self.assertEqual(fragment, "<p>Hello <strong>world</strong></p>")
 
     def test_import_message_into_campaign_saves_html_marker(self):
-        campaign = EmailCampaign.objects.create(subject="Campaign", body="Before import")
+        campaign = EmailCampaign.objects.create(
+            subject="Campaign",
+            body="Before import",
+            login_redirect_path="/account",
+        )
 
         with patch("mail.services.gmail_import.fetch_message_html_fragment", return_value="<p>Imported</p>"):
             import_message_into_campaign(campaign, "msg-1")
@@ -160,6 +165,18 @@ class GmailImportServiceTest(TestCase):
         with patch("mail.services.gmail_import._get_gmail_service", return_value=service):
             with self.assertRaises(GmailImportError):
                 fetch_message_html_fragment("msg-1")
+
+    def test_resolve_gmail_mailbox_uses_active_sender_email(self):
+        with patch(
+            "mail.services.gmail_import.EmailServiceConfig.load",
+            return_value=SimpleNamespace(
+                ses_from_email="Innovate to Grow <campaigns@ucmerced.edu>",
+                smtp_username="smtp-user@ucmerced.edu",
+            ),
+        ):
+            mailbox = resolve_gmail_mailbox()
+
+        self.assertEqual(mailbox, "campaigns@ucmerced.edu")
 
     def test_render_preview_wraps_imported_raw_html_without_escaping(self):
         campaign = Mock(subject="Preview", body=HTML_MARKER + "<p><strong>Imported</strong> HTML</p>")

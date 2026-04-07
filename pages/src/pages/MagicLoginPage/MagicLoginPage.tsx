@@ -1,6 +1,8 @@
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
 import {magicAutoLogin} from '../../services/auth';
+import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
+import {getSafeInternalRedirectPath} from '../../shared/auth/redirects';
 import './MagicLoginPage.css';
 
 export function MagicLoginPage() {
@@ -17,10 +19,10 @@ export function MagicLoginPage() {
     let cancelled = false;
 
     magicAutoLogin(token)
-      .then(() => {
+      .then((response) => {
         if (!cancelled) {
-          window.dispatchEvent(new Event('i2g-auth-state-change'));
-          navigate('/account', {replace: true});
+          dispatchAuthStateChange();
+          navigate(getSafeInternalRedirectPath(response.redirect_to) ?? '/account', {replace: true});
         }
       })
       .catch(() => {

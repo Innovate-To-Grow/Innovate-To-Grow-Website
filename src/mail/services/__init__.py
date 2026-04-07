@@ -5,6 +5,7 @@ from .gmail_import import (
     fetch_message_html_fragment,
     import_message_into_campaign,
     list_recent_sent_messages,
+    resolve_gmail_mailbox,
 )
 from .personalize import personalize
 from .send_campaign import send_campaign
@@ -17,5 +18,6 @@ __all__ = [
     "import_message_into_campaign",
     "list_recent_sent_messages",
     "personalize",
+    "resolve_gmail_mailbox",
     "send_campaign",
 ]

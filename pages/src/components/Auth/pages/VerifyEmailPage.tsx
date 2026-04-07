@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import { FLOW_META, isVerifyFlow, type VerifyFlow } from './verify/shared';
@@ -11,6 +12,7 @@ export const VerifyEmailPage = () => {
 
   const flowParam = searchParams.get('flow');
   const email = searchParams.get('email')?.trim().toLowerCase() ?? '';
+  const returnTo = flowParam === 'register' ? getSafeInternalRedirectPath(searchParams.get('returnTo')) : null;
 
   if (!isVerifyFlow(flowParam) || !email) {
     return <Navigate to="/login" replace />;
@@ -21,18 +23,19 @@ export const VerifyEmailPage = () => {
   }
 
   if ((flowParam === 'auth' || flowParam === 'login' || flowParam === 'register') && isAuthenticated) {
-    return <Navigate to={requiresProfileCompletion ? '/complete-profile' : '/account'} replace />;
+    return <Navigate to={flowParam === 'register' && returnTo ? returnTo : requiresProfileCompletion ? '/complete-profile' : '/account'} replace />;
   }
 
-  return <VerifyEmailPageContent key={`${flowParam}:${email}`} flow={flowParam} email={email} />;
+  return <VerifyEmailPageContent key={`${flowParam}:${email}:${returnTo ?? ''}`} flow={flowParam} email={email} returnTo={returnTo} />;
 };
 
 interface VerifyEmailPageContentProps {
   flow: VerifyFlow;
   email: string;
+  returnTo: string | null;
 }
 
-const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) => {
+const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageContentProps) => {
   const {
     error,
     isLoading,
@@ -82,7 +85,7 @@ const VerifyEmailPageContent = ({ flow, email }: VerifyEmailPageContentProps) =>
       }
       if (flow === 'register') {
         await verifyRegistrationCode(email, code);
-        navigate('/account', { replace: true });
+        navigate(returnTo ?? '/account', { replace: true });
         return;
       }
       if (flow === 'reset') {

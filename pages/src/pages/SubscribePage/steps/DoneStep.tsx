@@ -12,7 +12,7 @@ export const DoneStep = ({email}: DoneStepProps) => (
         You'll receive updates and announcements at <strong>{email}</strong>.
       </p>
       <div className="subscribe-done-notice">
-        Your account has been created and you are now subscribed to our communications.
+        Your subscription preferences have been updated for this email.
       </div>
       <Link to="/account" className="subscribe-link">
         View My Account

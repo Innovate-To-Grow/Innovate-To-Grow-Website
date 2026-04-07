@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from core.models import ProjectControlModel
+from mail.login_redirects import is_safe_internal_redirect_path
 
 AUDIENCE_CHOICES = [
     ("subscribers", "All Email Subscribers"),
@@ -44,6 +45,11 @@ class EmailCampaign(ProjectControlModel):
     name = models.CharField(max_length=200, blank=True, default="")
     subject = models.CharField(max_length=998)
     body = models.TextField(verbose_name="Email Content", blank=True, default="")
+    login_redirect_path = models.CharField(
+        max_length=200,
+        verbose_name="Post-login destination",
+        help_text="Internal site page where recipients land after one-click login.",
+    )
 
     audience_type = models.CharField(max_length=32, choices=AUDIENCE_CHOICES, default="subscribers")
     event = models.ForeignKey(
@@ -105,6 +111,8 @@ class EmailCampaign(ProjectControlModel):
 
     def clean(self):
         super().clean()
+        if not is_safe_internal_redirect_path(self.login_redirect_path):
+            raise ValidationError({"login_redirect_path": "Please select a valid internal destination."})
         event_required_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
         if self.audience_type in event_required_types and not self.event_id:
             raise ValidationError(

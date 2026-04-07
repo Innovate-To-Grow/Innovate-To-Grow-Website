@@ -15,6 +15,7 @@ export interface LoginResponse {
   access: string;
   refresh: string;
   user: User;
+  redirect_to?: string;
 }
 
 export interface EmailAuthRequestResponse {
