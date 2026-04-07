@@ -26,8 +26,9 @@ export const MainMenu = () => {
 
   const toggleMobileMenu = () => setIsMobileOpen((prev) => !prev);
 
-  const handleDesktopToggle = (_index: number, hasChildren: boolean) => {
-    if (!hasChildren) return;
+  const handleDesktopToggle = (index: number, hasChildren: boolean) => {
+    if (!hasChildren || window.innerWidth <= 992) return;
+    setOpenItemIndex((prev) => (prev === index ? null : index));
   };
 
   const handleDesktopOpen = (index: number, hasChildren: boolean) => {

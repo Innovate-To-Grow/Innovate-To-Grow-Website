@@ -1,4 +1,4 @@
-import {type ReactElement} from 'react';
+import {type FocusEvent, type KeyboardEvent, type ReactElement} from 'react';
 import {type MenuItem} from '../../../../features/layout/api';
 import {buildHref} from './shared';
 
@@ -18,6 +18,36 @@ const renderItems = (
   onDesktopClose: () => void,
   onDesktopToggle: (index: number, hasChildren: boolean) => void,
 ): ReactElement => {
+  const handleTopLevelKeyDown = (
+    event: KeyboardEvent<HTMLAnchorElement>,
+    index: number,
+    hasChildren: boolean,
+  ) => {
+    if (!hasChildren) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onDesktopOpen(index, true);
+      const firstChildLink = event.currentTarget.parentElement?.querySelector('.menu-dropdown a') as HTMLAnchorElement | null;
+      firstChildLink?.focus();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onDesktopClose();
+      event.currentTarget.blur();
+    }
+  };
+
+  const handleTopLevelBlur = (event: FocusEvent<HTMLLIElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      onDesktopClose();
+    }
+  };
+
   if (level === 0) {
     return (
       <ul className="menu-bar-list">
@@ -37,6 +67,8 @@ const renderItems = (
               className={`menu-bar-item${hasChildren ? ' has-children' : ''}${isOpen ? ' is-open' : ''}`}
               onMouseEnter={() => onDesktopOpen(index, hasChildren)}
               onMouseLeave={onDesktopClose}
+              onFocus={() => onDesktopOpen(index, hasChildren)}
+              onBlur={handleTopLevelBlur}
             >
               <a
                 href={href}
@@ -45,6 +77,7 @@ const renderItems = (
                 target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
                 rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
                 onClick={() => (hasChildren ? onDesktopToggle(index, hasChildren) : undefined)}
+                onKeyDown={(event) => handleTopLevelKeyDown(event, index, hasChildren)}
               >
                 {item.icon && <i className={`fa ${item.icon}`} />}
                 <span>{item.title}</span>
