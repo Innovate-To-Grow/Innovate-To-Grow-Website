@@ -33,7 +33,8 @@ class CMSLivePreviewView(APIView):
     """Store and retrieve live-preview page data keyed by page UUID.
 
     POST (staff-only): admin JS pushes the current editor state here on every edit.
-    GET  (public):     preview tab polls this endpoint to render the latest state.
+    GET  (public cache): preview tab polls this endpoint to render the latest state.
+                       Staff users may fall back to the current DB state.
     """
 
     def get_permissions(self):
@@ -46,6 +47,9 @@ class CMSLivePreviewView(APIView):
         cached = cache.get(f"cms:live-preview:{page_id}")
         if cached is not None:
             return Response(cached)
+
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({"detail": "Preview not found or expired."}, status=404)
 
         page = CMSPage.objects.prefetch_related("blocks").filter(pk=page_id).first()
         if page is None:

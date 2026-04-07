@@ -192,7 +192,13 @@ class CMSLivePreviewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["title"], "Preview")
 
-    def test_get_no_cache_falls_back_to_db(self):
+    def test_get_no_cache_returns_404_for_anonymous(self):
+        resp = self.client.get(f"/cms/live-preview/{self.page.pk}/")
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json()["detail"], "Preview not found or expired.")
+
+    def test_get_no_cache_falls_back_to_db_for_staff(self):
+        self.client.force_authenticate(self.staff)
         resp = self.client.get(f"/cms/live-preview/{self.page.pk}/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["slug"], "live")

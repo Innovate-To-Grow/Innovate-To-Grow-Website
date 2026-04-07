@@ -213,7 +213,6 @@ export const useEventRegistration = () => {
         attendee_secondary_email: options.allow_secondary_email ? attendeeSecondaryEmail.trim() || undefined : undefined,
         attendee_phone: options.collect_phone ? attendeePhone.trim() || undefined : undefined,
         attendee_phone_region: options.collect_phone && attendeePhone.trim() ? phoneRegion : undefined,
-        phone_verified: phoneVerified || undefined,
       });
       setRegistration(result);
       setStep('done');
@@ -250,7 +249,8 @@ export const useEventRegistration = () => {
     setVerifyingPhone(true);
     setError(null);
     try {
-      await verifyPhoneCode(normalizedPhone, phoneCode.trim());
+      const result = await verifyPhoneCode(normalizedPhone, phoneCode.trim());
+      setNormalizedPhone(result.phone);
       setPhoneVerified(true);
       setError(null);
     } catch (err: unknown) {
@@ -258,6 +258,26 @@ export const useEventRegistration = () => {
     } finally {
       setVerifyingPhone(false);
     }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    if (value !== attendeePhone) {
+      setPhoneVerified(false);
+      setPhoneCodeSent(false);
+      setPhoneCode('');
+      setNormalizedPhone('');
+    }
+    setAttendeePhone(value);
+  };
+
+  const handlePhoneRegionChange = (value: string) => {
+    if (value !== phoneRegion) {
+      setPhoneVerified(false);
+      setPhoneCodeSent(false);
+      setPhoneCode('');
+      setNormalizedPhone('');
+    }
+    setPhoneRegion(value);
   };
 
   return {
@@ -300,9 +320,9 @@ export const useEventRegistration = () => {
     setAttendeeLastName,
     setAttendeeOrganization,
     setAttendeeOrgType,
-    setAttendeePhone,
+    handlePhoneChange,
     setAttendeeSecondaryEmail,
-    setPhoneRegion,
+    handlePhoneRegionChange,
     setPhoneCode,
     setCode,
     setEmail,

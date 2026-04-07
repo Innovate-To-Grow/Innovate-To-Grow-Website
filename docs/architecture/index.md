@@ -1,17 +1,33 @@
-# System Architecture
+# Architecture
 
-The ITG platform is a Django backend plus a React/Vite frontend with shared deployment and admin tooling.
+Technical architecture of the Innovate To Grow platform — a Django REST Framework backend with a React/TypeScript frontend, deployed on AWS ECS (backend) and AWS Amplify (frontend).
 
-## Guides
+## In this section
 
-- [Backend architecture](backend.md)
-- [Frontend architecture](frontend.md)
-- [Platform and operations](platform.md)
-- [Repository structure and naming](repo-structure.md)
+- [Repository Structure](repository-structure.md) — Top-level layout, directory conventions, and configuration files
+- [Backend](backend.md) — Django apps, base models, settings, middleware, and auth system
+- [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
+- [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
+- [Integrations](integrations.md) — External services: Google Sheets, AWS SES, Twilio, S3
 
-## Snapshot
+## Who this is for
 
-- Backend: Django 5.2, DRF, SQLite for local development, PostgreSQL in production.
-- Frontend: React 19, TypeScript 5.9, Vite 7, three coordinated React roots.
-- Storage and integrations: Redis, S3-compatible static/media storage, Google Sheets, Gmail API, AWS SES.
-- Content model: CMS pages, menus, footer content, and site settings are managed in Django admin.
+Engineers who need to understand how the system is organized before making changes. Start here if you are new to the codebase.
+
+## Key architectural decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Three independent React roots | Menu and footer update without full-page navigation; auth syncs via custom events |
+| UUID primary keys on all domain models | `ProjectControlModel` base class provides UUIDs, timestamps, and soft delete |
+| Block-based CMS | `CMSPage` + ordered `CMSBlock` records with JSON schemas replace the older GrapesJS system |
+| Service layer pattern | Business logic lives in `services/` modules, not in views or serializers |
+| Modular Django settings | `base.py` wildcard-imports from `components/`; `dev.py`, `ci.py`, `prod.py` extend it |
+| Per-endpoint throttling | Throttle classes applied per-view, not globally (global setting breaks test suite) |
+| Client-side RSA password encryption | Passwords encrypted with Web Crypto API before transmission; key rotated on login |
+
+## Related sections
+
+- [API Reference](../api/index.md) — Endpoint details and serializer behavior
+- [Deployment Guide](../deployment/index.md) — How the architecture maps to infrastructure
+- [CMS & Admin Guide](../cms-admin/index.md) — Content management workflows

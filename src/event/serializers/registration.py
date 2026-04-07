@@ -19,7 +19,6 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
     attendee_secondary_email = serializers.EmailField(required=False, allow_blank=True, default="")
     attendee_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     attendee_phone_region = serializers.CharField(max_length=10, required=False, default="1-US")
-    phone_verified = serializers.BooleanField(required=False, default=False)
 
 
 def _serialize_ticket_option(ticket) -> dict:

@@ -1,6 +1,7 @@
 """Tests for PublicKeyView endpoint."""
 
 import uuid
+from unittest.mock import patch
 
 from django.core.cache import cache
 from rest_framework.test import APITestCase
@@ -40,3 +41,9 @@ class PublicKeyViewTests(APITestCase):
         r2 = self.client.get("/authn/public-key/")
         self.assertEqual(r1.data["key_id"], r2.data["key_id"])
         self.assertEqual(r1.data["public_key"], r2.data["public_key"])
+
+    @patch("authn.views.verification.public_key.get_public_key_pem", side_effect=RuntimeError("boom"))
+    def test_internal_errors_return_generic_message(self, _mock_get_public_key):
+        response = self.client.get("/authn/public-key/")
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.data, {"detail": "Failed to retrieve public key."})

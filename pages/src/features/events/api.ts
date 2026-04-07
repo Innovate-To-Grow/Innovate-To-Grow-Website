@@ -197,7 +197,6 @@ export async function createRegistration(data: {
   attendee_secondary_email?: string;
   attendee_phone?: string;
   attendee_phone_region?: string;
-  phone_verified?: boolean;
 }): Promise<Registration> {
   const response = await api.post<Registration>('/event/registrations/', data, {
     headers: authHeaders(),
@@ -230,8 +229,8 @@ export async function sendPhoneCode(phone: string, region: string): Promise<{det
   return response.data;
 }
 
-export async function verifyPhoneCode(phone: string, code: string): Promise<{detail: string; verified: boolean}> {
-  const response = await api.post<{detail: string; verified: boolean}>(
+export async function verifyPhoneCode(phone: string, code: string): Promise<{detail: string; verified: boolean; phone: string}> {
+  const response = await api.post<{detail: string; verified: boolean; phone: string}>(
     '/event/verify-phone-code/',
     {phone, code},
     {headers: authHeaders()},

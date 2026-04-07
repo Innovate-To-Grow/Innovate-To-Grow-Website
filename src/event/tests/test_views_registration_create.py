@@ -188,3 +188,24 @@ class EventRegistrationCreateViewTest(TestCase):
         self._post(data)
         reg = EventRegistration.objects.get(member=self.member, event=self.event)
         self.assertEqual(reg.attendee_phone, "")
+
+    def test_verified_phone_required_when_event_requires_it(self):
+        self.event.collect_phone = True
+        self.event.verify_phone = True
+        self.event.save(update_fields=["collect_phone", "verify_phone"])
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_phone": "+15551234567",
+        }
+        response = self._post(data)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Please verify your phone number before completing registration.")
+
+    def test_phone_is_required_when_verification_is_enabled(self):
+        self.event.collect_phone = True
+        self.event.verify_phone = True
+        self.event.save(update_fields=["collect_phone", "verify_phone"])
+        response = self._post()
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "A verified phone number is required for this event.")

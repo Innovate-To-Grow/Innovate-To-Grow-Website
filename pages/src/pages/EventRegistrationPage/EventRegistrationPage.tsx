@@ -121,8 +121,8 @@ export const EventRegistrationPage = () => {
           onTicketChange={reg.setSelectedTicketId}
           onAnswerChange={(questionId, answer) => reg.setAnswers((current) => ({...current, [questionId]: answer}))}
           onSecondaryEmailChange={reg.setAttendeeSecondaryEmail}
-          onPhoneChange={reg.setAttendeePhone}
-          onPhoneRegionChange={reg.setPhoneRegion}
+          onPhoneChange={reg.handlePhoneChange}
+          onPhoneRegionChange={reg.handlePhoneRegionChange}
           phoneCode={reg.phoneCode}
           phoneCodeSent={reg.phoneCodeSent}
           phoneSending={reg.phoneSending}

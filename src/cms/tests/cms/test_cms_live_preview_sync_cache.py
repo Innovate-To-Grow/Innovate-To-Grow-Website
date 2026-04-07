@@ -45,9 +45,9 @@ class CMSLivePreviewSyncCacheTest(TestCase):
 
     # --- 1. POST stores data in cache and returns 200 ---
 
-    def test_get_falls_back_to_database(self):
-        """GET returns serialized DB data when cache is empty."""
-        # Cache is cleared in setUp, so no cached data exists
+    def test_staff_get_falls_back_to_database(self):
+        """Staff GET returns serialized DB data when cache is empty."""
+        self.client.force_login(self.staff)
         response = self.client.get(self.live_preview_url)
         self.assertEqual(response.status_code, 200)
 
@@ -58,10 +58,20 @@ class CMSLivePreviewSyncCacheTest(TestCase):
         self.assertEqual(data["blocks"][0]["block_type"], "rich_text")
         self.assertEqual(data["blocks"][0]["data"]["body_html"], "<p>Original content from DB</p>")
 
-    def test_get_nonexistent_page_returns_404(self):
-        """GET with a UUID that has no cache and no DB record returns 404."""
+    def test_anonymous_get_nonexistent_page_returns_preview_not_found(self):
+        """Anonymous GET without cached preview returns preview-not-found."""
         import uuid
 
+        fake_uuid = uuid.uuid4()
+        response = self.client.get(f"/cms/live-preview/{fake_uuid}/")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Preview not found or expired.")
+
+    def test_staff_get_nonexistent_page_returns_404(self):
+        """Staff GET with a UUID that has no cache and no DB record returns 404."""
+        import uuid
+
+        self.client.force_login(self.staff)
         fake_uuid = uuid.uuid4()
         response = self.client.get(f"/cms/live-preview/{fake_uuid}/")
         self.assertEqual(response.status_code, 404)

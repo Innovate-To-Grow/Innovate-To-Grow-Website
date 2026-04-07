@@ -2,12 +2,16 @@
 Public key API for RSA encryption.
 """
 
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authn.services import get_public_key_pem
+
+logger = logging.getLogger(__name__)
 
 
 class PublicKeyView(APIView):
@@ -33,8 +37,9 @@ class PublicKeyView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to retrieve public key")
             return Response(
-                {"error": f"Failed to retrieve public key: {e}"},
+                {"detail": "Failed to retrieve public key."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

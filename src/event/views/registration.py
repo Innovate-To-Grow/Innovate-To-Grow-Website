@@ -1,5 +1,7 @@
 import logging
+from hashlib import sha256
 
+from django.core.cache import cache
 from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -17,6 +19,37 @@ from event.services.sync_registration_email import sync_secondary_email_to_accou
 from event.services.sync_registration_to_account import sync_name_to_account, sync_phone_to_account
 
 logger = logging.getLogger(__name__)
+
+_PHONE_VERIFICATION_TTL = 900
+
+
+def _normalize_phone(phone: str, region: str) -> str:
+    phone = phone.strip()
+    if phone and not phone.startswith("+"):
+        country_code = region.split("-")[0] if "-" in region else region
+        phone = f"+{country_code}{phone}"
+    return phone
+
+
+def _phone_verification_cache_key(user, phone: str) -> str:
+    phone_digest = sha256(phone.encode("utf-8")).hexdigest()
+    return f"event:phone-verified:{user.pk}:{phone_digest}"
+
+
+def _clear_phone_verification(user, phone: str) -> None:
+    cache.delete(_phone_verification_cache_key(user, phone))
+
+
+def _mark_phone_verified(user, phone: str) -> None:
+    cache.set(_phone_verification_cache_key(user, phone), True, timeout=_PHONE_VERIFICATION_TTL)
+
+
+def _consume_phone_verification(user, phone: str) -> bool:
+    cache_key = _phone_verification_cache_key(user, phone)
+    verified = cache.get(cache_key) is True
+    if verified:
+        cache.delete(cache_key)
+    return verified
 
 
 class EventRegistrationOptionsView(APIView):
@@ -122,16 +155,23 @@ class EventRegistrationCreateView(APIView):
             if data.get("attendee_secondary_email") and event.allow_secondary_email:
                 create_kwargs["attendee_secondary_email"] = data["attendee_secondary_email"]
             phone_verified_inline = False
+            phone_region = data.get("attendee_phone_region", "1-US")
             if data.get("attendee_phone") and event.collect_phone:
-                phone = data["attendee_phone"].strip()
-                if phone and not phone.startswith("+"):
-                    region = data.get("attendee_phone_region", "1-US")
-                    country_code = region.split("-")[0] if "-" in region else region
-                    phone = f"+{country_code}{phone}"
+                phone = _normalize_phone(data["attendee_phone"], phone_region)
                 create_kwargs["attendee_phone"] = phone
-                if data.get("phone_verified"):
+                if event.verify_phone:
+                    if not _consume_phone_verification(request.user, phone):
+                        return Response(
+                            {"detail": "Please verify your phone number before completing registration."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
                     create_kwargs["phone_verified"] = True
                     phone_verified_inline = True
+            elif event.verify_phone:
+                return Response(
+                    {"detail": "A verified phone number is required for this event."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             registration = EventRegistration.objects.create(**create_kwargs)
         except IntegrityError:
             existing = (
@@ -192,17 +232,28 @@ class SendPhoneCodeView(APIView):
         if not phone:
             return Response({"detail": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not phone.startswith("+"):
-            country_code = region.split("-")[0] if "-" in region else region
-            phone = f"+{country_code}{phone}"
+        phone = _normalize_phone(phone, region)
 
         try:
             from authn.services.sms import start_phone_verification
+            from authn.services.sms.twilio_verify import PhoneVerificationDeliveryError, PhoneVerificationInvalid
 
+            _clear_phone_verification(request.user, phone)
             start_phone_verification(phone)
-        except Exception as exc:
+        except PhoneVerificationInvalid:
+            return Response({"detail": "Invalid phone number."}, status=status.HTTP_400_BAD_REQUEST)
+        except PhoneVerificationDeliveryError:
             logger.exception("Failed to send phone verification SMS to %s", phone)
-            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response(
+                {"detail": "Failed to send verification code. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception:
+            logger.exception("Failed to send phone verification SMS to %s", phone)
+            return Response(
+                {"detail": "Failed to send verification code. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response({"detail": "Verification code sent.", "phone": phone})
 
@@ -216,8 +267,11 @@ class VerifyPhoneCodeView(APIView):
     def post(self, request):
         phone = request.data.get("phone", "").strip()
         code = request.data.get("code", "").strip()
+        region = request.data.get("region", "1-US")
         if not phone or not code:
             return Response({"detail": "Phone and code are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        phone = _normalize_phone(phone, region)
 
         try:
             from authn.services.sms import check_phone_verification
@@ -231,9 +285,14 @@ class VerifyPhoneCodeView(APIView):
             )
         except PhoneVerificationInvalid:
             return Response({"detail": "Invalid or expired verification code."}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:
+        except Exception:
             logger.exception("Phone verification failed for %s", phone)
-            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response(
+                {"detail": "Verification service is unavailable. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        _mark_phone_verified(request.user, phone)
 
         return Response({"detail": "Phone verified.", "phone": phone, "verified": True})
 

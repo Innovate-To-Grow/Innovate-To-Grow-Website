@@ -1,6 +1,6 @@
 import {useState, useEffect, type FormEvent} from 'react';
 import {useAuth} from '../../components/Auth';
-import {updateProfileFields} from '../../services/auth';
+import {getProfile, updateProfileFields} from '../../services/auth';
 import {CodeStep} from './steps/CodeStep';
 import {DoneStep} from './steps/DoneStep';
 import {EmailStep} from './steps/EmailStep';
@@ -26,6 +26,7 @@ export const SubscribePage = () => {
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
   const [saving, setSaving] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
 
   // If already authenticated, skip to profile step to set subscribe
   useEffect(() => {
@@ -33,6 +34,42 @@ export const SubscribePage = () => {
       setStep('profile');
     }
   }, [isAuthenticated, step]);
+
+  useEffect(() => {
+    if (!isAuthenticated || step !== 'profile' || profileReady) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        const profile = await getProfile();
+        if (cancelled) {
+          return;
+        }
+        setEmail((current) => current || profile.email || '');
+        setFirstName(profile.first_name || '');
+        setMiddleName(profile.middle_name || '');
+        setLastName(profile.last_name || '');
+        setOrganization(profile.organization || '');
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(getSubscribeErrorMessage(err));
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileReady(true);
+        }
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, profileReady, step]);
 
   const handleEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -132,30 +169,36 @@ export const SubscribePage = () => {
       ) : null}
 
       {step === 'profile' ? (
-        <ProfileStep
-          firstName={firstName}
-          middleName={middleName}
-          lastName={lastName}
-          organization={organization}
-          saving={saving}
-          onFirstNameChange={(value) => {
-            setFirstName(value);
-            setError(null);
-          }}
-          onMiddleNameChange={(value) => {
-            setMiddleName(value);
-            setError(null);
-          }}
-          onLastNameChange={(value) => {
-            setLastName(value);
-            setError(null);
-          }}
-          onOrganizationChange={(value) => {
-            setOrganization(value);
-            setError(null);
-          }}
-          onSubmit={handleProfileSubmit}
-        />
+        profileReady ? (
+          <ProfileStep
+            firstName={firstName}
+            middleName={middleName}
+            lastName={lastName}
+            organization={organization}
+            saving={saving}
+            onFirstNameChange={(value) => {
+              setFirstName(value);
+              setError(null);
+            }}
+            onMiddleNameChange={(value) => {
+              setMiddleName(value);
+              setError(null);
+            }}
+            onLastNameChange={(value) => {
+              setLastName(value);
+              setError(null);
+            }}
+            onOrganizationChange={(value) => {
+              setOrganization(value);
+              setError(null);
+            }}
+            onSubmit={handleProfileSubmit}
+          />
+        ) : (
+          <div className="subscribe-section">
+            <p className="subscribe-hint">Loading your profile...</p>
+          </div>
+        )
       ) : null}
     </div>
   );
