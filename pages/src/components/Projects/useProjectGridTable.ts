@@ -9,9 +9,15 @@ import {
   type ProjectGridSortDirection,
 } from './projectGrid';
 
+/** Default choices for the “rows per page” control (hook merges in the current size if needed). */
+export const PROJECT_GRID_PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
+
 interface UseProjectGridTableOptions {
   rows: ProjectGridItem[];
-  pageSize: number;
+  /** Initial rows per page; user can change this via the table control. */
+  pageSize?: number;
+  /** Allowed page sizes in the dropdown; current size is always included. */
+  pageSizeOptions?: readonly number[];
   defaultSortField: ProjectGridColumnKey;
   defaultSortDirection?: ProjectGridSortDirection;
   initialSearch?: string;
@@ -19,16 +25,23 @@ interface UseProjectGridTableOptions {
 
 export function useProjectGridTable({
   rows,
-  pageSize,
+  pageSize: initialPageSize = 10,
+  pageSizeOptions: pageSizeChoices = PROJECT_GRID_PAGE_SIZE_OPTIONS,
   defaultSortField,
   defaultSortDirection = 'asc',
   initialSearch = '',
 }: UseProjectGridTableOptions) {
+  const [pageSize, setPageSizeState] = useState(() => Math.max(1, initialPageSize));
   const [search, setSearch] = useState(initialSearch);
   const deferredSearch = useDeferredValue(search);
   const [sortField, setSortField] = useState<ProjectGridColumnKey>(defaultSortField);
   const [sortDirection, setSortDirection] = useState<ProjectGridSortDirection>(defaultSortDirection);
   const [page, setPage] = useState(0);
+
+  const pageSizeOptions = useMemo(() => {
+    const merged = new Set<number>([...pageSizeChoices, pageSize]);
+    return Array.from(merged).sort((a, b) => a - b);
+  }, [pageSize, pageSizeChoices]);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
@@ -56,6 +69,12 @@ export function useProjectGridTable({
     () => sortedRows.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
     [currentPage, pageSize, sortedRows],
   );
+
+  const setPageSize = (next: number) => {
+    const size = Math.max(1, Math.floor(next));
+    setPageSizeState(size);
+    setPage(0);
+  };
 
   const expandableKeys = useMemo(
     () => rows.filter((row) => hasProjectGridDetails(row)).map((row) => row.__key),
@@ -162,6 +181,9 @@ export function useProjectGridTable({
     sortField,
     sortDirection,
     toggleSort,
+    pageSize,
+    setPageSize,
+    pageSizeOptions,
     page: currentPage,
     setPage,
     totalPages,

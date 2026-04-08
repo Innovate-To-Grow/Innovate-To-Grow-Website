@@ -73,10 +73,7 @@
           "name": "AWS_S3_REGION_NAME",
           "value": "__AWS_S3_REGION_NAME__"
         },
-        {
-          "name": "RSA_KEY_PASSPHRASE",
-          "value": "__RSA_KEY_PASSPHRASE__"
-        },
+
         {
           "name": "SES_AWS_ACCESS_KEY_ID",
           "value": "__SES_AWS_ACCESS_KEY_ID__"

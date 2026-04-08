@@ -176,10 +176,22 @@ function authHeaders() {
 }
 
 export async function fetchRegistrationOptions(): Promise<EventRegistrationOptions> {
-  const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
-    headers: authHeaders(),
-  });
-  return response.data;
+  const headers = authHeaders();
+  try {
+    const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
+      ...(Object.keys(headers).length > 0 ? {headers} : {}),
+    });
+    return response.data;
+  } catch (err: unknown) {
+    const status = (err as {response?: {status?: number}}).response?.status;
+    // Expired or invalid JWT is still sent as Bearer; DRF may return 401. Retry without auth —
+    // AllowAny endpoint returns the same public event payload (member_* fields empty).
+    if (status === 401) {
+      const response = await api.get<EventRegistrationOptions>('/event/registration-options/');
+      return response.data;
+    }
+    throw err;
+  }
 }
 
 export async function fetchCurrentSchedule(): Promise<EventSchedulePayload> {

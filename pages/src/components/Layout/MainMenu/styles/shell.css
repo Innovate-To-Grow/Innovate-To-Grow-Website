@@ -16,10 +16,10 @@
 }
 
 /* Sticky on #menu-root (direct child of body) so the bottom bar
-   sticks at viewport top once the 64px top bar scrolls away. */
+   sticks at viewport top once the top navy bar (72px + 4px gold) scrolls away. */
 #menu-root {
   position: sticky;
-  top: -64px;
+  top: -76px;
   z-index: 1000;
 }
 
@@ -45,7 +45,7 @@
 }
 
 .site-header-top-inner {
-  height: 60px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -75,7 +75,7 @@
 }
 
 .site-header-top-logo img {
-  height: 36px;
+  height: 60px;
   width: auto;
   display: block;
 }

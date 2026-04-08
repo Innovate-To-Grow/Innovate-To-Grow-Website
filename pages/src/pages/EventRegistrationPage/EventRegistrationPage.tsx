@@ -11,27 +11,38 @@ import './EventRegistrationPage.css';
 export const EventRegistrationPage = () => {
   const reg = useEventRegistration();
 
-  if (reg.step === 'loading') {
-    return <LoadingState error={reg.error} />;
-  }
-
   if (reg.step === 'done' && reg.registration) {
     return <DoneState registration={reg.registration} />;
   }
+
+  // Fatal: no event payload and we only have an error (e.g. no live event for authenticated bootstrap)
+  if (reg.step === 'loading' && reg.error && !reg.options) {
+    return <LoadingState error={reg.error} />;
+  }
+
+  const bootLoading = reg.step === 'loading' && !reg.options && !reg.error;
+  const routingLoading = reg.step === 'loading' && Boolean(reg.options);
 
   return (
     <div className="event-reg-page">
       <h1 className="event-reg-title">Event Registration</h1>
 
-      {/* Event info banner */}
       {reg.options ? (
         <div className="event-reg-info">
           <h2>{reg.options.name}</h2>
-          <p><strong>Date:</strong> {formatEventDate(reg.options.date)}</p>
-          <p><strong>Location:</strong> {reg.options.location}</p>
+          <p>
+            <strong>Date:</strong> {formatEventDate(reg.options.date)}
+          </p>
+          <p>
+            <strong>Location:</strong> {reg.options.location}
+          </p>
           {reg.options.description ? <p style={{marginTop: '0.5rem'}}>{reg.options.description}</p> : null}
         </div>
       ) : null}
+
+      {bootLoading ? <div className="event-reg-loading">Loading event details...</div> : null}
+
+      {routingLoading ? <div className="event-reg-loading event-reg-loading--inline">Loading registration form...</div> : null}
 
       {reg.error ? <div className="event-reg-alert error">{reg.error}</div> : null}
 

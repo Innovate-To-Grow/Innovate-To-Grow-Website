@@ -38,7 +38,7 @@
 }
 
 .site-header-top-inner {
-    height: 60px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -68,7 +68,7 @@
 }
 
 .site-header-top-logo img {
-    height: 36px;
+    height: 60px;
     width: auto;
     display: block;
 }

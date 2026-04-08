@@ -132,7 +132,9 @@ export const PastProjectsBuilder = ({
 
   return (
     <div className="past-projects-builder">
-      <MergedResultsTable rows={mergedRows} onCreateShare={onCreateShare} onDeleteRow={handleDeleteMergedRow} />
+      {mergedRows.length > 0 ? (
+        <MergedResultsTable rows={mergedRows} onCreateShare={onCreateShare} onDeleteRow={handleDeleteMergedRow} />
+      ) : null}
 
       <PastProjectsActionBar
         builderMessage={builderMessage}

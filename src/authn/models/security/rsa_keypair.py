@@ -1,4 +1,4 @@
-import os
+
 import uuid
 
 from cryptography.hazmat.backends import default_backend
@@ -37,19 +37,15 @@ class RSAKeypair(ProjectControlModel):
     def _get_key_encryption_algorithm(cls) -> serialization.KeySerializationEncryption:
         """
         Return encryption algorithm for private key serialization.
-        Uses BestAvailableEncryption if RSA_KEY_PASSPHRASE env var is set,
-        otherwise NoEncryption (suitable for development).
+        Keys are stored unencrypted — access control relies on database security.
         """
-        passphrase = os.environ.get("RSA_KEY_PASSPHRASE", "").strip()
-        if passphrase:
-            return serialization.BestAvailableEncryption(passphrase.encode("utf-8"))
         return serialization.NoEncryption()
 
     @classmethod
     def generate_keypair(cls, key_size: int = 2048):
         """
         Generate a new RSA keypair and return (public_pem, private_pem).
-        If RSA_KEY_PASSPHRASE is set, the private key is encrypted at rest.
+        The private key is stored unencrypted.
         """
         private_key = rsa.generate_private_key(
             public_exponent=65537,

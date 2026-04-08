@@ -11,7 +11,7 @@
   margin: 0 0 1.5rem;
 }
 
-/* Event info banner */
+/* Event info (shown whenever registration options are loaded — signed in or not) */
 .event-reg-info {
   padding: 1.25rem;
   border-radius: 12px;

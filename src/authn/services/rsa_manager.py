@@ -5,7 +5,7 @@ Manages RSA keypairs for authentication encryption with automatic daily rotation
 """
 
 import base64
-import os
+
 from datetime import timedelta
 
 from cryptography.hazmat.backends import default_backend
@@ -100,11 +100,10 @@ def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> 
         else:
             keypair = get_or_create_auth_keypair()
 
-        # Load private key (pass passphrase if RSA_KEY_PASSPHRASE is set)
-        passphrase = os.environ.get("RSA_KEY_PASSPHRASE", "").strip()
+        # Load private key (stored unencrypted in DB)
         private_key = serialization.load_pem_private_key(
             keypair.private_key_pem.encode("utf-8"),
-            password=passphrase.encode("utf-8") if passphrase else None,
+            password=None,
             backend=default_backend(),
         )
 

@@ -1,5 +1,5 @@
 .project-grid-table td {
-  padding: 0.9rem 0.8rem;
+  padding: 0.9rem 1rem;
   border-bottom: 1px solid #edf1f6;
   vertical-align: top;
   color: var(--itg-color-text-dark);
@@ -112,8 +112,23 @@
 .past-projects-action-bar-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
   padding: 1rem 1.5rem 0;
+}
+
+.past-projects-action-bar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (min-width: 641px) {
+  .past-projects-action-bar-group + .past-projects-action-bar-group {
+    padding-left: 1rem;
+    border-left: 1px solid var(--itg-color-border);
+  }
 }
 
 .past-projects-delete-toggle {
@@ -129,11 +144,54 @@
   font-weight: 600;
 }
 
+.past-projects-help-details {
+  margin: 0.5rem 0 0;
+  padding: 0.8rem 1.5rem 1.25rem;
+  border: 0;
+  border-top: 1px solid #edf1f6;
+}
+
+.past-projects-help-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.15rem 0 0.25rem;
+  font-size: var(--itg-font-size-small);
+  font-weight: 600;
+  color: var(--itg-color-primary);
+  user-select: none;
+}
+
+.past-projects-help-summary::-webkit-details-marker {
+  display: none;
+}
+
+.past-projects-help-summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.4rem;
+  font-size: 0.65rem;
+  opacity: 0.75;
+  transition: transform 0.15s ease;
+}
+
+.past-projects-help-details[open] .past-projects-help-summary::before {
+  transform: rotate(90deg);
+}
+
+.past-projects-help-intro {
+  margin: 0;
+  padding: 0 0 0.65rem;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: var(--itg-line-height-meta);
+}
+
 .past-projects-help-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;
-  padding: 1rem 1.5rem 1.5rem;
+  padding: 0.75rem 0 0;
+  margin: 0;
 }
 
 .project-grid-help-card {
@@ -145,6 +203,16 @@
   color: var(--itg-color-text);
   font-size: var(--itg-font-size-small);
   line-height: var(--itg-line-height-meta);
+}
+
+.project-grid-help-card strong {
+  color: var(--itg-color-primary);
+}
+
+@media (min-width: 641px) {
+  .past-projects-help-grid .project-grid-help-card--wide {
+    grid-column: 1 / -1;
+  }
 }
 
 .search-table-stack {

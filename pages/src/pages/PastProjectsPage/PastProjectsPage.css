@@ -1,3 +1,26 @@
+/* Toolbar / export / merge actions — smaller than global .itg-btn */
+.past-projects-page .itg-btn {
+  padding: 0.45rem 1rem;
+  font-size: var(--itg-font-size-small);
+  line-height: 1.25;
+}
+
+.past-projects-page .past-projects-delete-toggle {
+  padding: 0.45rem 0.75rem;
+  font-size: var(--itg-font-size-small);
+}
+
+.past-projects-page .past-projects-action-bar-group,
+.past-projects-page .project-grid-toolbar-cluster {
+  gap: 0.45rem;
+}
+
+.past-projects-page .project-grid-detail-button,
+.past-projects-page .project-grid-delete-button {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+}
+
 .past-projects-hero {
   display: grid;
   gap: 0.75rem;

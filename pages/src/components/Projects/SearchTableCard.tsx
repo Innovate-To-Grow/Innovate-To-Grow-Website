@@ -97,6 +97,9 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
         page={table.page}
         totalPages={table.totalPages}
         onPageChange={table.setPage}
+        pageSize={table.pageSize}
+        pageSizeOptions={table.pageSizeOptions}
+        onPageSizeChange={table.setPageSize}
         emptyMessage="No rows available in this search table."
         countLabel="entries"
         selectable

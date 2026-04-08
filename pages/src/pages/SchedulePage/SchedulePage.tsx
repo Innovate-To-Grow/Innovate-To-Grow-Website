@@ -183,7 +183,6 @@ export const SchedulePage = () => {
   const projectItems = useMemo(() => createProjectGridItems(projectGridRows, 'schedule-projects'), [projectGridRows]);
   const projectTable = useProjectGridTable({
     rows: projectItems,
-    pageSize: 10,
     defaultSortField: 'class_code',
     defaultSortDirection: 'asc',
     initialSearch: teamSearch,
@@ -522,6 +521,9 @@ export const SchedulePage = () => {
           page={projectTable.page}
           totalPages={projectTable.totalPages}
           onPageChange={projectTable.setPage}
+          pageSize={projectTable.pageSize}
+          pageSizeOptions={projectTable.pageSizeOptions}
+          onPageSizeChange={projectTable.setPageSize}
           loading={false}
           error={null}
           emptyMessage="No projects available."

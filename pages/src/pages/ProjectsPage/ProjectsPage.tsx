@@ -10,7 +10,6 @@ export const ProjectsPage = () => {
   const items = useMemo(() => createProjectGridItems(rows, 'current-projects'), [rows]);
   const table = useProjectGridTable({
     rows: items,
-    pageSize: 10,
     defaultSortField: 'class_code',
     defaultSortDirection: 'asc',
     initialSearch: searchParams.get('value') || '',
@@ -42,6 +41,9 @@ export const ProjectsPage = () => {
           page={table.page}
           totalPages={table.totalPages}
           onPageChange={table.setPage}
+          pageSize={table.pageSize}
+          pageSizeOptions={table.pageSizeOptions}
+          onPageSizeChange={table.setPageSize}
           loading={loading}
           error={error}
           emptyMessage="No current projects are available yet."

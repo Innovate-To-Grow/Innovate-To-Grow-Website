@@ -46,7 +46,6 @@ DATABASES = {
 # Security hardening
 # ---------------------------------------------------------------------------
 REQUIRE_ENCRYPTED_PASSWORDS = True
-RSA_KEY_PASSPHRASE = _get_required_env("RSA_KEY_PASSPHRASE")
 
 # HTTP security headers
 SECURE_SERVER_HEADER = None  # Do not expose server software

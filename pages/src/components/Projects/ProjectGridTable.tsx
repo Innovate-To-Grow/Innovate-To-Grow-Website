@@ -26,6 +26,9 @@ interface ProjectGridTableProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  pageSize: number;
+  pageSizeOptions: number[];
+  onPageSizeChange: (size: number) => void;
   loading?: boolean;
   error?: string | null;
   emptyMessage?: string;
@@ -55,6 +58,9 @@ export const ProjectGridTable = ({
   page,
   totalPages,
   onPageChange,
+  pageSize,
+  pageSizeOptions,
+  onPageSizeChange,
   loading,
   error,
   emptyMessage = 'No projects found.',
@@ -71,18 +77,43 @@ export const ProjectGridTable = ({
       {toolbar ? <div className="project-grid-toolbar">{toolbar}</div> : null}
 
       <div className="project-grid-controls">
-        <label className="project-grid-search">
-          <span className="project-grid-search-label">Search</span>
-          <input
-            type="text"
-            value={search}
-            placeholder={searchPlaceholder}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-        </label>
-
-        <div className="project-grid-count">
-          {filteredCount} of {totalCount} {countLabel}
+        <div className="project-grid-controls-inner">
+          <span className="project-grid-field-label" id="project-grid-search-label">
+            Search
+          </span>
+          <div className="project-grid-controls-row">
+            <input
+              id="project-grid-search-input"
+              type="search"
+              className="project-grid-search-input"
+              value={search}
+              placeholder={searchPlaceholder}
+              aria-labelledby="project-grid-search-label"
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+            <div className="project-grid-controls-meta" role="group" aria-label="Results and pagination">
+              <p className="project-grid-count">
+                <span className="project-grid-count-value">
+                  {filteredCount} of {totalCount}
+                </span>{' '}
+                <span className="project-grid-count-label">{countLabel}</span>
+              </p>
+              <label className="project-grid-page-size">
+                <span className="project-grid-field-label">Per page</span>
+                <select
+                  value={pageSize}
+                  aria-label="Rows per page"
+                  onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                >
+                  {pageSizeOptions.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 

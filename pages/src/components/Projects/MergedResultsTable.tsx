@@ -98,56 +98,65 @@ export const MergedResultsTable = ({
         page={table.page}
         totalPages={table.totalPages}
         onPageChange={table.setPage}
+        pageSize={table.pageSize}
+        pageSizeOptions={table.pageSizeOptions}
+        onPageSizeChange={table.setPageSize}
         emptyMessage="No merged results saved yet."
         countLabel="results"
         onDeleteRow={sharedMode ? undefined : onDeleteRow}
         toolbar={
-          <div className="project-grid-inline-actions">
-            <button type="button" className="itg-btn itg-btn-outline" onClick={table.toggleAllDetails}>
-              {table.allDetailsExpanded ? 'Hide Details' : 'Show Details'}
-            </button>
-            <button
-              type="button"
-              className="itg-btn itg-btn-outline"
-              onClick={() => void exportProjectRowsCsv(visibleRows, 'past-projects')}
-              disabled={!visibleRows.length}
-            >
-              CSV
-            </button>
-            <button
-              type="button"
-              className="itg-btn itg-btn-outline"
-              onClick={() => void exportProjectRowsExcel(visibleRows, 'past-projects')}
-              disabled={!visibleRows.length}
-            >
-              Excel
-            </button>
-            <button
-              type="button"
-              className="itg-btn itg-btn-outline"
-              onClick={() => void exportProjectRowsPdf(visibleRows, 'past-projects', title)}
-              disabled={!visibleRows.length}
-            >
-              PDF
-            </button>
-            {!sharedMode && onCreateShare ? (
+          <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
+            <div className="project-grid-toolbar-cluster" aria-label="Row details">
+              <button type="button" className="itg-btn itg-btn-outline" onClick={table.toggleAllDetails}>
+                {table.allDetailsExpanded ? 'Hide Details' : 'Show Details'}
+              </button>
+            </div>
+            <div className="project-grid-toolbar-cluster" aria-label="Export">
               <button
                 type="button"
-                className="itg-btn itg-btn-primary"
-                onClick={() => void handleCreateShare()}
-                disabled={!visibleRows.length || isSharing}
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsCsv(visibleRows, 'past-projects')}
+                disabled={!visibleRows.length}
               >
-                {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
+                CSV
               </button>
-            ) : null}
-            <button
-              type="button"
-              className="itg-btn itg-btn-outline"
-              onClick={() => void handleCopyUrl()}
-              disabled={!shareUrl}
-            >
-              Copy URL
-            </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsExcel(visibleRows, 'past-projects')}
+                disabled={!visibleRows.length}
+              >
+                Excel
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsPdf(visibleRows, 'past-projects', title)}
+                disabled={!visibleRows.length}
+              >
+                PDF
+              </button>
+            </div>
+            <div className="project-grid-toolbar-cluster" aria-label="Share link">
+              {!sharedMode && onCreateShare ? (
+                <button
+                  type="button"
+                  className="itg-btn itg-btn-primary"
+                  onClick={() => void handleCreateShare()}
+                  disabled={!visibleRows.length || isSharing}
+                >
+                  {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void handleCopyUrl()}
+                disabled={!shareUrl}
+              >
+                Copy URL
+              </button>
+            </div>
           </div>
         }
       />

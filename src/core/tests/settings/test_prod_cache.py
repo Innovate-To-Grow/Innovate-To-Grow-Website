@@ -12,7 +12,6 @@ PROD_ENV = {
     "DB_PASSWORD": "itg_password",
     "DB_HOST": "db.example.com",
     "AWS_STORAGE_BUCKET_NAME": "itg-static-assets",
-    "RSA_KEY_PASSPHRASE": "prod-passphrase",
 }
 
 
@@ -56,8 +55,3 @@ class ProductionCacheSettingsTests(SimpleTestCase):
             with self.assertRaisesMessage(ImproperlyConfigured, "DJANGO_SECRET_KEY must be set in production."):
                 reload_prod_settings()
 
-    def test_prod_requires_rsa_key_passphrase(self):
-        env = {key: value for key, value in PROD_ENV.items() if key != "RSA_KEY_PASSPHRASE"}
-        with patch.dict("os.environ", env, clear=True):
-            with self.assertRaisesMessage(ImproperlyConfigured, "RSA_KEY_PASSPHRASE must be set in production."):
-                reload_prod_settings()

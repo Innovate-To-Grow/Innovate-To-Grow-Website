@@ -34,9 +34,9 @@
         order: 1;
     }
 
-    .site-header-top-logo-full {
+    .site-header-top-logo img.site-header-top-logo-full {
         display: block !important;
-        height: 26px;
+        height: 44px;
     }
 
     .site-header-top-logo-icon {
@@ -85,8 +85,8 @@
         height: 54px;
     }
 
-    .site-header-top-logo-full {
-        height: 22px;
+    .site-header-top-logo img.site-header-top-logo-full {
+        height: 36px;
     }
 
     .header-mobile-brand span {

@@ -114,14 +114,15 @@ export const useEventRegistration = () => {
     if (isAuthenticated) {
       void loadOptionsAndRoute();
     } else {
-      // Not authenticated — try loading options anyway (to get event info), then show email step
+      // Not authenticated — load options for event banner + email step
       fetchRegistrationOptions()
         .then((data) => {
           setOptions(data);
           optionsLoaded.current = true;
           setStep('email');
         })
-        .catch(() => {
+        .catch((err: unknown) => {
+          setError(getRegistrationErrorMessage(err));
           setStep('email');
         });
     }

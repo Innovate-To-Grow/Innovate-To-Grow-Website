@@ -107,6 +107,11 @@
   color: #6b7280;
 }
 
+.event-reg-loading--inline {
+  padding: 1rem 1rem 0;
+  font-size: 0.9rem;
+}
+
 /* Spinner */
 .event-reg-spinner {
   display: inline-block;
