@@ -47,6 +47,7 @@ class EmailCampaign(ProjectControlModel):
     body = models.TextField(verbose_name="Email Content", blank=True, default="")
     login_redirect_path = models.CharField(
         max_length=200,
+        default="/account",
         verbose_name="Post-login destination",
         help_text="Internal site page where recipients land after one-click login.",
     )

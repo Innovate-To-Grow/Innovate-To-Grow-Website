@@ -292,9 +292,14 @@ class EmailCampaignAdmin(BaseModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context["email_config"] = EmailServiceConfig.load()
-        extra_context["google_config"] = GoogleCredentialConfig.load()
-        extra_context["gmail_mailbox"] = resolve_gmail_mailbox()
+        try:
+            extra_context["email_config"] = EmailServiceConfig.load()
+            extra_context["google_config"] = GoogleCredentialConfig.load()
+            extra_context["gmail_mailbox"] = resolve_gmail_mailbox()
+        except Exception:
+            extra_context.setdefault("email_config", None)
+            extra_context.setdefault("google_config", None)
+            extra_context.setdefault("gmail_mailbox", "")
         return super().changelist_view(request, extra_context=extra_context)
 
     # -- Custom URLs -----------------------------------------------------------

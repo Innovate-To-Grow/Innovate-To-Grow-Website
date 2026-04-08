@@ -28,13 +28,16 @@ def get_login_redirect_choices(*, current_path: str | None = None) -> list[tuple
         choices.append((path, f"{title} ({path})"))
         seen.add(path)
 
-    cms_pages = CMSPage.objects.filter(status="published").order_by("title").values("route", "title")
-    for page in cms_pages:
-        path = page["route"]
-        if not is_safe_internal_redirect_path(path) or path in seen:
-            continue
-        choices.append((path, f"{page['title']} ({path})"))
-        seen.add(path)
+    try:
+        cms_pages = CMSPage.objects.filter(status="published").order_by("title").values("route", "title")
+        for page in cms_pages:
+            path = page["route"]
+            if not is_safe_internal_redirect_path(path) or path in seen:
+                continue
+            choices.append((path, f"{page['title']} ({path})"))
+            seen.add(path)
+    except Exception:
+        pass
 
     if current_path and is_safe_internal_redirect_path(current_path) and current_path not in seen:
         choices.append((current_path, f"Current selection ({current_path})"))
