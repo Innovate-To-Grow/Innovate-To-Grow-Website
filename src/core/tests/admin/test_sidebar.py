@@ -22,9 +22,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
     def test_service_config_tabs_include_gmail_import(self):
         tabs = settings.UNFOLD["TABS"]
-        service_config_tab = next(
-            tab for tab in tabs if "core.gmailimportconfig" in tab["models"]
-        )
+        service_config_tab = next(tab for tab in tabs if "core.gmailimportconfig" in tab["models"])
         item_titles = {item["title"] for item in service_config_tab["items"]}
 
         self.assertIn("Email Config", item_titles)
