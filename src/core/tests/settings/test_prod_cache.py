@@ -54,4 +54,3 @@ class ProductionCacheSettingsTests(SimpleTestCase):
         with patch.dict("os.environ", env, clear=True):
             with self.assertRaisesMessage(ImproperlyConfigured, "DJANGO_SECRET_KEY must be set in production."):
                 reload_prod_settings()
-

@@ -1,4 +1,3 @@
-
 import uuid
 
 from cryptography.hazmat.backends import default_backend
