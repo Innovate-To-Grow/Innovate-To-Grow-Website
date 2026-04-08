@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
-from unfold.admin import ModelAdmin
 
+from core.admin.base import BaseModelAdmin
 from core.models import SiteMaintenanceControl
 
 
@@ -35,7 +35,7 @@ class SiteMaintenanceControlAdminForm(forms.ModelForm):
 
 
 @admin.register(SiteMaintenanceControl)
-class SiteMaintenanceControlAdmin(ModelAdmin):
+class SiteMaintenanceControlAdmin(BaseModelAdmin):
     form = SiteMaintenanceControlAdminForm
     list_display = ("__str__", "is_maintenance", "updated_at")
     fields = ("is_maintenance", "message", "bypass_password", "clear_bypass_password", "updated_at")

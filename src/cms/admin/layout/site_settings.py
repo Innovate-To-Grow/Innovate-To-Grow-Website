@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+
+from core.admin import BaseModelAdmin
 
 from ...models import CMSPage, SiteSettings
 
@@ -46,7 +47,7 @@ class SiteSettingsForm(forms.ModelForm):
 
 
 @admin.register(SiteSettings)
-class SiteSettingsAdmin(ModelAdmin):
+class SiteSettingsAdmin(BaseModelAdmin):
     form = SiteSettingsForm
     list_display = ("__str__", "homepage_page_display", "homepage_route_display")
     readonly_fields = ("homepage_route_display",)

@@ -59,7 +59,6 @@ export const EventRegistrationPage = () => {
         <CodeVerificationStep
           email={reg.email}
           code={reg.code}
-          authFlow={reg.authFlow}
           authLoading={reg.authLoading}
           onCodeChange={reg.setCode}
           onSubmit={reg.handleCodeSubmit}

@@ -1,11 +1,11 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
 
 from cms.models import NewsSyncLog
+from core.admin import ReadOnlyModelAdmin
 
 
 @admin.register(NewsSyncLog)
-class NewsSyncLogAdmin(ModelAdmin):
+class NewsSyncLogAdmin(ReadOnlyModelAdmin):
     list_display = (
         "feed_source",
         "started_at",
@@ -24,15 +24,6 @@ class NewsSyncLogAdmin(ModelAdmin):
         "errors_text",
     )
     ordering = ("-started_at",)
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
 
     def has_errors_display(self, obj):
         return obj.has_errors

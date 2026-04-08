@@ -3,7 +3,6 @@ import type {FormEvent} from 'react';
 interface CodeVerificationStepProps {
   email: string;
   code: string;
-  authFlow: string | null;
   authLoading: boolean;
   onCodeChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
@@ -13,7 +12,6 @@ interface CodeVerificationStepProps {
 export const CodeVerificationStep = ({
   email,
   code,
-  authFlow,
   authLoading,
   onCodeChange,
   onSubmit,
@@ -22,7 +20,6 @@ export const CodeVerificationStep = ({
   <div className="event-reg-auth">
     <p className="event-reg-auth-hint">
       A verification code has been sent to <strong>{email}</strong>.
-      {authFlow === 'register' ? ' A new account will be created for you.' : ' You will be signed in to your existing account.'}
     </p>
     <form onSubmit={onSubmit}>
       <div className="event-reg-form-group">

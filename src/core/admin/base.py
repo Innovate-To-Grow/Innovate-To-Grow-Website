@@ -24,6 +24,21 @@ class BaseModelAdmin(TimestampedAdminMixin, ModelAdmin):
     # Standard list configuration
     list_per_page = 50
 
+    def has_module_permission(self, request):
+        return request.user.is_staff
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_add_permission(self, request):
+        return request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+
     def get_readonly_fields(self, request, obj=None):
         """Include base readonly fields with any model-specific ones."""
         readonly = list(super().get_readonly_fields(request, obj))

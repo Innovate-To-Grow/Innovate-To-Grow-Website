@@ -6,16 +6,16 @@ from django.db.models import Count
 from django.db.models.functions import TruncDate, TruncHour
 from django.utils import timezone
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin
 
 from cms.models import PageView
+from core.admin import ReadOnlyModelAdmin
 
 _DASHBOARD_CACHE_KEY = "cms:analytics:dashboard"
 _DASHBOARD_CACHE_TTL = 60  # seconds
 
 
 @admin.register(PageView)
-class PageViewAdmin(ModelAdmin):
+class PageViewAdmin(ReadOnlyModelAdmin):
     change_list_template = "admin/cms/pageview/change_list.html"
     list_display = ("path", "short_referrer", "ip_address", "member_display", "session_key_short", "timestamp")
     list_filter = ("timestamp",)
@@ -132,12 +132,3 @@ class PageViewAdmin(ModelAdmin):
         if not obj.session_key:
             return "-"
         return f"{obj.session_key[:8]}…"
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False

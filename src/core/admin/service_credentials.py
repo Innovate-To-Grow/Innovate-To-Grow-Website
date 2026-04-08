@@ -6,7 +6,6 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import ModelAdmin
 from unfold.decorators import action, display
 from unfold.widgets import (
     UnfoldAdminFileFieldWidget,
@@ -14,6 +13,7 @@ from unfold.widgets import (
     UnfoldAdminTextareaWidget,
 )
 
+from core.admin.base import BaseModelAdmin
 from core.models import EmailServiceConfig, GmailImportConfig, GoogleCredentialConfig, SMSServiceConfig
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class EmailServiceConfigForm(forms.ModelForm):
 
 
 @admin.register(EmailServiceConfig)
-class EmailServiceConfigAdmin(ModelAdmin):
+class EmailServiceConfigAdmin(BaseModelAdmin):
     form = EmailServiceConfigForm
     list_display = ("name", "status_badge", "provider_badge", "ses_from_email", "updated_at")
     list_filter = ("is_active",)
@@ -273,7 +273,7 @@ class GoogleCredentialConfigForm(forms.ModelForm):
 
 
 @admin.register(GoogleCredentialConfig)
-class GoogleCredentialConfigAdmin(ModelAdmin):
+class GoogleCredentialConfigAdmin(BaseModelAdmin):
     form = GoogleCredentialConfigForm
     list_display = ("name", "status_badge", "project_id_display", "client_email_display", "updated_at")
     list_filter = ("is_active",)
@@ -346,7 +346,7 @@ class GmailImportConfigForm(forms.ModelForm):
 
 
 @admin.register(GmailImportConfig)
-class GmailImportConfigAdmin(ModelAdmin):
+class GmailImportConfigAdmin(BaseModelAdmin):
     form = GmailImportConfigForm
     list_display = ("name", "status_badge", "imap_host", "gmail_username", "updated_at")
     list_filter = ("is_active",)
@@ -384,23 +384,11 @@ class GmailImportConfigAdmin(ModelAdmin):
         messages.success(request, f'"{obj.name}" is now the active Gmail import config.')
         return HttpResponseRedirect(reverse("admin:core_gmailimportconfig_change", args=[object_id]))
 
-    def has_module_permission(self, request):
-        return request.user.is_staff
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_staff
-
-    def has_add_permission(self, request):
-        return request.user.is_staff
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_staff
-
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:
             return False
-        return request.user.is_staff
+        return super().has_delete_permission(request, obj)
 
     def get_actions(self, request):
         actions = super().get_actions(request)
@@ -423,7 +411,7 @@ class SMSServiceConfigForm(forms.ModelForm):
 
 
 @admin.register(SMSServiceConfig)
-class SMSServiceConfigAdmin(ModelAdmin):
+class SMSServiceConfigAdmin(BaseModelAdmin):
     form = SMSServiceConfigForm
     list_display = ("name", "status_badge", "account_sid", "updated_at")
     list_filter = ("is_active",)
