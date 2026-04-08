@@ -27,7 +27,8 @@ def get_recipients(campaign):
 
 def _subscribers():
     members = (
-        Member.objects.filter(email_subscribe=True)
+        Member.objects.filter(contact_emails__subscribe=True, contact_emails__email_type="primary")
+        .distinct()
         .prefetch_related("contact_emails")
         .order_by("first_name", "last_name")
     )

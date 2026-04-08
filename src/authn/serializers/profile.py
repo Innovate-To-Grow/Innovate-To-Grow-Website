@@ -73,7 +73,7 @@ class ProfileSerializer(serializers.Serializer):
             "middle_name": instance.middle_name or "",
             "last_name": instance.last_name or "",
             "organization": instance.organization or "",
-            "email_subscribe": instance.email_subscribe,
+            "email_subscribe": primary_contact.subscribe if primary_contact else False,
             "is_staff": instance.is_staff,
             "is_active": instance.is_active,
             "date_joined": instance.date_joined.isoformat(),
@@ -85,9 +85,17 @@ class ProfileSerializer(serializers.Serializer):
         """
         Update the user's profile with the validated data.
         """
+        # Handle email_subscribe separately — backed by ContactEmail.subscribe
+        email_sub = validated_data.pop("email_subscribe", None)
+        if email_sub is not None:
+            primary = instance.get_primary_contact_email()
+            if primary:
+                primary.subscribe = email_sub
+                primary.save(update_fields=["subscribe"])
+
         # Update Member model fields
         member_fields_to_update = []
-        for field in ("first_name", "middle_name", "last_name", "organization", "email_subscribe"):
+        for field in ("first_name", "middle_name", "last_name", "organization"):
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
                 member_fields_to_update.append(field)

@@ -179,6 +179,14 @@ export const SchedulePage = () => {
     [data],
   );
 
+  const schedulePageMeta = useMemo(() => {
+    if (!data) return null;
+    const parts = [data.event.date, data.event.location]
+      .map((s) => (typeof s === 'string' ? s.trim() : ''))
+      .filter((p) => p.length > 0);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }, [data]);
+
   const projectGridRows = useMemo(() => (data ? data.projects.map(toGridRow) : []), [data]);
   const projectItems = useMemo(() => createProjectGridItems(projectGridRows, 'schedule-projects'), [projectGridRows]);
   const projectTable = useProjectGridTable({
@@ -230,9 +238,7 @@ export const SchedulePage = () => {
     <div className="schedule-page">
       <header className="schedule-page-header">
         <h1 className="schedule-page-title">{data.event.name}</h1>
-        <p className="schedule-page-meta">
-          {data.event.date} · {data.event.location}
-        </p>
+        {schedulePageMeta ? <p className="schedule-page-meta">{schedulePageMeta}</p> : null}
         <p className="schedule-page-text">{data.event.description}</p>
       </header>
 

@@ -71,14 +71,19 @@ class ProfileUpdateTests(APITestCase):
         self.assertEqual(self.member.organization, "Acme Corp")
 
     def test_patch_email_subscribe(self):
+        # Start subscribed
+        primary = ContactEmail.objects.get(member=self.member, email_type="primary")
+        primary.subscribe = True
+        primary.save(update_fields=["subscribe"])
+
         response = self.client.patch(
             "/authn/profile/",
             {"email_subscribe": False},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
-        self.member.refresh_from_db()
-        self.assertFalse(self.member.email_subscribe)
+        primary.refresh_from_db()
+        self.assertFalse(primary.subscribe)
 
     def test_patch_multiple_fields(self):
         response = self.client.patch(

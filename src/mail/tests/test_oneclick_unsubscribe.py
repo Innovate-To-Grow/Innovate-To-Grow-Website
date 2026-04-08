@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.core import signing
 from rest_framework.test import APITestCase
 
-from authn.models import Member
+from authn.models import ContactEmail, Member
 from event.tests.helpers import make_member
 from mail.services.unsubscribe_token import (
     _SALT,
@@ -14,17 +14,24 @@ from mail.services.unsubscribe_token import (
 class OneClickUnsubscribeViewTests(APITestCase):
     def setUp(self):
         self.member = make_member(email="unsub@example.com")
+        # Set primary email as subscribed so we can test unsubscribe
+        self.primary_email = ContactEmail.objects.get(member=self.member, email_type="primary")
+        self.primary_email.subscribe = True
+        self.primary_email.save(update_fields=["subscribe"])
         self.token = build_oneclick_unsubscribe_token(self.member)
         self.url = f"/mail/unsubscribe/{self.token}/"
 
+    def _is_subscribed(self):
+        self.primary_email.refresh_from_db()
+        return self.primary_email.subscribe
+
     def test_valid_post_unsubscribes_member(self):
-        self.assertTrue(self.member.email_subscribe)
+        self.assertTrue(self._is_subscribed())
 
         response = self.client.post(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.member.refresh_from_db()
-        self.assertFalse(self.member.email_subscribe)
+        self.assertFalse(self._is_subscribed())
 
     def test_idempotent_post(self):
         """Posting twice should succeed both times (RFC 8058 idempotency)."""
@@ -32,15 +39,13 @@ class OneClickUnsubscribeViewTests(APITestCase):
         response = self.client.post(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.member.refresh_from_db()
-        self.assertFalse(self.member.email_subscribe)
+        self.assertFalse(self._is_subscribed())
 
     def test_get_unsubscribes_and_returns_html(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/html", response["Content-Type"])
-        self.member.refresh_from_db()
-        self.assertFalse(self.member.email_subscribe)
+        self.assertFalse(self._is_subscribed())
 
     def test_get_invalid_token_returns_400_html(self):
         response = self.client.get("/mail/unsubscribe/garbage-token/")

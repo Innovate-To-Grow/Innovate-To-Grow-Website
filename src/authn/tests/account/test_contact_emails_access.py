@@ -77,12 +77,22 @@ class ContactEmailAccessTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_profile_includes_email_subscribe(self, _mock_code, _mock_send):
+        # Set primary email as subscribed
+        primary = ContactEmail.objects.get(member=self.member, email_type="primary")
+        primary.subscribe = True
+        primary.save(update_fields=["subscribe"])
+
         response = self.client.get("/authn/profile/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("email_subscribe", response.data)
         self.assertTrue(response.data["email_subscribe"])
 
     def test_patch_profile_email_subscribe(self, _mock_code, _mock_send):
+        # Start subscribed
+        primary = ContactEmail.objects.get(member=self.member, email_type="primary")
+        primary.subscribe = True
+        primary.save(update_fields=["subscribe"])
+
         response = self.client.patch(
             "/authn/profile/",
             {"email_subscribe": False},
@@ -91,8 +101,8 @@ class ContactEmailAccessTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["email_subscribe"])
 
-        self.member.refresh_from_db()
-        self.assertFalse(self.member.email_subscribe)
+        primary.refresh_from_db()
+        self.assertFalse(primary.subscribe)
 
     def test_unverified_email_excluded_from_account_emails(self, _mock_code, _mock_send):
         ContactEmail.objects.create(

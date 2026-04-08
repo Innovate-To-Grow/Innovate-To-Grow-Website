@@ -45,7 +45,6 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
         member.last_name = parsed["last_name"]
     if parsed["organization"]:
         member.organization = parsed["organization"]
-    member.email_subscribe = parsed["primary_subscribed"]
     member.save()
 
     primary_contact = member.contact_emails.filter(email_type="primary").first()

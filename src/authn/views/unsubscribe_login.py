@@ -53,9 +53,10 @@ class UnsubscribeAutoLoginView(APIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if member.email_subscribe:
-            member.email_subscribe = False
-            member.save(update_fields=["email_subscribe"])
+        primary = member.get_primary_contact_email()
+        if primary and primary.subscribe:
+            primary.subscribe = False
+            primary.save(update_fields=["subscribe"])
             _send_unsubscribe_confirmation(member)
 
         payload = build_auth_success_payload(member, "You have been unsubscribed.")

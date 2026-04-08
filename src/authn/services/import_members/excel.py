@@ -88,7 +88,6 @@ def import_members_from_excel(file, default_password: str | None = None, update_
                 first_name=parsed["first_name"],
                 last_name=parsed["last_name"],
                 organization=parsed["organization"],
-                email_subscribe=parsed["primary_subscribed"],
                 is_active=True,
                 date_joined=parsed["date_joined"] or now,
             )

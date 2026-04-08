@@ -38,13 +38,6 @@ class Member(AbstractUser, ProjectControlModel):
         verbose_name="Organization",
     )
 
-    # email subscription
-    email_subscribe = models.BooleanField(
-        default=True,
-        help_text="Whether the member is subscribed to email communications.",
-        verbose_name="Email Subscribe",
-    )
-
     # profile image (base64 encoded)
     profile_image = models.TextField(
         null=True,

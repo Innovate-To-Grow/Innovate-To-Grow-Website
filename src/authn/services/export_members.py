@@ -29,7 +29,6 @@ def export_members_to_excel(queryset) -> bytes:
         "organization",
         "is_active",
         "is_staff",
-        "email_subscribe",
         "date_joined",
     ).prefetch_related("contact_emails", "contact_phones")
 
@@ -91,7 +90,7 @@ def export_members_to_excel(queryset) -> bytes:
                 member.organization or "",
                 "Yes" if member.is_active else "No",
                 "Yes" if member.is_staff else "No",
-                "Yes" if member.email_subscribe else "No",
+                "Yes" if any(ce.subscribe for ce in contact_emails if ce.email_type == "primary") else "No",
                 member.date_joined.strftime("%Y-%m-%d %H:%M") if member.date_joined else "",
                 ", ".join(email_parts),
                 ", ".join(cp.phone_number for cp in contact_phones),
