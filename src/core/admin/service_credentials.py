@@ -384,11 +384,23 @@ class GmailImportConfigAdmin(ModelAdmin):
         messages.success(request, f'"{obj.name}" is now the active Gmail import config.')
         return HttpResponseRedirect(reverse("admin:core_gmailimportconfig_change", args=[object_id]))
 
+    def has_module_permission(self, request):
+        return request.user.is_staff
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_add_permission(self, request):
+        return request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff
+
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:
             return False
-        return super().has_delete_permission(request, obj)
+        return request.user.is_staff
 
     def get_actions(self, request):
         actions = super().get_actions(request)
