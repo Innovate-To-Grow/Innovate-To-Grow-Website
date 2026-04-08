@@ -11,7 +11,7 @@ const SANITIZE_OPTIONS = {
 
 // Remove iframes whose src does not point to a trusted video host
 DOMPurify.addHook('uponSanitizeElement', (node, data) => {
-  if (data.tagName === 'iframe') {
+  if (data.tagName === 'iframe' && node instanceof Element) {
     const src = node.getAttribute('src') || '';
     try {
       const url = new URL(src);
