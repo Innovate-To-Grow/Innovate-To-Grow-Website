@@ -42,7 +42,7 @@ class PublicKeyViewTests(APITestCase):
         self.assertEqual(r1.data["key_id"], r2.data["key_id"])
         self.assertEqual(r1.data["public_key"], r2.data["public_key"])
 
-    @patch("authn.views.verification.public_key.get_public_key_pem", side_effect=RuntimeError("boom"))
+    @patch("authn.views.auth.public_key.get_public_key_pem", side_effect=RuntimeError("boom"))
     def test_internal_errors_return_generic_message(self, _mock_get_public_key):
         response = self.client.get("/authn/public-key/")
         self.assertEqual(response.status_code, 500)

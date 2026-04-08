@@ -84,6 +84,7 @@ def _get_member_emails(user) -> list[str]:
 def _get_member_profile(user) -> dict:
     return {
         "first_name": user.first_name or "",
+        "middle_name": getattr(user, "middle_name", "") or "",
         "last_name": user.last_name or "",
         "organization": getattr(user, "organization", "") or "",
     }

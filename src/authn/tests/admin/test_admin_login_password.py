@@ -106,7 +106,7 @@ class AdminPasswordLoginTest(TestCase):
         resp = self.client.post(url, {"mode": "password", "email": "admin@example.com", "password": "testpass123"})
         self.assertRedirects(resp, "/admin/cms/cmspage/", fetch_redirect_response=False)
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
     def test_password_mode_clears_email_code_session(self, mock_issue):
         # Start email-code flow

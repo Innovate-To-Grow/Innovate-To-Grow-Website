@@ -59,6 +59,7 @@ export interface Registration {
 
 export interface MemberProfile {
   first_name: string;
+  middle_name: string;
   last_name: string;
   organization: string;
 }

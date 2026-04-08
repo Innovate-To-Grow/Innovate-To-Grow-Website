@@ -3,7 +3,6 @@ import {DoneState} from './steps/DoneState';
 import {EmailAuthStep} from './steps/EmailAuthStep';
 import {formatEventDate} from './steps/helpers';
 import {LoadingState} from './steps/LoadingState';
-import {ProfileStep} from './steps/ProfileStep';
 import {RegistrationFormStep} from './steps/RegistrationFormStep';
 import {useEventRegistration} from './useEventRegistration';
 import './EventRegistrationPage.css';
@@ -70,58 +69,23 @@ export const EventRegistrationPage = () => {
         />
       ) : null}
 
-      {reg.step === 'profile' ? (
-        <ProfileStep
-          firstName={reg.firstName}
-          middleName={reg.middleName}
-          lastName={reg.lastName}
-          organizationType={reg.organizationType}
-          organization={reg.organization}
-          saving={reg.saving}
-          onFirstNameChange={(value) => {
-            reg.setFirstName(value);
-            reg.setError(null);
-          }}
-          onMiddleNameChange={(value) => {
-            reg.setMiddleName(value);
-            reg.setError(null);
-          }}
-          onLastNameChange={(value) => {
-            reg.setLastName(value);
-            reg.setError(null);
-          }}
-          onOrganizationTypeChange={(value) => {
-            reg.setOrganizationType(value);
-            reg.setOrganization('');
-            reg.setError(null);
-          }}
-          onOrganizationChange={(value) => {
-            reg.setOrganization(value);
-            reg.setError(null);
-          }}
-          onSubmit={reg.handleProfileSubmit}
-        />
-      ) : null}
-
       {reg.step === 'form' && reg.options ? (
         <RegistrationFormStep
           options={reg.options}
           selectedTicketId={reg.selectedTicketId}
           answers={reg.answers}
           submitting={reg.submitting}
-          hideAttendeeInfo={reg.profileCompleted}
           attendeeFirstName={reg.attendeeFirstName}
+          attendeeMiddleName={reg.attendeeMiddleName}
           attendeeLastName={reg.attendeeLastName}
           attendeeOrgType={reg.attendeeOrgType}
           attendeeOrganization={reg.attendeeOrganization}
           attendeeSecondaryEmail={reg.attendeeSecondaryEmail}
           attendeePhone={reg.attendeePhone}
           primaryEmail={reg.primaryEmail}
-          accountInfoLocked={reg.accountInfoLocked}
-          accountSecondaryEmailLocked={reg.accountSecondaryEmailLocked}
-          accountPhoneLocked={reg.accountPhoneLocked}
           phoneRegion={reg.phoneRegion}
           onFirstNameChange={reg.setAttendeeFirstName}
+          onMiddleNameChange={reg.setAttendeeMiddleName}
           onLastNameChange={reg.setAttendeeLastName}
           onOrgTypeChange={(value) => {
             reg.setAttendeeOrgType(value);

@@ -20,6 +20,7 @@ class GenerateIcsTest(TestCase):
         self.assertIn("LOCATION:UC Merced", ics)
         self.assertIn("DESCRIPTION:Annual showcase", ics)
         self.assertIn("UID:abc-123@i2g.ucmerced.edu", ics)
+        self.assertIn("X-WR-TIMEZONE:America/Los_Angeles", ics)
         self.assertIn("BEGIN:VCALENDAR", ics)
         self.assertIn("END:VCALENDAR", ics)
 
@@ -56,3 +57,4 @@ class BuildGoogleCalendarUrlTest(TestCase):
         self.assertIn("dates=20260510%2F20260511", url)
         self.assertIn("location=UC%20Merced", url)
         self.assertIn("details=Showcase", url)
+        self.assertIn("ctz=America%2FLos_Angeles", url)

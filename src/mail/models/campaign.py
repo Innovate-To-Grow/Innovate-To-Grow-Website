@@ -79,6 +79,11 @@ class EmailCampaign(ProjectControlModel):
         default="",
         help_text="One email per line. Used when audience is 'Manual Emails'.",
     )
+    include_unsubscribe_header = models.BooleanField(
+        default=True,
+        verbose_name="Include one-click unsubscribe",
+        help_text="Add RFC 8058 List-Unsubscribe headers so recipients can unsubscribe directly from their email client.",
+    )
 
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="draft")
     total_recipients = models.PositiveIntegerField(default=0)

@@ -137,6 +137,7 @@ class EmailCampaignForm(forms.ModelForm):
             for field_name in (
                 "subject",
                 "login_redirect_path",
+                "include_unsubscribe_header",
                 "body_format",
                 "body",
                 "audience_type",
@@ -264,7 +265,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
         ),
         (
             "Campaign",
-            {"fields": ("subject", "login_redirect_path", "body_format", "body")},
+            {"fields": ("subject", "login_redirect_path", "include_unsubscribe_header", "body_format", "body")},
         ),
     )
     filter_horizontal = ("selected_members",)
@@ -306,7 +307,17 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if obj and obj.status != "draft":
-            readonly.extend(["name", "subject", "login_redirect_path", "body", "audience_type", "event"])
+            readonly.extend(
+                [
+                    "name",
+                    "subject",
+                    "login_redirect_path",
+                    "include_unsubscribe_header",
+                    "body",
+                    "audience_type",
+                    "event",
+                ]
+            )
         return readonly
 
     def changelist_view(self, request, extra_context=None):

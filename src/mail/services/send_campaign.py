@@ -1,6 +1,8 @@
 """Orchestrate sending an email campaign to all resolved recipients."""
 
 import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from django.conf import settings
 from django.utils import timezone
@@ -10,6 +12,7 @@ from core.models import EmailServiceConfig
 from .audience import get_recipients
 from .personalize import personalize
 from .preview import render_email_html
+from .unsubscribe_token import build_oneclick_unsubscribe_url
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,13 @@ def _build_login_link(member_id, campaign):
     MagicLoginToken.objects.create(token=token, member_id=member_id, campaign=campaign)
     frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
     return f"{frontend_url}/magic-login?token={token}"
+
+
+def _build_unsubscribe_url(member_id):
+    """Generate the one-click unsubscribe URL for the given member, or empty string."""
+    if not member_id:
+        return ""
+    return build_oneclick_unsubscribe_url(member_id)
 
 
 def send_campaign(campaign, sent_by):
@@ -56,6 +66,8 @@ def send_campaign(campaign, sent_by):
         body_html = personalize(campaign.body, context)
         wrapped_html = render_email_html(body_html)
 
+        unsubscribe_url = _build_unsubscribe_url(recipient["member_id"]) if campaign.include_unsubscribe_header else ""
+
         log = RecipientLog.objects.create(
             campaign=campaign,
             member_id=recipient["member_id"],
@@ -65,7 +77,11 @@ def send_campaign(campaign, sent_by):
         )
 
         provider, error = _send_single(
-            config=config, recipient=recipient["email"], subject=subject, html_body=wrapped_html
+            config=config,
+            recipient=recipient["email"],
+            subject=subject,
+            html_body=wrapped_html,
+            unsubscribe_url=unsubscribe_url,
         )
         if error:
             log.status = "failed"
@@ -89,12 +105,36 @@ def send_campaign(campaign, sent_by):
     }
 
 
-def _send_single(*, config, recipient, subject, html_body):
+def _build_unsubscribe_headers(unsubscribe_url):
+    """Return a dict of RFC 8058 List-Unsubscribe headers, or empty dict."""
+    if not unsubscribe_url:
+        return {}
+    return {
+        "List-Unsubscribe": f"<{unsubscribe_url}>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    }
+
+
+def _build_raw_ses_message(*, source, recipient, subject, html_body, extra_headers):
+    """Build a MIME message suitable for SES send_raw_email."""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = source
+    msg["To"] = recipient
+    for key, value in extra_headers.items():
+        msg[key] = value
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    return msg.as_string()
+
+
+def _send_single(*, config, recipient, subject, html_body, unsubscribe_url=""):
     """
     Try SES first, fall back to SMTP. Returns (provider, error_message).
     On success error_message is empty string.
     """
-    # Try SES
+    unsub_headers = _build_unsubscribe_headers(unsubscribe_url)
+
+    # Try SES (raw email to support custom headers)
     if config.ses_configured:
         try:
             import boto3
@@ -105,13 +145,17 @@ def _send_single(*, config, recipient, subject, html_body):
                 aws_access_key_id=config.ses_access_key_id,
                 aws_secret_access_key=config.ses_secret_access_key,
             )
-            client.send_email(
-                Destination={"ToAddresses": [recipient]},
-                Message={
-                    "Body": {"Html": {"Charset": "UTF-8", "Data": html_body}},
-                    "Subject": {"Charset": "UTF-8", "Data": subject},
-                },
+            raw_message = _build_raw_ses_message(
+                source=config.source_address,
+                recipient=recipient,
+                subject=subject,
+                html_body=html_body,
+                extra_headers=unsub_headers,
+            )
+            client.send_raw_email(
                 Source=config.source_address,
+                Destinations=[recipient],
+                RawMessage={"Data": raw_message},
             )
             return "ses", ""
         except Exception:
@@ -135,6 +179,7 @@ def _send_single(*, config, recipient, subject, html_body):
             from_email=config.source_address,
             to=[recipient],
             connection=connection,
+            headers=unsub_headers,
         )
         msg.content_subtype = "html"
         msg.send()

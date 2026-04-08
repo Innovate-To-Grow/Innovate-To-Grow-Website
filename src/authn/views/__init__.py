@@ -26,7 +26,8 @@ from .account.email_code import (
     DeleteAccountCodeVerifyView,
 )
 from .account.profile import ProfileView
-from .admin_login import AdminLoginView
+from .admin.invitation import AcceptInvitationView
+from .admin.login import AdminLoginView
 from .auth.email_code import (
     EmailAuthRequestCodeView,
     EmailAuthVerifyCodeView,
@@ -39,12 +40,11 @@ from .auth.email_code import (
     RegisterVerifyCodeView,
 )
 from .auth.login import LoginView
+from .auth.public_key import PublicKeyView
 from .auth.register import RegisterView
-from .invitation import AcceptInvitationView
+from .auth.token import PublicTokenRefreshView
 from .subscribe import SubscribeView
-from .token import PublicTokenRefreshView
 from .unsubscribe_login import UnsubscribeAutoLoginView
-from .verification.public_key import PublicKeyView
 
 __all__ = [
     "RegisterView",

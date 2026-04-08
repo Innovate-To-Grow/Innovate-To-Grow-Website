@@ -62,7 +62,7 @@ class AdminLoginViewTest(TestCase):
         resp = self.client.get(LOGIN_URL)
         self.assertRedirects(resp, "/admin/", fetch_redirect_response=False)
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     def test_post_valid_email_sends_code(self, mock_issue):
         resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
         self.assertEqual(resp.status_code, 200)
@@ -91,7 +91,7 @@ class AdminLoginViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Unable to send verification code")
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
     def test_post_valid_code_logs_in(self, mock_issue):
         # Step 1: submit email
@@ -101,7 +101,7 @@ class AdminLoginViewTest(TestCase):
         challenge = _create_pending_challenge(self.staff, "admin@example.com", code="654321")
 
         # Step 2: submit code
-        with patch("authn.views.admin_login.verify_email_code", return_value=challenge):
+        with patch("authn.views.admin.login.verify_email_code", return_value=challenge):
             resp = self.client.post(LOGIN_URL, {"code": "654321"})
 
         self.assertRedirects(resp, "/admin/", fetch_redirect_response=False)
@@ -109,7 +109,7 @@ class AdminLoginViewTest(TestCase):
         resp2 = self.client.get("/admin/")
         self.assertEqual(resp2.status_code, 200)
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
     def test_post_invalid_code_shows_error(self, mock_issue):
         # Step 1
@@ -118,13 +118,13 @@ class AdminLoginViewTest(TestCase):
         # Step 2 with invalid code
         from authn.services.email_challenges import AuthChallengeInvalid
 
-        with patch("authn.views.admin_login.verify_email_code", side_effect=AuthChallengeInvalid("bad")):
+        with patch("authn.views.admin.login.verify_email_code", side_effect=AuthChallengeInvalid("bad")):
             resp = self.client.post(LOGIN_URL, {"code": "000000"})
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Verification code is invalid or has expired")
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     def test_resend_action(self, mock_issue):
         # Step 1
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})
@@ -136,7 +136,7 @@ class AdminLoginViewTest(TestCase):
         mock_issue.assert_called_once()
         self.assertContains(resp, "A new verification code has been sent")
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
     def test_step_email_query_resets_flow(self, mock_issue):
         # Step 1 → code step
@@ -149,7 +149,7 @@ class AdminLoginViewTest(TestCase):
         self.assertContains(resp, 'name="email"')
         self.assertNotIn("admin_login_step", self.client.session)
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
     def test_next_redirect_parameter(self, mock_issue):
         # Step 1
@@ -158,12 +158,12 @@ class AdminLoginViewTest(TestCase):
 
         challenge = _create_pending_challenge(self.staff, "admin@example.com")
 
-        with patch("authn.views.admin_login.verify_email_code", return_value=challenge):
+        with patch("authn.views.admin.login.verify_email_code", return_value=challenge):
             resp = self.client.post(url, {"code": "123456"})
 
         self.assertRedirects(resp, "/admin/cms/cmspage/", fetch_redirect_response=False)
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
     def test_next_rejects_external_urls(self, mock_issue):
         url = LOGIN_URL + "?next=https://evil.com"
@@ -171,13 +171,13 @@ class AdminLoginViewTest(TestCase):
 
         challenge = _create_pending_challenge(self.staff, "admin@example.com")
 
-        with patch("authn.views.admin_login.verify_email_code", return_value=challenge):
+        with patch("authn.views.admin.login.verify_email_code", return_value=challenge):
             resp = self.client.post(url, {"code": "123456"})
 
         # Should redirect to /admin/ instead of external URL
         self.assertRedirects(resp, "/admin/", fetch_redirect_response=False)
 
-    @patch("authn.views.admin_login.issue_email_challenge")
+    @patch("authn.views.admin.login.issue_email_challenge")
     def test_throttled_shows_error(self, mock_issue):
         from authn.services.email_challenges import AuthChallengeThrottled
 

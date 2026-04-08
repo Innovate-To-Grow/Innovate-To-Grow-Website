@@ -35,7 +35,7 @@ export const CompleteProfilePage = () => {
         setMiddleName(profile.middle_name ?? '');
         setLastName(profile.last_name ?? '');
         const org = profile.organization ?? '';
-        const isIndividual = !org || org.toLowerCase() === 'individual';
+        const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
         setOrganizationType(isIndividual ? 'individual' : 'organization');
         setOrganization(isIndividual ? '' : org);
       } catch (err: unknown) {

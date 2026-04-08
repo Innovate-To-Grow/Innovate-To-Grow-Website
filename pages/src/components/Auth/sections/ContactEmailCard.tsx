@@ -64,7 +64,7 @@ export const ContactEmailCard = ({
           <label className="email-center-toggle" aria-label="Subscribe this email">
             <input type="checkbox" checked={contact.subscribe} onChange={() => onContactSubscribeToggle(contact)} />
             <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Subscribe</span>
+            <span className="email-center-toggle-label">Newsletters</span>
           </label>
           {!contact.verified ? (
             <button type="button" className="email-center-btn verify" onClick={() => onToggleVerify(contact.id)}>

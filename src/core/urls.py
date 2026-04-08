@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from authn.views.admin_login import AdminLoginView
+from authn.views.admin.login import AdminLoginView
 from cms.views import LayoutAPIView
 from core.views import MaintenanceBypassView, robots_txt, root_index
 

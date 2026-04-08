@@ -11,7 +11,6 @@
 /* Back link */
 .subscribe-back-link {
   display: inline-block;
-  margin-top: 0.75rem;
   background: none;
   border: none;
   color: #003366;
@@ -23,6 +22,12 @@
 
 .subscribe-back-link:hover {
   color: #002244;
+}
+
+.subscribe-back-link:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  text-decoration: none;
 }
 
 /* Alerts */
@@ -39,33 +44,19 @@
   color: #991b1b;
 }
 
-/* Done / confirmation */
-.subscribe-done {
-  text-align: center;
-}
-
-.subscribe-done h2 {
-  font-size: 1.5rem;
-  color: #003366;
-  margin: 0 0 0.5rem;
-}
-
-.subscribe-done-subtitle {
-  color: #6b7280;
-  margin: 0 0 1.5rem;
-  font-size: 0.95rem;
-}
-
-.subscribe-done-notice {
-  margin: 1.5rem 0;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
+.subscribe-alert.success {
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   color: #166534;
-  font-size: 0.9rem;
 }
 
+.subscribe-alert.info {
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  color: #374151;
+}
+
+/* Account link */
 .subscribe-link {
   display: inline-block;
   margin-top: 0.5rem;
@@ -100,5 +91,10 @@
 @media (max-width: 768px) {
   .subscribe-form-row {
     grid-template-columns: 1fr;
+  }
+
+  .subscribe-code-actions {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }

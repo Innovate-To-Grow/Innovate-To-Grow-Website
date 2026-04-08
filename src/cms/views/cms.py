@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import timedelta
 
@@ -58,9 +57,8 @@ class CMSLivePreviewView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, page_id):
-        try:
-            data = json.loads(request.body)
-        except (json.JSONDecodeError, ValueError):
+        data = request.data
+        if not isinstance(data, dict):
             return Response({"detail": "Invalid JSON."}, status=400)
 
         data["expires_at"] = (timezone.now() + timedelta(seconds=_LIVE_PREVIEW_TTL)).isoformat()

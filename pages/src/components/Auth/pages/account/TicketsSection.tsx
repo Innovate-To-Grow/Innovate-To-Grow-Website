@@ -8,7 +8,7 @@ interface TicketsSectionProps {
 }
 
 const formatDate = (date: string) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
+  new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
 
 export const TicketsSection = ({
   tickets,

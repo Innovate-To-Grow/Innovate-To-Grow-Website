@@ -1,14 +1,18 @@
 import type {FormEvent} from 'react';
 
+type OrganizationType = 'individual' | 'organization';
+
 interface ProfileStepProps {
   firstName: string;
   middleName: string;
   lastName: string;
+  organizationType: OrganizationType;
   organization: string;
   saving: boolean;
   onFirstNameChange: (value: string) => void;
   onMiddleNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
+  onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
 }
@@ -17,11 +21,13 @@ export const ProfileStep = ({
   firstName,
   middleName,
   lastName,
+  organizationType,
   organization,
   saving,
   onFirstNameChange,
   onMiddleNameChange,
   onLastNameChange,
+  onOrganizationTypeChange,
   onOrganizationChange,
   onSubmit,
 }: ProfileStepProps) => (
@@ -61,6 +67,8 @@ export const ProfileStep = ({
             disabled={saving}
           />
         </div>
+      </div>
+      <div className="subscribe-form-row">
         <div className="subscribe-form-group">
           <label className="subscribe-label" htmlFor="subscribe-last-name">
             Last Name <span className="subscribe-optional">(optional)</span>
@@ -76,24 +84,43 @@ export const ProfileStep = ({
             disabled={saving}
           />
         </div>
-      </div>
-      <div className="subscribe-form-group">
-        <label className="subscribe-label" htmlFor="subscribe-org">
-          Organization <span className="subscribe-optional">(optional)</span>
-        </label>
-        <input
-          id="subscribe-org"
-          type="text"
-          className="subscribe-input"
-          value={organization}
-          onChange={(event) => onOrganizationChange(event.target.value)}
-          placeholder="Company or organization"
-          autoComplete="organization"
-          disabled={saving}
-        />
+        <div className="subscribe-form-group">
+          <label className="subscribe-label">Organization</label>
+          <div className="subscribe-org-toggle">
+            <button
+              type="button"
+              className={`subscribe-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('individual')}
+              disabled={saving}
+            >
+              Individual
+            </button>
+            <button
+              type="button"
+              className={`subscribe-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('organization')}
+              disabled={saving}
+            >
+              Organization
+            </button>
+          </div>
+          {organizationType === 'organization' && (
+            <input
+              id="subscribe-org"
+              type="text"
+              className="subscribe-input"
+              value={organization}
+              onChange={(event) => onOrganizationChange(event.target.value)}
+              placeholder="Company or organization name"
+              autoComplete="organization"
+              required
+              disabled={saving}
+            />
+          )}
+        </div>
       </div>
       <button type="submit" className="subscribe-submit" disabled={saving || !firstName.trim()}>
-        {saving ? <><span className="subscribe-spinner" /> Subscribing...</> : 'Subscribe'}
+        {saving ? <><span className="subscribe-spinner" /> Saving...</> : 'Continue'}
       </button>
     </form>
   </div>

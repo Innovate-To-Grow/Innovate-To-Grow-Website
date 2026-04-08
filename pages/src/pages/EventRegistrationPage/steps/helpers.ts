@@ -1,4 +1,4 @@
-export type EventRegistrationStep = 'loading' | 'email' | 'code' | 'profile' | 'form' | 'done';
+export type EventRegistrationStep = 'loading' | 'email' | 'code' | 'form' | 'done';
 
 export function formatEventDate(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00`);

@@ -1,4 +1,4 @@
-"""One-time magic login token for campaign email recipients."""
+"""Reusable magic login token for campaign email recipients."""
 
 import secrets
 
@@ -26,7 +26,8 @@ class MagicLoginToken(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"MagicLogin for {self.member} ({'used' if self.is_used else 'active'})"
+        status = "expired" if self.is_expired else "active"
+        return f"MagicLogin for {self.member} ({status})"
 
     @property
     def is_expired(self):
@@ -35,11 +36,6 @@ class MagicLoginToken(models.Model):
     @property
     def is_valid(self):
         return not self.is_expired
-
-    def consume(self):
-        self.is_used = True
-        self.used_at = timezone.now()
-        self.save(update_fields=["is_used", "used_at"])
 
     @staticmethod
     def generate_token():

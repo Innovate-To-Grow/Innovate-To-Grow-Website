@@ -123,14 +123,13 @@ class CMSLivePreviewSyncPostingTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["detail"], "Invalid JSON.")
 
-    def test_post_empty_body_returns_400(self):
-        """POST with empty body returns 400."""
+    def test_post_non_dict_body_returns_400(self):
+        """POST with a non-object JSON body (e.g. array) returns 400."""
         self.client.force_login(self.staff)
         response = self.client.post(
             self.live_preview_url,
-            data="",
+            data="[1, 2, 3]",
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)

@@ -52,7 +52,7 @@ export const PrimaryEmailCard = ({
           <label className="email-center-toggle" aria-label="Subscribe primary email">
             <input type="checkbox" checked={profile.email_subscribe} onChange={onToggleSubscribe} disabled={subscribeSaving} />
             <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Subscribe</span>
+            <span className="email-center-toggle-label">Newsletters</span>
           </label>
           {!profile.email_verified && profile.primary_email_id ? (
             <button type="button" className="email-center-btn verify" onClick={onToggleVerify}>

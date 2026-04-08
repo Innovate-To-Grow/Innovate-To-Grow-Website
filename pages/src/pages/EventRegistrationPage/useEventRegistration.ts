@@ -15,17 +15,11 @@ export const useEventRegistration = () => {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-  const [authFlow, setAuthFlow] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState('');
-  const [middleName, setMiddleName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [organization, setOrganization] = useState('');
-  const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
-  const [saving, setSaving] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [attendeeFirstName, setAttendeeFirstName] = useState('');
+  const [attendeeMiddleName, setAttendeeMiddleName] = useState('');
   const [attendeeLastName, setAttendeeLastName] = useState('');
   const [attendeeOrganization, setAttendeeOrganization] = useState('');
   const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('individual');
@@ -39,25 +33,26 @@ export const useEventRegistration = () => {
   const [phoneSending, setPhoneSending] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
-  const [profileCompleted, setProfileCompleted] = useState(false);
-  const [accountInfoLocked, setAccountInfoLocked] = useState(false);
-  const [accountPhoneLocked, setAccountPhoneLocked] = useState(false);
-  const [accountSecondaryEmailLocked, setAccountSecondaryEmailLocked] = useState(false);
   const optionsLoaded = useRef(false);
+  const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string} | null>(null);
 
   // Pre-fill attendee fields from member profile
   const prefillFromProfile = useCallback((data: EventRegistrationOptions) => {
     if (data.member_profile) {
       const p = data.member_profile;
       setAttendeeFirstName((prev) => prev || p.first_name);
+      setAttendeeMiddleName((prev) => prev || p.middle_name);
       setAttendeeLastName((prev) => prev || p.last_name);
       const org = p.organization || '';
-      const isIndividual = !org || org.toLowerCase() === 'individual';
+      const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
       setAttendeeOrgType((prev) => prev !== 'organization' ? (isIndividual ? 'individual' : 'organization') : prev);
       setAttendeeOrganization((prev) => prev || (isIndividual ? '' : org));
-      setAccountInfoLocked(Boolean(p.first_name || p.last_name || org));
-    } else {
-      setAccountInfoLocked(false);
+      initialProfileRef.current = {
+        first_name: p.first_name,
+        middle_name: p.middle_name,
+        last_name: p.last_name,
+        organization: isIndividual ? 'Individual' : org,
+      };
     }
   }, []);
 
@@ -76,9 +71,6 @@ export const useEventRegistration = () => {
 
       if (data.allow_secondary_email && data.member_emails?.length >= 2) {
         setAttendeeSecondaryEmail((prev) => prev || data.member_emails[1]);
-        setAccountSecondaryEmailLocked(true);
-      } else {
-        setAccountSecondaryEmailLocked(false);
       }
       setPrimaryEmail(data.member_emails?.[0] || '');
 
@@ -91,9 +83,6 @@ export const useEventRegistration = () => {
         setPhoneRegion(region);
         setPhoneVerified(Boolean(data.member_phone.verified));
         setPhoneCodeSent(Boolean(data.member_phone.verified));
-        setAccountPhoneLocked(Boolean(phone));
-      } else {
-        setAccountPhoneLocked(false);
       }
       prefillFromProfile(data);
       setStep('form');
@@ -134,8 +123,7 @@ export const useEventRegistration = () => {
     setAuthLoading(true);
     setError(null);
     try {
-      const result = await requestEmailAuthCode(email.trim());
-      setAuthFlow(result.flow);
+      await requestEmailAuthCode(email.trim());
       setStep('code');
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
@@ -149,51 +137,14 @@ export const useEventRegistration = () => {
     setAuthLoading(true);
     setError(null);
     try {
-      const result = await verifyEmailAuthCode(email.trim(), code.trim());
-      // Auth succeeded — decide next step directly
-      if (result.requires_profile_completion) {
-        setStep('profile');
-      } else {
-        setStep('loading');
-        await loadOptionsAndRoute();
-      }
-    } catch (err: unknown) {
-      setError(getRegistrationErrorMessage(err));
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleProfileSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!firstName.trim()) return setError('First name is required.');
-    if (!lastName.trim()) return setError('Last name is required.');
-    if (organizationType === 'organization' && !organization.trim()) return setError('Organization name is required.');
-    setSaving(true);
-    setError(null);
-    try {
-      const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
-      await updateProfileFields({
-        first_name: firstName.trim(),
-        middle_name: middleName.trim(),
-        last_name: lastName.trim(),
-        organization: orgValue,
-      });
+      await verifyEmailAuthCode(email.trim(), code.trim());
       clearProfileCompletionRequirement();
-      // Pre-fill attendee fields from profile so name/org fields are hidden in form step
-      setAttendeeFirstName(firstName.trim());
-      setAttendeeLastName(lastName.trim());
-      if (organizationType === 'organization' && organization.trim()) {
-        setAttendeeOrgType('organization');
-        setAttendeeOrganization(organization.trim());
-      }
-      setProfileCompleted(true);
       setStep('loading');
       await loadOptionsAndRoute();
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
     } finally {
-      setSaving(false);
+      setAuthLoading(false);
     }
   };
 
@@ -203,7 +154,24 @@ export const useEventRegistration = () => {
     setSubmitting(true);
     setError(null);
     try {
+      // Sync profile if fields changed
       const orgValue = attendeeOrgType === 'individual' ? 'Individual' : attendeeOrganization.trim();
+      const prev = initialProfileRef.current;
+      const profileChanged = !prev
+        || prev.first_name !== attendeeFirstName.trim()
+        || prev.middle_name !== attendeeMiddleName.trim()
+        || prev.last_name !== attendeeLastName.trim()
+        || prev.organization !== orgValue;
+
+      if (profileChanged) {
+        await updateProfileFields({
+          first_name: attendeeFirstName.trim(),
+          middle_name: attendeeMiddleName.trim(),
+          last_name: attendeeLastName.trim(),
+          organization: orgValue,
+        });
+      }
+
       const result = await createRegistration({
         event_slug: options.slug,
         ticket_id: selectedTicketId,
@@ -284,40 +252,31 @@ export const useEventRegistration = () => {
   return {
     answers,
     attendeeFirstName,
+    attendeeMiddleName,
     attendeeLastName,
     attendeeOrganization,
     attendeeOrgType,
     attendeePhone,
     attendeeSecondaryEmail,
     primaryEmail,
-    accountInfoLocked,
-    accountPhoneLocked,
-    accountSecondaryEmailLocked,
     phoneRegion,
-    authFlow,
     phoneCode,
     phoneCodeSent,
     phoneSending,
     phoneVerified,
-    profileCompleted,
     verifyingPhone,
     authLoading,
     code,
     email,
     error,
-    firstName,
-    lastName,
-    middleName,
     options,
-    organization,
-    organizationType,
     registration,
-    saving,
     selectedTicketId,
     step,
     submitting,
     setAnswers,
     setAttendeeFirstName,
+    setAttendeeMiddleName,
     setAttendeeLastName,
     setAttendeeOrganization,
     setAttendeeOrgType,
@@ -328,16 +287,10 @@ export const useEventRegistration = () => {
     setCode,
     setEmail,
     setError,
-    setFirstName,
-    setLastName,
-    setMiddleName,
-    setOrganization,
-    setOrganizationType,
     setSelectedTicketId,
     setStep,
     handleCodeSubmit,
     handleEmailSubmit,
-    handleProfileSubmit,
     handleRegistrationSubmit,
     handleSendPhoneCode,
     handleVerifyPhoneCode,
