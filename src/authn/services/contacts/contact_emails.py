@@ -26,6 +26,14 @@ Member = get_user_model()
 PURPOSE = EmailAuthChallenge.Purpose.CONTACT_EMAIL_VERIFY
 
 
+def _member_has_secondary(member, exclude_pk=None):
+    """Check whether the member already owns a secondary contact email."""
+    qs = ContactEmail.objects.filter(member=member, email_type="secondary")
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    return qs.exists()
+
+
 def _notify_email_owner_in_background(email: str):
     """Send a claim-attempt notification to the owner of the email, in a daemon thread."""
 
@@ -50,6 +58,11 @@ def _notify_email_owner_in_background(email: str):
 
 
 def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = False):
+    if email_type == "secondary" and _member_has_secondary(member):
+        raise AuthChallengeInvalid(
+            "You already have a secondary email. Change the existing one to 'other' first, or add this email as 'other'."
+        )
+
     normalized = normalize_email(email_address)
 
     if registration_email_conflicts(normalized):
@@ -132,6 +145,17 @@ def make_contact_email_primary(*, member, contact_email_id):
         .first()
     )
     if old_primary:
+        # Demote existing secondary to "other" before the old primary takes its slot
+        existing_secondary = (
+            ContactEmail.objects.select_for_update()
+            .filter(member=member, email_type="secondary")
+            .exclude(pk=contact.pk)
+            .first()
+        )
+        if existing_secondary:
+            existing_secondary.email_type = "other"
+            existing_secondary.save(update_fields=["email_type", "updated_at"])
+
         old_primary.email_type = "secondary"
         old_primary.save(update_fields=["email_type", "updated_at"])
 

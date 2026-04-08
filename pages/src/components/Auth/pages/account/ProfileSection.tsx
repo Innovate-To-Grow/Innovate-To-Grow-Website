@@ -1,7 +1,7 @@
 import type {ChangeEvent, FormEvent} from 'react';
 import {StatusAlert} from '../../shared/StatusAlert';
 
-type OrganizationType = 'personal' | 'organization';
+type OrganizationType = 'individual' | 'organization';
 
 interface ProfileSectionProps {
   firstName: string;
@@ -156,11 +156,11 @@ export const ProfileSection = ({
         <div className="auth-org-toggle">
           <button
             type="button"
-            className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
-            onClick={() => onOrganizationTypeChange('personal')}
+            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('individual')}
             disabled={!isEditingProfile}
           >
-            Personal
+            Individual
           </button>
           <button
             type="button"

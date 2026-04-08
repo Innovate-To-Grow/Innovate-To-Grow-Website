@@ -1,6 +1,6 @@
 type LocalErrors = Record<string, string>;
 
-type OrganizationType = 'personal' | 'organization';
+type OrganizationType = 'individual' | 'organization';
 
 interface RegisterFieldsProps {
   firstName: string;
@@ -65,10 +65,10 @@ export const RegisterFields = ({
           <div className="auth-org-toggle">
             <button
               type="button"
-              className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
-              onClick={() => onOrganizationTypeChange('personal')}
+              className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('individual')}
             >
-              Personal
+              Individual
             </button>
             <button
               type="button"

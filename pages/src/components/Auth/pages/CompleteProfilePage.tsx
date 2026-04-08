@@ -19,7 +19,7 @@ export const CompleteProfilePage = () => {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [organizationType, setOrganizationType] = useState<'personal' | 'organization'>('personal');
+  const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
   const [organization, setOrganization] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -35,9 +35,9 @@ export const CompleteProfilePage = () => {
         setMiddleName(profile.middle_name ?? '');
         setLastName(profile.last_name ?? '');
         const org = profile.organization ?? '';
-        const isPersonal = !org || org.toLowerCase() === 'personal';
-        setOrganizationType(isPersonal ? 'personal' : 'organization');
-        setOrganization(isPersonal ? '' : org);
+        const isIndividual = !org || org.toLowerCase() === 'individual';
+        setOrganizationType(isIndividual ? 'individual' : 'organization');
+        setOrganization(isIndividual ? '' : org);
       } catch (err: unknown) {
         setError(getAuthErrorMessage(err));
       } finally {
@@ -68,7 +68,7 @@ export const CompleteProfilePage = () => {
     setError(null);
 
     try {
-      const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+      const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
       await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),

@@ -20,6 +20,7 @@ interface ContactEmailCardProps {
   onCancelVerify: () => void;
   onMakePrimary: (contactId: string) => void;
   makePrimaryLoadingId: string | null;
+  secondaryDisabled: boolean;
 }
 
 export const ContactEmailCard = ({
@@ -39,6 +40,7 @@ export const ContactEmailCard = ({
   onCancelVerify,
   onMakePrimary,
   makePrimaryLoadingId,
+  secondaryDisabled,
 }: ContactEmailCardProps) => (
   <div className="email-center-card">
     <div className="email-center-row">
@@ -56,7 +58,7 @@ export const ContactEmailCard = ({
             value={contact.email_type}
             onChange={(event) => onContactTypeChange(contact, event.target.value as 'secondary' | 'other')}
           >
-            <option value="secondary">Secondary</option>
+            <option value="secondary" disabled={secondaryDisabled && contact.email_type !== 'secondary'}>Secondary{secondaryDisabled && contact.email_type !== 'secondary' ? ' (already assigned)' : ''}</option>
             <option value="other">Other</option>
           </select>
           <label className="email-center-toggle" aria-label="Subscribe this email">

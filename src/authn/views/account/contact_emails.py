@@ -79,6 +79,13 @@ class ContactEmailDetailView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        if serializer.validated_data.get("email_type") == "secondary":
+            if ContactEmail.objects.filter(member=request.user, email_type="secondary").exclude(pk=pk).exists():
+                return Response(
+                    {"email_type": ["You already have a secondary email."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         update_fields = []
         for field in ("email_type", "subscribe"):
             if field in serializer.validated_data:

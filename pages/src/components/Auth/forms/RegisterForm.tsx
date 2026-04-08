@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { RegisterFields } from './RegisterFields';
 
-type OrganizationType = 'personal' | 'organization';
+type OrganizationType = 'individual' | 'organization';
 
 export const RegisterForm = () => {
   const { register, error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [organizationType, setOrganizationType] = useState<OrganizationType>('personal');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
   const [organization, setOrganization] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,7 +55,7 @@ export const RegisterForm = () => {
       return;
     }
 
-    const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+    const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
 
     try {
       await register(

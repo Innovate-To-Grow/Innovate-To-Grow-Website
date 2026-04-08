@@ -68,6 +68,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
                         }}
                         onMakePrimary={emailCenter.handleMakePrimary}
                         makePrimaryLoadingId={emailCenter.makePrimaryLoadingId}
+                        secondaryDisabled={emailCenter.hasSecondaryEmail}
                     />
                 ))
             )}
@@ -79,6 +80,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
                     addSubscribe={emailCenter.addSubscribe}
                     addLoading={emailCenter.addLoading}
                     addError={emailCenter.addError}
+                    secondaryDisabled={emailCenter.hasSecondaryEmail}
                     onEmailChange={emailCenter.setAddEmail}
                     onTypeChange={emailCenter.setAddType}
                     onSubscribeChange={emailCenter.setAddSubscribe}
@@ -94,6 +96,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
                     className="auth-form-submit account-action-primary account-action-primary--inline"
                     onClick={() => {
                         emailCenter.setShowAddForm(true);
+                        emailCenter.setAddType(emailCenter.hasSecondaryEmail ? 'other' : 'secondary');
                         emailCenter.clearMessages();
                     }}
                 >

@@ -87,8 +87,20 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     }
   };
 
+  const hasSecondaryEmail = contactEmails.some((e) => e.email_type === 'secondary');
+
+  useEffect(() => {
+    if (hasSecondaryEmail && addType === 'secondary') {
+      setAddType('other');
+    }
+  }, [hasSecondaryEmail, addType]);
+
   const handleContactTypeChange = async (contact: ContactEmail, newType: 'secondary' | 'other') => {
     clearMessages();
+    if (newType === 'secondary' && contactEmails.some((e) => e.email_type === 'secondary' && e.id !== contact.id)) {
+      setError('You already have a secondary email.');
+      return;
+    }
     try {
       const updated = await updateContactEmail(contact.id, {email_type: newType});
       setContactEmails((current) => current.map((item) => (item.id === contact.id ? updated : item)));
@@ -247,6 +259,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     addSubscribe,
     addType,
     contactEmails,
+    hasSecondaryEmail,
     error,
     loading,
     resendLoading,

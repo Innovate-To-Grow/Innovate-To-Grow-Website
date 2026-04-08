@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
 
-type OrganizationType = 'personal' | 'organization';
+type OrganizationType = 'individual' | 'organization';
 
 interface CompleteProfileFormProps {
   firstName: string;
@@ -98,13 +98,13 @@ export const CompleteProfileForm = ({
         <div className="auth-org-toggle">
           <button
             type="button"
-            className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
+            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
             onClick={() => {
-              onOrganizationTypeChange('personal');
+              onOrganizationTypeChange('individual');
               clearError();
             }}
           >
-            Personal
+            Individual
           </button>
           <button
             type="button"

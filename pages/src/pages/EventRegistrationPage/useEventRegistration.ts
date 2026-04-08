@@ -4,7 +4,7 @@ import {updateProfileFields} from '../../services/auth';
 import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '../../features/events/api';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
-export type OrganizationType = 'personal' | 'organization';
+export type OrganizationType = 'individual' | 'organization';
 
 export const useEventRegistration = () => {
   const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode, clearProfileCompletionRequirement} = useAuth();
@@ -20,7 +20,7 @@ export const useEventRegistration = () => {
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
-  const [organizationType, setOrganizationType] = useState<OrganizationType>('personal');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
   const [saving, setSaving] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -28,7 +28,7 @@ export const useEventRegistration = () => {
   const [attendeeFirstName, setAttendeeFirstName] = useState('');
   const [attendeeLastName, setAttendeeLastName] = useState('');
   const [attendeeOrganization, setAttendeeOrganization] = useState('');
-  const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('personal');
+  const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('individual');
   const [attendeeSecondaryEmail, setAttendeeSecondaryEmail] = useState('');
   const [attendeePhone, setAttendeePhone] = useState('');
   const [primaryEmail, setPrimaryEmail] = useState('');
@@ -52,9 +52,9 @@ export const useEventRegistration = () => {
       setAttendeeFirstName((prev) => prev || p.first_name);
       setAttendeeLastName((prev) => prev || p.last_name);
       const org = p.organization || '';
-      const isPersonal = !org || org.toLowerCase() === 'personal';
-      setAttendeeOrgType((prev) => prev !== 'organization' ? (isPersonal ? 'personal' : 'organization') : prev);
-      setAttendeeOrganization((prev) => prev || (isPersonal ? '' : org));
+      const isIndividual = !org || org.toLowerCase() === 'individual';
+      setAttendeeOrgType((prev) => prev !== 'organization' ? (isIndividual ? 'individual' : 'organization') : prev);
+      setAttendeeOrganization((prev) => prev || (isIndividual ? '' : org));
       setAccountInfoLocked(Boolean(p.first_name || p.last_name || org));
     } else {
       setAccountInfoLocked(false);
@@ -172,7 +172,7 @@ export const useEventRegistration = () => {
     setSaving(true);
     setError(null);
     try {
-      const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+      const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
       await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
@@ -203,7 +203,7 @@ export const useEventRegistration = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const orgValue = attendeeOrgType === 'personal' ? 'Personal' : attendeeOrganization.trim();
+      const orgValue = attendeeOrgType === 'individual' ? 'Individual' : attendeeOrganization.trim();
       const result = await createRegistration({
         event_slug: options.slug,
         ticket_id: selectedTicketId,

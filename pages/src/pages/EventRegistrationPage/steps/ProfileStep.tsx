@@ -90,11 +90,11 @@ export const ProfileStep = ({
         <div className="auth-org-toggle">
           <button
             type="button"
-            className={`auth-org-toggle-btn ${organizationType === 'personal' ? 'is-active' : ''}`}
-            onClick={() => onOrganizationTypeChange('personal')}
+            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('individual')}
             disabled={saving}
           >
-            Personal
+            Individual
           </button>
           <button
             type="button"

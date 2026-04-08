@@ -100,7 +100,7 @@ describe('SubscribePage', () => {
         'password123',
         'Ada',
         'Lovelace',
-        'Personal',
+        'Individual',
       );
     });
 

@@ -171,11 +171,11 @@ export const RegistrationFormStep = ({
             <div className={`auth-org-toggle ${!accountInfoLocked ? 'event-reg-org-toggle--editable' : ''}`}>
               <button
                 type="button"
-                className={`auth-org-toggle-btn ${attendeeOrgType === 'personal' ? 'is-active' : ''}`}
-                onClick={() => onOrgTypeChange('personal')}
+                className={`auth-org-toggle-btn ${attendeeOrgType === 'individual' ? 'is-active' : ''}`}
+                onClick={() => onOrgTypeChange('individual')}
                 disabled={accountInfoLocked}
               >
-                Personal
+                Individual
               </button>
               <button
                 type="button"
@@ -204,7 +204,7 @@ export const RegistrationFormStep = ({
           {options.allow_secondary_email ? (
             <div className="event-reg-form-group">
               <label className="event-reg-label" htmlFor="secondary-email">
-                Additional Email
+                Secondary Email
               </label>
               <p className="event-reg-field-hint">
                 Please provide a second email address so we can reach you if needed.

@@ -8,7 +8,7 @@ import {DoneStep} from './steps/DoneStep';
 import {getSubscribeErrorMessage} from './steps/helpers';
 import './SubscribePage.css';
 
-type OrganizationType = 'personal' | 'organization';
+type OrganizationType = 'individual' | 'organization';
 
 export const SubscribePage = () => {
   const {user, isAuthenticated, register, error: authError, isLoading, clearError} = useAuth();
@@ -17,7 +17,7 @@ export const SubscribePage = () => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [organizationType, setOrganizationType] = useState<OrganizationType>('personal');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
   const [organization, setOrganization] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -79,7 +79,7 @@ export const SubscribePage = () => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+    const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
 
     try {
       await register(

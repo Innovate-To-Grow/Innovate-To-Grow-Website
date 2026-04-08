@@ -28,7 +28,7 @@ export const useAccountDashboard = () => {
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
-  const [organizationType, setOrganizationType] = useState<'personal' | 'organization'>('personal');
+  const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -65,9 +65,9 @@ export const useAccountDashboard = () => {
     setMiddleName(data.middle_name ?? '');
     setLastName(data.last_name ?? '');
     const org = data.organization ?? '';
-    const isPersonal = !org || org.toLowerCase() === 'personal';
-    setOrganizationType(isPersonal ? 'personal' : 'organization');
-    setOrganization(isPersonal ? '' : org);
+    const isIndividual = !org || org.toLowerCase() === 'individual';
+    setOrganizationType(isIndividual ? 'individual' : 'organization');
+    setOrganization(isIndividual ? '' : org);
     setProfileError(null);
     if (data.profile_image) setProfileImage(data.profile_image);
   }, []);
@@ -139,7 +139,7 @@ export const useAccountDashboard = () => {
     setProfileMessage(null);
     setProfileError(null);
     try {
-      const orgValue = organizationType === 'personal' ? 'Personal' : organization.trim();
+      const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
       const updated = await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
@@ -162,9 +162,9 @@ export const useAccountDashboard = () => {
     setMiddleName(profile?.middle_name || '');
     setLastName(profile?.last_name || '');
     const org = profile?.organization || '';
-    const isPersonal = !org || org.toLowerCase() === 'personal';
-    setOrganizationType(isPersonal ? 'personal' : 'organization');
-    setOrganization(isPersonal ? '' : org);
+    const isIndividual = !org || org.toLowerCase() === 'individual';
+    setOrganizationType(isIndividual ? 'individual' : 'organization');
+    setOrganization(isIndividual ? '' : org);
     setProfileMessage(null);
     setProfileError(null);
   };

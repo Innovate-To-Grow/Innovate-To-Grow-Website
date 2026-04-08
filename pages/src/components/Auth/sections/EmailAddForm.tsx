@@ -7,6 +7,7 @@ interface EmailAddFormProps {
   addSubscribe: boolean;
   addLoading: boolean;
   addError: string | null;
+  secondaryDisabled: boolean;
   onEmailChange: (value: string) => void;
   onTypeChange: (value: 'secondary' | 'other') => void;
   onSubscribeChange: (checked: boolean) => void;
@@ -20,6 +21,7 @@ export const EmailAddForm = ({
   addSubscribe,
   addLoading,
   addError,
+  secondaryDisabled,
   onEmailChange,
   onTypeChange,
   onSubscribeChange,
@@ -53,7 +55,7 @@ export const EmailAddForm = ({
             onChange={(event) => onTypeChange(event.target.value as 'secondary' | 'other')}
             disabled={addLoading}
           >
-            <option value="secondary">Secondary</option>
+            <option value="secondary" disabled={secondaryDisabled}>Secondary{secondaryDisabled ? ' (already assigned)' : ''}</option>
             <option value="other">Other</option>
           </select>
         </div>
