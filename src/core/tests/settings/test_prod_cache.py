@@ -12,6 +12,7 @@ PROD_ENV = {
     "DB_PASSWORD": "itg_password",
     "DB_HOST": "db.example.com",
     "AWS_STORAGE_BUCKET_NAME": "itg-static-assets",
+    "BACKEND_URL": "https://api.example.com",
 }
 
 
