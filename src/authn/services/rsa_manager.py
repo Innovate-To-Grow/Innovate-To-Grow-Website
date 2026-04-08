@@ -5,7 +5,6 @@ Manages RSA keypairs for authentication encryption with automatic daily rotation
 """
 
 import base64
-
 from datetime import timedelta
 
 from cryptography.hazmat.backends import default_backend
