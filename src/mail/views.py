@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -55,6 +56,29 @@ class OneClickUnsubscribeView(APIView):
         except ValueError as exc:
             return HttpResponse(str(exc), status=400, content_type="text/plain")
 
-        member.email_subscribe = False
-        member.save(update_fields=["email_subscribe"])
+        if member.email_subscribe:
+            member.email_subscribe = False
+            member.save(update_fields=["email_subscribe"])
+            _send_unsubscribe_confirmation(member)
+
         return HttpResponse("Unsubscribed successfully.", status=200, content_type="text/plain")
+
+
+def _send_unsubscribe_confirmation(member):
+    """Best-effort confirmation email after unsubscribe."""
+    from authn.services.email import send_notification_email
+
+    primary_email = member.get_primary_email()
+    if not primary_email:
+        return
+
+    frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+    send_notification_email(
+        recipient=primary_email,
+        subject="You've been unsubscribed - Innovate to Grow",
+        template="mail/email/unsubscribe_confirmation.html",
+        context={
+            "first_name": member.first_name or "there",
+            "account_url": f"{frontend_url}/account" if frontend_url else "",
+        },
+    )

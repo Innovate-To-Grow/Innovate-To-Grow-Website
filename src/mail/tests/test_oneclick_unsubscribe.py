@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.core import signing
 from rest_framework.test import APITestCase
 
@@ -63,3 +65,21 @@ class OneClickUnsubscribeViewTests(APITestCase):
     def test_does_not_delete_member(self):
         self.client.post(self.url)
         self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+
+    @patch("authn.services.email.send_notification_email")
+    def test_sends_confirmation_email(self, mock_send):
+        self.client.post(self.url)
+
+        mock_send.assert_called_once()
+        call_kwargs = mock_send.call_args[1]
+        self.assertEqual(call_kwargs["recipient"], "unsub@example.com")
+        self.assertIn("unsubscribed", call_kwargs["subject"].lower())
+
+    @patch("authn.services.email.send_notification_email")
+    def test_idempotent_post_does_not_resend_email(self, mock_send):
+        """Second POST should not send another confirmation email."""
+        self.client.post(self.url)
+        mock_send.reset_mock()
+
+        self.client.post(self.url)
+        mock_send.assert_not_called()
