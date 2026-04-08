@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class MagicLoginView(APIView):
-    """Exchange a one-time campaign login token for JWT credentials."""
+    """Exchange a campaign login token for JWT credentials."""
 
     permission_classes = [AllowAny]
 
@@ -30,10 +30,7 @@ class MagicLoginView(APIView):
             return Response({"detail": "Invalid login link."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not magic.is_valid:
-            reason = "This login link has already been used." if magic.is_used else "This login link has expired."
-            return Response({"detail": reason}, status=status.HTTP_400_BAD_REQUEST)
-
-        magic.consume()
+            return Response({"detail": "This login link has expired."}, status=status.HTTP_400_BAD_REQUEST)
         payload = build_auth_success_payload(magic.member, "Login successful.")
         payload["redirect_to"] = get_magic_login_redirect_path(magic.campaign)
         return Response(payload, status=status.HTTP_200_OK)

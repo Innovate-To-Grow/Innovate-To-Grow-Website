@@ -19,7 +19,6 @@ const ProjectsPage = React.lazy(() => import('../pages/ProjectsPage').then(m => 
 const PastProjectsPage = React.lazy(() => import('../pages/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
 const ProjectDetailPage = React.lazy(() => import('../pages/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
 const SchedulePage = React.lazy(() => import('../pages/SchedulePage').then(m => ({default: m.SchedulePage})));
-const ProjectsTeamsPage = React.lazy(() => import('../pages/ProjectsTeamsPage').then(m => ({default: m.ProjectsTeamsPage})));
 const AcknowledgementPage = React.lazy(() => import('../pages/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
 const EventArchivePage = React.lazy(() => import('../pages/EventArchivePage').then(m => ({default: m.EventArchivePage})));
 const EventRegistrationPage = React.lazy(() => import('../pages/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
@@ -75,7 +74,6 @@ export const router = createBrowserRouter([
             {path: 'event-registration', element: <EventRegistrationPage/>},
             {path: 'events/:eventSlug', element: <EventArchivePage/>},
             {path: 'schedule', element: <SchedulePage/>},
-            {path: 'projects-teams', element: <ProjectsTeamsPage/>},
             {path: 'past-events', element: <CMSPageComponent/>},
             {path: 'post-event-home', element: <CMSPageComponent/>},
             {path: 'acknowledgement', element: <AcknowledgementPage/>},

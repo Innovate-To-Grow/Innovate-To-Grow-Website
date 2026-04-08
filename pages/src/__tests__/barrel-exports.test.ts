@@ -79,7 +79,6 @@ describe('Page barrel exports', () => {
     ['PastProjectsPage', 'PastProjectsPage'],
     ['ProjectDetailPage', 'ProjectDetailPage'],
     ['ProjectsPage', 'ProjectsPage'],
-    ['ProjectsTeamsPage', 'ProjectsTeamsPage'],
     ['SchedulePage', 'SchedulePage'],
     ['SubscribePage', 'SubscribePage'],
     ['TicketLoginPage', 'TicketLoginPage'],

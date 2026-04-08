@@ -17,6 +17,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from event.models import EventRegistration
+from event.services.calendar import build_google_calendar_url, generate_ics
 from event.services.ticket_assets import (
     build_frontend_absolute_url,
     build_ticket_login_token,
@@ -32,19 +33,28 @@ def _load_config():
     return EmailServiceConfig.load()
 
 
-def _build_mime_message(*, subject, from_address, recipients, html_body, barcode_bytes):
-    """Build a multipart/related MIME message with an inline barcode image."""
-    msg = MIMEMultipart("related")
+def _build_mime_message(*, subject, from_address, recipients, html_body, barcode_bytes, ics_data):
+    """Build a multipart/mixed MIME message with an inline barcode and .ics attachment."""
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = from_address
     msg["To"] = ", ".join(recipients)
 
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    # Inline content (HTML + barcode image)
+    related = MIMEMultipart("related")
+    related.attach(MIMEText(html_body, "html", "utf-8"))
 
     barcode_image = MIMEImage(barcode_bytes, "png")
     barcode_image.add_header("Content-ID", "<ticket-barcode>")
     barcode_image.add_header("Content-Disposition", "inline", filename="ticket-barcode.png")
-    msg.attach(barcode_image)
+    related.attach(barcode_image)
+
+    msg.attach(related)
+
+    # .ics calendar attachment
+    ics_attachment = MIMEText(ics_data, "calendar", "utf-8")
+    ics_attachment.add_header("Content-Disposition", "attachment", filename="event.ics")
+    msg.attach(ics_attachment)
 
     return msg
 
@@ -118,6 +128,12 @@ def send_ticket_email(registration: EventRegistration) -> None:
     login_url = build_frontend_absolute_url(f"/ticket-login?token={login_token}")
 
     event = registration.event
+    google_cal_url = build_google_calendar_url(
+        event_name=event.name,
+        event_date=event.date,
+        event_location=event.location,
+        event_description=event.description,
+    )
     html_body = render_to_string(
         "event/email/ticket_confirmation.html",
         {
@@ -129,10 +145,18 @@ def send_ticket_email(registration: EventRegistration) -> None:
             "ticket_code": registration.ticket_code,
             "event_description": event.description,
             "login_url": login_url,
+            "google_calendar_url": google_cal_url,
         },
     )
 
     barcode_bytes = generate_ticket_barcode_png_bytes(registration)
+    ics_data = generate_ics(
+        event_uid=str(event.pk),
+        event_name=event.name,
+        event_date=event.date,
+        event_location=event.location,
+        event_description=event.description,
+    )
 
     recipients = [registration.attendee_email]
     if registration.attendee_secondary_email:
@@ -146,6 +170,7 @@ def send_ticket_email(registration: EventRegistration) -> None:
         recipients=recipients,
         html_body=html_body,
         barcode_bytes=barcode_bytes,
+        ics_data=ics_data,
     )
 
     try:

@@ -8,7 +8,7 @@ from django.utils import timezone
 
 
 def default_expiry():
-    return timezone.now() + timezone.timedelta(days=7)
+    return timezone.now() + timezone.timedelta(days=30)
 
 
 class MagicLoginToken(models.Model):
@@ -34,7 +34,7 @@ class MagicLoginToken(models.Model):
 
     @property
     def is_valid(self):
-        return not self.is_used and not self.is_expired
+        return not self.is_expired
 
     def consume(self):
         self.is_used = True

@@ -37,7 +37,7 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["redirect_to"], DEFAULT_LOGIN_REDIRECT_PATH)
 
-    def test_reused_token_still_returns_existing_error(self):
+    def test_reused_token_still_works(self):
         token = MagicLoginToken.generate_token()
         MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
 
@@ -45,8 +45,8 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(first_response.status_code, 200)
 
         second_response = self.client.post("/mail/magic-login/", {"token": token}, format="json")
-        self.assertEqual(second_response.status_code, 400)
-        self.assertEqual(second_response.data["detail"], "This login link has already been used.")
+        self.assertEqual(second_response.status_code, 200)
+        self.assertIn("access", second_response.data)
 
     def test_expired_token_still_returns_existing_error(self):
         token = MagicLoginToken.generate_token()

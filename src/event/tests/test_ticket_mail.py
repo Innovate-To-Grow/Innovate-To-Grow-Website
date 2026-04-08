@@ -42,6 +42,8 @@ class SendTicketEmailTest(TestCase):
         raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
         self.assertIn("ticket-barcode", raw_data)
         self.assertIn(self.event.name, raw_data)
+        self.assertIn("text/calendar", raw_data)
+        self.assertIn("event.ics", raw_data)
 
         self.registration.refresh_from_db()
         self.assertIsNotNone(self.registration.ticket_email_sent_at)
