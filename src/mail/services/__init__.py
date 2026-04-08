@@ -1,6 +1,8 @@
 from .audience import get_recipients
 from .gmail_import import (
+    DEFAULT_GMAIL_FOLDER,
     DEFAULT_GMAIL_MAILBOX,
+    GMAIL_FOLDER_DISPLAY,
     GmailImportError,
     fetch_message_html_fragment,
     import_message_into_campaign,
@@ -11,7 +13,9 @@ from .personalize import personalize
 from .send_campaign import send_campaign
 
 __all__ = [
+    "DEFAULT_GMAIL_FOLDER",
     "DEFAULT_GMAIL_MAILBOX",
+    "GMAIL_FOLDER_DISPLAY",
     "GmailImportError",
     "fetch_message_html_fragment",
     "get_recipients",

@@ -14,6 +14,7 @@ from .mixins import (
 )
 from .service_credentials import (  # noqa: F401 - register admin
     EmailServiceConfigAdmin,
+    GmailImportConfigAdmin,
     GoogleCredentialConfigAdmin,
     SMSServiceConfigAdmin,
 )

@@ -5,10 +5,11 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from cms.models import CMSPage
-from core.models import EmailServiceConfig, GoogleCredentialConfig
+from core.models import EmailServiceConfig, GmailImportConfig
 from event.tests.helpers import make_superuser
 from mail.admin.campaign import EmailCampaignAdmin
 from mail.models import EmailCampaign
+from mail.services import GMAIL_FOLDER_DISPLAY
 from mail.services.preview import HTML_MARKER
 
 
@@ -21,16 +22,12 @@ class EmailCampaignAdminImportTest(TestCase):
             body="Draft body",
             login_redirect_path="/account",
         )
-        self.google_config = GoogleCredentialConfig.objects.create(
-            name="Primary Google",
+        self.gmail_import_config = GmailImportConfig.objects.create(
+            name="Primary Gmail Import",
             is_active=True,
-            credentials_json={
-                "type": "service_account",
-                "project_id": "innovate-prod",
-                "private_key": "-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n",
-                "client_email": "mailer@innovate-prod.iam.gserviceaccount.com",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            },
+            imap_host="imap.gmail.com",
+            gmail_username="campaigns@ucmerced.edu",
+            gmail_password="app-password",
         )
         self.email_config = EmailServiceConfig.objects.create(
             name="Primary SES",
@@ -42,13 +39,14 @@ class EmailCampaignAdminImportTest(TestCase):
             ses_from_name="Innovate to Grow",
         )
 
-    def test_changelist_shows_loaded_google_service_account_and_mailboxes(self):
+    def test_changelist_shows_loaded_gmail_import_account_and_mailboxes(self):
         response = self.client.get(reverse("admin:mail_emailcampaign_changelist"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Gmail Import Account")
-        self.assertContains(response, "mailer@innovate-prod.iam.gserviceaccount.com")
+        self.assertContains(response, "imap.gmail.com")
         self.assertContains(response, "campaigns@ucmerced.edu")
+        self.assertContains(response, GMAIL_FOLDER_DISPLAY)
         self.assertContains(response, "Innovate to Grow &lt;campaigns@ucmerced.edu&gt;")
 
     def test_import_gmail_html_view_renders_recent_messages(self):
@@ -69,9 +67,9 @@ class EmailCampaignAdminImportTest(TestCase):
         mock_list.assert_called_once_with(limit=5, mailbox="campaigns@ucmerced.edu")
         self.assertContains(response, "Sent Newsletter")
         self.assertContains(response, "Import will replace the current campaign body")
-        self.assertContains(response, "mailer@innovate-prod.iam.gserviceaccount.com")
-        self.assertContains(response, "innovate-prod")
+        self.assertContains(response, "imap.gmail.com")
         self.assertContains(response, "campaigns@ucmerced.edu")
+        self.assertContains(response, GMAIL_FOLDER_DISPLAY)
 
     def test_import_gmail_html_view_redirects_for_non_draft_campaign(self):
         self.campaign.status = "sent"
@@ -115,6 +113,16 @@ class EmailCampaignAdminImportTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Preview Email")
+
+    def test_change_view_renders_for_sent_campaign(self):
+        self.campaign.status = "sent"
+        self.campaign.login_redirect_path = "/event-registration"
+        self.campaign.save(update_fields=["status", "login_redirect_path", "updated_at"])
+
+        response = self.client.get(reverse("admin:mail_emailcampaign_change", args=[self.campaign.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.campaign.subject)
 
 
 class EmailCampaignAdminRedirectTest(TestCase):

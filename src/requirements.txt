@@ -23,6 +23,7 @@ openpyxl>=3.1.0
 google-api-python-client>=2.170.0
 google-auth>=2.35.0
 gspread>=5.5.0
+imap-tools>=1.7.0
 
 # Cryptography (RSA key generation)
 cryptography>=41.0.0

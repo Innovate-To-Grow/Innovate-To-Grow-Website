@@ -35,9 +35,15 @@ UNFOLD = {
     ],
     "TABS": [
         {
-            "models": ["core.emailserviceconfig", "core.smsserviceconfig", "core.googlecredentialconfig"],
+            "models": [
+                "core.emailserviceconfig",
+                "core.gmailimportconfig",
+                "core.smsserviceconfig",
+                "core.googlecredentialconfig",
+            ],
             "items": [
                 {"title": "Email Config", "link": "/admin/core/emailserviceconfig/"},
+                {"title": "Gmail Import", "link": "/admin/core/gmailimportconfig/"},
                 {"title": "SMS Config", "link": "/admin/core/smsserviceconfig/"},
                 {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
             ],

@@ -21,16 +21,20 @@
                 <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ mailbox }}</span>
             </div>
             <div>
-                <span class="text-base-400">Google Service Account:</span>
+                <span class="text-base-400">IMAP server:</span>
                 <span class="font-medium text-font-default-light dark:text-font-default-dark">
-                    {% if google_config.client_email %}{{ google_config.client_email }}{% else %}Unavailable{% endif %}
+                    {% if gmail_import_config.imap_host %}{{ gmail_import_config.imap_host }}{% else %}Unavailable{% endif %}
                 </span>
             </div>
             <div>
-                <span class="text-base-400">Google Project:</span>
+                <span class="text-base-400">Gmail account:</span>
                 <span class="font-medium text-font-default-light dark:text-font-default-dark">
-                    {% if google_config.project_id %}{{ google_config.project_id }}{% else %}Unavailable{% endif %}
+                    {% if gmail_import_config.gmail_username %}{{ gmail_import_config.gmail_username }}{% else %}Unavailable{% endif %}
                 </span>
+            </div>
+            <div>
+                <span class="text-base-400">Folder:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_folder }}</span>
             </div>
             <div class="sm:col-span-2">
                 <span class="inline-flex items-center rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">

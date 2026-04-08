@@ -63,44 +63,48 @@
             <h4 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark">
                 Gmail Import Account
             </h4>
-            {% if google_config.pk %}
+            {% if gmail_import_config.pk %}
             <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                 <div>
                     <span class="text-base-400">Config:</span>
-                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ google_config.name }}</span>
+                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_import_config.name }}</span>
                 </div>
                 <div>
                     <span class="text-base-400">Status:</span>
-                    {% if google_config.is_active %}
+                    {% if gmail_import_config.is_active %}
                         <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</span>
                     {% else %}
                         <span class="inline-flex items-center rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Fallback</span>
                     {% endif %}
                 </div>
                 <div>
-                    <span class="text-base-400">Project:</span>
-                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ google_config.project_id|default:"Unavailable" }}</span>
+                    <span class="text-base-400">IMAP server:</span>
+                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_import_config.imap_host|default:"Unavailable" }}</span>
                 </div>
                 <div>
-                    <span class="text-base-400">Google Service Account:</span>
-                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ google_config.client_email|default:"Unavailable" }}</span>
+                    <span class="text-base-400">Gmail account:</span>
+                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_import_config.gmail_username|default:"Unavailable" }}</span>
                 </div>
-                <div class="sm:col-span-2">
+                <div>
                     <span class="text-base-400">Gmail mailbox:</span>
                     <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_mailbox }}</span>
                 </div>
+                <div>
+                    <span class="text-base-400">Folder:</span>
+                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_folder }}</span>
+                </div>
             </div>
             <div class="mt-3">
-                <a href="{% url 'admin:core_googlecredentialconfig_changelist' %}"
+                <a href="{% url 'admin:core_gmailimportconfig_changelist' %}"
                    class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                     <span class="material-symbols-outlined !text-[14px]">edit</span>
-                    Edit Google Credentials
+                    Edit Gmail Import Configuration
                 </a>
             </div>
             {% else %}
             <p class="text-sm text-base-400">
-                No Google credential configuration found.
-                <a href="{% url 'admin:core_googlecredentialconfig_add' %}" class="text-primary-600 hover:text-primary-700 dark:text-primary-400">Create one</a>
+                No Gmail import configuration found.
+                <a href="{% url 'admin:core_gmailimportconfig_add' %}" class="text-primary-600 hover:text-primary-700 dark:text-primary-400">Create one</a>
             </p>
             {% endif %}
         </div>

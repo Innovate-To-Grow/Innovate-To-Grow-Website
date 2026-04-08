@@ -2,23 +2,31 @@
 
 from __future__ import annotations
 
-import base64
 import logging
-from email.utils import parseaddr, parsedate_to_datetime
+from contextlib import contextmanager
+from datetime import datetime
+from email.utils import parseaddr
 from typing import Any
 
 from bs4 import BeautifulSoup
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
+from django.db.utils import OperationalError, ProgrammingError
+from imap_tools import AND, MailBox
 
-from core.models import EmailServiceConfig, GoogleCredentialConfig
+from core.models import GmailImportConfig
 
 from .preview import HTML_MARKER
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_GMAIL_MAILBOX = "i2g@g.ucmerced.edu"
-GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+DEFAULT_GMAIL_FOLDER = "Sent"
+GMAIL_FOLDER_DISPLAY = "Sent mail (auto-detected)"
+_SENT_FOLDER_CANDIDATES = (
+    DEFAULT_GMAIL_FOLDER,
+    "Sent Mail",
+    "[Gmail]/Sent Mail",
+    "[Google Mail]/Sent Mail",
+)
 
 
 class GmailImportError(RuntimeError):
@@ -33,72 +41,96 @@ def _normalize_mailbox(value: str) -> str:
     return parsed or normalized
 
 
+def _get_gmail_config() -> GmailImportConfig:
+    try:
+        config = GmailImportConfig.load()
+    except (OperationalError, ProgrammingError) as exc:
+        raise GmailImportError("Gmail import configuration is unavailable. Run the latest migrations first.") from exc
+    if not config.is_configured:
+        raise GmailImportError("No active Gmail import account is configured.")
+    return config
+
+
 def resolve_gmail_mailbox(mailbox: str | None = None) -> str:
     explicit_mailbox = _normalize_mailbox(str(mailbox or "").strip())
     if explicit_mailbox:
         return explicit_mailbox
 
-    email_config = EmailServiceConfig.load()
-    for candidate in (email_config.ses_from_email, email_config.smtp_username):
-        resolved = _normalize_mailbox(candidate)
-        if resolved:
-            return resolved
-
-    return DEFAULT_GMAIL_MAILBOX
+    try:
+        config = GmailImportConfig.load()
+    except (OperationalError, ProgrammingError):
+        raise GmailImportError("Gmail import configuration is unavailable. Run the latest migrations first.")
+    return _normalize_mailbox(config.mailbox) or DEFAULT_GMAIL_MAILBOX
 
 
-def _get_gmail_service(mailbox: str | None = None):
-    mailbox = resolve_gmail_mailbox(mailbox)
-    config = GoogleCredentialConfig.load()
-    if not config.is_configured:
-        raise GmailImportError("No active Google service account is configured.")
+def _iter_sent_folder_candidates(client) -> tuple[str, ...]:
+    candidates: list[str] = []
+
+    for folder_name in _SENT_FOLDER_CANDIDATES:
+        if folder_name not in candidates:
+            candidates.append(folder_name)
 
     try:
-        credentials = service_account.Credentials.from_service_account_info(
-            config.get_credentials_info(),
-            scopes=[GMAIL_READONLY_SCOPE],
-        ).with_subject(mailbox)
-        return build("gmail", "v1", credentials=credentials, cache_discovery=False)
-    except Exception as exc:  # pragma: no cover - exercised via mocked tests
-        logger.exception("Failed to initialize Gmail API client for mailbox %s.", mailbox)
-        raise GmailImportError(f"Unable to connect to Gmail for {mailbox}.") from exc
+        for folder_info in client.folder.list():
+            folder_name = str(getattr(folder_info, "name", "") or "").strip()
+            folder_flags = tuple(getattr(folder_info, "flags", ()) or ())
+            if "\\Sent" in folder_flags and folder_name and folder_name not in candidates:
+                candidates.append(folder_name)
+    except Exception:
+        logger.debug("Unable to enumerate IMAP folders while selecting sent mail.", exc_info=True)
+
+    return tuple(candidates)
 
 
-def _decode_gmail_body(data: str) -> str:
-    padded = data + "=" * (-len(data) % 4)
-    return base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8", errors="replace")
+def _select_sent_folder(client) -> str:
+    for folder_name in _iter_sent_folder_candidates(client):
+        try:
+            client.folder.set(folder_name)
+            return folder_name
+        except Exception:
+            continue
+
+    raise GmailImportError("Unable to open the sent-mail folder for the configured Gmail account.")
 
 
-def _extract_header(payload: dict[str, Any], header_name: str) -> str:
-    for header in payload.get("headers", []) or []:
-        if header.get("name", "").lower() == header_name.lower():
-            return str(header.get("value", "")).strip()
+@contextmanager
+def _open_mailbox(mailbox: str | None = None):
+    config = _get_gmail_config()
+    resolved_mailbox = resolve_gmail_mailbox(mailbox or config.mailbox)
+    try:
+        with MailBox(config.imap_host).login(
+            resolved_mailbox,
+            config.gmail_password,
+            initial_folder=None,
+        ) as client:
+            _select_sent_folder(client)
+            yield client
+    except GmailImportError:
+        raise
+    except Exception as exc:  # pragma: no cover - exercised in tests with mocks
+        logger.exception("Failed to connect to Gmail IMAP for mailbox %s.", resolved_mailbox)
+        raise GmailImportError(f"Unable to connect to Gmail for {resolved_mailbox}.") from exc
+
+
+def _format_sent_at(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %I:%M %p %Z").strip()
+    if value:
+        return str(value)
     return ""
 
 
-def _format_sent_at(header_value: str) -> str:
-    if not header_value:
-        return ""
-    try:
-        return parsedate_to_datetime(header_value).strftime("%Y-%m-%d %I:%M %p %Z")
-    except (TypeError, ValueError, IndexError, OverflowError):
-        return header_value
-
-
-def _extract_html_from_payload(payload: dict[str, Any]) -> str:
-    if not payload:
+def _build_snippet(message: Any) -> str:
+    html = str(getattr(message, "html", "") or "").strip()
+    text = str(getattr(message, "text", "") or "").strip()
+    source = html or text
+    if not source:
         return ""
 
-    mime_type = str(payload.get("mimeType", "")).lower()
-    body_data = (payload.get("body") or {}).get("data", "")
-    if mime_type == "text/html" and body_data:
-        return _decode_gmail_body(body_data)
-
-    for part in payload.get("parts", []) or []:
-        html = _extract_html_from_payload(part)
-        if html:
-            return html
-    return ""
+    snippet = " ".join(BeautifulSoup(source, "html.parser").get_text(" ").split())
+    if len(snippet) > 160:
+        return snippet[:157].rstrip() + "..."
+    return snippet
 
 
 def _normalize_html_fragment(html: str) -> str:
@@ -114,55 +146,53 @@ def _normalize_html_fragment(html: str) -> str:
     return normalized
 
 
-def _get_full_message(service, message_id: str) -> dict[str, Any]:
-    return service.users().messages().get(userId="me", id=message_id, format="full").execute()
+def _find_message_by_uid(mailbox, message_id: str):
+    for message in mailbox.fetch(AND(uid=str(message_id)), limit=1, mark_seen=False, bulk=False):
+        return message
+    raise GmailImportError("The selected Gmail message could not be found.")
 
 
 def list_recent_sent_messages(limit: int = 5, mailbox: str | None = None) -> list[dict[str, Any]]:
     """Return summaries for the most recent sent Gmail messages."""
-    mailbox = resolve_gmail_mailbox(mailbox)
-    service = _get_gmail_service(mailbox)
+    resolved_mailbox = resolve_gmail_mailbox(mailbox)
 
     try:
-        response = service.users().messages().list(userId="me", labelIds=["SENT"], maxResults=limit).execute()
-        messages = response.get("messages", []) or []
-        summaries: list[dict[str, Any]] = []
-
-        for message in messages:
-            full_message = _get_full_message(service, message["id"])
-            payload = full_message.get("payload") or {}
-            html = _extract_html_from_payload(payload)
-            summaries.append(
-                {
-                    "message_id": full_message.get("id", message["id"]),
-                    "subject": _extract_header(payload, "Subject") or "(No subject)",
-                    "sent_at": _format_sent_at(_extract_header(payload, "Date")),
-                    "snippet": full_message.get("snippet", ""),
-                    "has_html": bool(_normalize_html_fragment(html)),
-                }
-            )
-
-        return summaries
+        with _open_mailbox(mailbox=resolved_mailbox) as client:
+            messages = list(client.fetch(limit=limit, reverse=True, mark_seen=False, bulk=True))
     except GmailImportError:
         raise
-    except Exception as exc:  # pragma: no cover - exercised via mocked tests
-        logger.exception("Failed to list recent sent Gmail messages for %s.", mailbox)
+    except Exception as exc:  # pragma: no cover - exercised in tests with mocks
+        logger.exception("Failed to list recent sent Gmail messages for %s.", resolved_mailbox)
         raise GmailImportError("Failed to load recent sent Gmail messages.") from exc
+
+    summaries: list[dict[str, Any]] = []
+    for message in messages:
+        html = _normalize_html_fragment(getattr(message, "html", "") or "")
+        summaries.append(
+            {
+                "message_id": str(getattr(message, "uid", "") or ""),
+                "subject": str(getattr(message, "subject", "") or "").strip() or "(No subject)",
+                "sent_at": _format_sent_at(getattr(message, "date", None)),
+                "snippet": _build_snippet(message),
+                "has_html": bool(html),
+            }
+        )
+
+    return summaries
 
 
 def fetch_message_html_fragment(message_id: str, mailbox: str | None = None) -> str:
     """Fetch a Gmail message and return a wrapper-safe HTML fragment."""
-    mailbox = resolve_gmail_mailbox(mailbox)
-    service = _get_gmail_service(mailbox)
+    resolved_mailbox = resolve_gmail_mailbox(mailbox)
 
     try:
-        message = _get_full_message(service, message_id)
-        payload = message.get("payload") or {}
-        html = _normalize_html_fragment(_extract_html_from_payload(payload))
+        with _open_mailbox(mailbox=resolved_mailbox) as client:
+            message = _find_message_by_uid(client, message_id)
+            html = _normalize_html_fragment(getattr(message, "html", "") or "")
     except GmailImportError:
         raise
-    except Exception as exc:  # pragma: no cover - exercised via mocked tests
-        logger.exception("Failed to fetch Gmail message %s for %s.", message_id, mailbox)
+    except Exception as exc:  # pragma: no cover - exercised in tests with mocks
+        logger.exception("Failed to fetch Gmail message %s for %s.", message_id, resolved_mailbox)
         raise GmailImportError("Failed to fetch the selected Gmail message.") from exc
 
     if not html:

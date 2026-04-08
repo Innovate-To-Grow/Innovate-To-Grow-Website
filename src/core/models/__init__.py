@@ -2,6 +2,7 @@
 
 from .base import (
     EmailServiceConfig,
+    GmailImportConfig,
     GoogleCredentialConfig,
     ProjectControlModel,
     SiteMaintenanceControl,
@@ -14,6 +15,7 @@ __all__ = [
     "ActiveModel",
     "AuthoredModel",
     "EmailServiceConfig",
+    "GmailImportConfig",
     "GoogleCredentialConfig",
     "OrderedModel",
     "ProjectControlManager",

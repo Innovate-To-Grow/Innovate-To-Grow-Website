@@ -19,3 +19,15 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertIn("Members", item_titles)
         self.assertIn("Contact Info", item_titles)
         self.assertIn("Admin Invitations", item_titles)
+
+    def test_service_config_tabs_include_gmail_import(self):
+        tabs = settings.UNFOLD["TABS"]
+        service_config_tab = next(
+            tab for tab in tabs if "core.gmailimportconfig" in tab["models"]
+        )
+        item_titles = {item["title"] for item in service_config_tab["items"]}
+
+        self.assertIn("Email Config", item_titles)
+        self.assertIn("Gmail Import", item_titles)
+        self.assertIn("SMS Config", item_titles)
+        self.assertIn("Google Credentials", item_titles)
