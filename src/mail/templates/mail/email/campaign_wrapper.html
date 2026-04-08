@@ -60,7 +60,8 @@
                 Innovate to Grow &mdash; University of California, Merced
               </p>
               <p style="margin:0;font-size:11px;color:#999999;">
-                You received this email because you are subscribed to Innovate to Grow updates.
+                You received this email because you are subscribed to Innovate to Grow updates.{% if unsubscribe_url %}
+                <br><a href="{{ unsubscribe_url }}" style="color:#999999;text-decoration:underline;">Unsubscribe</a>{% endif %}
               </p>
             </td>
           </tr>

@@ -126,7 +126,7 @@ export const SubscribePage = () => {
 
   return (
     <div className="subscribe-page">
-      <h1 className="subscribe-title">Subscribe</h1>
+      <h1 className="subscribe-title">Newsletter</h1>
 
       <div className="subscribe-info">
         <h2>Stay Updated</h2>

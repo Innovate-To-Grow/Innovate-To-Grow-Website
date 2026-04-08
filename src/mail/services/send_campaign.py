@@ -30,10 +30,24 @@ def _build_login_link(member_id, campaign):
 
 
 def _build_unsubscribe_url(member_id):
-    """Generate the one-click unsubscribe URL for the given member, or empty string."""
+    """Generate the RFC 8058 one-click unsubscribe URL (for email headers)."""
     if not member_id:
         return ""
     return build_oneclick_unsubscribe_url(member_id)
+
+
+def _build_visible_unsubscribe_url(member_id):
+    """Generate the frontend unsubscribe URL (for the visible link in email body)."""
+    if not member_id:
+        return ""
+    from authn.models import Member
+    from authn.services.unsubscribe_token import build_unsubscribe_url
+
+    try:
+        member = Member.objects.get(pk=member_id)
+    except Member.DoesNotExist:
+        return ""
+    return build_unsubscribe_url(member)
 
 
 def send_campaign(campaign, sent_by):
@@ -64,9 +78,14 @@ def send_campaign(campaign, sent_by):
         }
         subject = personalize(campaign.subject, context)
         body_html = personalize(campaign.body, context)
-        wrapped_html = render_email_html(body_html)
 
-        unsubscribe_url = _build_unsubscribe_url(recipient["member_id"]) if campaign.include_unsubscribe_header else ""
+        if campaign.include_unsubscribe_header:
+            unsubscribe_url = _build_unsubscribe_url(recipient["member_id"])
+            visible_unsubscribe_url = _build_visible_unsubscribe_url(recipient["member_id"])
+        else:
+            unsubscribe_url = ""
+            visible_unsubscribe_url = ""
+        wrapped_html = render_email_html(body_html, unsubscribe_url=visible_unsubscribe_url)
 
         log = RecipientLog.objects.create(
             campaign=campaign,

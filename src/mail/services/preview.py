@@ -32,7 +32,7 @@ def _text_to_html(text):
     return escaped.replace("\n", "<br>\n")
 
 
-def render_email_html(body_text):
+def render_email_html(body_text, unsubscribe_url=""):
     """Wrap *body_text* in the campaign email layout with logo.
 
     If the body starts with ``HTML_MARKER`` it is treated as raw HTML
@@ -43,7 +43,10 @@ def render_email_html(body_text):
         body_html = body_text[len(HTML_MARKER) :]
     else:
         body_html = _text_to_html(body_text)
-    return render_to_string("mail/email/campaign_wrapper.html", {"body": body_html, "logo_url": _get_logo_url()})
+    return render_to_string(
+        "mail/email/campaign_wrapper.html",
+        {"body": body_html, "logo_url": _get_logo_url(), "unsubscribe_url": unsubscribe_url},
+    )
 
 
 def render_preview(campaign, context=None):
