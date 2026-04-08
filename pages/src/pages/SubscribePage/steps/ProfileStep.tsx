@@ -8,12 +8,14 @@ interface ProfileStepProps {
   lastName: string;
   organizationType: OrganizationType;
   organization: string;
+  title: string;
   saving: boolean;
   onFirstNameChange: (value: string) => void;
   onMiddleNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
   onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
+  onTitleChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
 }
 
@@ -23,12 +25,14 @@ export const ProfileStep = ({
   lastName,
   organizationType,
   organization,
+  title,
   saving,
   onFirstNameChange,
   onMiddleNameChange,
   onLastNameChange,
   onOrganizationTypeChange,
   onOrganizationChange,
+  onTitleChange,
   onSubmit,
 }: ProfileStepProps) => (
   <div className="subscribe-section">
@@ -89,33 +93,45 @@ export const ProfileStep = ({
           <div className="subscribe-org-toggle">
             <button
               type="button"
-              className={`subscribe-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
-              onClick={() => onOrganizationTypeChange('individual')}
-              disabled={saving}
-            >
-              Individual
-            </button>
-            <button
-              type="button"
               className={`subscribe-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
               onClick={() => onOrganizationTypeChange('organization')}
               disabled={saving}
             >
               Organization
             </button>
+            <button
+              type="button"
+              className={`subscribe-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('individual')}
+              disabled={saving}
+            >
+              Individual
+            </button>
           </div>
           {organizationType === 'organization' && (
-            <input
-              id="subscribe-org"
-              type="text"
-              className="subscribe-input"
-              value={organization}
-              onChange={(event) => onOrganizationChange(event.target.value)}
-              placeholder="Company or organization name"
-              autoComplete="organization"
-              required
-              disabled={saving}
-            />
+            <>
+              <input
+                id="subscribe-org"
+                type="text"
+                className="subscribe-input"
+                value={organization}
+                onChange={(event) => onOrganizationChange(event.target.value)}
+                placeholder="Company or organization name"
+                autoComplete="organization"
+                required
+                disabled={saving}
+              />
+              <input
+                id="subscribe-title"
+                type="text"
+                className="subscribe-input subscribe-title-input"
+                value={title}
+                onChange={(event) => onTitleChange(event.target.value)}
+                placeholder="Your title or position (e.g. CEO, Director)"
+                autoComplete="organization-title"
+                disabled={saving}
+              />
+            </>
           )}
         </div>
       </div>

@@ -33,15 +33,15 @@ export const ManageStep = ({profile, saving, onToggle}: ManageStepProps) => {
       </div>
 
       <div className="subscribe-manage-status">
-        <span className="subscribe-manage-status-label">
-          {profile.email_subscribe ? 'Subscribed' : 'Not subscribed'}
-        </span>
+        <span className="subscribe-manage-status-label">Newsletter</span>
         <button
           type="button"
           className={`subscribe-toggle ${profile.email_subscribe ? 'is-active' : ''}`}
           onClick={handleToggle}
           disabled={saving}
-          aria-label={profile.email_subscribe ? 'Unsubscribe' : 'Subscribe'}
+          aria-label={
+            profile.email_subscribe ? 'Turn off newsletter subscription' : 'Turn on newsletter subscription'
+          }
         >
           <span className="subscribe-toggle-knob" />
         </button>

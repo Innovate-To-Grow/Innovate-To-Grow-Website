@@ -141,8 +141,8 @@ describe('SubscribePage', () => {
     const emailElements = await screen.findAllByText('member@example.com');
     expect(emailElements.length).toBeGreaterThanOrEqual(1);
 
-    const subscribedElements = screen.getAllByText('Subscribed');
-    expect(subscribedElements.length).toBeGreaterThanOrEqual(1);
+    const newsletterLabels = screen.getAllByText('Newsletter');
+    expect(newsletterLabels.length).toBeGreaterThanOrEqual(1);
   });
 
   it('toggles subscription in manage step', async () => {
@@ -166,7 +166,7 @@ describe('SubscribePage', () => {
     });
 
     // Wait for the toggle button to appear
-    const toggleButtons = await screen.findAllByRole('button', {name: 'Unsubscribe'});
+    const toggleButtons = await screen.findAllByRole('button', {name: 'Turn off newsletter subscription'});
     fireEvent.click(toggleButtons[0]);
 
     await waitFor(() => {
@@ -194,8 +194,10 @@ describe('SubscribePage', () => {
     fireEvent.submit(screen.getByLabelText('Verification Code').closest('form')!);
     await screen.findByText(/complete your profile/i);
 
-    // Fill profile
+    // Fill profile — default org type is now 'organization', so fill org name too
     fireEvent.change(screen.getByLabelText(/first name/i), {target: {value: 'Ada'}});
+    const orgInputs = screen.getAllByPlaceholderText('Company or organization name');
+    fireEvent.change(orgInputs[0], {target: {value: 'Acme Corp'}});
     fireEvent.submit(screen.getByLabelText(/first name/i).closest('form')!);
 
     await waitFor(() => {
@@ -203,7 +205,7 @@ describe('SubscribePage', () => {
         first_name: 'Ada',
         middle_name: '',
         last_name: '',
-        organization: 'Individual',
+        organization: 'Acme Corp',
         email_subscribe: true,
       });
     });

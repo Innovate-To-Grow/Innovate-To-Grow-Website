@@ -21,8 +21,9 @@ export const SubscribePage = () => {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('organization');
   const [organization, setOrganization] = useState('');
+  const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -135,6 +136,12 @@ export const SubscribePage = () => {
             ? 'Manage your email subscription preferences below.'
             : 'Subscribe to receive updates and announcements from Innovate to Grow.'}
         </p>
+        {step === 'manage' ? (
+          <p className="subscribe-info-note">
+            This newsletter setting does not affect I2G event emails or account-related notifications—you will still
+            receive those when applicable.
+          </p>
+        ) : null}
       </div>
 
       {error && <div className="subscribe-alert error">{error}</div>}
@@ -189,10 +196,16 @@ export const SubscribePage = () => {
           onOrganizationTypeChange={(value) => {
             setOrganizationType(value);
             setOrganization('');
+            setTitle('');
             clearPageError();
           }}
           onOrganizationChange={(value) => {
             setOrganization(value);
+            clearPageError();
+          }}
+          title={title}
+          onTitleChange={(value) => {
+            setTitle(value);
             clearPageError();
           }}
           onSubmit={handleProfileSubmit}

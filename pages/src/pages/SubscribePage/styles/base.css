@@ -26,6 +26,12 @@
   color: #374151;
 }
 
+.subscribe-info-note {
+  margin-top: 0.75rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
 /* Form section */
 .subscribe-section {
   padding: 1.5rem;
@@ -144,6 +150,10 @@
 .subscribe-org-toggle-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.subscribe-title-input {
+  margin-top: 0.5rem;
 }
 
 /* Code step actions row */
