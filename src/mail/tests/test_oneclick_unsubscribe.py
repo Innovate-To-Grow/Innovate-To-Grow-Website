@@ -35,9 +35,17 @@ class OneClickUnsubscribeViewTests(APITestCase):
         self.member.refresh_from_db()
         self.assertFalse(self.member.email_subscribe)
 
-    def test_get_returns_405(self):
+    def test_get_unsubscribes_and_returns_html(self):
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/html", response["Content-Type"])
+        self.member.refresh_from_db()
+        self.assertFalse(self.member.email_subscribe)
+
+    def test_get_invalid_token_returns_400_html(self):
+        response = self.client.get("/mail/unsubscribe/garbage-token/")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("text/html", response["Content-Type"])
 
     def test_invalid_token_returns_400(self):
         response = self.client.post("/mail/unsubscribe/garbage-token/")

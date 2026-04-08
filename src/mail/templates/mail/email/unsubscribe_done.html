@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if error %}Unsubscribe Failed{% else %}Unsubscribed{% endif %} - Innovate to Grow</title>
+  <style>
+    body { margin:0; padding:0; background:#f4f4f7; font-family:Arial,Helvetica,sans-serif; }
+    .card { max-width:480px; margin:80px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .header { background:#0b1f3f; padding:28px 32px; text-align:center; border-bottom:4px solid #daa520; }
+    .header span { color:#fff; font-size:22px; font-weight:700; letter-spacing:.5px; }
+    .body { padding:36px 32px 24px; }
+    .body h1 { margin:0 0 16px; font-size:20px; font-weight:700; color:#0b2653; }
+    .body p { margin:0 0 16px; font-size:15px; color:#4a5568; line-height:1.6; }
+    .btn { display:inline-block; background:#0b1f3f; color:#fff; font-size:14px; font-weight:600; text-decoration:none; padding:12px 28px; border-radius:6px; border:2px solid #daa520; }
+    .footer { padding:20px 32px; border-top:1px solid #eee; text-align:center; }
+    .footer p { margin:0; font-size:12px; color:#0b2653; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span>Innovate to Grow</span>
+    </div>
+    <div class="body">
+      {% if error %}
+        <h1>Unable to Unsubscribe</h1>
+        <p>{{ error }}</p>
+      {% else %}
+        <h1>You've been unsubscribed</h1>
+        <p>Hi {{ member.first_name|default:"there" }}, you have been successfully unsubscribed from Innovate to Grow email updates.</p>
+        <p>You may still receive transactional emails related to your account or event registrations.</p>
+        {% if frontend_url %}
+          <p>Changed your mind? You can re-subscribe from your account settings.</p>
+          <p style="text-align:center;padding:8px 0;">
+            <a href="{{ frontend_url }}/account" class="btn">Account Settings</a>
+          </p>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="footer">
+      <p>Innovate to Grow &mdash; University of California, Merced</p>
+    </div>
+  </div>
+</body>
+</html>
