@@ -66,6 +66,10 @@
           "value": "__FRONTEND_URL__"
         },
         {
+          "name": "BACKEND_URL",
+          "value": "__BACKEND_URL__"
+        },
+        {
           "name": "AWS_STORAGE_BUCKET_NAME",
           "value": "__AWS_STORAGE_BUCKET_NAME__"
         },

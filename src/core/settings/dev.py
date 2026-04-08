@@ -32,6 +32,8 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # CMS live-preview opens tabs on this origin (Vite dev server default)
 if not FRONTEND_URL:  # noqa: F405
     FRONTEND_URL = "http://localhost:5173"
+if not BACKEND_URL:  # noqa: F405
+    BACKEND_URL = "http://localhost:8000"
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",

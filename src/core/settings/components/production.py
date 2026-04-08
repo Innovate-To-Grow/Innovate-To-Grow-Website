@@ -25,6 +25,7 @@ def _get_required_env(name: str) -> str:
 SECRET_KEY = _get_required_env("DJANGO_SECRET_KEY")
 DEBUG = False
 ALLOWED_HOSTS = [host.strip() for host in _get_required_env("DJANGO_ALLOWED_HOSTS").split(",") if host.strip()]
+BACKEND_URL = _get_required_env("BACKEND_URL")
 
 # ---------------------------------------------------------------------------
 # Database (PostgreSQL with SSL required)
