@@ -19,7 +19,7 @@ export const CompleteProfilePage = () => {
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
+  const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('organization');
   const [organization, setOrganization] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,8 @@ export const CompleteProfilePage = () => {
         setMiddleName(profile.middle_name ?? '');
         setLastName(profile.last_name ?? '');
         const org = profile.organization ?? '';
-        const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
+        const normalized = org.trim().toLowerCase();
+        const isIndividual = ['individual', 'personal'].includes(normalized);
         setOrganizationType(isIndividual ? 'individual' : 'organization');
         setOrganization(isIndividual ? '' : org);
         setTitle(profile.title ?? '');

@@ -30,4 +30,4 @@ class InboxAdminFragmentTest(TestCase):
         self.assertEqual(response.status_code, 200)
         mock_list.assert_called_once_with(limit=30, force_refresh=True)
         self.assertIn(b"Hi", response.content)
-        self.assertIn(b'data-inbox-refresh', response.content)
+        self.assertIn(b"data-inbox-refresh", response.content)

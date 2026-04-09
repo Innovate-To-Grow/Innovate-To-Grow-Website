@@ -35,7 +35,7 @@ export const useAccountDashboard = () => {
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
   const [title, setTitle] = useState('');
-  const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
+  const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('organization');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -74,7 +74,8 @@ export const useAccountDashboard = () => {
     setMiddleName(data.middle_name ?? '');
     setLastName(data.last_name ?? '');
     const org = data.organization ?? '';
-    const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
+    const normalized = org.trim().toLowerCase();
+    const isIndividual = ['individual', 'personal'].includes(normalized);
     setOrganizationType(isIndividual ? 'individual' : 'organization');
     setOrganization(isIndividual ? '' : org);
     setTitle(data.title ?? '');
@@ -188,7 +189,8 @@ export const useAccountDashboard = () => {
     setMiddleName(profile?.middle_name || '');
     setLastName(profile?.last_name || '');
     const org = profile?.organization || '';
-    const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
+    const normalized = org.trim().toLowerCase();
+    const isIndividual = ['individual', 'personal'].includes(normalized);
     setOrganizationType(isIndividual ? 'individual' : 'organization');
     setOrganization(isIndividual ? '' : org);
     setTitle(profile?.title || '');

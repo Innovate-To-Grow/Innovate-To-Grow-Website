@@ -10,7 +10,7 @@ export const RegisterForm = () => {
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('organization');
   const [organization, setOrganization] = useState('');
   const [title, setTitle] = useState('');
   const [email, setEmail] = useState('');

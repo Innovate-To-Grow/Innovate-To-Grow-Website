@@ -23,7 +23,7 @@ export const useEventRegistration = () => {
   const [attendeeLastName, setAttendeeLastName] = useState('');
   const [attendeeOrganization, setAttendeeOrganization] = useState('');
   const [attendeeTitle, setAttendeeTitle] = useState('');
-  const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('individual');
+  const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('organization');
   const [attendeeSecondaryEmail, setAttendeeSecondaryEmail] = useState('');
   const [attendeePhone, setAttendeePhone] = useState('');
   const [primaryEmail, setPrimaryEmail] = useState('');
@@ -45,8 +45,9 @@ export const useEventRegistration = () => {
       setAttendeeMiddleName((prev) => prev || p.middle_name);
       setAttendeeLastName((prev) => prev || p.last_name);
       const org = p.organization || '';
-      const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
-      setAttendeeOrgType((prev) => prev !== 'organization' ? (isIndividual ? 'individual' : 'organization') : prev);
+      const normalized = org.trim().toLowerCase();
+      const isIndividual = ['individual', 'personal'].includes(normalized);
+      setAttendeeOrgType(isIndividual ? 'individual' : 'organization');
       setAttendeeOrganization((prev) => prev || (isIndividual ? '' : org));
       setAttendeeTitle((prev) => prev || p.title || '');
       initialProfileRef.current = {
