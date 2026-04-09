@@ -62,6 +62,7 @@ export interface MemberProfile {
   middle_name: string;
   last_name: string;
   organization: string;
+  title: string;
 }
 
 export interface MemberPhone {

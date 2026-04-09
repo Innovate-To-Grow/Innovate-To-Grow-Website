@@ -21,6 +21,7 @@ export const CompleteProfilePage = () => {
   const [lastName, setLastName] = useState('');
   const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
   const [organization, setOrganization] = useState('');
+  const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export const CompleteProfilePage = () => {
         const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
         setOrganizationType(isIndividual ? 'individual' : 'organization');
         setOrganization(isIndividual ? '' : org);
+        setTitle(profile.title ?? '');
       } catch (err: unknown) {
         setError(getAuthErrorMessage(err));
       } finally {
@@ -69,11 +71,13 @@ export const CompleteProfilePage = () => {
 
     try {
       const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
+      const titleValue = organizationType === 'organization' ? title.trim() : '';
       await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
         last_name: lastName.trim(),
         organization: orgValue,
+        title: titleValue,
       });
       clearProfileCompletionRequirement();
       navigate('/account', { replace: true });
@@ -120,11 +124,14 @@ export const CompleteProfilePage = () => {
             setFirstName={setFirstName}
             setMiddleName={setMiddleName}
             setLastName={setLastName}
+            title={title}
             onOrganizationTypeChange={(value) => {
               setOrganizationType(value);
               setOrganization('');
+              setTitle('');
             }}
             setOrganization={setOrganization}
+            setTitle={setTitle}
             clearError={() => setError(null)}
             onSubmit={handleSubmit}
           />

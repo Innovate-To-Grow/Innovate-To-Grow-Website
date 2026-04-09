@@ -185,3 +185,38 @@ class AdminLoginViewTest(TestCase):
         resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Too many codes requested")
+
+    @patch("authn.views.admin.login.issue_email_challenge")
+    def test_delivery_failure_shows_error(self, mock_issue):
+        from authn.services.email_challenges import AuthChallengeDeliveryError
+
+        mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.")
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Failed to send verification code")
+        # Should stay on email form so user can retry
+        self.assertContains(resp, 'name="email"')
+
+    @patch("authn.views.admin.login.issue_email_challenge")
+    def test_resend_delivery_failure_shows_message(self, mock_issue):
+        from authn.services.email_challenges import AuthChallengeDeliveryError
+
+        # Step 1: submit email successfully
+        self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+        # Resend fails
+        mock_issue.reset_mock()
+        mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.")
+        resp = self.client.post(LOGIN_URL, {"action": "resend"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Failed to send verification code")
+
+    def test_unverified_email_shows_error(self):
+        """Staff member with unverified email cannot receive a verification code."""
+        unverified_staff = Member.objects.create_user(password="testpass123", is_staff=True, is_active=True)
+        ContactEmail.objects.create(
+            member=unverified_staff, email_address="unverified@example.com", email_type="primary", verified=False
+        )
+        resp = self.client.post(LOGIN_URL, {"email": "unverified@example.com"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Unable to send verification code")

@@ -9,6 +9,7 @@ interface ProfileSectionProps {
   lastName: string;
   organizationType: OrganizationType;
   organization: string;
+  title: string;
   profileImage: string | null;
   imageUploading: boolean;
   imageError: string | null;
@@ -23,6 +24,7 @@ interface ProfileSectionProps {
   onLastNameChange: (value: string) => void;
   onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
+  onTitleChange: (value: string) => void;
   onRetryProfile: () => void;
   onStartEditing: () => void;
   onCancelEditing: () => void;
@@ -39,6 +41,7 @@ export const ProfileSection = ({
   lastName,
   organizationType,
   organization,
+  title,
   profileImage,
   imageUploading,
   imageError,
@@ -53,6 +56,7 @@ export const ProfileSection = ({
   onLastNameChange,
   onOrganizationTypeChange,
   onOrganizationChange,
+  onTitleChange,
   onRetryProfile,
   onStartEditing,
   onCancelEditing,
@@ -156,19 +160,19 @@ export const ProfileSection = ({
         <div className="auth-org-toggle">
           <button
             type="button"
-            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
-            onClick={() => onOrganizationTypeChange('individual')}
-            disabled={!isEditingProfile}
-          >
-            Individual
-          </button>
-          <button
-            type="button"
             className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
             onClick={() => onOrganizationTypeChange('organization')}
             disabled={!isEditingProfile}
           >
             Organization
+          </button>
+          <button
+            type="button"
+            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+            onClick={() => onOrganizationTypeChange('individual')}
+            disabled={!isEditingProfile}
+          >
+            Individual
           </button>
         </div>
         {organizationType === 'organization' && (
@@ -185,6 +189,24 @@ export const ProfileSection = ({
           />
         )}
       </div>
+
+      {organizationType === 'organization' && (
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="account-title">
+            Title <span style={{fontWeight: 400, color: '#9ca3af'}}>(optional)</span>
+          </label>
+          <input
+            id="account-title"
+            type="text"
+            className="auth-form-input"
+            value={title}
+            onChange={(event) => onTitleChange(event.target.value)}
+            placeholder="Your title or position (e.g. CEO, Director)"
+            autoComplete="organization-title"
+            disabled={!isEditingProfile}
+          />
+        </div>
+      )}
 
       {isEditingProfile ? (
         <div className="account-action-row">

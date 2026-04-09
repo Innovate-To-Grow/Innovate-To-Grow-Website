@@ -128,10 +128,10 @@ class AdminPasswordLoginTest(TestCase):
         self.assertContains(resp, "Sign in with email code instead")
 
     def test_password_rate_limit(self):
-        for _ in range(5):
+        for _ in range(10):
             self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
 
-        # 6th attempt should be throttled
+        # 11th attempt should be throttled
         resp = self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Too many login attempts")

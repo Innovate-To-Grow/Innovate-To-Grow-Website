@@ -152,8 +152,8 @@
   cursor: not-allowed;
 }
 
-.subscribe-title-input {
-  margin-top: 0.5rem;
+.subscribe-form-group--full-width {
+  grid-column: 1 / -1;
 }
 
 /* Code step actions row */

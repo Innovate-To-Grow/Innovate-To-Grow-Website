@@ -38,6 +38,15 @@ class Member(AbstractUser, ProjectControlModel):
         verbose_name="Organization",
     )
 
+    # job title or position
+    title = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Job title or position within the organization",
+        verbose_name="Title",
+    )
+
     # profile image (base64 encoded)
     profile_image = models.TextField(
         null=True,

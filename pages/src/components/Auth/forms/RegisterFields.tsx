@@ -7,6 +7,7 @@ interface RegisterFieldsProps {
   lastName: string;
   organizationType: OrganizationType;
   organization: string;
+  title: string;
   email: string;
   password: string;
   passwordConfirm: string;
@@ -15,6 +16,7 @@ interface RegisterFieldsProps {
   onLastNameChange: (value: string) => void;
   onOrganizationTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
+  onTitleChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onPasswordConfirmChange: (value: string) => void;
@@ -27,6 +29,7 @@ export const RegisterFields = ({
   lastName,
   organizationType,
   organization,
+  title,
   email,
   password,
   passwordConfirm,
@@ -35,6 +38,7 @@ export const RegisterFields = ({
   onLastNameChange,
   onOrganizationTypeChange,
   onOrganizationChange,
+  onTitleChange,
   onEmailChange,
   onPasswordChange,
   onPasswordConfirmChange,
@@ -65,17 +69,17 @@ export const RegisterFields = ({
           <div className="auth-org-toggle">
             <button
               type="button"
-              className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
-              onClick={() => onOrganizationTypeChange('individual')}
-            >
-              Individual
-            </button>
-            <button
-              type="button"
               className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
               onClick={() => onOrganizationTypeChange('organization')}
             >
               Organization
+            </button>
+            <button
+              type="button"
+              className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+              onClick={() => onOrganizationTypeChange('individual')}
+            >
+              Individual
             </button>
           </div>
           {organizationType === 'organization' && (
@@ -95,6 +99,23 @@ export const RegisterFields = ({
           )}
         </div>
       </div>
+
+      {organizationType === 'organization' && (
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="register-title">
+            Title <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+          </label>
+          <input
+            id="register-title"
+            type="text"
+            className="auth-form-input"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="Your title or position (e.g. CEO, Director)"
+            autoComplete="organization-title"
+          />
+        </div>
+      )}
 
       <div className="auth-form-row">
         <div className="auth-form-group">

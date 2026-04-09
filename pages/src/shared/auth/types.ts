@@ -56,6 +56,7 @@ export interface ProfileResponse {
   middle_name: string;
   last_name: string;
   organization: string;
+  title: string;
   email_subscribe: boolean;
   is_staff: boolean;
   is_active: boolean;

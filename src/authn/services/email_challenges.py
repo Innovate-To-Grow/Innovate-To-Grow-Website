@@ -15,8 +15,8 @@ from authn.services.email.auth_email import normalize_email
 logger = logging.getLogger(__name__)
 
 CHALLENGE_TTL = timedelta(minutes=10)
-RESEND_COOLDOWN = timedelta(seconds=30)
-MAX_CHALLENGES_PER_HOUR = 20
+RESEND_COOLDOWN = timedelta(seconds=10)
+MAX_CHALLENGES_PER_HOUR = 100
 
 
 class AuthChallengeError(RuntimeError):
@@ -138,6 +138,9 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
         )
     except Exception as exc:
         logger.exception("Failed to send verification email to %s", challenge.target_email)
+        # Mark the challenge as expired so it does not count toward the
+        # rate-limit / resend-cooldown on subsequent retry attempts.
+        challenge.mark_expired()
         raise AuthChallengeDeliveryError("Failed to send verification email.") from exc
 
     return challenge

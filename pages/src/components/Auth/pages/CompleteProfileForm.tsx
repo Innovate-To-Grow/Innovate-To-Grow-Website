@@ -8,12 +8,14 @@ interface CompleteProfileFormProps {
   lastName: string;
   organizationType: OrganizationType;
   organization: string;
+  title: string;
   isSaving: boolean;
   setFirstName: (value: string) => void;
   setMiddleName: (value: string) => void;
   setLastName: (value: string) => void;
   onOrganizationTypeChange: (value: OrganizationType) => void;
   setOrganization: (value: string) => void;
+  setTitle: (value: string) => void;
   clearError: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
@@ -24,12 +26,14 @@ export const CompleteProfileForm = ({
   lastName,
   organizationType,
   organization,
+  title,
   isSaving,
   setFirstName,
   setMiddleName,
   setLastName,
   onOrganizationTypeChange,
   setOrganization,
+  setTitle,
   clearError,
   onSubmit,
 }: CompleteProfileFormProps) => {
@@ -98,16 +102,6 @@ export const CompleteProfileForm = ({
         <div className="auth-org-toggle">
           <button
             type="button"
-            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
-            onClick={() => {
-              onOrganizationTypeChange('individual');
-              clearError();
-            }}
-          >
-            Individual
-          </button>
-          <button
-            type="button"
             className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
             onClick={() => {
               onOrganizationTypeChange('organization');
@@ -115,6 +109,16 @@ export const CompleteProfileForm = ({
             }}
           >
             Organization
+          </button>
+          <button
+            type="button"
+            className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+            onClick={() => {
+              onOrganizationTypeChange('individual');
+              clearError();
+            }}
+          >
+            Individual
           </button>
         </div>
         {organizationType === 'organization' && (
@@ -133,6 +137,26 @@ export const CompleteProfileForm = ({
           />
         )}
       </div>
+
+      {organizationType === 'organization' && (
+        <div className="auth-form-group">
+          <label className="auth-form-label" htmlFor="complete-profile-title">
+            Title <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+          </label>
+          <input
+            id="complete-profile-title"
+            type="text"
+            className="auth-form-input"
+            value={title}
+            onChange={(event) => {
+              setTitle(event.target.value);
+              clearError();
+            }}
+            placeholder="Your title or position (e.g. CEO, Director)"
+            autoComplete="organization-title"
+          />
+        </div>
+      )}
 
       <button type="submit" className="auth-form-submit" disabled={isSaving || !firstName.trim() || !lastName.trim() || (organizationType === 'organization' && !organization.trim())}>
         {isSaving ? (

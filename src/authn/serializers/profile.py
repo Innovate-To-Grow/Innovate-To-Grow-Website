@@ -41,6 +41,12 @@ class ProfileSerializer(serializers.Serializer):
         max_length=255,
         help_text="Organization or company the user belongs to.",
     )
+    title = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        help_text="Job title or position.",
+    )
     email_subscribe = serializers.BooleanField(
         required=False,
         help_text="Whether the member is subscribed to email communications.",
@@ -73,6 +79,7 @@ class ProfileSerializer(serializers.Serializer):
             "middle_name": instance.middle_name or "",
             "last_name": instance.last_name or "",
             "organization": instance.organization or "",
+            "title": instance.title or "",
             "email_subscribe": primary_contact.subscribe if primary_contact else False,
             "is_staff": instance.is_staff,
             "is_active": instance.is_active,
@@ -95,7 +102,7 @@ class ProfileSerializer(serializers.Serializer):
 
         # Update Member model fields
         member_fields_to_update = []
-        for field in ("first_name", "middle_name", "last_name", "organization"):
+        for field in ("first_name", "middle_name", "last_name", "organization", "title"):
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
                 member_fields_to_update.append(field)

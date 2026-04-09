@@ -9,8 +9,8 @@ _SESSION_STEP = "admin_login_step"
 _SESSION_EMAIL = "admin_login_email"
 _SESSION_MEMBER_ID = "admin_login_member_id"
 _RATE_LIMIT_PREFIX = "admin_pwd_login:"
-_MAX_PASSWORD_ATTEMPTS = 5
-_RATE_LIMIT_WINDOW = 60
+_MAX_PASSWORD_ATTEMPTS = 10
+_RATE_LIMIT_WINDOW = 120
 
 
 def clear_admin_login_session(request):

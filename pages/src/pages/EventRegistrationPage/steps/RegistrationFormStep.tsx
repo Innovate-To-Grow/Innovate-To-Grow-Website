@@ -27,6 +27,7 @@ interface RegistrationFormStepProps {
   attendeeLastName: string;
   attendeeOrgType: OrganizationType;
   attendeeOrganization: string;
+  attendeeTitle: string;
   attendeeSecondaryEmail: string;
   attendeePhone: string;
   primaryEmail: string;
@@ -36,6 +37,7 @@ interface RegistrationFormStepProps {
   onLastNameChange: (value: string) => void;
   onOrgTypeChange: (value: OrganizationType) => void;
   onOrganizationChange: (value: string) => void;
+  onTitleChange: (value: string) => void;
   onTicketChange: (ticketId: string) => void;
   onAnswerChange: (questionId: string, answer: string) => void;
   onSecondaryEmailChange: (value: string) => void;
@@ -69,6 +71,7 @@ export const RegistrationFormStep = ({
   attendeeLastName,
   attendeeOrgType,
   attendeeOrganization,
+  attendeeTitle,
   attendeeSecondaryEmail,
   attendeePhone,
   primaryEmail,
@@ -78,6 +81,7 @@ export const RegistrationFormStep = ({
   onLastNameChange,
   onOrgTypeChange,
   onOrganizationChange,
+  onTitleChange,
   onTicketChange,
   onAnswerChange,
   onSecondaryEmailChange,
@@ -174,19 +178,19 @@ export const RegistrationFormStep = ({
           <div className="auth-org-toggle event-reg-org-toggle--editable">
             <button
               type="button"
-              className={`auth-org-toggle-btn ${attendeeOrgType === 'individual' ? 'is-active' : ''}`}
-              onClick={() => onOrgTypeChange('individual')}
-              disabled={submitting}
-            >
-              Individual
-            </button>
-            <button
-              type="button"
               className={`auth-org-toggle-btn ${attendeeOrgType === 'organization' ? 'is-active' : ''}`}
               onClick={() => onOrgTypeChange('organization')}
               disabled={submitting}
             >
               Organization
+            </button>
+            <button
+              type="button"
+              className={`auth-org-toggle-btn ${attendeeOrgType === 'individual' ? 'is-active' : ''}`}
+              onClick={() => onOrgTypeChange('individual')}
+              disabled={submitting}
+            >
+              Individual
             </button>
           </div>
           {attendeeOrgType === 'organization' && (
@@ -203,6 +207,24 @@ export const RegistrationFormStep = ({
             />
           )}
         </div>
+
+        {attendeeOrgType === 'organization' && (
+          <div className="event-reg-form-group">
+            <label className="event-reg-label" htmlFor="attendee-title">
+              Title <span className="event-reg-optional">(optional)</span>
+            </label>
+            <input
+              id="attendee-title"
+              type="text"
+              className="event-reg-input event-reg-input--editable"
+              value={attendeeTitle}
+              onChange={(e) => onTitleChange(e.target.value)}
+              placeholder="Your title or position (e.g. CEO, Director)"
+              autoComplete="organization-title"
+              disabled={submitting}
+            />
+          </div>
+        )}
 
         {options.allow_secondary_email ? (
           <div className="event-reg-form-group">

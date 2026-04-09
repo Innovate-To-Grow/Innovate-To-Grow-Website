@@ -23,6 +23,7 @@ export const register = async (
   firstName: string,
   lastName: string,
   organization: string,
+  title: string = '',
 ): Promise<RegisterResponse> => {
   try {
     const { encryptedPassword, keyId } = await encryptPasswordWithCurrentKey(password);
@@ -35,6 +36,7 @@ export const register = async (
       first_name: firstName,
       last_name: lastName,
       organization,
+      title,
     });
     clearProfileCompletionRequired();
     return response.data;

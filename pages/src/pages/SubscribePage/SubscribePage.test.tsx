@@ -53,6 +53,7 @@ const profileData = {
   middle_name: '',
   last_name: 'Lovelace',
   organization: 'Individual',
+  title: '',
   email_subscribe: false,
   is_staff: false,
   is_active: true,
@@ -194,7 +195,6 @@ describe('SubscribePage', () => {
     fireEvent.submit(screen.getByLabelText('Verification Code').closest('form')!);
     await screen.findByText(/complete your profile/i);
 
-    // Fill profile — default org type is now 'organization', so fill org name too
     fireEvent.change(screen.getByLabelText(/first name/i), {target: {value: 'Ada'}});
     const orgInputs = screen.getAllByPlaceholderText('Company or organization name');
     fireEvent.change(orgInputs[0], {target: {value: 'Acme Corp'}});
@@ -206,6 +206,7 @@ describe('SubscribePage', () => {
         middle_name: '',
         last_name: '',
         organization: 'Acme Corp',
+        title: '',
         email_subscribe: true,
       });
     });

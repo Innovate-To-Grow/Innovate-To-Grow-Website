@@ -10,7 +10,7 @@ import {
 } from '../../../services/auth';
 import {PhoneAddForm} from './PhoneAddForm';
 import {PhoneCard} from './PhoneCard';
-import {getAuthApiErrorMessage} from '../shared/apiErrors';
+import {USER_FACING_GENERIC_ERROR_ZH} from '../shared/apiErrors';
 import {StatusAlert} from '../shared/StatusAlert';
 import '../Auth.css';
 
@@ -60,7 +60,7 @@ export const PhoneCenter = () => {
             const updated = await updateContactPhone(phone.id, {subscribe: !phone.subscribe});
             setPhones((prev) => prev.map((p) => (p.id === phone.id ? updated : p)));
         } catch (err) {
-            setError(getAuthApiErrorMessage(err));
+            setError(USER_FACING_GENERIC_ERROR_ZH);
         }
     };
 
@@ -91,7 +91,7 @@ export const PhoneCenter = () => {
                 setSuccessMessage('Phone number added. Click "Verify" to receive a verification code.');
             }
         } catch (err) {
-            setAddError(getAuthApiErrorMessage(err));
+            setAddError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setAddLoading(false);
         }
@@ -107,7 +107,7 @@ export const PhoneCenter = () => {
             setVerifyingId(phoneId);
             setSuccessMessage('Verification code sent via SMS.');
         } catch (err) {
-            setError(getAuthApiErrorMessage(err));
+            setError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setResendLoading(false);
         }
@@ -126,7 +126,7 @@ export const PhoneCenter = () => {
             setVerifyCode('');
             setSuccessMessage('Phone number verified successfully.');
         } catch (err) {
-            setVerifyError(getAuthApiErrorMessage(err));
+            setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setVerifyLoading(false);
         }
@@ -139,7 +139,7 @@ export const PhoneCenter = () => {
             await requestContactPhoneVerification(phoneId);
             setSuccessMessage('Verification code resent.');
         } catch (err) {
-            setVerifyError(getAuthApiErrorMessage(err));
+            setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setResendLoading(false);
         }
@@ -163,7 +163,7 @@ export const PhoneCenter = () => {
             }
             setSuccessMessage('Phone number removed.');
         } catch (err) {
-            setError(getAuthApiErrorMessage(err));
+            setError(USER_FACING_GENERIC_ERROR_ZH);
         }
     };
 

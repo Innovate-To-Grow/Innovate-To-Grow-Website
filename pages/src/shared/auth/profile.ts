@@ -12,6 +12,7 @@ export const updateProfileFields = async (data: {
   middle_name?: string;
   last_name?: string;
   organization?: string;
+  title?: string;
   email_subscribe?: boolean;
 }): Promise<ProfileResponse> => {
   const response = await authApi.patch<ProfileResponse>('/authn/profile/', data);

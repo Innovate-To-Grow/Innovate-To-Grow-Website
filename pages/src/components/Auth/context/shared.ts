@@ -21,7 +21,7 @@ export interface AuthContextValue {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<LoginResponse>;
-  register: (email: string, password: string, passwordConfirm: string, firstName: string, lastName: string, organization: string) => Promise<RegisterResponse>;
+  register: (email: string, password: string, passwordConfirm: string, firstName: string, lastName: string, organization: string, title?: string) => Promise<RegisterResponse>;
   requestEmailAuthCode: (email: string) => Promise<EmailAuthRequestResponse>;
   verifyEmailAuthCode: (email: string, code: string) => Promise<EmailAuthVerifyResponse>;
   requestLoginCode: (email: string) => Promise<MessageResponse>;

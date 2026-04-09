@@ -96,11 +96,13 @@ export const SubscribePage = () => {
     setSaving(true);
     try {
       const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
+      const titleValue = organizationType === 'organization' ? title.trim() : '';
       const updated = await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
         last_name: lastName.trim(),
         organization: orgValue,
+        title: titleValue,
         email_subscribe: true,
       });
       setProfile(updated);

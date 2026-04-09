@@ -12,6 +12,7 @@ export const RegisterForm = () => {
   const [lastName, setLastName] = useState('');
   const [organizationType, setOrganizationType] = useState<OrganizationType>('individual');
   const [organization, setOrganization] = useState('');
+  const [title, setTitle] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -56,6 +57,7 @@ export const RegisterForm = () => {
     }
 
     const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
+    const titleValue = organizationType === 'organization' ? title.trim() : '';
 
     try {
       await register(
@@ -65,6 +67,7 @@ export const RegisterForm = () => {
         firstName.trim(),
         lastName.trim(),
         orgValue,
+        titleValue,
       );
       navigate(`/verify-email?flow=register&email=${encodeURIComponent(email.trim().toLowerCase())}`, { replace: true });
     } catch {
@@ -95,6 +98,7 @@ export const RegisterForm = () => {
         lastName={lastName}
         organizationType={organizationType}
         organization={organization}
+        title={title}
         email={email}
         password={password}
         passwordConfirm={passwordConfirm}
@@ -112,12 +116,17 @@ export const RegisterForm = () => {
         onOrganizationTypeChange={(value) => {
           setOrganizationType(value);
           setOrganization('');
+          setTitle('');
           setLocalErrors((prev) => ({ ...prev, organization: '' }));
           clearError();
         }}
         onOrganizationChange={(value) => {
           setOrganization(value);
           setLocalErrors((prev) => ({ ...prev, organization: '' }));
+          clearError();
+        }}
+        onTitleChange={(value) => {
+          setTitle(value);
           clearError();
         }}
         onEmailChange={(value) => {

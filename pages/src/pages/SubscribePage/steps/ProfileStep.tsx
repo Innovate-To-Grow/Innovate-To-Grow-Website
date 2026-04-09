@@ -109,32 +109,39 @@ export const ProfileStep = ({
             </button>
           </div>
           {organizationType === 'organization' && (
-            <>
-              <input
-                id="subscribe-org"
-                type="text"
-                className="subscribe-input"
-                value={organization}
-                onChange={(event) => onOrganizationChange(event.target.value)}
-                placeholder="Company or organization name"
-                autoComplete="organization"
-                required
-                disabled={saving}
-              />
-              <input
-                id="subscribe-title"
-                type="text"
-                className="subscribe-input subscribe-title-input"
-                value={title}
-                onChange={(event) => onTitleChange(event.target.value)}
-                placeholder="Your title or position (e.g. CEO, Director)"
-                autoComplete="organization-title"
-                disabled={saving}
-              />
-            </>
+            <input
+              id="subscribe-org"
+              type="text"
+              className="subscribe-input"
+              value={organization}
+              onChange={(event) => onOrganizationChange(event.target.value)}
+              placeholder="Company or organization name"
+              autoComplete="organization"
+              required
+              disabled={saving}
+            />
           )}
         </div>
       </div>
+      {organizationType === 'organization' && (
+        <div className="subscribe-form-row">
+          <div className="subscribe-form-group subscribe-form-group--full-width">
+            <label className="subscribe-label" htmlFor="subscribe-title">
+              Title <span className="subscribe-optional">(optional)</span>
+            </label>
+            <input
+              id="subscribe-title"
+              type="text"
+              className="subscribe-input"
+              value={title}
+              onChange={(event) => onTitleChange(event.target.value)}
+              placeholder="Your title or position (e.g. CEO, Director)"
+              autoComplete="organization-title"
+              disabled={saving}
+            />
+          </div>
+        </div>
+      )}
       <button type="submit" className="subscribe-submit" disabled={saving || !firstName.trim()}>
         {saving ? <><span className="subscribe-spinner" /> Saving...</> : 'Continue'}
       </button>

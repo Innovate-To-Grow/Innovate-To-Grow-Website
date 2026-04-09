@@ -80,6 +80,7 @@ export const EventRegistrationPage = () => {
           attendeeLastName={reg.attendeeLastName}
           attendeeOrgType={reg.attendeeOrgType}
           attendeeOrganization={reg.attendeeOrganization}
+          attendeeTitle={reg.attendeeTitle}
           attendeeSecondaryEmail={reg.attendeeSecondaryEmail}
           attendeePhone={reg.attendeePhone}
           primaryEmail={reg.primaryEmail}
@@ -90,8 +91,10 @@ export const EventRegistrationPage = () => {
           onOrgTypeChange={(value) => {
             reg.setAttendeeOrgType(value);
             reg.setAttendeeOrganization('');
+            reg.setAttendeeTitle('');
           }}
           onOrganizationChange={reg.setAttendeeOrganization}
+          onTitleChange={reg.setAttendeeTitle}
           onTicketChange={reg.setSelectedTicketId}
           onAnswerChange={(questionId, answer) => reg.setAnswers((current) => ({...current, [questionId]: answer}))}
           onSecondaryEmailChange={reg.setAttendeeSecondaryEmail}

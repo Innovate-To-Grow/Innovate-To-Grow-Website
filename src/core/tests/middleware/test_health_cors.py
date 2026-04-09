@@ -1,6 +1,6 @@
 from django.test import TestCase, override_settings
 
-FRONTEND_ORIGIN = "https://test.i2g.ucmerced.edu"
+FRONTEND_ORIGIN = "https://i2g.ucmerced.edu"
 
 
 @override_settings(

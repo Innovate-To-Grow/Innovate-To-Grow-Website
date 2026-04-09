@@ -98,7 +98,7 @@ jobs:
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_PASSWORD: ${{ vars.DJANGO_SUPERUSER_PASSWORD || secrets.DJANGO_SUPERUSER_PASSWORD }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://test.i2g.ucmerced.edu' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
           BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
@@ -236,7 +236,7 @@ jobs:
 
       - name: Smoke check deployed health endpoint and CORS
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://test.i2g.ucmerced.edu' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           set -euo pipefail

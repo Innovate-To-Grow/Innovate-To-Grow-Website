@@ -21,8 +21,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/minute",
         "login": "10/minute",
-        "email_code_request": "10/minute",
-        "email_code_verify": "20/minute",
+        "email_code_request": "30/minute",
+        "email_code_verify": "60/minute",
         "past_project_share": "10/minute",
         "contact_email_create": "5/hour",
     },

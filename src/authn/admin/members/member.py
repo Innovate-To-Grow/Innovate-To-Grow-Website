@@ -50,6 +50,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "last_name",
         "id",
         "organization",
+        "title",
     )
     ordering = ("-date_joined",)
     readonly_fields = ("member_uuid", "date_joined", "last_login")
@@ -57,7 +58,10 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     fieldsets = (
         (_("Member Info"), {"fields": ("member_uuid",)}),
         (None, {"fields": ("password",)}),
-        (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization", "profile_image")}),
+        (
+            _("Personal Info"),
+            {"fields": ("first_name", "middle_name", "last_name", "organization", "title", "profile_image")},
+        ),
         (
             _("Permissions"),
             {
@@ -69,7 +73,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     )
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("password1", "password2")}),
-        (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization")}),
+        (_("Personal Info"), {"fields": ("first_name", "middle_name", "last_name", "organization", "title")}),
         (_("Member Status"), {"fields": ("is_active",)}),
     )
     inlines = [ContactEmailInline, ContactPhoneInline]

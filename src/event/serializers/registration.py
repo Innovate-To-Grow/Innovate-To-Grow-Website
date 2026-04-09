@@ -87,6 +87,7 @@ def _get_member_profile(user) -> dict:
         "middle_name": getattr(user, "middle_name", "") or "",
         "last_name": user.last_name or "",
         "organization": getattr(user, "organization", "") or "",
+        "title": getattr(user, "title", "") or "",
     }
 
 

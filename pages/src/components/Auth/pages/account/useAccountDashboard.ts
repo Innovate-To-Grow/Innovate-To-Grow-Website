@@ -28,6 +28,7 @@ export const useAccountDashboard = () => {
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
   const [organization, setOrganization] = useState('');
+  const [title, setTitle] = useState('');
   const [organizationType, setOrganizationType] = useState<'individual' | 'organization'>('individual');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export const useAccountDashboard = () => {
     const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
     setOrganizationType(isIndividual ? 'individual' : 'organization');
     setOrganization(isIndividual ? '' : org);
+    setTitle(data.title ?? '');
     setProfileError(null);
     if (data.profile_image) setProfileImage(data.profile_image);
   }, []);
@@ -140,11 +142,13 @@ export const useAccountDashboard = () => {
     setProfileError(null);
     try {
       const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
+      const titleValue = organizationType === 'organization' ? title.trim() : '';
       const updated = await updateProfileFields({
         first_name: firstName.trim(),
         middle_name: middleName.trim(),
         last_name: lastName.trim(),
         organization: orgValue,
+        title: titleValue,
       });
       setProfile(updated);
       setProfileMessage('Profile updated successfully.');
@@ -165,6 +169,7 @@ export const useAccountDashboard = () => {
     const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
     setOrganizationType(isIndividual ? 'individual' : 'organization');
     setOrganization(isIndividual ? '' : org);
+    setTitle(profile?.title || '');
     setProfileMessage(null);
     setProfileError(null);
   };
@@ -332,6 +337,7 @@ export const useAccountDashboard = () => {
     logout,
     organization,
     organizationType,
+    title,
     profile,
     profileError,
     profileImage,
@@ -368,6 +374,7 @@ export const useAccountDashboard = () => {
     setDeleteCode,
     setOrganization,
     setOrganizationType,
+    setTitle,
     setIsEditingProfile,
     handlePasswordConfirm,
     handlePasswordRequestCode,

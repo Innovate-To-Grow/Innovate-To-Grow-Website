@@ -67,6 +67,12 @@ class RegisterSerializer(serializers.Serializer):
         max_length=255,
         help_text="Organization or company the user belongs to.",
     )
+    title = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        help_text="Job title or position.",
+    )
 
     # noinspection PyMethodMayBeStatic
     def validate_first_name(self, value: str) -> str:
@@ -151,6 +157,7 @@ class RegisterSerializer(serializers.Serializer):
         first_name = validated_data.get("first_name", "")
         last_name = validated_data.get("last_name", "")
         organization = validated_data.get("organization", "")
+        title = validated_data.get("title", "")
 
         from authn.models import ContactEmail
 
@@ -175,7 +182,8 @@ class RegisterSerializer(serializers.Serializer):
             member.set_password(password)
 
         member.organization = organization or ""
-        update_fields = ["first_name", "last_name", "organization", "is_active", "password", "updated_at"]
+        member.title = title or ""
+        update_fields = ["first_name", "last_name", "organization", "title", "is_active", "password", "updated_at"]
         member.save(update_fields=update_fields)
 
         issue_email_challenge(

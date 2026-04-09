@@ -22,6 +22,7 @@ export const useEventRegistration = () => {
   const [attendeeMiddleName, setAttendeeMiddleName] = useState('');
   const [attendeeLastName, setAttendeeLastName] = useState('');
   const [attendeeOrganization, setAttendeeOrganization] = useState('');
+  const [attendeeTitle, setAttendeeTitle] = useState('');
   const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('individual');
   const [attendeeSecondaryEmail, setAttendeeSecondaryEmail] = useState('');
   const [attendeePhone, setAttendeePhone] = useState('');
@@ -34,7 +35,7 @@ export const useEventRegistration = () => {
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const optionsLoaded = useRef(false);
-  const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string} | null>(null);
+  const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string; title: string} | null>(null);
 
   // Pre-fill attendee fields from member profile
   const prefillFromProfile = useCallback((data: EventRegistrationOptions) => {
@@ -47,11 +48,13 @@ export const useEventRegistration = () => {
       const isIndividual = !org || ['individual', 'personal'].includes(org.toLowerCase());
       setAttendeeOrgType((prev) => prev !== 'organization' ? (isIndividual ? 'individual' : 'organization') : prev);
       setAttendeeOrganization((prev) => prev || (isIndividual ? '' : org));
+      setAttendeeTitle((prev) => prev || p.title || '');
       initialProfileRef.current = {
         first_name: p.first_name,
         middle_name: p.middle_name,
         last_name: p.last_name,
         organization: isIndividual ? 'Individual' : org,
+        title: p.title || '',
       };
     }
   }, []);
@@ -156,12 +159,14 @@ export const useEventRegistration = () => {
     try {
       // Sync profile if fields changed
       const orgValue = attendeeOrgType === 'individual' ? 'Individual' : attendeeOrganization.trim();
+      const titleValue = attendeeOrgType === 'organization' ? attendeeTitle.trim() : '';
       const prev = initialProfileRef.current;
       const profileChanged = !prev
         || prev.first_name !== attendeeFirstName.trim()
         || prev.middle_name !== attendeeMiddleName.trim()
         || prev.last_name !== attendeeLastName.trim()
-        || prev.organization !== orgValue;
+        || prev.organization !== orgValue
+        || prev.title !== titleValue;
 
       if (profileChanged) {
         await updateProfileFields({
@@ -169,6 +174,7 @@ export const useEventRegistration = () => {
           middle_name: attendeeMiddleName.trim(),
           last_name: attendeeLastName.trim(),
           organization: orgValue,
+          title: titleValue,
         });
       }
 
@@ -255,6 +261,7 @@ export const useEventRegistration = () => {
     attendeeMiddleName,
     attendeeLastName,
     attendeeOrganization,
+    attendeeTitle,
     attendeeOrgType,
     attendeePhone,
     attendeeSecondaryEmail,
@@ -279,6 +286,7 @@ export const useEventRegistration = () => {
     setAttendeeMiddleName,
     setAttendeeLastName,
     setAttendeeOrganization,
+    setAttendeeTitle,
     setAttendeeOrgType,
     handlePhoneChange,
     setAttendeeSecondaryEmail,

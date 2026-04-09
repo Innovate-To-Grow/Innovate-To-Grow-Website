@@ -34,6 +34,7 @@ export const AccountPage = () => {
                         lastName={account.lastName}
                         organizationType={account.organizationType}
                         organization={account.organization}
+                        title={account.title}
                         profileImage={account.profileImage}
                         imageUploading={account.imageUploading}
                         imageError={account.imageError}
@@ -49,8 +50,10 @@ export const AccountPage = () => {
                         onOrganizationTypeChange={(value) => {
                             account.setOrganizationType(value);
                             account.setOrganization('');
+                            account.setTitle('');
                         }}
                         onOrganizationChange={account.setOrganization}
+                        onTitleChange={account.setTitle}
                         onRetryProfile={() => void account.loadProfile()}
                         onStartEditing={() => account.setIsEditingProfile(true)}
                         onCancelEditing={account.handleCancelEditing}
