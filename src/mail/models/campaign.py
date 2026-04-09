@@ -5,15 +5,6 @@ from django.db import models
 from core.models import ProjectControlModel
 from mail.login_redirects import is_safe_internal_redirect_path
 
-AUDIENCE_CHOICES = [
-    ("subscribers", "All Email Subscribers"),
-    ("event_registrants", "Event Registrants"),
-    ("selected_members", "Selected Members"),
-    ("manual", "Manual Emails"),
-]
-
-# Extended choices used by the admin form — kept separate so the model field
-# definition stays unchanged and no migration is needed.
 ALL_AUDIENCE_CHOICES = [
     ("subscribers", "All Email Subscribers"),
     ("event_registrants", "Event Registrants"),
@@ -52,7 +43,7 @@ class EmailCampaign(ProjectControlModel):
         help_text="Internal site page where recipients land after one-click login.",
     )
 
-    audience_type = models.CharField(max_length=32, choices=AUDIENCE_CHOICES, default="subscribers")
+    audience_type = models.CharField(max_length=32, choices=ALL_AUDIENCE_CHOICES, default="subscribers")
     event = models.ForeignKey(
         "event.Event",
         null=True,
