@@ -36,28 +36,23 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-font-subtle-light dark:text-font-subtle-dark mb-4">
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">First Name</code></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Last Name</code></div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Middle Name</code></div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Title</code></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">When Started</code></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Last Updated</code> <span
                         class="text-xs opacity-60">(not imported)</span></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs font-bold">Primary
                     Email</code> <span class="text-xs text-red-500">required</span></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Primary Verified</code></div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Primary Subscribed</code>
-                </div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Primary Subscribed</code></div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Primary Expired</code>
+                    <span class="text-xs opacity-60">(not imported)</span></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Email</code></div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Verified</code>
-                </div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Subscribed</code>
-                </div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Expired</code>
-                    <span class="text-xs opacity-60">(not imported)</span></div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Bounced</code>
-                    <span class="text-xs opacity-60">(not imported)</span></div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Verified</code></div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Secondary Subscribed</code></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone Number</code></div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone number
-                    subscribed</code></div>
-                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone number verified</code>
-                </div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone Subscribed</code></div>
+                <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Phone Verified</code></div>
                 <div><code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">Organization
                     (optional)</code></div>
             </div>
@@ -71,9 +66,7 @@
                         class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">yes</code> / <code
                         class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">no</code></li>
                 <li>Existing members (matched by primary email) are skipped unless "Update Existing" is enabled</li>
-                <li><strong>Last Updated</strong>, <strong>Secondary Expired</strong>, and <strong>Secondary
-                    Bounced</strong> columns are accepted but not stored
-                </li>
+                <li><strong>Last Updated</strong> and <strong>Primary Expired</strong> columns are accepted but not stored</li>
             </ul>
         </div>
 

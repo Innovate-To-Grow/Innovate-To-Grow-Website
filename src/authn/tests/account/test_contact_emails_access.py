@@ -35,6 +35,7 @@ class ContactEmailAccessTests(APITestCase):
         contact = ContactEmail.objects.create(
             member=self.other_member,
             email_address="not-mine@example.com",
+            email_type="other",
             verified=True,
         )
         self.client.get(f"/authn/contact-emails/{contact.pk}/")
@@ -71,6 +72,7 @@ class ContactEmailAccessTests(APITestCase):
         contact = ContactEmail.objects.create(
             member=self.member,
             email_address="already-verified@example.com",
+            email_type="other",
             verified=True,
         )
         response = self.client.post(f"/authn/contact-emails/{contact.pk}/request-verification/")
@@ -108,6 +110,7 @@ class ContactEmailAccessTests(APITestCase):
         ContactEmail.objects.create(
             member=self.member,
             email_address="unverified@example.com",
+            email_type="other",
             verified=False,
         )
         response = self.client.get("/authn/account-emails/")

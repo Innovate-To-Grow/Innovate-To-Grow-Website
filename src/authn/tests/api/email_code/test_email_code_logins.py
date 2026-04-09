@@ -29,6 +29,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.alias = ContactEmail.objects.create(
             member=self.member,
             email_address="alias@example.com",
+            email_type="secondary",
             verified=True,
         )
 
@@ -48,6 +49,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         unverified = ContactEmail.objects.create(
             member=self.member,
             email_address="pending@example.com",
+            email_type="other",
             verified=False,
         )
 
@@ -178,6 +180,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         ContactEmail.objects.create(
             member=self.member,
             email_address="blocked@example.com",
+            email_type="other",
             verified=False,
         )
 

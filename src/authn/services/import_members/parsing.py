@@ -15,12 +15,21 @@ HEADER_MAP = {
     "last name": "last_name",
     "last_name": "last_name",
     "lastname": "last_name",
+    "middle name": "middle_name",
+    "middle_name": "middle_name",
+    "title": "title",
+    "title - role": "title",
+    "title - role (optional)": "title",
     "when started": "when_started",
     "when_started": "when_started",
     "date joined": "when_started",
     "date_joined": "when_started",
     "last updated": "last_updated",
     "last_updated": "last_updated",
+    "active": "is_active",
+    "staff": "is_staff",
+    "primary expired": "primary_expired",
+    "primary_expired": "primary_expired",
     "primary email": "primary_email",
     "primary_email": "primary_email",
     "email": "primary_email",
@@ -43,8 +52,12 @@ HEADER_MAP = {
     "phone": "phone_number",
     "phone number subscribed": "phone_subscribed",
     "phone_number_subscribed": "phone_subscribed",
+    "phone subscribed": "phone_subscribed",
+    "phone_subscribed": "phone_subscribed",
     "phone number verified": "phone_verified",
     "phone_number_verified": "phone_verified",
+    "phone verified": "phone_verified",
+    "phone_verified": "phone_verified",
     "organization": "organization",
     "organization (optional)": "organization",
     "company": "organization",
@@ -104,7 +117,17 @@ def clean_phone(value) -> str | None:
     stripped = str(value).strip()
     if not stripped:
         return None
-    return stripped[:-2] if stripped.endswith(".0") else stripped
+    # Remove trailing ".0" from Excel numeric conversion
+    if stripped.endswith(".0"):
+        stripped = stripped[:-2]
+    # Strip non-digit characters except leading +
+    digits_only = "".join(c for c in stripped if c.isdigit())
+    if not digits_only:
+        return None
+    # Normalize to E.164 format (preserve leading +)
+    if stripped.startswith("+"):
+        return f"+{digits_only}"
+    return f"+{digits_only}"
 
 
 def parse_row(row_num: int, row_data: dict) -> dict:
@@ -115,7 +138,11 @@ def parse_row(row_num: int, row_data: dict) -> dict:
         "primary_email": primary_email,
         "first_name": str(row_data.get("first_name", "")).strip() if row_data.get("first_name") else "",
         "last_name": str(row_data.get("last_name", "")).strip() if row_data.get("last_name") else "",
+        "middle_name": str(row_data.get("middle_name", "")).strip() if row_data.get("middle_name") else "",
+        "title": str(row_data.get("title", "")).strip() if row_data.get("title") else "",
         "organization": str(row_data.get("organization", "")).strip() if row_data.get("organization") else "",
+        "is_active": parse_boolean(row_data.get("is_active")) if row_data.get("is_active") is not None else None,
+        "is_staff": parse_boolean(row_data.get("is_staff")) if row_data.get("is_staff") is not None else None,
         "date_joined": parse_date(row_data.get("when_started")),
         "primary_verified": parse_boolean(row_data.get("primary_verified")),
         "primary_subscribed": parse_boolean(row_data.get("primary_subscribed")),

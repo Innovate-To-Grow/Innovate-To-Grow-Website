@@ -87,8 +87,10 @@ def import_members_from_excel(file, default_password: str | None = None, update_
                 password=hashed_pw,
                 first_name=parsed["first_name"],
                 last_name=parsed["last_name"],
+                middle_name=parsed["middle_name"] or None,
+                title=parsed["title"] or None,
                 organization=parsed["organization"],
-                is_active=True,
+                is_active=parsed["is_active"] if parsed["is_active"] is not None else True,
                 date_joined=parsed["date_joined"] or now,
             )
             members_to_create.append(member)
@@ -105,12 +107,18 @@ def import_members_from_excel(file, default_password: str | None = None, update_
                 ContactEmail.objects.bulk_create(emails_to_create, batch_size=BATCH_SIZE)
             if phones_to_create:
                 ContactPhone.objects.bulk_create(phones_to_create, batch_size=BATCH_SIZE)
-
-        if rows_to_update:
-            bulk_update_members(rows_to_update, result, claimed_contact_emails, claimed_phones)
     except Exception as exc:  # noqa: BLE001
         result.success = False
-        result.errors.append(f"Error processing file: {exc}")
+        result.created_count = 0
+        result.errors.append(f"Error creating members: {exc}")
+        return result
+
+    if rows_to_update:
+        # Rebuild claimed sets from actual DB state after successful create
+        claimed_contact_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
+        claimed_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
+        bulk_update_members(rows_to_update, result, claimed_contact_emails, claimed_phones)
+
     return result
 
 

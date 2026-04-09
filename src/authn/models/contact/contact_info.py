@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
@@ -54,6 +55,22 @@ class ContactEmail(ProjectControlModel):
             models.Index(fields=["email_type"]),
             models.Index(fields=["verified"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["member"],
+                condition=models.Q(email_type="primary"),
+                name="one_primary_email_per_member",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.email_type == "primary" and self.member_id:
+            qs = ContactEmail.objects.filter(member=self.member, email_type="primary")
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError({"email_type": "This member already has a primary email."})
 
     def __str__(self):
         # truncate contact email info tostring

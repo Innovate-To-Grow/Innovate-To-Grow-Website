@@ -15,6 +15,7 @@ def export_members_to_excel(queryset) -> bytes:
     Export a queryset of Member objects to a styled Excel workbook.
 
     Uses write-only mode and prefetch_related for efficient handling of large datasets.
+    Columns match the import template for round-trip compatibility.
 
     Args:
         queryset: A Django QuerySet of Member objects.
@@ -23,9 +24,11 @@ def export_members_to_excel(queryset) -> bytes:
         bytes: The Excel file content.
     """
     queryset = queryset.only(
+        "id",
         "first_name",
         "last_name",
         "middle_name",
+        "title",
         "organization",
         "is_active",
         "is_staff",
@@ -37,17 +40,24 @@ def export_members_to_excel(queryset) -> bytes:
 
     # Column definitions: (header_label, width)
     columns = [
+        ("Member UUID", 38),
         ("First Name", 15),
         ("Last Name", 15),
         ("Middle Name", 15),
-        ("Primary Email", 30),
+        ("Title", 20),
         ("Organization", 25),
         ("Active", 10),
         ("Staff", 10),
-        ("Email Subscribe", 16),
-        ("Date Joined", 18),
-        ("Contact Emails", 40),
-        ("Contact Phones", 25),
+        ("When Started", 18),
+        ("Primary Email", 30),
+        ("Primary Verified", 16),
+        ("Primary Subscribed", 18),
+        ("Secondary Email", 30),
+        ("Secondary Verified", 18),
+        ("Secondary Subscribed", 20),
+        ("Phone Number", 18),
+        ("Phone Subscribed", 18),
+        ("Phone Verified", 18),
     ]
 
     # Set column widths before appending rows
@@ -74,26 +84,30 @@ def export_members_to_excel(queryset) -> bytes:
         contact_emails = member.contact_emails.all()
         contact_phones = member.contact_phones.all()
 
-        email_parts = []
-        for ce in contact_emails:
-            label = ce.email_address
-            if ce.verified:
-                label += " (verified)"
-            email_parts.append(label)
+        primary = next((ce for ce in contact_emails if ce.email_type == "primary"), None)
+        secondary = next((ce for ce in contact_emails if ce.email_type == "secondary"), None)
+        phone = next(iter(contact_phones), None)
 
         ws.append(
             [
+                str(member.id),
                 member.first_name,
                 member.last_name,
                 member.middle_name or "",
-                member.get_primary_email(),
+                member.title or "",
                 member.organization or "",
                 "Yes" if member.is_active else "No",
                 "Yes" if member.is_staff else "No",
-                "Yes" if any(ce.subscribe for ce in contact_emails if ce.email_type == "primary") else "No",
                 member.date_joined.strftime("%Y-%m-%d %H:%M") if member.date_joined else "",
-                ", ".join(email_parts),
-                ", ".join(cp.phone_number for cp in contact_phones),
+                primary.email_address if primary else "",
+                "Yes" if primary and primary.verified else "No",
+                "Yes" if primary and primary.subscribe else "No",
+                secondary.email_address if secondary else "",
+                "Yes" if secondary and secondary.verified else "No",
+                "Yes" if secondary and secondary.subscribe else "No",
+                phone.phone_number if phone else "",
+                "Yes" if phone and phone.subscribe else "No",
+                "Yes" if phone and phone.verified else "No",
             ]
         )
 

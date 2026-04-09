@@ -61,6 +61,7 @@ class ContactEmailCrudTests(APITestCase):
         ContactEmail.objects.create(
             member=self.other_member,
             email_address="taken@example.com",
+            email_type="other",
             verified=True,
         )
         response = self.client.post(

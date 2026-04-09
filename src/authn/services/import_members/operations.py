@@ -43,8 +43,16 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
         member.first_name = parsed["first_name"]
     if parsed["last_name"]:
         member.last_name = parsed["last_name"]
+    if parsed["middle_name"]:
+        member.middle_name = parsed["middle_name"]
+    if parsed["title"]:
+        member.title = parsed["title"]
     if parsed["organization"]:
         member.organization = parsed["organization"]
+    if parsed["is_active"] is not None:
+        member.is_active = parsed["is_active"]
+    if parsed["is_staff"] is not None:
+        member.is_staff = parsed["is_staff"]
     member.save()
 
     primary_contact = member.contact_emails.filter(email_type="primary").first()
@@ -68,6 +76,7 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
         claimed_contact_emails.add(email_key)
     else:
         ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).update(
+            email_type="primary",
             verified=parsed["primary_verified"],
             subscribe=parsed["primary_subscribed"],
         )

@@ -29,6 +29,7 @@ class EmailCodeAuthRegisterTests(APITestCase):
         self.alias = ContactEmail.objects.create(
             member=self.member,
             email_address="alias@example.com",
+            email_type="secondary",
             verified=True,
         )
 

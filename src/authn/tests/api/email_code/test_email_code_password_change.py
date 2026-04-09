@@ -29,6 +29,7 @@ class EmailCodePasswordChangeTests(APITestCase):
         self.alias = ContactEmail.objects.create(
             member=self.member,
             email_address="alias@example.com",
+            email_type="secondary",
             verified=True,
         )
 
@@ -43,6 +44,7 @@ class EmailCodePasswordChangeTests(APITestCase):
         other_alias = ContactEmail.objects.create(
             member=other_member,
             email_address="other-alias@example.com",
+            email_type="secondary",
             verified=True,
         )
 
