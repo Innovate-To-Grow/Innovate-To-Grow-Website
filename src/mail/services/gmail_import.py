@@ -9,6 +9,7 @@ from email.utils import parseaddr
 from typing import Any
 
 from bs4 import BeautifulSoup
+from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import AND, MailBox
 
@@ -17,6 +18,9 @@ from core.models import GmailImportConfig
 from .preview import HTML_MARKER
 
 logger = logging.getLogger(__name__)
+
+GMAIL_LIST_CACHE_TTL = 300  # 5 minutes
+GMAIL_MSG_CACHE_TTL = 1800  # 30 minutes
 
 DEFAULT_GMAIL_MAILBOX = "i2g@g.ucmerced.edu"
 DEFAULT_GMAIL_FOLDER = "Sent"
@@ -152,9 +156,17 @@ def _find_message_by_uid(mailbox, message_id: str):
     raise GmailImportError("The selected Gmail message could not be found.")
 
 
-def list_recent_sent_messages(limit: int = 5, mailbox: str | None = None) -> list[dict[str, Any]]:
+def list_recent_sent_messages(
+    limit: int = 5, mailbox: str | None = None, *, force_refresh: bool = False
+) -> list[dict[str, Any]]:
     """Return summaries for the most recent sent Gmail messages."""
     resolved_mailbox = resolve_gmail_mailbox(mailbox)
+    cache_key = f"gmail_import:list:{resolved_mailbox}:{limit}"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
     try:
         with _open_mailbox(mailbox=resolved_mailbox) as client:
@@ -178,12 +190,19 @@ def list_recent_sent_messages(limit: int = 5, mailbox: str | None = None) -> lis
             }
         )
 
+    cache.set(cache_key, summaries, GMAIL_LIST_CACHE_TTL)
     return summaries
 
 
-def fetch_message_html_fragment(message_id: str, mailbox: str | None = None) -> str:
+def fetch_message_html_fragment(message_id: str, mailbox: str | None = None, *, use_cache: bool = True) -> str:
     """Fetch a Gmail message and return a wrapper-safe HTML fragment."""
     resolved_mailbox = resolve_gmail_mailbox(mailbox)
+    cache_key = f"gmail_import:msg:{resolved_mailbox}:{message_id}"
+
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
     try:
         with _open_mailbox(mailbox=resolved_mailbox) as client:
@@ -197,6 +216,7 @@ def fetch_message_html_fragment(message_id: str, mailbox: str | None = None) -> 
 
     if not html:
         raise GmailImportError("The selected Gmail message does not contain an HTML body.")
+    cache.set(cache_key, html, GMAIL_MSG_CACHE_TTL)
     return html
 
 

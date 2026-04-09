@@ -4,7 +4,8 @@ import json
 import logging
 
 from django.contrib import admin, messages
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
+from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
@@ -24,6 +25,11 @@ def get_inbox_urls():
             name="mail_inbox_list",
         ),
         path(
+            "mail/inbox/fragment/",
+            admin.site.admin_view(inbox_fragment_view),
+            name="mail_inbox_fragment",
+        ),
+        path(
             "mail/inbox/<str:uid>/",
             admin.site.admin_view(inbox_detail_view),
             name="mail_inbox_detail",
@@ -41,9 +47,10 @@ def inbox_list_view(request):
     gmail_config = GmailImportConfig.load()
     error_message = ""
     inbox_messages = []
+    force_refresh = request.GET.get("refresh") == "1"
 
     try:
-        inbox_messages = list_inbox_messages(limit=30)
+        inbox_messages = list_inbox_messages(limit=30, force_refresh=force_refresh)
     except InboxError as exc:
         error_message = str(exc)
     except Exception as exc:
@@ -56,8 +63,35 @@ def inbox_list_view(request):
         "gmail_config": gmail_config,
         "inbox_messages": inbox_messages,
         "error_message": error_message,
+        "fragment_url": reverse("admin:mail_inbox_fragment"),
     }
     return TemplateResponse(request, "admin/mail/inbox/list.html", context)
+
+
+def inbox_fragment_view(request):
+    """Return HTML partial for inbox list + config stats (AJAX refresh, always re-fetches IMAP)."""
+    gmail_config = GmailImportConfig.load()
+    error_message = ""
+    inbox_messages = []
+
+    try:
+        inbox_messages = list_inbox_messages(limit=30, force_refresh=True)
+    except InboxError as exc:
+        error_message = str(exc)
+    except Exception as exc:
+        logger.exception("Unexpected error refreshing inbox fragment.")
+        error_message = f"Unexpected error: {exc}"
+
+    html = render_to_string(
+        "admin/mail/inbox/_inbox_full_body.html",
+        {
+            "gmail_config": gmail_config,
+            "inbox_messages": inbox_messages,
+            "error_message": error_message,
+        },
+        request=request,
+    )
+    return HttpResponse(html)
 
 
 def inbox_detail_view(request, uid):

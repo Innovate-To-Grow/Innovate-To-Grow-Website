@@ -10,12 +10,18 @@ from email.mime.text import MIMEText
 from typing import Any
 
 from bs4 import BeautifulSoup
+from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import AND, MailBox
 
 from core.models import EmailServiceConfig, GmailImportConfig
 
 logger = logging.getLogger(__name__)
+
+INBOX_LIST_CACHE_KEY = "inbox:list"
+INBOX_LIST_CACHE_TTL = 300  # 5 minutes
+INBOX_MSG_CACHE_PREFIX = "inbox:msg:"
+INBOX_MSG_CACHE_TTL = 1800  # 30 minutes
 
 
 class InboxError(RuntimeError):
@@ -92,8 +98,15 @@ def _extract_to(message: Any) -> list[dict[str, str]]:
     return [{"name": str(getattr(v, "name", "") or ""), "email": str(getattr(v, "email", "") or "")} for v in to_values]
 
 
-def list_inbox_messages(limit: int = 30, mailbox: str | None = None) -> list[dict[str, Any]]:
+def list_inbox_messages(
+    limit: int = 30, mailbox: str | None = None, *, force_refresh: bool = False
+) -> list[dict[str, Any]]:
     """Return summaries for the most recent inbox messages."""
+    if not force_refresh:
+        cached = cache.get(INBOX_LIST_CACHE_KEY)
+        if cached is not None:
+            return cached
+
     try:
         with _open_inbox(mailbox=mailbox) as client:
             messages = list(client.fetch(limit=limit, reverse=True, mark_seen=False, bulk=True))
@@ -118,11 +131,21 @@ def list_inbox_messages(limit: int = 30, mailbox: str | None = None) -> list[dic
                 "is_seen": "\\Seen" in flags,
             }
         )
+
+    cache.set(INBOX_LIST_CACHE_KEY, results, INBOX_LIST_CACHE_TTL)
     return results
 
 
 def fetch_inbox_message(uid: str, mailbox: str | None = None) -> dict[str, Any]:
-    """Fetch a single inbox message by UID with full details."""
+    """Fetch a single inbox message by UID with full details.
+
+    First fetch hits IMAP with mark_seen=True. Subsequent fetches serve from cache.
+    """
+    cache_key = f"{INBOX_MSG_CACHE_PREFIX}{uid}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         with _open_inbox(mailbox=mailbox) as client:
             for msg in client.fetch(AND(uid=uid), limit=1, mark_seen=True, bulk=False):
@@ -138,7 +161,7 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None) -> dict[str, Any]:
                 html = str(getattr(msg, "html", "") or "").strip()
                 text = str(getattr(msg, "text", "") or "").strip()
 
-                return {
+                result = {
                     "uid": str(getattr(msg, "uid", "") or ""),
                     "subject": str(getattr(msg, "subject", "") or "").strip() or "(No subject)",
                     "from_name": from_name,
@@ -150,12 +173,27 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None) -> dict[str, Any]:
                     "message_id": message_id,
                     "references": references,
                 }
+                cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
+                _update_list_cache_seen(uid)
+                return result
             raise InboxError("Message not found.")
     except InboxError:
         raise
     except Exception as exc:
         logger.exception("Failed to fetch inbox message uid=%s.", uid)
         raise InboxError("Failed to fetch the message.") from exc
+
+
+def _update_list_cache_seen(uid: str) -> None:
+    """Mark a message as seen in the cached inbox list (if present)."""
+    cached_list = cache.get(INBOX_LIST_CACHE_KEY)
+    if cached_list is None:
+        return
+    for msg in cached_list:
+        if msg["uid"] == uid:
+            msg["is_seen"] = True
+            break
+    cache.set(INBOX_LIST_CACHE_KEY, cached_list, INBOX_LIST_CACHE_TTL)
 
 
 def render_reply_html(body_text, original_from="", original_date="", quoted_text=""):

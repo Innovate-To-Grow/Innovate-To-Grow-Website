@@ -64,7 +64,7 @@ class EmailCampaignAdminImportTest(TestCase):
             response = self.client.get(reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]))
 
         self.assertEqual(response.status_code, 200)
-        mock_list.assert_called_once_with(limit=5, mailbox="campaigns@ucmerced.edu")
+        mock_list.assert_called_once_with(limit=5, mailbox="campaigns@ucmerced.edu", force_refresh=False)
         self.assertContains(response, "Sent Newsletter")
         self.assertContains(response, "Import will replace the current campaign body")
         self.assertContains(response, "imap.gmail.com")

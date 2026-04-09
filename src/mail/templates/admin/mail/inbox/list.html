@@ -1,90 +1,30 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        @keyframes i2g-inbox-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .i2g-inbox-refresh--loading .i2g-inbox-refresh-icon {
+            animation: i2g-inbox-spin 0.75s linear infinite;
+            display: inline-block;
+        }
+        .i2g-inbox-refresh--loading {
+            opacity: 0.65;
+        }
+    </style>
+    <script defer src="{% static 'mail/js/inbox_refresh.js' %}"></script>
+{% endblock %}
+
 {% block content %}
-<div style="max-width:800px;">
-    <!-- Config info -->
-    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
-        <h3 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-2">
-            <span class="material-symbols-outlined !text-[18px]">settings</span>
-            Gmail Account
-        </h3>
-        <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            <div>
-                <span class="text-base-400">Account:</span>
-                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_config.gmail_username|default:"Not configured" }}</span>
-            </div>
-            <div>
-                <span class="text-base-400">IMAP Host:</span>
-                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_config.imap_host|default:"N/A" }}</span>
-            </div>
-            <div>
-                <span class="text-base-400">Folder:</span>
-                <span class="font-medium text-font-default-light dark:text-font-default-dark">INBOX</span>
-            </div>
-            <div>
-                <span class="text-base-400">Messages:</span>
-                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ inbox_messages|length }}</span>
-            </div>
-        </div>
-    </div>
-
-    {% if error_message %}
-    <div class="mb-6 rounded-default border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-        <div class="flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
-            <span class="material-symbols-outlined !text-[18px]">error</span>
-            {{ error_message }}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if inbox_messages %}
-    <!-- Message list -->
-    <div class="rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
-        {% for msg in inbox_messages %}
-        <a href="{% url 'admin:mail_inbox_detail' msg.uid %}"
-           class="block px-4 py-3 border-b border-base-100 dark:border-base-700 hover:bg-base-50 dark:hover:bg-base-800 transition-colors {% if not msg.is_seen %}bg-white dark:bg-base-900{% else %}bg-base-50/50 dark:bg-base-800/50{% endif %}">
-            <div class="flex items-start gap-3">
-                <!-- Read/unread indicator -->
-                <div class="mt-1 shrink-0">
-                    {% if not msg.is_seen %}
-                    <span class="material-symbols-outlined !text-[18px] text-primary-600 dark:text-primary-400">mark_email_unread</span>
-                    {% else %}
-                    <span class="material-symbols-outlined !text-[18px] text-base-300 dark:text-base-600">mail</span>
-                    {% endif %}
-                </div>
-
-                <div class="min-w-0 flex-1">
-                    <!-- From + date row -->
-                    <div class="flex items-center justify-between gap-2 mb-0.5">
-                        <span class="text-sm {% if not msg.is_seen %}font-semibold text-font-important-light dark:text-font-important-dark{% else %}font-medium text-base-600 dark:text-base-300{% endif %} truncate">
-                            {% if msg.from_name %}{{ msg.from_name }}{% else %}{{ msg.from_email }}{% endif %}
-                        </span>
-                        <span class="text-xs text-base-400 shrink-0">{{ msg.date }}</span>
-                    </div>
-
-                    <!-- Subject -->
-                    <div class="text-sm {% if not msg.is_seen %}font-medium text-font-default-light dark:text-font-default-dark{% else %}text-base-500 dark:text-base-400{% endif %} truncate mb-0.5">
-                        {{ msg.subject }}
-                    </div>
-
-                    <!-- Snippet -->
-                    <div class="text-xs text-base-400 truncate">
-                        {{ msg.snippet }}
-                    </div>
-                </div>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-    {% elif not error_message %}
-    <div class="text-center py-12 text-base-400">
-        <span class="material-symbols-outlined !text-[48px] mb-2 block">inbox</span>
-        <p class="text-sm">No messages in inbox.</p>
-    </div>
-    {% endif %}
+<div id="inbox-all-dynamic" class="w-full max-w-none" data-fragment-url="{{ fragment_url }}">
+    {% include "admin/mail/inbox/_inbox_full_body.html" %}
 </div>
 {% endblock %}

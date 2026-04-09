@@ -40,6 +40,9 @@ def _mailbox_context(mailbox):
 
 class GmailImportServiceTest(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
         self.gmail_config = GmailImportConfig.objects.create(
             name="Primary Gmail Import",
             is_active=True,

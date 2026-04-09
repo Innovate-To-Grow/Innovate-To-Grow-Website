@@ -424,9 +424,11 @@ class EmailCampaignAdmin(BaseModelAdmin):
             messages.warning(request, "Only draft campaigns can import Gmail HTML.")
             return HttpResponseRedirect(change_url)
 
+        force_refresh = request.GET.get("refresh") == "1"
+
         try:
             mailbox = resolve_gmail_mailbox()
-            gmail_messages = list_recent_sent_messages(limit=5, mailbox=mailbox)
+            gmail_messages = list_recent_sent_messages(limit=5, mailbox=mailbox, force_refresh=force_refresh)
             gmail_import_config = GmailImportConfig.load()
         except GmailImportError as exc:
             messages.error(request, str(exc))
@@ -441,6 +443,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
             "mailbox": mailbox,
             "gmail_folder": GMAIL_FOLDER_DISPLAY,
             "confirm_url": reverse("admin:mail_emailcampaign_import_gmail_html_confirm", args=[object_id]),
+            "refresh_url": request.path + "?refresh=1",
             "cancel_url": change_url,
         }
         return TemplateResponse(request, "admin/mail/import_gmail_html.html", context)
