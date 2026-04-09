@@ -5,7 +5,6 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from authn.models import ContactPhone
-
 from event.models import EventRegistration, Question, Ticket
 from event.tests.helpers import make_event, make_member
 

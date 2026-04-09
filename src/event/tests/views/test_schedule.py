@@ -3,8 +3,7 @@ from rest_framework.test import APIClient
 
 from event.models import CurrentProjectSchedule
 from event.services import sync_schedule
-
-from .test_services_schedule_sync import _projects_records, _tracks_records
+from event.tests.helpers import sample_projects_records, sample_tracks_records
 
 
 class CurrentEventScheduleViewTest(TestCase):
@@ -24,7 +23,7 @@ class CurrentEventScheduleViewTest(TestCase):
 
     def test_returns_payload_for_schedule(self):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
-        sync_schedule(config, tracks_records=_tracks_records(), projects_records=_projects_records())
+        sync_schedule(config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
 
         response = self.client.get("/event/schedule/")
 

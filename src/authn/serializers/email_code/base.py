@@ -7,7 +7,6 @@ import re
 from rest_framework import serializers
 
 from authn.models.security import EmailAuthChallenge
-from authn.serializers.helpers import decrypt_password_pair
 from authn.services import AuthChallengeInvalid, normalize_email, verify_email_code
 
 _CODE_RE = re.compile(r"^\d{6}$")
@@ -48,6 +47,3 @@ class BaseCodeVerifySerializer(BaseEmailSerializer):
 
 
 PURPOSE = EmailAuthChallenge.Purpose
-
-# Re-export for backwards compatibility within the email_code subpackage.
-decrypt_new_passwords = decrypt_password_pair

@@ -10,66 +10,8 @@ from event.models import (
     EventScheduleTrack,
 )
 from event.services import ScheduleSyncError, sync_schedule
+from event.tests.helpers import sample_projects_records, sample_tracks_records
 from projects.models import Project, Semester
-
-
-def _tracks_records():
-    return [
-        {"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"},
-        {"Track": 2, "Room": "Cypress", "Class": "CEE", "Topic": "Environment"},
-        {"Track": 3, "Room": "COB 105", "Class": "CSE", "Topic": "Tim Berners-Lee"},
-    ]
-
-
-def _projects_records():
-    return [
-        {
-            "Track": 1,
-            "Order": 1,
-            "Year-Semester": "2025-1 Spring",
-            "Class": "CAP",
-            "Team#": "CAP-101",
-            "Team Name": "Alpha",
-            "Project Title": "Smart Farm",
-            "Organization": "Agri Corp",
-            "Industry": "Ag",
-            "Abstract": "A smart farming project.",
-            "Student Names": "Ada, Ben",
-            "Name Title": "Mentor - Lead",
-        },
-        {
-            "Track": 1,
-            "Order": 2,
-            "Year-Semester": "2025-1 Spring",
-            "Class": "CAP",
-            "Project Title": "Break",
-        },
-        {
-            "Track": 3,
-            "Order": 1,
-            "Year-Semester": "2025-1 Spring",
-            "Class": "CSE",
-            "Team#": "CSE-201",
-            "Team Name": "Delta",
-            "Project Title": "Campus Navigator",
-            "Organization": "UC Merced",
-            "Industry": "Education",
-            "Abstract": "A route finder for students.",
-            "Student Names": "Carol, Dan",
-            "Name Title": "Faculty - Sponsor",
-        },
-        {
-            "Track": 2,
-            "Order": 1,
-            "Year-Semester": "2025-1 Spring",
-            "Class": "CEE",
-            "Team#": "CEE-999",
-            "Team Name": "River Works",
-            "Project Title": "Flood Mapper",
-            "Organization": "County Office",
-            "Industry": "Government",
-        },
-    ]
 
 
 class ScheduleSyncServiceTest(TestCase):
@@ -94,8 +36,8 @@ class ScheduleSyncServiceTest(TestCase):
     def test_sync_creates_sections_tracks_slots_and_agenda_items(self):
         stats = sync_schedule(
             self.config,
-            tracks_records=_tracks_records(),
-            projects_records=_projects_records(),
+            tracks_records=sample_tracks_records(),
+            projects_records=sample_projects_records(),
         )
 
         self.config.refresh_from_db()
@@ -129,8 +71,8 @@ class ScheduleSyncServiceTest(TestCase):
 
         sync_schedule(
             self.config,
-            tracks_records=_tracks_records(),
-            projects_records=_projects_records(),
+            tracks_records=sample_tracks_records(),
+            projects_records=sample_projects_records(),
         )
         sync_schedule(
             self.config,

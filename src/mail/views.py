@@ -75,7 +75,9 @@ class OneClickUnsubscribeView(APIView):
         if isinstance(result, str):
             return HttpResponse(_render_unsubscribe_page(error=result), status=400, content_type="text/html")
         resubscribe_token = build_resubscribe_token(result)
-        return HttpResponse(_render_unsubscribe_page(member=result, resubscribe_token=resubscribe_token), content_type="text/html")
+        return HttpResponse(
+            _render_unsubscribe_page(member=result, resubscribe_token=resubscribe_token), content_type="text/html"
+        )
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, token):
@@ -97,9 +99,7 @@ class ResubscribeView(APIView):
         try:
             member = get_member_from_resubscribe_token(token)
         except ValueError as exc:
-            return HttpResponse(
-                _render_resubscribe_page(error=str(exc)), status=400, content_type="text/html"
-            )
+            return HttpResponse(_render_resubscribe_page(error=str(exc)), status=400, content_type="text/html")
 
         primary = member.get_primary_contact_email()
         if primary and not primary.subscribe:

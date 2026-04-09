@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase, override_settings
 
-from event.models import EventRegistration, Ticket
+from event.models import Ticket
 from event.services.ticket_assets import (
     build_backend_absolute_url,
     build_frontend_absolute_url,
@@ -14,12 +14,7 @@ from event.services.ticket_assets import (
     get_member_from_login_token,
     get_registration_from_access_token,
 )
-from event.tests.helpers import make_event, make_member
-
-
-def _make_registration(member, event, ticket, **kwargs):
-    return EventRegistration.objects.create(member=member, event=event, ticket=ticket, **kwargs)
-
+from event.tests.helpers import make_event, make_member, make_registration
 
 # ---------- Ticket Access Token ----------
 
@@ -29,7 +24,7 @@ class BuildTicketAccessTokenTest(TestCase):
         self.member = make_member()
         self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
-        self.registration = _make_registration(self.member, self.event, self.ticket)
+        self.registration = make_registration(self.member, self.event, self.ticket)
 
     def test_returns_non_empty_string(self):
         token = build_ticket_access_token(self.registration)
@@ -47,7 +42,7 @@ class GetRegistrationFromAccessTokenTest(TestCase):
         self.member = make_member()
         self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
-        self.registration = _make_registration(self.member, self.event, self.ticket)
+        self.registration = make_registration(self.member, self.event, self.ticket)
 
     def test_valid_token_returns_registration(self):
         token = build_ticket_access_token(self.registration)
@@ -190,7 +185,7 @@ class GenerateTicketBarcodeDataUrlTest(TestCase):
         self.member = make_member()
         self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
-        self.registration = _make_registration(self.member, self.event, self.ticket)
+        self.registration = make_registration(self.member, self.event, self.ticket)
 
     def test_returns_data_uri_prefix(self):
         result = generate_ticket_barcode_data_url(self.registration)
