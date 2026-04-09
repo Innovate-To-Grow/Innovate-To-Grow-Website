@@ -138,9 +138,10 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
         )
     except Exception as exc:
         logger.exception("Failed to send verification email to %s", challenge.target_email)
-        # Mark the challenge as expired so it does not count toward the
-        # rate-limit / resend-cooldown on subsequent retry attempts.
-        challenge.mark_expired()
+        # Delete the challenge so it does not count toward the hourly
+        # rate-limit or resend-cooldown on subsequent retry attempts.
+        with transaction.atomic():
+            EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()
         raise AuthChallengeDeliveryError("Failed to send verification email.") from exc
 
     return challenge
