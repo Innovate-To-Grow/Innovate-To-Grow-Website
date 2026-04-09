@@ -99,9 +99,9 @@ def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> 
         else:
             keypair = get_or_create_auth_keypair()
 
-        # Load private key (stored unencrypted in DB)
+        # Load private key (decrypted from Fernet-encrypted DB storage)
         private_key = serialization.load_pem_private_key(
-            keypair.private_key_pem.encode("utf-8"),
+            keypair.decrypted_private_key_pem.encode("utf-8"),
             password=None,
             backend=default_backend(),
         )

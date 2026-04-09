@@ -1,14 +1,22 @@
 """RFC 8058 one-click unsubscribe token utilities."""
 
 import logging
+from hashlib import sha256
 
 from django.conf import settings
 from django.core import signing
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
 _SALT = "rfc8058-one-click-unsubscribe"
 _MAX_AGE = 60 * 60 * 24 * 90  # 90 days
+
+
+def _consume_oneclick_token(token: str) -> bool:
+    """Atomically mark a token as used. Returns True on first use, False on replay."""
+    token_digest = sha256(token.encode("utf-8")).hexdigest()
+    return cache.add(f"mail:oneclick-unsub-used:{token_digest}", True, timeout=_MAX_AGE)
 
 
 def build_oneclick_unsubscribe_token(member_or_id) -> str:
@@ -23,6 +31,7 @@ def build_oneclick_unsubscribe_token(member_or_id) -> str:
 def get_member_from_oneclick_token(token: str):
     """Validate a one-click unsubscribe token and return the Member.
 
+    Marks the token as used (one-time).
     Raises ``ValueError`` on invalid, expired, or unknown-member tokens.
     """
     from authn.models import Member
@@ -34,9 +43,14 @@ def get_member_from_oneclick_token(token: str):
         raise ValueError("Invalid or expired unsubscribe link.") from exc
 
     try:
-        return Member.objects.get(pk=member_id, is_active=True)
+        member = Member.objects.get(pk=member_id, is_active=True)
     except Member.DoesNotExist as exc:
         raise ValueError("Account not found.") from exc
+
+    if not _consume_oneclick_token(token):
+        raise ValueError("This unsubscribe link has already been used.")
+
+    return member
 
 
 def build_oneclick_unsubscribe_url(member_or_id) -> str:

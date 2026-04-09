@@ -22,7 +22,7 @@ from authn.services import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
-from authn.throttles import ContactEmailCreateThrottle
+from authn.throttles import ContactEmailCreateThrottle, EmailCodeRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import challenge_error_response
 
@@ -109,6 +109,7 @@ class ContactEmailDetailView(APIView):
 
 class ContactEmailRequestVerificationView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
@@ -131,6 +132,7 @@ class ContactEmailRequestVerificationView(APIView):
 
 class ContactEmailVerifyCodeView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):

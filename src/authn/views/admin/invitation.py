@@ -3,12 +3,16 @@ View for accepting admin invitations (plain Django, not DRF).
 """
 
 from django.contrib import admin
+from django.core.cache import cache
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.views import View
 
 from authn.forms.invitation import AcceptInvitationForm
 from authn.models import ContactEmail
 from authn.models.members.admin_invitation import AdminInvitation
+
+_INVITATION_RATE_LIMIT = 10  # max attempts per token per hour
 
 Member = None  # resolved lazily
 
@@ -61,6 +65,12 @@ class AcceptInvitationView(View):
         )
 
     def post(self, request, token):
+        cache_key = f"invitation-rate:{token}"
+        attempts = cache.get(cache_key, 0)
+        if attempts >= _INVITATION_RATE_LIMIT:
+            return HttpResponse("Too many attempts. Please try again later.", status=429, content_type="text/plain")
+        cache.set(cache_key, attempts + 1, timeout=3600)
+
         invitation = self._get_invitation(token)
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)

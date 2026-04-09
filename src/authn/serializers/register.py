@@ -6,20 +6,12 @@ from __future__ import annotations
 
 import re
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from authn.models.security import EmailAuthChallenge
-from authn.services import (
-    RSADecryptionError,
-    decrypt_password,
-    is_encrypted_password,
-    issue_email_challenge,
-    normalize_email,
-    registration_email_conflicts,
-)
+from authn.serializers.helpers import decrypt_password_pair
+from authn.services import issue_email_challenge, normalize_email, registration_email_conflicts
 
 Member = get_user_model()
 
@@ -88,9 +80,6 @@ class RegisterSerializer(serializers.Serializer):
 
     # noinspection PyAttributeOutsideInit
     def validate_email(self, value: str) -> str:
-        """
-        Check that the email is not already registered.
-        """
         from authn.models import ContactEmail
 
         email_lower = normalize_email(value)
@@ -101,49 +90,17 @@ class RegisterSerializer(serializers.Serializer):
         )
         pending_member = pending_contact.member if pending_contact else None
         if registration_email_conflicts(email_lower, exclude_member_id=pending_member.pk if pending_member else None):
-            raise serializers.ValidationError("A user with this email already exists.")
+            raise serializers.ValidationError("Unable to register with this email address.")
         self._pending_member = pending_member
         return email_lower
 
     # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
-        """
-        Decrypt passwords and validate them.
-        """
-        key_id = attrs.get("key_id", "")
-        encrypted_password = attrs["password"]
-        encrypted_confirm = attrs["password_confirm"]
-
-        # Decrypt passwords if they appear to be encrypted
-        if is_encrypted_password(encrypted_password):
-            try:
-                password = decrypt_password(encrypted_password, key_id if key_id else None)
-                password_confirm = decrypt_password(encrypted_confirm, key_id if key_id else None)
-            except RSADecryptionError as e:
-                raise serializers.ValidationError({"password": f"Failed to decrypt password: {e}"})
-        else:
-            # Block plaintext passwords in production
-            if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
-                raise serializers.ValidationError({"password": "Encrypted password required."})
-            password = encrypted_password
-            password_confirm = encrypted_confirm
-
-        # Validate password length
-        if len(password) < 8:
-            raise serializers.ValidationError({"password": "Password must be at least 8 characters."})
-
-        # Validate password using Django's password validators
-        try:
-            validate_password(password)
-        except Exception as e:
-            raise serializers.ValidationError({"password": list(e.messages)})
-
-        # Check passwords match
-        if password != password_confirm:
-            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
-
-        # Store decrypted password for create()
-        attrs["_decrypted_password"] = password
+        attrs["_decrypted_password"] = decrypt_password_pair(
+            attrs,
+            password_key="password",
+            confirm_key="password_confirm",
+        )
         return attrs
 
     def create(self, validated_data: dict) -> Member:

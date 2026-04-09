@@ -33,19 +33,30 @@ class OneClickUnsubscribeViewTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self._is_subscribed())
 
-    def test_idempotent_post(self):
-        """Posting twice should succeed both times (RFC 8058 idempotency)."""
+    def test_replay_post_returns_400(self):
+        """Posting the same token twice should fail on the second attempt (one-time use)."""
         self.client.post(self.url)
         response = self.client.post(self.url)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         self.assertFalse(self._is_subscribed())
 
-    def test_get_unsubscribes_and_returns_html(self):
+    def test_get_unsubscribes_member(self):
+        """GET directly unsubscribes the member."""
+        self.assertTrue(self._is_subscribed())
+
         response = self.client.get(self.url)
+
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/html", response["Content-Type"])
         self.assertFalse(self._is_subscribed())
+
+    def test_get_replay_returns_400(self):
+        """GET with an already-used token returns 400."""
+        self.client.get(self.url)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 400)
 
     def test_get_invalid_token_returns_400_html(self):
         response = self.client.get("/mail/unsubscribe/garbage-token/")
@@ -89,10 +100,11 @@ class OneClickUnsubscribeViewTests(APITestCase):
         self.assertIn("unsubscribed", call_kwargs["subject"].lower())
 
     @patch("authn.services.email.send_notification_email")
-    def test_idempotent_post_does_not_resend_email(self, mock_send):
-        """Second POST should not send another confirmation email."""
+    def test_replay_post_does_not_resend_email(self, mock_send):
+        """Second POST is rejected (token consumed), so no confirmation email is sent."""
         self.client.post(self.url)
         mock_send.reset_mock()
 
-        self.client.post(self.url)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 400)
         mock_send.assert_not_called()

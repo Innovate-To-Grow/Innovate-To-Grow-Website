@@ -105,4 +105,4 @@ class EmailCodeAuthRegisterTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("already exists", response.data["email"][0])
+        self.assertIn("Unable to register", response.data["email"][0])

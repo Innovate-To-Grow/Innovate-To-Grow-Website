@@ -39,7 +39,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
             />
 
             {emailCenter.loading ? (
-                <p style={{color: '#6b7280', fontSize: '0.875rem'}}>Loading connected emails...</p>
+                <p className="account-status-text">Loading connected emails...</p>
             ) : (
                 emailCenter.contactEmails.map((contact) => (
                     <ContactEmailCard

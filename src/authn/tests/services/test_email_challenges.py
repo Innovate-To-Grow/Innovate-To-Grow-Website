@@ -21,7 +21,7 @@ PURPOSE = EmailAuthChallenge.Purpose.ADMIN_LOGIN
 
 
 class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
-    """Verify that a failed email send expires the challenge so it does not pollute rate limits."""
+    """Verify that a failed email send deletes the challenge so it does not pollute rate limits."""
 
     def setUp(self):
         self.member = Member.objects.create_user(password="TestPass123!", is_active=True, is_staff=True)

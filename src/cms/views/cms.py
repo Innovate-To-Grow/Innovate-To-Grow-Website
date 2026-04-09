@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.core.cache import cache
 from django.utils import timezone
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -35,6 +36,9 @@ class CMSLivePreviewView(APIView):
     GET  (public cache): preview tab polls this endpoint to render the latest state.
                        Staff users may fall back to the current DB state.
     """
+
+    # Session auth needed for admin JS; JWT default handles API clients.
+    authentication_classes = [SessionAuthentication]
 
     def get_permissions(self):
         if self.request.method == "POST":

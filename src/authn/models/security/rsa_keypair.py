@@ -32,11 +32,18 @@ class RSAKeypair(ProjectControlModel):
 
     private_key_pem = models.TextField(blank=True, help_text="Private key in PEM format.")
 
+    @property
+    def decrypted_private_key_pem(self) -> str:
+        """Return the plaintext private key PEM, decrypting if stored encrypted."""
+        from authn.services.key_encryption import decrypt_pem
+
+        return decrypt_pem(self.private_key_pem)
+
     @classmethod
     def _get_key_encryption_algorithm(cls) -> serialization.KeySerializationEncryption:
         """
-        Return encryption algorithm for private key serialization.
-        Keys are stored unencrypted — access control relies on database security.
+        Return encryption algorithm for private key PEM serialization.
+        At-rest encryption is handled separately via Fernet in save().
         """
         return serialization.NoEncryption()
 
@@ -71,10 +78,17 @@ class RSAKeypair(ProjectControlModel):
 
     def save(self, *args, **kwargs):
         """
-        Auto-generate keys if not provided.
+        Auto-generate keys if not provided, and encrypt the private key at rest.
         """
+        from authn.services.key_encryption import encrypt_pem, is_encrypted
+
         if not self.public_key_pem or not self.private_key_pem:
             self.public_key_pem, self.private_key_pem = self.generate_keypair()
+
+        # Encrypt private key before writing to DB
+        if self.private_key_pem and not is_encrypted(self.private_key_pem):
+            self.private_key_pem = encrypt_pem(self.private_key_pem)
+
         super().save(*args, **kwargs)
 
     # Mark which keypair should be used for current operations.

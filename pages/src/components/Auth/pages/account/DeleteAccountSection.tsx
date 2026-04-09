@@ -38,7 +38,13 @@ export const DeleteAccountSection = ({
         aria-expanded={isExpanded}
       >
         <h2 className="account-section-title">Delete Account</h2>
-        <span className="account-section-toggle" aria-hidden>{isExpanded ? '−' : '+'}</span>
+        <span className="account-section-toggle" aria-hidden="true">
+          {isExpanded ? (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 7h12v2H2z"/></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7 2h2v5h5v2H9v5H7V9H2V7h5z"/></svg>
+          )}
+        </span>
       </button>
 
       {isExpanded ? (

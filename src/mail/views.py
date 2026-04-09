@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from authn.throttles import LoginRateThrottle
 from authn.views.helpers import build_auth_success_payload
 
 from .login_redirects import get_magic_login_redirect_path
@@ -20,6 +21,7 @@ class MagicLoginView(APIView):
     """Exchange a campaign login token for JWT credentials."""
 
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -43,8 +45,8 @@ class OneClickUnsubscribeView(APIView):
     """Unsubscribe endpoint.
 
     - **POST** (RFC 8058): email clients call this automatically.
-    - **GET**: users click the visible link in the email footer and
-      are immediately unsubscribed with a confirmation HTML page.
+    - **GET**: shows a confirmation page so link pre-fetchers don't
+      trigger unsubscription.
     """
 
     permission_classes = [AllowAny]
@@ -76,8 +78,8 @@ class OneClickUnsubscribeView(APIView):
     def post(self, request, token):
         result = self._unsubscribe(token)
         if isinstance(result, str):
-            return HttpResponse(result, status=400, content_type="text/plain")
-        return HttpResponse("Unsubscribed successfully.", status=200, content_type="text/plain")
+            return HttpResponse(_render_unsubscribe_page(error=result), status=400, content_type="text/html")
+        return HttpResponse(_render_unsubscribe_page(member=result), content_type="text/html")
 
 
 def _render_unsubscribe_page(member=None, error=None):

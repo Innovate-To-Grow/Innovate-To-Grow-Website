@@ -16,7 +16,7 @@ export const AccountPage = () => {
         return (
             <div className="account-page">
                 <div className="account-section">
-                    <p style={{textAlign: 'center', color: '#6b7280'}}>Loading profile...</p>
+                    <p className="account-status-text account-status-text--center">Loading profile...</p>
                 </div>
             </div>
         );
@@ -86,13 +86,13 @@ export const AccountPage = () => {
                         onNewPasswordChange={account.setNewPassword}
                         onConfirmPasswordChange={account.setConfirmPassword}
                     />
-                    <div className="account-section">
+                    <div className="account-section account-signout-row">
                         <button
                             type="button"
                             className="profile-logout"
                             onClick={account.logout}
                         >
-                            <i className="fa fa-sign-out" style={{marginRight: '0.5rem'}}/>
+                            <i className="fa fa-sign-out" aria-hidden/>
                             Sign Out
                         </button>
                     </div>

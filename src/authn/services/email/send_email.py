@@ -6,6 +6,7 @@ Credentials are loaded from the EmailServiceConfig singleton in the database.
 """
 
 import logging
+import time
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -13,6 +14,9 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
+
+_SMTP_TIMEOUT = 15  # seconds
+_SMTP_MAX_RETRIES = 2
 
 PURPOSE_SUBJECTS = {
     "register": "Verify your email - Innovate to Grow",
@@ -78,27 +82,41 @@ def _send_via_ses(*, config, recipient: str, subject: str, html_body: str) -> bo
 
 
 def _send_via_smtp(*, config, recipient: str, subject: str, html_body: str):
-    """Send via SMTP using DB-stored credentials, bypassing EMAIL_BACKEND setting."""
+    """Send via SMTP using DB-stored credentials, bypassing EMAIL_BACKEND setting.
+
+    Retries once on transient connection failures (timeout, reset, DNS).
+    """
     from django.core.mail import get_connection
 
-    connection = get_connection(
-        backend="django.core.mail.backends.smtp.EmailBackend",
-        host=config.smtp_host,
-        port=config.smtp_port,
-        username=config.smtp_username,
-        password=config.smtp_password,
-        use_tls=config.smtp_use_tls,
-        fail_silently=False,
-    )
-    msg = EmailMessage(
-        subject=subject,
-        body=html_body,
-        from_email=config.source_address,
-        to=[recipient],
-        connection=connection,
-    )
-    msg.content_subtype = "html"
-    msg.send()
+    last_exc = None
+    for attempt in range(1, _SMTP_MAX_RETRIES + 1):
+        try:
+            connection = get_connection(
+                backend="django.core.mail.backends.smtp.EmailBackend",
+                host=config.smtp_host,
+                port=config.smtp_port,
+                username=config.smtp_username,
+                password=config.smtp_password,
+                use_tls=config.smtp_use_tls,
+                fail_silently=False,
+                timeout=_SMTP_TIMEOUT,
+            )
+            msg = EmailMessage(
+                subject=subject,
+                body=html_body,
+                from_email=config.source_address,
+                to=[recipient],
+                connection=connection,
+            )
+            msg.content_subtype = "html"
+            msg.send()
+            return
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("SMTP attempt %d/%d failed for %s: %s", attempt, _SMTP_MAX_RETRIES, recipient, exc)
+            if attempt < _SMTP_MAX_RETRIES:
+                time.sleep(1)
+    raise last_exc
 
 
 def send_notification_email(*, recipient: str, subject: str, template: str, context: dict):
@@ -133,10 +151,18 @@ def send_verification_email(*, recipient: str, code: str, purpose: str):
     subject = PURPOSE_SUBJECTS.get(purpose, "Your verification code - Innovate to Grow")
     html_body = _render_email_body(code=code, purpose=purpose)
 
-    if _send_via_ses(config=config, recipient=recipient, subject=subject, html_body=html_body):
+    if not config.ses_configured:
+        logger.info(
+            "SES not configured (no credentials); sending via SMTP to %s (host=%s, purpose=%s)",
+            recipient,
+            config.smtp_host,
+            purpose,
+        )
+    elif _send_via_ses(config=config, recipient=recipient, subject=subject, html_body=html_body):
         logger.info("Verification email sent via SES to %s (purpose=%s)", recipient, purpose)
         return
+    else:
+        logger.warning("SES send failed for %s; falling back to SMTP (host=%s)", recipient, config.smtp_host)
 
-    logger.info("SES unavailable or failed; falling back to SMTP for %s", recipient)
     _send_via_smtp(config=config, recipient=recipient, subject=subject, html_body=html_body)
     logger.info("Verification email sent via SMTP to %s (purpose=%s)", recipient, purpose)

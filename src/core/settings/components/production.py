@@ -56,6 +56,7 @@ SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_SSL_REDIRECT = False  # Handled by reverse proxy
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+NUM_PROXIES = 1  # ALB is the single trusted proxy; fixes X-Forwarded-For rate-limit bypass
 
 # Cookie security
 SESSION_COOKIE_SECURE = True
@@ -64,6 +65,7 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = "Lax"
 X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_AGE = 28800  # 8-hour admin sessions (default was 2 weeks)
 
 # CORS / CSRF trusted origins (comma-separated env vars)
 CSRF_TRUSTED_ORIGINS = (
@@ -73,6 +75,22 @@ CORS_ALLOWED_ORIGINS = (
     os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if os.environ.get("CORS_ALLOWED_ORIGINS") else []
 )
 CORS_ALLOW_CREDENTIALS = True
+
+# Validate CORS_ALLOWED_ORIGINS when credentials are enabled
+if CORS_ALLOW_CREDENTIALS and CORS_ALLOWED_ORIGINS:
+    for _origin in CORS_ALLOWED_ORIGINS:
+        _origin = _origin.strip()
+        if _origin == "*" or not _origin.startswith(("http://", "https://")):
+            raise ImproperlyConfigured(
+                f"CORS_ALLOWED_ORIGINS contains invalid origin '{_origin}'. "
+                "When CORS_ALLOW_CREDENTIALS=True, only specific http(s):// origins are allowed."
+            )
+
+# CSP header (report-only mode — promote to enforcing after monitoring)
+try:
+    MIDDLEWARE += ["core.middleware.ContentSecurityPolicyMiddleware"]  # noqa: F405, F821
+except NameError:
+    pass  # MIDDLEWARE not yet defined when this module is imported standalone (e.g., in tests)
 
 # ---------------------------------------------------------------------------
 # AWS S3 storage (static files and media uploads)

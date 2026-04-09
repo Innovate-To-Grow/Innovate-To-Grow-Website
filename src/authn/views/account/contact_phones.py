@@ -24,6 +24,7 @@ from authn.services import (
     verify_phone_code,
 )
 from authn.services.email_challenges import AuthChallengeInvalid
+from authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
 
 
 class ContactPhoneListCreateView(APIView):
@@ -86,6 +87,7 @@ class ContactPhoneRequestVerificationView(APIView):
     """Request an SMS verification code for a contact phone."""
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
@@ -105,6 +107,7 @@ class ContactPhoneVerifyCodeView(APIView):
     """Verify an SMS code for a contact phone."""
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):

@@ -14,7 +14,6 @@ from datetime import timedelta
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     # Throttle *rates* only -- classes are set per-view, not globally.
@@ -41,4 +40,8 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",  # DB column (UUID PK)
     "USER_ID_CLAIM": "member_uuid",  # JWT payload claim name
+    "ALGORITHM": "HS256",
+    "AUDIENCE": "i2g-api",
+    "ISSUER": "i2g-backend",
+    "JTI_CLAIM": "jti",
 }

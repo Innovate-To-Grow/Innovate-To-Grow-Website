@@ -78,7 +78,8 @@ export const ProfileSection = ({
           {imageUploading ? (
             <i className="fa fa-spinner fa-spin" aria-hidden />
           ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" role="img">
+              <title>Upload photo</title>
               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
             </svg>
           )}
@@ -99,13 +100,12 @@ export const ProfileSection = ({
     {profileMessage ? <StatusAlert tone="success" message={profileMessage} /> : null}
 
     {profileError ? (
-      <div className="auth-alert error" style={{flexWrap: 'wrap', gap: '0.5rem'}}>
+      <div className="auth-alert error account-profile-error">
         <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
-        <span style={{flex: 1, minWidth: 0}}>{profileError}</span>
+        <span className="account-profile-error-text">{profileError}</span>
         <button
           type="button"
-          className="auth-verify-resend"
-          style={{padding: '0.4rem 0.8rem', fontSize: '0.8rem', flexShrink: 0}}
+          className="auth-verify-resend account-retry-btn"
           onClick={onRetryProfile}
         >
           Retry
@@ -193,7 +193,7 @@ export const ProfileSection = ({
       {organizationType === 'organization' && (
         <div className="auth-form-group">
           <label className="auth-form-label" htmlFor="account-title">
-            Title <span style={{fontWeight: 400, color: '#9ca3af'}}>(optional)</span>
+            Title <span className="account-label-hint">(optional)</span>
           </label>
           <input
             id="account-title"

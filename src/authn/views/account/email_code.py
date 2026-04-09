@@ -18,6 +18,7 @@ from authn.serializers import (
     DeleteAccountCodeVerifySerializer,
 )
 from authn.services import AuthChallengeInvalid
+from authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import challenge_error_response
 
@@ -33,6 +34,7 @@ class AccountEmailsView(APIView):
 
 class ChangePasswordCodeRequestView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -50,6 +52,7 @@ class ChangePasswordCodeRequestView(APIView):
 
 class ChangePasswordCodeVerifyView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -62,6 +65,7 @@ class ChangePasswordCodeVerifyView(APIView):
 
 class ChangePasswordCodeConfirmView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -77,6 +81,7 @@ class ChangePasswordCodeConfirmView(APIView):
 
 class DeleteAccountCodeRequestView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -94,6 +99,7 @@ class DeleteAccountCodeRequestView(APIView):
 
 class DeleteAccountCodeVerifyView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -106,6 +112,7 @@ class DeleteAccountCodeVerifyView(APIView):
 
 class DeleteAccountCodeConfirmView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

@@ -2,16 +2,11 @@
 Login serializer for user authentication.
 """
 
-from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
-from authn.services import (
-    RSADecryptionError,
-    decrypt_password,
-    is_encrypted_password,
-    resolve_auth_email,
-)
+from authn.serializers.helpers import decrypt_field
+from authn.services import resolve_auth_email
 
 Member = get_user_model()
 
@@ -39,36 +34,22 @@ class LoginSerializer(serializers.Serializer):
 
     # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
-        """
-        Validate credentials and return the authenticated user.
-        """
         email = attrs.get("email", "").lower()
-        encrypted_password = attrs.get("password", "")
         key_id = attrs.get("key_id", "")
 
-        # Decrypt password if it appears to be encrypted
-        if is_encrypted_password(encrypted_password):
-            try:
-                password = decrypt_password(encrypted_password, key_id if key_id else None)
-            except RSADecryptionError as e:
-                raise serializers.ValidationError({"password": f"Failed to decrypt password: {e}"})
-        else:
-            # Block plaintext passwords in production
-            if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
-                raise serializers.ValidationError({"password": "Encrypted password required."})
-            password = encrypted_password
+        try:
+            password = decrypt_field(attrs.get("password", ""), key_id)
+        except serializers.ValidationError as exc:
+            raise serializers.ValidationError({"password": exc.detail}) from exc
 
-        # Find user by email
         resolved = resolve_auth_email(email, require_active=False)
         if resolved is None:
             raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
         member = resolved.member
 
-        # Check if account is active
         if not member.is_active:
             raise serializers.ValidationError({"email": "Account is not activated. Please verify your email first."})
 
-        # Authenticate using the email the user submitted (via EmailAuthBackend)
         user = authenticate(username=email, password=password)
         if user is None:
             raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})

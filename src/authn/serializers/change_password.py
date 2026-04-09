@@ -2,11 +2,9 @@
 Change password serializer for authenticated users.
 """
 
-from django.conf import settings
-from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from authn.services import RSADecryptionError, decrypt_password, is_encrypted_password
+from authn.serializers.helpers import decrypt_field, decrypt_password_pair
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -37,49 +35,16 @@ class ChangePasswordSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs: dict) -> dict:
-        """
-        Decrypt passwords and validate them.
-        """
         user = self.context["request"].user
         key_id = attrs.get("key_id", "")
 
-        encrypted_current = attrs["current_password"]
-        encrypted_new = attrs["new_password"]
-        encrypted_confirm = attrs["new_password_confirm"]
+        try:
+            current_password = decrypt_field(attrs["current_password"], key_id)
+        except serializers.ValidationError as exc:
+            raise serializers.ValidationError({"current_password": exc.detail}) from exc
 
-        # Decrypt passwords if they appear to be encrypted
-        if is_encrypted_password(encrypted_current):
-            try:
-                current_password = decrypt_password(encrypted_current, key_id if key_id else None)
-                new_password = decrypt_password(encrypted_new, key_id if key_id else None)
-                new_password_confirm = decrypt_password(encrypted_confirm, key_id if key_id else None)
-            except RSADecryptionError as e:
-                raise serializers.ValidationError({"current_password": f"Failed to decrypt password: {e}"})
-        else:
-            # Block plaintext passwords in production
-            if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
-                raise serializers.ValidationError({"current_password": "Encrypted password required."})
-            current_password = encrypted_current
-            new_password = encrypted_new
-            new_password_confirm = encrypted_confirm
-
-        # Verify current password
         if not user.check_password(current_password):
             raise serializers.ValidationError({"current_password": "Current password is incorrect."})
 
-        # Validate new password length
-        if len(new_password) < 8:
-            raise serializers.ValidationError({"new_password": "Password must be at least 8 characters."})
-
-        # Validate new password with Django's password validators
-        try:
-            validate_password(new_password, user=user)
-        except Exception as e:
-            raise serializers.ValidationError({"new_password": list(e.messages)})
-
-        # Check new passwords match
-        if new_password != new_password_confirm:
-            raise serializers.ValidationError({"new_password_confirm": "New passwords do not match."})
-
-        attrs["_decrypted_new_password"] = new_password
+        attrs["_decrypted_new_password"] = decrypt_password_pair(attrs, user=user)
         return attrs

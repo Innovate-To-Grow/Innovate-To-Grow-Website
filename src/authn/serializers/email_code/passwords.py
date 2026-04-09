@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from authn.serializers.helpers import decrypt_password_pair
 from authn.services import (
     AuthChallengeInvalid,
     consume_verification_token,
@@ -15,7 +16,7 @@ from authn.services import (
     verify_email_code,
 )
 
-from .base import PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer, decrypt_new_passwords
+from .base import PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer
 
 
 class PasswordResetRequestSerializer(BaseEmailSerializer):
@@ -56,7 +57,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if resolved is None:
             raise serializers.ValidationError({"email": "No eligible account found for this email."})
         attrs["resolved_member"] = resolved.member
-        attrs["decrypted_new_password"] = decrypt_new_passwords(attrs, user=resolved.member)
+        attrs["decrypted_new_password"] = decrypt_password_pair(attrs, user=resolved.member)
         return attrs
 
     def save(self):
@@ -112,7 +113,7 @@ class ChangePasswordCodeConfirmSerializer(serializers.Serializer):
     key_id = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs: dict) -> dict:
-        attrs["decrypted_new_password"] = decrypt_new_passwords(attrs, user=self.context["request"].user)
+        attrs["decrypted_new_password"] = decrypt_password_pair(attrs, user=self.context["request"].user)
         return attrs
 
     def save(self):

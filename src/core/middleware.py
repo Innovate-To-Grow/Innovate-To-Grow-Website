@@ -52,3 +52,30 @@ class HealthCheckMiddleware:
 
             return HttpResponse(json.dumps(health_status), content_type="application/json")
         return self.get_response(request)
+
+
+class ContentSecurityPolicyMiddleware:
+    """Add a Content-Security-Policy-Report-Only header to all responses.
+
+    Starts in report-only mode so it doesn't break anything.
+    Promote to enforcing (``Content-Security-Policy``) after monitoring.
+    """
+
+    CSP_HEADER = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "frame-src https://www.youtube.com https://player.vimeo.com; "
+        "connect-src 'self'"
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if "Content-Security-Policy" not in response:
+            response["Content-Security-Policy-Report-Only"] = self.CSP_HEADER
+        return response
