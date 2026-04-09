@@ -9,9 +9,9 @@ from django.test import TestCase
 from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
 from authn.services.email_challenges import (
+    MAX_CHALLENGES_PER_HOUR,
     AuthChallengeDeliveryError,
     AuthChallengeThrottled,
-    MAX_CHALLENGES_PER_HOUR,
     issue_email_challenge,
 )
 
@@ -34,13 +34,12 @@ class IssueEmailChallengeDeliveryFailureTests(TestCase):
 
     @patch("authn.services.email_challenges._random_code", return_value="123456")
     @patch("authn.services.email.send_email.send_verification_email", side_effect=RuntimeError("boom"))
-    def test_failed_delivery_expires_challenge(self, _mock_send, _mock_code):
-        """When email delivery fails the challenge record should be marked EXPIRED."""
+    def test_failed_delivery_deletes_challenge(self, _mock_send, _mock_code):
+        """When email delivery fails the challenge record should be deleted."""
         with self.assertRaises(AuthChallengeDeliveryError):
             issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
 
-        challenge = EmailAuthChallenge.objects.filter(member=self.member, purpose=PURPOSE).latest("created_at")
-        self.assertEqual(challenge.status, EmailAuthChallenge.Status.EXPIRED)
+        self.assertFalse(EmailAuthChallenge.objects.filter(member=self.member, purpose=PURPOSE).exists())
 
     @patch("authn.services.email_challenges._random_code", return_value="654321")
     @patch("authn.services.email.send_email.send_verification_email")
@@ -58,8 +57,8 @@ class IssueEmailChallengeDeliveryFailureTests(TestCase):
 
     @patch("authn.services.email_challenges._random_code", return_value="111111")
     @patch("authn.services.email.send_email.send_verification_email")
-    def test_expired_challenges_excluded_from_hourly_limit(self, mock_send, _mock_code):
-        """EXPIRED challenges (from failed sends) must not count toward MAX_CHALLENGES_PER_HOUR."""
+    def test_failed_deliveries_dont_exhaust_hourly_limit(self, mock_send, _mock_code):
+        """Deleted challenges (from failed sends) must not count toward MAX_CHALLENGES_PER_HOUR."""
         mock_send.side_effect = RuntimeError("boom")
 
         # Simulate many consecutive delivery failures
@@ -67,12 +66,10 @@ class IssueEmailChallengeDeliveryFailureTests(TestCase):
             with self.assertRaises(AuthChallengeDeliveryError):
                 issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
 
-        # All challenges should be EXPIRED
+        # All failed challenges should be deleted
         self.assertEqual(
-            EmailAuthChallenge.objects.filter(
-                member=self.member, purpose=PURPOSE, status=EmailAuthChallenge.Status.EXPIRED
-            ).count(),
-            MAX_CHALLENGES_PER_HOUR,
+            EmailAuthChallenge.objects.filter(member=self.member, purpose=PURPOSE).count(),
+            0,
         )
 
         # Next attempt with a working send should succeed (not throttled)

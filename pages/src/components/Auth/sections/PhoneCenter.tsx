@@ -40,7 +40,7 @@ export const PhoneCenter = () => {
             try {
                 const data = await getContactPhones();
                 setPhones(data);
-            } catch (err) {
+            } catch {
                 console.error('[PhoneCenter] Failed to load contact phones:', err);
             } finally {
                 setLoading(false);
@@ -59,7 +59,7 @@ export const PhoneCenter = () => {
         try {
             const updated = await updateContactPhone(phone.id, {subscribe: !phone.subscribe});
             setPhones((prev) => prev.map((p) => (p.id === phone.id ? updated : p)));
-        } catch (err) {
+        } catch {
             setError(USER_FACING_GENERIC_ERROR_ZH);
         }
     };
@@ -90,7 +90,7 @@ export const PhoneCenter = () => {
             } catch {
                 setSuccessMessage('Phone number added. Click "Verify" to receive a verification code.');
             }
-        } catch (err) {
+        } catch {
             setAddError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setAddLoading(false);
@@ -106,7 +106,7 @@ export const PhoneCenter = () => {
             await requestContactPhoneVerification(phoneId);
             setVerifyingId(phoneId);
             setSuccessMessage('Verification code sent via SMS.');
-        } catch (err) {
+        } catch {
             setError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setResendLoading(false);
@@ -125,7 +125,7 @@ export const PhoneCenter = () => {
             setVerifyingId(null);
             setVerifyCode('');
             setSuccessMessage('Phone number verified successfully.');
-        } catch (err) {
+        } catch {
             setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setVerifyLoading(false);
@@ -138,7 +138,7 @@ export const PhoneCenter = () => {
         try {
             await requestContactPhoneVerification(phoneId);
             setSuccessMessage('Verification code resent.');
-        } catch (err) {
+        } catch {
             setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
             setResendLoading(false);
@@ -162,7 +162,7 @@ export const PhoneCenter = () => {
                 setVerifyCode('');
             }
             setSuccessMessage('Phone number removed.');
-        } catch (err) {
+        } catch {
             setError(USER_FACING_GENERIC_ERROR_ZH);
         }
     };
