@@ -4,7 +4,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
@@ -20,7 +20,7 @@ Member = get_user_model()
 PURPOSE = EmailAuthChallenge.Purpose.ADMIN_LOGIN
 
 
-class IssueEmailChallengeDeliveryFailureTests(TestCase):
+class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
     """Verify that a failed email send expires the challenge so it does not pollute rate limits."""
 
     def setUp(self):

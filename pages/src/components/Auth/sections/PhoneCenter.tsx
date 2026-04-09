@@ -40,7 +40,7 @@ export const PhoneCenter = () => {
             try {
                 const data = await getContactPhones();
                 setPhones(data);
-            } catch {
+            } catch (err) {
                 console.error('[PhoneCenter] Failed to load contact phones:', err);
             } finally {
                 setLoading(false);
