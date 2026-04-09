@@ -4,21 +4,6 @@ import {VERIFICATION_CODE_PLACEHOLDER} from '../../../components/Auth';
 import type {EventRegistrationOptions} from '../../../features/events/api';
 import type {OrganizationType} from '../useEventRegistration';
 
-const PERSONAL_EMAIL_DOMAINS = new Set([
-  'gmail.com',
-  'outlook.com',
-  'hotmail.com',
-  'live.com',
-  'msn.com',
-  'yahoo.com',
-  'icloud.com',
-  'me.com',
-  'mac.com',
-  'aol.com',
-  'proton.me',
-  'protonmail.com',
-]);
-
 interface RegistrationFormStepProps {
   options: EventRegistrationOptions;
   selectedTicketId: string | null;
@@ -56,13 +41,6 @@ interface RegistrationFormStepProps {
   onSubmit: (event: FormEvent) => void;
 }
 
-const looksLikePersonalEmail = (value: string) => {
-  const email = value.trim().toLowerCase();
-  if (!email.includes('@')) return true;
-  const domain = email.split('@')[1] || '';
-  return PERSONAL_EMAIL_DOMAINS.has(domain);
-};
-
 export const RegistrationFormStep = ({
   options,
   selectedTicketId,
@@ -99,8 +77,6 @@ export const RegistrationFormStep = ({
   onVerifyPhoneCode,
   onSubmit,
 }: RegistrationFormStepProps) => {
-  const showPersonalEmailHint = attendeeSecondaryEmail.trim() && !looksLikePersonalEmail(attendeeSecondaryEmail);
-
   return (
   <form onSubmit={onSubmit}>
     <div className="event-reg-section-card">
@@ -245,12 +221,6 @@ export const RegistrationFormStep = ({
               placeholder="We recommend using your personal email"
               disabled={submitting}
             />
-            {showPersonalEmailHint ? (
-              <p className="event-reg-field-warning">
-                <span className="event-reg-field-warning-icon" aria-hidden>i</span>
-                <span>This looks like a work or school email. We recommend using a personal email if possible.</span>
-              </p>
-            ) : null}
           </div>
         ) : null}
 
