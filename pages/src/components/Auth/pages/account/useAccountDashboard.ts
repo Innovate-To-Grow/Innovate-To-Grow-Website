@@ -13,7 +13,13 @@ import {
   verifyPasswordChangeCode,
   type ProfileResponse,
 } from '../../../../services/auth';
-import {fetchMyTickets, resendTicketEmail, type Registration} from '../../../../features/events/api';
+import {
+  fetchMyTickets,
+  fetchRegistrationOptions,
+  resendTicketEmail,
+  type EventRegistrationOptions,
+  type Registration,
+} from '../../../../features/events/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
 
 export const useAccountDashboard = () => {
@@ -50,6 +56,8 @@ export const useAccountDashboard = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Registration[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [liveEventOptions, setLiveEventOptions] = useState<EventRegistrationOptions | null>(null);
+  const [liveEventLoading, setLiveEventLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,6 +111,20 @@ export const useAccountDashboard = () => {
       }
     };
     void loadTickets();
+  }, [isAuthenticated, requiresProfileCompletion]);
+
+  useEffect(() => {
+    if (!isAuthenticated || requiresProfileCompletion) return;
+    const loadLiveEvent = async () => {
+      try {
+        setLiveEventOptions(await fetchRegistrationOptions());
+      } catch {
+        setLiveEventOptions(null);
+      } finally {
+        setLiveEventLoading(false);
+      }
+    };
+    void loadLiveEvent();
   }, [isAuthenticated, requiresProfileCompletion]);
 
   const handleResendTicketEmail = async (registrationId: string) => {
@@ -364,6 +386,8 @@ export const useAccountDashboard = () => {
     middleName,
     tickets,
     ticketsLoading,
+    liveEventOptions,
+    liveEventLoading,
     setProfile,
     setFirstName,
     setMiddleName,

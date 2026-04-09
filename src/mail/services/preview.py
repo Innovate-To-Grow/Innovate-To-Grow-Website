@@ -61,5 +61,7 @@ def render_preview(campaign, context=None):
     ctx = context or SAMPLE_CONTEXT
     subject = personalize(campaign.subject, ctx)
     body_html = personalize(campaign.body, ctx)
-    wrapped_html = render_email_html(body_html)
+    # Show a placeholder unsubscribe link when the campaign has it enabled
+    unsubscribe_url = "#unsubscribe-preview" if campaign.include_unsubscribe_header else ""
+    wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
     return {"subject": subject, "html": wrapped_html}

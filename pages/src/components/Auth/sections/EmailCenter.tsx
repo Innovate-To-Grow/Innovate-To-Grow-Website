@@ -17,7 +17,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
 
     return (
         <div className="account-section">
-            <h2 className="account-section-title">Emails</h2>
+            <h2 className="account-section-title">Account Emails & Newsletters</h2>
 
             {emailCenter.successMessage ? <StatusAlert tone="success" message={emailCenter.successMessage} style={{marginBottom: '1rem'}} /> : null}
             {emailCenter.error ? <StatusAlert tone="error" message={emailCenter.error} style={{marginBottom: '1rem'}} /> : null}
@@ -52,11 +52,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
                         resendLoading={emailCenter.resendLoading}
                         onContactTypeChange={emailCenter.handleContactTypeChange}
                         onContactSubscribeToggle={emailCenter.handleContactSubscribeToggle}
-                        onToggleVerify={(contactId) => {
-                            emailCenter.setVerifyingId(emailCenter.verifyingId === contactId ? null : contactId);
-                            emailCenter.setVerifyCode('');
-                            emailCenter.setVerifyError(null);
-                        }}
+                        onToggleVerify={(contactId) => void emailCenter.handleContactRequestVerification(contactId)}
                         onVerifyCodeChange={emailCenter.setVerifyCode}
                         onVerifySubmit={emailCenter.handleVerifySubmit}
                         onResend={emailCenter.handleResend}

@@ -8,6 +8,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from authn.models import ContactPhone
+
 from event.models import Event, EventRegistration, Question, Ticket
 from event.serializers import (
     EventRegistrationCreateSerializer,
@@ -160,13 +162,17 @@ class EventRegistrationCreateView(APIView):
                 phone = _normalize_phone(data["attendee_phone"], phone_region)
                 create_kwargs["attendee_phone"] = phone
                 if event.verify_phone:
-                    if not _consume_phone_verification(request.user, phone):
+                    # SMS flow sets short-lived cache; also accept an already-verified phone on this account
+                    # so the form's "Verified" state (from member_phone) matches server rules.
+                    phone_verified_inline = _consume_phone_verification(request.user, phone) or ContactPhone.objects.filter(
+                        member=request.user, phone_number=phone, verified=True
+                    ).exists()
+                    if not phone_verified_inline:
                         return Response(
                             {"detail": "Please verify your phone number before completing registration."},
                             status=status.HTTP_400_BAD_REQUEST,
                         )
                     create_kwargs["phone_verified"] = True
-                    phone_verified_inline = True
             elif event.verify_phone:
                 return Response(
                     {"detail": "A verified phone number is required for this event."},

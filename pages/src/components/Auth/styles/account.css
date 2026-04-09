@@ -433,6 +433,113 @@
   margin-bottom: 0.5rem;
 }
 
+/* Open event — registration CTA card */
+.account-open-registration-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+}
+
+.account-open-reg-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.account-open-reg-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--account-primary);
+  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+}
+
+.account-open-reg-badge {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.account-open-reg-lead {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--account-text-secondary);
+  line-height: 1.5;
+}
+
+.account-open-reg-details {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.account-open-reg-details li {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  align-items: baseline;
+  font-size: 0.875rem;
+}
+
+.account-open-reg-detail-label {
+  font-weight: 600;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--account-text-secondary);
+}
+
+.account-open-reg-detail-value {
+  color: var(--account-text);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.account-open-reg-description {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--account-text-secondary);
+  line-height: 1.55;
+  padding: 0.625rem 0.75rem;
+  background: var(--account-bg);
+  border-radius: var(--account-radius-xs);
+  border: 1px solid var(--account-border-subtle);
+}
+
+.account-open-reg-actions {
+  margin-top: 0.125rem;
+}
+
+.account-open-reg-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 11.5rem;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .account-open-reg-details li {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+
 /* Profile error row (#5) */
 .account-profile-error {
   flex-wrap: wrap;

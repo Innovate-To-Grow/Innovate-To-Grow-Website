@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% if error %}Unsubscribe Failed{% else %}Unsubscribed{% endif %} - Innovate to Grow</title>
+  <title>{% if error %}Resubscribe Failed{% else %}Resubscribed{% endif %} - Innovate to Grow</title>
   <style>
     body { margin:0; padding:0; background:#f4f4f7; font-family:Arial,Helvetica,sans-serif; }
     .card { max-width:480px; margin:80px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); }
@@ -24,18 +24,14 @@
     </div>
     <div class="body">
       {% if error %}
-        <h1>Unable to Unsubscribe</h1>
+        <h1>Unable to Resubscribe</h1>
         <p>{{ error }}</p>
       {% else %}
-        <h1>You've been unsubscribed</h1>
-        <p>Hi {{ member.first_name|default:"there" }}, you have been successfully unsubscribed from Innovate to Grow email updates.</p>
-        <p>You may still receive transactional emails related to your account or event registrations.</p>
-        {% if resubscribe_url %}
-          <p>Changed your mind?</p>
+        <h1>You've been resubscribed</h1>
+        <p>Hi {{ member.first_name|default:"there" }}, you have been successfully resubscribed to Innovate to Grow email updates.</p>
+        {% if frontend_url %}
           <p style="text-align:center;padding:8px 0;">
-            <form method="post" action="{{ resubscribe_url }}">
-              <button type="submit" class="btn" style="cursor:pointer;">Re-subscribe</button>
-            </form>
+            <a href="{{ frontend_url }}/account" class="btn">Account Settings</a>
           </p>
         {% endif %}
       {% endif %}

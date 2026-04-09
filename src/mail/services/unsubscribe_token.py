@@ -53,6 +53,35 @@ def get_member_from_oneclick_token(token: str):
     return member
 
 
+_RESUBSCRIBE_SALT = "mail-resubscribe"
+_RESUBSCRIBE_MAX_AGE = 60 * 60  # 1 hour
+
+
+def build_resubscribe_token(member_or_id) -> str:
+    """Create a short-lived signed token for re-subscribing."""
+    pk = str(member_or_id.pk if hasattr(member_or_id, "pk") else member_or_id)
+    return signing.dumps({"member_id": pk}, salt=_RESUBSCRIBE_SALT, compress=True)
+
+
+def get_member_from_resubscribe_token(token: str):
+    """Validate a resubscribe token and return the Member.
+
+    Raises ``ValueError`` on invalid, expired, or unknown-member tokens.
+    """
+    from authn.models import Member
+
+    try:
+        payload = signing.loads(token, salt=_RESUBSCRIBE_SALT, max_age=_RESUBSCRIBE_MAX_AGE)
+        member_id = payload["member_id"]
+    except (signing.BadSignature, KeyError) as exc:
+        raise ValueError("Invalid or expired resubscribe link.") from exc
+
+    try:
+        return Member.objects.get(pk=member_id, is_active=True)
+    except Member.DoesNotExist as exc:
+        raise ValueError("Account not found.") from exc
+
+
 def build_oneclick_unsubscribe_url(member_or_id) -> str:
     """Return the absolute backend URL for the one-click unsubscribe endpoint.
 

@@ -77,10 +77,9 @@ class PhoneVerificationViewsTest(TestCase):
             },
             format="json",
         )
-        self.assertEqual(replay_response.status_code, 400)
-        self.assertEqual(
-            replay_response.data["detail"], "Please verify your phone number before completing registration."
-        )
+        # SMS proof is one-use, but the first registration synced a verified ContactPhone for this member,
+        # so a later event can reuse that account-verified number without a new SMS.
+        self.assertEqual(replay_response.status_code, 201)
 
         second_member = make_member(email="other@example.com")
         self.client.force_authenticate(second_member)

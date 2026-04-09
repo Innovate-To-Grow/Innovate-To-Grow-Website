@@ -155,9 +155,25 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     setVerifyError(null);
     try {
       await requestContactEmailVerification(contactId);
-      setSuccessMessage('Verification code resent.');
+      setSuccessMessage('New code sent. Enter it below and tap Submit code.');
     } catch (err) {
       setVerifyError(getAuthApiErrorMessage(err));
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleContactRequestVerification = async (contactId: string) => {
+    clearMessages();
+    setVerifyError(null);
+    setVerifyCode('');
+    setResendLoading(true);
+    try {
+      await requestContactEmailVerification(contactId);
+      setVerifyingId(contactId);
+      setSuccessMessage('Code sent. Enter it below and tap Submit code.');
+    } catch (err) {
+      setError(getAuthApiErrorMessage(err));
     } finally {
       setResendLoading(false);
     }
@@ -296,6 +312,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     handlePrimaryCancelVerify,
     setPrimaryVerifyCode,
     handleResend,
+    handleContactRequestVerification,
     handleVerifySubmit,
     handleMakePrimary,
   };

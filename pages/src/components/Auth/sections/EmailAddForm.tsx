@@ -28,10 +28,10 @@ export const EmailAddForm = ({
   onSubmit,
   onCancel,
 }: EmailAddFormProps) => (
-  <div className="email-center-add-form">
-    <h3 className="account-subsection-title">Add Connected Email</h3>
+  <div className="email-center-add-form email-add-form">
+    <h3 className="account-subsection-title">Add Email</h3>
     {addError ? <StatusAlert tone="error" message={addError} style={{marginBottom: '0.75rem'}} /> : null}
-    <form onSubmit={onSubmit} className="email-center-add-fields">
+    <form onSubmit={onSubmit} className="email-center-add-fields email-add-form-fields">
       <div className="auth-form-group">
         <label className="auth-form-label" htmlFor="add-contact-email">Email Address</label>
         <input
@@ -45,33 +45,41 @@ export const EmailAddForm = ({
           disabled={addLoading}
         />
       </div>
-      <div className="account-form-row">
-        <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="add-contact-type">Type</label>
-          <select
-            id="add-contact-type"
-            className="auth-form-input auth-form-select"
-            value={addType}
-            onChange={(event) => onTypeChange(event.target.value as 'secondary' | 'other')}
-            disabled={addLoading}
+      <div className="auth-form-group">
+        <label className="auth-form-label" htmlFor="add-contact-type">Type</label>
+        <select
+          id="add-contact-type"
+          className="auth-form-input auth-form-select"
+          value={addType}
+          onChange={(event) => onTypeChange(event.target.value as 'secondary' | 'other')}
+          disabled={addLoading}
+        >
+          <option
+            value="secondary"
+            disabled={secondaryDisabled}
+            title={secondaryDisabled ? 'Another address is already set as secondary.' : undefined}
           >
-            <option value="secondary" disabled={secondaryDisabled}>Secondary{secondaryDisabled ? ' (already assigned)' : ''}</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div className="auth-form-group" style={{justifyContent: 'center'}}>
-          <label className="email-center-toggle" style={{marginTop: '1.5rem'}}>
+            Secondary
+          </option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div className="auth-form-group email-add-newsletters-group">
+        <div className="email-add-newsletters-row">
+          <span className="auth-form-label email-add-newsletters-label" id="add-email-newsletters-heading">
+            Newsletters
+          </span>
+          <label className="email-center-toggle email-add-newsletters-toggle" aria-labelledby="add-email-newsletters-heading">
             <input type="checkbox" checked={addSubscribe} onChange={(event) => onSubscribeChange(event.target.checked)} disabled={addLoading} />
             <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Subscribe</span>
           </label>
         </div>
       </div>
-      <div className="account-action-row">
-        <button type="submit" className="auth-form-submit account-action-primary" disabled={addLoading || !addEmail.trim()}>
+      <div className="email-add-form-actions">
+        <button type="submit" className="auth-form-submit account-action-primary email-add-form-submit" disabled={addLoading || !addEmail.trim()}>
           {addLoading ? <><span className="auth-spinner" /> Adding...</> : 'Add & Send Verification'}
         </button>
-        <button type="button" className="auth-form-submit account-action-secondary" onClick={onCancel}>
+        <button type="button" className="auth-form-submit account-action-secondary email-add-form-cancel" onClick={onCancel}>
           Cancel
         </button>
       </div>

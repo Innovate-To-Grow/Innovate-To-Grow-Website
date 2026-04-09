@@ -31,6 +31,12 @@
                 <span class="text-base-400">Recipients:</span>
                 <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ recipient_count }}</span>
             </div>
+            <div>
+                <span class="text-base-400">Unsubscribe link:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">
+                    {% if campaign.include_unsubscribe_header %}Enabled{% else %}Disabled{% endif %}
+                </span>
+            </div>
         </div>
     </div>
 

@@ -1,5 +1,6 @@
 import {PhoneAddForm} from './PhoneAddForm';
 import {PhoneCard} from './PhoneCard';
+import {PhonePendingVerifyPanel} from './PhonePendingVerifyPanel';
 import {StatusAlert} from '../shared/StatusAlert';
 import {usePhoneCenter} from './internal/usePhoneCenter';
 import '../Auth.css';
@@ -43,14 +44,27 @@ export const PhoneCenter = () => {
                 </p>
             )}
 
-            {pc.showAddForm ? (
+            {pc.showAddForm && pc.pendingNewPhone ? (
+                <PhonePendingVerifyPanel
+                    phone={pc.pendingNewPhone}
+                    verifyCode={pc.verifyCode}
+                    verifyLoading={pc.verifyLoading}
+                    verifyError={pc.verifyError}
+                    resendLoading={pc.resendLoading}
+                    abandonLoading={pc.abandonPendingLoading}
+                    onVerifyCodeChange={pc.setVerifyCode}
+                    onVerifySubmit={pc.handleVerifySubmit}
+                    onResend={pc.handleResendPendingPhone}
+                    onAbandon={() => void pc.handleAbandonPendingPhone()}
+                />
+            ) : pc.showAddForm ? (
                 <PhoneAddForm
                     addRegion={pc.addRegion}
                     addPhoneNumber={pc.addPhoneNumber}
                     addSubscribe={pc.addSubscribe}
                     addLoading={pc.addLoading}
                     addError={pc.addError}
-                    onRegionChange={pc.setAddRegion}
+                    onRegionChange={pc.handleAddRegionChange}
                     onPhoneNumberChange={pc.setAddPhoneNumber}
                     onSubscribeChange={pc.setAddSubscribe}
                     onSubmit={pc.handleAddSubmit}
@@ -63,10 +77,7 @@ export const PhoneCenter = () => {
                 <button
                     type="button"
                     className="auth-form-submit account-action-primary account-action-primary--inline"
-                    onClick={() => {
-                        pc.setShowAddForm(true);
-                        pc.clearMessages();
-                    }}
+                    onClick={pc.beginAddPhoneFlow}
                 >
                     Add Phone
                 </button>

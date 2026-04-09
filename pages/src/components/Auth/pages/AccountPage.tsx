@@ -60,7 +60,9 @@ export const AccountPage = () => {
                     />
                     <TicketsSection
                         tickets={account.tickets}
+                        liveEvent={account.liveEventOptions}
                         ticketsLoading={account.ticketsLoading}
+                        liveEventLoading={account.liveEventLoading}
                         resendingId={account.resendingId}
                         onResendTicketEmail={(registrationId) => void account.handleResendTicketEmail(registrationId)}
                     />

@@ -36,26 +36,22 @@ export const PrimaryEmailCard = ({
 }: PrimaryEmailCardProps) => (
   <div className="email-center-card">
     <div className="email-center-row">
-      <div style={{flex: 1, minWidth: 0}}>
-        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap'}}>
-          <span style={{fontWeight: 600, color: '#1f2937', wordBreak: 'break-all'}}>{profile.email}</span>
+      <div className="email-center-card-main">
+        <div className="email-center-card-heading">
+          <span className="email-center-card-title email-center-card-title--emphasis">{profile.email}</span>
           <span className="email-center-badge primary">Primary</span>
           <span className={`email-center-badge ${profile.email_verified ? 'verified' : 'unverified'}`}>
             {profile.email_verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
-        <p style={{margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45}}>
-          Add and verify an email below, then use <strong>Set as primary</strong>. Your current address stays as a
-          connected email.
-        </p>
         <div className="email-center-actions">
           <label className="email-center-toggle" aria-label="Subscribe primary email">
             <input type="checkbox" checked={profile.email_subscribe} onChange={onToggleSubscribe} disabled={subscribeSaving} />
             <span className="email-center-toggle-slider" />
             <span className="email-center-toggle-label">Newsletters</span>
           </label>
-          {!profile.email_verified && profile.primary_email_id ? (
-            <button type="button" className="email-center-btn verify" onClick={onToggleVerify}>
+          {!profile.email_verified && profile.primary_email_id && !verifying ? (
+            <button type="button" className="email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
               Verify
             </button>
           ) : null}
@@ -65,34 +61,45 @@ export const PrimaryEmailCard = ({
 
     {verifying && !profile.email_verified ? (
       <div className="email-center-verify-inline">
+        <p className="email-center-verify-hint">
+          Enter the 6-digit code we sent to this address, then tap Submit code.
+        </p>
         <form onSubmit={onVerifySubmit} className="email-center-verify-form">
-          <CodeInput value={verifyCode} onChange={onVerifyCodeChange} disabled={verifyLoading} />
-          <div className="account-action-row">
+          <div className="email-center-verify-code-wrap">
+            <CodeInput value={verifyCode} onChange={onVerifyCodeChange} disabled={verifyLoading} />
+          </div>
+          <div className="email-center-verify-actions">
             <button
               type="submit"
-              className="auth-form-submit account-action-primary"
+              className="auth-form-submit account-action-primary email-center-verify-submit"
               disabled={verifyLoading || verifyCode.length !== 6}
             >
-              {verifyLoading ? <><span className="auth-spinner" /> Verifying...</> : 'Submit Code'}
+              {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
             </button>
-            <button
-              type="button"
-              className="email-center-btn verify"
-              disabled={resendLoading}
-              onClick={onResend}
-            >
-              {resendLoading ? 'Sending...' : 'Resend Code'}
-            </button>
-            <button
-              type="button"
-              className="email-center-btn delete"
-              onClick={onCancelVerify}
-            >
-              Cancel
-            </button>
+            <div className="email-center-verify-secondary-row">
+              <button
+                type="button"
+                className="email-center-btn verify email-center-verify-secondary-btn"
+                disabled={resendLoading}
+                onClick={onResend}
+              >
+                {resendLoading ? 'Sending...' : 'Resend Code'}
+              </button>
+              <button
+                type="button"
+                className="email-center-btn delete email-center-verify-secondary-btn"
+                onClick={onCancelVerify}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </form>
-        {verifyError ? <StatusAlert tone="error" message={verifyError} style={{marginTop: '0.5rem'}} /> : null}
+        {verifyError ? (
+          <div className="email-center-verify-alert">
+            <StatusAlert tone="error" message={verifyError} />
+          </div>
+        ) : null}
       </div>
     ) : null}
   </div>

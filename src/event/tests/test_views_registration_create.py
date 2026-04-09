@@ -1,7 +1,10 @@
 import uuid
+from unittest.mock import patch
 
 from django.test import TestCase
 from rest_framework.test import APIClient
+
+from authn.models import ContactPhone
 
 from event.models import EventRegistration, Question, Ticket
 from event.tests.helpers import make_event, make_member
@@ -201,6 +204,30 @@ class EventRegistrationCreateViewTest(TestCase):
         response = self._post(data)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "Please verify your phone number before completing registration.")
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    def test_account_verified_phone_accepted_without_sms_session_cache(self, _mock_ticket_email):
+        """Pre-filled verified phone from profile must work without re-running SMS for this session."""
+        self.event.collect_phone = True
+        self.event.verify_phone = True
+        self.event.save(update_fields=["collect_phone", "verify_phone"])
+        ContactPhone.objects.create(
+            member=self.member,
+            phone_number="+15551234567",
+            region="1-US",
+            verified=True,
+        )
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_phone": "5551234567",
+            "attendee_phone_region": "1-US",
+        }
+        response = self._post(data)
+        self.assertEqual(response.status_code, 201)
+        reg = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertEqual(reg.attendee_phone, "+15551234567")
+        self.assertTrue(reg.phone_verified)
 
     def test_phone_is_required_when_verification_is_enabled(self):
         self.event.collect_phone = True

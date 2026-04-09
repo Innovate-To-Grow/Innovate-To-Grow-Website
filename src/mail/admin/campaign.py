@@ -554,10 +554,12 @@ class EmailCampaignAdmin(BaseModelAdmin):
 
         body = request.POST.get("body", "")
         body_format = request.POST.get("body_format", "plain")
+        include_unsubscribe = request.POST.get("include_unsubscribe_header") == "on"
         if body_format == "html":
             body = HTML_MARKER + body
         body_html = personalize(body, SAMPLE_CONTEXT)
-        html = render_email_html(body_html)
+        unsubscribe_url = "#unsubscribe-preview" if include_unsubscribe else ""
+        html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
         return HttpResponse(html)
 
     @staticmethod

@@ -9,6 +9,7 @@ import {
     type ContactPhone,
 } from '../../../../services/auth';
 import {USER_FACING_GENERIC_ERROR_ZH} from '../../shared/apiErrors';
+import {canSubmitNationalPhone, capNationalDigitsForRegion} from './phoneInput';
 
 export const usePhoneCenter = () => {
     const [phones, setPhones] = useState<ContactPhone[]>([]);
@@ -20,9 +21,12 @@ export const usePhoneCenter = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [addPhoneNumber, setAddPhoneNumber] = useState('');
     const [addRegion, setAddRegion] = useState('1-US');
-    const [addSubscribe, setAddSubscribe] = useState(false);
+    const [addSubscribe, setAddSubscribe] = useState(true);
     const [addLoading, setAddLoading] = useState(false);
     const [addError, setAddError] = useState<string | null>(null);
+    /** Created on server but not yet shown in the list until SMS verification succeeds. */
+    const [pendingNewPhone, setPendingNewPhone] = useState<ContactPhone | null>(null);
+    const [abandonPendingLoading, setAbandonPendingLoading] = useState(false);
 
     // Verification state
     const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -50,6 +54,24 @@ export const usePhoneCenter = () => {
         setSuccessMessage(null);
     };
 
+    const beginAddPhoneFlow = () => {
+        clearMessages();
+        setShowAddForm(true);
+        setPendingNewPhone(null);
+        setVerifyingId(null);
+        setVerifyCode('');
+        setVerifyError(null);
+        setAddPhoneNumber('');
+        setAddRegion('1-US');
+        setAddSubscribe(true);
+        setAddError(null);
+    };
+
+    const handleAddRegionChange = (region: string) => {
+        setAddRegion(region);
+        setAddPhoneNumber((prev) => capNationalDigitsForRegion(prev, region));
+    };
+
     const handleSubscribeToggle = async (phone: ContactPhone) => {
         clearMessages();
         try {
@@ -62,29 +84,28 @@ export const usePhoneCenter = () => {
 
     const handleAddSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (!canSubmitNationalPhone(addPhoneNumber, addRegion)) return;
         setAddLoading(true);
         setAddError(null);
         clearMessages();
         try {
             const created = await createContactPhone({
-                phone_number: addPhoneNumber.trim(),
+                phone_number: addPhoneNumber,
                 region: addRegion,
                 subscribe: addSubscribe,
             });
-            setPhones((prev) => [created, ...prev]);
             setAddPhoneNumber('');
             setAddRegion('1-US');
-            setAddSubscribe(false);
-            setShowAddForm(false);
+            setAddSubscribe(true);
+            setPendingNewPhone(created);
+            setVerifyingId(created.id);
+            setVerifyCode('');
+            setVerifyError(null);
 
-            // Auto-trigger verification for the newly created phone
             try {
                 await requestContactPhoneVerification(created.id);
-                setVerifyingId(created.id);
-                setVerifyCode('');
-                setSuccessMessage('Phone number added. Please enter the verification code sent via SMS.');
             } catch {
-                setSuccessMessage('Phone number added. Click "Verify" to receive a verification code.');
+                setError('SMS could not be sent. Tap Resend Code.');
             }
         } catch {
             setAddError(USER_FACING_GENERIC_ERROR_ZH);
@@ -101,7 +122,7 @@ export const usePhoneCenter = () => {
         try {
             await requestContactPhoneVerification(phoneId);
             setVerifyingId(phoneId);
-            setSuccessMessage('Verification code sent via SMS.');
+            setSuccessMessage('Code sent. Enter it below and tap Submit code.');
         } catch {
             setError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
@@ -112,14 +133,20 @@ export const usePhoneCenter = () => {
     const handleVerifySubmit = async (event: FormEvent) => {
         event.preventDefault();
         if (!verifyingId || verifyCode.length !== 6) return;
+        const targetId = verifyingId;
+        const wasPendingAdd = pendingNewPhone?.id === targetId;
         setVerifyLoading(true);
         setVerifyError(null);
         clearMessages();
         try {
-            const updated = await verifyContactPhoneCode(verifyingId, verifyCode);
-            setPhones((prev) => prev.map((p) => (p.id === verifyingId ? updated : p)));
+            const updated = await verifyContactPhoneCode(targetId, verifyCode);
+            setPhones((prev) => (wasPendingAdd ? [updated, ...prev] : prev.map((p) => (p.id === targetId ? updated : p))));
             setVerifyingId(null);
             setVerifyCode('');
+            if (wasPendingAdd) {
+                setPendingNewPhone(null);
+                setShowAddForm(false);
+            }
             setSuccessMessage('Phone number verified successfully.');
         } catch {
             setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
@@ -133,7 +160,9 @@ export const usePhoneCenter = () => {
         setVerifyError(null);
         try {
             await requestContactPhoneVerification(phoneId);
-            setSuccessMessage('Verification code resent.');
+            if (pendingNewPhone?.id !== phoneId) {
+                setSuccessMessage('New code sent. Enter it below and tap Submit code.');
+            }
         } catch {
             setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
         } finally {
@@ -141,10 +170,32 @@ export const usePhoneCenter = () => {
         }
     };
 
+    const handleResendPendingPhone = () => {
+        if (pendingNewPhone) void handleResend(pendingNewPhone.id);
+    };
+
     const handleCancelVerify = () => {
         setVerifyingId(null);
         setVerifyCode('');
         setVerifyError(null);
+    };
+
+    const handleAbandonPendingPhone = async () => {
+        if (!pendingNewPhone) return;
+        if (!window.confirm('Discard this number? It will be removed until you add it again.')) return;
+        setAbandonPendingLoading(true);
+        setError(null);
+        try {
+            await deleteContactPhone(pendingNewPhone.id);
+            setPendingNewPhone(null);
+            setVerifyingId(null);
+            setVerifyCode('');
+            setVerifyError(null);
+        } catch {
+            setError(USER_FACING_GENERIC_ERROR_ZH);
+        } finally {
+            setAbandonPendingLoading(false);
+        }
     };
 
     const handleDelete = async (phoneId: string) => {
@@ -170,10 +221,12 @@ export const usePhoneCenter = () => {
         successMessage,
         showAddForm,
         setShowAddForm,
+        pendingNewPhone,
         addPhoneNumber,
         setAddPhoneNumber,
         addRegion,
         setAddRegion,
+        handleAddRegionChange,
         addSubscribe,
         setAddSubscribe,
         addLoading,
@@ -185,13 +238,17 @@ export const usePhoneCenter = () => {
         verifyLoading,
         verifyError,
         resendLoading,
+        abandonPendingLoading,
         clearMessages,
+        beginAddPhoneFlow,
         handleSubscribeToggle,
         handleAddSubmit,
         handleToggleVerify,
         handleVerifySubmit,
         handleResend,
+        handleResendPendingPhone,
         handleCancelVerify,
+        handleAbandonPendingPhone,
         handleDelete,
     };
 };
