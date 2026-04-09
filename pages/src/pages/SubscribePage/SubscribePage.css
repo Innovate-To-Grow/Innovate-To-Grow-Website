@@ -1,2 +1,3 @@
 @import "./styles/base.css";
+@import "../../components/Auth/styles/forms.css";
 @import "./styles/responsive.css";

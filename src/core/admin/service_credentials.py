@@ -58,6 +58,7 @@ class EmailServiceConfigAdmin(BaseModelAdmin):
                     "ses_region",
                     "ses_from_email",
                     "ses_from_name",
+                    "ses_max_send_rate",
                 ),
                 "description": "Leave Access Key blank to skip SES and use SMTP only.",
             },

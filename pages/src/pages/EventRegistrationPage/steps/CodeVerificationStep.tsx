@@ -1,5 +1,7 @@
 import type {FormEvent} from 'react';
 
+import {CodeInput} from '../../../components/Auth';
+
 interface CodeVerificationStepProps {
   email: string;
   code: string;
@@ -23,23 +25,19 @@ export const CodeVerificationStep = ({
     </p>
     <form onSubmit={onSubmit}>
       <div className="event-reg-form-group">
-        <label className="event-reg-label" htmlFor="reg-code">Verification Code</label>
-        <input
+        <label className="event-reg-label" htmlFor="reg-code">
+          Verification Code
+        </label>
+        <CodeInput
           id="reg-code"
-          type="text"
-          className="event-reg-input"
           value={code}
-          onChange={(event) => onCodeChange(event.target.value)}
-          placeholder="Enter 6-digit code"
-          required
-          autoFocus
-          autoComplete="one-time-code"
-          inputMode="numeric"
-          maxLength={6}
+          onChange={onCodeChange}
           disabled={authLoading}
+          autoFocus
+          required
         />
       </div>
-      <button type="submit" className="event-reg-submit" disabled={authLoading || !code.trim()}>
+      <button type="submit" className="event-reg-submit" disabled={authLoading || code.length !== 6}>
         {authLoading ? <><span className="event-reg-spinner" /> Verifying...</> : 'Verify Code'}
       </button>
     </form>

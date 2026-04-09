@@ -6,6 +6,7 @@ describe('Component barrel exports', () => {
     expect(mod.AuthProvider).toBeDefined();
     expect(mod.useAuth).toBeDefined();
     expect(mod.CodeInput).toBeDefined();
+    expect(mod.VERIFICATION_CODE_PLACEHOLDER).toBe('000000');
     expect(mod.LoginForm).toBeDefined();
     expect(mod.RegisterForm).toBeDefined();
     expect(mod.AccountPage).toBeDefined();

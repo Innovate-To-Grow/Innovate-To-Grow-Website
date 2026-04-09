@@ -1,4 +1,6 @@
 import type {FormEvent} from 'react';
+
+import {VERIFICATION_CODE_PLACEHOLDER} from '../../../components/Auth';
 import type {EventRegistrationOptions} from '../../../features/events/api';
 import type {OrganizationType} from '../useEventRegistration';
 
@@ -302,8 +304,9 @@ export const RegistrationFormStep = ({
                   maxLength={6}
                   className="event-reg-input"
                   value={phoneCode}
-                  onChange={(e) => onPhoneCodeChange(e.target.value.replace(/\D/g, ''))}
-                  placeholder="6-digit code"
+                  onChange={(e) => onPhoneCodeChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder={VERIFICATION_CODE_PLACEHOLDER}
+                  aria-label="6-digit verification code"
                 />
                 <button
                   type="button"

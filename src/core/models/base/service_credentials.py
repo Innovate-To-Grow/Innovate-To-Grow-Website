@@ -146,6 +146,12 @@ class EmailServiceConfig(models.Model):
         verbose_name="From Name",
     )
 
+    ses_max_send_rate = models.PositiveIntegerField(
+        default=10,
+        verbose_name="Campaign Send Rate (emails/sec)",
+        help_text="Max emails per second for bulk campaigns. Keep below SES account limit to leave room for transactional mail.",
+    )
+
     # SMTP fallback
     smtp_host = models.CharField(
         max_length=254,

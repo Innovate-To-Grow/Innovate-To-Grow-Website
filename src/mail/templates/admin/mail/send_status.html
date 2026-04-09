@@ -5,7 +5,7 @@
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
 
 {% block content %}
-<div style="max-width:560px;">
+<div style="max-width:720px;">
     <!-- Campaign info -->
     <div class="mb-4 text-sm space-y-1">
         <p><span class="text-base-400">Campaign:</span> <strong>{{ campaign.name }}</strong></p>
@@ -33,7 +33,7 @@
     </div>
 
     <!-- Counts -->
-    <div class="mb-6 grid grid-cols-3 gap-4 text-center">
+    <div class="mb-4 grid grid-cols-3 gap-4 text-center">
         <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
             <div id="count-sent" class="text-2xl font-bold text-green-600 dark:text-green-400">0</div>
             <div class="text-xs text-base-400 mt-1">Sent</div>
@@ -45,6 +45,54 @@
         <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
             <div id="count-pending" class="text-2xl font-bold text-base-500">{{ campaign.total_recipients }}</div>
             <div class="text-xs text-base-400 mt-1">Pending</div>
+        </div>
+    </div>
+
+    <!-- Stats: elapsed / rate / ETA -->
+    <div class="mb-6 grid grid-cols-3 gap-4 text-center">
+        <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
+            <div id="stat-elapsed" class="text-lg font-bold text-base-600 dark:text-base-300">--:--</div>
+            <div class="text-xs text-base-400 mt-1">Elapsed</div>
+        </div>
+        <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
+            <div id="stat-rate" class="text-lg font-bold text-base-600 dark:text-base-300">--</div>
+            <div class="text-xs text-base-400 mt-1">Emails/sec</div>
+        </div>
+        <div class="rounded-default border border-base-200 dark:border-base-700 p-3">
+            <div id="stat-eta" class="text-lg font-bold text-base-600 dark:text-base-300">--:--</div>
+            <div class="text-xs text-base-400 mt-1">ETA</div>
+        </div>
+    </div>
+
+    <!-- Live activity log -->
+    <div class="mb-6">
+        <h3 class="text-sm font-semibold text-base-600 dark:text-base-300 mb-2 flex items-center gap-1.5">
+            <span class="material-symbols-outlined !text-[16px]">terminal</span>
+            Live Activity
+        </h3>
+        <div id="activity-log"
+             class="h-64 overflow-y-auto rounded-default border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900 p-3 text-xs font-mono space-y-1">
+            <div class="text-base-400 italic">Waiting for results...</div>
+        </div>
+    </div>
+
+    <!-- Failed recipients (hidden until failures exist) -->
+    <div id="failed-section" class="mb-6 hidden">
+        <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1.5">
+            <span class="material-symbols-outlined !text-[16px]">error</span>
+            Failed Recipients
+        </h3>
+        <div class="rounded-default border border-red-200 dark:border-red-800 overflow-hidden">
+            <table class="w-full text-xs">
+                <thead class="bg-red-50 dark:bg-red-900/20">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-semibold text-red-700 dark:text-red-400">Email</th>
+                        <th class="text-left px-3 py-2 font-semibold text-red-700 dark:text-red-400">Error</th>
+                    </tr>
+                </thead>
+                <tbody id="failed-tbody" class="divide-y divide-red-100 dark:divide-red-900/30">
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -61,6 +109,129 @@
     var statusUrl = "{{ status_json_url }}";
     var total = {{ campaign.total_recipients }};
     var polling = null;
+    var startedAt = null;
+    var seenLogKeys = {};
+    var activityEntries = [];
+
+    function fmtDuration(secs) {
+        if (secs < 0 || !isFinite(secs)) return '--:--';
+        var h = Math.floor(secs / 3600);
+        var m = Math.floor((secs % 3600) / 60);
+        var s = Math.floor(secs % 60);
+        if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        return m + ':' + String(s).padStart(2,'0');
+    }
+
+    function fmtTime(isoStr) {
+        if (!isoStr) return '--:--:--';
+        var d = new Date(isoStr);
+        return String(d.getHours()).padStart(2,'0') + ':' +
+               String(d.getMinutes()).padStart(2,'0') + ':' +
+               String(d.getSeconds()).padStart(2,'0');
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function updateStats(data) {
+        if (!startedAt && data.started_at) {
+            startedAt = new Date(data.started_at);
+        }
+        var done = (data.sent || 0) + (data.failed || 0);
+        var elapsedEl = document.getElementById('stat-elapsed');
+        var rateEl = document.getElementById('stat-rate');
+        var etaEl = document.getElementById('stat-eta');
+
+        if (!startedAt) {
+            elapsedEl.textContent = '--:--';
+            rateEl.textContent = '--';
+            etaEl.textContent = '--:--';
+            return;
+        }
+
+        var nowSecs = (Date.now() - startedAt.getTime()) / 1000;
+        elapsedEl.textContent = fmtDuration(nowSecs);
+
+        if (done > 0 && nowSecs > 0) {
+            var rate = done / nowSecs;
+            rateEl.textContent = rate.toFixed(1);
+            var remaining = total - done;
+            if (remaining > 0 && data.status === 'sending') {
+                etaEl.textContent = fmtDuration(remaining / rate);
+            } else {
+                etaEl.textContent = data.status === 'sending' ? '--:--' : 'Done';
+            }
+        } else {
+            rateEl.textContent = '--';
+            etaEl.textContent = '--:--';
+        }
+    }
+
+    function updateActivityLog(logs) {
+        var container = document.getElementById('activity-log');
+        var newEntries = [];
+
+        for (var i = logs.length - 1; i >= 0; i--) {
+            var log = logs[i];
+            var key = log.email + '|' + log.status;
+            if (seenLogKeys[key]) continue;
+            seenLogKeys[key] = true;
+
+            var div = document.createElement('div');
+            div.className = 'flex items-start gap-2';
+
+            var time = fmtTime(log.sent_at);
+            var displayName = log.name
+                ? escHtml(log.name) + ' &lt;' + escHtml(log.email) + '&gt;'
+                : escHtml(log.email);
+
+            if (log.status === 'sent') {
+                div.innerHTML =
+                    '<span class="text-base-400 shrink-0">' + time + '</span>' +
+                    '<span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">SENT</span>' +
+                    '<span class="text-base-600 dark:text-base-300 truncate">' + displayName + '</span>';
+            } else {
+                div.innerHTML =
+                    '<span class="text-base-400 shrink-0">' + time + '</span>' +
+                    '<span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">FAIL</span>' +
+                    '<span class="text-base-600 dark:text-base-300 truncate">' + displayName + '</span>' +
+                    (log.error ? '<span class="text-red-500 dark:text-red-400 truncate">&mdash; ' + escHtml(log.error) + '</span>' : '');
+            }
+            newEntries.push(div);
+        }
+
+        if (newEntries.length > 0) {
+            if (activityEntries.length === 0) {
+                container.innerHTML = '';
+            }
+            newEntries.forEach(function(el) {
+                container.appendChild(el);
+                activityEntries.push(el);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    function updateFailedSection(failedLogs) {
+        var section = document.getElementById('failed-section');
+        var tbody = document.getElementById('failed-tbody');
+        if (!failedLogs || failedLogs.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+        section.classList.remove('hidden');
+        tbody.innerHTML = '';
+        failedLogs.forEach(function(log) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td class="px-3 py-1.5 text-base-600 dark:text-base-300">' + escHtml(log.email) + '</td>' +
+                '<td class="px-3 py-1.5 text-red-600 dark:text-red-400">' + escHtml(log.error || 'Unknown error') + '</td>';
+            tbody.appendChild(tr);
+        });
+    }
 
     function update(data) {
         var sent = data.sent || 0;
@@ -79,6 +250,10 @@
             document.getElementById('bar-sent').style.width = (sent / total * 100) + '%';
             document.getElementById('bar-failed').style.width = (failed / total * 100) + '%';
         }
+
+        updateStats(data);
+        updateActivityLog(data.recent_logs || []);
+        updateFailedSection(data.failed_logs || []);
 
         if (data.status !== 'sending') {
             clearInterval(polling);
@@ -106,7 +281,7 @@
     }
 
     poll();
-    polling = setInterval(poll, 2000);
+    polling = setInterval(poll, 1000);
 })();
 </script>
 {% endblock %}

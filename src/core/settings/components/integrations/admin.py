@@ -116,6 +116,7 @@ UNFOLD = {
             {
                 "title": "Amazon SES Mail",
                 "items": [
+                    {"title": "Inbox", "link": "/admin/mail/inbox/"},
                     {"title": "Sent Email", "link": "/admin/mail/emailcampaign/"},
                     {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
                 ],

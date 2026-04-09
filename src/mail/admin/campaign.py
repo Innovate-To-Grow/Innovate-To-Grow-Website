@@ -534,12 +534,41 @@ class EmailCampaignAdmin(BaseModelAdmin):
     def send_campaign_status_json(self, request, object_id):
         """JSON endpoint for polling send progress."""
         obj = EmailCampaign.objects.get(pk=object_id)
+
+        recent_qs = RecipientLog.objects.filter(campaign=obj).exclude(status="pending").order_by("-sent_at")[:20]
+        recent_logs = [
+            {
+                "email": log.email_address,
+                "name": log.recipient_name,
+                "status": log.status,
+                "error": log.error_message,
+                "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+            }
+            for log in recent_qs
+        ]
+
+        failed_qs = RecipientLog.objects.filter(campaign=obj, status="failed").order_by("-sent_at")
+        failed_logs = [
+            {"email": log.email_address, "name": log.recipient_name, "error": log.error_message} for log in failed_qs
+        ]
+
+        first_sent_at = (
+            RecipientLog.objects.filter(campaign=obj)
+            .exclude(status="pending")
+            .order_by("sent_at")
+            .values_list("sent_at", flat=True)
+            .first()
+        )
+
         return JsonResponse(
             {
                 "status": obj.status,
                 "total": obj.total_recipients,
                 "sent": obj.sent_count,
                 "failed": obj.failed_count,
+                "started_at": first_sent_at.isoformat() if first_sent_at else None,
+                "recent_logs": recent_logs,
+                "failed_logs": failed_logs,
             }
         )
 

@@ -1,6 +1,7 @@
 """Orchestrate sending an email campaign to all resolved recipients."""
 
 import logging
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -38,7 +39,7 @@ def _build_unsubscribe_url(member_id):
 
 def send_campaign(campaign, sent_by):
     """
-    Send *campaign* to all resolved recipients.
+    Send *campaign* to all resolved recipients via SES.
 
     Returns a summary dict: ``{"total": int, "sent": int, "failed": int}``.
     """
@@ -52,9 +53,25 @@ def send_campaign(campaign, sent_by):
     campaign.failed_count = 0
     campaign.save(update_fields=["status", "sent_by", "total_recipients", "sent_count", "failed_count"])
 
+    ses_client = _get_ses_client(config)
+    if ses_client is None:
+        campaign.status = "failed"
+        campaign.save(update_fields=["status"])
+        raise RuntimeError("SES is not configured. Cannot send campaign.")
+
+    send_rate = config.ses_max_send_rate or 0
+    min_interval = (1.0 / send_rate) if send_rate > 0 else 0
+    last_send_time = 0.0
+
     from mail.models import RecipientLog
 
     for recipient in recipients:
+        # Rate-limit: wait if we're sending faster than the configured rate
+        if min_interval > 0 and last_send_time > 0:
+            elapsed = time.monotonic() - last_send_time
+            if elapsed < min_interval:
+                time.sleep(min_interval - elapsed)
+
         login_link = _build_login_link(recipient["member_id"], campaign)
         context = {
             "first_name": recipient["first_name"],
@@ -76,13 +93,16 @@ def send_campaign(campaign, sent_by):
             status="pending",
         )
 
-        provider, error = _send_single(
-            config=config,
+        error = _send_via_ses(
+            ses_client=ses_client,
+            source=config.source_address,
             recipient=recipient["email"],
             subject=subject,
             html_body=wrapped_html,
             unsubscribe_url=unsubscribe_url,
         )
+        last_send_time = time.monotonic()
+
         if error:
             log.status = "failed"
             log.error_message = error
@@ -91,7 +111,8 @@ def send_campaign(campaign, sent_by):
             log.status = "sent"
             log.sent_at = timezone.now()
             campaign.sent_count += 1
-        log.provider = provider
+
+        log.provider = "ses"
         log.save(update_fields=["status", "provider", "error_message", "sent_at"])
 
     campaign.status = "sent" if campaign.failed_count < campaign.total_recipients else "failed"
@@ -103,6 +124,24 @@ def send_campaign(campaign, sent_by):
         "sent": campaign.sent_count,
         "failed": campaign.failed_count,
     }
+
+
+def _get_ses_client(config):
+    """Create a reusable boto3 SES client, or None if SES is not configured."""
+    if not config.ses_configured:
+        return None
+    try:
+        import boto3
+
+        return boto3.client(
+            "ses",
+            region_name=config.ses_region,
+            aws_access_key_id=config.ses_access_key_id,
+            aws_secret_access_key=config.ses_secret_access_key,
+        )
+    except Exception:
+        logger.exception("Failed to create SES client")
+        return None
 
 
 def _build_unsubscribe_headers(unsubscribe_url):
@@ -127,63 +166,25 @@ def _build_raw_ses_message(*, source, recipient, subject, html_body, extra_heade
     return msg.as_string()
 
 
-def _send_single(*, config, recipient, subject, html_body, unsubscribe_url=""):
+def _send_via_ses(*, ses_client, source, recipient, subject, html_body, unsubscribe_url=""):
     """
-    Try SES first, fall back to SMTP. Returns (provider, error_message).
-    On success error_message is empty string.
+    Send a single email via SES. Returns error message string, or empty string on success.
     """
     unsub_headers = _build_unsubscribe_headers(unsubscribe_url)
-
-    # Try SES (raw email to support custom headers)
-    if config.ses_configured:
-        try:
-            import boto3
-
-            client = boto3.client(
-                "ses",
-                region_name=config.ses_region,
-                aws_access_key_id=config.ses_access_key_id,
-                aws_secret_access_key=config.ses_secret_access_key,
-            )
-            raw_message = _build_raw_ses_message(
-                source=config.source_address,
-                recipient=recipient,
-                subject=subject,
-                html_body=html_body,
-                extra_headers=unsub_headers,
-            )
-            client.send_raw_email(
-                Source=config.source_address,
-                Destinations=[recipient],
-                RawMessage={"Data": raw_message},
-            )
-            return "ses", ""
-        except Exception:
-            logger.exception("SES send failed for %s", recipient)
-
-    # Fall back to SMTP
     try:
-        from django.core.mail import EmailMessage, get_connection
-
-        connection = get_connection(
-            host=config.smtp_host,
-            port=config.smtp_port,
-            username=config.smtp_username,
-            password=config.smtp_password,
-            use_tls=config.smtp_use_tls,
-            fail_silently=False,
-        )
-        msg = EmailMessage(
+        raw_message = _build_raw_ses_message(
+            source=source,
+            recipient=recipient,
             subject=subject,
-            body=html_body,
-            from_email=config.source_address,
-            to=[recipient],
-            connection=connection,
-            headers=unsub_headers,
+            html_body=html_body,
+            extra_headers=unsub_headers,
         )
-        msg.content_subtype = "html"
-        msg.send()
-        return "smtp", ""
+        ses_client.send_raw_email(
+            Source=source,
+            Destinations=[recipient],
+            RawMessage={"Data": raw_message},
+        )
+        return ""
     except Exception as exc:
-        logger.exception("SMTP send failed for %s", recipient)
-        return "smtp", str(exc)
+        logger.exception("SES send failed for %s", recipient)
+        return str(exc)

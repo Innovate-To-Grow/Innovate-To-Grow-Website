@@ -3,7 +3,7 @@
  */
 
 export { AuthProvider, useAuth } from './AuthContext';
-export { CodeInput } from './forms/CodeInput';
+export { CodeInput, VERIFICATION_CODE_PLACEHOLDER } from './forms/CodeInput';
 export { LoginForm } from './forms/LoginForm';
 export { RegisterForm } from './forms/RegisterForm';
 export { AccountPage } from './pages/AccountPage';

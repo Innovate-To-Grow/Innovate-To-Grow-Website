@@ -8,9 +8,13 @@ const mockUseAuth = vi.fn();
 const mockGetProfile = vi.fn();
 const mockUpdateProfileFields = vi.fn();
 
-vi.mock('../../components/Auth', () => ({
-  useAuth: () => mockUseAuth(),
-}));
+vi.mock('../../components/Auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../components/Auth')>();
+  return {
+    ...actual,
+    useAuth: () => mockUseAuth(),
+  };
+});
 
 vi.mock('../../services/auth', async () => {
   const actual = await vi.importActual<typeof import('../../services/auth')>('../../services/auth');

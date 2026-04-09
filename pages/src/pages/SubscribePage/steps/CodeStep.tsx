@@ -1,5 +1,7 @@
 import {useEffect, useState, type FormEvent} from 'react';
 
+import {CodeInput} from '../../../components/Auth';
+
 interface CodeStepProps {
   email: string;
   code: string;
@@ -50,22 +52,16 @@ export const CodeStep = ({
           <label className="subscribe-label" htmlFor="subscribe-code">
             Verification Code
           </label>
-          <input
+          <CodeInput
             id="subscribe-code"
-            type="text"
-            className="subscribe-input"
             value={code}
-            onChange={(event) => onCodeChange(event.target.value)}
-            placeholder="Enter 6-digit code"
-            required
-            autoFocus
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            maxLength={6}
+            onChange={onCodeChange}
             disabled={authLoading}
+            autoFocus
+            required
           />
         </div>
-        <button type="submit" className="subscribe-submit" disabled={authLoading || !code.trim()}>
+        <button type="submit" className="subscribe-submit" disabled={authLoading || code.length !== 6}>
           {authLoading ? <><span className="subscribe-spinner" /> Verifying...</> : 'Verify Code'}
         </button>
       </form>

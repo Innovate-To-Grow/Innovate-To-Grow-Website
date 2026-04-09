@@ -5,3 +5,15 @@ class MailConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "mail"
     verbose_name = "Mail"
+
+    def ready(self):
+        from django.contrib import admin
+
+        from .admin.inbox import get_inbox_urls
+
+        original_get_urls = admin.AdminSite.get_urls
+
+        def patched_get_urls(site_self):
+            return get_inbox_urls() + original_get_urls(site_self)
+
+        admin.AdminSite.get_urls = patched_get_urls

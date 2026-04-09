@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:800px;">
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Reply form -->
+        <div class="mb-4 rounded-default border border-base-200 bg-white dark:border-base-700 dark:bg-base-800 overflow-hidden">
+            <!-- From -->
+            <div class="px-4 py-3 border-b border-base-100 dark:border-base-700 flex items-center gap-3">
+                <label class="text-sm text-base-400 shrink-0 w-16">From:</label>
+                <span class="text-sm text-font-default-light dark:text-font-default-dark">{{ from_address }}</span>
+            </div>
+
+            <!-- To -->
+            <div class="px-4 py-3 border-b border-base-100 dark:border-base-700 flex items-center gap-3">
+                <label class="text-sm text-base-400 shrink-0 w-16">To:</label>
+                <input type="text" name="to_email" value="{{ msg.from_email }}"
+                       class="flex-1 text-sm border border-base-200 dark:border-base-600 rounded-md px-3 py-1.5 bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            </div>
+
+            <!-- Subject -->
+            <div class="px-4 py-3 border-b border-base-100 dark:border-base-700 flex items-center gap-3">
+                <label class="text-sm text-base-400 shrink-0 w-16">Subject:</label>
+                <input type="text" name="subject" value="{{ reply_subject }}"
+                       class="flex-1 text-sm border border-base-200 dark:border-base-600 rounded-md px-3 py-1.5 bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+            </div>
+
+            <!-- Reply body -->
+            <div class="px-4 py-3">
+                <textarea name="reply_body" rows="12" placeholder="Write your reply..."
+                          class="w-full text-sm border border-base-200 dark:border-base-600 rounded-md px-3 py-2 bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none resize-y"></textarea>
+            </div>
+        </div>
+
+        <!-- Original message (collapsed) -->
+        <details class="mb-4 rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
+            <summary class="px-4 py-2 bg-base-50 dark:bg-base-800 text-xs font-medium text-base-400 cursor-pointer hover:bg-base-100 dark:hover:bg-base-700 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[14px]">format_quote</span>
+                Original message from {% if msg.from_name %}{{ msg.from_name }}{% else %}{{ msg.from_email }}{% endif %}
+            </summary>
+            <div class="border-t border-base-200 dark:border-base-700">
+                <div class="px-4 py-2 space-y-1 text-xs text-base-400 bg-base-50/50 dark:bg-base-800/50 border-b border-base-100 dark:border-base-700">
+                    <div><strong>From:</strong> {% if msg.from_name %}{{ msg.from_name }} &lt;{{ msg.from_email }}&gt;{% else %}{{ msg.from_email }}{% endif %}</div>
+                    <div><strong>Date:</strong> {{ msg.date }}</div>
+                    <div><strong>Subject:</strong> {{ msg.subject }}</div>
+                </div>
+                <div class="p-4 text-sm text-base-600 dark:text-base-300 max-h-64 overflow-y-auto">
+                    {% if msg.text %}
+                        <pre class="whitespace-pre-wrap font-sans">{{ msg.text }}</pre>
+                    {% else %}
+                        <p class="text-base-400 italic">HTML-only message (see detail view)</p>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <button type="submit"
+                    class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">send</span>
+                Send Reply
+            </button>
+            <a href="{{ detail_url }}"
+               class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">close</span>
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

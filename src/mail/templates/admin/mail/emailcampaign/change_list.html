@@ -27,11 +27,7 @@
                 </div>
                 <div>
                     <span class="text-base-400">Provider:</span>
-                    {% if email_config.ses_configured %}
-                        <span class="font-medium text-font-default-light dark:text-font-default-dark">AWS SES ({{ email_config.ses_region }})</span>
-                    {% else %}
-                        <span class="font-medium text-font-default-light dark:text-font-default-dark">SMTP ({{ email_config.smtp_host }})</span>
-                    {% endif %}
+                    <span class="font-medium text-font-default-light dark:text-font-default-dark">AWS SES ({{ email_config.ses_region }})</span>
                 </div>
                 <div>
                     <span class="text-base-400">Sender:</span>
