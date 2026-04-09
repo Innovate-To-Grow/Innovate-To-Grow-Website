@@ -24,6 +24,9 @@ class RecipientLogAdmin(ReadOnlyModelAdmin):
         ),
     )
 
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+
     @display(description="Status", label=True)
     def status_badge(self, obj):
         colors = {"pending": "info", "sent": "success", "failed": "danger"}

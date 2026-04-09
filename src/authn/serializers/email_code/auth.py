@@ -51,6 +51,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
             email_address=email,
             email_type="primary",
             verified=False,
+            subscribe=True,
         )
         return member
 

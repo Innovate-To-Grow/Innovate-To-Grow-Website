@@ -8,7 +8,7 @@ import {
     verifyContactPhoneCode,
     type ContactPhone,
 } from '../../../../services/auth';
-import {USER_FACING_GENERIC_ERROR_ZH} from '../../shared/apiErrors';
+import {USER_FACING_GENERIC_ERROR} from '../../shared/apiErrors';
 import {canSubmitNationalPhone, capNationalDigitsForRegion} from './phoneInput';
 
 export const usePhoneCenter = () => {
@@ -78,7 +78,7 @@ export const usePhoneCenter = () => {
             const updated = await updateContactPhone(phone.id, {subscribe: !phone.subscribe});
             setPhones((prev) => prev.map((p) => (p.id === phone.id ? updated : p)));
         } catch {
-            setError(USER_FACING_GENERIC_ERROR_ZH);
+            setError(USER_FACING_GENERIC_ERROR);
         }
     };
 
@@ -108,7 +108,7 @@ export const usePhoneCenter = () => {
                 setError('SMS could not be sent. Tap Resend Code.');
             }
         } catch {
-            setAddError(USER_FACING_GENERIC_ERROR_ZH);
+            setAddError(USER_FACING_GENERIC_ERROR);
         } finally {
             setAddLoading(false);
         }
@@ -124,7 +124,7 @@ export const usePhoneCenter = () => {
             setVerifyingId(phoneId);
             setSuccessMessage('Code sent. Enter it below and tap Submit code.');
         } catch {
-            setError(USER_FACING_GENERIC_ERROR_ZH);
+            setError(USER_FACING_GENERIC_ERROR);
         } finally {
             setResendLoading(false);
         }
@@ -149,7 +149,7 @@ export const usePhoneCenter = () => {
             }
             setSuccessMessage('Phone number verified successfully.');
         } catch {
-            setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
+            setVerifyError(USER_FACING_GENERIC_ERROR);
         } finally {
             setVerifyLoading(false);
         }
@@ -164,7 +164,7 @@ export const usePhoneCenter = () => {
                 setSuccessMessage('New code sent. Enter it below and tap Submit code.');
             }
         } catch {
-            setVerifyError(USER_FACING_GENERIC_ERROR_ZH);
+            setVerifyError(USER_FACING_GENERIC_ERROR);
         } finally {
             setResendLoading(false);
         }
@@ -192,7 +192,7 @@ export const usePhoneCenter = () => {
             setVerifyCode('');
             setVerifyError(null);
         } catch {
-            setError(USER_FACING_GENERIC_ERROR_ZH);
+            setError(USER_FACING_GENERIC_ERROR);
         } finally {
             setAbandonPendingLoading(false);
         }
@@ -210,7 +210,7 @@ export const usePhoneCenter = () => {
             }
             setSuccessMessage('Phone number removed.');
         } catch {
-            setError(USER_FACING_GENERIC_ERROR_ZH);
+            setError(USER_FACING_GENERIC_ERROR);
         }
     };
 

@@ -1,5 +1,5 @@
 /** Generic message for account UI where we avoid exposing backend / vendor details (e.g. SMS config). */
-export const USER_FACING_GENERIC_ERROR_ZH = '未知错误发生';
+export const USER_FACING_GENERIC_ERROR = 'An unknown error occurred.';
 
 export function getAuthApiErrorMessage(err: unknown): string {
   if (typeof err === 'object' && err !== null) {

@@ -135,11 +135,13 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         self.assertEqual(request_response.status_code, 202)
         self.assertEqual(request_response.data["flow"], "register")
-        pending = ContactEmail.objects.get(email_address="new-flow@example.com").member
+        primary_contact = ContactEmail.objects.get(email_address="new-flow@example.com")
+        pending = primary_contact.member
         self.assertFalse(pending.is_active)
         self.assertFalse(pending.has_usable_password())
         self.assertEqual(pending.first_name, "")
         self.assertEqual(pending.organization, "")
+        self.assertTrue(primary_contact.subscribe)
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
@@ -148,8 +150,10 @@ class EmailCodeAuthLoginTests(APITestCase):
         )
 
         pending.refresh_from_db()
+        primary_contact.refresh_from_db()
         self.assertEqual(verify_response.status_code, 200)
         self.assertTrue(pending.is_active)
+        self.assertTrue(primary_contact.subscribe)
         self.assertEqual(verify_response.data["next_step"], "complete_profile")
         self.assertTrue(verify_response.data["requires_profile_completion"])
         self.assertIn("access", verify_response.data)
@@ -175,6 +179,14 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(request_response.data["flow"], "register")
         self.assertEqual(ContactEmail.objects.filter(email_address="pending-flow@example.com").count(), 1)
         self.assertEqual(pending.first_name, "Existing")
+
+        verify_response = self.client.post(
+            "/authn/email-auth/verify-code/",
+            {"email": "pending-flow@example.com", "code": "654321"},
+            format="json",
+        )
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertTrue(ContactEmail.objects.get(email_address="pending-flow@example.com").subscribe)
 
     def test_unified_email_auth_rejects_conflicting_contact_email(self, _mock_code, _mock_send):
         ContactEmail.objects.create(

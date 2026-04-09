@@ -38,7 +38,7 @@ class ContactEmail(ProjectControlModel):
 
     # subscribe
     subscribe = models.BooleanField(
-        default=False, help_text="Whether the email is subscribed to communications", verbose_name="Subscribed"
+        default=True, help_text="Whether the email is subscribed to communications", verbose_name="Subscribed"
     )
 
     # verified

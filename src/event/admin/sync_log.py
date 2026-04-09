@@ -13,6 +13,9 @@ class RegistrationSheetSyncLogAdmin(ReadOnlyModelAdmin):
     search_fields = ("event__name", "error_message")
     ordering = ("-created_at",)
 
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+
     @display(description="Type", label=True)
     def sync_type_badge(self, obj):
         if obj.sync_type == RegistrationSheetSyncLog.SyncType.FULL:

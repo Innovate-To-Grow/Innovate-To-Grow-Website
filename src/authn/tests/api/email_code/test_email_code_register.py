@@ -48,8 +48,10 @@ class EmailCodeAuthRegisterTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 202)
-        member = ContactEmail.objects.get(email_address="new-member@example.com").member
+        contact = ContactEmail.objects.get(email_address="new-member@example.com")
+        member = contact.member
         self.assertFalse(member.is_active)
+        self.assertTrue(contact.subscribe)
 
         verify_response = self.client.post(
             "/authn/register/verify-code/",
@@ -58,8 +60,10 @@ class EmailCodeAuthRegisterTests(APITestCase):
         )
 
         member.refresh_from_db()
+        contact.refresh_from_db()
         self.assertEqual(verify_response.status_code, 200)
         self.assertTrue(member.is_active)
+        self.assertTrue(contact.subscribe)
         self.assertIn("access", verify_response.data)
 
     def test_register_reuses_pending_member(self, _mock_code, _mock_send):
@@ -90,6 +94,9 @@ class EmailCodeAuthRegisterTests(APITestCase):
         self.assertEqual(ContactEmail.objects.filter(email_address="pending@example.com").count(), 1)
         self.assertEqual(pending.first_name, "Updated")
         self.assertTrue(pending.check_password(self.password))
+        self.assertTrue(
+            ContactEmail.objects.get(email_address="pending@example.com").subscribe,
+        )
 
     def test_register_rejects_existing_contact_email(self, _mock_code, _mock_send):
         response = self.client.post(

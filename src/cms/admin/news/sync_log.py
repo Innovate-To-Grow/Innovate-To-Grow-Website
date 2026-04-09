@@ -25,6 +25,9 @@ class NewsSyncLogAdmin(ReadOnlyModelAdmin):
     )
     ordering = ("-started_at",)
 
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+
     def has_errors_display(self, obj):
         return obj.has_errors
 

@@ -98,3 +98,6 @@ class CheckInRecordAdmin(ReadOnlyModelAdmin):
         "registration__attendee_last_name",
     )
     ordering = ("-created_at",)
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff

@@ -57,7 +57,7 @@ def _notify_email_owner_in_background(email: str):
     thread.start()
 
 
-def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = False):
+def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = True):
     if email_type == "secondary" and _member_has_secondary(member):
         raise AuthChallengeInvalid(
             "You already have a secondary email. Change the existing one to 'other' first, or add this email as 'other'."

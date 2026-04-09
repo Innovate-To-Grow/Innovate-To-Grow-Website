@@ -1,10 +1,12 @@
 from unittest.mock import patch
 
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from authn.models import ContactEmail, Member
 from event.admin.registration import EventRegistrationAdmin
-from event.models import EventRegistration, Ticket
+from event.models import Event, EventRegistration, Ticket
 from event.services import ScheduleSyncStats
 from event.tests.helpers import make_event, make_superuser
 
@@ -21,6 +23,24 @@ class EventAdminTest(TestCase):
     def test_add_form_accessible(self):
         response = self.client.get("/admin/event/event/add/")
         self.assertEqual(response.status_code, 200)
+
+    def test_change_page_shows_inlines_for_staff_without_ticket_model_perms(self):
+        """Inlines must not depend on event.add_ticket; match Event admin access instead."""
+        editor = Member.objects.create_user(password="testpass123", is_staff=True, is_superuser=False)
+        ContactEmail.objects.create(
+            member=editor, email_address="editor@example.com", email_type="primary", verified=True
+        )
+        ct = ContentType.objects.get_for_model(Event)
+        editor.user_permissions.add(Permission.objects.get(content_type=ct, codename="change_event"))
+        event = make_event(name="Inline Perm Test")
+        self.client.logout()
+        self.client.login(username="editor@example.com", password="testpass123")
+
+        response = self.client.get(f"/admin/event/event/{event.pk}/change/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="tickets-group"')
+        self.assertContains(response, 'id="questions-group"')
 
     def test_search_by_name(self):
         make_event(name="Searchable Event")

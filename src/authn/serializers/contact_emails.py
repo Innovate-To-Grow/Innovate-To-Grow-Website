@@ -26,7 +26,7 @@ class ContactEmailCreateSerializer(serializers.Serializer):
         choices=[("secondary", "Secondary"), ("other", "Other")],
         default="secondary",
     )
-    subscribe = serializers.BooleanField(default=False)
+    subscribe = serializers.BooleanField(default=True)
 
     # noinspection PyMethodMayBeStatic
     def validate_email_type(self, value):
