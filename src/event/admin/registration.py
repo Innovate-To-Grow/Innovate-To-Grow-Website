@@ -137,9 +137,7 @@ class EventRegistrationAdminForm(forms.ModelForm):
         if member and event and not self.instance.pk:
             duplicate = EventRegistration.objects.filter(member=member, event=event).exists()
             if duplicate:
-                raise forms.ValidationError(
-                    {"member": "This member is already registered for the selected event."}
-                )
+                raise forms.ValidationError({"member": "This member is already registered for the selected event."})
 
         return cleaned
 
@@ -225,16 +223,16 @@ class EventRegistrationAdmin(BaseModelAdmin):
         emails = list(
             member.contact_emails.order_by("email_type", "created_at").values_list("email_address", flat=True)
         )
-        phones = list(
-            member.contact_phones.order_by("-verified", "created_at").values_list("phone_number", flat=True)
+        phones = list(member.contact_phones.order_by("-verified", "created_at").values_list("phone_number", flat=True))
+        return JsonResponse(
+            {
+                "name": member.get_full_name(),
+                "emails": emails,
+                "phones": phones,
+                "organization": member.organization or "",
+                "title": member.title or "",
+            }
         )
-        return JsonResponse({
-            "name": member.get_full_name(),
-            "emails": emails,
-            "phones": phones,
-            "organization": member.organization or "",
-            "title": member.title or "",
-        })
 
     # noinspection PyMethodMayBeStatic
     def _event_info_view(self, request, pk):
@@ -253,25 +251,24 @@ class EventRegistrationAdmin(BaseModelAdmin):
         tickets = [{"name": t["name"], "registrations": t["reg_count"]} for t in ticket_data]
         total_registrations = sum(t["reg_count"] for t in ticket_data)
 
-        questions = [
-            {"text": q.text, "required": q.is_required}
-            for q in event.questions.order_by("order")
-        ]
+        questions = [{"text": q.text, "required": q.is_required} for q in event.questions.order_by("order")]
 
-        return JsonResponse({
-            "name": event.name,
-            "slug": event.slug,
-            "date": event.date.isoformat(),
-            "location": event.location,
-            "description": event.description,
-            "is_live": event.is_live,
-            "allow_secondary_email": event.allow_secondary_email,
-            "collect_phone": event.collect_phone,
-            "verify_phone": event.verify_phone,
-            "total_registrations": total_registrations,
-            "tickets": tickets,
-            "questions": questions,
-        })
+        return JsonResponse(
+            {
+                "name": event.name,
+                "slug": event.slug,
+                "date": event.date.isoformat(),
+                "location": event.location,
+                "description": event.description,
+                "is_live": event.is_live,
+                "allow_secondary_email": event.allow_secondary_email,
+                "collect_phone": event.collect_phone,
+                "verify_phone": event.verify_phone,
+                "total_registrations": total_registrations,
+                "tickets": tickets,
+                "questions": questions,
+            }
+        )
 
     def get_readonly_fields(self, request, obj=None):
         if obj is None:
