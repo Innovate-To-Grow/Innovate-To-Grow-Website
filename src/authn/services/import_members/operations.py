@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models.functions import Lower
 
 from authn.models import ContactEmail, ContactPhone
+from authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
 
 from .types import ImportResult
 
@@ -108,21 +109,24 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
         member.contact_emails.filter(email_type="secondary").delete()
 
     if parsed["phone_number"]:
-        if parsed["phone_number"] not in claimed_phones:
+        region = infer_region_from_e164(parsed["phone_number"])
+        national = normalize_to_national(parsed["phone_number"], region)
+        if national not in claimed_phones:
             existing_phone = member.contact_phones.first()
             if existing_phone:
-                existing_phone.phone_number = parsed["phone_number"]
+                existing_phone.phone_number = national
+                existing_phone.region = region
                 existing_phone.subscribe = parsed["phone_subscribed"]
                 existing_phone.verified = parsed["phone_verified"]
                 existing_phone.save()
             else:
                 ContactPhone.objects.create(
                     member=member,
-                    phone_number=parsed["phone_number"],
-                    region="US",
+                    phone_number=national,
+                    region=region,
                     subscribe=parsed["phone_subscribed"],
                     verified=parsed["phone_verified"],
                 )
-            claimed_phones.add(parsed["phone_number"])
+            claimed_phones.add(national)
     else:
         member.contact_phones.all().delete()

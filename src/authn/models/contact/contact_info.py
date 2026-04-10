@@ -100,7 +100,7 @@ class ContactPhone(ProjectControlModel):
     )
 
     # contact phone number
-    phone_number = models.CharField(max_length=20, unique=True, help_text="Contact Phone Number (e.g. +1234567890)")
+    phone_number = models.CharField(max_length=20, unique=True, help_text="National digits only (e.g. 2095765113)")
 
     # contact phone region
     region = models.CharField(max_length=20, choices=PHONE_REGION_CHOICES, help_text="Region of the phone number")
@@ -137,11 +137,20 @@ class ContactPhone(ProjectControlModel):
 
         return str_contact_phone
 
+    def to_e164(self) -> str:
+        """Reconstruct the full E.164 number from national digits + region."""
+        cc = self.region.split("-")[0] if "-" in self.region else self.region
+        return f"+{cc}{self.phone_number}"
+
     def get_formatted_number(self):
-        """
-        Return the stored phone number (already in international E.164 format).
-        """
-        return self.phone_number
+        """Return a human-readable formatted phone number."""
+        cc = self.region.split("-")[0] if "-" in self.region else self.region
+        n = self.phone_number
+
+        if cc == "1" and len(n) == 10:
+            return f"({n[:3]}){n[3:6]}-{n[6:]}"
+
+        return n
 
     # get region display name
     def get_region_display_name(self):

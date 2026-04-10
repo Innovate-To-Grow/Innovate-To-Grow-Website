@@ -229,3 +229,8 @@ Thumbs.db
 
 !/aws/aws_keys/
 !/aws/aws_keys/github-actions-deploy_accessKeys (1).csv
+
+# =====================================
+# Member Import Spreadsheet
+# =====================================
+/archive/legacy/MemberImport.xlsx

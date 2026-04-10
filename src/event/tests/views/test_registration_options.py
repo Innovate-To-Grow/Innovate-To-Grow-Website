@@ -96,7 +96,7 @@ class EventRegistrationOptionsViewTest(TestCase):
         member = make_member(email="primary@example.com")
         ContactPhone.objects.create(
             member=member,
-            phone_number="+15551234567",
+            phone_number="5551234567",
             region="1-US",
             verified=True,
         )
@@ -105,7 +105,7 @@ class EventRegistrationOptionsViewTest(TestCase):
         self.assertEqual(
             response.data["member_phone"],
             {
-                "phone_number": "+15551234567",
+                "phone_number": "5551234567",
                 "region": "1-US",
                 "verified": True,
             },

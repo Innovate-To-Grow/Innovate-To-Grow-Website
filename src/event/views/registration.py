@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authn.models import ContactPhone
+from authn.services.contacts.contact_phones import normalize_to_national
 from event.models import Event, EventRegistration, Question, Ticket
 from event.serializers import (
     EventRegistrationCreateSerializer,
@@ -203,11 +204,14 @@ class EventRegistrationCreateView(APIView):
                 phone = _normalize_phone(data["attendee_phone"], phone_region)
                 create_kwargs["attendee_phone"] = phone
                 if event.verify_phone:
-                    # SMS flow sets short-lived cache; also accept an already-verified phone on this account
-                    # so the form's "Verified" state (from member_phone) matches server rules.
+                    national_digits = normalize_to_national(phone, phone_region)
                     phone_verified_inline = (
                         _consume_phone_verification(request.user, phone)
-                        or ContactPhone.objects.filter(member=request.user, phone_number=phone, verified=True).exists()
+                        or ContactPhone.objects.filter(
+                            member=request.user,
+                            phone_number=national_digits,
+                            verified=True,
+                        ).exists()
                     )
                     if not phone_verified_inline:
                         return Response(

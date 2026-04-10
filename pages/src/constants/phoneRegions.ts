@@ -66,6 +66,14 @@ export const PHONE_REGION_CHOICES: ReadonlyArray<{ code: string; label: string }
   { code: '254', label: 'Kenya' },
 ];
 
+/** Maximum national-digit length for a given country code. */
+export function maxPhoneDigits(regionCode: string): number {
+  const cc = regionCode.split('-')[0];
+  if (cc === '1') return 10;
+  if (cc === '86') return 11;
+  return 15;
+}
+
 /**
  * Validate a national phone number (digits only, no country-code prefix).
  * Returns an error message string if invalid, or `null` if valid.
@@ -76,17 +84,54 @@ export function validatePhoneDigits(digits: string, regionCode: string): string 
   if (!/^\d+$/.test(digits)) return 'Phone number must contain only digits.';
 
   const cc = regionCode.split('-')[0];
+  const max = maxPhoneDigits(regionCode);
 
   if (cc === '1') {
-    if (digits.length !== 10) return 'US/Canada phone numbers must be exactly 10 digits.';
+    if (digits.length !== max) return 'US/Canada phone numbers must be exactly 10 digits.';
     return null;
   }
   if (cc === '86') {
-    if (digits.length !== 11) return 'China phone numbers must be exactly 11 digits.';
+    if (digits.length !== max) return 'China phone numbers must be exactly 11 digits.';
     return null;
   }
 
   if (digits.length < 4) return 'Phone number is too short (minimum 4 digits).';
-  if (digits.length > 15) return 'Phone number is too long (maximum 15 digits).';
+  if (digits.length > max) return 'Phone number is too long (maximum 15 digits).';
   return null;
+}
+
+/**
+ * Format raw national digits for display.
+ * US/Canada: (206)333-8881
+ * China: 131 2345 6789
+ * Others: digits as-is
+ */
+export function formatPhoneDisplay(digits: string, regionCode: string): string {
+  if (!digits) return '';
+  const cc = regionCode.split('-')[0];
+
+  if (cc === '1') {
+    const area = digits.slice(0, 3);
+    const mid = digits.slice(3, 6);
+    const last = digits.slice(6, 10);
+    if (digits.length <= 3) return `(${area}`;
+    if (digits.length <= 6) return `(${area})${mid}`;
+    return `(${area})${mid}-${last}`;
+  }
+
+  if (cc === '86') {
+    const p1 = digits.slice(0, 3);
+    const p2 = digits.slice(3, 7);
+    const p3 = digits.slice(7, 11);
+    if (digits.length <= 3) return p1;
+    if (digits.length <= 7) return `${p1} ${p2}`;
+    return `${p1} ${p2} ${p3}`;
+  }
+
+  return digits;
+}
+
+/** Strip formatting characters, returning only digits. */
+export function stripPhoneFormat(value: string): string {
+  return value.replace(/\D/g, '');
 }

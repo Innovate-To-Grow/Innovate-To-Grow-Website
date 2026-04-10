@@ -105,7 +105,7 @@ def export_members_to_excel(queryset) -> bytes:
                 secondary.email_address if secondary else "",
                 "Yes" if secondary and secondary.verified else "No",
                 "Yes" if secondary and secondary.subscribe else "No",
-                phone.phone_number if phone else "",
+                phone.to_e164() if phone else "",
                 "Yes" if phone and phone.subscribe else "No",
                 "Yes" if phone and phone.verified else "No",
             ]

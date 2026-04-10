@@ -2,7 +2,7 @@ import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 
 import {useAuth} from '../../components/Auth';
 import {updateProfileFields} from '../../services/auth';
 import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '../../features/events/api';
-import {validatePhoneDigits} from '../../constants/phoneRegions';
+import {maxPhoneDigits, validatePhoneDigits} from '../../constants/phoneRegions';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';
@@ -36,6 +36,7 @@ export const useEventRegistration = () => {
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const optionsLoaded = useRef(false);
+  const initialPhoneRef = useRef<{digits: string; region: string} | null>(null);
   const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string; title: string} | null>(null);
 
   // Pre-fill attendee fields from member profile
@@ -88,6 +89,7 @@ export const useEventRegistration = () => {
         setPhoneRegion(region);
         setPhoneVerified(Boolean(data.member_phone.verified));
         setPhoneCodeSent(Boolean(data.member_phone.verified));
+        initialPhoneRef.current = {digits: normalizedDigits || phone, region};
       }
       prefillFromProfile(data);
       setStep('form');
@@ -238,13 +240,14 @@ export const useEventRegistration = () => {
   };
 
   const handlePhoneChange = (value: string) => {
-    if (value !== attendeePhone) {
+    const capped = value.slice(0, maxPhoneDigits(phoneRegion));
+    if (capped !== attendeePhone) {
       setPhoneVerified(false);
       setPhoneCodeSent(false);
       setPhoneCode('');
       setNormalizedPhone('');
     }
-    setAttendeePhone(value);
+    setAttendeePhone(capped);
   };
 
   const handlePhoneRegionChange = (value: string) => {
@@ -253,13 +256,23 @@ export const useEventRegistration = () => {
       setPhoneCodeSent(false);
       setPhoneCode('');
       setNormalizedPhone('');
+      setAttendeePhone((prev) => prev.slice(0, maxPhoneDigits(value)));
     }
     setPhoneRegion(value);
   };
 
+  const phoneChanged = initialPhoneRef.current === null
+    || attendeePhone !== initialPhoneRef.current.digits
+    || phoneRegion !== initialPhoneRef.current.region;
+
   const phoneError = useMemo(
-    () => (attendeePhone.trim() ? validatePhoneDigits(attendeePhone.trim(), phoneRegion) : null),
-    [attendeePhone, phoneRegion],
+    () => {
+      if (!attendeePhone.trim()) return null;
+      if (!phoneChanged) return null;
+      return validatePhoneDigits(attendeePhone.trim(), phoneRegion);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [attendeePhone, phoneRegion, phoneChanged],
   );
 
   return {

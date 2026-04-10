@@ -223,7 +223,7 @@ class EventRegistrationAdmin(BaseModelAdmin):
         emails = list(
             member.contact_emails.order_by("email_type", "created_at").values_list("email_address", flat=True)
         )
-        phones = list(member.contact_phones.order_by("-verified", "created_at").values_list("phone_number", flat=True))
+        phones = [cp.get_formatted_number() for cp in member.contact_phones.order_by("-verified", "created_at")]
         return JsonResponse(
             {
                 "name": member.get_full_name(),

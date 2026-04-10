@@ -43,6 +43,7 @@ from .auth.login import LoginView
 from .auth.public_key import PublicKeyView
 from .auth.register import RegisterView
 from .auth.token import PublicTokenRefreshView
+from .impersonate_login import ImpersonateLoginView
 from .subscribe import SubscribeView
 from .unsubscribe_login import UnsubscribeAutoLoginView
 
@@ -82,4 +83,5 @@ __all__ = [
     "AdminLoginView",
     "SubscribeView",
     "UnsubscribeAutoLoginView",
+    "ImpersonateLoginView",
 ]

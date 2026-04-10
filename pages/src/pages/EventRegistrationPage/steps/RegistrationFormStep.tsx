@@ -1,6 +1,8 @@
+import {useState} from 'react';
 import type {FormEvent} from 'react';
 
 import {VERIFICATION_CODE_PLACEHOLDER} from '../../../components/Auth';
+import {formatPhoneDisplay, stripPhoneFormat} from '../../../constants/phoneRegions';
 import type {EventRegistrationOptions} from '../../../features/events/api';
 import type {OrganizationType} from '../useEventRegistration';
 
@@ -79,8 +81,50 @@ export const RegistrationFormStep = ({
   onVerifyPhoneCode,
   onSubmit,
 }: RegistrationFormStepProps) => {
+  const [attempted, setAttempted] = useState(false);
+  const [phoneFocused, setPhoneFocused] = useState(false);
+
+  const secondaryEmailSameAsPrimary =
+    !!attendeeSecondaryEmail.trim() &&
+    attendeeSecondaryEmail.trim().toLowerCase() === primaryEmail.trim().toLowerCase();
+
+  const missingFirstName = !attendeeFirstName.trim();
+  const missingOrganization = attendeeOrgType === 'organization' && !attendeeOrganization.trim();
+  const missingTicket = !selectedTicketId;
+  const phoneNotVerified = options.verify_phone && !phoneVerified;
+  const phoneHasError = options.collect_phone && !!phoneError;
+  const missingRequiredAnswers = options.questions
+    .filter((q) => q.is_required)
+    .filter((q) => !answers[q.id]?.trim());
+
+  const hasErrors =
+    missingFirstName ||
+    missingOrganization ||
+    missingTicket ||
+    phoneNotVerified ||
+    phoneHasError ||
+    secondaryEmailSameAsPrimary ||
+    missingRequiredAnswers.length > 0;
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setAttempted(true);
+    if (hasErrors) {
+      requestAnimationFrame(() => {
+        const firstError = document.querySelector('.event-reg-form-group--error');
+        firstError?.scrollIntoView({behavior: 'smooth', block: 'center'});
+      });
+      return;
+    }
+    onSubmit(e);
+  };
+
+  const showError = attempted && !submitting;
+  const errorClass = (condition: boolean) =>
+    showError && condition ? ' event-reg-form-group--error' : '';
+
   return (
-  <form onSubmit={onSubmit}>
+  <form onSubmit={handleSubmit} noValidate>
     <div className="event-reg-section-card">
       <div className="event-reg-section-header">
         <h3 className="event-reg-section-title">Personal Information</h3>
@@ -104,7 +148,7 @@ export const RegistrationFormStep = ({
         ) : null}
 
         <div className="event-reg-form-row">
-          <div className="event-reg-form-group">
+          <div className={`event-reg-form-group${errorClass(missingFirstName)}`}>
             <label className="event-reg-label" htmlFor="first-name">
               First Name <span className="required-mark">*</span>
             </label>
@@ -115,14 +159,16 @@ export const RegistrationFormStep = ({
               value={attendeeFirstName}
               onChange={(e) => onFirstNameChange(e.target.value)}
               autoComplete="given-name"
-              required
               disabled={submitting}
             />
+            {showError && missingFirstName ? (
+              <p className="event-reg-field-error">First name is required.</p>
+            ) : null}
           </div>
 
           <div className="event-reg-form-group">
             <label className="event-reg-label" htmlFor="middle-name">
-              Middle Name <span className="event-reg-optional">(optional)</span>
+              Middle Name
             </label>
             <input
               id="middle-name"
@@ -151,7 +197,7 @@ export const RegistrationFormStep = ({
           </div>
         </div>
 
-        <div className="event-reg-form-group">
+        <div className={`event-reg-form-group${errorClass(missingOrganization)}`}>
           <label className="event-reg-label">
             Organization <span className="required-mark">*</span>
           </label>
@@ -182,10 +228,12 @@ export const RegistrationFormStep = ({
               onChange={(e) => onOrganizationChange(e.target.value)}
               placeholder="Company or organization name"
               autoComplete="organization"
-              required
               disabled={submitting}
             />
           )}
+          {showError && missingOrganization ? (
+            <p className="event-reg-field-error">Organization name is required.</p>
+          ) : null}
         </div>
 
         {attendeeOrgType === 'organization' && (
@@ -207,7 +255,7 @@ export const RegistrationFormStep = ({
         )}
 
         {options.allow_secondary_email ? (
-          <div className="event-reg-form-group">
+          <div className={`event-reg-form-group${errorClass(secondaryEmailSameAsPrimary)}`}>
             <label className="event-reg-label" htmlFor="secondary-email">
               Secondary Email
             </label>
@@ -223,20 +271,25 @@ export const RegistrationFormStep = ({
               placeholder="We recommend using your personal email"
               disabled={submitting}
             />
+            {secondaryEmailSameAsPrimary ? (
+              <p className="event-reg-field-error">
+                Secondary email must be different from the primary email.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
         {options.collect_phone ? (
-          <div className="event-reg-form-group">
+          <div className={`event-reg-form-group${errorClass(phoneNotVerified || phoneHasError)}`}>
             <label className="event-reg-label" htmlFor="phone">
               Phone Number {options.verify_phone ? <span className="required-mark">*</span> : null}
             </label>
             <div className="event-reg-phone-row">
               <select
-                className={`event-reg-phone-region ${!phoneVerified ? 'event-reg-input--editable' : ''}`}
+                className="event-reg-phone-region event-reg-input--editable"
                 value={phoneRegion}
                 onChange={(e) => onPhoneRegionChange(e.target.value)}
-                disabled={phoneVerified || submitting}
+                disabled={submitting}
               >
                 {options.phone_regions.map((r) => (
                   <option key={r.code} value={r.code}>
@@ -247,11 +300,13 @@ export const RegistrationFormStep = ({
               <input
                 id="phone"
                 type="tel"
-                className={`event-reg-input ${!phoneVerified ? 'event-reg-input--editable' : ''}`}
-                value={attendeePhone}
-                onChange={(e) => onPhoneChange(e.target.value.replace(/\D/g, ''))}
+                className="event-reg-input event-reg-input--editable"
+                value={phoneFocused ? attendeePhone : formatPhoneDisplay(attendeePhone, phoneRegion)}
+                onChange={(e) => onPhoneChange(stripPhoneFormat(e.target.value))}
+                onFocus={() => setPhoneFocused(true)}
+                onBlur={() => setPhoneFocused(false)}
                 placeholder="Phone number"
-                disabled={phoneVerified || submitting}
+                disabled={submitting}
               />
               {options.verify_phone && !phoneVerified ? (
                 <button
@@ -269,6 +324,9 @@ export const RegistrationFormStep = ({
             </div>
             {phoneError ? (
               <p className="event-reg-field-error">{phoneError}</p>
+            ) : null}
+            {showError && phoneNotVerified && !phoneError ? (
+              <p className="event-reg-field-error">Phone number must be verified.</p>
             ) : null}
             {options.verify_phone && phoneCodeSent && !phoneVerified ? (
               <div className="event-reg-phone-code-row">
@@ -301,7 +359,7 @@ export const RegistrationFormStep = ({
     <div className="event-reg-section-card event-reg-section-card--spaced">
       <h3 className="event-reg-section-title">Registration Details</h3>
 
-      <div className="event-reg-form-group">
+      <div className={`event-reg-form-group${errorClass(missingTicket)}`}>
         <label className="event-reg-label">
           Select a Ticket <span className="required-mark">*</span>
         </label>
@@ -322,12 +380,17 @@ export const RegistrationFormStep = ({
               </label>
             ))}
         </div>
+        {showError && missingTicket ? (
+          <p className="event-reg-field-error">Please select a ticket.</p>
+        ) : null}
       </div>
 
       {options.questions
         .sort((left, right) => left.order - right.order)
-        .map((question) => (
-          <div key={question.id} className="event-reg-form-group">
+        .map((question) => {
+          const qMissing = question.is_required && !answers[question.id]?.trim();
+          return (
+          <div key={question.id} className={`event-reg-form-group${errorClass(qMissing)}`}>
             <label className="event-reg-label" htmlFor={`q-${question.id}`}>
               {question.text}
               {question.is_required ? <span className="required-mark">*</span> : null}
@@ -337,16 +400,19 @@ export const RegistrationFormStep = ({
               className="event-reg-input event-reg-textarea"
               value={answers[question.id] || ''}
               onChange={(event) => onAnswerChange(question.id, event.target.value)}
-              required={question.is_required}
             />
+            {showError && qMissing ? (
+              <p className="event-reg-field-error">This field is required.</p>
+            ) : null}
           </div>
-        ))}
+          );
+        })}
     </div>
 
     <button
       type="submit"
       className="event-reg-submit"
-      disabled={submitting || !selectedTicketId || (options.verify_phone && !phoneVerified) || (options.collect_phone && !!phoneError) || (attendeeOrgType === 'organization' && !attendeeOrganization.trim())}
+      disabled={submitting}
     >
       {submitting ? <><span className="event-reg-spinner" /> Registering...</> : 'Register'}
     </button>

@@ -33,12 +33,12 @@ class ContactPhoneTests(APITestCase):
         self.assertEqual(response.data, [])
 
     def test_list_returns_own_phones_only(self):
-        ContactPhone.objects.create(member=self.member, phone_number="+12025551234", region="1-US")
-        ContactPhone.objects.create(member=self.other_member, phone_number="+12025555678", region="1-US")
+        ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        ContactPhone.objects.create(member=self.other_member, phone_number="2025555678", region="1-US")
         response = self.client.get("/authn/contact-phones/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["phone_number"], "+12025551234")
+        self.assertEqual(response.data[0]["phone_number"], "2025551234")
 
     # ── Create ───────────────────────────────────────────
 
@@ -49,7 +49,7 @@ class ContactPhoneTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["phone_number"], "+12025551234")
+        self.assertEqual(response.data["phone_number"], "2025551234")
         self.assertEqual(response.data["region"], "1-US")
         self.assertEqual(response.data["region_display"], "United States")
         self.assertFalse(response.data["subscribe"])
@@ -73,7 +73,7 @@ class ContactPhoneTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["phone_number"], "+12025551234")
+        self.assertEqual(response.data["phone_number"], "2025551234")
 
     def test_create_preserves_international_prefix(self):
         response = self.client.post(
@@ -82,10 +82,10 @@ class ContactPhoneTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["phone_number"], "+8613800138000")
+        self.assertEqual(response.data["phone_number"], "13800138000")
 
     def test_create_rejects_duplicate(self):
-        ContactPhone.objects.create(member=self.other_member, phone_number="+12025551234", region="1-US")
+        ContactPhone.objects.create(member=self.other_member, phone_number="2025551234", region="1-US")
         response = self.client.post(
             "/authn/contact-phones/",
             {"phone_number": "2025551234", "region": "1-US"},
@@ -126,7 +126,7 @@ class ContactPhoneTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_create_reclaims_soft_deleted(self):
-        phone = ContactPhone.objects.create(member=self.member, phone_number="+12025551234", region="1-US")
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
         phone.delete()  # soft-delete
         self.assertFalse(ContactPhone.objects.filter(pk=phone.pk).exists())
 
@@ -136,13 +136,13 @@ class ContactPhoneTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["phone_number"], "+12025551234")
+        self.assertEqual(response.data["phone_number"], "2025551234")
 
     # ── Update (subscribe toggle) ──────────────────────
 
     def test_patch_subscribe_toggle(self):
         phone = ContactPhone.objects.create(
-            member=self.member, phone_number="+12025551234", region="1-US", subscribe=False
+            member=self.member, phone_number="2025551234", region="1-US", subscribe=False
         )
         response = self.client.patch(
             f"/authn/contact-phones/{phone.pk}/",
@@ -156,7 +156,7 @@ class ContactPhoneTests(APITestCase):
         self.assertTrue(phone.subscribe)
 
     def test_cannot_patch_other_users_phone(self):
-        phone = ContactPhone.objects.create(member=self.other_member, phone_number="+12025551234", region="1-US")
+        phone = ContactPhone.objects.create(member=self.other_member, phone_number="2025551234", region="1-US")
         response = self.client.patch(
             f"/authn/contact-phones/{phone.pk}/",
             {"subscribe": True},
@@ -167,7 +167,7 @@ class ContactPhoneTests(APITestCase):
     # ── Delete ───────────────────────────────────────────
 
     def test_delete_returns_204(self):
-        phone = ContactPhone.objects.create(member=self.member, phone_number="+12025551234", region="1-US")
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
         response = self.client.delete(f"/authn/contact-phones/{phone.pk}/")
         self.assertEqual(response.status_code, 204)
 
@@ -177,7 +177,7 @@ class ContactPhoneTests(APITestCase):
     # ── Scoping ──────────────────────────────────────────
 
     def test_cannot_delete_other_users_phone(self):
-        phone = ContactPhone.objects.create(member=self.other_member, phone_number="+12025551234", region="1-US")
+        phone = ContactPhone.objects.create(member=self.other_member, phone_number="2025551234", region="1-US")
         response = self.client.delete(f"/authn/contact-phones/{phone.pk}/")
         self.assertEqual(response.status_code, 404)
 

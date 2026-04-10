@@ -212,7 +212,7 @@ class EventRegistrationCreateViewTest(TestCase):
         self.event.save(update_fields=["collect_phone", "verify_phone"])
         ContactPhone.objects.create(
             member=self.member,
-            phone_number="+15551234567",
+            phone_number="5551234567",
             region="1-US",
             verified=True,
         )

@@ -51,11 +51,13 @@
   display: flex;
   gap: 1rem;
   margin-bottom: 1rem;
+  align-items: flex-end;
 }
 
 .event-reg-form-row .event-reg-form-group {
   flex: 1;
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .event-reg-optional {
@@ -67,6 +69,7 @@
 /* Phone input group */
 .event-reg-phone-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: stretch;
 }
@@ -91,7 +94,7 @@
 }
 
 .event-reg-phone-row .event-reg-input {
-  flex: 1;
+  flex: 1 1 120px;
   min-width: 0;
 }
 

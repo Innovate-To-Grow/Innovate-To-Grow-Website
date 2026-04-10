@@ -2,15 +2,19 @@
 Member admin configuration.
 """
 
+import logging
+
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
 from unfold.forms import AdminPasswordChangeForm
 
 from core.admin import BaseModelAdmin
 
-from ...models import Member
+from ...models import ImpersonationToken, Member
 from .forms import MemberChangeForm, MemberCreationForm
 from .inlines import ContactEmailInline, ContactPhoneInline
 from .member_helpers import (
@@ -24,6 +28,8 @@ from .member_helpers import (
     import_excel_view,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @admin.register(Member)
 class MemberAdmin(BaseModelAdmin, UserAdmin):
@@ -34,6 +40,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     # Django's default AdminPasswordChangeForm does not apply Unfold INPUT_CLASSES;
     # password fields render with no visible borders on the themed admin page.
     change_password_form = AdminPasswordChangeForm
+    change_form_template = "admin/authn/member/change_form.html"
     list_display = (
         "get_full_name_display",
         "get_primary_email_display",
@@ -109,8 +116,26 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
                 name="authn_member_import_template",
             ),
             path("export-excel/", self.admin_site.admin_view(self.export_excel_view), name="authn_member_export_excel"),
+            path(
+                "<path:object_id>/impersonate/",
+                self.admin_site.admin_view(self.impersonate_view),
+                name="authn_member_impersonate",
+            ),
         ]
         return custom_urls + super().get_urls()
+
+    def impersonate_view(self, request, object_id):
+        member = get_object_or_404(Member, pk=object_id)
+        token = ImpersonationToken.generate_token()
+        ImpersonationToken.objects.create(token=token, member=member, created_by=request.user)
+        logger.info("Admin %s created impersonation token for member %s", request.user.id, member.id)
+        frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+        return redirect(f"{frontend_url}/impersonate-login?token={token}")
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["show_impersonate"] = True
+        return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
     def import_excel_view(self, request):
         return import_excel_view(self, request)

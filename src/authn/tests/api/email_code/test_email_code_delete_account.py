@@ -31,8 +31,8 @@ class EmailCodeDeleteAccountTests(APITestCase):
         )
         self.phone = ContactPhone.objects.create(
             member=self.member,
-            phone_number="+15551234567",
-            region="US",
+            phone_number="5551234567",
+            region="1-US",
             verified=True,
         )
         event = make_event()

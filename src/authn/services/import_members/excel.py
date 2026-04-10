@@ -12,6 +12,7 @@ except ImportError:  # pragma: no cover - guarded at runtime
     load_workbook = None
 
 from authn.models import ContactEmail, ContactPhone, Member
+from authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
 
 from .operations import bulk_update_members
 from .parsing import generate_random_password, normalize_header, parse_row
@@ -150,14 +151,17 @@ def _append_contact_records(member, parsed, emails_to_create, phones_to_create, 
             )
             claimed_contact_emails.add(secondary_key)
 
-    if parsed["phone_number"] and parsed["phone_number"] not in claimed_phones:
-        phones_to_create.append(
-            ContactPhone(
-                member=member,
-                phone_number=parsed["phone_number"],
-                region="US",
-                subscribe=parsed["phone_subscribed"],
-                verified=parsed["phone_verified"],
+    if parsed["phone_number"]:
+        region = infer_region_from_e164(parsed["phone_number"])
+        national = normalize_to_national(parsed["phone_number"], region)
+        if national not in claimed_phones:
+            phones_to_create.append(
+                ContactPhone(
+                    member=member,
+                    phone_number=national,
+                    region=region,
+                    subscribe=parsed["phone_subscribed"],
+                    verified=parsed["phone_verified"],
+                )
             )
-        )
-        claimed_phones.add(parsed["phone_number"])
+            claimed_phones.add(national)

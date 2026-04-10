@@ -9,6 +9,7 @@ import logging
 from django.db import IntegrityError
 
 from authn.models import ContactPhone
+from authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
 
 logger = logging.getLogger(__name__)
 
@@ -39,26 +40,27 @@ def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", ve
     if not phone_number or not phone_number.strip():
         return
 
-    normalized = phone_number.strip()
+    region = infer_region_from_e164(phone_number.strip(), region)
+    national = normalize_to_national(phone_number.strip(), region)
 
-    existing = ContactPhone.objects.filter(phone_number=normalized).first()
+    existing = ContactPhone.objects.filter(phone_number=national).first()
     if existing:
         if existing.member_id == member.pk:
             if verified and not existing.verified:
                 existing.verified = True
                 existing.save(update_fields=["verified", "updated_at"])
-                logger.info("Marked phone %s as verified for member %s.", normalized, member.pk)
+                logger.info("Marked phone %s as verified for member %s.", national, member.pk)
         else:
-            logger.info("Phone %s belongs to another member, not syncing to member %s.", normalized, member.pk)
+            logger.info("Phone %s belongs to another member, not syncing to member %s.", national, member.pk)
         return
 
     try:
         ContactPhone.objects.create(
             member=member,
-            phone_number=normalized,
+            phone_number=national,
             region=region,
             verified=verified,
         )
-        logger.info("Synced phone %s to member %s account.", normalized, member.pk)
+        logger.info("Synced phone %s to member %s account.", national, member.pk)
     except IntegrityError:
-        logger.warning("Phone %s was claimed concurrently, skipping sync for member %s.", normalized, member.pk)
+        logger.warning("Phone %s was claimed concurrently, skipping sync for member %s.", national, member.pk)

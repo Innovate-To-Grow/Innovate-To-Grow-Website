@@ -25,6 +25,7 @@ from .views import (
     DeleteAccountCodeVerifyView,
     EmailAuthRequestCodeView,
     EmailAuthVerifyCodeView,
+    ImpersonateLoginView,
     LoginCodeRequestView,
     LoginCodeVerifyView,
     LoginView,
@@ -111,4 +112,6 @@ urlpatterns = [
     path("subscribe/", SubscribeView.as_view(), name="subscribe"),
     # Unsubscribe auto-login (from email link)
     path("unsubscribe-login/", UnsubscribeAutoLoginView.as_view(), name="unsubscribe-login"),
+    # Admin impersonation login
+    path("impersonate-login/", ImpersonateLoginView.as_view(), name="impersonate-login"),
 ]

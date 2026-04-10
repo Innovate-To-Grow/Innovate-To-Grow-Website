@@ -33,8 +33,8 @@ export function formatNationalInputDisplay(region: string, nationalDigits: strin
     const d = nationalDigits.slice(0, 10);
     if (d.length === 0) return '';
     if (d.length <= 3) return `(${d}`;
-    if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
-    return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+    if (d.length <= 6) return `(${d.slice(0, 3)})${d.slice(3)}`;
+    return `(${d.slice(0, 3)})${d.slice(3, 6)}-${d.slice(6)}`;
   }
   const d = nationalDigits;
   if (d.length === 0) return '';
@@ -46,7 +46,7 @@ export function capNationalDigitsForRegion(nationalDigits: string, region: strin
 }
 
 export function nationalInputMaxLength(region: string): number {
-  if (NANP_REGIONS.has(region)) return 14;
+  if (NANP_REGIONS.has(region)) return 13;
   const cap = getNationalDigitCap(region);
   return cap + Math.floor((cap - 1) / 4);
 }
