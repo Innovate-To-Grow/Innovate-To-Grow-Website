@@ -65,3 +65,28 @@ export const PHONE_REGION_CHOICES: ReadonlyArray<{ code: string; label: string }
   { code: '234', label: 'Nigeria' },
   { code: '254', label: 'Kenya' },
 ];
+
+/**
+ * Validate a national phone number (digits only, no country-code prefix).
+ * Returns an error message string if invalid, or `null` if valid.
+ */
+export function validatePhoneDigits(digits: string, regionCode: string): string | null {
+  if (!digits) return null; // empty is not an error here; "required" is handled separately
+
+  if (!/^\d+$/.test(digits)) return 'Phone number must contain only digits.';
+
+  const cc = regionCode.split('-')[0];
+
+  if (cc === '1') {
+    if (digits.length !== 10) return 'US/Canada phone numbers must be exactly 10 digits.';
+    return null;
+  }
+  if (cc === '86') {
+    if (digits.length !== 11) return 'China phone numbers must be exactly 11 digits.';
+    return null;
+  }
+
+  if (digits.length < 4) return 'Phone number is too short (minimum 4 digits).';
+  if (digits.length > 15) return 'Phone number is too long (maximum 15 digits).';
+  return null;
+}

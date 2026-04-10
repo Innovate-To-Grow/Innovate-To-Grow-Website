@@ -18,6 +18,7 @@ interface RegistrationFormStepProps {
   attendeeSecondaryEmail: string;
   attendeePhone: string;
   primaryEmail: string;
+  phoneError: string | null;
   phoneRegion: string;
   onFirstNameChange: (value: string) => void;
   onMiddleNameChange: (value: string) => void;
@@ -55,6 +56,7 @@ export const RegistrationFormStep = ({
   attendeeSecondaryEmail,
   attendeePhone,
   primaryEmail,
+  phoneError,
   phoneRegion,
   onFirstNameChange,
   onMiddleNameChange,
@@ -255,7 +257,7 @@ export const RegistrationFormStep = ({
                 <button
                   type="button"
                   className="event-reg-phone-action"
-                  disabled={!attendeePhone.trim() || phoneSending}
+                  disabled={!attendeePhone.trim() || !!phoneError || phoneSending}
                   onClick={onSendPhoneCode}
                 >
                   {phoneSending ? 'Sending...' : phoneCodeSent ? 'Resend' : 'Send Code'}
@@ -265,6 +267,9 @@ export const RegistrationFormStep = ({
                 <span className="event-reg-phone-verified">Verified</span>
               ) : null}
             </div>
+            {phoneError ? (
+              <p className="event-reg-field-error">{phoneError}</p>
+            ) : null}
             {options.verify_phone && phoneCodeSent && !phoneVerified ? (
               <div className="event-reg-phone-code-row">
                 <input
@@ -341,7 +346,7 @@ export const RegistrationFormStep = ({
     <button
       type="submit"
       className="event-reg-submit"
-      disabled={submitting || !selectedTicketId || (options.verify_phone && !phoneVerified) || (attendeeOrgType === 'organization' && !attendeeOrganization.trim())}
+      disabled={submitting || !selectedTicketId || (options.verify_phone && !phoneVerified) || (options.collect_phone && !!phoneError) || (attendeeOrgType === 'organization' && !attendeeOrganization.trim())}
     >
       {submitting ? <><span className="event-reg-spinner" /> Registering...</> : 'Register'}
     </button>

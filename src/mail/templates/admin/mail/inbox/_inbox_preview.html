@@ -1,0 +1,43 @@
+<!-- Message header -->
+<div class="mb-3 space-y-1.5 text-sm">
+    <div class="flex items-center justify-between gap-2">
+        <h3 class="text-base font-semibold text-font-important-light dark:text-font-important-dark leading-snug line-clamp-2">
+            {{ msg.subject }}
+        </h3>
+        <span class="shrink-0 text-xs text-base-400 dark:text-base-500 tabular-nums whitespace-nowrap">{{ msg.date }}</span>
+    </div>
+    <div class="flex items-start gap-1.5 text-xs text-base-500 dark:text-base-400">
+        <span class="shrink-0 text-base-400">From:</span>
+        <span class="font-medium text-font-default-light dark:text-font-default-dark">
+            {% if msg.from_name %}{{ msg.from_name }} &lt;{{ msg.from_email }}&gt;{% else %}{{ msg.from_email }}{% endif %}
+        </span>
+    </div>
+    {% if msg.to %}
+    <div class="flex items-start gap-1.5 text-xs text-base-500 dark:text-base-400">
+        <span class="shrink-0 text-base-400">To:</span>
+        <span class="text-font-default-light dark:text-font-default-dark">
+            {% for recipient in msg.to %}{% if recipient.name %}{{ recipient.name }} &lt;{{ recipient.email }}&gt;{% else %}{{ recipient.email }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Actions -->
+<div class="mb-3 flex items-center gap-2 border-b border-base-100 dark:border-base-700 pb-3">
+    <a href="#" data-inbox-reply-link="{{ reply_fragment_url }}"
+       class="bg-primary-600 text-white px-3 py-1 rounded-md text-xs font-medium hover:bg-primary-700 inline-flex items-center gap-1 no-underline">
+        <span class="material-symbols-outlined !text-[14px]">reply</span>
+        Reply
+    </a>
+</div>
+
+<!-- Email body -->
+<script type="application/json" id="inbox-preview-body-data">{{ body_html_json|safe }}</script>
+<iframe id="inbox-preview-body"
+        sandbox="allow-same-origin allow-popups"
+        referrerpolicy="no-referrer"
+        style="width:100%;border:none;background:#fff;min-height:400px;"
+        title="Email body"></iframe>
+
+<!-- Reply form loads here (below the email) -->
+<div id="inbox-reply-area"></div>

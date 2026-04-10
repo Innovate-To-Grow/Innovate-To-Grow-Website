@@ -97,3 +97,54 @@ class PhoneVerificationViewsTest(TestCase):
         self.assertEqual(
             second_response.data["detail"], "Please verify your phone number before completing registration."
         )
+
+
+class PhoneValidationTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.member = make_member()
+        self.client.force_authenticate(self.member)
+
+    def test_send_code_rejects_short_us_number(self):
+        response = self.client.post(
+            "/event/send-phone-code/",
+            {"phone": "12345", "region": "1-US"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("10 digits", response.data["detail"])
+
+    def test_send_code_rejects_short_china_number(self):
+        response = self.client.post(
+            "/event/send-phone-code/",
+            {"phone": "1381234567", "region": "86"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("11 digits", response.data["detail"])
+
+    def test_send_code_rejects_too_short_generic(self):
+        response = self.client.post(
+            "/event/send-phone-code/",
+            {"phone": "123", "region": "44"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("too short", response.data["detail"])
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    def test_registration_rejects_invalid_phone(self, _mock_email):
+        event = make_event(is_live=True, collect_phone=True, verify_phone=False)
+        ticket = Ticket.objects.create(event=event, name="GA")
+        response = self.client.post(
+            "/event/registrations/",
+            {
+                "event_slug": event.slug,
+                "ticket_id": str(ticket.pk),
+                "attendee_phone": "123",
+                "attendee_phone_region": "1-US",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("10 digits", response.data["detail"])

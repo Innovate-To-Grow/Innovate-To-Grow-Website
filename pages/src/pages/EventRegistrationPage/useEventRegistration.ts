@@ -1,7 +1,8 @@
-import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
 import {useAuth} from '../../components/Auth';
 import {updateProfileFields} from '../../services/auth';
 import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '../../features/events/api';
+import {validatePhoneDigits} from '../../constants/phoneRegions';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';
@@ -206,7 +207,7 @@ export const useEventRegistration = () => {
   };
 
   const handleSendPhoneCode = async () => {
-    if (!attendeePhone.trim()) return;
+    if (!attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim(), phoneRegion)) return;
     setPhoneSending(true);
     setError(null);
     try {
@@ -256,6 +257,11 @@ export const useEventRegistration = () => {
     setPhoneRegion(value);
   };
 
+  const phoneError = useMemo(
+    () => (attendeePhone.trim() ? validatePhoneDigits(attendeePhone.trim(), phoneRegion) : null),
+    [attendeePhone, phoneRegion],
+  );
+
   return {
     answers,
     attendeeFirstName,
@@ -267,6 +273,7 @@ export const useEventRegistration = () => {
     attendeePhone,
     attendeeSecondaryEmail,
     primaryEmail,
+    phoneError,
     phoneRegion,
     phoneCode,
     phoneCodeSent,

@@ -1,0 +1,57 @@
+<!-- Reply section (appears below the email body) -->
+<div class="mt-4 pt-4 border-t border-base-200 dark:border-base-700">
+    <div class="mb-3">
+        <h3 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-1.5">
+            <span class="material-symbols-outlined !text-[18px]">reply</span>
+            Reply
+        </h3>
+    </div>
+
+    <form data-inbox-reply-form data-action="{{ reply_fragment_url }}">
+        <div class="rounded-default border border-base-200 dark:border-base-700 overflow-hidden mb-3">
+            <div class="px-3 py-2 border-b border-base-100 dark:border-base-700 flex items-center gap-2 text-sm">
+                <span class="text-base-400 shrink-0 w-14">From:</span>
+                <span class="text-font-default-light dark:text-font-default-dark">{{ from_address }}</span>
+            </div>
+            <div class="px-3 py-2 border-b border-base-100 dark:border-base-700 flex items-center gap-2">
+                <label class="text-sm text-base-400 shrink-0 w-14">To:</label>
+                <input type="text" name="to_email" value="{{ msg.from_email }}"
+                       style="flex:1;min-width:0;"
+                       class="text-sm bg-transparent border-0 p-0 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-0">
+                <button type="button" data-toggle-cc
+                        class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 cursor-pointer bg-transparent border-0 p-0 font-sans shrink-0">Cc</button>
+            </div>
+            <div data-cc-row class="px-3 py-2 border-b border-base-100 dark:border-base-700 flex items-center gap-2" style="display:none;">
+                <label class="text-sm text-base-400 shrink-0 w-14">Cc:</label>
+                <input type="text" name="cc_email" value="" placeholder="email1@example.com, email2@..."
+                       style="flex:1;min-width:0;"
+                       class="text-sm bg-transparent border-0 p-0 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-0 placeholder:text-base-300">
+            </div>
+            <div class="px-3 py-2 border-b border-base-100 dark:border-base-700 flex items-center gap-2">
+                <label class="text-sm text-base-400 shrink-0 w-14">Subject:</label>
+                <input type="text" name="subject" value="{{ reply_subject }}"
+                       style="flex:1;min-width:0;"
+                       class="text-sm bg-transparent border-0 p-0 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-0">
+            </div>
+            <div class="px-3 py-2">
+                <textarea name="reply_body" rows="6" placeholder="Write your reply..."
+                          class="w-full text-sm border border-base-200 dark:border-base-600 rounded px-2 py-1.5 bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none resize-y"></textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <button type="submit" data-inbox-send-btn
+                    class="bg-primary-600 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-primary-700 inline-flex items-center gap-1 border-0 cursor-pointer">
+                <span class="material-symbols-outlined !text-[16px]">send</span>
+                Send Reply
+            </button>
+            <button type="button" data-inbox-cancel-reply
+                    class="border border-base-300 dark:border-base-600 px-3 py-1.5 rounded-md text-xs font-medium hover:bg-base-50 dark:hover:bg-base-800 inline-flex items-center gap-1 cursor-pointer bg-transparent text-font-default-light dark:text-font-default-dark">
+                <span class="material-symbols-outlined !text-[16px]">close</span>
+                Cancel
+            </button>
+        </div>
+
+        <div data-inbox-reply-status class="mt-2 text-sm hidden"></div>
+    </form>
+</div>

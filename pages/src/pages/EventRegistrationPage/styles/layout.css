@@ -77,6 +77,13 @@
   line-height: 1.4;
 }
 
+.event-reg-field-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #dc2626;
+  line-height: 1.4;
+}
+
 .event-reg-section-title {
   margin: 0 0 0.875rem;
   font-size: 1rem;

@@ -19,6 +19,7 @@ from core.models import EmailServiceConfig, GmailImportConfig
 logger = logging.getLogger(__name__)
 
 INBOX_LIST_CACHE_KEY = "inbox:list"
+INBOX_LIMIT_CHOICES = [15, 30, 50, 100]
 INBOX_LIST_CACHE_TTL = 300  # 5 minutes
 INBOX_MSG_CACHE_PREFIX = "inbox:msg:"
 INBOX_MSG_CACHE_TTL = 1800  # 30 minutes
@@ -102,8 +103,9 @@ def list_inbox_messages(
     limit: int = 30, mailbox: str | None = None, *, force_refresh: bool = False
 ) -> list[dict[str, Any]]:
     """Return summaries for the most recent inbox messages."""
+    cache_key = f"{INBOX_LIST_CACHE_KEY}:{limit}"
     if not force_refresh:
-        cached = cache.get(INBOX_LIST_CACHE_KEY)
+        cached = cache.get(cache_key)
         if cached is not None:
             return cached
 
@@ -132,7 +134,7 @@ def list_inbox_messages(
             }
         )
 
-    cache.set(INBOX_LIST_CACHE_KEY, results, INBOX_LIST_CACHE_TTL)
+    cache.set(cache_key, results, INBOX_LIST_CACHE_TTL)
     return results
 
 
@@ -185,15 +187,17 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None) -> dict[str, Any]:
 
 
 def _update_list_cache_seen(uid: str) -> None:
-    """Mark a message as seen in the cached inbox list (if present)."""
-    cached_list = cache.get(INBOX_LIST_CACHE_KEY)
-    if cached_list is None:
-        return
-    for msg in cached_list:
-        if msg["uid"] == uid:
-            msg["is_seen"] = True
-            break
-    cache.set(INBOX_LIST_CACHE_KEY, cached_list, INBOX_LIST_CACHE_TTL)
+    """Mark a message as seen in all cached inbox lists (if present)."""
+    for limit in INBOX_LIMIT_CHOICES:
+        cache_key = f"{INBOX_LIST_CACHE_KEY}:{limit}"
+        cached_list = cache.get(cache_key)
+        if cached_list is None:
+            continue
+        for msg in cached_list:
+            if msg["uid"] == uid:
+                msg["is_seen"] = True
+                break
+        cache.set(cache_key, cached_list, INBOX_LIST_CACHE_TTL)
 
 
 def render_reply_html(body_text, original_from="", original_date="", quoted_text=""):
@@ -238,6 +242,7 @@ def send_reply(
     original_from: str = "",
     original_date: str = "",
     quoted_text: str = "",
+    cc_email: str = "",
 ) -> str:
     """
     Send a reply email via SES with the standard email layout.
@@ -255,6 +260,8 @@ def send_reply(
         quoted_text=quoted_text,
     )
 
+    cc_list = [e.strip() for e in cc_email.split(",") if e.strip()] if cc_email else []
+
     try:
         import boto3
 
@@ -269,15 +276,18 @@ def send_reply(
         msg["Subject"] = subject
         msg["From"] = config.source_address
         msg["To"] = to_email
+        if cc_list:
+            msg["Cc"] = ", ".join(cc_list)
         if in_reply_to:
             msg["In-Reply-To"] = in_reply_to
         if references:
             msg["References"] = references
         msg.attach(MIMEText(wrapped_html, "html", "utf-8"))
 
+        destinations = [to_email] + cc_list
         client.send_raw_email(
             Source=config.source_address,
-            Destinations=[to_email],
+            Destinations=destinations,
             RawMessage={"Data": msg.as_string()},
         )
         return ""

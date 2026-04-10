@@ -73,14 +73,94 @@ class EventRegistrationAdminTest(TestCase):
         response = self.client.get("/admin/event/eventregistration/")
         self.assertEqual(response.status_code, 200)
 
-    def test_has_no_add_permission(self):
+    def test_has_add_permission(self):
         from django.test import RequestFactory
 
         factory = RequestFactory()
         request = factory.get("/admin/")
         request.user = self.admin_user
         admin_instance = EventRegistrationAdmin(EventRegistration, None)
-        self.assertFalse(admin_instance.has_add_permission(request))
+        self.assertTrue(admin_instance.has_add_permission(request))
+
+    def test_add_form_accessible(self):
+        response = self.client.get("/admin/event/eventregistration/add/")
+        self.assertEqual(response.status_code, 200)
+
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_add_creates_registration(self, mock_sync):
+        member = Member.objects.create_user(password="testpass123")
+        ContactEmail.objects.create(member=member, email_address="reg@e.com", email_type="primary", verified=True)
+        event = make_event()
+        ticket = Ticket.objects.create(event=event, name="GA")
+        response = self.client.post(
+            "/admin/event/eventregistration/add/",
+            {
+                "member": str(member.pk),
+                "event": str(event.pk),
+                "ticket": str(ticket.pk),
+                "attendee_first_name": "",
+                "attendee_last_name": "",
+                "attendee_email": "",
+                "attendee_secondary_email": "",
+                "attendee_phone": "",
+                "attendee_organization": "",
+                "phone_verified": "",
+                "question_answers": "[]",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(EventRegistration.objects.filter(member=member, event=event).exists())
+        mock_sync.assert_called_once_with(event)
+
+    def test_admin_add_rejects_duplicate(self):
+        member = Member.objects.create_user(password="testpass123")
+        ContactEmail.objects.create(member=member, email_address="dup@e.com", email_type="primary", verified=True)
+        event = make_event()
+        ticket = Ticket.objects.create(event=event, name="GA")
+        EventRegistration.objects.create(member=member, event=event, ticket=ticket)
+        response = self.client.post(
+            "/admin/event/eventregistration/add/",
+            {
+                "member": str(member.pk),
+                "event": str(event.pk),
+                "ticket": str(ticket.pk),
+                "attendee_first_name": "",
+                "attendee_last_name": "",
+                "attendee_email": "",
+                "attendee_secondary_email": "",
+                "attendee_phone": "",
+                "attendee_organization": "",
+                "phone_verified": "",
+                "question_answers": "[]",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EventRegistration.objects.filter(member=member, event=event).count(), 1)
+
+    def test_admin_add_rejects_mismatched_ticket(self):
+        member = Member.objects.create_user(password="testpass123")
+        ContactEmail.objects.create(member=member, email_address="mis@e.com", email_type="primary", verified=True)
+        event1 = make_event(name="Event 1")
+        event2 = make_event(name="Event 2")
+        ticket_from_event2 = Ticket.objects.create(event=event2, name="VIP")
+        response = self.client.post(
+            "/admin/event/eventregistration/add/",
+            {
+                "member": str(member.pk),
+                "event": str(event1.pk),
+                "ticket": str(ticket_from_event2.pk),
+                "attendee_first_name": "",
+                "attendee_last_name": "",
+                "attendee_email": "",
+                "attendee_secondary_email": "",
+                "attendee_phone": "",
+                "attendee_organization": "",
+                "phone_verified": "",
+                "question_answers": "[]",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(EventRegistration.objects.filter(member=member, event=event1).exists())
 
     def test_has_no_change_permission(self):
         from django.test import RequestFactory
@@ -114,3 +194,33 @@ class EventRegistrationAdminTest(TestCase):
         )
         response = self.client.get("/admin/event/eventregistration/?q=Searchable")
         self.assertEqual(response.status_code, 200)
+
+    def test_member_info_endpoint(self):
+        member = Member.objects.create_user(
+            password="testpass123", first_name="Ada", last_name="Lovelace", organization="UCM", title="Prof"
+        )
+        ContactEmail.objects.create(member=member, email_address="ada@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(member=member, email_address="ada2@e.com", email_type="secondary", verified=False)
+        response = self.client.get(f"/admin/event/eventregistration/member-info/{member.pk}/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["name"], "Ada Lovelace")
+        self.assertIn("ada@e.com", data["emails"])
+        self.assertIn("ada2@e.com", data["emails"])
+        self.assertEqual(data["organization"], "UCM")
+        self.assertEqual(data["title"], "Prof")
+
+    def test_event_info_endpoint(self):
+        event = make_event(name="Info Test")
+        Ticket.objects.create(event=event, name="GA")
+        Ticket.objects.create(event=event, name="VIP")
+        response = self.client.get(f"/admin/event/eventregistration/event-info/{event.pk}/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["name"], "Info Test")
+        self.assertEqual(data["date"], "2025-06-15")
+        self.assertEqual(data["location"], "Test Venue")
+        self.assertEqual(data["total_registrations"], 0)
+        ticket_names = [t["name"] for t in data["tickets"]]
+        self.assertIn("GA", ticket_names)
+        self.assertIn("VIP", ticket_names)

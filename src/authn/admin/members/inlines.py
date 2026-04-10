@@ -4,7 +4,23 @@ from unfold.admin import TabularInline
 from ...models import ContactEmail, ContactPhone
 
 
-class ContactEmailInline(TabularInline):
+class StaffPermissionInlineMixin:
+    """Grant full inline permissions to any staff user, matching BaseModelAdmin."""
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_add_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+
+
+class ContactEmailInline(StaffPermissionInlineMixin, TabularInline):
     """Inline admin for contact email records."""
 
     model = ContactEmail
@@ -32,7 +48,7 @@ class ContactEmailInline(TabularInline):
         return formset_class
 
 
-class ContactPhoneInline(TabularInline):
+class ContactPhoneInline(StaffPermissionInlineMixin, TabularInline):
     """Inline admin for contact phone records."""
 
     model = ContactPhone

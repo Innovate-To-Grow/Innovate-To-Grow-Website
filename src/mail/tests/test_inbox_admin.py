@@ -25,9 +25,18 @@ class InboxAdminFragmentTest(TestCase):
             }
         ]
 
-        response = self.client.get(reverse("admin:mail_inbox_fragment"))
+        response = self.client.get(reverse("admin:mail_inbox_fragment") + "?refresh=1")
 
         self.assertEqual(response.status_code, 200)
         mock_list.assert_called_once_with(limit=30, force_refresh=True)
         self.assertIn(b"Hi", response.content)
         self.assertIn(b"data-inbox-refresh", response.content)
+
+    @patch("mail.admin.inbox.list_inbox_messages")
+    def test_inbox_fragment_uses_cache_without_refresh_param(self, mock_list):
+        mock_list.return_value = []
+
+        response = self.client.get(reverse("admin:mail_inbox_fragment"))
+
+        self.assertEqual(response.status_code, 200)
+        mock_list.assert_called_once_with(limit=30, force_refresh=False)

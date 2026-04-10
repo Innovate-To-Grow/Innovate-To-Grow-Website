@@ -84,6 +84,7 @@ export const EventRegistrationPage = () => {
           attendeeSecondaryEmail={reg.attendeeSecondaryEmail}
           attendeePhone={reg.attendeePhone}
           primaryEmail={reg.primaryEmail}
+          phoneError={reg.phoneError}
           phoneRegion={reg.phoneRegion}
           onFirstNameChange={reg.setAttendeeFirstName}
           onMiddleNameChange={reg.setAttendeeMiddleName}

@@ -1,10 +1,10 @@
     <!-- Config info -->
-    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+    <div class="mb-4 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
         <h3 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-2">
             <span class="material-symbols-outlined !text-[18px]">settings</span>
             Gmail Account
         </h3>
-        <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        <div class="grid grid-cols-3 gap-x-6 text-sm">
             <div>
                 <span class="text-base-400">Account:</span>
                 <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ gmail_config.gmail_username|default:"Not configured" }}</span>
@@ -17,23 +17,29 @@
                 <span class="text-base-400">Folder:</span>
                 <span class="font-medium text-font-default-light dark:text-font-default-dark">INBOX</span>
             </div>
-            <div>
-                <span class="text-base-400">Messages:</span>
-                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ inbox_messages|length }}</span>
-            </div>
         </div>
-        <div class="mt-3 pt-3 border-t border-base-100 dark:border-base-700">
+        <div class="mt-3 pt-3 border-t border-base-100 dark:border-base-700 flex items-center gap-4 flex-wrap">
             <button type="button"
                     data-inbox-refresh
                     class="i2g-inbox-refresh-btn inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 cursor-pointer bg-transparent border-0 p-0 font-sans">
                 <span class="material-symbols-outlined !text-[14px] i2g-inbox-refresh-icon">refresh</span>
                 Refresh Inbox
             </button>
+            <label class="inline-flex items-center gap-1.5 text-xs text-base-500 dark:text-base-400 ml-auto">
+                Show
+                <select data-inbox-limit
+                        class="rounded border border-base-200 dark:border-base-600 bg-white dark:bg-base-800 text-xs px-1.5 py-0.5 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-1 focus:ring-primary-500">
+                    {% for c in limit_choices %}
+                    <option value="{{ c }}" {% if c == limit %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+                messages
+            </label>
         </div>
     </div>
 
     {% if error_message %}
-    <div class="mb-6 rounded-default border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+    <div class="mb-4 rounded-default border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
         <div class="flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
             <span class="material-symbols-outlined !text-[18px]">error</span>
             {{ error_message }}
@@ -42,45 +48,64 @@
     {% endif %}
 
     {% if inbox_messages %}
-    <!-- Message list: flex row — from + date on one line (scan-friendly), subject + snippet below -->
-    <div class="rounded-default border border-base-200 dark:border-base-700 overflow-hidden divide-y divide-base-100 dark:divide-base-700">
-        {% for msg in inbox_messages %}
-        <a href="{% url 'admin:mail_inbox_detail' msg.uid %}"
-           class="inbox-list-row group flex gap-3 px-3 py-2 sm:px-4 sm:py-2.5 text-left no-underline transition-colors
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-base-900
-                  {% if not msg.is_seen %}
-                  border-l-[3px] border-l-primary-600 bg-primary-50/45 dark:border-l-primary-400 dark:bg-primary-950/30
-                  {% else %}
-                  border-l-[3px] border-l-transparent bg-base-50/35 dark:bg-base-900/60
-                  {% endif %}
-                  hover:bg-base-100/90 dark:hover:bg-base-800/90">
-            <div class="shrink-0 flex justify-center pt-0.5 w-7 sm:w-8" aria-hidden="true">
-                {% if not msg.is_seen %}
-                <span class="material-symbols-outlined !text-[20px] text-primary-600 dark:text-primary-400" title="Unread">mark_email_unread</span>
-                {% else %}
-                <span class="material-symbols-outlined !text-[20px] text-base-400 dark:text-base-500" title="Read">mail</span>
-                {% endif %}
+    <!-- Split pane: message list (left) + preview (right) -->
+    <div class="i2g-inbox-split rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
+        <!-- Left: message list (scrollable) -->
+        <div class="i2g-inbox-list overflow-y-auto divide-y divide-base-100 dark:divide-base-700 bg-white dark:bg-base-900">
+            {% for msg in inbox_messages %}
+            <a href="{% url 'admin:mail_inbox_detail' msg.uid %}"
+               data-inbox-row
+               data-uid="{{ msg.uid }}"
+               data-preview-url="{% url 'admin:mail_inbox_detail_fragment' msg.uid %}"
+               class="inbox-list-row group flex gap-2.5 px-3 py-2 text-left no-underline transition-colors cursor-pointer
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500
+                      {% if not msg.is_seen %}
+                      border-l-[3px] border-l-primary-600 bg-primary-50/45 dark:border-l-primary-400 dark:bg-primary-950/30
+                      {% else %}
+                      border-l-[3px] border-l-transparent
+                      {% endif %}
+                      hover:bg-base-100/80 dark:hover:bg-base-800/80">
+                <div class="shrink-0 flex justify-center pt-0.5 w-6" aria-hidden="true">
+                    {% if not msg.is_seen %}
+                    <span class="material-symbols-outlined !text-[18px] text-primary-600 dark:text-primary-400" title="Unread">mark_email_unread</span>
+                    {% else %}
+                    <span class="material-symbols-outlined !text-[18px] text-base-400 dark:text-base-500" title="Read">mail</span>
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1 flex flex-col gap-px">
+                    <div class="flex items-baseline gap-1.5 min-w-0">
+                        <span class="min-w-0 truncate text-[13px] max-w-[55%] {% if not msg.is_seen %}font-semibold text-font-important-light dark:text-font-important-dark{% else %}font-medium text-base-700 dark:text-base-200{% endif %}">
+                            {% if msg.from_name %}{{ msg.from_name }}{% else %}{{ msg.from_email }}{% endif %}
+                        </span>
+                        <span class="shrink-0 text-[11px] text-base-400 dark:text-base-500 tabular-nums leading-none whitespace-nowrap ml-auto">
+                            {{ msg.date }}
+                        </span>
+                    </div>
+                    <div class="text-[13px] leading-snug truncate {% if not msg.is_seen %}font-semibold text-font-default-light dark:text-font-default-dark{% else %}font-medium text-base-600 dark:text-base-300{% endif %} group-hover:text-primary-700 dark:group-hover:text-primary-300">
+                        {% if msg.subject %}{{ msg.subject }}{% else %}<span class="text-base-400 font-normal italic">(No subject)</span>{% endif %}
+                    </div>
+                    {% if msg.snippet %}
+                    <div class="text-[11px] text-base-500 dark:text-base-400 truncate leading-snug">
+                        {{ msg.snippet }}
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Right: preview pane -->
+        <div id="inbox-preview-pane"
+             class="i2g-inbox-preview bg-white dark:bg-base-900 border-l border-base-200 dark:border-base-700"
+             style="overflow-y:auto;">
+            <div id="inbox-preview-content" class="min-w-0 p-5">
+                <!-- Empty state -->
+                <div id="inbox-preview-empty" class="flex flex-col items-center justify-center text-base-400 flex-1">
+                    <span class="material-symbols-outlined !text-[48px] mb-2">mail</span>
+                    <p class="text-sm">Select a message to preview</p>
+                </div>
             </div>
-            <div class="min-w-0 flex-1 flex flex-col gap-0.5">
-                <div class="flex items-baseline gap-2 sm:gap-4 min-w-0">
-                    <span class="min-w-0 flex-1 truncate text-sm {% if not msg.is_seen %}font-semibold text-font-important-light dark:text-font-important-dark{% else %}font-medium text-base-700 dark:text-base-200{% endif %}">
-                        {% if msg.from_name %}{{ msg.from_name }}{% else %}{{ msg.from_email }}{% endif %}
-                    </span>
-                    <span class="shrink-0 text-xs text-base-400 dark:text-base-500 tabular-nums leading-none text-right whitespace-nowrap">
-                        {{ msg.date }}
-                    </span>
-                </div>
-                <div class="text-sm leading-snug line-clamp-1 {% if not msg.is_seen %}font-semibold text-font-default-light dark:text-font-default-dark{% else %}font-medium text-base-600 dark:text-base-300{% endif %} group-hover:text-primary-700 dark:group-hover:text-primary-300">
-                    {% if msg.subject %}{{ msg.subject }}{% else %}<span class="text-base-400 font-normal italic">(No subject)</span>{% endif %}
-                </div>
-                {% if msg.snippet %}
-                <div class="text-xs text-base-500 dark:text-base-400 line-clamp-1 leading-snug">
-                    {{ msg.snippet }}
-                </div>
-                {% endif %}
-            </div>
-        </a>
-        {% endfor %}
+        </div>
     </div>
     {% elif not error_message %}
     <div class="text-center py-12 text-base-400">

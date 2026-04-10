@@ -8,23 +8,350 @@
     {{ block.super }}
     <style>
         @keyframes i2g-inbox-spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
         .i2g-inbox-refresh--loading .i2g-inbox-refresh-icon {
             animation: i2g-inbox-spin 0.75s linear infinite;
             display: inline-block;
         }
-        .i2g-inbox-refresh--loading {
-            opacity: 0.65;
+        .i2g-inbox-refresh--loading { opacity: 0.65; }
+
+        .i2g-inbox-split {
+            display: flex;
+            height: calc(100vh - 280px);
+            min-height: 420px;
+        }
+        .i2g-inbox-list {
+            flex: 0 0 380px;
+            min-width: 300px;
+            max-width: 440px;
+        }
+        .i2g-inbox-preview {
+            flex: 1 1 0%;
+            min-width: 0;
+        }
+
+        .inbox-list-row.is-active {
+            background-color: color-mix(in srgb, var(--color-primary-100, #dbeafe) 60%, transparent) !important;
+        }
+        #inbox-preview-pane.is-loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        @media (max-width: 899px) {
+            .i2g-inbox-split { flex-direction: column; height: auto; min-height: 0; }
+            .i2g-inbox-list { flex: none; width: 100%; max-width: none; max-height: 50vh; }
+            .i2g-inbox-preview { border-left: 0 !important; border-top: 1px solid; border-color: inherit; }
+        }
+
+        /* Loading skeleton */
+        @keyframes i2g-shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        .i2g-skel {
+            border-radius: 4px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 800px 100%;
+            animation: i2g-shimmer 1.5s infinite linear;
         }
     </style>
-    <script defer src="{% static 'mail/js/inbox_refresh.js' %}"></script>
 {% endblock %}
 
 {% block content %}
 <div id="inbox-all-dynamic" class="w-full max-w-none" data-fragment-url="{{ fragment_url }}">
-    {% include "admin/mail/inbox/_inbox_full_body.html" %}
+    <!-- Loading skeleton: shown while JS fetches the real content -->
+    <div id="inbox-loading-skeleton">
+        <!-- Config skeleton -->
+        <div class="mb-4 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+            <div class="flex items-center gap-2 mb-3">
+                <div class="i2g-skel" style="width:18px;height:18px;"></div>
+                <div class="i2g-skel" style="width:120px;height:14px;"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                <div class="i2g-skel" style="width:80%;height:12px;"></div>
+                <div class="i2g-skel" style="width:70%;height:12px;"></div>
+                <div class="i2g-skel" style="width:50%;height:12px;"></div>
+                <div class="i2g-skel" style="width:60%;height:12px;"></div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-base-100 dark:border-base-700 flex items-center gap-4">
+                <div class="i2g-skel" style="width:100px;height:12px;"></div>
+                <div class="i2g-skel ml-auto" style="width:140px;height:12px;"></div>
+            </div>
+        </div>
+        <!-- Split pane skeleton -->
+        <div class="i2g-inbox-split rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
+            <div class="i2g-inbox-list bg-white dark:bg-base-900 divide-y divide-base-100 dark:divide-base-700 overflow-hidden">
+                {% for _ in "123456789012" %}
+                <div class="flex gap-2.5 px-3 py-2.5">
+                    <div class="i2g-skel shrink-0" style="width:18px;height:18px;margin-top:2px;"></div>
+                    <div class="flex-1 flex flex-col gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <div class="i2g-skel" style="width:45%;height:12px;"></div>
+                            <div class="i2g-skel ml-auto" style="width:80px;height:10px;"></div>
+                        </div>
+                        <div class="i2g-skel" style="width:75%;height:12px;"></div>
+                        <div class="i2g-skel" style="width:90%;height:10px;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="i2g-inbox-preview bg-white dark:bg-base-900 border-l border-base-200 dark:border-base-700 flex items-center justify-center">
+                <div class="text-center text-base-400">
+                    <span class="material-symbols-outlined !text-[36px] mb-2 block i2g-inbox-refresh-icon" style="animation:i2g-inbox-spin 1s linear infinite;display:inline-block;">sync</span>
+                    <p class="text-sm">Loading inbox...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+(function () {
+  'use strict';
+
+  function buildUrl(base, params) {
+    var qs = [];
+    for (var k in params) {
+      if (params[k]) qs.push(k + '=' + encodeURIComponent(params[k]));
+    }
+    if (!qs.length) return base;
+    return base + (base.indexOf('?') === -1 ? '?' : '&') + qs.join('&');
+  }
+
+  function getRoot(el) {
+    return el ? el.closest('#inbox-all-dynamic') : null;
+  }
+
+  function getLimit(root) {
+    var sel = root.querySelector('[data-inbox-limit]');
+    return sel ? sel.value : '';
+  }
+
+  function fetchInbox(root, params) {
+    var url = root.getAttribute('data-fragment-url');
+    if (!url) return;
+    var btn = root.querySelector('[data-inbox-refresh]');
+    if (btn) {
+      btn.classList.add('i2g-inbox-refresh--loading');
+      btn.setAttribute('disabled', 'disabled');
+    }
+    fetch(buildUrl(url, params || {}), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+      .then(function (html) { root.innerHTML = html; })
+      .catch(function () {
+        var skel = root.querySelector('#inbox-loading-skeleton');
+        if (skel) skel.innerHTML = '<div class="p-8 text-center text-red-600 text-sm">Failed to load inbox. <button data-inbox-refresh class="underline text-primary-600 ml-1">Retry</button></div>';
+        else window.alert('Could not refresh inbox.');
+      })
+      .finally(function () {
+        if (btn) { btn.classList.remove('i2g-inbox-refresh--loading'); btn.removeAttribute('disabled'); }
+      });
+  }
+
+  function setActiveRow(root, uid) {
+    root.querySelectorAll('[data-inbox-row]').forEach(function (r) {
+      r.classList.toggle('is-active', r.getAttribute('data-uid') === uid);
+    });
+  }
+
+  function initPreviewIframe(container) {
+    var dataEl = container.querySelector('#inbox-preview-body-data');
+    var iframe = container.querySelector('#inbox-preview-body');
+    if (!dataEl || !iframe) return;
+    try {
+      iframe.srcdoc = JSON.parse(dataEl.textContent);
+    } catch (e) {}
+    resizePreviewIframe();
+  }
+
+  function resizePreviewIframe() {
+    var pane = document.getElementById('inbox-preview-pane');
+    var iframe = document.getElementById('inbox-preview-body');
+    if (!pane || !iframe) return;
+    var iframeTop = iframe.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop;
+    var available = pane.clientHeight - iframeTop;
+    iframe.style.height = Math.max(available, 300) + 'px';
+  }
+
+  function loadPreview(root, row) {
+    var pane = root.querySelector('#inbox-preview-pane');
+    var content = root.querySelector('#inbox-preview-content');
+    if (!pane || !content) return;
+
+    var url = row.getAttribute('data-preview-url');
+    var uid = row.getAttribute('data-uid');
+    if (!url) return;
+
+    setActiveRow(root, uid);
+
+    content.innerHTML = '<div class="flex flex-col items-center justify-center text-base-400" style="min-height:200px;"><span class="material-symbols-outlined !text-[36px] mb-2 block" style="animation:i2g-inbox-spin 1s linear infinite;display:inline-block;">sync</span><p class="text-sm">Loading message...</p></div>';
+
+    fetch(url, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+      .then(function (html) {
+        content.innerHTML = html;
+        initPreviewIframe(content);
+      })
+      .catch(function () {
+        content.innerHTML = '<div class="p-4 text-sm text-red-600">Failed to load message.</div>';
+      });
+  }
+
+  /* Reply in preview pane (below the email) */
+
+  function loadReplyForm(replyArea, url) {
+    replyArea.innerHTML = '<div class="flex items-center justify-center text-base-400 py-6"><span class="material-symbols-outlined !text-[24px] mr-2" style="animation:i2g-inbox-spin 1s linear infinite;display:inline-block;">sync</span><span class="text-sm">Loading reply form...</span></div>';
+    replyArea.style.display = 'block';
+    fetch(url, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+      .then(function (html) {
+        replyArea.innerHTML = html;
+        replyArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function () {
+        replyArea.innerHTML = '<div class="p-4 text-sm text-red-600">Failed to load reply form.</div>';
+      });
+  }
+
+  function submitReplyForm(form, replyArea) {
+    var actionUrl = form.getAttribute('data-action');
+    if (!actionUrl) return;
+    var sendBtn = form.querySelector('[data-inbox-send-btn]');
+    var statusEl = form.querySelector('[data-inbox-reply-status]');
+
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
+    if (statusEl) { statusEl.className = 'mt-2 text-sm hidden'; statusEl.textContent = ''; }
+
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfToken) csrfToken = document.cookie.match(/csrftoken=([^;]+)/);
+
+    var body = new FormData(form);
+    var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+    var csrfValue = csrfToken ? (csrfToken.value || csrfToken[1]) : '';
+    if (csrfValue) headers['X-CSRFToken'] = csrfValue;
+
+    fetch(actionUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: headers,
+      body: body,
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          replyArea.innerHTML = '<div class="flex items-center gap-2 py-4 text-green-600"><span class="material-symbols-outlined !text-[20px]">check_circle</span><span class="text-sm font-medium">' + data.message + '</span></div>';
+        } else {
+          if (statusEl) {
+            statusEl.className = 'mt-2 text-sm text-red-600';
+            statusEl.textContent = data.error || 'Failed to send.';
+          }
+          if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Reply'; }
+        }
+      })
+      .catch(function () {
+        if (statusEl) {
+          statusEl.className = 'mt-2 text-sm text-red-600';
+          statusEl.textContent = 'Network error. Please try again.';
+        }
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Reply'; }
+      });
+  }
+
+  /* Event delegation */
+
+  document.body.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-inbox-refresh]');
+    if (btn) {
+      e.preventDefault();
+      var root = getRoot(btn);
+      if (root) fetchInbox(root, { limit: getLimit(root), refresh: '1' });
+      return;
+    }
+
+    // Reply link → load form into #inbox-reply-area (below email)
+    var replyLink = e.target.closest('[data-inbox-reply-link]');
+    if (replyLink) {
+      e.preventDefault();
+      var replyArea = document.getElementById('inbox-reply-area');
+      if (replyArea) {
+        replyLink.style.display = 'none';
+        loadReplyForm(replyArea, replyLink.getAttribute('data-inbox-reply-link'));
+      }
+      return;
+    }
+
+    // Toggle Cc field
+    var ccToggle = e.target.closest('[data-toggle-cc]');
+    if (ccToggle) {
+      e.preventDefault();
+      var ccRow = document.querySelector('[data-cc-row]');
+      if (ccRow) {
+        var visible = ccRow.style.display !== 'none';
+        ccRow.style.display = visible ? 'none' : 'flex';
+        ccToggle.style.display = visible ? '' : 'none';
+        if (!visible) ccRow.querySelector('input').focus();
+      }
+      return;
+    }
+
+    // Cancel reply → just clear the reply area
+    var cancelBtn = e.target.closest('[data-inbox-cancel-reply]');
+    if (cancelBtn) {
+      e.preventDefault();
+      var replyArea = document.getElementById('inbox-reply-area');
+      if (replyArea) replyArea.innerHTML = '';
+      var replyLink = document.querySelector('[data-inbox-reply-link]');
+      if (replyLink) replyLink.style.display = '';
+      return;
+    }
+
+    var row = e.target.closest('[data-inbox-row]');
+    if (row) {
+      e.preventDefault();
+      var root = getRoot(row);
+      if (!root) return;
+      var pane = root.querySelector('#inbox-preview-pane');
+      if (pane) {
+        loadPreview(root, row);
+      } else {
+        window.location.href = row.getAttribute('href');
+      }
+    }
+  });
+
+  // Reply form submission
+  document.body.addEventListener('submit', function (e) {
+    var form = e.target.closest('[data-inbox-reply-form]');
+    if (form) {
+      e.preventDefault();
+      var replyArea = document.getElementById('inbox-reply-area');
+      if (replyArea) submitReplyForm(form, replyArea);
+    }
+  });
+
+  document.body.addEventListener('change', function (e) {
+    var sel = e.target.closest('[data-inbox-limit]');
+    if (!sel) return;
+    var root = getRoot(sel);
+    if (root) fetchInbox(root, { limit: getLimit(root) });
+  });
+
+  /* Auto-load on page ready */
+  var root = document.getElementById('inbox-all-dynamic');
+  if (root) fetchInbox(root, {});
+
+  window.addEventListener('resize', resizePreviewIframe);
+})();
+</script>
 {% endblock %}

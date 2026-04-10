@@ -1,4 +1,5 @@
 import logging
+import re
 from hashlib import sha256
 
 from django.core.cache import cache
@@ -30,6 +31,32 @@ def _normalize_phone(phone: str, region: str) -> str:
         country_code = region.split("-")[0] if "-" in region else region
         phone = f"+{country_code}{phone}"
     return phone
+
+
+_DIGITS_ONLY = re.compile(r"^\d+$")
+
+
+def _validate_phone_digits(phone: str, region: str) -> str | None:
+    """Validate national phone digits (no country-code prefix). Returns error message or None."""
+    digits = phone.strip()
+    if not digits:
+        return None
+    if not _DIGITS_ONLY.match(digits):
+        return "Phone number must contain only digits."
+    cc = region.split("-")[0] if "-" in region else region
+    if cc == "1":
+        if len(digits) != 10:
+            return "US/Canada phone numbers must be exactly 10 digits."
+        return None
+    if cc == "86":
+        if len(digits) != 11:
+            return "China phone numbers must be exactly 11 digits."
+        return None
+    if len(digits) < 4:
+        return "Phone number is too short (minimum 4 digits)."
+    if len(digits) > 15:
+        return "Phone number is too long (maximum 15 digits)."
+    return None
 
 
 def _phone_verification_cache_key(user, phone: str) -> str:
@@ -158,6 +185,9 @@ class EventRegistrationCreateView(APIView):
             phone_verified_inline = False
             phone_region = data.get("attendee_phone_region", "1-US")
             if data.get("attendee_phone") and event.collect_phone:
+                phone_error = _validate_phone_digits(data["attendee_phone"], phone_region)
+                if phone_error:
+                    return Response({"detail": phone_error}, status=status.HTTP_400_BAD_REQUEST)
                 phone = _normalize_phone(data["attendee_phone"], phone_region)
                 create_kwargs["attendee_phone"] = phone
                 if event.verify_phone:
@@ -237,6 +267,10 @@ class SendPhoneCodeView(APIView):
         region = request.data.get("region", "1-US")
         if not phone:
             return Response({"detail": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        phone_error = _validate_phone_digits(phone, region)
+        if phone_error:
+            return Response({"detail": phone_error}, status=status.HTTP_400_BAD_REQUEST)
 
         phone = _normalize_phone(phone, region)
 
