@@ -37,13 +37,25 @@ _DIGITS_ONLY = re.compile(r"^\d+$")
 
 
 def _validate_phone_digits(phone: str, region: str) -> str | None:
-    """Validate national phone digits (no country-code prefix). Returns error message or None."""
+    """Validate phone digits. Accepts raw national digits or E.164 (+CC...) format."""
     digits = phone.strip()
     if not digits:
         return None
-    if not _DIGITS_ONLY.match(digits):
-        return "Phone number must contain only digits."
+
+    # If already in E.164 format (+CC...), strip the prefix to get national digits.
     cc = region.split("-")[0] if "-" in region else region
+    if digits.startswith("+"):
+        digits = digits[1:]  # remove "+"
+        if not _DIGITS_ONLY.match(digits):
+            return "Phone number must contain only digits."
+        if digits.startswith(cc):
+            digits = digits[len(cc) :]
+        # After stripping, fall through to national-length checks
+    elif not _DIGITS_ONLY.match(digits):
+        return "Phone number must contain only digits."
+
+    if not digits:
+        return "Phone number is too short (minimum 4 digits)."
     if cc == "1":
         if len(digits) != 10:
             return "US/Canada phone numbers must be exactly 10 digits."
