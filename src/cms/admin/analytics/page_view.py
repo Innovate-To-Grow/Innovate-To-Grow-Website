@@ -4,6 +4,8 @@ from django.contrib import admin
 from django.core.cache import cache
 from django.db.models import Count
 from django.db.models.functions import TruncDate, TruncHour
+from django.http import JsonResponse
+from django.urls import path
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -12,12 +14,14 @@ from core.admin import ReadOnlyModelAdmin
 
 _DASHBOARD_CACHE_KEY = "cms:analytics:dashboard"
 _DASHBOARD_CACHE_TTL = 60  # seconds
+_IP_GEO_CACHE_PREFIX = "ip_geo:"
+_IP_GEO_CACHE_TTL = 86400  # 24 hours
 
 
 @admin.register(PageView)
 class PageViewAdmin(ReadOnlyModelAdmin):
     change_list_template = "admin/cms/pageview/change_list.html"
-    list_display = ("path", "short_referrer", "ip_address", "member_display", "session_key_short", "timestamp")
+    list_display = ("path", "short_referrer", "ip_display", "user_agent_short", "timestamp")
     list_filter = ("timestamp",)
     search_fields = (
         "path",
@@ -33,6 +37,9 @@ class PageViewAdmin(ReadOnlyModelAdmin):
     date_hierarchy = "timestamp"
     list_per_page = 50
     list_select_related = ("member",)
+
+    class Media:
+        css = {"all": ("admin/css/ip-geo-popup.css",)}
 
     fieldsets = (
         ("Request", {"fields": ("id", "path", "referrer", "timestamp")}),
@@ -127,8 +134,79 @@ class PageViewAdmin(ReadOnlyModelAdmin):
             return obj.member.get_primary_email() or str(obj.member.id)
         return "-"
 
+    @admin.display(description="User Agent")
+    def user_agent_short(self, obj):
+        if not obj.user_agent:
+            return "-"
+        ua = obj.user_agent
+        if len(ua) > 60:
+            return format_html('<span title="{}">{}&hellip;</span>', ua, ua[:60])
+        return ua
+
     @admin.display(description="Session")
     def session_key_short(self, obj):
         if not obj.session_key:
             return "-"
         return f"{obj.session_key[:8]}…"
+
+    @admin.display(description="IP Address")
+    def ip_display(self, obj):
+        if not obj.ip_address:
+            return "-"
+        return format_html(
+            '<span class="ip-geo-link" data-ip="{ip}" style="cursor:pointer;border-bottom:1px dashed currentColor"'
+            ' title="Click to look up location">{ip}</span>',
+            ip=obj.ip_address,
+        )
+
+    def get_urls(self):
+        return [
+            path(
+                "ip-geo-lookup/",
+                self.admin_site.admin_view(self._ip_geo_lookup_view),
+                name="cms_pageview_ip_geo_lookup",
+            ),
+        ] + super().get_urls()
+
+    @staticmethod
+    def _ip_geo_lookup_view(request):
+        """Look up geolocation for an IP address, cached for 24 hours."""
+        import requests as http_requests
+
+        ip = request.GET.get("ip", "").strip()
+        if not ip:
+            return JsonResponse({"error": "No IP provided"}, status=400)
+
+        cache_key = f"{_IP_GEO_CACHE_PREFIX}{ip}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return JsonResponse(cached)
+
+        try:
+            resp = http_requests.get(
+                f"http://ip-api.com/json/{ip}",
+                params={"fields": "status,message,country,regionName,city,zip,lat,lon,isp,org,as"},
+                timeout=5,
+            )
+            data = resp.json()
+        except Exception:
+            return JsonResponse({"error": "Geolocation service unavailable"}, status=502)
+
+        if data.get("status") == "fail":
+            result = {"error": data.get("message", "Lookup failed"), "ip": ip}
+        else:
+            result = {
+                "ip": ip,
+                "country": data.get("country", ""),
+                "region": data.get("regionName", ""),
+                "city": data.get("city", ""),
+                "zip": data.get("zip", ""),
+                "lat": data.get("lat"),
+                "lon": data.get("lon"),
+                "isp": data.get("isp", ""),
+                "org": data.get("org", ""),
+                "as": data.get("as", ""),
+            }
+            cache.set(cache_key, result, _IP_GEO_CACHE_TTL)
+
+        return JsonResponse(result)

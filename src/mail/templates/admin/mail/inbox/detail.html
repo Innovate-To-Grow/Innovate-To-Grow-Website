@@ -36,6 +36,27 @@
         </div>
     </div>
 
+    {% if scam_analysis.risk_level != "low" %}
+    <div class="mb-4 rounded-md border px-4 py-3 text-sm {% if scam_analysis.risk_level == 'high' %}border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30{% else %}border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/25{% endif %}">
+        <button type="button" onclick="this.parentElement.querySelector('[data-scam-reasons]').classList.toggle('hidden');this.querySelector('[data-chevron]').classList.toggle('rotate-90')" class="flex w-full items-center gap-2 bg-transparent border-0 p-0 cursor-pointer text-left">
+            <span class="material-symbols-outlined !text-[18px] {% if scam_analysis.risk_level == 'high' %}text-red-600 dark:text-red-400{% else %}text-amber-600 dark:text-amber-400{% endif %}">gpp_maybe</span>
+            <span class="font-semibold {% if scam_analysis.risk_level == 'high' %}text-red-700 dark:text-red-300{% else %}text-amber-700 dark:text-amber-300{% endif %}">
+                Scam Risk: {{ scam_analysis.risk_level|upper }}
+            </span>
+            <span class="text-xs {% if scam_analysis.risk_level == 'high' %}text-red-500 dark:text-red-400{% else %}text-amber-500 dark:text-amber-400{% endif %}">(score {{ scam_analysis.score }})</span>
+            <span data-chevron class="material-symbols-outlined !text-[16px] ml-auto transition-transform {% if scam_analysis.risk_level == 'high' %}text-red-400 dark:text-red-500{% else %}text-amber-400 dark:text-amber-500{% endif %}">chevron_right</span>
+        </button>
+        <ul data-scam-reasons class="mt-2 ml-7 space-y-0.5 text-xs hidden {% if scam_analysis.risk_level == 'high' %}text-red-600 dark:text-red-300{% else %}text-amber-600 dark:text-amber-300{% endif %}">
+            {% for reason in scam_analysis.reasons %}
+            <li class="flex items-start gap-1.5">
+                <span class="shrink-0 mt-0.5 material-symbols-outlined !text-[12px]">warning</span>
+                {{ reason }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- Email body -->
     <div class="mb-4 rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
         <div class="bg-base-50 dark:bg-base-800 px-4 py-2 border-b border-base-200 dark:border-base-700 flex items-center gap-2">

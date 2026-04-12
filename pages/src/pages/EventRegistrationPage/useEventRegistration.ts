@@ -271,7 +271,6 @@ export const useEventRegistration = () => {
       if (!phoneChanged) return null;
       return validatePhoneDigits(attendeePhone.trim(), phoneRegion);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [attendeePhone, phoneRegion, phoneChanged],
   );
 

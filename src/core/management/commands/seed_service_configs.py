@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from authn.models import ContactEmail
-from core.models import EmailServiceConfig, SMSServiceConfig
+from core.models import AWSCredentialConfig, EmailServiceConfig, SMSServiceConfig
 
 Member = get_user_model()
 
@@ -17,6 +17,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self._seed_email()
         self._seed_sms()
+        self._seed_aws()
         self._seed_staff_contact_emails()
 
     def _seed_email(self):
@@ -53,6 +54,26 @@ class Command(BaseCommand):
             verify_sid=os.environ.get("TWILIO_VERIFY_SID", ""),
         )
         self.stdout.write(self.style.SUCCESS("Created active SMSServiceConfig 'Production'."))
+
+    def _seed_aws(self):
+        if AWSCredentialConfig.objects.exists():
+            self.stdout.write(self.style.WARNING("AWSCredentialConfig already exists — skipping."))
+            return
+
+        access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+        if not access_key and not secret_key:
+            self.stdout.write(self.style.WARNING("AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY not set — skipping."))
+            return
+
+        AWSCredentialConfig.objects.create(
+            name="Production",
+            is_active=True,
+            access_key_id=access_key,
+            secret_access_key=secret_key,
+            default_region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
+        )
+        self.stdout.write(self.style.SUCCESS("Created active AWSCredentialConfig 'Production'."))
 
     def _seed_staff_contact_emails(self):
         """Ensure every staff member has a verified primary ContactEmail so admin login works."""

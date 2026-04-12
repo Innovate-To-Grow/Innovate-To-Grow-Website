@@ -40,12 +40,16 @@ UNFOLD = {
                 "core.gmailimportconfig",
                 "core.smsserviceconfig",
                 "core.googlecredentialconfig",
+                "core.awscredentialconfig",
+                "core.systemintelligenceconfig",
             ],
             "items": [
                 {"title": "Email Config", "link": "/admin/core/emailserviceconfig/"},
                 {"title": "Gmail Import", "link": "/admin/core/gmailimportconfig/"},
                 {"title": "SMS Config", "link": "/admin/core/smsserviceconfig/"},
                 {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
+                {"title": "AWS Credentials", "link": "/admin/core/awscredentialconfig/"},
+                {"title": "System Intelligence Config", "link": "/admin/core/systemintelligenceconfig/"},
             ],
         },
         {
@@ -83,6 +87,7 @@ UNFOLD = {
             {
                 "title": "Site Settings",
                 "items": [
+                    {"title": "I2G System Intelligence", "link": "/admin/core/system-intelligence/"},
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
                     {"title": "Service Configs", "link": "/admin/core/emailserviceconfig/"},
                     {"title": "Admin Log", "link": "/admin/admin/logentry/"},

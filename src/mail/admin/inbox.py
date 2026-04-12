@@ -12,6 +12,7 @@ from django.urls import path, reverse
 from core.models import EmailServiceConfig, GmailImportConfig
 
 from ..services.inbox import INBOX_LIMIT_CHOICES, InboxError, fetch_inbox_message, list_inbox_messages, send_reply
+from ..services.scam_detector import analyze_email
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ def inbox_detail_view(request, uid):
         return HttpResponseRedirect(list_url)
 
     body_html = msg["html"] or f"<pre>{msg['text']}</pre>"
+    scam_analysis = analyze_email(msg)
 
     context = {
         **admin.site.each_context(request),
@@ -126,6 +128,7 @@ def inbox_detail_view(request, uid):
         "body_html_json": json.dumps(body_html),
         "reply_url": reverse("admin:mail_inbox_reply", args=[uid]),
         "list_url": list_url,
+        "scam_analysis": scam_analysis,
     }
     return TemplateResponse(request, "admin/mail/inbox/detail.html", context)
 
@@ -147,6 +150,7 @@ def inbox_detail_fragment_view(request, uid):
         )
 
     body_html = msg["html"] or f"<pre>{msg['text']}</pre>"
+    scam_analysis = analyze_email(msg)
 
     html = render_to_string(
         "admin/mail/inbox/_inbox_preview.html",
@@ -155,6 +159,7 @@ def inbox_detail_fragment_view(request, uid):
             "body_html_json": json.dumps(body_html),
             "reply_url": reverse("admin:mail_inbox_reply", args=[uid]),
             "reply_fragment_url": reverse("admin:mail_inbox_reply_fragment", args=[uid]),
+            "scam_analysis": scam_analysis,
         },
         request=request,
     )

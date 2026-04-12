@@ -1,0 +1,57 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>I2G System Intelligence</h1>{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence.css' %}">
+{% endblock %}
+
+{% block content %}
+<script id="si-config" type="application/json">{"model_choices": {{ model_choices_json|safe }}}</script>
+
+<div class="si-wrap bg-white dark:bg-base-900" id="si-root"
+     data-conversations-url="{% url 'admin:core_system_intelligence_conversations' %}"
+     data-new-url="{% url 'admin:core_system_intelligence_new' %}"
+     data-active-model-id="{{ active_model_id|escapejs }}">
+
+  <!-- Sidebar -->
+  <div class="si-sidebar bg-base-50 dark:bg-base-900">
+    <div class="si-sidebar-header">
+      <button id="si-new-btn" class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-white"
+              style="background:var(--color-primary-500,#6366f1);">
+        <span class="material-symbols-outlined !text-[18px]">add</span>
+        New Chat
+      </button>
+    </div>
+    <div class="si-convo-list" id="si-convo-list">
+      <div class="p-4 text-center text-sm opacity-40">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="si-main">
+    <div class="si-messages" id="si-messages">
+      <div class="si-empty" id="si-empty">
+        <span class="material-symbols-outlined !text-[48px] mb-3">smart_toy</span>
+        <p class="text-sm">Start a new chat or select a conversation</p>
+      </div>
+    </div>
+    <div class="si-model-bar" id="si-model-bar" style="display:none;">
+      <span class="material-symbols-outlined !text-[16px] opacity-40">psychology</span>
+      <span class="si-model-label">Model:</span>
+      <select class="si-model-select" id="si-model-select"></select>
+    </div>
+    <div class="si-input-bar" id="si-input-bar" style="display:none;">
+      <textarea id="si-input" rows="1" placeholder="Type your message..." autocomplete="off"></textarea>
+      <button class="si-send-btn" id="si-send-btn" disabled>
+        <span class="material-symbols-outlined !text-[20px]">send</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'admin/js/system-intelligence.js' %}"></script>
+{% endblock %}

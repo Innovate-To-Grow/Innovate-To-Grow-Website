@@ -40,4 +40,70 @@
     </div>
 
     {{ block.super }}
+
+<script>
+(function(){
+  var lookupUrl = '{% url "admin:cms_pageview_ip_geo_lookup" %}';
+  var popup = null, overlay = null;
+
+  function close() {
+    if (popup) popup.remove();
+    if (overlay) overlay.remove();
+    popup = overlay = null;
+  }
+
+  function show(ip, rect) {
+    close();
+    overlay = document.createElement('div');
+    overlay.className = 'ip-geo-popup-overlay';
+    overlay.addEventListener('click', close);
+    document.body.appendChild(overlay);
+
+    popup = document.createElement('div');
+    popup.className = 'ip-geo-popup';
+    popup.innerHTML = '<div class="ip-geo-popup-header"><strong>' + ip + '</strong><button class="ip-geo-popup-close"><span class="material-symbols-outlined" style="font-size:18px">close</span></button></div><div class="ip-geo-popup-loading"><span class="material-symbols-outlined" style="font-size:16px;animation:spin 1s linear infinite">progress_activity</span> Loading...</div>';
+    popup.querySelector('.ip-geo-popup-close').addEventListener('click', close);
+
+    var top = rect.bottom + 6, left = rect.left;
+    if (top + 280 > window.innerHeight) top = rect.top - 280;
+    if (left + 340 > window.innerWidth) left = window.innerWidth - 350;
+    popup.style.top = top + 'px';
+    popup.style.left = Math.max(8, left) + 'px';
+    document.body.appendChild(popup);
+
+    fetch(lookupUrl + '?ip=' + encodeURIComponent(ip), {credentials: 'same-origin'})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!popup) return;
+        if (d.error) {
+          popup.querySelector('.ip-geo-popup-loading').innerHTML = '<span style="color:var(--color-red-600,#dc2626)">' + d.error + '</span>';
+          return;
+        }
+        var loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
+        var html = '<div class="ip-geo-popup-header"><strong>' + ip + '</strong><button class="ip-geo-popup-close"><span class="material-symbols-outlined" style="font-size:18px">close</span></button></div>';
+        if (loc) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">Location</span><span class="ip-geo-popup-value">' + loc + '</span></div>';
+        if (d.zip) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">ZIP</span><span class="ip-geo-popup-value">' + d.zip + '</span></div>';
+        if (d.isp) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">ISP</span><span class="ip-geo-popup-value">' + d.isp + '</span></div>';
+        if (d.org) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">Org</span><span class="ip-geo-popup-value">' + d.org + '</span></div>';
+        if (d.lat != null && d.lon != null) {
+          html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">Coords</span><span class="ip-geo-popup-value">' + d.lat + ', ' + d.lon + '</span></div>';
+          html += '<a class="ip-geo-popup-map-link" href="https://www.google.com/maps?q=' + d.lat + ',' + d.lon + '" target="_blank" rel="noopener"><span class="material-symbols-outlined" style="font-size:16px">map</span> View on Map</a>';
+        }
+        popup.innerHTML = html;
+        popup.querySelector('.ip-geo-popup-close').addEventListener('click', close);
+      })
+      .catch(function() {
+        if (popup) popup.querySelector('.ip-geo-popup-loading').textContent = 'Network error';
+      });
+  }
+
+  document.addEventListener('click', function(e) {
+    var el = e.target.closest('.ip-geo-link');
+    if (!el) return;
+    e.preventDefault();
+    show(el.getAttribute('data-ip'), el.getBoundingClientRect());
+  });
+})();
+</script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 {% endblock %}
