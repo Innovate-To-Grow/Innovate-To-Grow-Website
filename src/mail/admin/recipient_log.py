@@ -8,7 +8,15 @@ from ..models import RecipientLog
 
 @admin.register(RecipientLog)
 class RecipientLogAdmin(ReadOnlyModelAdmin):
-    list_display = ("campaign", "recipient_name", "email_address", "status_badge", "error_preview", "provider", "sent_at")
+    list_display = (
+        "campaign",
+        "recipient_name",
+        "email_address",
+        "status_badge",
+        "error_preview",
+        "provider",
+        "sent_at",
+    )
     list_filter = ("status", "provider", "campaign")
     search_fields = ("email_address", "recipient_name")
     ordering = ("-updated_at",)
