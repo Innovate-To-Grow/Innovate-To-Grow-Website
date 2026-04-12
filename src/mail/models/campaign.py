@@ -88,6 +88,11 @@ class EmailCampaign(ProjectControlModel):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    error_message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Top-level error when the campaign fails before or during sending.",
+    )
 
     class Meta:
         ordering = ["-created_at"]

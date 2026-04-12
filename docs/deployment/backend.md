@@ -38,6 +38,18 @@ The CI pipeline builds and validates the Docker image on every push.
 | Container port | 8000 |
 | Log driver | `awslogs` → CloudWatch `/ecs/itg-backend` (us-west-2) |
 
+## ECS service scaling
+
+The production ECS service is `itg-backend-service` in cluster `itg-backend-cluster`.
+
+| Setting | Value |
+|---------|-------|
+| Desired count | 1 |
+| Auto Scaling minimum | 1 |
+| Auto Scaling maximum | 10 |
+
+This scaling target is currently managed in AWS Application Auto Scaling rather than a repo-tracked IaC template.
+
 ### Container health check
 
 ```

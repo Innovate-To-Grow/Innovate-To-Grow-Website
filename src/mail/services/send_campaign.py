@@ -51,12 +51,16 @@ def send_campaign(campaign, sent_by):
     campaign.total_recipients = len(recipients)
     campaign.sent_count = 0
     campaign.failed_count = 0
-    campaign.save(update_fields=["status", "sent_by", "total_recipients", "sent_count", "failed_count"])
+    campaign.error_message = ""
+    campaign.save(
+        update_fields=["status", "sent_by", "total_recipients", "sent_count", "failed_count", "error_message"]
+    )
 
     ses_client = _get_ses_client(config)
     if ses_client is None:
         campaign.status = "failed"
-        campaign.save(update_fields=["status"])
+        campaign.error_message = "SES is not configured. Check EmailServiceConfig in admin."
+        campaign.save(update_fields=["status", "error_message"])
         raise RuntimeError("SES is not configured. Cannot send campaign.")
 
     send_rate = config.ses_max_send_rate or 0
@@ -72,48 +76,67 @@ def send_campaign(campaign, sent_by):
             if elapsed < min_interval:
                 time.sleep(min_interval - elapsed)
 
-        login_link = _build_login_link(recipient["member_id"], campaign)
-        context = {
-            "first_name": recipient["first_name"],
-            "last_name": recipient["last_name"],
-            "full_name": recipient["full_name"],
-            "login_link": login_link,
-        }
-        subject = personalize(campaign.subject, context)
-        body_html = personalize(campaign.body, context)
+        try:
+            login_link = _build_login_link(recipient["member_id"], campaign)
+            context = {
+                "first_name": recipient["first_name"],
+                "last_name": recipient["last_name"],
+                "full_name": recipient["full_name"],
+                "login_link": login_link,
+            }
+            subject = personalize(campaign.subject, context)
+            body_html = personalize(campaign.body, context)
 
-        unsubscribe_url = _build_unsubscribe_url(recipient["member_id"]) if campaign.include_unsubscribe_header else ""
-        wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
+            unsubscribe_url = (
+                _build_unsubscribe_url(recipient["member_id"]) if campaign.include_unsubscribe_header else ""
+            )
+            wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
 
-        log = RecipientLog.objects.create(
-            campaign=campaign,
-            member_id=recipient["member_id"],
-            email_address=recipient["email"],
-            recipient_name=recipient["full_name"],
-            status="pending",
-        )
+            log = RecipientLog.objects.create(
+                campaign=campaign,
+                member_id=recipient["member_id"],
+                email_address=recipient["email"],
+                recipient_name=recipient["full_name"],
+                status="pending",
+            )
 
-        error = _send_via_ses(
-            ses_client=ses_client,
-            source=config.source_address,
-            recipient=recipient["email"],
-            subject=subject,
-            html_body=wrapped_html,
-            unsubscribe_url=unsubscribe_url,
-        )
-        last_send_time = time.monotonic()
+            error = _send_via_ses(
+                ses_client=ses_client,
+                source=config.source_address,
+                recipient=recipient["email"],
+                subject=subject,
+                html_body=wrapped_html,
+                unsubscribe_url=unsubscribe_url,
+            )
+            last_send_time = time.monotonic()
 
-        if error:
-            log.status = "failed"
-            log.error_message = error
+            if error:
+                log.status = "failed"
+                log.error_message = error
+                campaign.failed_count += 1
+            else:
+                log.status = "sent"
+                log.sent_at = timezone.now()
+                campaign.sent_count += 1
+
+            log.provider = "ses"
+            log.save(update_fields=["status", "provider", "error_message", "sent_at"])
+        except Exception as exc:
+            logger.exception("Failed to process recipient %s", recipient["email"])
+            RecipientLog.objects.update_or_create(
+                campaign=campaign,
+                email_address=recipient["email"],
+                defaults={
+                    "member_id": recipient["member_id"],
+                    "recipient_name": recipient["full_name"],
+                    "status": "failed",
+                    "provider": "ses",
+                    "error_message": str(exc),
+                },
+            )
             campaign.failed_count += 1
-        else:
-            log.status = "sent"
-            log.sent_at = timezone.now()
-            campaign.sent_count += 1
 
-        log.provider = "ses"
-        log.save(update_fields=["status", "provider", "error_message", "sent_at"])
+        campaign.save(update_fields=["sent_count", "failed_count"])
 
     campaign.status = "sent" if campaign.failed_count < campaign.total_recipients else "failed"
     campaign.sent_at = timezone.now()

@@ -200,8 +200,8 @@ class EmailCampaignForm(forms.ModelForm):
 
 class RecipientLogInline(TabularInline):
     model = RecipientLog
-    fields = ("email_address", "recipient_name", "status", "provider", "sent_at")
-    readonly_fields = ("email_address", "recipient_name", "status", "provider", "sent_at")
+    fields = ("email_address", "recipient_name", "status", "error_message", "provider", "sent_at")
+    readonly_fields = ("email_address", "recipient_name", "status", "error_message", "provider", "sent_at")
     extra = 0
     max_num = 0
     can_delete = False
@@ -304,8 +304,18 @@ class EmailCampaignAdmin(BaseModelAdmin):
         colors = {"draft": "info", "sending": "warning", "sent": "success", "failed": "danger"}
         return obj.get_status_display(), colors.get(obj.status, "info")
 
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = list(super().get_fieldsets(request, obj))
+        if obj and obj.error_message:
+            fieldsets.append(
+                ("Error Details", {"fields": ("error_message",), "classes": ("collapse",)}),
+            )
+        return fieldsets
+
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.error_message:
+            readonly.append("error_message")
         if obj and obj.status != "draft":
             readonly.extend(
                 [
@@ -538,7 +548,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
         """JSON endpoint for polling send progress."""
         obj = EmailCampaign.objects.get(pk=object_id)
 
-        recent_qs = RecipientLog.objects.filter(campaign=obj).exclude(status="pending").order_by("-sent_at")[:20]
+        recent_qs = RecipientLog.objects.filter(campaign=obj).exclude(status="pending").order_by("-updated_at")[:20]
         recent_logs = [
             {
                 "email": log.email_address,
@@ -550,14 +560,13 @@ class EmailCampaignAdmin(BaseModelAdmin):
             for log in recent_qs
         ]
 
-        failed_qs = RecipientLog.objects.filter(campaign=obj, status="failed").order_by("-sent_at")
+        failed_qs = RecipientLog.objects.filter(campaign=obj, status="failed").order_by("-updated_at")
         failed_logs = [
             {"email": log.email_address, "name": log.recipient_name, "error": log.error_message} for log in failed_qs
         ]
 
         first_sent_at = (
-            RecipientLog.objects.filter(campaign=obj)
-            .exclude(status="pending")
+            RecipientLog.objects.filter(campaign=obj, sent_at__isnull=False)
             .order_by("sent_at")
             .values_list("sent_at", flat=True)
             .first()
@@ -569,6 +578,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
                 "total": obj.total_recipients,
                 "sent": obj.sent_count,
                 "failed": obj.failed_count,
+                "error_message": obj.error_message,
                 "started_at": first_sent_at.isoformat() if first_sent_at else None,
                 "recent_logs": recent_logs,
                 "failed_logs": failed_logs,
@@ -611,11 +621,12 @@ class EmailCampaignAdmin(BaseModelAdmin):
         user = User.objects.get(pk=user_pk)
         try:
             send_campaign(campaign, sent_by=user)
-        except Exception:
+        except Exception as exc:
             import logging
 
             logging.getLogger(__name__).exception("Background send failed for campaign %s", campaign_pk)
             campaign.refresh_from_db()
-            if campaign.status == "sending":
+            if campaign.status in ("draft", "sending"):
                 campaign.status = "failed"
-                campaign.save(update_fields=["status"])
+            campaign.error_message = str(exc)
+            campaign.save(update_fields=["status", "error_message"])

@@ -76,6 +76,17 @@
         </div>
     </div>
 
+    <!-- Campaign-level error (hidden until error exists) -->
+    <div id="campaign-error-section" class="mb-6 hidden">
+        <div class="rounded-default border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4">
+            <h3 class="text-sm font-semibold text-red-700 dark:text-red-400 mb-1 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px]">report</span>
+                Campaign Error
+            </h3>
+            <p id="campaign-error-text" class="text-sm text-red-600 dark:text-red-300 font-mono break-all"></p>
+        </div>
+    </div>
+
     <!-- Failed recipients (hidden until failures exist) -->
     <div id="failed-section" class="mb-6 hidden">
         <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1.5">
@@ -233,7 +244,19 @@
         });
     }
 
+    function updateCampaignError(errorMsg) {
+        var section = document.getElementById('campaign-error-section');
+        var text = document.getElementById('campaign-error-text');
+        if (!errorMsg) {
+            section.classList.add('hidden');
+            return;
+        }
+        section.classList.remove('hidden');
+        text.textContent = errorMsg;
+    }
+
     function update(data) {
+        if (data.total > 0) total = data.total;
         var sent = data.sent || 0;
         var failed = data.failed || 0;
         var done = sent + failed;
@@ -254,6 +277,7 @@
         updateStats(data);
         updateActivityLog(data.recent_logs || []);
         updateFailedSection(data.failed_logs || []);
+        updateCampaignError(data.error_message || '');
 
         if (data.status !== 'sending') {
             clearInterval(polling);

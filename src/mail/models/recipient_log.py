@@ -31,7 +31,7 @@ class RecipientLog(ProjectControlModel):
     sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        ordering = ["-sent_at"]
+        ordering = ["-updated_at"]
         verbose_name = "Recipient Log"
         verbose_name_plural = "Recipient Logs"
         constraints = [
