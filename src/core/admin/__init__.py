@@ -8,8 +8,8 @@ from .base import BaseModelAdmin, ReadOnlyModelAdmin
 from .log_entry import LogEntryAdmin  # noqa: F401 - register admin
 from .maintenance import SiteMaintenanceControlAdmin  # noqa: F401 - register admin
 from .mixins import (
-    ExportMixin,
-    ImportExportMixin,
+    DataExportMixin,
+    ExcelExportMixin,
     TimestampedAdminMixin,
 )
 from .service_credentials import (  # noqa: F401 - register admin
@@ -26,8 +26,8 @@ __all__ = [
     "ReadOnlyModelAdmin",
     # Mixins
     "TimestampedAdminMixin",
-    "ImportExportMixin",
-    "ExportMixin",
+    "DataExportMixin",
+    "ExcelExportMixin",
     # Utilities
     "admin_url",
     "truncate_text",

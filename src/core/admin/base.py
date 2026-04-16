@@ -4,10 +4,10 @@ Base admin classes for consistent admin interface across the project.
 
 from unfold.admin import ModelAdmin
 
-from .mixins import TimestampedAdminMixin
+from .mixins import DataExportMixin, TimestampedAdminMixin
 
 
-class BaseModelAdmin(TimestampedAdminMixin, ModelAdmin):
+class BaseModelAdmin(DataExportMixin, TimestampedAdminMixin, ModelAdmin):
     """
     Base admin class with common configuration for all model admins.
 

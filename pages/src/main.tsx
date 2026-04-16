@@ -6,17 +6,20 @@ import { router } from './router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
 import { HealthCheckProvider } from './components/MaintenanceMode';
 import { AuthProvider } from './components/Auth';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Mount main app to #root with health check and auth
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HealthCheckProvider pollingInterval={10000}>
-      <AuthProvider>
-        <LayoutProvider>
-          <RouterProvider router={router} />
-        </LayoutProvider>
-      </AuthProvider>
-    </HealthCheckProvider>
+    <ErrorBoundary>
+      <HealthCheckProvider pollingInterval={10000}>
+        <AuthProvider>
+          <LayoutProvider>
+            <RouterProvider router={router} />
+          </LayoutProvider>
+        </AuthProvider>
+      </HealthCheckProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );
 
@@ -26,11 +29,13 @@ const menuRoot = document.getElementById('menu-root');
 if (menuRoot) {
   createRoot(menuRoot).render(
     <StrictMode>
-      <AuthProvider>
-        <LayoutProvider>
-          <MainMenu />
-        </LayoutProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <LayoutProvider>
+            <MainMenu />
+          </LayoutProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </StrictMode>,
   );
 }
@@ -40,9 +45,11 @@ const footerRoot = document.getElementById('footer-root');
 if (footerRoot) {
   createRoot(footerRoot).render(
     <StrictMode>
-      <LayoutProvider>
-        <Footer />
-      </LayoutProvider>
+      <ErrorBoundary>
+        <LayoutProvider>
+          <Footer />
+        </LayoutProvider>
+      </ErrorBoundary>
     </StrictMode>,
   );
 }

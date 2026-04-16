@@ -74,7 +74,8 @@ function looksLikeHtml(value: string): boolean {
   return /^\s*<!DOCTYPE/i.test(value) || /<[a-z][\s\S]*>/i.test(value);
 }
 
-function isSafeMessage(value: string): boolean {
+/** Check that a string is short enough and free of HTML before displaying to a user. */
+export function isSafeMessage(value: string): boolean {
   return value.length <= 300 && !looksLikeHtml(value);
 }
 
