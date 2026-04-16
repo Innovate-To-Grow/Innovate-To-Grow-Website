@@ -5,8 +5,6 @@
   var convoList = document.getElementById('si-convo-list');
   var messagesEl = document.getElementById('si-messages');
   var emptyEl = document.getElementById('si-empty');
-  var modelBar = document.getElementById('si-model-bar');
-  var modelSelect = document.getElementById('si-model-select');
   var inputBar = document.getElementById('si-input-bar');
   var input = document.getElementById('si-input');
   var sendBtn = document.getElementById('si-send-btn');
@@ -14,28 +12,6 @@
 
   var activeConvoId = null;
   var sending = false;
-
-  // --- Model selector ---
-  var modelChoices = JSON.parse(document.getElementById('si-config').textContent).model_choices;
-  var activeModelId = root.getAttribute('data-active-model-id');
-
-  function initModelSelect() {
-    modelSelect.innerHTML = '';
-    for (var g = 0; g < modelChoices.length; g++) {
-      var group = modelChoices[g];
-      var optgroup = document.createElement('optgroup');
-      optgroup.label = group.group;
-      for (var m = 0; m < group.models.length; m++) {
-        var opt = document.createElement('option');
-        opt.value = group.models[m].id;
-        opt.textContent = group.models[m].name;
-        if (group.models[m].id === activeModelId) opt.selected = true;
-        optgroup.appendChild(opt);
-      }
-      modelSelect.appendChild(optgroup);
-    }
-  }
-  initModelSelect();
 
   function csrfToken() {
     var el = document.querySelector('[name=csrfmiddlewaretoken]');
@@ -101,7 +77,6 @@
   function loadMessages(convoId) {
     activeConvoId = convoId;
     emptyEl.style.display = 'none';
-    modelBar.style.display = 'flex';
     inputBar.style.display = 'flex';
     messagesEl.innerHTML = '<div class="si-empty"><span class="material-symbols-outlined !text-[24px] mb-2" style="animation:si-dot-pulse 1.2s infinite;">hourglass_empty</span><p class="text-sm">Loading...</p></div>';
 
@@ -250,7 +225,7 @@
         'X-CSRFToken': csrfToken(),
         'X-Requested-With': 'XMLHttpRequest',
       },
-      body: JSON.stringify({message: text, model_id: modelSelect.value}),
+      body: JSON.stringify({message: text}),
     }).then(function(response) {
       if (!response.ok || !response.body) {
         throw new Error('Stream request failed');
@@ -401,7 +376,6 @@
           messagesEl.innerHTML = '';
           emptyEl.style.display = '';
           messagesEl.appendChild(emptyEl);
-          modelBar.style.display = 'none';
           inputBar.style.display = 'none';
         }
         loadConversations();

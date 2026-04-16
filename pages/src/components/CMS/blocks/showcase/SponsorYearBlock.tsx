@@ -1,4 +1,3 @@
-import './SponsorYearBlock.css';
 
 export interface SponsorYearSponsor {
   name: string;

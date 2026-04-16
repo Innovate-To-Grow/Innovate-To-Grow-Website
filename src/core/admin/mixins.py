@@ -154,12 +154,20 @@ class DataExportMixin:
         available_fields = self.get_export_fields()
         pks = queryset.values_list("pk", flat=True)
 
+        preview_limit = 5
+        preview_rows = []
+        for obj in queryset[:preview_limit]:
+            preview_rows.append(
+                [(name, self.get_export_value(obj, name)) for name, _label in available_fields]
+            )
+
         context = {
             **self.admin_site.each_context(request),
             "title": f"Export {self.model._meta.verbose_name_plural.title()}",
             "queryset": queryset,
             "pks": [str(pk) for pk in pks],
             "available_fields": available_fields,
+            "preview_rows": preview_rows,
             "formats": _EXPORT_FORMATS,
             "default_filename": self.export_filename or self.model._meta.model_name,
             "opts": self.model._meta,

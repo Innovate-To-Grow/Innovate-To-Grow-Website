@@ -1,8 +1,1 @@
-@import "./styles/shell.css";
-@import "./styles/desktop-bars.css";
-@import "./styles/desktop-dropdowns.css";
-@import "./styles/mobile-shell.css";
-@import "./styles/mobile-nav.css";
-@import "./styles/responsive.css";
-@import "./styles/member-desktop.css";
-@import "./styles/member-mobile.css";
+/* Menu styles are now served from the backend via StyleSheet model. */

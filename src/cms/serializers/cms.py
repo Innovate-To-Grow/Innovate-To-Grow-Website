@@ -33,7 +33,7 @@ class CMSPageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CMSPage
-        fields = ["slug", "route", "title", "page_css_class", "meta_description", "blocks"]
+        fields = ["slug", "route", "title", "page_css_class", "page_css", "meta_description", "blocks"]
 
     # noinspection PyMethodMayBeStatic
     def get_blocks(self, obj):

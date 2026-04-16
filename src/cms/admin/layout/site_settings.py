@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin
+from django.core.cache import cache
 
 from core.admin import BaseModelAdmin
 
@@ -63,6 +64,16 @@ class SiteSettingsAdmin(BaseModelAdmin):
                 ),
             },
         ),
+        (
+            "Design Tokens",
+            {
+                "fields": ("design_tokens",),
+                "description": (
+                    "Structured design tokens (colors, typography, layout) served to the frontend "
+                    "as CSS custom properties (--itg-*). Changes invalidate the layout cache."
+                ),
+            },
+        ),
     )
 
     def homepage_page_display(self, obj):
@@ -78,6 +89,10 @@ class SiteSettingsAdmin(BaseModelAdmin):
         return obj.get_homepage_route()
 
     homepage_route_display.short_description = "Effective Homepage Route"
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        cache.delete("layout:data")
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):

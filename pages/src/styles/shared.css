@@ -1,6 +1,2 @@
+/* Fallback tokens only — full styles served from backend via LayoutProvider */
 @import "./shared/tokens.css";
-@import "./shared/layout.css";
-@import "./shared/actions-cards.css";
-@import "./shared/utilities.css";
-@import "./shared/rich-content.css";
-@import "./shared/responsive.css";

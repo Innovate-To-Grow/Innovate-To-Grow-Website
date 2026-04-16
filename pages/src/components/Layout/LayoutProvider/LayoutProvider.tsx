@@ -12,6 +12,7 @@ import {
   readLayoutCache,
   writeLayoutCache,
   type LayoutData,
+  type DesignTokens,
 } from '../../../services/api';
 import { LayoutContext, type LayoutContextValue, type LayoutLoadState } from './context';
 
@@ -19,11 +20,37 @@ interface LayoutProviderProps {
   children: ReactNode;
 }
 
-interface RefreshLayoutOptions {
-  force?: boolean;
+/** Map design-token JSON groups to CSS custom-property prefixes. */
+const GROUP_PREFIX: Record<string, string> = {
+  colors: 'color',
+  typography: '',
+  typography_mobile: '',
+  layout: '',
+  borders: '',
+  effects: '',
+};
+
+function applyDesignTokens(tokens: DesignTokens) {
+  const root = document.documentElement;
+  for (const [group, values] of Object.entries(tokens)) {
+    const prefix = GROUP_PREFIX[group] ?? '';
+    for (const [key, value] of Object.entries(values as Record<string, string>)) {
+      const kebab = key.replace(/_/g, '-');
+      const varName = prefix ? `--itg-${prefix}-${kebab}` : `--itg-${kebab}`;
+      root.style.setProperty(varName, value);
+    }
+  }
 }
 
-const LAYOUT_REVALIDATE_MS = 60_000;
+function applyStylesheets(css: string) {
+  let el = document.getElementById('itg-server-styles');
+  if (!el) {
+    el = document.createElement('style');
+    el.id = 'itg-server-styles';
+    document.head.appendChild(el);
+  }
+  el.textContent = css;
+}
 
 function getInitialLayoutFromStorage(): { data: LayoutData | null; state: LayoutLoadState } {
   const cached = readLayoutCache();
@@ -33,22 +60,24 @@ function getInitialLayoutFromStorage(): { data: LayoutData | null; state: Layout
 }
 
 export const LayoutProvider = ({ children }: LayoutProviderProps) => {
-  const initialLayout = useMemo(() => getInitialLayoutFromStorage(), []);
+  const initialLayout = useMemo(() => {
+    const result = getInitialLayoutFromStorage();
+    // Apply cached styles immediately to avoid flash of unstyled content
+    if (result.data?.design_tokens) {
+      applyDesignTokens(result.data.design_tokens);
+    }
+    if (result.data?.stylesheets) {
+      applyStylesheets(result.data.stylesheets);
+    }
+    return result;
+  }, []);
   const [layoutData, setLayoutData] = useState<LayoutData | null>(() => initialLayout.data);
   const [state, setState] = useState<LayoutLoadState>(() => initialLayout.state);
   const [error, setError] = useState<string | null>(null);
-  const lastLoadedAtRef = useRef(0);
   const inFlightRef = useRef<Promise<void> | null>(null);
   const isUnmountedRef = useRef(false);
 
-  const refreshLayout = useEffectEvent(async ({force = false}: RefreshLayoutOptions = {}) => {
-    const now = Date.now();
-    const isStale = !lastLoadedAtRef.current || now - lastLoadedAtRef.current >= LAYOUT_REVALIDATE_MS;
-
-    if (!force && !isStale) {
-      return;
-    }
-
+  const loadLayout = useEffectEvent(async () => {
     if (inFlightRef.current) {
       await inFlightRef.current;
       return;
@@ -67,8 +96,16 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
           return;
         }
 
-        lastLoadedAtRef.current = Date.now();
         writeLayoutCache(data);
+
+        // Inject server-managed styles into the DOM
+        if (data.design_tokens) {
+          applyDesignTokens(data.design_tokens);
+        }
+        if (data.stylesheets) {
+          applyStylesheets(data.stylesheets);
+        }
+
         startTransition(() => {
           setLayoutData(data);
           setError(null);
@@ -97,32 +134,9 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
 
   useEffect(() => {
     isUnmountedRef.current = false;
-    void refreshLayout({force: true});
-
-    const handleFocus = () => {
-      void refreshLayout({force: true});
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        void refreshLayout({force: true});
-      }
-    };
-
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        void refreshLayout();
-      }
-    }, LAYOUT_REVALIDATE_MS);
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
+    void loadLayout();
     return () => {
       isUnmountedRef.current = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

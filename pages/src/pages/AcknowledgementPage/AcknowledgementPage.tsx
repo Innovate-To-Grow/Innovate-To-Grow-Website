@@ -5,7 +5,6 @@ import {
   type SponsorYearBlockData,
 } from '../../components/CMS/blocks/showcase/SponsorYearBlock';
 import {useCMSPage} from '../../components/CMS/useCMSPage';
-import './AcknowledgementPage.css';
 
 function isSponsorYearBlock(
   block: CMSBlock,

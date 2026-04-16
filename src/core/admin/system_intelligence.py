@@ -14,7 +14,7 @@ from unfold.widgets import UnfoldAdminTextareaWidget
 
 from core.admin.base import BaseModelAdmin
 from core.models.base.system_intelligence import ChatConversation, ChatMessage, SystemIntelligenceConfig
-from core.services.bedrock import get_available_models, invoke_bedrock_stream
+from core.services.bedrock import invoke_bedrock_stream
 
 logger = logging.getLogger(__name__)
 
@@ -62,32 +62,64 @@ def get_system_intelligence_urls():
             admin.site.admin_view(chat_rename_view),
             name="core_system_intelligence_rename",
         ),
-        path(
-            "core/system-intelligence/models/",
-            admin.site.admin_view(models_list_view),
-            name="core_system_intelligence_models",
-        ),
     ]
 
 
-def _model_choices_json():
-    """Build the JSON-serializable model groups for the chat UI."""
-    return [
-        {"group": group, "models": [{"id": mid, "name": name} for mid, name in models]}
-        for group, models in get_available_models()
-    ]
+def _resolve_model_name(model_id):
+    """Return a friendly display name for a Bedrock model ID, or the raw ID."""
+    if not model_id:
+        return "Not configured"
+    try:
+        from core.services.bedrock import get_available_models
+
+        for _group, models in get_available_models():
+            for mid, name in models:
+                if mid == model_id:
+                    return name
+    except Exception:
+        pass
+    return model_id
 
 
 def chat_list_view(request):
     """Render the main AI chat shell page."""
-    chat_config = SystemIntelligenceConfig.load()
+    from core.models import AWSCredentialConfig
+    from core.services.db_tools import get_tool_definitions
+
+    si_config = SystemIntelligenceConfig.load()
+    aws_config = AWSCredentialConfig.load()
+
+    model_id = aws_config.default_model_id
+    model_name = _resolve_model_name(model_id)
+
+    tools = [
+        {"name": t["toolSpec"]["name"], "description": t["toolSpec"]["description"]}
+        for t in get_tool_definitions()
+    ]
+
+    # Build admin edit URLs (changelist if unsaved, change page if saved)
+    si_url = (
+        reverse("admin:core_systemintelligenceconfig_change", args=[si_config.pk])
+        if si_config.pk
+        else reverse("admin:core_systemintelligenceconfig_changelist")
+    )
+    aws_url = (
+        reverse("admin:core_awscredentialconfig_change", args=[aws_config.pk])
+        if aws_config.pk
+        else reverse("admin:core_awscredentialconfig_changelist")
+    )
+
     context = {
         **admin.site.each_context(request),
         "title": "I2G System Intelligence",
-        "model_choices_json": json.dumps(_model_choices_json()),
-        "active_model_id": chat_config.model_id
-        if chat_config.pk
-        else SystemIntelligenceConfig._meta.get_field("model_id").default,
+        "si_config": si_config,
+        "aws_config": aws_config,
+        "model_id": model_id or "",
+        "model_name": model_name,
+        "tools": tools,
+        "tool_count": len(tools),
+        "si_config_url": si_url,
+        "aws_config_url": aws_url,
     }
     return TemplateResponse(request, "admin/core/system_intelligence.html", context)
 
@@ -136,13 +168,6 @@ def chat_view(request, conversation_id):
     return JsonResponse({"messages": data, "title": convo.title})
 
 
-def models_list_view(request):
-    """Return JSON list of available Bedrock models."""
-    chat_config = SystemIntelligenceConfig.load()
-    active_id = chat_config.model_id if chat_config.pk else SystemIntelligenceConfig._meta.get_field("model_id").default
-    return JsonResponse({"model_groups": _model_choices_json(), "active_model_id": active_id})
-
-
 def chat_send_view(request, conversation_id):
     """Accept a user message, stream the Bedrock response back as SSE events."""
     if request.method != "POST":
@@ -156,7 +181,6 @@ def chat_send_view(request, conversation_id):
     try:
         body = json.loads(request.body)
         user_content = body.get("message", "").strip()
-        selected_model_id = body.get("model_id", "").strip()
     except (json.JSONDecodeError, AttributeError):
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
 
@@ -174,9 +198,10 @@ def chat_send_view(request, conversation_id):
     history = list(convo.messages.order_by("created_at").values("role", "content"))
 
     chat_config = SystemIntelligenceConfig.load()
-    effective_model_id = selected_model_id or chat_config.model_id
-    if selected_model_id and selected_model_id != chat_config.model_id:
-        chat_config.model_id = selected_model_id
+
+    from core.models import AWSCredentialConfig
+
+    effective_model_id = AWSCredentialConfig.load().default_model_id
 
     def _sse(event, data):
         return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
@@ -186,7 +211,7 @@ def chat_send_view(request, conversation_id):
         tool_calls = []
 
         try:
-            for event in invoke_bedrock_stream(history, chat_config=chat_config):
+            for event in invoke_bedrock_stream(history, chat_config=chat_config, model_id=effective_model_id):
                 etype = event.get("type")
                 if etype == "text":
                     full_text += event["chunk"]
@@ -278,21 +303,13 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
             "system_prompt": UnfoldAdminTextareaWidget(attrs={"rows": 8}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        grouped = get_available_models()
-        choices = []
-        for group, models in grouped:
-            choices.append((group, list(models)))
-        self.fields["model_id"].choices = choices
-
 
 @admin.register(SystemIntelligenceConfig)
 class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     form = SystemIntelligenceConfigForm
-    list_display = ("name", "status_badge", "model_display", "temperature", "max_tokens", "updated_at")
+    list_display = ("name", "status_badge", "temperature", "max_tokens", "updated_at")
     list_filter = ("is_active",)
-    search_fields = ("name", "model_id")
+    search_fields = ("name",)
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config"]
 
@@ -304,8 +321,8 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         (
             _("Model Settings"),
             {
-                "fields": ("model_id", "temperature", "max_tokens"),
-                "description": "Amazon Bedrock model configuration. Uses credentials from the active AWS Credential Config.",
+                "fields": ("temperature", "max_tokens"),
+                "description": "Amazon Bedrock generation parameters. Model defaults from AWS Credential Config.",
             },
         ),
         (
@@ -323,14 +340,6 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         if obj.is_active:
             return "Active", "success"
         return "Inactive", "danger"
-
-    @display(description="Model")
-    def model_display(self, obj):
-        for _group, models in get_available_models():
-            for mid, name in models:
-                if mid == obj.model_id:
-                    return name
-        return obj.model_id
 
     @action(description="Activate this config", url_path="activate", icon="check_circle")
     def activate_this_config(self, request, object_id):

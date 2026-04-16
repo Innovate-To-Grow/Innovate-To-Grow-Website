@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { CMSBlock } from '../../features/cms/api';
 import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
 import { FaqListBlock } from './blocks/content/FaqListBlock';
@@ -30,15 +31,15 @@ interface BlockRendererProps {
   blocks: CMSBlock[];
 }
 
-export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => (
+export const BlockRenderer: React.FC<BlockRendererProps> = memo(({ blocks }) => (
   <>
-    {blocks.map((block, i) => {
+    {blocks.map((block) => {
       const Component = BLOCK_COMPONENTS[block.block_type];
       if (!Component) {
         console.warn(`Unknown CMS block type: ${block.block_type}`);
         return null;
       }
-      return <Component key={i} data={block.data} />;
+      return <Component key={`${block.block_type}-${block.sort_order}`} data={block.data} />;
     })}
   </>
-);
+));

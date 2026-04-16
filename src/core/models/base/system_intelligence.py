@@ -25,12 +25,6 @@ class SystemIntelligenceConfig(models.Model):
         help_text="Only one config can be active. Activating this will deactivate others.",
     )
 
-    model_id = models.CharField(
-        max_length=256,
-        default="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        verbose_name="Bedrock Model",
-        help_text="Model or inference profile ID to use for AI chat.",
-    )
     system_prompt = models.TextField(
         blank=True,
         default=(
@@ -61,7 +55,7 @@ class SystemIntelligenceConfig(models.Model):
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
-        return f"{self.name}: {self.model_id}{status}"
+        return f"{self.name}{status}"
 
     def save(self, *args, **kwargs):
         if self.is_active:
@@ -78,7 +72,7 @@ class SystemIntelligenceConfig(models.Model):
 
     @property
     def is_configured(self):
-        return bool(self.model_id)
+        return True
 
 
 class ChatConversation(models.Model):

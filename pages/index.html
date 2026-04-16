@@ -31,18 +31,18 @@
     <div id="footer-root"></div>
     <!-- END FOOTER -->
 
-    <!-- Template Scripts -->
-    <script>(function (d) { var s = d.createElement("script"); s.setAttribute("data-account", "6Uvgvyrrph"); s.setAttribute("src", "https://cdn.userway.org/widget.js"); (d.body || d.head).appendChild(s); })(document)</script>
-    <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
-
-    <!-- Site Improve Analytics -->
-    <script async>
-      (function() {
-        var sz = document.createElement('script'); sz.type = 'text/javascript'; sz.async = true;
-        sz.src = '//siteimproveanalytics.com/js/siteanalyze_8343.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(sz, s);
-      })();
+    <!-- Template Scripts (skipped in block preview iframe) -->
+    <script>
+      if (window.location.pathname !== '/_block-preview') {
+        (function (d) { var s = d.createElement("script"); s.setAttribute("data-account", "6Uvgvyrrph"); s.setAttribute("src", "https://cdn.userway.org/widget.js"); (d.body || d.head).appendChild(s); })(document);
+        (function() {
+          var sz = document.createElement('script'); sz.type = 'text/javascript'; sz.async = true;
+          sz.src = '//siteimproveanalytics.com/js/siteanalyze_8343.js';
+          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(sz, s);
+        })();
+      }
     </script>
+    <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
 
     <!-- React App Entry -->
     <script type="module" src="/src/main.tsx"></script>

@@ -10,13 +10,9 @@ function formatExpiryTime(isoString: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-// CMS block styling
-import './CMS.css';
-
-// Page-specific CSS for pages with unique layouts (hero, grid, buttons)
-import './page-styles/core/HomePage.css';
-import './page-styles/event/EventPage.css';
-import './page-styles/event/PostEventHomePage.css';
+// CMS block styling is now served from the backend via StyleSheet model.
+// Design tokens and stylesheets are injected by LayoutProvider.
+// Page-specific CSS is served via the page_css field on CMSPage.
 
 interface CMSPageComponentProps {
   routeOverride?: string;
@@ -42,6 +38,21 @@ export const CMSPageComponent: React.FC<CMSPageComponentProps> = ({routeOverride
       document.title = `${page.title}${suffix} | Innovate to Grow`;
     }
   }, [page?.title, isLivePreview]);
+
+  // Inject per-page CSS from the backend
+  useEffect(() => {
+    if (!page?.page_css) return;
+    let el = document.getElementById('itg-page-css');
+    if (!el) {
+      el = document.createElement('style');
+      el.id = 'itg-page-css';
+      document.head.appendChild(el);
+    }
+    el.textContent = page.page_css;
+    return () => {
+      if (el) el.textContent = '';
+    };
+  }, [page?.page_css]);
 
   if (loading) {
     return <div className="cms-page-loading" />;

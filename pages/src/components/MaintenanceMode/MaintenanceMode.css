@@ -1,4 +1,1 @@
-@import "./styles/tokens.css";
-@import "./styles/card.css";
-@import "./styles/status.css";
-@import "./styles/forms.css";
+/* Maintenance styles are now served from the backend via StyleSheet model. */

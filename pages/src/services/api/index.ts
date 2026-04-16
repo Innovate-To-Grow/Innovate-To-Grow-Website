@@ -15,6 +15,7 @@ export type {
   MenuItem,
   Menu,
   LayoutData,
+  DesignTokens,
 } from '../../features/layout/api';
 export {
   fetchLayoutData,

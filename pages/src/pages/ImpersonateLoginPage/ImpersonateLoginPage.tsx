@@ -2,7 +2,6 @@ import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
 import {impersonateAutoLogin} from '../../shared/auth/session';
 import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
-import './ImpersonateLoginPage.css';
 
 export function ImpersonateLoginPage() {
   const [searchParams] = useSearchParams();

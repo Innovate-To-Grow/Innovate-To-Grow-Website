@@ -1,4 +1,1 @@
-@import "./styles/base.css";
-@import "./styles/table.css";
-@import "./styles/mobile.css";
-@import "./styles/responsive.css";
+/* Projects table styles are now served from the backend via StyleSheet model. */

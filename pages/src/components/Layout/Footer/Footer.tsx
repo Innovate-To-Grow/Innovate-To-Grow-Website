@@ -5,7 +5,6 @@ import {
 } from '../../../services/api';
 import {SafeHtml} from '../../SafeHtml/SafeHtml';
 import { useFooter } from '../LayoutProvider/context';
-import './Footer.css';
 
 const buttonColor = (style?: FooterCTAButton['style']) => (style === 'gold' ? 'gold' : 'blue');
 

@@ -43,6 +43,14 @@ class AWSCredentialConfig(models.Model):
         help_text="AWS region used when a service does not specify its own.",
     )
 
+    default_model_id = models.CharField(
+        max_length=256,
+        blank=True,
+        default="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        verbose_name="Default AI Model",
+        help_text="Site-wide default Bedrock model or inference profile ID.",
+    )
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

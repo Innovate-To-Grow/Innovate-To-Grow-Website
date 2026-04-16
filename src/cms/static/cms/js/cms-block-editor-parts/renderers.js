@@ -1,13 +1,16 @@
 (function () {
     const P = window.ITGCmsBlockPrimitives;
 
-    function renderAll(blocks, collapsedSet) {
+    function renderAll(blocks, collapsedSet, previewSet) {
         const container = document.getElementById('cms-blocks-container');
         if (!container) return;
-        container.innerHTML = !blocks.length ? '<p class="cms-blocks-empty">No content blocks yet. Add blocks using the dropdown below.</p>' : blocks.map((block, idx) => renderBlockCard(block, idx, blocks, collapsedSet)).join('');
+        container.innerHTML = !blocks.length ? '<p class="cms-blocks-empty">No content blocks yet. Add blocks using the dropdown below.</p>' : blocks.map((block, idx) => renderBlockCard(block, idx, blocks, collapsedSet, previewSet)).join('');
         const jsonEditor = document.getElementById('json-editor');
         if (jsonEditor) jsonEditor.value = JSON.stringify(blocks, null, 2);
         initHtmlCodeEditors(container);
+        if (window.ITGCmsBlockPreview && previewSet && previewSet.size) {
+            window.ITGCmsBlockPreview.initIframes(blocks);
+        }
     }
 
     function initHtmlCodeEditors(container) {
@@ -29,13 +32,19 @@
         });
     }
 
-    function renderBlockCard(block, idx, blocks, collapsedSet) {
+    function renderBlockCard(block, idx, blocks, collapsedSet, previewSet) {
         const isCollapsed = collapsedSet.has(idx);
+        const isPreview = previewSet && previewSet.has(idx);
         let actions = '';
+        actions += `<button type="button" class="btn-block-preview-toggle${isPreview ? ' is-active' : ''}" onclick="toggleBlockPreview(${idx})" title="Toggle preview"><span class="material-symbols-outlined">visibility</span></button>`;
         if (idx > 0) actions += `<button type="button" class="btn-block-move" onclick="moveBlock(${idx}, -1)" title="Move up">&uarr;</button>`;
         if (idx < blocks.length - 1) actions += `<button type="button" class="btn-block-move" onclick="moveBlock(${idx}, 1)" title="Move down">&darr;</button>`;
         actions += `<button type="button" class="btn-block-delete" onclick="removeBlock(${idx})" title="Delete block">&times;</button>`;
-        return `<div class="cms-block-card${isCollapsed ? ' is-collapsed' : ''}" data-index="${idx}"><div class="cms-block-card-header" onclick="toggleCollapse(${idx})"><span class="cms-block-card-title"><span class="cms-block-collapse-icon">&rsaquo;</span><span class="block-order">#${idx + 1}</span><span class="cms-block-type-badge type-${P.escapeAttr(block.block_type)}">${P.escapeHtml(P.getTypeLabel(block.block_type))}</span><span class="cms-block-label-text">${P.escapeHtml(block.admin_label || '')}</span></span><div class="cms-block-card-actions" onclick="event.stopPropagation();">${actions}</div></div>${isCollapsed ? '' : `<div class="cms-block-card-body">${renderAdminLabel(block, idx)}${renderBlockFields(block, idx)}</div>`}</div>`;
+        let previewPane = '';
+        if (isPreview && window.ITGCmsBlockPreview) {
+            previewPane = window.ITGCmsBlockPreview.renderPreviewPane(block, idx);
+        }
+        return `<div class="cms-block-card${isCollapsed ? ' is-collapsed' : ''}" data-index="${idx}"><div class="cms-block-card-header" onclick="toggleCollapse(${idx})"><span class="cms-block-card-title"><span class="cms-block-collapse-icon">&rsaquo;</span><span class="block-order">#${idx + 1}</span><span class="cms-block-type-badge type-${P.escapeAttr(block.block_type)}">${P.escapeHtml(P.getTypeLabel(block.block_type))}</span><span class="cms-block-label-text">${P.escapeHtml(block.admin_label || '')}</span></span><div class="cms-block-card-actions" onclick="event.stopPropagation();">${actions}</div></div>${isCollapsed ? '' : `<div class="cms-block-card-body">${renderAdminLabel(block, idx)}${renderBlockFields(block, idx)}${previewPane}</div>`}</div>`;
     }
 
     function renderAdminLabel(block, idx) { return `<div class="cms-block-admin-label"><label>Admin Label</label><input type="text" value="${P.escapeAttr(block.admin_label)}" placeholder="Optional label for admin identification" onchange="updateBlockProp(${idx}, 'admin_label', this.value)"></div>`; }

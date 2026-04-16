@@ -7,7 +7,6 @@ import {
 import { bypassMaintenance, checkHealth } from '../../services/api';
 import { MaintenanceMode } from './MaintenanceMode';
 import { HealthCheckContext, type HealthCheckContextType } from './context';
-import './HealthCheckProvider.css';
 
 const BYPASS_KEY = 'maintenance-bypass';
 const IS_LIVE_PREVIEW = new URLSearchParams(window.location.search).has('cms_live_preview');

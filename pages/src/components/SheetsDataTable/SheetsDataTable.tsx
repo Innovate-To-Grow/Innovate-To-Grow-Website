@@ -1,7 +1,6 @@
 import {useState, useMemo} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import type {SheetRow} from './types';
-import './SheetsDataTable.css';
 
 interface ColumnDef {
   key: SortField;

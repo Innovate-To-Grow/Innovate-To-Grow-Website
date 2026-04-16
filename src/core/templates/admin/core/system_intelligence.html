@@ -10,12 +10,100 @@
 {% endblock %}
 
 {% block content %}
-<script id="si-config" type="application/json">{"model_choices": {{ model_choices_json|safe }}}</script>
+{# ── Model & Settings Info Panel ── #}
+<details class="si-info-panel" open>
+  <summary class="si-info-toggle">
+    <span class="material-symbols-outlined !text-[18px]">tune</span>
+    <span class="si-info-label">Model & Settings</span>
+    <span class="si-info-badge {% if aws_config.is_configured and si_config.is_active %}si-badge-ok{% else %}si-badge-warn{% endif %}">
+      {{ model_name|truncatechars:45 }}
+    </span>
+    <span class="material-symbols-outlined !text-[18px] si-info-chevron">expand_more</span>
+  </summary>
+
+  <div class="si-info-grid">
+    {# Card 1: Model & Parameters #}
+    <div class="si-info-card">
+      <div class="si-info-card-header">
+        <span class="material-symbols-outlined !text-[16px]">psychology</span>
+        Model & Parameters
+      </div>
+      <dl class="si-info-dl">
+        <dt>Active Model</dt>
+        <dd title="{{ model_id }}">{{ model_name }}</dd>
+        <dt>Temperature</dt>
+        <dd>{{ si_config.temperature }}</dd>
+        <dt>Max Tokens</dt>
+        <dd>{{ si_config.max_tokens }}</dd>
+      </dl>
+      <a href="{{ si_config_url }}" class="si-info-edit-link">
+        <span class="material-symbols-outlined !text-[14px]">edit</span> Edit Config
+      </a>
+    </div>
+
+    {# Card 2: AWS Credentials #}
+    <div class="si-info-card">
+      <div class="si-info-card-header">
+        <span class="material-symbols-outlined !text-[16px]">cloud</span>
+        AWS Credentials
+      </div>
+      <dl class="si-info-dl">
+        <dt>Region</dt>
+        <dd>{{ aws_config.default_region|default:"us-west-2" }}</dd>
+        <dt>Credentials</dt>
+        <dd>
+          {% if aws_config.is_configured %}
+            <span class="si-status-dot si-dot-ok"></span> Configured
+          {% else %}
+            <span class="si-status-dot si-dot-warn"></span> Not configured
+          {% endif %}
+        </dd>
+        <dt>Status</dt>
+        <dd>
+          {% if aws_config.is_active %}
+            <span class="si-status-dot si-dot-ok"></span> Active
+          {% else %}
+            <span class="si-status-dot si-dot-warn"></span> Inactive
+          {% endif %}
+        </dd>
+      </dl>
+      <a href="{{ aws_config_url }}" class="si-info-edit-link">
+        <span class="material-symbols-outlined !text-[14px]">edit</span> Edit Credentials
+      </a>
+    </div>
+
+    {# Card 3: System Prompt #}
+    <div class="si-info-card">
+      <div class="si-info-card-header">
+        <span class="material-symbols-outlined !text-[16px]">description</span>
+        System Prompt
+      </div>
+      <p class="si-info-prompt-preview">
+        {{ si_config.system_prompt|truncatechars:200|default:"No system prompt set." }}
+      </p>
+      <a href="{{ si_config_url }}" class="si-info-edit-link">
+        <span class="material-symbols-outlined !text-[14px]">edit</span> Edit Prompt
+      </a>
+    </div>
+
+    {# Card 4: Available Tools #}
+    <div class="si-info-card">
+      <div class="si-info-card-header">
+        <span class="material-symbols-outlined !text-[16px]">build</span>
+        Available Tools ({{ tool_count }})
+      </div>
+      <div class="si-info-tool-list">
+        {% for tool in tools %}
+          <span class="si-info-tool-chip" title="{{ tool.description }}">{{ tool.name }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</details>
 
 <div class="si-wrap bg-white dark:bg-base-900" id="si-root"
      data-conversations-url="{% url 'admin:core_system_intelligence_conversations' %}"
-     data-new-url="{% url 'admin:core_system_intelligence_new' %}"
-     data-active-model-id="{{ active_model_id|escapejs }}">
+     data-new-url="{% url 'admin:core_system_intelligence_new' %}">
 
   <!-- Sidebar -->
   <div class="si-sidebar bg-base-50 dark:bg-base-900">
@@ -38,11 +126,6 @@
         <span class="material-symbols-outlined !text-[48px] mb-3">smart_toy</span>
         <p class="text-sm">Start a new chat or select a conversation</p>
       </div>
-    </div>
-    <div class="si-model-bar" id="si-model-bar" style="display:none;">
-      <span class="material-symbols-outlined !text-[16px] opacity-40">psychology</span>
-      <span class="si-model-label">Model:</span>
-      <select class="si-model-select" id="si-model-select"></select>
     </div>
     <div class="si-input-bar" id="si-input-bar" style="display:none;">
       <textarea id="si-input" rows="1" placeholder="Type your message..." autocomplete="off"></textarea>
