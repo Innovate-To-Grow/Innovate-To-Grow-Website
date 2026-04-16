@@ -1,3 +1,5 @@
+import {isSafeMessage} from '../context/shared';
+
 /** Generic message for account UI where we avoid exposing backend / vendor details (e.g. SMS config). */
 export const USER_FACING_GENERIC_ERROR = 'An unknown error occurred.';
 
@@ -9,8 +11,8 @@ export function getAuthApiErrorMessage(err: unknown): string {
       const firstKey = Object.keys(data)[0];
       if (firstKey) {
         const value = data[firstKey];
-        if (Array.isArray(value)) return value[0] as string;
-        if (typeof value === 'string') return value;
+        if (Array.isArray(value) && typeof value[0] === 'string' && isSafeMessage(value[0])) return value[0];
+        if (typeof value === 'string' && isSafeMessage(value)) return value;
       }
     }
   }

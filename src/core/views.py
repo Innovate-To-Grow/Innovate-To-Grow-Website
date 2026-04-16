@@ -16,9 +16,8 @@ def robots_txt(request):
     """Serve robots.txt for search engine crawlers."""
     lines = [
         "User-agent: *",
-        "Allow: /",
+        "Disallow: /",
         "",
-        "Sitemap: https://www.innovatetogrow.org/sitemap.xml",
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
 

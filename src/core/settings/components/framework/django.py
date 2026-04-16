@@ -113,7 +113,7 @@ STORAGES = {
 # ---------------------------------------------------------------------------
 # The admin's filter_horizontal widget for selected_members sends one POST
 # field per member, easily exceeding Django's default of 1000.
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000
 
 # ---------------------------------------------------------------------------
 # Auth

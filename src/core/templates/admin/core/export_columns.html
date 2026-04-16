@@ -1,0 +1,120 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<form method="post" action="">
+    {% csrf_token %}
+
+    {% for pk in pks %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="export_data">
+    <input type="hidden" name="{{ confirm_param }}" value="1">
+
+    <div style="max-width: 640px;">
+        <p class="text-sm mb-4">
+            Exporting <strong>{{ pks|length }}</strong>
+            {{ opts.verbose_name_plural }}.
+        </p>
+
+        <div class="mb-4">
+            <label for="export-filename" class="block text-sm font-medium mb-1">Filename</label>
+            <div class="flex items-center gap-1">
+                <input type="text"
+                       id="export-filename"
+                       name="export_filename"
+                       value="{{ default_filename }}"
+                       class="border border-base-300 rounded-md px-3 py-1.5 text-sm"
+                       style="width: 260px;">
+                <span id="ext-hint" class="text-sm text-base-400">.xlsx</span>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Format</label>
+            <div class="flex gap-4">
+                {% for fmt_value, fmt_label in formats %}
+                <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="radio" name="export_format" value="{{ fmt_value }}"
+                           class="export-format-radio"
+                           {% if forloop.first %}checked{% endif %}>
+                    {{ fmt_label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="columns-section">
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Columns</label>
+                <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" id="toggle-all" checked
+                           class="rounded border-base-300">
+                    Select All / Deselect All
+                </label>
+            </div>
+
+            <div class="grid gap-2 mb-6"
+                 style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                {% for field_name, field_label in available_fields %}
+                <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox"
+                           name="export_fields"
+                           value="{{ field_name }}"
+                           class="export-field-cb rounded border-base-300"
+                           checked>
+                    {{ field_label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit"
+                    class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700">
+                Export
+            </button>
+            <a href="#"
+               onclick="window.history.back(); return false;"
+               class="border border-base-300 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50">
+                Cancel
+            </a>
+        </div>
+    </div>
+</form>
+
+<script>
+(function () {
+    var toggle = document.getElementById('toggle-all');
+    var boxes = document.querySelectorAll('.export-field-cb');
+
+    toggle.addEventListener('change', function () {
+        var checked = toggle.checked;
+        boxes.forEach(function (cb) { cb.checked = checked; });
+    });
+
+    boxes.forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var allChecked = Array.prototype.every.call(boxes, function (b) { return b.checked; });
+            toggle.checked = allChecked;
+            toggle.indeterminate = !allChecked && Array.prototype.some.call(boxes, function (b) { return b.checked; });
+        });
+    });
+
+    var extHint = document.getElementById('ext-hint');
+    var columnsSection = document.getElementById('columns-section');
+
+    function onFormatChange(fmt) {
+        extHint.textContent = '.' + fmt;
+        columnsSection.style.display = fmt === 'json' ? 'none' : '';
+    }
+
+    document.querySelectorAll('.export-format-radio').forEach(function (radio) {
+        radio.addEventListener('change', function () { onFormatChange(radio.value); });
+    });
+})();
+</script>
+{% endblock %}

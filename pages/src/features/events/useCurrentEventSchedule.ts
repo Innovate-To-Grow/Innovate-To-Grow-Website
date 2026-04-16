@@ -12,12 +12,11 @@ interface UseCurrentEventScheduleResult {
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const detail = error.response?.data?.detail;
-    if (typeof detail === 'string' && detail) {
+    if (typeof detail === 'string' && detail.length <= 300) {
       return detail;
     }
-    return error.message;
   }
-  return error instanceof Error ? error.message : 'Failed to load event schedule';
+  return 'Failed to load event schedule. Please try again later.';
 }
 
 export function useCurrentEventSchedule(): UseCurrentEventScheduleResult {

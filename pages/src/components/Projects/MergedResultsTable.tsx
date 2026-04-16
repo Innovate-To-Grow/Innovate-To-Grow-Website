@@ -54,8 +54,8 @@ export const MergedResultsTable = ({
       setShareUrl(nextShareUrl);
       setStatusMessage('Shareable URL is ready.');
       window.open(nextShareUrl, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Unable to create a shareable URL.');
+    } catch {
+      setStatusMessage('Unable to create a shareable URL. Please try again.');
     } finally {
       setIsSharing(false);
     }

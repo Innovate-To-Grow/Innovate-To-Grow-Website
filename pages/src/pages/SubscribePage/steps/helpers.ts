@@ -5,16 +5,16 @@ export function getSubscribeErrorMessage(err: unknown): string {
     const axiosError = err as {response?: {data?: Record<string, unknown>}};
     if (axiosError.response?.data) {
       const data = axiosError.response.data;
-      if (typeof data.detail === 'string') return data.detail;
-      if (typeof data.message === 'string') return data.message;
+      if (typeof data.detail === 'string' && data.detail.length <= 300) return data.detail;
+      if (typeof data.message === 'string' && data.message.length <= 300) return data.message;
 
       const messages: string[] = [];
       for (const value of Object.values(data)) {
         if (Array.isArray(value)) {
           for (const item of value) {
-            if (typeof item === 'string') messages.push(item);
+            if (typeof item === 'string' && item.length <= 300) messages.push(item);
           }
-        } else if (typeof value === 'string') {
+        } else if (typeof value === 'string' && value.length <= 300) {
           messages.push(value);
         }
       }
