@@ -134,11 +134,7 @@ class DataExportMixin:
     # -- internals --------------------------------------------------------------
 
     def _get_base_filename(self, request):
-        return (
-            request.POST.get("export_filename", "").strip()
-            or self.export_filename
-            or self.model._meta.model_name
-        )
+        return request.POST.get("export_filename", "").strip() or self.export_filename or self.model._meta.model_name
 
     def _resolve_columns(self, request):
         """Return [(field_name, label), ...] from user selection, or all columns."""
@@ -157,9 +153,7 @@ class DataExportMixin:
         preview_limit = 5
         preview_rows = []
         for obj in queryset[:preview_limit]:
-            preview_rows.append(
-                [(name, self.get_export_value(obj, name)) for name, _label in available_fields]
-            )
+            preview_rows.append([(name, self.get_export_value(obj, name)) for name, _label in available_fields])
 
         context = {
             **self.admin_site.each_context(request),
