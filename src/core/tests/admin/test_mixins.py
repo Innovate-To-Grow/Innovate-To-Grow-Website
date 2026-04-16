@@ -211,7 +211,7 @@ class DataExportMixinTest(TestCase):
 
         self.assertEqual(response.template_name, "admin/core/export_columns.html")
         self.assertIn(str(article.pk), response.context_data["pks"])
-        self.assertTrue(len(response.context_data["available_fields"]) > 0)
+        self.assertGreater(len(response.context_data["available_fields"]), 0)
         self.assertEqual(response.context_data["default_filename"], "newsarticle")
         self.assertEqual(len(response.context_data["formats"]), 2)
 
