@@ -93,8 +93,7 @@ def chat_list_view(request):
     model_name = _resolve_model_name(model_id)
 
     tools = [
-        {"name": t["toolSpec"]["name"], "description": t["toolSpec"]["description"]}
-        for t in get_tool_definitions()
+        {"name": t["toolSpec"]["name"], "description": t["toolSpec"]["description"]} for t in get_tool_definitions()
     ]
 
     # Build admin edit URLs (changelist if unsaved, change page if saved)

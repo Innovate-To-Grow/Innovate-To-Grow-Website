@@ -358,9 +358,12 @@
 /* Grid */
 .si-info-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   padding: 0 16px 16px;
+}
+.si-info-card--full {
+  grid-column: 1 / -1;
 }
 
 /* Cards */
@@ -474,4 +477,5 @@
 }
 @media (max-width: 600px) {
   .si-info-grid { grid-template-columns: 1fr; }
+  .si-info-card--full { grid-column: auto; }
 }

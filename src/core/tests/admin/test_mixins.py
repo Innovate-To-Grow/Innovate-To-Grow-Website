@@ -202,10 +202,13 @@ class DataExportMixinTest(TestCase):
         article = _make_article(source_guid="tmpl-1")
         qs = NewsArticle.objects.filter(pk=article.pk)
 
-        request = _make_post_request(self.factory, {
-            "action": "export_data",
-            "_selected_action": [str(article.pk)],
-        })
+        request = _make_post_request(
+            self.factory,
+            {
+                "action": "export_data",
+                "_selected_action": [str(article.pk)],
+            },
+        )
         request.user = User.objects.create_user(email="tmpl@example.com", password="StrongPass123!", is_staff=True)
         response = self.admin.export_data(request, qs)
 

@@ -52,7 +52,15 @@ class AWSCredentialConfigForm(forms.ModelForm):
 @admin.register(AWSCredentialConfig)
 class AWSCredentialConfigAdmin(BaseModelAdmin):
     form = AWSCredentialConfigForm
-    list_display = ("name", "status_badge", "configured_badge", "access_key_masked", "default_region", "default_model_display", "updated_at")
+    list_display = (
+        "name",
+        "status_badge",
+        "configured_badge",
+        "access_key_masked",
+        "default_region",
+        "default_model_display",
+        "updated_at",
+    )
     list_filter = ("is_active",)
     search_fields = ("name", "access_key_id")
     ordering = ("-is_active", "-updated_at")
