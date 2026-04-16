@@ -69,6 +69,11 @@ class CMSPage(ProjectControlModel):
         default="",
         help_text="CSS class for the page wrapper div, e.g. 'about-page'.",
     )
+    page_css = models.TextField(
+        blank=True,
+        default="",
+        help_text="Custom CSS injected when this page is loaded. Scoped to the page wrapper.",
+    )
     sort_order = models.IntegerField(default=0)
 
     class Meta:
