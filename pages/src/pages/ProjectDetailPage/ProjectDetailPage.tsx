@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchProjectDetail, type ProjectDetail } from '../../features/projects/api';
-import './ProjectDetailPage.css';
 
 export const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();

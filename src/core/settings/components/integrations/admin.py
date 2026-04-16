@@ -72,12 +72,13 @@ UNFOLD = {
         # _get_is_tab_active(), which marks both sidebar rows active when either
         # changelist is open (peer tabs, not parent/child).
         {
-            "models": ["cms.sitesettings", "cms.cmspage", "cms.menu", "cms.footercontent"],
+            "models": ["cms.sitesettings", "cms.cmspage", "cms.menu", "cms.footercontent", "cms.stylesheet"],
             "items": [
                 {"title": "Home Page", "link": "/admin/cms/sitesettings/"},
                 {"title": "Pages", "link": "/admin/cms/cmspage/"},
                 {"title": "Menus", "link": "/admin/cms/menu/"},
                 {"title": "Footer", "link": "/admin/cms/footercontent/"},
+                {"title": "Style Sheets", "link": "/admin/cms/stylesheet/"},
             ],
         },
     ],

@@ -3,7 +3,6 @@ import {useSearchParams, useNavigate} from 'react-router-dom';
 import {magicAutoLogin} from '../../services/auth';
 import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
 import {getSafeInternalRedirectPath} from '../../shared/auth/redirects';
-import './MagicLoginPage.css';
 
 export function MagicLoginPage() {
   const [searchParams] = useSearchParams();

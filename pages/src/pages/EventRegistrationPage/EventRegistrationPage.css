@@ -1,4 +1,1 @@
-@import "./styles/layout.css";
-@import "./styles/form.css";
-@import "./styles/states.css";
-@import "../../components/Auth/styles/forms.css";
+/* Event registration styles are now served from the backend via StyleSheet model. */

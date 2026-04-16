@@ -1,8 +1,1 @@
-@import "./styles/layout.css";
-@import "./styles/forms.css";
-@import "./styles/feedback.css";
-@import "./styles/profile.css";
-@import "./styles/account.css";
-@import "./styles/profile-image.css";
-@import "./styles/subscriptions.css";
-@import "./styles/responsive.css";
+/* Auth styles are now served from the backend via StyleSheet model. */

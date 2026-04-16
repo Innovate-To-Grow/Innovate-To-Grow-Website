@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {memo, useEffect, useMemo, useRef} from 'react';
 import DOMPurify from 'dompurify';
 
 const ALLOWED_IFRAME_HOSTS = ['www.youtube.com', 'youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com'];
@@ -29,11 +29,20 @@ interface SafeHtmlProps {
   className?: string;
 }
 
-export const SafeHtml = ({html, className}: SafeHtmlProps) => {
+export const SafeHtml = memo(({html, className}: SafeHtmlProps) => {
+  const ref = useRef<HTMLDivElement>(null);
   const sanitizedHtml = useMemo(
     () => DOMPurify.sanitize(html, SANITIZE_OPTIONS),
     [html],
   );
 
-  return <div className={className} dangerouslySetInnerHTML={{__html: sanitizedHtml}} />;
-};
+  // Set innerHTML via ref so the DOM (including iframes) is only replaced
+  // when the sanitized HTML actually changes — not on every parent re-render.
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.innerHTML = sanitizedHtml;
+    }
+  }, [sanitizedHtml]);
+
+  return <div ref={ref} className={className} />;
+});

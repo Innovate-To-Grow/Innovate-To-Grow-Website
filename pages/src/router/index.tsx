@@ -3,6 +3,7 @@ import {createBrowserRouter, Navigate} from 'react-router-dom';
 import {Layout} from '../components/Layout';
 import {CMSPageComponent} from '../components/CMS';
 import {HomepageResolver} from './HomepageResolver';
+import {BlockPreviewPage} from '../components/CMS/BlockPreviewPage';
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('../components/Auth/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -29,6 +30,8 @@ const MagicLoginPage = React.lazy(() => import('../pages/MagicLoginPage').then(m
 const ImpersonateLoginPage = React.lazy(() => import('../pages/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
 export const router = createBrowserRouter([
+    // Block preview route — rendered in iframe, no menu/footer
+    {path: '/_block-preview', element: <BlockPreviewPage/>},
     {
         path: '/',
         element: <Layout/>,

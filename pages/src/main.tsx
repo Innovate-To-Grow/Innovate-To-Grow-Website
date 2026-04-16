@@ -23,10 +23,13 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+// Skip menu and footer for isolated preview iframe
+const isBlockPreview = window.location.pathname === '/_block-preview';
+
 // Mount MainMenu to #menu-root with AuthProvider and LayoutProvider
 // No BrowserRouter needed — MainMenu uses router.navigate() directly, not <Link> or router hooks
 const menuRoot = document.getElementById('menu-root');
-if (menuRoot) {
+if (menuRoot && !isBlockPreview) {
   createRoot(menuRoot).render(
     <StrictMode>
       <ErrorBoundary>
@@ -42,7 +45,7 @@ if (menuRoot) {
 
 // Mount footer to #footer-root with LayoutProvider
 const footerRoot = document.getElementById('footer-root');
-if (footerRoot) {
+if (footerRoot && !isBlockPreview) {
   createRoot(footerRoot).render(
     <StrictMode>
       <ErrorBoundary>

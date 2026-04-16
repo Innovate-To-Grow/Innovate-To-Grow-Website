@@ -60,6 +60,14 @@ class CMSPageAdmin(BaseModelAdmin):
             "Page Info",
             {"fields": ("slug", "route", "title", "meta_description", "page_css_class", "status", "sort_order")},
         ),
+        (
+            "Page CSS",
+            {
+                "fields": ("page_css",),
+                "classes": ("collapse",),
+                "description": "Custom CSS injected when this page is loaded. Scoped to the page wrapper.",
+            },
+        ),
         ("Timestamps", {"fields": ("published_at", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
 

@@ -17,6 +17,7 @@ from .content import (
     NewsSyncLog,
     PageView,
     SiteSettings,
+    StyleSheet,
     validate_block_data,
 )
 from .media import CMSAsset
@@ -26,6 +27,7 @@ __all__ = [
     "Menu",
     "FooterContent",
     "SiteSettings",
+    "StyleSheet",
     # CMS
     "CMSPage",
     "CMSBlock",

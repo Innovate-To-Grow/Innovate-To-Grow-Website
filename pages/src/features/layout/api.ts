@@ -69,16 +69,27 @@ export interface Menu {
   updated_at: string;
 }
 
+export interface DesignTokens {
+  colors: Record<string, string>;
+  typography: Record<string, string>;
+  typography_mobile: Record<string, string>;
+  layout: Record<string, string>;
+  borders: Record<string, string>;
+  effects: Record<string, string>;
+}
+
 export interface LayoutData {
   menus: Menu[];
   footer: FooterContentResponse | null;
   homepage_route?: string;
+  design_tokens?: DesignTokens;
+  stylesheets?: string;
 }
 
 /** Bump when cached JSON shape is incompatible. */
-export const LAYOUT_CACHE_VERSION = 1;
+export const LAYOUT_CACHE_VERSION = 2;
 
-const LAYOUT_CACHE_STORAGE_KEY = 'itg-layout-v1';
+const LAYOUT_CACHE_STORAGE_KEY = 'itg-layout-v2';
 
 interface StoredLayoutPayload {
   v: number;

@@ -23,7 +23,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
 {% endblock %}
 
@@ -34,6 +34,17 @@
     <div class="visual-editor-wrapper">
         <div class="visual-editor-header">
             <h3>Content Blocks</h3>
+            {% if current_page_id %}
+                <button type="button" class="cms-inline-preview-toggle" onclick="toggleInlinePreview()" title="Toggle inline live preview">
+                    <span class="material-symbols-outlined">visibility</span>
+                    Preview
+                </button>
+            {% else %}
+                <button type="button" class="cms-inline-preview-toggle" disabled title="Save the page first to enable preview">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                    Preview
+                </button>
+            {% endif %}
         </div>
 
         <div class="visual-editor-content">
@@ -63,6 +74,34 @@
         </div>
     </div>
 
+    <!-- Inline Live Preview Panel -->
+    <div id="cms-inline-preview" class="cms-preview-wrapper">
+        <div class="cms-preview-header">
+            <span class="cms-preview-title">Live Preview</span>
+            <div class="cms-preview-actions">
+                <span id="cms-preview-sync-status" class="cms-preview-sync-status"></span>
+                <button type="button" onclick="setPreviewDevice('mobile')" title="Mobile (375px)" class="cms-preview-device-btn" data-device="mobile">
+                    <span class="material-symbols-outlined">smartphone</span>
+                </button>
+                <button type="button" onclick="setPreviewDevice('tablet')" title="Tablet (768px)" class="cms-preview-device-btn" data-device="tablet">
+                    <span class="material-symbols-outlined">tablet_mac</span>
+                </button>
+                <button type="button" onclick="setPreviewDevice('desktop')" title="Desktop (100%)" class="cms-preview-device-btn is-active" data-device="desktop">
+                    <span class="material-symbols-outlined">monitor</span>
+                </button>
+                <button type="button" onclick="refreshInlinePreview()" title="Refresh preview">
+                    <span class="material-symbols-outlined">refresh</span>
+                </button>
+                <button type="button" onclick="openLivePreview()" title="Open in new tab">
+                    <span class="material-symbols-outlined">open_in_new</span>
+                </button>
+            </div>
+        </div>
+        <div id="cms-preview-iframe-wrap" class="cms-preview-iframe-wrap cms-preview-device-desktop">
+            <iframe id="cms-preview-iframe" class="cms-preview-iframe" src="about:blank"></iframe>
+        </div>
+    </div>
+
     <!-- Hidden field for form submission -->
     <textarea id="id_blocks_json" name="blocks_json" style="display:none;"></textarea>
 {% endblock %}
@@ -88,8 +127,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=1"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=4"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}

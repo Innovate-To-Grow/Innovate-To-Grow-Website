@@ -4,7 +4,6 @@ import {usePastProjectsData} from '../../hooks/usePastProjectsData';
 import {ScheduleGrid} from '../../components/ScheduleGrid';
 import {SheetsDataTable} from '../../components/SheetsDataTable';
 import {EVENT_CONFIGS} from './eventConfigs';
-import './EventArchivePage.css';
 
 export const EventArchivePage = () => {
   const {eventSlug} = useParams<{eventSlug: string}>();

@@ -4,7 +4,9 @@
     const livePreviewApi = window.ITGCmsBlockLivePreview;
     let blocks = [];
     let collapsedSet = new Set();
+    let previewSet = new Set();
     let livePreviewTimer = null;
+    let previewRefreshTimer = null;
 
     function init() {
         try { blocks = JSON.parse(JSON.stringify(window.CMS_INITIAL_BLOCKS || [])); } catch (e) { blocks = []; }
@@ -19,11 +21,16 @@
         syncToJson();
     }
 
-    function renderAll() { renderApi.renderAll(blocks, collapsedSet); }
-    function syncToJson() { const hidden = document.getElementById('id_blocks_json'); if (hidden) hidden.value = JSON.stringify(blocks); scheduleLivePreviewSync(); }
-    function scheduleLivePreviewSync() { if (!livePreviewApi.isActive()) return; if (livePreviewTimer) clearTimeout(livePreviewTimer); livePreviewTimer = setTimeout(() => { livePreviewApi.post(blocks); }, 500); }
+    function renderAll() { renderApi.renderAll(blocks, collapsedSet, previewSet); }
+    function syncToJson() { const hidden = document.getElementById('id_blocks_json'); if (hidden) hidden.value = JSON.stringify(blocks); scheduleLivePreviewSync(); schedulePreviewRefresh(); }
+    function schedulePreviewRefresh() { if (!previewSet.size) return; if (previewRefreshTimer) clearTimeout(previewRefreshTimer); previewRefreshTimer = setTimeout(refreshAllActivePreviews, 250); }
+    function refreshAllActivePreviews() { if (!window.ITGCmsBlockPreview) return; window.ITGCmsBlockPreview.refreshAllPreviews(blocks, previewSet); }
+    function scheduleLivePreviewSync() { if (!livePreviewApi.isActive() && !livePreviewApi.isInlineVisible()) return; if (livePreviewTimer) clearTimeout(livePreviewTimer); livePreviewTimer = setTimeout(() => { livePreviewApi.post(blocks); }, 500); }
 
     window.openLivePreview = function () { livePreviewApi.open(blocks); };
+    window.toggleInlinePreview = function () { livePreviewApi.toggleInline(blocks); };
+    window.refreshInlinePreview = function () { livePreviewApi.refreshInline(); };
+    window.setPreviewDevice = function (device) { livePreviewApi.setDevice(device); };
     window.addBlock = function () {
         const select = document.getElementById('cms-add-block-type');
         if (!select || !select.value) return;
@@ -34,9 +41,10 @@
         const container = document.getElementById('cms-blocks-container');
         if (container && container.lastElementChild) container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
-    window.removeBlock = function (idx) { if (!confirm('Remove this block?')) return; blocks.splice(idx, 1); collapsedSet = new Set([...collapsedSet].flatMap(i => i < idx ? [i] : i > idx ? [i - 1] : [])); renderAll(); syncToJson(); };
-    window.moveBlock = function (idx, direction) { const newIdx = idx + direction; if (newIdx < 0 || newIdx >= blocks.length) return; [blocks[idx], blocks[newIdx]] = [blocks[newIdx], blocks[idx]]; collapsedSet = new Set([...collapsedSet].map(i => i === idx ? newIdx : i === newIdx ? idx : i)); renderAll(); syncToJson(); };
+    window.removeBlock = function (idx) { if (!confirm('Remove this block?')) return; blocks.splice(idx, 1); collapsedSet = new Set([...collapsedSet].flatMap(i => i < idx ? [i] : i > idx ? [i - 1] : [])); previewSet = new Set([...previewSet].flatMap(i => i < idx ? [i] : i > idx ? [i - 1] : [])); renderAll(); syncToJson(); };
+    window.moveBlock = function (idx, direction) { const newIdx = idx + direction; if (newIdx < 0 || newIdx >= blocks.length) return; [blocks[idx], blocks[newIdx]] = [blocks[newIdx], blocks[idx]]; collapsedSet = new Set([...collapsedSet].map(i => i === idx ? newIdx : i === newIdx ? idx : i)); previewSet = new Set([...previewSet].map(i => i === idx ? newIdx : i === newIdx ? idx : i)); renderAll(); syncToJson(); };
     window.toggleCollapse = function (idx) { collapsedSet.has(idx) ? collapsedSet.delete(idx) : collapsedSet.add(idx); renderAll(); };
+    window.toggleBlockPreview = function (idx) { previewSet.has(idx) ? previewSet.delete(idx) : previewSet.add(idx); renderAll(); };
     window.updateBlockProp = function (idx, prop, value) { blocks[idx][prop] = value; renderAll(); syncToJson(); };
     window.updateBlockData = function (idx, dataPath, value) { P.setNestedValue(blocks[idx].data, dataPath, value); syncToJson(); };
     window.updateBlockDataDirect = function (idx, dataPath, value) { P.setNestedValue(blocks[idx].data, dataPath, value); syncToJson(); };
@@ -54,6 +62,7 @@
             if (!Array.isArray(parsed)) { alert('JSON must be an array of block objects.'); return; }
             blocks = parsed;
             collapsedSet.clear();
+            previewSet.clear();
             renderAll();
             syncToJson();
         } catch (e) {

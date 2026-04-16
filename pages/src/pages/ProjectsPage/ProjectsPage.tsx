@@ -2,7 +2,6 @@ import {useMemo} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {ProjectGridTable, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentProjectGridData} from '../../hooks/useProjectGridData';
-import './ProjectsPage.css';
 
 export const ProjectsPage = () => {
   const {rows, loading, error} = useCurrentProjectGridData();

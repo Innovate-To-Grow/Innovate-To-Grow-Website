@@ -3,7 +3,6 @@ import {useParams} from 'react-router-dom';
 import {MergedResultsTable, PastProjectsBuilder, createProjectGridItems} from '../../components/Projects';
 import {usePastProjectGridData, usePastProjectShareData} from '../../hooks/useProjectGridData';
 import {createPastProjectShare} from '../../features/projects/api';
-import './PastProjectsPage.css';
 
 export const PastProjectsPage = () => {
   const {shareId} = useParams<{shareId: string}>();

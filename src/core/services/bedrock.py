@@ -181,10 +181,10 @@ def _provider_from_id(model_id):
     return mapping.get(vendor, vendor.title())
 
 
-def _build_kwargs(chat_config):
+def _build_kwargs(chat_config, model_id):
     """Build common kwargs shared by converse and converse_stream."""
     kwargs = {
-        "modelId": chat_config.model_id,
+        "modelId": model_id,
         "inferenceConfig": {
             "maxTokens": chat_config.max_tokens,
             "temperature": chat_config.temperature,
@@ -200,16 +200,19 @@ def _build_kwargs(chat_config):
     return kwargs
 
 
-def _prepare(conversation_messages, chat_config, aws_config):
+def _prepare(conversation_messages, chat_config, aws_config, model_id=None):
     """Validate configs and return (client, messages, kwargs)."""
     if chat_config is None:
         chat_config = SystemIntelligenceConfig.load()
     if not chat_config.is_configured:
         raise BedrockError("AI Chat is not configured. Add an active AI Chat Config first.")
 
+    if not model_id:
+        model_id = AWSCredentialConfig.load().default_model_id
+
     client = _get_client(aws_config)
     messages = [{"role": m["role"], "content": [{"text": m["content"]}]} for m in conversation_messages]
-    kwargs = _build_kwargs(chat_config)
+    kwargs = _build_kwargs(chat_config, model_id)
     return client, messages, kwargs
 
 
@@ -218,12 +221,12 @@ def _prepare(conversation_messages, chat_config, aws_config):
 # ---------------------------------------------------------------------------
 
 
-def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None):
+def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None, model_id=None):
     """Call the Bedrock Converse API (non-streaming).
 
     Returns ``{"text": str, "tool_calls": list[dict]}``.
     """
-    client, messages, kwargs = _prepare(conversation_messages, chat_config, aws_config)
+    client, messages, kwargs = _prepare(conversation_messages, chat_config, aws_config, model_id)
     tool_calls_log = []
 
     for round_num in range(MAX_TOOL_ROUNDS):
@@ -278,7 +281,7 @@ def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None):
 # ---------------------------------------------------------------------------
 
 
-def invoke_bedrock_stream(conversation_messages, *, chat_config=None, aws_config=None):
+def invoke_bedrock_stream(conversation_messages, *, chat_config=None, aws_config=None, model_id=None):
     """Call the Bedrock ConverseStream API with tool-use loop.
 
     Yields dicts of the form:
@@ -290,7 +293,7 @@ def invoke_bedrock_stream(conversation_messages, *, chat_config=None, aws_config
     a ``done`` SSE event after the generator is exhausted.
     """
     try:
-        client, messages, kwargs = _prepare(conversation_messages, chat_config, aws_config)
+        client, messages, kwargs = _prepare(conversation_messages, chat_config, aws_config, model_id)
     except BedrockError as exc:
         yield {"type": "error", "error": str(exc)}
         return

@@ -1,7 +1,1 @@
-@import "./styles/preview.css";
-@import "./styles/content.css";
-@import "./styles/info.css";
-@import "./styles/lists.css";
-@import "./styles/capstone.css";
-@import "./styles/body-classes.css";
-@import "./styles/responsive.css";
+/* CMS block styles are now served from the backend via StyleSheet model. */

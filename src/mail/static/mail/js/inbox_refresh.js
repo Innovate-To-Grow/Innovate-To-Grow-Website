@@ -23,10 +23,51 @@
 
   /* ── Inbox list refresh ── */
 
+  function getActiveUid(root) {
+    var active = root.querySelector('[data-inbox-row].is-active');
+    return active ? active.getAttribute('data-uid') : null;
+  }
+
+  function hasPreviewContent(root) {
+    var content = root.querySelector('#inbox-preview-content');
+    if (!content) return false;
+    return !content.querySelector('#inbox-preview-empty');
+  }
+
+  function mergeListHtml(root, html) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+
+    var newList = tmp.querySelector('.i2g-inbox-list');
+    var oldList = root.querySelector('.i2g-inbox-list');
+    if (newList && oldList) {
+      oldList.innerHTML = newList.innerHTML;
+    }
+
+    var configSections = tmp.querySelectorAll(':scope > div:not(.i2g-inbox-split)');
+    var oldConfigs = root.querySelectorAll(':scope > div:not(.i2g-inbox-split)');
+    configSections.forEach(function (newDiv, i) {
+      if (oldConfigs[i]) oldConfigs[i].innerHTML = newDiv.innerHTML;
+    });
+  }
+
+  function saveListScroll(root) {
+    var list = root.querySelector('.i2g-inbox-list');
+    return list ? list.scrollTop : 0;
+  }
+
+  function restoreListScroll(root, top) {
+    var list = root.querySelector('.i2g-inbox-list');
+    if (list && top) list.scrollTop = top;
+  }
+
   function refreshInbox(root) {
     var url = root.getAttribute('data-fragment-url');
     if (!url) return;
     var limit = getLimit(root);
+    var activeUid = getActiveUid(root);
+    var preservePreview = hasPreviewContent(root);
+    var scrollTop = saveListScroll(root);
     var btn = root.querySelector('[data-inbox-refresh]');
     if (btn) {
       btn.classList.add('i2g-inbox-refresh--loading');
@@ -42,7 +83,13 @@
         return r.text();
       })
       .then(function (html) {
-        root.innerHTML = html;
+        if (preservePreview) {
+          mergeListHtml(root, html);
+          if (activeUid) setActiveRow(root, activeUid);
+          restoreListScroll(root, scrollTop);
+        } else {
+          root.innerHTML = html;
+        }
       })
       .catch(function () {
         window.alert('Could not refresh inbox. Please try again.');

@@ -3,7 +3,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import FooterContent, Menu, SiteSettings
+from ..models import FooterContent, Menu, SiteSettings, StyleSheet
 from ..serializers import (
     FooterContentSerializer,
     MenuSerializer,
@@ -11,7 +11,7 @@ from ..serializers import (
 
 
 class LayoutAPIView(APIView):
-    """Unified endpoint for layout data (menus and footer) with caching."""
+    """Unified endpoint for layout data (menus, footer, design tokens, stylesheets) with caching."""
 
     permission_classes = [AllowAny]
 
@@ -34,10 +34,16 @@ class LayoutAPIView(APIView):
 
         settings = SiteSettings.load()
 
+        # Concatenate all active stylesheets in sort_order
+        sheets = StyleSheet.objects.filter(is_active=True).values_list("css", flat=True)
+        stylesheets_css = "\n".join(css for css in sheets if css)
+
         data = {
             "menus": menu_serializer.data,
             "footer": footer_data,
             "homepage_route": settings.get_homepage_route(),
+            "design_tokens": settings.design_tokens,
+            "stylesheets": stylesheets_css,
         }
 
         cache.set(cache_key, data, timeout=600)
