@@ -112,7 +112,7 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
                     if mid == obj.default_model_id:
                         return name
         except Exception:
-            pass
+            logger.exception("Failed to resolve default model display name for AWS credential config '%s'.", obj.pk)
         return obj.default_model_id
 
     @action(description="Activate this config", url_path="activate", icon="check_circle")

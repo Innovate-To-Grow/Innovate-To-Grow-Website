@@ -77,7 +77,7 @@ def _resolve_model_name(model_id):
                 if mid == model_id:
                     return name
     except Exception:
-        pass
+        logger.exception("Failed to resolve model display name for '%s'.", model_id)
     return model_id
 
 
