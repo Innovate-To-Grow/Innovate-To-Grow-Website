@@ -70,9 +70,11 @@ class SaveEmbedConfigsTest(TestCase):
     # --- Happy path ---
 
     def test_saves_valid_single_entry(self):
-        msgs = self._call([
-            {"slug": "widget-a", "admin_label": "Widget A", "block_sort_orders": [0, 1]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "widget-a", "admin_label": "Widget A", "block_sort_orders": [0, 1]},
+            ]
+        )
         self.assertEqual(msgs.warnings, [])
         self.assertEqual(len(self.page.embed_configs), 1)
         self.assertEqual(self.page.embed_configs[0]["slug"], "widget-a")
@@ -80,37 +82,47 @@ class SaveEmbedConfigsTest(TestCase):
         self.assertEqual(self.page.embed_configs[0]["block_sort_orders"], [0, 1])
 
     def test_saves_multiple_entries(self):
-        self._call([
-            {"slug": "widget-a", "admin_label": "", "block_sort_orders": [0]},
-            {"slug": "widget-b", "admin_label": "", "block_sort_orders": [1, 2]},
-        ])
+        self._call(
+            [
+                {"slug": "widget-a", "admin_label": "", "block_sort_orders": [0]},
+                {"slug": "widget-b", "admin_label": "", "block_sort_orders": [1, 2]},
+            ]
+        )
         self.assertEqual(len(self.page.embed_configs), 2)
         self.assertEqual(self.page.embed_configs[0]["slug"], "widget-a")
         self.assertEqual(self.page.embed_configs[1]["slug"], "widget-b")
 
     def test_block_sort_orders_are_sorted(self):
         """block_sort_orders are stored in ascending order for stable ordering."""
-        self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": [2, 0, 1]},
-        ])
+        self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": [2, 0, 1]},
+            ]
+        )
         self.assertEqual(self.page.embed_configs[0]["block_sort_orders"], [0, 1, 2])
 
     def test_slug_is_normalized_to_lowercase_and_trimmed(self):
-        self._call([
-            {"slug": "  MIXED-Case  ", "admin_label": "", "block_sort_orders": [0]},
-        ])
+        self._call(
+            [
+                {"slug": "  MIXED-Case  ", "admin_label": "", "block_sort_orders": [0]},
+            ]
+        )
         self.assertEqual(self.page.embed_configs[0]["slug"], "mixed-case")
 
     def test_admin_label_is_trimmed(self):
-        self._call([
-            {"slug": "w", "admin_label": "   padded   ", "block_sort_orders": [0]},
-        ])
+        self._call(
+            [
+                {"slug": "w", "admin_label": "   padded   ", "block_sort_orders": [0]},
+            ]
+        )
         self.assertEqual(self.page.embed_configs[0]["admin_label"], "padded")
 
     def test_duplicate_block_refs_are_deduplicated(self):
-        self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": [0, 0, 1, 1, 0]},
-        ])
+        self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": [0, 0, 1, 1, 0]},
+            ]
+        )
         self.assertEqual(self.page.embed_configs[0]["block_sort_orders"], [0, 1])
 
     # --- Request-level errors ---
@@ -142,18 +154,22 @@ class SaveEmbedConfigsTest(TestCase):
     # --- Entry-level validation ---
 
     def test_non_dict_entry_is_dropped(self):
-        msgs = self._call([
-            "not-a-dict",
-            {"slug": "valid", "admin_label": "", "block_sort_orders": [0]},
-        ])
+        msgs = self._call(
+            [
+                "not-a-dict",
+                {"slug": "valid", "admin_label": "", "block_sort_orders": [0]},
+            ]
+        )
         self.assertTrue(any("not a JSON object" in w for w in msgs.warnings))
         self.assertEqual(len(self.page.embed_configs), 1)
         self.assertEqual(self.page.embed_configs[0]["slug"], "valid")
 
     def test_missing_slug_is_dropped(self):
-        msgs = self._call([
-            {"slug": "", "admin_label": "", "block_sort_orders": [0]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "", "admin_label": "", "block_sort_orders": [0]},
+            ]
+        )
         self.assertTrue(any("slug is required" in w for w in msgs.warnings))
         self.assertEqual(self.page.embed_configs, [])
 
@@ -163,11 +179,14 @@ class SaveEmbedConfigsTest(TestCase):
         to lowercase by the input pipeline; see test_slug_is_normalized_*.)
         """
         for bad in ["with space", "-leading-hyphen", "under_score", "bad!punct"]:
-            msgs = self._call([
-                {"slug": bad, "admin_label": "", "block_sort_orders": [0]},
-            ])
+            msgs = self._call(
+                [
+                    {"slug": bad, "admin_label": "", "block_sort_orders": [0]},
+                ]
+            )
             self.assertEqual(
-                self.page.embed_configs, [],
+                self.page.embed_configs,
+                [],
                 f"Invalid slug '{bad}' should have been dropped, got {self.page.embed_configs}",
             )
             self.assertTrue(
@@ -177,49 +196,61 @@ class SaveEmbedConfigsTest(TestCase):
 
     def test_uppercase_slug_is_normalized_not_rejected(self):
         """ASCII uppercase slugs are lowercased by the input pipeline, not rejected."""
-        self._call([
-            {"slug": "ALL-CAPS", "admin_label": "", "block_sort_orders": [0]},
-        ])
+        self._call(
+            [
+                {"slug": "ALL-CAPS", "admin_label": "", "block_sort_orders": [0]},
+            ]
+        )
         self.assertEqual(len(self.page.embed_configs), 1)
         self.assertEqual(self.page.embed_configs[0]["slug"], "all-caps")
 
     def test_block_sort_orders_not_a_list_is_dropped(self):
-        msgs = self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": "not-a-list"},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": "not-a-list"},
+            ]
+        )
         self.assertTrue(any("must be a list" in w for w in msgs.warnings))
         self.assertEqual(self.page.embed_configs, [])
 
     def test_non_integer_block_refs_are_skipped(self):
-        msgs = self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": [0, "oops", None, 1]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": [0, "oops", None, 1]},
+            ]
+        )
         # The entry itself is kept; invalid refs silently dropped.
         self.assertEqual(self.page.embed_configs[0]["block_sort_orders"], [0, 1])
         # No warning expected for individual invalid refs (graceful degradation).
         self.assertFalse(any("oops" in w for w in msgs.warnings))
 
     def test_refs_to_nonexistent_blocks_are_skipped(self):
-        msgs = self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": [0, 99, 2]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": [0, 99, 2]},
+            ]
+        )
         self.assertEqual(self.page.embed_configs[0]["block_sort_orders"], [0, 2])
         self.assertEqual(msgs.warnings, [])  # silent skip
 
     def test_entry_with_no_valid_blocks_is_dropped(self):
-        msgs = self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": [99, 100]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": [99, 100]},
+            ]
+        )
         self.assertTrue(any("no valid block references" in w for w in msgs.warnings))
         self.assertEqual(self.page.embed_configs, [])
 
     # --- Slug uniqueness ---
 
     def test_duplicate_slug_on_same_page_is_dropped(self):
-        msgs = self._call([
-            {"slug": "dup", "admin_label": "First", "block_sort_orders": [0]},
-            {"slug": "dup", "admin_label": "Second", "block_sort_orders": [1]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "dup", "admin_label": "First", "block_sort_orders": [0]},
+                {"slug": "dup", "admin_label": "Second", "block_sort_orders": [1]},
+            ]
+        )
         self.assertTrue(any("duplicates another embed on this page" in w for w in msgs.warnings))
         self.assertEqual(len(self.page.embed_configs), 1)
         self.assertEqual(self.page.embed_configs[0]["admin_label"], "First")
@@ -235,9 +266,11 @@ class SaveEmbedConfigsTest(TestCase):
         )
         CMSBlock.objects.create(page=other, block_type="rich_text", sort_order=0, data={})
 
-        msgs = self._call([
-            {"slug": "taken", "admin_label": "", "block_sort_orders": [0]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "taken", "admin_label": "", "block_sort_orders": [0]},
+            ]
+        )
         self.assertTrue(any("already used by another page" in w for w in msgs.warnings))
         self.assertEqual(self.page.embed_configs, [])
 
@@ -248,9 +281,11 @@ class SaveEmbedConfigsTest(TestCase):
         ]
         self.page.save(update_fields=["embed_configs"])
 
-        msgs = self._call([
-            {"slug": "self-use", "admin_label": "Kept", "block_sort_orders": [0, 1]},
-        ])
+        msgs = self._call(
+            [
+                {"slug": "self-use", "admin_label": "Kept", "block_sort_orders": [0, 1]},
+            ]
+        )
         self.assertEqual(msgs.warnings, [])
         self.assertEqual(len(self.page.embed_configs), 1)
         self.assertEqual(self.page.embed_configs[0]["admin_label"], "Kept")
@@ -271,7 +306,9 @@ class SaveEmbedConfigsTest(TestCase):
     def test_save_updates_updated_at(self):
         """The save writes both embed_configs and updated_at."""
         original = self.page.updated_at
-        self._call([
-            {"slug": "w", "admin_label": "", "block_sort_orders": [0]},
-        ])
+        self._call(
+            [
+                {"slug": "w", "admin_label": "", "block_sort_orders": [0]},
+            ]
+        )
         self.assertGreaterEqual(self.page.updated_at, original)
