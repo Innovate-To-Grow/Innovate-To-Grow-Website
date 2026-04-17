@@ -4,7 +4,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from cms.models import FooterContent, Menu
+from cms.models import FooterContent, Menu, SiteSettings, StyleSheet
 
 
 class LayoutMenuFilteringTests(TestCase):
@@ -143,3 +143,56 @@ class LayoutFooterTests(TestCase):
         FooterContent.objects.create(name="Inactive", slug="inactive", is_active=False)
         resp = self.client.get("/layout/")
         self.assertIsNone(resp.json()["footer"])
+
+
+class LayoutStylesheetViewTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+
+    def test_returns_text_css_content_type(self):
+        resp = self.client.get("/layout/styles.css")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp["Content-Type"].startswith("text/css"))
+
+    def test_active_stylesheets_concatenated(self):
+        StyleSheet.objects.create(name="a", display_name="A", css="body { color: red; }", sort_order=1)
+        StyleSheet.objects.create(name="b", display_name="B", css=".x { margin: 0; }", sort_order=2)
+        StyleSheet.objects.create(name="c", display_name="C", css=".never { display: none; }", is_active=False)
+
+        resp = self.client.get("/layout/styles.css")
+        body = resp.content.decode()
+        self.assertIn("body { color: red; }", body)
+        self.assertIn(".x { margin: 0; }", body)
+        self.assertNotIn(".never", body)
+
+    def test_design_tokens_emitted_as_css_variables(self):
+        # SiteSettings.load() seeds the default design tokens on first call.
+        SiteSettings.load()
+        resp = self.client.get("/layout/styles.css")
+        body = resp.content.decode()
+        # colors group → --itg-color-* prefix
+        self.assertIn("--itg-color-primary:", body)
+        # typography group → no prefix
+        self.assertIn("--itg-font-size-h1:", body)
+        self.assertIn(":root {", body)
+
+    def test_response_is_cached(self):
+        StyleSheet.objects.create(name="cached", display_name="Cached", css="/* v1 */")
+        first = self.client.get("/layout/styles.css").content.decode()
+        # Mutate via raw queryset update so signals don't fire and bust the cache.
+        StyleSheet.objects.filter(name="cached").update(css="/* v2 */")
+        second = self.client.get("/layout/styles.css").content.decode()
+        self.assertEqual(first, second)
+        self.assertIn("/* v1 */", second)
+
+    def test_save_invalidates_cache(self):
+        sheet = StyleSheet.objects.create(name="live", display_name="Live", css="/* original */")
+        self.client.get("/layout/styles.css")  # populate cache
+
+        sheet.css = "/* updated */"
+        sheet.save()
+
+        body = self.client.get("/layout/styles.css").content.decode()
+        self.assertIn("/* updated */", body)
+        self.assertNotIn("/* original */", body)

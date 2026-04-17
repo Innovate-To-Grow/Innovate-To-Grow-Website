@@ -12,7 +12,6 @@ import {
   readLayoutCache,
   writeLayoutCache,
   type LayoutData,
-  type DesignTokens,
 } from '../../../services/api';
 import { LayoutContext, type LayoutContextValue, type LayoutLoadState } from './context';
 
@@ -20,37 +19,9 @@ interface LayoutProviderProps {
   children: ReactNode;
 }
 
-/** Map design-token JSON groups to CSS custom-property prefixes. */
-const GROUP_PREFIX: Record<string, string> = {
-  colors: 'color',
-  typography: '',
-  typography_mobile: '',
-  layout: '',
-  borders: '',
-  effects: '',
-};
-
-function applyDesignTokens(tokens: DesignTokens) {
-  const root = document.documentElement;
-  for (const [group, values] of Object.entries(tokens)) {
-    const prefix = GROUP_PREFIX[group] ?? '';
-    for (const [key, value] of Object.entries(values as Record<string, string>)) {
-      const kebab = key.replace(/_/g, '-');
-      const varName = prefix ? `--itg-${prefix}-${kebab}` : `--itg-${kebab}`;
-      root.style.setProperty(varName, value);
-    }
-  }
-}
-
-function applyStylesheets(css: string) {
-  let el = document.getElementById('itg-server-styles');
-  if (!el) {
-    el = document.createElement('style');
-    el.id = 'itg-server-styles';
-    document.head.appendChild(el);
-  }
-  el.textContent = css;
-}
+// Note: CSS (design tokens + stylesheets) is delivered by the render-blocking
+// <link rel="stylesheet" href="/api/layout/styles.css"> in index.html.
+// React only handles menus/footer data — it no longer injects CSS into the DOM.
 
 function getInitialLayoutFromStorage(): { data: LayoutData | null; state: LayoutLoadState } {
   const cached = readLayoutCache();
@@ -60,17 +31,7 @@ function getInitialLayoutFromStorage(): { data: LayoutData | null; state: Layout
 }
 
 export const LayoutProvider = ({ children }: LayoutProviderProps) => {
-  const initialLayout = useMemo(() => {
-    const result = getInitialLayoutFromStorage();
-    // Apply cached styles immediately to avoid flash of unstyled content
-    if (result.data?.design_tokens) {
-      applyDesignTokens(result.data.design_tokens);
-    }
-    if (result.data?.stylesheets) {
-      applyStylesheets(result.data.stylesheets);
-    }
-    return result;
-  }, []);
+  const initialLayout = useMemo(() => getInitialLayoutFromStorage(), []);
   const [layoutData, setLayoutData] = useState<LayoutData | null>(() => initialLayout.data);
   const [state, setState] = useState<LayoutLoadState>(() => initialLayout.state);
   const [error, setError] = useState<string | null>(null);
@@ -97,14 +58,6 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
         }
 
         writeLayoutCache(data);
-
-        // Inject server-managed styles into the DOM
-        if (data.design_tokens) {
-          applyDesignTokens(data.design_tokens);
-        }
-        if (data.stylesheets) {
-          applyStylesheets(data.stylesheets);
-        }
 
         startTransition(() => {
           setLayoutData(data);

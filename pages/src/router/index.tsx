@@ -4,6 +4,7 @@ import {Layout} from '../components/Layout';
 import {CMSPageComponent} from '../components/CMS';
 import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '../components/CMS/BlockPreviewPage';
+import {EmbedBlockPage} from '../components/CMS/EmbedBlockPage';
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('../components/Auth/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -30,8 +31,10 @@ const MagicLoginPage = React.lazy(() => import('../pages/MagicLoginPage').then(m
 const ImpersonateLoginPage = React.lazy(() => import('../pages/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
 export const router = createBrowserRouter([
-    // Block preview route — rendered in iframe, no menu/footer
+    // Block preview route — rendered in iframe for admin live preview, no menu/footer
     {path: '/_block-preview', element: <BlockPreviewPage/>},
+    // Public embed widget — rendered in third-party iframe, no menu/footer
+    {path: '/_embed/:embedSlug', element: <EmbedBlockPage/>},
     {
         path: '/',
         element: <Layout/>,

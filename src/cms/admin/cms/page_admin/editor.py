@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from cms.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
-from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
+from cms.models.content.cms.cms_page import EMBED_SLUG_RE, normalize_cms_route, validate_cms_route
 
 
 def build_editor_context(obj=None):
@@ -27,6 +27,7 @@ def build_editor_context(obj=None):
     }
     if not obj:
         context["initial_blocks_json"] = "[]"
+        context["initial_embed_configs_json"] = "[]"
         return context
 
     blocks = obj.blocks.all().order_by("sort_order")
@@ -42,6 +43,7 @@ def build_editor_context(obj=None):
         ],
         cls=DjangoJSONEncoder,
     )
+    context["initial_embed_configs_json"] = json.dumps(obj.embed_configs or [], cls=DjangoJSONEncoder)
     return context
 
 
@@ -75,6 +77,105 @@ def save_blocks_from_json(request, page, messages):
             data=data,
         )
     transaction.on_commit(lambda: cache.delete(f"cms:page:{page.route}"))
+
+
+def save_embed_configs_from_json(request, page, messages):
+    """Persist page-level embed widget configurations.
+
+    Each entry is ``{slug, block_sort_orders, admin_label?}``. Invalid entries
+    are dropped with a warning; partial saves are preferred over hard-failing.
+    """
+    configs_json = request.POST.get("embed_configs_json", "")
+    if configs_json == "":
+        # Field absent — do not clear existing configs.
+        return
+    try:
+        configs = json.loads(configs_json)
+        if not isinstance(configs, list):
+            messages.error(request, "Invalid embed configs: expected a JSON array.")
+            return
+    except json.JSONDecodeError as exc:
+        messages.error(request, f"Invalid embed configs JSON: {exc}")
+        return
+
+    # The blocks have just been re-created with sort_order = index. Snapshot
+    # what's valid so we can reject references to nonexistent positions.
+    valid_sort_orders = set(page.blocks.values_list("sort_order", flat=True))
+
+    # Global uniqueness: a slug used on ANOTHER page blocks us.
+    reserved_slugs: set[str] = set()
+    for other_page in CMSPage.objects.exclude(pk=page.pk).only("embed_configs"):
+        for entry in other_page.embed_configs or []:
+            slug = (entry or {}).get("slug")
+            if slug:
+                reserved_slugs.add(slug)
+
+    seen_slugs: set[str] = set()
+    clean: list[dict] = []
+    for index, entry in enumerate(configs):
+        if not isinstance(entry, dict):
+            messages.warning(request, f"Embed #{index + 1}: not a JSON object — dropped.")
+            continue
+        slug = str(entry.get("slug", "") or "").strip().lower()
+        admin_label = str(entry.get("admin_label", "") or "").strip()
+        sort_orders_raw = entry.get("block_sort_orders") or []
+        if not isinstance(sort_orders_raw, list):
+            messages.warning(request, f"Embed #{index + 1}: block_sort_orders must be a list — dropped.")
+            continue
+
+        if not slug:
+            messages.warning(request, f"Embed #{index + 1}: slug is required — dropped.")
+            continue
+        if not EMBED_SLUG_RE.match(slug):
+            messages.warning(
+                request,
+                f"Embed #{index + 1}: slug '{slug}' must be kebab-case — dropped.",
+            )
+            continue
+        if slug in seen_slugs:
+            messages.warning(
+                request,
+                f"Embed #{index + 1}: slug '{slug}' duplicates another embed on this page — dropped.",
+            )
+            continue
+        if slug in reserved_slugs:
+            messages.warning(
+                request,
+                f"Embed #{index + 1}: slug '{slug}' is already used by another page — dropped.",
+            )
+            continue
+
+        # De-duplicate and validate block references.
+        block_sort_orders: list[int] = []
+        for ref in sort_orders_raw:
+            try:
+                ref_int = int(ref)
+            except (TypeError, ValueError):
+                continue
+            if ref_int not in valid_sort_orders:
+                continue
+            if ref_int in block_sort_orders:
+                continue
+            block_sort_orders.append(ref_int)
+
+        if not block_sort_orders:
+            messages.warning(
+                request,
+                f"Embed '{slug}': no valid block references — dropped.",
+            )
+            continue
+
+        seen_slugs.add(slug)
+        clean.append(
+            {
+                "slug": slug,
+                "admin_label": admin_label,
+                "block_sort_orders": sorted(block_sort_orders),
+            }
+        )
+
+    page.embed_configs = clean
+    page.save(update_fields=["embed_configs", "updated_at"])
 
 
 def preview_store_response(request):

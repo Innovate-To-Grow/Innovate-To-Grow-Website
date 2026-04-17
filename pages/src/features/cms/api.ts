@@ -50,3 +50,16 @@ export async function fetchCMSLivePreview(
   const response = await api.get<CMSPageResponse>(`/cms/live-preview/${pageId}/`);
   return response.data;
 }
+
+export interface CMSEmbedResponse {
+  block: CMSBlock;
+  page_css_class: string;
+  page_css: string;
+}
+
+export async function fetchCMSEmbed(
+  embedSlug: string,
+): Promise<CMSEmbedResponse> {
+  const response = await api.get<CMSEmbedResponse>(`/cms/embed/${embedSlug}/`);
+  return response.data;
+}

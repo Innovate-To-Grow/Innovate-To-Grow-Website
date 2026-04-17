@@ -21,7 +21,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from authn.views.admin.login import AdminLoginView
-from cms.views import LayoutAPIView
+from cms.views import LayoutAPIView, LayoutStylesheetView
 from core.views import MaintenanceBypassView, robots_txt, root_index
 
 # Customize Django Admin
@@ -42,6 +42,8 @@ urlpatterns = [
     path("maintenance/bypass/", MaintenanceBypassView.as_view(), name="maintenance-bypass"),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
+    # render-blocking stylesheet (linked from index.html to prevent FOUC)
+    path("layout/styles.css", LayoutStylesheetView.as_view(), name="layout-styles"),
     # event
     path("event/", include("event.urls")),
     # news

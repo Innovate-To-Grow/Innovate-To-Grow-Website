@@ -6,8 +6,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes" />
     <title>Innovate To Grow | School of Engineering</title>
 
+    <!-- Detect iframe-isolated routes (admin block preview + public embed widget)
+         synchronously before any CSS applies, so the chrome-strip rules below
+         can target html[data-block-preview]. -->
+    <script>
+      (function () {
+        var p = window.location.pathname;
+        if (p === '/_block-preview' || p.indexOf('/_embed/') === 0) {
+          document.documentElement.dataset.blockPreview = '';
+        }
+      })();
+    </script>
+
+    <!-- Hide body until the server-managed stylesheet loads — prevents FOUC.
+         The <link> below is render-blocking, but this belt-and-suspenders keeps
+         the page hidden even in edge cases (e.g. slow cold start). -->
+    <style>
+      html { background: #fff; }
+      body { visibility: hidden; }
+      body.itg-styles-ready { visibility: visible; }
+
+      /* Block preview iframe: strip all page chrome so only the block content renders. */
+      html[data-block-preview] { background: transparent; }
+      html[data-block-preview] body { background: transparent; visibility: visible; }
+      html[data-block-preview] #root,
+      html[data-block-preview] .main-content,
+      html[data-block-preview] .mc-content { min-height: 0; display: block; }
+      html[data-block-preview] #main,
+      html[data-block-preview] .container,
+      html[data-block-preview] #main-content,
+      html[data-block-preview] #content,
+      html[data-block-preview] #content-wrapper { padding: 0; margin: 0; max-width: none; width: auto; }
+    </style>
     <!-- Template Styles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- Server-managed design tokens + stylesheets (render-blocking to prevent FOUC) -->
+    <link rel="stylesheet" href="/api/layout/styles.css"
+          onload="document.body.classList.add('itg-styles-ready')"
+          onerror="document.body.classList.add('itg-styles-ready')">
+    <script>
+      // Fallback: reveal body after 3s even if the <link> never fires onload/onerror
+      setTimeout(function () {
+        document.body && document.body.classList.add('itg-styles-ready');
+      }, 3000);
+    </script>
+    <noscript>
+      <style>body { visibility: visible !important; }</style>
+    </noscript>
   </head>
   <body class="html front not-logged-in no-sidebars page-node">
     <!-- NAVBAR -->
@@ -31,16 +76,18 @@
     <div id="footer-root"></div>
     <!-- END FOOTER -->
 
-    <!-- Template Scripts (skipped in block preview iframe) -->
+    <!-- Template Scripts (skipped in iframe-isolated routes: block preview + embeds) -->
     <script>
-      if (window.location.pathname !== '/_block-preview') {
+      (function () {
+        var p = window.location.pathname;
+        if (p === '/_block-preview' || p.indexOf('/_embed/') === 0) return;
         (function (d) { var s = d.createElement("script"); s.setAttribute("data-account", "6Uvgvyrrph"); s.setAttribute("src", "https://cdn.userway.org/widget.js"); (d.body || d.head).appendChild(s); })(document);
         (function() {
           var sz = document.createElement('script'); sz.type = 'text/javascript'; sz.async = true;
           sz.src = '//siteimproveanalytics.com/js/siteanalyze_8343.js';
           var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(sz, s);
         })();
-      }
+      })();
     </script>
     <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
 

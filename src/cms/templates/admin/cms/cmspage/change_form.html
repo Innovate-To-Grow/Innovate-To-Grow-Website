@@ -23,7 +23,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
 {% endblock %}
 
@@ -74,6 +74,19 @@
         </div>
     </div>
 
+    <!-- Embed Widgets -->
+    <div class="cms-embeds-wrapper">
+        <div class="cms-embeds-header">
+            <h3>Embed Widgets</h3>
+            <span class="cms-embeds-hint">
+                Bundle one or more blocks above into a named widget. Third parties iframe-embed
+                the result via <code>/_embed/&lt;slug&gt;</code>.
+            </span>
+        </div>
+        <div id="cms-embeds-container" class="cms-embeds-container"></div>
+        <button type="button" class="btn-add-embed" onclick="addEmbedConfig()">+ Add Embed</button>
+    </div>
+
     <!-- Inline Live Preview Panel -->
     <div id="cms-inline-preview" class="cms-preview-wrapper">
         <div class="cms-preview-header">
@@ -102,8 +115,9 @@
         </div>
     </div>
 
-    <!-- Hidden field for form submission -->
+    <!-- Hidden fields for form submission -->
     <textarea id="id_blocks_json" name="blocks_json" style="display:none;"></textarea>
+    <textarea id="id_embed_configs_json" name="embed_configs_json" style="display:none;"></textarea>
 {% endblock %}
 
 {% block after_related_objects %}
@@ -114,6 +128,7 @@
         window.CMS_BLOCK_SCHEMAS = {{ block_schemas_json|safe }};
         window.CMS_BLOCK_TYPE_CHOICES = {{ block_type_choices_json|safe }};
         window.CMS_INITIAL_BLOCKS = {{ initial_blocks_json|safe }};
+        window.CMS_INITIAL_EMBED_CONFIGS = {{ initial_embed_configs_json|safe }};
         window.CMS_ROUTE_EDITOR = {
             checkUrl: "{{ route_check_url|escapejs }}",
             pageId: "{{ current_page_id|escapejs }}",
@@ -128,8 +143,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=1"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=4"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=2"></script>
-    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=4"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/embeds.js' %}?v=1"></script>
+    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=6"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}

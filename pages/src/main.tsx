@@ -23,8 +23,9 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Skip menu and footer for isolated preview iframe
-const isBlockPreview = window.location.pathname === '/_block-preview';
+// Skip menu and footer for isolated iframe routes (admin preview + public embed widget)
+const _path = window.location.pathname;
+const isBlockPreview = _path === '/_block-preview' || _path.startsWith('/_embed/');
 
 // Mount MainMenu to #menu-root with AuthProvider and LayoutProvider
 // No BrowserRouter needed — MainMenu uses router.navigate() directly, not <Link> or router hooks

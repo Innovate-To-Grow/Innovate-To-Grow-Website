@@ -11,7 +11,12 @@ from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import CMSBlock, CMSPage, FooterContent, Menu, NewsArticle, SiteSettings
+from .models import CMSBlock, CMSPage, FooterContent, Menu, NewsArticle, SiteSettings, StyleSheet
+
+
+def _clear_layout_caches():
+    cache.delete("layout:data")
+    cache.delete("layout:stylesheet")
 
 
 @receiver([post_save, post_delete], sender=Menu)
@@ -19,8 +24,15 @@ from .models import CMSBlock, CMSPage, FooterContent, Menu, NewsArticle, SiteSet
 @receiver([post_save, post_delete], sender=SiteSettings)
 # noinspection PyUnusedLocal
 def invalidate_layout_cache(sender, instance, **kwargs):
-    """Clear layout cache when Menu or FooterContent is saved or deleted."""
-    transaction.on_commit(lambda: cache.delete("layout:data"))
+    """Clear layout caches when Menu, FooterContent, or SiteSettings change."""
+    transaction.on_commit(_clear_layout_caches)
+
+
+@receiver([post_save, post_delete], sender=StyleSheet)
+# noinspection PyUnusedLocal
+def invalidate_stylesheet_cache(sender, instance, **kwargs):
+    """Clear layout caches when a StyleSheet is saved or deleted."""
+    transaction.on_commit(_clear_layout_caches)
 
 
 @receiver(pre_save, sender=CMSPage)
@@ -48,7 +60,7 @@ def invalidate_cms_page_cache(sender, instance, **kwargs):
         cache.delete(f"cms:page:{route}")
         if old_route and old_route != route:
             cache.delete(f"cms:page:{old_route}")
-        cache.delete("layout:data")
+        _clear_layout_caches()
 
     transaction.on_commit(_clear)
 

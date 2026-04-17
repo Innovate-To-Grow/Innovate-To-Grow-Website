@@ -32,3 +32,29 @@ body {
 .userway_buttons_wrapper {
   margin-top: 5.5rem !important;
 }
+
+/* Block preview iframe: override any backend stylesheet rules that would
+   reintroduce page chrome (body background, wrapper padding, min-height). */
+html[data-block-preview] body {
+  background-color: transparent;
+}
+html[data-block-preview] #root,
+html[data-block-preview] .main-content,
+html[data-block-preview] .mc-content {
+  min-height: 0;
+  display: block;
+}
+html[data-block-preview] #main,
+html[data-block-preview] .container,
+html[data-block-preview] #main-content,
+html[data-block-preview] #content,
+html[data-block-preview] #content-wrapper,
+html[data-block-preview] .app-layout {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  width: auto;
+}
+html[data-block-preview] .userway_buttons_wrapper {
+  display: none !important;
+}

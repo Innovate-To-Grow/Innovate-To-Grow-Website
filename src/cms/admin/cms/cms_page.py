@@ -8,6 +8,7 @@ from cms.admin.cms.page_admin.editor import (
     preview_store_response,
     route_conflict_response,
     save_blocks_from_json,
+    save_embed_configs_from_json,
 )
 from cms.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from cms.models import CMSPage
@@ -113,6 +114,9 @@ class CMSPageAdmin(BaseModelAdmin):
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         save_blocks_from_json(request, form.instance, messages)
+        # Embed configs reference blocks by sort_order, so save them AFTER blocks
+        # are re-created (sort_order = index).
+        save_embed_configs_from_json(request, form.instance, messages)
 
     def preview_store_view(self, request):
         return preview_store_response(request)
