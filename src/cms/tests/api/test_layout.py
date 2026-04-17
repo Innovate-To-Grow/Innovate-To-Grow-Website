@@ -187,11 +187,17 @@ class LayoutStylesheetViewTests(TestCase):
         self.assertIn("/* v1 */", second)
 
     def test_save_invalidates_cache(self):
-        sheet = StyleSheet.objects.create(name="live", display_name="Live", css="/* original */")
+        # The invalidate signal uses transaction.on_commit(...) which is deferred
+        # until the outer transaction commits. TestCase rolls its transaction
+        # back for isolation, so we must capture & execute the callbacks
+        # synchronously here or the cache stays stale.
+        with self.captureOnCommitCallbacks(execute=True):
+            sheet = StyleSheet.objects.create(name="live", display_name="Live", css="/* original */")
         self.client.get("/layout/styles.css")  # populate cache
 
         sheet.css = "/* updated */"
-        sheet.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            sheet.save()
 
         body = self.client.get("/layout/styles.css").content.decode()
         self.assertIn("/* updated */", body)
