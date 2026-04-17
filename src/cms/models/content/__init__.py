@@ -1,5 +1,13 @@
 from .analytics import PageView
-from .cms import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, BLOCK_TYPE_KEYS, CMSBlock, CMSPage, validate_block_data
+from .cms import (
+    BLOCK_SCHEMAS,
+    BLOCK_TYPE_CHOICES,
+    BLOCK_TYPE_KEYS,
+    CMSBlock,
+    CMSEmbedWidget,
+    CMSPage,
+    validate_block_data,
+)
 from .layout import FooterContent, Menu, SiteSettings, StyleSheet
 from .news import NewsArticle, NewsFeedSource, NewsSyncLog
 
@@ -12,6 +20,7 @@ __all__ = [
     # CMS
     "CMSPage",
     "CMSBlock",
+    "CMSEmbedWidget",
     "BLOCK_TYPE_CHOICES",
     "BLOCK_TYPE_KEYS",
     "BLOCK_SCHEMAS",

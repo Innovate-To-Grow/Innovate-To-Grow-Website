@@ -3,7 +3,6 @@ import {PhoneCard} from './PhoneCard';
 import {PhonePendingVerifyPanel} from './PhonePendingVerifyPanel';
 import {StatusAlert} from '../shared/StatusAlert';
 import {usePhoneCenter} from './internal/usePhoneCenter';
-import '../Auth.css';
 
 export const PhoneCenter = () => {
     const pc = usePhoneCenter();

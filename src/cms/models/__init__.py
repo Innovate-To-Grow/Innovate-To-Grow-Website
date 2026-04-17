@@ -9,6 +9,7 @@ from .content import (
     BLOCK_TYPE_CHOICES,
     BLOCK_TYPE_KEYS,
     CMSBlock,
+    CMSEmbedWidget,
     CMSPage,
     FooterContent,
     Menu,
@@ -31,6 +32,7 @@ __all__ = [
     # CMS
     "CMSPage",
     "CMSBlock",
+    "CMSEmbedWidget",
     "CMSAsset",
     "BLOCK_TYPE_CHOICES",
     "BLOCK_TYPE_KEYS",

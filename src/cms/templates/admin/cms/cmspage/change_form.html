@@ -74,18 +74,34 @@
         </div>
     </div>
 
-    <!-- Embed Widgets -->
-    <div class="cms-embeds-wrapper">
-        <div class="cms-embeds-header">
-            <h3>Embed Widgets</h3>
-            <span class="cms-embeds-hint">
-                Bundle one or more blocks above into a named widget. Third parties iframe-embed
-                the result via <code>/_embed/&lt;slug&gt;</code>.
-            </span>
+    <!-- Embed Widgets summary (read-only; edits happen in the dedicated admin) -->
+    {% if current_page_id %}
+        <div class="visual-editor-wrapper">
+            <div class="visual-editor-header">
+                <h3>Embed Widgets on this page</h3>
+                <a class="cms-inline-preview-toggle"
+                   href="{% url 'admin:cms_cmsembedwidget_changelist' %}?page__id__exact={{ current_page_id }}">
+                    <span class="material-symbols-outlined">open_in_new</span>
+                    Manage in Embed Widgets
+                </a>
+            </div>
+            <div class="visual-editor-content">
+                {% if related_widgets %}
+                    <ul class="cms-related-widgets-list">
+                        {% for w in related_widgets %}
+                            <li>
+                                <code>{{ w.slug }}</code>
+                                — {{ w.admin_label|default:"(no label)" }}
+                                · <a href="{% url 'admin:cms_cmsembedwidget_change' w.id %}">Edit</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="cms-embeds-empty">No embed widgets defined for this page yet.</p>
+                {% endif %}
+            </div>
         </div>
-        <div id="cms-embeds-container" class="cms-embeds-container"></div>
-        <button type="button" class="btn-add-embed" onclick="addEmbedConfig()">+ Add Embed</button>
-    </div>
+    {% endif %}
 
     <!-- Inline Live Preview Panel -->
     <div id="cms-inline-preview" class="cms-preview-wrapper">
@@ -117,7 +133,6 @@
 
     <!-- Hidden fields for form submission -->
     <textarea id="id_blocks_json" name="blocks_json" style="display:none;"></textarea>
-    <textarea id="id_embed_configs_json" name="embed_configs_json" style="display:none;"></textarea>
 {% endblock %}
 
 {% block after_related_objects %}
@@ -128,7 +143,6 @@
         window.CMS_BLOCK_SCHEMAS = {{ block_schemas_json|safe }};
         window.CMS_BLOCK_TYPE_CHOICES = {{ block_type_choices_json|safe }};
         window.CMS_INITIAL_BLOCKS = {{ initial_blocks_json|safe }};
-        window.CMS_INITIAL_EMBED_CONFIGS = {{ initial_embed_configs_json|safe }};
         window.CMS_ROUTE_EDITOR = {
             checkUrl: "{{ route_check_url|escapejs }}",
             pageId: "{{ current_page_id|escapejs }}",
@@ -145,7 +159,6 @@
     <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=1"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=4"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=2"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/embeds.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=6"></script>
+    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=7"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}

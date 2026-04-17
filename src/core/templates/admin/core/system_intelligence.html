@@ -2,11 +2,19 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
-{% block content_title %}<h1>I2G System Intelligence</h1>{% endblock %}
+{% block content_title %}<h1>System Intelligence</h1>{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/system-intelligence.css' %}">
+<style>
+  /* Make the parent chain flex-column so .si-wrap fills remaining viewport height.
+     When the <details> panel opens/closes the chat area resizes automatically. */
+  #page { height: 100vh; overflow: hidden; }
+  #main { min-height: 0; overflow: hidden; }
+  #main > .grow { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
+  #content { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -15,8 +23,12 @@
   <summary class="si-info-toggle">
     <span class="material-symbols-outlined !text-[18px]">tune</span>
     <span class="si-info-label">Model & Settings</span>
-    <span class="si-info-badge {% if aws_config.is_configured and si_config.is_active %}si-badge-ok{% else %}si-badge-warn{% endif %}">
-      {{ model_name|truncatechars:45 }}
+    <span class="si-info-collapsed-summary">
+      <span class="si-info-badge {% if aws_config.is_configured and si_config.is_active %}si-badge-ok{% else %}si-badge-warn{% endif %}">
+        {{ model_name|truncatechars:35 }}
+      </span>
+      <span class="si-info-chip">T {{ si_config.temperature }}</span>
+      <span class="si-info-chip">{{ aws_config.default_region|default:"us-west-2" }}</span>
     </span>
     <span class="material-symbols-outlined !text-[18px] si-info-chevron">expand_more</span>
   </summary>
@@ -136,5 +148,15 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+<script>
+  if (typeof marked !== 'undefined') {
+    marked.setOptions({gfm: true, breaks: true});
+  }
+</script>
+<script src="{% static 'admin/js/si-utils.js' %}"></script>
+<script src="{% static 'admin/js/si-render.js' %}"></script>
+<script src="{% static 'admin/js/si-sidebar.js' %}"></script>
+<script src="{% static 'admin/js/si-stream.js' %}"></script>
 <script src="{% static 'admin/js/system-intelligence.js' %}"></script>
 {% endblock %}

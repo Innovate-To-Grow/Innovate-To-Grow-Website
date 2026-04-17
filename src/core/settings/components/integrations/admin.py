@@ -72,10 +72,18 @@ UNFOLD = {
         # _get_is_tab_active(), which marks both sidebar rows active when either
         # changelist is open (peer tabs, not parent/child).
         {
-            "models": ["cms.sitesettings", "cms.cmspage", "cms.menu", "cms.footercontent", "cms.stylesheet"],
+            "models": [
+                "cms.sitesettings",
+                "cms.cmspage",
+                "cms.cmsembedwidget",
+                "cms.menu",
+                "cms.footercontent",
+                "cms.stylesheet",
+            ],
             "items": [
                 {"title": "Home Page", "link": "/admin/cms/sitesettings/"},
                 {"title": "Pages", "link": "/admin/cms/cmspage/"},
+                {"title": "Embed Widgets", "link": "/admin/cms/cmsembedwidget/"},
                 {"title": "Menus", "link": "/admin/cms/menu/"},
                 {"title": "Footer", "link": "/admin/cms/footercontent/"},
                 {"title": "Style Sheets", "link": "/admin/cms/stylesheet/"},
@@ -88,8 +96,8 @@ UNFOLD = {
             {
                 "title": "Site Settings",
                 "items": [
-                    {"title": "I2G System Intelligence", "link": "/admin/core/system-intelligence/"},
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
+                    {"title": "System Intelligence", "link": "/admin/core/system-intelligence/"},
                     {"title": "Service Configs", "link": "/admin/core/emailserviceconfig/"},
                     {"title": "Admin Log", "link": "/admin/admin/logentry/"},
                 ],
@@ -99,6 +107,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
+                    {"title": "Embed Widgets", "link": "/admin/cms/cmsembedwidget/"},
                     {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                 ],
             },

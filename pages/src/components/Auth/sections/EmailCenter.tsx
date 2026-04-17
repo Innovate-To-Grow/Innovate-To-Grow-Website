@@ -6,7 +6,7 @@ import {ContactEmailCard} from './ContactEmailCard';
 import {PrimaryEmailCard} from './PrimaryEmailCard';
 import {StatusAlert} from '../shared/StatusAlert';
 import {useEmailCenter} from './internal/useEmailCenter';
-import '../Auth.css';
+
 interface EmailCenterProps {
     profile: ProfileResponse;
     onProfileUpdate: (updated: ProfileResponse) => void;

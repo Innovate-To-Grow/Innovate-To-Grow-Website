@@ -1,0 +1,51 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'cms/css/cms-embed-widget.css' %}?v=1">
+{% endblock %}
+
+{% block after_field_sets %}
+    {{ block.super }}
+
+    <div class="cms-widget-section">
+        <h3>Blocks to include</h3>
+        <p class="cms-widget-hint">
+            Select the blocks from the chosen page that should appear inside this embed widget.
+            Blocks render in the order shown below.
+        </p>
+        <div id="cms-widget-block-picker" class="cms-widget-blocks-list">
+            <p class="cms-widget-empty">Select a page to load its blocks.</p>
+        </div>
+    </div>
+
+    <div class="cms-widget-section">
+        <h3>Embed URL &amp; snippet</h3>
+        <div class="cms-widget-url-row">
+            <code id="cms-widget-embed-url">(save to generate)</code>
+            <a id="cms-widget-embed-link" href="#" target="_blank" rel="noopener" style="display:none;">
+                Open preview &rarr;
+            </a>
+        </div>
+        <textarea id="cms-widget-snippet" class="cms-widget-snippet" readonly onclick="this.select()"></textarea>
+        <button type="button" class="btn-widget-copy" id="cms-widget-copy-btn">Copy snippet</button>
+        <p id="cms-widget-hint" class="cms-widget-hint-warn" style="display:none;"></p>
+    </div>
+{% endblock %}
+
+{% block after_related_objects %}
+    {{ block.super }}
+
+    <script>
+        window.CMS_EMBED_WIDGET = {
+            pageBlocksUrl: "{{ page_blocks_url|escapejs }}",
+            frontendUrl: "{{ frontend_url|escapejs }}",
+            initialBlockSortOrders: {{ initial_block_sort_orders_json|safe }},
+            initialSlug: "{{ initial_slug|escapejs }}",
+            initialPageId: "{{ initial_page_id|escapejs }}",
+        };
+    </script>
+    <script src="{% static 'cms/js/cms-embed-widget/snippet.js' %}?v=1"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=1"></script>
+{% endblock %}

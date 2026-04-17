@@ -4,7 +4,6 @@ import {MenuTree} from './parts/MenuTree';
 import {MobileMenuPanel} from './parts/MobileMenuPanel';
 import {MENU_BAR_SKELETON_WIDTHS_PX} from './parts/shared';
 import {useMainMenuState} from './useMainMenuState';
-import './MainMenu.css';
 
 export const MainMenu = () => {
   const {

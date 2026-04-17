@@ -1,14 +1,12 @@
 import re
 
 from django.core.exceptions import ValidationError
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 
 from core.models import ProjectControlModel
 
 ROUTE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$")
-EMBED_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 def normalize_cms_route(route):
@@ -77,17 +75,6 @@ class CMSPage(ProjectControlModel):
         help_text="Custom CSS injected when this page is loaded. Scoped to the page wrapper.",
     )
     sort_order = models.IntegerField(default=0)
-    embed_configs = models.JSONField(
-        default=list,
-        blank=True,
-        encoder=DjangoJSONEncoder,
-        help_text=(
-            "List of embed widget configurations. Each entry is a dict with keys "
-            "'slug' (unique kebab-case global identifier), 'block_sort_orders' "
-            "(list of block sort_orders to include in that embed), and optionally "
-            "'admin_label'."
-        ),
-    )
 
     class Meta:
         db_table = "cms_cmspage"

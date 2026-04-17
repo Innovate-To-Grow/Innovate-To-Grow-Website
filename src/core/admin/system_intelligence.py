@@ -19,6 +19,25 @@ from core.services.bedrock import invoke_bedrock_stream
 logger = logging.getLogger(__name__)
 
 
+def _tool_calls_for_storage(stream_events):
+    """Normalize streamed tool_call dicts for JSONField (UI expects name, input, result_preview)."""
+    out = []
+    for ev in stream_events:
+        if not isinstance(ev, dict):
+            continue
+        inp = ev.get("input")
+        if inp is not None and not isinstance(inp, dict):
+            inp = {}
+        out.append(
+            {
+                "name": ev.get("name", "unknown"),
+                "input": inp or {},
+                "result_preview": ev.get("result_preview") or "",
+            }
+        )
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Standalone chat views (registered via AppConfig.ready monkey-patch)
 # ---------------------------------------------------------------------------
@@ -110,7 +129,7 @@ def chat_list_view(request):
 
     context = {
         **admin.site.each_context(request),
-        "title": "I2G System Intelligence",
+        "title": "System Intelligence",
         "si_config": si_config,
         "aws_config": aws_config,
         "model_id": model_id or "",
@@ -153,7 +172,7 @@ def chat_view(request, conversation_id):
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
 
-    msgs = convo.messages.values("id", "role", "content", "model_id", "created_at")
+    msgs = convo.messages.values("id", "role", "content", "model_id", "created_at", "tool_calls", "token_usage")
     data = [
         {
             "id": str(m["id"]),
@@ -161,6 +180,8 @@ def chat_view(request, conversation_id):
             "content": m["content"],
             "model_id": m["model_id"],
             "created_at": m["created_at"].strftime("%b %d, %H:%M"),
+            "tool_calls": m["tool_calls"] or [],
+            "token_usage": m["token_usage"] or {},
         }
         for m in msgs
     ]
@@ -208,6 +229,7 @@ def chat_send_view(request, conversation_id):
     def event_stream():
         full_text = ""
         tool_calls = []
+        total_usage = {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
 
         try:
             for event in invoke_bedrock_stream(history, chat_config=chat_config, model_id=effective_model_id):
@@ -218,6 +240,11 @@ def chat_send_view(request, conversation_id):
                 elif etype == "tool_call":
                     tool_calls.append(event)
                     yield _sse("tool_call", event)
+                elif etype == "usage":
+                    total_usage["inputTokens"] += event.get("inputTokens", 0)
+                    total_usage["outputTokens"] += event.get("outputTokens", 0)
+                    total_usage["totalTokens"] += event.get("totalTokens", 0)
+                    yield _sse("usage", total_usage)
                 elif etype == "error":
                     yield _sse("error", {"error": event["error"]})
                     return
@@ -234,6 +261,8 @@ def chat_send_view(request, conversation_id):
             role="assistant",
             content=full_text,
             model_id=effective_model_id,
+            tool_calls=_tool_calls_for_storage(tool_calls),
+            token_usage=total_usage,
         )
 
         yield _sse(
@@ -243,12 +272,14 @@ def chat_send_view(request, conversation_id):
                 "model_id": effective_model_id,
                 "title": convo.title,
                 "tool_calls": tool_calls,
+                "token_usage": total_usage,
             },
         )
 
     resp = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     resp["Cache-Control"] = "no-cache"
     resp["X-Accel-Buffering"] = "no"
+    resp["Content-Encoding"] = "identity"
     return resp
 
 

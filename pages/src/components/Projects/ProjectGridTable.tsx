@@ -7,7 +7,6 @@ import {
 } from './projectGrid';
 import {ProjectGridDesktopTable} from './grid/ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './grid/ProjectGridMobileCards';
-import './ProjectsTables.css';
 
 interface ProjectGridTableProps {
   columns: ProjectGridColumn[];

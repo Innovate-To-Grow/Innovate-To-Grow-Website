@@ -119,6 +119,16 @@ class ChatMessage(models.Model):
         verbose_name="Model ID",
         help_text="The Bedrock model that produced this response (for audit).",
     )
+    tool_calls = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Bedrock tool invocations for this assistant turn (name, input, result preview).",
+    )
+    token_usage = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Token consumption for this turn (inputTokens, outputTokens, totalTokens).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

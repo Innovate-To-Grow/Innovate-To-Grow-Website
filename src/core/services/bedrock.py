@@ -317,6 +317,7 @@ def invoke_bedrock_stream(conversation_messages, *, chat_config=None, aws_config
         current_block = {}
         stop_reason = "end_turn"
         tool_use_input_buf = ""
+        round_usage = {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
 
         for event in response.get("stream", []):
             if "contentBlockStart" in event:
@@ -363,6 +364,14 @@ def invoke_bedrock_stream(conversation_messages, *, chat_config=None, aws_config
 
             elif "messageStop" in event:
                 stop_reason = event["messageStop"].get("stopReason", "end_turn")
+
+            elif "metadata" in event:
+                usage = event["metadata"].get("usage", {})
+                round_usage["inputTokens"] = usage.get("inputTokens", 0)
+                round_usage["outputTokens"] = usage.get("outputTokens", 0)
+                round_usage["totalTokens"] = usage.get("totalTokens", 0)
+
+        yield {"type": "usage", **round_usage}
 
         # Rebuild the full assistant message for the conversation history
         assistant_message = {"role": "assistant", "content": content_blocks}

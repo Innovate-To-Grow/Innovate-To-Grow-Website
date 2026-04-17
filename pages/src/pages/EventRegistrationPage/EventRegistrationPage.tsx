@@ -5,7 +5,6 @@ import {formatEventDate} from './steps/helpers';
 import {LoadingState} from './steps/LoadingState';
 import {RegistrationFormStep} from './steps/RegistrationFormStep';
 import {useEventRegistration} from './useEventRegistration';
-import './EventRegistrationPage.css';
 
 export const EventRegistrationPage = () => {
   const reg = useEventRegistration();

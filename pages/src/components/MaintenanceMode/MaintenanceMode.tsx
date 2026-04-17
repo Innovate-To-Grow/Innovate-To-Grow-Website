@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import './MaintenanceMode.css';
 
 interface MaintenanceModeProps {
   message?: string;

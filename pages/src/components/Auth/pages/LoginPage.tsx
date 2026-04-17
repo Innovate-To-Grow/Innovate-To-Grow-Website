@@ -1,7 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { LoginForm } from '../forms/LoginForm';
-import '../Auth.css';
 
 export const LoginPage = () => {
   const { isAuthenticated, requiresProfileCompletion } = useAuth();

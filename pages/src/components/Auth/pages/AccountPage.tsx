@@ -6,7 +6,6 @@ import {TicketsSection} from './account/TicketsSection';
 import {useAccountDashboard} from './account/useAccountDashboard';
 import {EmailCenter} from '../sections/EmailCenter';
 import {PhoneCenter} from '../sections/PhoneCenter';
-import '../Auth.css';
 
 export const AccountPage = () => {
     const account = useAccountDashboard();

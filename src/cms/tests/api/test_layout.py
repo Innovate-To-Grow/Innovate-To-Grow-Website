@@ -202,3 +202,15 @@ class LayoutStylesheetViewTests(TestCase):
         body = self.client.get("/layout/styles.css").content.decode()
         self.assertIn("/* updated */", body)
         self.assertNotIn("/* original */", body)
+
+    def test_init_loader_css_present(self):
+        # The initial-load spinner is shown via #root:empty::before and
+        # disappears automatically when React mounts content into #root.
+        resp = self.client.get("/layout/styles.css")
+        body = resp.content.decode()
+        self.assertIn("#root:empty::before", body)
+        self.assertIn("@keyframes itg-init-loader-spin", body)
+        # Hide the loader in iframe-isolated routes.
+        self.assertIn("html[data-block-preview] #root:empty::before", body)
+        # Reduced-motion fallback dampens the spinner.
+        self.assertIn("prefers-reduced-motion: reduce", body)

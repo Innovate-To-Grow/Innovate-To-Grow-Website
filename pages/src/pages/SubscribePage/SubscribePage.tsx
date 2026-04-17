@@ -7,7 +7,6 @@ import {EmailStep} from './steps/EmailStep';
 import {ManageStep} from './steps/ManageStep';
 import {ProfileStep} from './steps/ProfileStep';
 import {getSubscribeErrorMessage} from './steps/helpers';
-import './SubscribePage.css';
 
 type Step = 'email' | 'code' | 'profile' | 'manage';
 type OrganizationType = 'individual' | 'organization';

@@ -4,7 +4,6 @@ import { getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import { FLOW_META, isVerifyFlow, type VerifyFlow } from './verify/shared';
-import '../Auth.css';
 
 export const VerifyEmailPage = () => {
   const { isAuthenticated, requiresProfileCompletion } = useAuth();

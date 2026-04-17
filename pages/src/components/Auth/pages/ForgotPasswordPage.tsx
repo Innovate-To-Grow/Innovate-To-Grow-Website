@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import '../Auth.css';
 
 export const ForgotPasswordPage = () => {
   const { isAuthenticated, requiresProfileCompletion, requestPasswordReset, error, isLoading, clearError } = useAuth();

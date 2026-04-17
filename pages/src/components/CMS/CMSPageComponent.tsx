@@ -10,10 +10,6 @@ function formatExpiryTime(isoString: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-// CMS block styling is now served from the backend via StyleSheet model.
-// Design tokens and stylesheets are injected by LayoutProvider.
-// Page-specific CSS is served via the page_css field on CMSPage.
-
 interface CMSPageComponentProps {
   routeOverride?: string;
 }

@@ -9,7 +9,6 @@ import {
   type ProjectGridItem,
   type ProjectGridRow,
 } from './projectGrid';
-import './ProjectsTables.css';
 
 const INITIAL_SEARCH_TABLE = {id: 'search-table-1', title: 'Search Table 1'};
 

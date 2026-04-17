@@ -4,7 +4,6 @@ import { useAuth } from '../AuthContext';
 import { getProfile, updateProfileFields } from '../../../services/auth';
 import { getAuthErrorMessage } from '../context/shared';
 import { CompleteProfileForm } from './CompleteProfileForm';
-import '../Auth.css';
 
 export const CompleteProfilePage = () => {
   const {
