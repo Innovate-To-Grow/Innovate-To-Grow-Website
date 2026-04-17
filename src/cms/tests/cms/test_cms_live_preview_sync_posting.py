@@ -158,3 +158,29 @@ class CMSLivePreviewSyncPostingTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_post_strips_client_supplied_expires_at(self):
+        """Client-supplied expires_at is discarded; server computes its own.
+
+        Defense in depth: a malicious client must not be able to spoof the
+        expiry timestamp (e.g. set it to year 2099 to mislead the preview UI).
+        The view pops any incoming expires_at before setting its own, so the
+        cached value always reflects server time + TTL.
+        """
+        self.client.force_login(self.staff)
+        bogus_expiry = "2099-12-31T23:59:59+00:00"
+        self._post_preview({"title": "Spoof Attempt", "expires_at": bogus_expiry, "blocks": []})
+
+        cached = cache.get(f"cms:live-preview:{self.page.pk}")
+        self.assertIn("expires_at", cached)
+        self.assertNotEqual(cached["expires_at"], bogus_expiry)
+
+        # Server-computed expiry is within the TTL window (10 min).
+        from datetime import datetime
+
+        from django.utils import timezone as tz
+
+        expires_at = datetime.fromisoformat(cached["expires_at"])
+        diff = (expires_at - tz.now()).total_seconds()
+        self.assertGreater(diff, 540)
+        self.assertLessEqual(diff, 600)
