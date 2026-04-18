@@ -15,6 +15,8 @@ Options:
     --allow-production      Allow running even when DEBUG is False.
 """
 
+import os
+
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
@@ -33,9 +35,9 @@ from .resetdb_helpers import (
 class Command(BaseCommand):
     help = "Resets database and migration files, then recreates everything (DEV ONLY)."
     DEV_ADD_ADMIN_USER = True
-    DEV_DEFAULT_ADMIN_USERNAME = "hongzhe"
-    DEV_DEFAULT_ADMIN_EMAIL = "xiehongzhe04@gmail.com"
-    DEV_DEFAULT_ADMIN_PASSWORD = "1"
+    DEV_DEFAULT_ADMIN_USERNAME = os.environ.get("DEV_ADMIN_USERNAME", "admin")
+    DEV_DEFAULT_ADMIN_EMAIL = os.environ.get("DEV_ADMIN_EMAIL", "admin@localhost")
+    DEV_DEFAULT_ADMIN_PASSWORD = os.environ.get("DEV_ADMIN_PASSWORD", "changeme")
 
     # noinspection PyMethodMayBeStatic
     def add_arguments(self, parser):

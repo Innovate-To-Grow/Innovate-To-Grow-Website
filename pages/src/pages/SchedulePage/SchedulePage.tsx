@@ -4,6 +4,7 @@ import {useSearchParams} from 'react-router-dom';
 import {ProjectGridTable, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentEventSchedule} from '../../features/events/useCurrentEventSchedule';
 import type {ProjectGridRow} from '../../features/projects/api';
+import {addMinutes} from '../../shared/utils/time';
 
 const SECTION_ORDER = ['CAP', 'CEE', 'ENGSL', 'CSE'] as const;
 const GRAND_AWARD_LABELS: Record<string, string> = {
@@ -48,21 +49,6 @@ const SECTION_THEMES: Record<
   },
 };
 
-function addMinutes(time: string, minutes: number): string {
-  let [hours, mins] = time.split(':').map(Number);
-  mins += minutes;
-
-  while (mins >= 60) {
-    hours += 1;
-    mins -= 60;
-  }
-
-  if (hours > 12) {
-    hours -= 12;
-  }
-
-  return `${hours}:${mins < 10 ? `0${mins}` : mins}`;
-}
 
 function toGridRow(row: {
   year_semester: string;
@@ -131,14 +117,8 @@ export const SchedulePage = () => {
     };
 
     handleChange(mediaQuery);
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const orderedSections = useMemo(() => {

@@ -150,6 +150,9 @@ class EmbedBlockView(APIView):
     """Public endpoint returning all blocks for a named embed widget.
 
     Sets permissive CORS + removes X-Frame-Options so third parties can iframe-render.
+    NOTE: the wildcard `Access-Control-Allow-Origin` is intentional — widgets are
+    designed for arbitrary third-party embedding. To tighten this, add an
+    `allowed_origins` field to CMSEmbedWidget and echo only matching origins.
     """
 
     permission_classes = [AllowAny]

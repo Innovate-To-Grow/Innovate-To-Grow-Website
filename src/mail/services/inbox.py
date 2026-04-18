@@ -208,9 +208,17 @@ def render_reply_html(body_text, original_from="", original_date="", quoted_text
     from django.template.loader import render_to_string
     from django.utils.html import escape
 
-    # Convert plain text reply to HTML
+    # Convert plain text reply to HTML. Both the href attribute value and the
+    # anchor text are re-escaped to ensure URLs containing quotes or other HTML
+    # metacharacters cannot break out of the attribute context.
     escaped = escape(body_text)
-    escaped = re.sub(r"(https?://[^\s<>&]+)", r'<a href="\1" style="color:#0f2d52;">\1</a>', escaped)
+
+    def _linkify(match):
+        url = match.group(1)
+        safe = escape(url)
+        return f'<a href="{safe}" style="color:#0f2d52;">{safe}</a>'
+
+    escaped = re.sub(r"(https?://[^\s<>&]+)", _linkify, escaped)
     body_html = escaped.replace("\n", "<br>\n")
 
     logo_url = f"{settings.STATIC_URL}images/i2glogo.png"

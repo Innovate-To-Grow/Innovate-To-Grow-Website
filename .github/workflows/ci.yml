@@ -15,7 +15,26 @@ on:
       - 'aws/**'
       - '.github/workflows/**'
 
+permissions:
+  contents: read
+
 jobs:
+  # ============================================
+  # Stage 0: Secrets scan (fast, runs first)
+  # ============================================
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ============================================
   # Stage 1: Code Style Check
   # ============================================
@@ -82,6 +101,11 @@ jobs:
       - name: Check Django configuration
         run: python manage.py check
 
+      - name: Audit Python dependencies (non-blocking warning)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --ignore-vuln GHSA-None-Placeholder || echo "::warning::pip-audit found vulnerabilities (see output above)"
+
   # Backend Docker Build Validation
   backend-docker-build:
     name: Backend Docker Build Test
@@ -92,8 +116,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: src/Dockerfile
+          failure-threshold: error
+
       - name: Build backend Docker image
         run: docker build -t itg-backend-ci:${{ github.sha }} src/
+
+      - name: Scan image for OS/library CVEs (trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: itg-backend-ci:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '0'  # warn-only until baseline is clean
+          ignore-unfixed: true
 
       - name: Export backend Docker image
         run: docker save itg-backend-ci:${{ github.sha }} -o /tmp/itg-backend-ci.tar
@@ -229,6 +268,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit npm dependencies (warn-only)
+        run: npm audit --audit-level=high || echo "::warning::npm audit found high-severity issues"
 
       - name: Build frontend
         run: npm run build

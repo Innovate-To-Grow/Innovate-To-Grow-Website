@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -22,9 +23,22 @@ class PageViewCreateView(APIView):
 
     @staticmethod
     def _get_client_ip(request):
+        """Return the originating client IP, honouring NUM_PROXIES trusted hops.
+
+        X-Forwarded-For is a comma-separated list appended-to by each proxy.
+        With ``NUM_PROXIES = N``, the rightmost N entries are trusted proxy
+        hops; the Nth-from-right entry is the actual client. If NUM_PROXIES
+        is not configured (dev / tests), fall back to the leftmost entry.
+        """
         forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+            if parts:
+                num_proxies = getattr(settings, "NUM_PROXIES", None)
+                if num_proxies:
+                    index = max(0, len(parts) - num_proxies)
+                    return parts[index]
+                return parts[0]
         return request.META.get("REMOTE_ADDR")
 
     def post(self, request, *args, **kwargs):

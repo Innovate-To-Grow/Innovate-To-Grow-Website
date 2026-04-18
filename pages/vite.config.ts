@@ -21,6 +21,9 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/react-router')) {
               return 'router';
             }
+            if (id.includes('node_modules/dompurify')) {
+              return 'dompurify';
+            }
           },
         },
       },

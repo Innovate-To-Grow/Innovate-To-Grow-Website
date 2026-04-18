@@ -54,8 +54,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent MIME-type sniffing
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_SSL_REDIRECT = False  # Handled by reverse proxy
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = True  # Defense-in-depth; ALB already redirects, but enforce at the app layer too.
 NUM_PROXIES = 1  # ALB is the single trusted proxy; fixes X-Forwarded-For rate-limit bypass
 
 # Cookie security

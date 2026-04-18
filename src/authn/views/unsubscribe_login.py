@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authn.services.unsubscribe_token import get_member_from_unsubscribe_token
+from authn.throttles import LoginRateThrottle
 from authn.views.helpers import build_auth_success_payload
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class UnsubscribeAutoLoginView(APIView):
     """Exchange a signed unsubscribe-email token for JWT credentials."""
 
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

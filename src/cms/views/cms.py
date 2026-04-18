@@ -61,9 +61,21 @@ class CMSLivePreviewView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, page_id):
+        import json
+
         data = request.data
         if not isinstance(data, dict):
             return Response({"detail": "Invalid JSON."}, status=400)
+
+        # Reject oversize payloads before they hit the cache / GET reflection.
+        # 512 KB is ~10x a typical page payload and small enough that the GET
+        # reflection cannot be used to blow up downstream consumers.
+        try:
+            serialized_size = len(json.dumps(data, default=str))
+        except (TypeError, ValueError):
+            return Response({"detail": "Payload is not serializable."}, status=400)
+        if serialized_size > 512_000:
+            return Response({"detail": "Preview payload too large."}, status=413)
 
         data.pop("expires_at", None)
         data["expires_at"] = (timezone.now() + timedelta(seconds=_LIVE_PREVIEW_TTL)).isoformat()

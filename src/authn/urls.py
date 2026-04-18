@@ -29,6 +29,7 @@ from .views import (
     LoginCodeRequestView,
     LoginCodeVerifyView,
     LoginView,
+    LogoutView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     PasswordResetVerifyView,
@@ -58,6 +59,8 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("login/request-code/", LoginCodeRequestView.as_view(), name="login-request-code"),
     path("login/verify-code/", LoginCodeVerifyView.as_view(), name="login-verify-code"),
+    # Logout (blacklists refresh token)
+    path("logout/", LogoutView.as_view(), name="logout"),
     # Token refresh
     path("refresh/", PublicTokenRefreshView.as_view(), name="token-refresh"),
     # Password reset

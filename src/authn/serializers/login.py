@@ -48,7 +48,7 @@ class LoginSerializer(serializers.Serializer):
         member = resolved.member
 
         if not member.is_active:
-            raise serializers.ValidationError({"email": "Account is not activated. Please verify your email first."})
+            raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
 
         user = authenticate(username=email, password=password)
         if user is None:

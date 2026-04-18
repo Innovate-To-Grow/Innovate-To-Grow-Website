@@ -123,7 +123,7 @@ export const MobileMenuPanel = ({
         >
           Apply Now
         </a>
-        <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener noreferrer" className="header-mobile-action">
+        <a href="https://giving.ucmerced.edu/" target="_blank" rel="noopener noreferrer" className="header-mobile-action">
           Give
         </a>
       </div>

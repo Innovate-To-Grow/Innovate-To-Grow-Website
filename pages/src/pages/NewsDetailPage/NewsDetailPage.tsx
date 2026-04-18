@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchNewsDetail, type NewsArticle } from '../../features/news/api';
 import {SafeHtml} from '../../components/SafeHtml/SafeHtml';
+import { safeHref } from '../../shared/utils/safeHref';
 
 export const NewsDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -83,7 +84,7 @@ export const NewsDetailPage = () => {
         article.summary && <p className="news-detail-content">{article.summary}</p>
       )}
       <a
-        href={article.source_url}
+        href={safeHref(article.source_url)}
         target="_blank"
         rel="noopener noreferrer"
         className="news-detail-source"

@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count
 from django.http import Http404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -50,9 +51,13 @@ class CheckInAdmin(BaseModelAdmin):
             return "Active", "success"
         return "Closed", "info"
 
-    @admin.display(description="Scans")
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(_scan_count=Count("records"))
+
+    @admin.display(description="Scans", ordering="_scan_count")
     def scan_count_display(self, obj):
-        return obj.scan_count
+        return getattr(obj, "_scan_count", obj.scan_count)
 
     @admin.display(description="Scanner")
     def scanner_link(self, obj):

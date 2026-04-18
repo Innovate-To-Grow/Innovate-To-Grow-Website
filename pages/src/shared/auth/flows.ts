@@ -16,6 +16,19 @@ import type {
   VerificationTokenResponse,
 } from './types';
 
+const isEncryptionFailure = (error: unknown): boolean => {
+  if (!error) return false;
+  if (axios.isAxiosError(error)) {
+    const payload = error.response?.data;
+    const flat = typeof payload === 'string' ? payload : JSON.stringify(payload ?? '');
+    return /decrypt|key_id|public[-_]key/i.test(flat);
+  }
+  // Web Crypto throws a DOMException with no specific message on decryption
+  // failure. Conservatively clear the cache on any non-axios encryption error
+  // so the next attempt re-fetches a fresh key.
+  return error instanceof Error;
+};
+
 export const register = async (
   email: string,
   password: string,
@@ -41,7 +54,7 @@ export const register = async (
     clearProfileCompletionRequired();
     return response.data;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('decrypt')) {
+    if (isEncryptionFailure(error)) {
       clearKeyCache();
     }
     throw error;
@@ -61,7 +74,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
     clearProfileCompletionRequired();
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.password?.includes('decrypt')) {
+    if (isEncryptionFailure(error)) {
       clearKeyCache();
     }
     throw error;

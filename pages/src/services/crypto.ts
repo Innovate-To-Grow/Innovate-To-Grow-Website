@@ -2,9 +2,7 @@
  * RSA encryption utilities for secure password transmission.
  */
 
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+import { api } from '../shared/api/client';
 
 // ======================== Types ========================
 
@@ -24,27 +22,35 @@ interface CachedKey {
 // Cache key for 5 minutes to reduce API calls
 const KEY_CACHE_DURATION = 5 * 60 * 1000;
 let cachedKey: CachedKey | null = null;
+let inFlight: Promise<{ publicKey: string; keyId: string }> | null = null;
 
 /**
  * Fetch the current public key from the server.
  */
 export const fetchPublicKey = async (): Promise<{ publicKey: string; keyId: string }> => {
-  // Check if we have a valid cached key
+  // Serve from cache if still fresh.
   if (cachedKey && Date.now() - cachedKey.fetchedAt < KEY_CACHE_DURATION) {
     return { publicKey: cachedKey.publicKey, keyId: cachedKey.keyId };
   }
 
-  // Fetch new key from server
-  const response = await axios.get<PublicKeyResponse>(`${API_BASE_URL}/authn/public-key/`);
+  // Dedup concurrent callers (e.g., two login form submits racing each other).
+  if (inFlight) return inFlight;
 
-  // Cache the key
-  cachedKey = {
-    publicKey: response.data.public_key,
-    keyId: response.data.key_id,
-    fetchedAt: Date.now(),
-  };
+  inFlight = (async () => {
+    try {
+      const response = await api.get<PublicKeyResponse>('/authn/public-key/');
+      cachedKey = {
+        publicKey: response.data.public_key,
+        keyId: response.data.key_id,
+        fetchedAt: Date.now(),
+      };
+      return { publicKey: cachedKey.publicKey, keyId: cachedKey.keyId };
+    } finally {
+      inFlight = null;
+    }
+  })();
 
-  return { publicKey: cachedKey.publicKey, keyId: cachedKey.keyId };
+  return inFlight;
 };
 
 /**

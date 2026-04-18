@@ -1,5 +1,11 @@
 import authApi from './client';
-import { clearProfileCompletionRequired, clearTokens, getAccessToken, setTokens } from './storage';
+import {
+  clearProfileCompletionRequired,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from './storage';
 import type { LoginResponse } from './types';
 
 export const ticketAutoLogin = async (token: string): Promise<LoginResponse> => {
@@ -34,8 +40,18 @@ export const impersonateAutoLogin = async (token: string): Promise<LoginResponse
   return response.data;
 };
 
-export const logout = (): void => {
+export const logout = async (): Promise<void> => {
+  const refresh = getRefreshToken();
+  if (refresh) {
+    try {
+      await authApi.post('/authn/logout/', { refresh });
+    } catch {
+      // Best-effort blacklist — continue clearing local storage even if the
+      // server call fails (e.g., offline, token already blacklisted).
+    }
+  }
   clearTokens();
+  window.dispatchEvent(new Event('i2g-auth-state-change'));
 };
 
 export const isAuthenticated = (): boolean => {

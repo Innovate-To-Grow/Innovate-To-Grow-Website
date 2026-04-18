@@ -35,7 +35,12 @@ class MagicLoginToken(models.Model):
 
     @property
     def is_valid(self):
-        return not self.is_expired
+        return not self.is_expired and not self.is_used
+
+    def mark_used(self):
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=["is_used", "used_at"])
 
     @staticmethod
     def generate_token():
