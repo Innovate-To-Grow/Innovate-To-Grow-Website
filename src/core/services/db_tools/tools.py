@@ -257,34 +257,171 @@ def _search_semesters(params):
     return _serialize_rows(qs, ["id", "year", "season", "label", "is_published"])
 
 
-def _run_custom_query(params):
-    """Flexible query tool with an allowlist of models."""
-    MODEL_MAP = {
-        "Member": ("authn.models", "Member"),
-        "ContactEmail": ("authn.models", "ContactEmail"),
-        "ContactPhone": ("authn.models", "ContactPhone"),
-        "Event": ("event.models", "Event"),
-        "EventRegistration": ("event.models", "EventRegistration"),
-        "Ticket": ("event.models", "Ticket"),
-        "CheckIn": ("event.models", "CheckIn"),
-        "CheckInRecord": ("event.models", "CheckInRecord"),
-        "Project": ("projects.models", "Project"),
-        "Semester": ("projects.models", "Semester"),
-        "EmailCampaign": ("mail.models", "EmailCampaign"),
-        "RecipientLog": ("mail.models", "RecipientLog"),
-        "CMSPage": ("cms.models", "CMSPage"),
-        "CMSBlock": ("cms.models", "CMSBlock"),
-        "NewsArticle": ("cms.models", "NewsArticle"),
-        "NewsFeedSource": ("cms.models", "NewsFeedSource"),
-        "PageView": ("cms.models", "PageView"),
-        "Menu": ("cms.models", "Menu"),
+_MODEL_MAP = {
+    "Member": ("authn.models", "Member"),
+    "ContactEmail": ("authn.models", "ContactEmail"),
+    "ContactPhone": ("authn.models", "ContactPhone"),
+    "Event": ("event.models", "Event"),
+    "EventRegistration": ("event.models", "EventRegistration"),
+    "Ticket": ("event.models", "Ticket"),
+    "CheckIn": ("event.models", "CheckIn"),
+    "CheckInRecord": ("event.models", "CheckInRecord"),
+    "Project": ("projects.models", "Project"),
+    "Semester": ("projects.models", "Semester"),
+    "EmailCampaign": ("mail.models", "EmailCampaign"),
+    "RecipientLog": ("mail.models", "RecipientLog"),
+    "CMSPage": ("cms.models", "CMSPage"),
+    "CMSBlock": ("cms.models", "CMSBlock"),
+    "NewsArticle": ("cms.models", "NewsArticle"),
+    "NewsFeedSource": ("cms.models", "NewsFeedSource"),
+    "PageView": ("cms.models", "PageView"),
+    "Menu": ("cms.models", "Menu"),
+}
+
+# Allowlist of fields per model for the flexible _run_custom_query tool.
+# Only whitelisted base fields are accepted in `filters` and `ordering`.
+# Relation traversal (e.g., `member__password__icontains`) is rejected to prevent
+# the Bedrock LLM from exfiltrating sensitive fields via the ORM.
+_ALLOWED_QUERY_FIELDS = {
+    "Member": {
+        "id",
+        "first_name",
+        "last_name",
+        "organization",
+        "title",
+        "is_staff",
+        "is_active",
+        "created_at",
+        "updated_at",
+    },
+    "ContactEmail": {"id", "email_address", "email_type", "verified", "subscribe", "created_at", "updated_at"},
+    "ContactPhone": {"id", "phone_number", "phone_type", "verified", "created_at", "updated_at"},
+    "Event": {"id", "name", "slug", "date", "location", "is_live", "created_at", "updated_at"},
+    "EventRegistration": {
+        "id",
+        "attendee_first_name",
+        "attendee_last_name",
+        "attendee_email",
+        "attendee_organization",
+        "attendee_title",
+        "created_at",
+        "updated_at",
+    },
+    "Ticket": {"id", "name", "price", "capacity", "created_at", "updated_at"},
+    "CheckIn": {"id", "name", "created_at", "updated_at"},
+    "CheckInRecord": {"id", "timestamp", "created_at", "updated_at"},
+    "Project": {
+        "id",
+        "project_title",
+        "team_name",
+        "team_number",
+        "class_code",
+        "organization",
+        "industry",
+        "student_names",
+        "created_at",
+        "updated_at",
+    },
+    "Semester": {"id", "year", "season", "label", "is_published", "created_at", "updated_at"},
+    "EmailCampaign": {
+        "id",
+        "name",
+        "subject",
+        "status",
+        "audience_type",
+        "total_recipients",
+        "sent_count",
+        "failed_count",
+        "sent_at",
+        "created_at",
+        "updated_at",
+    },
+    "RecipientLog": {"id", "status", "error_message", "created_at", "updated_at"},
+    "CMSPage": {
+        "id",
+        "title",
+        "slug",
+        "route",
+        "status",
+        "meta_description",
+        "published_at",
+        "created_at",
+        "updated_at",
+    },
+    "CMSBlock": {"id", "block_type", "sort_order", "created_at", "updated_at"},
+    "NewsArticle": {
+        "id",
+        "title",
+        "source",
+        "author",
+        "source_url",
+        "published_at",
+        "summary",
+        "created_at",
+        "updated_at",
+    },
+    "NewsFeedSource": {"id", "name", "feed_url", "is_active", "created_at", "updated_at"},
+    "PageView": {"id", "path", "timestamp", "ip_address", "created_at"},
+    "Menu": {"id", "name", "display_name", "is_active", "created_at", "updated_at"},
+}
+
+# Django field lookups we accept as the second segment of `field__lookup` keys.
+_SAFE_LOOKUPS = frozenset(
+    {
+        "exact",
+        "iexact",
+        "contains",
+        "icontains",
+        "in",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "startswith",
+        "istartswith",
+        "endswith",
+        "iendswith",
+        "range",
+        "date",
+        "year",
+        "month",
+        "day",
+        "week_day",
+        "hour",
+        "minute",
+        "second",
+        "isnull",
+        "regex",
+        "iregex",
     }
+)
 
+
+def _is_allowed_query_key(model_name, key):
+    """Accept only `<field>` or `<field>__<lookup>` where field is in the allowlist.
+
+    Reject any key with more than one `__` or with a trailing segment that is not
+    a known Django lookup (prevents relation traversal such as `member__password`).
+    """
+    bare = key.lstrip("-")
+    parts = bare.split("__")
+    if len(parts) > 2:
+        return False
+    allowed = _ALLOWED_QUERY_FIELDS.get(model_name, set())
+    if parts[0] not in allowed:
+        return False
+    if len(parts) == 2 and parts[1] not in _SAFE_LOOKUPS:
+        return False
+    return True
+
+
+def _run_custom_query(params):
+    """Flexible query tool with an allowlist of models and fields."""
     model_name = params.get("model", "")
-    if model_name not in MODEL_MAP:
-        return f"Unknown model '{model_name}'. Available: {', '.join(sorted(MODEL_MAP))}"
+    if model_name not in _MODEL_MAP:
+        return f"Unknown model '{model_name}'. Available: {', '.join(sorted(_MODEL_MAP))}"
 
-    module_path, cls_name = MODEL_MAP[model_name]
+    module_path, cls_name = _MODEL_MAP[model_name]
     mod = importlib.import_module(module_path)
     model_cls = getattr(mod, cls_name)
 
@@ -292,6 +429,9 @@ def _run_custom_query(params):
 
     filters = params.get("filters", {})
     if isinstance(filters, dict) and filters:
+        for key in filters:
+            if not _is_allowed_query_key(model_name, key):
+                return f"Filter error: field '{key}' is not allowed for {model_name}."
         try:
             qs = qs.filter(**filters)
         except Exception as exc:
@@ -301,6 +441,9 @@ def _run_custom_query(params):
     if ordering:
         if isinstance(ordering, str):
             ordering = [ordering]
+        for key in ordering:
+            if not _is_allowed_query_key(model_name, key):
+                return f"Ordering error: field '{key}' is not allowed for {model_name}."
         try:
             qs = qs.order_by(*ordering)
         except Exception as exc:
