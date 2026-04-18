@@ -33,8 +33,18 @@ def validate_asset_file_type(file):
     if header[:4] == b"RIFF" and len(header) >= 12 and header[8:12] == b"WEBP":
         return
 
-    # SVG files start with XML declaration or <svg tag
+    # SVG files start with XML declaration or <svg tag. An SVG can embed
+    # <script> elements that execute when the file is served as image/svg+xml
+    # from our own origin, so block uploads containing script content.
     if header.lstrip().startswith((b"<?xml", b"<svg")):
+        file.seek(0)
+        try:
+            full_content = file.read()
+        finally:
+            file.seek(0)
+        lowered = full_content.lower()
+        if b"<script" in lowered or b"javascript:" in lowered or b" on" in lowered:
+            raise ValidationError("SVG contains scripts or inline event handlers and was rejected as unsafe.")
         return
 
     raise ValidationError("File type not allowed. Upload an image (PNG, JPEG, GIF, WebP, SVG) or PDF.")
