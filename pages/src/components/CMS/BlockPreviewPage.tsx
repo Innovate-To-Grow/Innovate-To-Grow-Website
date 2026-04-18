@@ -14,6 +14,7 @@ export const BlockPreviewPage = () => {
   const [pageCssClass, setPageCssClass] = useState('');
 
   const handleMessage = useCallback((event: MessageEvent) => {
+    if (event.origin !== window.location.origin) return;
     const msg = event.data;
     if (!msg || msg.type !== 'cms-block-preview') return;
     if (msg.block) {

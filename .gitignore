@@ -192,6 +192,10 @@ pages/dist/
 # Cursor Plans
 .cursor/plans/
 
+# Claude Code local settings (may contain secrets / credentials)
+.claude/settings.local.json
+.claude/settings.local.*
+
 # Abstra
 .abstra/
 

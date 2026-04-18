@@ -72,6 +72,7 @@ describe('BlockPreviewPage', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
             block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'Hello'}},
@@ -88,6 +89,7 @@ describe('BlockPreviewPage', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
             block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'x'}},
@@ -104,6 +106,7 @@ describe('BlockPreviewPage', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
             block: {block_type: 'rich_text', sort_order: 0, data: {}},
@@ -119,6 +122,7 @@ describe('BlockPreviewPage', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {type: 'unrelated-message', block: {block_type: 'rich_text', sort_order: 0, data: {}}},
         }),
       );
@@ -129,7 +133,9 @@ describe('BlockPreviewPage', () => {
   it('ignores messages with no payload (e.g. primitive string)', () => {
     render(<BlockPreviewPage />);
     act(() => {
-      window.dispatchEvent(new MessageEvent('message', {data: 'plain-string'}));
+      window.dispatchEvent(
+        new MessageEvent('message', {origin: window.location.origin, data: 'plain-string'}),
+      );
     });
     expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
   });
@@ -139,6 +145,7 @@ describe('BlockPreviewPage', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
             block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'First'}},
@@ -151,6 +158,7 @@ describe('BlockPreviewPage', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
             block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'Second'}},
@@ -168,11 +176,29 @@ describe('BlockPreviewPage', () => {
     expect(removeSpy).toHaveBeenCalledWith('message', expect.any(Function));
   });
 
+  it('ignores messages from a foreign origin', () => {
+    render(<BlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://evil.example.com',
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'attacker'}},
+          },
+        }),
+      );
+    });
+    expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('blk-rich_text')).not.toBeInTheDocument();
+  });
+
   it('handles block payload with missing sort_order by defaulting to 0', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
             // sort_order intentionally omitted
