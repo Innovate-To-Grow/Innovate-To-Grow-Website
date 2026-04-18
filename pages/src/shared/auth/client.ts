@@ -12,6 +12,7 @@ const authApi = axios.create({
 });
 
 let refreshInFlight: Promise<string | null> | null = null;
+const retriedRequests = new WeakSet<object>();
 
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken();
@@ -62,8 +63,8 @@ authApi.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    if (error.response?.status === 401 && originalRequest && !retriedRequests.has(originalRequest)) {
+      retriedRequests.add(originalRequest);
 
       const access = await refreshAccessToken();
       if (access) {

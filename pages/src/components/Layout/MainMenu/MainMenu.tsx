@@ -85,7 +85,7 @@ export const MainMenu = () => {
             <a href="https://admissions.ucmerced.edu/first-year/apply?button" target="_blank" rel="noopener noreferrer">
               Apply
             </a>
-            <a href="http://giving.ucmerced.edu/" target="_blank" rel="noopener noreferrer">
+            <a href="https://giving.ucmerced.edu/" target="_blank" rel="noopener noreferrer">
               Give
             </a>
           </div>

@@ -1,5 +1,6 @@
 import {useMemo} from 'react';
 import type {SheetRow, TrackInfo} from '../SheetsDataTable';
+import {addMinutes} from '../../shared/utils/time';
 
 export interface ClassConfig {
   /** Class code, e.g. "CAP", "CEE", "CSE" */
@@ -27,17 +28,6 @@ interface ScheduleGridProps {
   loading?: boolean;
   error?: string | null;
   onTeamClick?: (teamNum: string) => void;
-}
-
-function addMinutes(time: string, minutes: number): string {
-  let [h, m] = time.split(':').map(Number);
-  m += minutes;
-  while (m >= 60) {
-    h += 1;
-    m -= 60;
-  }
-  if (h > 12) h -= 12;
-  return `${h}:${m < 10 ? '0' + m : m}`;
 }
 
 export const ScheduleGrid = ({

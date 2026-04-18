@@ -1,3 +1,4 @@
+import { safeHref } from '../../../../shared/utils/safeHref';
 
 export interface SponsorYearSponsor {
   name: string;
@@ -65,7 +66,7 @@ export const SponsorYearBlock: React.FC<{ data: SponsorYearBlockData }> = ({ dat
             return (
               <a
                 key={`${year}-${sponsor.name}`}
-                href={sponsor.website}
+                href={safeHref(sponsor.website)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="cms-sponsor-card"
