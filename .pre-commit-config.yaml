@@ -1,0 +1,18 @@
+# Local developer git hooks — run the same lint and secrets scan the CI runs,
+# so problems are caught at commit time instead of after push.
+#
+# Setup: pip install pre-commit && pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^src/
+      - id: ruff-format
+        files: ^src/
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.0
+    hooks:
+      - id: gitleaks

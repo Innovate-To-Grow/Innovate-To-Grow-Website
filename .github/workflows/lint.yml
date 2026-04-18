@@ -3,6 +3,9 @@ name: Code Style Check
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   # Python (Django Backend) Linting
   python-lint:

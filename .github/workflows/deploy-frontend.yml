@@ -7,6 +7,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Build & Deploy Frontend
@@ -14,6 +21,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: AWS Amplify - Prod
       url: https://i2g.ucmerced.edu
@@ -24,6 +32,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Validate required deploy configuration
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: |
+          if [ -z "$VITE_API_BASE_URL" ]; then
+            echo "::error::VITE_API_BASE_URL is required for the Amplify build."
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

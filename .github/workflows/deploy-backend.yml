@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-backend-${{ github.ref }}
   cancel-in-progress: true
@@ -113,6 +116,8 @@ jobs:
           SES_FROM_NAME: ${{ vars.SES_FROM_NAME || secrets.SES_FROM_NAME }}
           GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
           GOOGLE_SHEETS_API_KEY: ${{ vars.GOOGLE_SHEETS_API_KEY || secrets.GOOGLE_SHEETS_API_KEY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
           python - <<'PY'
           import json
@@ -178,6 +183,15 @@ jobs:
               "__GOOGLE_SHEETS_CREDENTIALS_JSON__": env_value("GOOGLE_SHEETS_CREDENTIALS_JSON"),
               "__GOOGLE_SHEETS_API_KEY__": env_value("GOOGLE_SHEETS_API_KEY"),
           }
+
+          # Substitute IAM role ARNs so the account ID is not baked into the
+          # checked-in task-definition template.
+          exec_role = env_value("ECS_EXECUTION_ROLE_ARN").strip()
+          task_role = env_value("ECS_TASK_ROLE_ARN").strip()
+          if exec_role:
+              taskdef["executionRoleArn"] = exec_role
+          if task_role:
+              taskdef["taskRoleArn"] = task_role
 
           container = taskdef["containerDefinitions"][0]
           container["image"] = os.environ["IMAGE_URI"]
