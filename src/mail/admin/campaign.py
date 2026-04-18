@@ -545,7 +545,14 @@ class EmailCampaignAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/mail/send_status.html", context)
 
     def send_campaign_status_json(self, request, object_id):
-        """JSON endpoint for polling send progress."""
+        """JSON endpoint for polling send progress. Short cache reduces per-poll DB load."""
+        from django.core.cache import cache
+
+        status_cache_key = f"mail:campaign_status:{object_id}"
+        cached = cache.get(status_cache_key)
+        if cached is not None:
+            return JsonResponse(cached)
+
         obj = EmailCampaign.objects.get(pk=object_id)
 
         recent_qs = RecipientLog.objects.filter(campaign=obj).exclude(status="pending").order_by("-updated_at")[:20]
@@ -572,18 +579,20 @@ class EmailCampaignAdmin(BaseModelAdmin):
             .first()
         )
 
-        return JsonResponse(
-            {
-                "status": obj.status,
-                "total": obj.total_recipients,
-                "sent": obj.sent_count,
-                "failed": obj.failed_count,
-                "error_message": obj.error_message,
-                "started_at": first_sent_at.isoformat() if first_sent_at else None,
-                "recent_logs": recent_logs,
-                "failed_logs": failed_logs,
-            }
-        )
+        payload = {
+            "status": obj.status,
+            "total": obj.total_recipients,
+            "sent": obj.sent_count,
+            "failed": obj.failed_count,
+            "error_message": obj.error_message,
+            "started_at": first_sent_at.isoformat() if first_sent_at else None,
+            "recent_logs": recent_logs,
+            "failed_logs": failed_logs,
+        }
+        # Cache for 2s: tight enough to keep the UI feeling live, wide enough to
+        # absorb burst polling during a send.
+        cache.set(status_cache_key, payload, 2)
+        return JsonResponse(payload)
 
     def inline_preview_view(self, request):
         """Render email preview from POST data (subject + body). Opens in a new tab."""

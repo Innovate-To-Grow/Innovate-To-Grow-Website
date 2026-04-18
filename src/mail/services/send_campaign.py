@@ -136,7 +136,10 @@ def send_campaign(campaign, sent_by):
             )
             campaign.failed_count += 1
 
-        campaign.save(update_fields=["sent_count", "failed_count"])
+        # Save progress every 10 recipients so the admin poller can observe
+        # live updates without the per-iteration write amplification.
+        if (campaign.sent_count + campaign.failed_count) % 10 == 0:
+            campaign.save(update_fields=["sent_count", "failed_count"])
 
     campaign.status = "sent" if campaign.failed_count < campaign.total_recipients else "failed"
     campaign.sent_at = timezone.now()
