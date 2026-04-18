@@ -4,8 +4,8 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::394167325273:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::394167325273:role/ecsTaskRole",
+  "executionRoleArn": "__ECS_EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__ECS_TASK_ROLE_ARN__",
   "containerDefinitions": [
     {
       "name": "itg-backend",
