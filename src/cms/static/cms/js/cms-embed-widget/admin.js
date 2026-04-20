@@ -156,6 +156,7 @@
         }
         fetchBlocks(newId);
         prefillFromPage(newId);
+        fetchPageRouteAndShowPreview(newId);
     }
 
     function bindPageChange() {
@@ -180,10 +181,15 @@
 
     let currentPreviewUrl = '';
     let previewDebounce = null;
+    let currentPageRoute = '';
 
     function previewSection() { return document.getElementById('cms-widget-preview-section'); }
     function previewIframe() { return document.getElementById('cms-widget-preview-iframe'); }
     function previewContainer() { return document.getElementById('cms-widget-preview-container'); }
+
+    function pagePreviewSection() { return document.getElementById('cms-widget-page-preview-section'); }
+    function pagePreviewIframe() { return document.getElementById('cms-widget-page-preview-iframe'); }
+    function pagePreviewContainer() { return document.getElementById('cms-widget-page-preview-container'); }
 
     function hidePreview() {
         const sec = previewSection();
@@ -214,6 +220,59 @@
         setTimeout(function () { iframe.src = currentPreviewUrl; }, 50);
     }
 
+    function showPagePreview(route) {
+        var frontend = config.frontendUrl || '';
+        if (!frontend || !route) {
+            hidePagePreview();
+            return;
+        }
+        currentPageRoute = route;
+        var pageUrl = frontend + route;
+        var sec = pagePreviewSection();
+        var iframe = pagePreviewIframe();
+        var routeLabel = document.getElementById('cms-widget-page-route-label');
+        var openLink = document.getElementById('cms-widget-page-open-link');
+        if (!sec || !iframe) return;
+
+        sec.style.display = '';
+        if (routeLabel) routeLabel.textContent = route;
+        if (openLink) openLink.href = pageUrl;
+        iframe.src = pageUrl;
+    }
+
+    function hidePagePreview() {
+        var sec = pagePreviewSection();
+        if (sec) sec.style.display = 'none';
+        currentPageRoute = '';
+    }
+
+    function refreshPagePreview() {
+        var iframe = pagePreviewIframe();
+        var frontend = config.frontendUrl || '';
+        if (!iframe || !currentPageRoute || !frontend) return;
+        var pageUrl = frontend + currentPageRoute;
+        iframe.src = '';
+        setTimeout(function () { iframe.src = pageUrl; }, 50);
+    }
+
+    function fetchPageRouteAndShowPreview(pageId) {
+        if (!pageId || !config.pageInfoUrl) {
+            hidePagePreview();
+            return;
+        }
+        var url = config.pageInfoUrl + '?page_id=' + encodeURIComponent(pageId);
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : {}; })
+            .then(function (data) {
+                if (data.route) {
+                    showPagePreview(data.route);
+                } else {
+                    hidePagePreview();
+                }
+            })
+            .catch(function () { hidePagePreview(); });
+    }
+
     function bindPreview() {
         var refreshBtn = document.getElementById('cms-widget-refresh-btn');
         if (refreshBtn) {
@@ -225,6 +284,19 @@
             widthSelect.addEventListener('change', function () {
                 var container = previewContainer();
                 if (container) container.style.maxWidth = widthSelect.value;
+            });
+        }
+
+        var pageRefreshBtn = document.getElementById('cms-widget-page-refresh-btn');
+        if (pageRefreshBtn) {
+            pageRefreshBtn.addEventListener('click', refreshPagePreview);
+        }
+
+        var pageWidthSelect = document.getElementById('cms-widget-page-preview-width');
+        if (pageWidthSelect) {
+            pageWidthSelect.addEventListener('change', function () {
+                var container = pagePreviewContainer();
+                if (container) container.style.maxWidth = pageWidthSelect.value;
             });
         }
 
@@ -266,7 +338,9 @@
         bindCopy();
         bindPreview();
         const p = pageField();
-        fetchBlocks(p ? p.value : config.initialPageId);
+        const initialId = p ? p.value : config.initialPageId;
+        fetchBlocks(initialId);
+        fetchPageRouteAndShowPreview(initialId);
         renderSnippet();
     }
 

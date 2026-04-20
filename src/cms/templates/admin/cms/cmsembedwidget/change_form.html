@@ -3,7 +3,7 @@
 
 {% block extrastyle %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'cms/css/cms-embed-widget.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-embed-widget.css' %}?v=3">
 {% endblock %}
 
 {% block after_field_sets %}
@@ -17,6 +17,28 @@
         </p>
         <div id="cms-widget-block-picker" class="cms-widget-blocks-list">
             <p class="cms-widget-empty">Select a page to load its blocks.</p>
+        </div>
+    </div>
+
+    <div class="cms-widget-section" id="cms-widget-page-preview-section" style="display:none;">
+        <div class="cms-widget-preview-header">
+            <h3>Page Preview</h3>
+            <div class="cms-widget-preview-actions">
+                <span id="cms-widget-page-route-label" class="cms-widget-route-label"></span>
+                <button type="button" class="btn-widget-refresh" id="cms-widget-page-refresh-btn" title="Refresh page preview">&#x21bb; Refresh</button>
+                <select id="cms-widget-page-preview-width" class="cms-widget-preview-select">
+                    <option value="100%">Desktop</option>
+                    <option value="768px">Tablet</option>
+                    <option value="375px">Mobile</option>
+                </select>
+                <a id="cms-widget-page-open-link" href="#" target="_blank" rel="noopener" class="btn-widget-refresh" style="text-decoration:none;">Open &rarr;</a>
+            </div>
+        </div>
+        <div class="cms-widget-preview-container cms-widget-page-preview-container" id="cms-widget-page-preview-container">
+            <iframe id="cms-widget-page-preview-iframe"
+                    class="cms-widget-preview-iframe cms-widget-page-preview-iframe"
+                    sandbox="allow-scripts allow-same-origin allow-popups"
+                    loading="lazy"></iframe>
         </div>
     </div>
 
@@ -68,5 +90,5 @@
         };
     </script>
     <script src="{% static 'cms/js/cms-embed-widget/snippet.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=4"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=5"></script>
 {% endblock %}

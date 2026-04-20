@@ -18,17 +18,41 @@
       })();
     </script>
 
-    <!-- Hide body until the server-managed stylesheet loads — prevents FOUC.
-         The <link> below is render-blocking, but this belt-and-suspenders keeps
-         the page hidden even in edge cases (e.g. slow cold start). -->
+    <!-- Critical CSS: paints an init-loader spinner the moment HTML parses, so
+         first paint is never blank. The spinner uses #root:empty::before and
+         auto-disappears the instant React mounts content into #root. Kept in
+         sync with _INIT_LOADER_CSS in src/cms/views/views.py (server no longer
+         emits this block). -->
     <style>
       html { background: #fff; }
-      body { visibility: hidden; }
-      body.itg-styles-ready { visibility: visible; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; }
+
+      /* ---- init loader ---- */
+      @keyframes itg-init-loader-spin { to { transform: rotate(360deg); } }
+      @keyframes itg-init-loader-fade-in { from { opacity: 0; } to { opacity: 1; } }
+      #root:empty::before {
+        content: "";
+        display: block;
+        width: 44px;
+        height: 44px;
+        margin: 96px auto;
+        border: 3px solid rgba(15, 45, 82, 0.15);
+        border-top-color: var(--itg-color-primary, #0f2d52);
+        border-radius: 50%;
+        animation:
+          itg-init-loader-spin 0.9s linear infinite,
+          itg-init-loader-fade-in 0.25s ease-out;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #root:empty::before {
+          animation: itg-init-loader-fade-in 0.25s ease-out;
+          opacity: 0.7;
+        }
+      }
 
       /* Block preview iframe: strip all page chrome so only the block content renders. */
       html[data-block-preview] { background: transparent; }
-      html[data-block-preview] body { background: transparent; visibility: visible; }
+      html[data-block-preview] body { background: transparent; }
       html[data-block-preview] #root,
       html[data-block-preview] .main-content,
       html[data-block-preview] .mc-content { min-height: 0; display: block; }
@@ -37,22 +61,20 @@
       html[data-block-preview] #main-content,
       html[data-block-preview] #content,
       html[data-block-preview] #content-wrapper { padding: 0; margin: 0; max-width: none; width: auto; }
+      html[data-block-preview] #root:empty::before { display: none; }
     </style>
-    <!-- Template Styles -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <!-- Server-managed design tokens + stylesheets (render-blocking to prevent FOUC) -->
-    <link rel="stylesheet" href="/api/layout/styles.css"
-          onload="document.body.classList.add('itg-styles-ready')"
-          onerror="document.body.classList.add('itg-styles-ready')">
-    <script>
-      // Fallback: reveal body after 3s even if the <link> never fires onload/onerror
-      setTimeout(function () {
-        document.body && document.body.classList.add('itg-styles-ready');
-      }, 3000);
-    </script>
+    <!-- Open parallel connections to third-party CDNs early. -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <!-- Font Awesome: load asynchronously so icons don't block first paint. -->
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+          onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
-      <style>body { visibility: visible !important; }</style>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     </noscript>
+    <!-- Server-managed design tokens + stylesheets. Render-blocking so tokens
+         resolve before first paint of the styled page; the inline spinner above
+         already covers the pre-stylesheet paint window. -->
+    <link rel="stylesheet" href="/api/layout/styles.css">
   </head>
   <body class="html front not-logged-in no-sidebars page-node">
     <!-- NAVBAR -->

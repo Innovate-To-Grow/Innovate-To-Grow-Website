@@ -5,6 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from cms.models import FooterContent, Menu, SiteSettings, StyleSheet
+from cms.views.views import LAYOUT_CACHE_TIMEOUT, LAYOUT_STYLESHEET_CACHE_KEY
 
 
 class LayoutMenuFilteringTests(TestCase):
@@ -203,14 +204,67 @@ class LayoutStylesheetViewTests(TestCase):
         self.assertIn("/* updated */", body)
         self.assertNotIn("/* original */", body)
 
-    def test_init_loader_css_present(self):
-        # The initial-load spinner is shown via #root:empty::before and
-        # disappears automatically when React mounts content into #root.
+    def test_init_loader_css_not_in_backend_response(self):
+        # The initial-load spinner now lives inline in pages/index.html so it
+        # paints before this stylesheet arrives. Guard against the backend
+        # re-adding it (which would duplicate the rules and break the cache-key
+        # invariant documented on LAYOUT_STYLESHEET_CACHE_KEY).
         resp = self.client.get("/layout/styles.css")
         body = resp.content.decode()
-        self.assertIn("#root:empty::before", body)
-        self.assertIn("@keyframes itg-init-loader-spin", body)
-        # Hide the loader in iframe-isolated routes.
-        self.assertIn("html[data-block-preview] #root:empty::before", body)
-        # Reduced-motion fallback dampens the spinner.
-        self.assertIn("prefers-reduced-motion: reduce", body)
+        self.assertNotIn("#root:empty::before", body)
+        self.assertNotIn("itg-init-loader-spin", body)
+
+    def test_cache_control_header_enables_browser_caching(self):
+        # The stylesheet is render-blocking, so browser caching is how we keep
+        # the first-paint blank window short on repeat visits. Losing this
+        # header would silently double first-paint time.
+        resp = self.client.get("/layout/styles.css")
+        cache_control = resp["Cache-Control"]
+        self.assertIn("public", cache_control)
+        self.assertIn(f"max-age={LAYOUT_CACHE_TIMEOUT}", cache_control)
+
+    def test_cache_key_version_suffix_current(self):
+        # The :vN suffix on the cache key is how we retire stale cached blobs
+        # at deploy time when the assembled stylesheet shape changes. Pinning
+        # the expected version here forces a conscious decision if someone
+        # edits the assembly without bumping the key.
+        self.assertTrue(
+            LAYOUT_STYLESHEET_CACHE_KEY.endswith(":v3"),
+            f"expected cache key to end with :v3, got {LAYOUT_STYLESHEET_CACHE_KEY}",
+        )
+
+    def test_stylesheets_emitted_in_sort_order(self):
+        StyleSheet.objects.create(name="z", display_name="Z", css="/* LAST */", sort_order=99)
+        StyleSheet.objects.create(name="a", display_name="A", css="/* FIRST */", sort_order=1)
+        StyleSheet.objects.create(name="m", display_name="M", css="/* MIDDLE */", sort_order=50)
+
+        body = self.client.get("/layout/styles.css").content.decode()
+
+        self.assertLess(body.index("/* FIRST */"), body.index("/* MIDDLE */"))
+        self.assertLess(body.index("/* MIDDLE */"), body.index("/* LAST */"))
+
+    def test_empty_stylesheets_still_emits_design_tokens(self):
+        # With zero StyleSheet rows the response should still be valid CSS
+        # containing the design-token :root block — otherwise the inline
+        # spinner in index.html falls back to its hard-coded color instead of
+        # picking up the current theme.
+        StyleSheet.objects.all().delete()
+        SiteSettings.load()
+        cache.clear()
+
+        resp = self.client.get("/layout/styles.css")
+        body = resp.content.decode()
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(":root {", body)
+        self.assertIn("--itg-color-primary:", body)
+
+    def test_response_populates_cache_under_expected_key(self):
+        # Ties the view implementation to the public cache-key constant, so
+        # the signal at cms.signals can reliably invalidate the entry.
+        cache.delete(LAYOUT_STYLESHEET_CACHE_KEY)
+        self.assertIsNone(cache.get(LAYOUT_STYLESHEET_CACHE_KEY))
+
+        self.client.get("/layout/styles.css")
+
+        self.assertIsNotNone(cache.get(LAYOUT_STYLESHEET_CACHE_KEY))
