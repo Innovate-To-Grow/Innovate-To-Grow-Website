@@ -128,7 +128,7 @@ export const EmbedBlockPage = () => {
 
   return (
     <div ref={containerRef} className={data.page_css_class || 'cms-page'}>
-      <BlockRenderer blocks={[data.block]} />
+      <BlockRenderer blocks={data.blocks} />
     </div>
   );
 };

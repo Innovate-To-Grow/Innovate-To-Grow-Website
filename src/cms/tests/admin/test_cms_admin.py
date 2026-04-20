@@ -7,7 +7,8 @@ from django.urls import reverse
 
 from authn.models import ContactEmail
 from cms.admin.cms.cms_page import CMSPageAdminForm
-from cms.models import CMSPage
+from cms.admin.cms.page_admin.editor import build_editor_context
+from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 
 Member = get_user_model()
 
@@ -166,3 +167,63 @@ class CMSPageChangeFormRenderTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_change_form_does_not_render_embed_widget_section(self):
+        url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
+        response = self.client.get(url)
+        content = response.content.decode()
+        self.assertNotIn("Embed Widgets on this page", content)
+        self.assertNotIn("Manage in Embed Widgets", content)
+        changelist_url = reverse("admin:cms_cmsembedwidget_changelist")
+        self.assertNotIn(f"{changelist_url}?page__id__exact={self.page.pk}", content)
+
+    def test_change_form_does_not_list_attached_widgets(self):
+        CMSBlock.objects.create(
+            page=self.page,
+            block_type="rich_text",
+            sort_order=0,
+            data={"body_html": "<p>Hi</p>"},
+        )
+        widget = CMSEmbedWidget.objects.create(
+            page=self.page,
+            slug="attached-embed",
+            admin_label="Attached Embed",
+            block_sort_orders=[0],
+        )
+        url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
+        response = self.client.get(url)
+        content = response.content.decode()
+        self.assertNotIn(widget.slug, content)
+        self.assertNotIn(widget.admin_label, content)
+        self.assertNotIn(
+            reverse("admin:cms_cmsembedwidget_change", args=[widget.id]),
+            content,
+        )
+
+
+class BuildEditorContextTests(TestCase):
+    def test_context_for_existing_page_omits_related_widgets(self):
+        page = CMSPage.objects.create(
+            slug="ctx-existing",
+            route="/ctx-existing",
+            title="Ctx Existing",
+            status="draft",
+        )
+        CMSBlock.objects.create(
+            page=page,
+            block_type="rich_text",
+            sort_order=0,
+            data={"body_html": "<p>Hi</p>"},
+        )
+        CMSEmbedWidget.objects.create(
+            page=page,
+            slug="ctx-widget",
+            admin_label="Ctx Widget",
+            block_sort_orders=[0],
+        )
+        context = build_editor_context(page)
+        self.assertNotIn("related_widgets", context)
+
+    def test_context_for_new_page_omits_related_widgets(self):
+        context = build_editor_context()
+        self.assertNotIn("related_widgets", context)

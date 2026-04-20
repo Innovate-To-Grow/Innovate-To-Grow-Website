@@ -68,7 +68,7 @@ describe('EmbedBlockPage', () => {
 
   it('renders the fetched block', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'Embedded'}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {heading: 'Embedded'}}],
       page_css_class: '',
       page_css: '',
     });
@@ -81,7 +81,7 @@ describe('EmbedBlockPage', () => {
 
   it('applies page_css_class to the wrapper', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: 'special-wrapper',
       page_css: '',
     });
@@ -92,7 +92,7 @@ describe('EmbedBlockPage', () => {
 
   it('falls back to cms-page wrapper when page_css_class is empty', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '',
     });
@@ -103,7 +103,7 @@ describe('EmbedBlockPage', () => {
 
   it('injects page_css into <head> as a scoped style tag', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '.mine { color: red; }',
     });
@@ -118,7 +118,7 @@ describe('EmbedBlockPage', () => {
 
   it('injects <base target="_blank"> so links pop out of the iframe', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '',
     });
@@ -154,7 +154,7 @@ describe('EmbedBlockPage', () => {
     });
 
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '',
     });
@@ -178,7 +178,7 @@ describe('EmbedBlockPage', () => {
     const postMessageSpy = vi.spyOn(window, 'postMessage');
 
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '',
     });
@@ -200,7 +200,7 @@ describe('EmbedBlockPage', () => {
 
   it('removes its injected <style> and <base> tags on unmount', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
-      block: {block_type: 'rich_text', sort_order: 0, data: {}},
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '.x{}',
     });

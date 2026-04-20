@@ -34,6 +34,7 @@
             urlEl().textContent = '(invalid slug)';
             linkEl().style.display = 'none';
             snippetEl().value = '';
+            hidePreview();
             if (slug) {
                 hint.textContent = 'Slug must be kebab-case: lowercase, digits, hyphens.';
                 hint.style.display = '';
@@ -44,12 +45,14 @@
             urlEl().textContent = '(select at least one block)';
             linkEl().style.display = 'none';
             snippetEl().value = '';
+            hidePreview();
             return;
         }
         if (!frontend) {
             urlEl().textContent = '(FRONTEND_URL not configured)';
             linkEl().style.display = 'none';
             snippetEl().value = '';
+            hidePreview();
             hint.textContent = 'FRONTEND_URL is not configured — snippet preview unavailable.';
             hint.style.display = '';
             return;
@@ -61,6 +64,7 @@
         link.href = embedUrl;
         link.style.display = '';
         snippetEl().value = window.ITGEmbedSnippet.buildEmbedSnippet(embedUrl, slug);
+        showPreview(embedUrl);
     }
 
     function renderBlocks(blocks) {
@@ -113,22 +117,124 @@
             .catch(() => renderBlocks([]));
     }
 
+    function toKebab(str) {
+        return String(str).toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/[\s_]+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+    }
+
+    function prefillFromPage(pageId) {
+        if (!pageId || !config.pageInfoUrl) return;
+        var slug = slugField();
+        var label = document.getElementById('id_admin_label');
+        if ((slug && slug.value) || (label && label.value)) return;
+
+        var url = config.pageInfoUrl + '?page_id=' + encodeURIComponent(pageId);
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : {}; })
+            .then(function (data) {
+                if (!data.title) return;
+                if (slug && !slug.value) {
+                    var route = (data.route || '').replace(/^\/|\/$/g, '');
+                    var base = route ? toKebab(route) : toKebab(data.title);
+                    slug.value = base + '-widget';
+                    renderSnippet();
+                }
+                if (label && !label.value) {
+                    label.value = data.title;
+                }
+            })
+            .catch(function () {});
+    }
+
+    function onPageChange(newId) {
+        if (newId !== config.initialPageId) {
+            selected = new Set();
+            syncHidden();
+        }
+        fetchBlocks(newId);
+        prefillFromPage(newId);
+    }
+
     function bindPageChange() {
         const p = pageField();
         if (!p) return;
-        p.addEventListener('change', () => {
-            const newId = p.value;
-            if (newId !== config.initialPageId) {
-                selected = new Set();
-                syncHidden();
-            }
-            fetchBlocks(newId);
-        });
+
+        if (window.django && window.django.jQuery) {
+            window.django.jQuery(p).on('change', function () {
+                onPageChange(p.value);
+            });
+        } else {
+            p.addEventListener('change', function () {
+                onPageChange(p.value);
+            });
+        }
     }
 
     function bindSlug() {
         const s = slugField();
         if (s) s.addEventListener('input', renderSnippet);
+    }
+
+    let currentPreviewUrl = '';
+    let previewDebounce = null;
+
+    function previewSection() { return document.getElementById('cms-widget-preview-section'); }
+    function previewIframe() { return document.getElementById('cms-widget-preview-iframe'); }
+    function previewContainer() { return document.getElementById('cms-widget-preview-container'); }
+
+    function hidePreview() {
+        const sec = previewSection();
+        if (sec) sec.style.display = 'none';
+        currentPreviewUrl = '';
+    }
+
+    function showPreview(embedUrl) {
+        const sec = previewSection();
+        const iframe = previewIframe();
+        if (!sec || !iframe) return;
+
+        sec.style.display = '';
+
+        if (embedUrl === currentPreviewUrl) return;
+        currentPreviewUrl = embedUrl;
+
+        clearTimeout(previewDebounce);
+        previewDebounce = setTimeout(function () {
+            iframe.src = embedUrl;
+        }, 400);
+    }
+
+    function refreshPreview() {
+        const iframe = previewIframe();
+        if (!iframe || !currentPreviewUrl) return;
+        iframe.src = '';
+        setTimeout(function () { iframe.src = currentPreviewUrl; }, 50);
+    }
+
+    function bindPreview() {
+        var refreshBtn = document.getElementById('cms-widget-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', refreshPreview);
+        }
+
+        var widthSelect = document.getElementById('cms-widget-preview-width');
+        if (widthSelect) {
+            widthSelect.addEventListener('change', function () {
+                var container = previewContainer();
+                if (container) container.style.maxWidth = widthSelect.value;
+            });
+        }
+
+        window.addEventListener('message', function (e) {
+            if (!e.data || e.data.type !== 'i2g-embed-resize') return;
+            var iframe = previewIframe();
+            if (iframe && e.data.height) {
+                iframe.style.height = e.data.height + 'px';
+            }
+        });
     }
 
     function bindCopy() {
@@ -158,6 +264,7 @@
         bindSlug();
         bindPageChange();
         bindCopy();
+        bindPreview();
         const p = pageField();
         fetchBlocks(p ? p.value : config.initialPageId);
         renderSnippet();

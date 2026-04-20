@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from cms.models import CMSBlock, CMSEmbedWidget
+from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 from core.admin import BaseModelAdmin
 
 
@@ -17,6 +17,10 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
         widgets = {
             "block_sort_orders": forms.HiddenInput(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["slug"].widget.attrs["placeholder"] = "e.g. homepage-hero-banner"
 
 
 @admin.register(CMSEmbedWidget)
@@ -45,6 +49,11 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
                 self.admin_site.admin_view(self.page_blocks_view),
                 name="cms_cmsembedwidget_page_blocks",
             ),
+            path(
+                "page-info/",
+                self.admin_site.admin_view(self.page_info_view),
+                name="cms_cmsembedwidget_page_info",
+            ),
         ]
         return custom + super().get_urls()
 
@@ -59,12 +68,23 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
         )
         return JsonResponse({"blocks": list(blocks)})
 
+    def page_info_view(self, request):
+        page_id = request.GET.get("page_id") or ""
+        if not page_id:
+            return JsonResponse({"title": "", "route": ""})
+        try:
+            page = CMSPage.objects.values("title", "route").get(pk=page_id)
+        except CMSPage.DoesNotExist:
+            return JsonResponse({"title": "", "route": ""})
+        return JsonResponse({"title": page["title"], "route": page["route"]})
+
     def _extra_context(self, obj=None):
         from django.conf import settings as ds
 
         return {
             "frontend_url": (getattr(ds, "FRONTEND_URL", "") or "").rstrip("/"),
             "page_blocks_url": reverse("admin:cms_cmsembedwidget_page_blocks"),
+            "page_info_url": reverse("admin:cms_cmsembedwidget_page_info"),
             "initial_block_sort_orders_json": json.dumps(obj.block_sort_orders if obj else []),
             "initial_slug": obj.slug if obj else "",
             "initial_page_id": str(obj.page_id) if obj and obj.page_id else "",

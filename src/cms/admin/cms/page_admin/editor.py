@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 
-from cms.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSEmbedWidget, CMSPage, validate_block_data
+from cms.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
 
 
@@ -27,7 +27,6 @@ def build_editor_context(obj=None):
     }
     if not obj:
         context["initial_blocks_json"] = "[]"
-        context["related_widgets"] = []
         return context
 
     blocks = obj.blocks.all().order_by("sort_order")
@@ -42,9 +41,6 @@ def build_editor_context(obj=None):
             for block in blocks
         ],
         cls=DjangoJSONEncoder,
-    )
-    context["related_widgets"] = list(
-        CMSEmbedWidget.objects.filter(page=obj).order_by("slug").only("id", "slug", "admin_label")
     )
     return context
 
