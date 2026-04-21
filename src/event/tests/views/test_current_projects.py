@@ -13,9 +13,7 @@ class CurrentProjectsAPIViewTest(TestCase):
 
     def test_returns_projects_for_active_schedule(self):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
-        CurrentProject.objects.create(
-            schedule=config, project_title="Fall Project", team_number="T1"
-        )
+        CurrentProject.objects.create(schedule=config, project_title="Fall Project", team_number="T1")
 
         response = self.client.get("/event/projects/")
 
@@ -63,9 +61,7 @@ class CurrentProjectsAPIViewTest(TestCase):
 
     def test_cache_works(self):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
-        CurrentProject.objects.create(
-            schedule=config, project_title="Cached Project", team_number="T1"
-        )
+        CurrentProject.objects.create(schedule=config, project_title="Cached Project", team_number="T1")
 
         response1 = self.client.get("/event/projects/")
         self.assertEqual(response1.status_code, 200)
@@ -79,9 +75,7 @@ class CurrentProjectsAPIViewTest(TestCase):
 
     def test_response_shape(self):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
-        CurrentProject.objects.create(
-            schedule=config, project_title="Shape Test", team_number="T1"
-        )
+        CurrentProject.objects.create(schedule=config, project_title="Shape Test", team_number="T1")
 
         response = self.client.get("/event/projects/")
 
