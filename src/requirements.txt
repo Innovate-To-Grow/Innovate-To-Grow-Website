@@ -1,8 +1,8 @@
 # Django Backend Dependencies
 
 # Core Framework
-Django>=5.2,<6.0
-djangorestframework==3.16.1
+Django>=5.2,<7.0
+djangorestframework==3.17.1
 djangorestframework-simplejwt>=5.3.0
 
 # Environment Variables
