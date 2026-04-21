@@ -50,7 +50,12 @@ describe('Router', () => {
   it.each(lazyRoutePaths)('lazy route %s is wrapped in Suspense', async (path) => {
     const {router} = await import('../router');
     const rootRoute = router.routes.find((route) => route.path === '/');
-    const route = rootRoute?.children?.find((r) => r.path === path);
+    // Non-index children carry an `element` prop; the types model index vs
+    // non-index routes separately, so narrow with a cast rather than a
+    // runtime type guard.
+    const route = rootRoute?.children?.find((r) => 'path' in r && r.path === path) as
+      | {element?: unknown}
+      | undefined;
 
     expect(route, `route ${path} not found`).toBeDefined();
     expect(isValidElement(route?.element)).toBe(true);
