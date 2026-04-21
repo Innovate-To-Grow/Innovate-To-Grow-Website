@@ -85,6 +85,6 @@ describe('VerifyEmailPage', () => {
       expect(authValue.requestEmailAuthCode).toHaveBeenCalledWith('ada@example.com', 'login');
     });
 
-    expect(screen.getByText('Code resent.')).toBeInTheDocument();
+    expect(await screen.findByText('Code resent.')).toBeInTheDocument();
   });
 });
