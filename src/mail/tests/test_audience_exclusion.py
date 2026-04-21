@@ -3,7 +3,6 @@
 from django.test import TestCase
 
 from authn.models import ContactEmail
-
 from event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from mail.models import EmailCampaign
 from mail.services.audience import get_recipients
