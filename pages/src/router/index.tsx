@@ -51,6 +51,7 @@ const TicketLoginPage = React.lazy(() => import('../pages/TicketLoginPage').then
 const SubscribePage = React.lazy(() => import('../pages/SubscribePage').then(m => ({default: m.SubscribePage})));
 const UnsubscribeLoginPage = React.lazy(() => import('../pages/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
 const MagicLoginPage = React.lazy(() => import('../pages/MagicLoginPage').then(m => ({default: m.MagicLoginPage})));
+const EmailAuthLinkPage = React.lazy(() => import('../pages/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('../pages/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
 export const router = createBrowserRouter([
@@ -145,6 +146,7 @@ export const router = createBrowserRouter([
             {path: 'ticket-login', element: lazyRoute(<TicketLoginPage/>)},
             {path: 'unsubscribe-login', element: lazyRoute(<UnsubscribeLoginPage/>)},
             {path: 'magic-login', element: lazyRoute(<MagicLoginPage/>)},
+            {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>)},
             {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>)},
 
             // Convenience redirects

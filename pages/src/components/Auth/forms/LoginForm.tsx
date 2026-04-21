@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { getPostAuthPath } from '../../../shared/auth/redirects';
 import { LoginEmailMode } from './LoginEmailMode';
 import { LoginPasswordMode } from './LoginPasswordMode';
 
@@ -8,7 +9,6 @@ export const LoginForm = () => {
   const {
     login,
     requestEmailAuthCode,
-    requiresProfileCompletion,
     error,
     isLoading,
     clearError,
@@ -51,7 +51,7 @@ export const LoginForm = () => {
     clearError();
     if (!validateForm(false)) return;
     try {
-      const response = await requestEmailAuthCode(email);
+      const response = await requestEmailAuthCode(email, 'login');
       setInfoMessage(response.message);
       navigate(`/verify-email?flow=auth&email=${encodeURIComponent(email.trim().toLowerCase())}`);
     } catch {
@@ -65,8 +65,8 @@ export const LoginForm = () => {
     clearError();
     if (!validateForm(true)) return;
     try {
-      await login(email, password);
-      navigate(requiresProfileCompletion ? '/complete-profile' : '/account', { replace: true });
+      const response = await login(email, password);
+      navigate(getPostAuthPath(response), { replace: true });
     } catch {
       // Error handled by context
     }

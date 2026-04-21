@@ -32,7 +32,7 @@ def build_schedule_payload(config: CurrentProjectSchedule) -> dict:
         max_order = 0
         tracks = list(section.tracks.all())
         for track in tracks:
-            for slot in track.slots.all():
+            for slot in track.slots.select_related("project").all():
                 slot_map[track.pk].append(slot)
                 max_order = max(max_order, slot.slot_order)
                 if slot.is_break:
@@ -90,6 +90,7 @@ def build_schedule_payload(config: CurrentProjectSchedule) -> dict:
                                 "student_names": slot.student_names,
                                 "tooltip": slot.name_title,
                                 "project_id": str(slot.project_id) if slot.project_id else None,
+                                "is_presenting": slot.project.is_presenting if slot.project else None,
                             }
                             for slot in slot_map[track.pk]
                         ],

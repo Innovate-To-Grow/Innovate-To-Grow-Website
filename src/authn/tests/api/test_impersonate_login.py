@@ -16,7 +16,11 @@ class ImpersonateLoginTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
-        self.admin = Member.objects.create_superuser(password="AdminPass123!")
+        self.admin = Member.objects.create_superuser(
+            password="AdminPass123!",
+            first_name="Admin",
+            last_name="User",
+        )
         ContactEmail.objects.create(
             member=self.admin, email_address="admin@example.com", email_type="primary", verified=True
         )
@@ -36,8 +40,22 @@ class ImpersonateLoginTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
         token.refresh_from_db()
         self.assertTrue(token.is_used)
+
+    def test_incomplete_profile_routes_to_complete_profile(self):
+        self.target.first_name = ""
+        self.target.last_name = ""
+        self.target.save(update_fields=["first_name", "last_name", "updated_at"])
+        token = self._make_token()
+
+        response = self.client.post("/authn/impersonate-login/", {"token": token.token}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
 
     def test_missing_token_returns_400(self):
         response = self.client.post("/authn/impersonate-login/", {}, format="json")

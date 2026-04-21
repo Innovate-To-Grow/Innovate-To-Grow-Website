@@ -21,6 +21,8 @@ class EventRegistrationCreateViewTest(TestCase):
             self.client.force_authenticate(self.member)
         if data is None:
             data = {"event_slug": self.event.slug, "ticket_id": str(self.ticket.pk)}
+        data.setdefault("attendee_first_name", "Jane")
+        data.setdefault("attendee_last_name", "Doe")
         return self.client.post("/event/registrations/", data, format="json")
 
     def test_unauthenticated_returns_401(self):
@@ -129,11 +131,16 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertEqual(reg.attendee_first_name, "Custom")
         self.assertEqual(reg.attendee_last_name, "Name")
 
-    def test_attendee_fields_fallback_to_member(self):
-        self._post()
-        reg = EventRegistration.objects.get(member=self.member, event=self.event)
-        self.assertEqual(reg.attendee_first_name, "Jane")
-        self.assertEqual(reg.attendee_last_name, "Doe")
+    def test_missing_attendee_last_name_returns_400(self):
+        data = {
+            "event_slug": self.event.slug,
+            "ticket_id": str(self.ticket.pk),
+            "attendee_first_name": "Jane",
+            "attendee_last_name": "",
+        }
+        response = self._post(data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("attendee_last_name", response.data)
 
     def test_required_question_with_valid_answer_succeeds(self):
         q = Question.objects.create(event=self.event, text="Required Q", is_required=True)

@@ -89,6 +89,7 @@ export const RegistrationFormStep = ({
     attendeeSecondaryEmail.trim().toLowerCase() === primaryEmail.trim().toLowerCase();
 
   const missingFirstName = !attendeeFirstName.trim();
+  const missingLastName = !attendeeLastName.trim();
   const missingOrganization = attendeeOrgType === 'organization' && !attendeeOrganization.trim();
   const missingTicket = !selectedTicketId;
   const phoneNotVerified = options.verify_phone && !phoneVerified;
@@ -99,6 +100,7 @@ export const RegistrationFormStep = ({
 
   const hasErrors =
     missingFirstName ||
+    missingLastName ||
     missingOrganization ||
     missingTicket ||
     phoneNotVerified ||
@@ -181,9 +183,9 @@ export const RegistrationFormStep = ({
             />
           </div>
 
-          <div className="event-reg-form-group">
+          <div className={`event-reg-form-group${errorClass(missingLastName)}`}>
             <label className="event-reg-label" htmlFor="last-name">
-              Last Name
+              Last Name <span className="required-mark">*</span>
             </label>
             <input
               id="last-name"
@@ -194,6 +196,9 @@ export const RegistrationFormStep = ({
               autoComplete="family-name"
               disabled={submitting}
             />
+            {showError && missingLastName ? (
+              <p className="event-reg-field-error">Last name is required.</p>
+            ) : null}
           </div>
         </div>
 

@@ -16,6 +16,8 @@ class CMSExportActionTest(TestCase):
         cache.clear()
         self.staff = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Export",
+            last_name="Admin",
         )
         self.client = APIClient()
         self.client.force_login(self.staff)
@@ -93,6 +95,8 @@ class CMSExportViewTest(TestCase):
         cache.clear()
         self.staff = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Export",
+            last_name="View",
         )
         self.client = APIClient()
         self.client.force_login(self.staff)

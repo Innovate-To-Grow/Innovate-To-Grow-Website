@@ -30,7 +30,7 @@ def make_registration(member, event, ticket, **kwargs):
 
 
 def make_superuser(email="admin@example.com"):
-    user = Member.objects.create_superuser(password="testpass123")
+    user = Member.objects.create_superuser(password="testpass123", first_name="Admin", last_name="User")
     ContactEmail.objects.create(member=user, email_address=email, email_type="primary", verified=True)
     return user
 

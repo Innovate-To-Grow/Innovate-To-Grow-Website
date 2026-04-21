@@ -205,7 +205,7 @@ export async function createRegistration(data: {
   event_slug: string;
   ticket_id: string;
   attendee_first_name: string;
-  attendee_last_name?: string;
+  attendee_last_name: string;
   attendee_organization?: string;
   answers: Array<{question_id: string; answer: string}>;
   attendee_secondary_email?: string;

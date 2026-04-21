@@ -1,0 +1,123 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="container flex items-center h-16 mx-auto py-4">
+        <a href="{% url 'admin:index' %}" class="text-font-subtle-light dark:text-font-subtle-dark text-sm hover:text-primary-600">
+            <span class="material-symbols-outlined !text-[18px] align-middle">dock_to_right</span>
+        </a>
+        <span class="material-symbols-outlined text-font-subtle-light dark:text-font-subtle-dark !text-[18px] mx-1">chevron_right</span>
+        <a href="{{ changelist_url }}" class="text-font-subtle-light dark:text-font-subtle-dark text-sm hover:text-primary-600">{{ opts.verbose_name_plural|capfirst }}</a>
+        <span class="material-symbols-outlined text-font-subtle-light dark:text-font-subtle-dark !text-[18px] mx-1">chevron_right</span>
+        <span class="text-sm font-medium text-font-important-light dark:text-font-important-dark">{{ title }}</span>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width:38rem">
+    <div class="border border-base-200 dark:border-base-700 rounded-default bg-white dark:bg-base-900 overflow-hidden">
+
+        {# Header #}
+        <div class="bg-base-50 dark:bg-base-800 px-6 py-4 border-b border-base-200 dark:border-base-700">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-primary-600 !text-[20px]">sync</span>
+                <h2 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+                    Auto Sync Settings
+                </h2>
+            </div>
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark leading-relaxed pl-7">
+                When enabled, member creates and updates automatically push changes to the Google Sheet after a 15-second debounce.
+            </p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {# Toggle #}
+            <div class="px-6 py-4 border-b border-base-200 dark:border-base-700">
+                <label class="flex items-start gap-3 cursor-pointer">
+                    <input type="hidden" name="auto_sync_enabled" value="0">
+                    <input type="checkbox" name="auto_sync_enabled" value="1"
+                           {% if config.auto_sync_enabled %}checked{% endif %}
+                           class="mt-0.5 rounded border-base-300 dark:border-base-600 text-primary-600 focus:ring-primary-500 h-4 w-4">
+                    <div>
+                        <span class="text-sm font-medium text-font-important-light dark:text-font-important-dark">Enable auto sync</span>
+                        <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-0.5 leading-relaxed">
+                            Automatically sync the member directory to Google Sheets when a member is created, updated, or activated.
+                        </p>
+                    </div>
+                </label>
+            </div>
+
+            {# How it works #}
+            <div class="px-6 py-4 border-b border-base-200 dark:border-base-700">
+                <div class="bg-base-50 dark:bg-base-800 rounded-default px-4 py-3">
+                    <p class="text-xs font-semibold text-font-important-light dark:text-font-important-dark mb-2">How it works</p>
+                    <ul class="text-xs text-font-subtle-light dark:text-font-subtle-dark space-y-1 leading-relaxed" style="list-style:disc;padding-left:1rem">
+                        <li>Changes are debounced — rapid edits within 15 seconds merge into one sync.</li>
+                        <li>Each sync does a <strong class="text-font-default-light dark:text-font-default-dark">full replace</strong> of the sheet (clear + rewrite all rows).</li>
+                        <li>Manual sync via admin actions and <code class="bg-base-200/60 dark:bg-base-700 px-1 py-px rounded text-[11px]">manage.py sync_members_to_sheet</code> always works regardless of this setting.</li>
+                    </ul>
+                </div>
+            </div>
+
+            {# Status #}
+            <div class="px-6 py-4 border-b border-base-200 dark:border-base-700">
+                <p class="text-xs font-semibold text-font-important-light dark:text-font-important-dark mb-3">Current Status</p>
+                <table class="text-xs w-full" style="border-spacing:0">
+                    <tr>
+                        <td class="text-font-subtle-light dark:text-font-subtle-dark pb-2 pr-4 align-top" style="width:6.5rem">Status</td>
+                        <td class="pb-2 align-top">
+                            {% if config.auto_sync_enabled %}
+                                <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                                    <span class="material-symbols-outlined !text-[14px]">check_circle</span> Enabled
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 text-font-subtle-light dark:text-font-subtle-dark font-medium">
+                                    <span class="material-symbols-outlined !text-[14px]">cancel</span> Disabled (on-demand only)
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-font-subtle-light dark:text-font-subtle-dark pb-2 pr-4 align-top">Sheet ID</td>
+                        <td class="text-font-default-light dark:text-font-default-dark font-medium pb-2 align-top">
+                            {% if config.google_sheet_id %}{{ config.google_sheet_id|truncatechars:40 }}{% else %}<em class="text-font-subtle-light dark:text-font-subtle-dark font-normal">Not configured</em>{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-font-subtle-light dark:text-font-subtle-dark pb-2 pr-4 align-top">Last synced</td>
+                        <td class="text-font-default-light dark:text-font-default-dark font-medium pb-2 align-top">
+                            {% if config.synced_at %}{{ config.synced_at }}{% else %}Never{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-font-subtle-light dark:text-font-subtle-dark pr-4 align-top {% if config.sync_error %}pb-2{% endif %}">Rows synced</td>
+                        <td class="text-font-default-light dark:text-font-default-dark font-medium align-top {% if config.sync_error %}pb-2{% endif %}">{{ config.sync_count }}</td>
+                    </tr>
+                    {% if config.sync_error %}
+                    <tr>
+                        <td class="text-font-subtle-light dark:text-font-subtle-dark pr-4 align-top">Last error</td>
+                        <td class="text-red-600 dark:text-red-400 font-medium align-top">{{ config.sync_error|truncatechars:120 }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+
+            {# Actions #}
+            <div class="px-6 py-3.5 bg-base-50 dark:bg-base-800 flex items-center gap-3">
+                <button type="submit"
+                        class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-default text-sm font-medium transition-colors">
+                    Save Settings
+                </button>
+                <a href="{{ changelist_url }}"
+                   class="border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-4 py-2 rounded-default text-sm font-medium hover:bg-base-50 dark:hover:bg-base-800 text-font-default-light dark:text-font-default-dark transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

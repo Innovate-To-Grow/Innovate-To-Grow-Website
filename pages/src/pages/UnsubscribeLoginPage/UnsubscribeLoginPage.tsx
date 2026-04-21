@@ -1,6 +1,7 @@
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
 import {unsubscribeAutoLogin} from '../../services/auth';
+import {getPostAuthPath} from '../../shared/auth/redirects';
 
 export function UnsubscribeLoginPage() {
   const [searchParams] = useSearchParams();
@@ -16,10 +17,10 @@ export function UnsubscribeLoginPage() {
     let cancelled = false;
 
     unsubscribeAutoLogin(token)
-      .then(() => {
+      .then((response) => {
         if (!cancelled) {
           window.dispatchEvent(new Event('i2g-auth-state-change'));
-          navigate('/account', {replace: true});
+          navigate(getPostAuthPath(response), {replace: true});
         }
       })
       .catch(() => {

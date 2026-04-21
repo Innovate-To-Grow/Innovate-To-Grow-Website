@@ -27,6 +27,8 @@ class MagicLoginViewTests(APITestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
         self.assertEqual(response.data["redirect_to"], "/schedule")
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
 
     def test_null_campaign_falls_back_to_account_redirect(self):
         token = MagicLoginToken.generate_token()
@@ -36,6 +38,19 @@ class MagicLoginViewTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["redirect_to"], DEFAULT_LOGIN_REDIRECT_PATH)
+
+    def test_incomplete_profile_routes_to_complete_profile(self):
+        self.member.first_name = ""
+        self.member.last_name = ""
+        self.member.save(update_fields=["first_name", "last_name", "updated_at"])
+        token = MagicLoginToken.generate_token()
+        MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
+
+        response = self.client.post("/mail/magic-login/", {"token": token}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
 
     def test_reused_token_rejected(self):
         token = MagicLoginToken.generate_token()

@@ -82,11 +82,15 @@ jobs:
   # Stage 2: Build & Test (depends on linting)
   # ============================================
 
-  # Django Backend Build & Test
+  # Django Backend Tests (per app)
   django-build:
-    name: Django Build & Test
+    name: Django Test (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: lint
+    needs: backend-db-migration
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [authn, core, cms, event, projects, mail]
     services:
       postgres:
         image: postgres:16
@@ -132,7 +136,7 @@ jobs:
         run: python manage.py migrate
 
       - name: Run Django tests
-        run: python manage.py test
+        run: python manage.py test ${{ matrix.app }}
 
       - name: Check Django configuration
         run: python manage.py check

@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { getProfile, updateProfileFields } from '../../../services/auth';
+import { getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
 import { getAuthErrorMessage } from '../context/shared';
 import { CompleteProfileForm } from './CompleteProfileForm';
 
@@ -12,6 +13,8 @@ export const CompleteProfilePage = () => {
     clearProfileCompletionRequirement,
   } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = getSafeInternalRedirectPath(searchParams.get('returnTo'));
 
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +69,16 @@ export const CompleteProfilePage = () => {
       return;
     }
 
+    if (!lastName.trim()) {
+      setError('Last name is required.');
+      return;
+    }
+
+    if (organizationType === 'organization' && !organization.trim()) {
+      setError('Organization name is required.');
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -80,7 +93,7 @@ export const CompleteProfilePage = () => {
         title: titleValue,
       });
       clearProfileCompletionRequirement();
-      navigate('/account', { replace: true });
+      navigate(returnTo ?? '/account', { replace: true });
     } catch (err: unknown) {
       setError(getAuthErrorMessage(err));
     } finally {

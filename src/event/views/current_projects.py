@@ -1,11 +1,10 @@
 from django.core.cache import cache
-from django.db.models import Prefetch
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from projects.models import Project, Semester
-from projects.serializers import SemesterWithFullProjectsSerializer
+from event.models import CurrentProjectSchedule
+from event.serializers import CurrentProjectSerializer
 
 
 class CurrentProjectsAPIView(APIView):
@@ -18,15 +17,14 @@ class CurrentProjectsAPIView(APIView):
         if cached is not None:
             return Response(cached)
 
-        semester = (
-            Semester.objects.filter(is_published=True)
-            .prefetch_related(Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number")))
-            .first()
-        )
-
-        if semester is None:
+        config = CurrentProjectSchedule.load()
+        if not config:
             return Response({"detail": "No published projects found."}, status=404)
 
-        data = SemesterWithFullProjectsSerializer(semester).data
+        projects = config.projects.order_by("class_code", "team_number")
+        data = {
+            "schedule": {"id": str(config.pk), "name": config.name},
+            "projects": CurrentProjectSerializer(projects, many=True).data,
+        }
         cache.set(cache_key, data, timeout=300)
         return Response(data)

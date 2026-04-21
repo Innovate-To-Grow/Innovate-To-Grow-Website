@@ -52,6 +52,8 @@ class PhoneVerificationViewsTest(TestCase):
             {
                 "event_slug": event.slug,
                 "ticket_id": str(ticket.pk),
+                "attendee_first_name": "Jane",
+                "attendee_last_name": "Doe",
                 "attendee_phone": "5551234567",
                 "attendee_phone_region": "1-US",
             },
@@ -72,6 +74,8 @@ class PhoneVerificationViewsTest(TestCase):
             {
                 "event_slug": second_event.slug,
                 "ticket_id": str(second_ticket.pk),
+                "attendee_first_name": "Jane",
+                "attendee_last_name": "Doe",
                 "attendee_phone": "5551234567",
                 "attendee_phone_region": "1-US",
             },
@@ -88,6 +92,8 @@ class PhoneVerificationViewsTest(TestCase):
             {
                 "event_slug": second_event.slug,
                 "ticket_id": str(second_ticket.pk),
+                "attendee_first_name": "Other",
+                "attendee_last_name": "Person",
                 "attendee_phone": "5551234567",
                 "attendee_phone_region": "1-US",
             },
@@ -141,6 +147,8 @@ class PhoneValidationTest(TestCase):
             {
                 "event_slug": event.slug,
                 "ticket_id": str(ticket.pk),
+                "attendee_first_name": "Jane",
+                "attendee_last_name": "Doe",
                 "attendee_phone": "123",
                 "attendee_phone_region": "1-US",
             },

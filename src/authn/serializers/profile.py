@@ -19,7 +19,7 @@ class ProfileSerializer(serializers.Serializer):
     email = serializers.EmailField(read_only=True)
     first_name = serializers.CharField(
         required=False,
-        allow_blank=True,
+        allow_blank=False,
         max_length=150,
         help_text="User's first name.",
     )
@@ -31,7 +31,7 @@ class ProfileSerializer(serializers.Serializer):
     )
     last_name = serializers.CharField(
         required=False,
-        allow_blank=True,
+        allow_blank=False,
         max_length=150,
         help_text="User's last name.",
     )
@@ -108,5 +108,12 @@ class ProfileSerializer(serializers.Serializer):
 
         if member_fields_to_update:
             instance.save(update_fields=member_fields_to_update)
+
+            try:
+                from authn.services.member_sheet_sync import schedule_member_sync
+
+                schedule_member_sync()
+            except Exception:
+                pass
 
         return instance

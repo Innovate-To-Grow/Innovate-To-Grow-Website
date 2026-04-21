@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
+import { getPostAuthPath, getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import { FLOW_META, isVerifyFlow, type VerifyFlow } from './verify/shared';
@@ -74,17 +74,20 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
     try {
       if (flow === 'auth') {
         const response = await verifyEmailAuthCode(email, code);
-        navigate(response.next_step === 'complete_profile' ? '/complete-profile' : '/account', { replace: true });
+        navigate(getPostAuthPath(response), { replace: true });
         return;
       }
       if (flow === 'login') {
-        await verifyLoginCode(email, code);
-        navigate('/account', { replace: true });
+        const response = await verifyLoginCode(email, code);
+        navigate(getPostAuthPath(response), { replace: true });
         return;
       }
       if (flow === 'register') {
-        await verifyRegistrationCode(email, code);
-        navigate(returnTo ?? '/account', { replace: true });
+        const response = await verifyRegistrationCode(email, code);
+        navigate(
+          response.next_step === 'complete_profile' ? getPostAuthPath(response) : (returnTo ?? getPostAuthPath(response)),
+          { replace: true },
+        );
         return;
       }
       if (flow === 'reset') {
@@ -106,7 +109,7 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
     setLocalSuccess(null);
     try {
       if (flow === 'auth') {
-        const response = await requestEmailAuthCode(email);
+        const response = await requestEmailAuthCode(email, 'login');
         setLocalMessage(response.message);
         return;
       }

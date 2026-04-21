@@ -1,42 +1,33 @@
 import authApi from './client';
 import {
-  clearProfileCompletionRequired,
   clearTokens,
   getAccessToken,
   getRefreshToken,
-  setTokens,
+  persistAuthSession,
 } from './storage';
 import type { LoginResponse } from './types';
 
 export const ticketAutoLogin = async (token: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/event/ticket-login/', { token });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  clearProfileCompletionRequired();
+  persistAuthSession(response.data);
   return response.data;
 };
 
 export const magicAutoLogin = async (token: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/mail/magic-login/', { token });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  clearProfileCompletionRequired();
+  persistAuthSession(response.data);
   return response.data;
 };
 
 export const unsubscribeAutoLogin = async (token: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/unsubscribe-login/', { token });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  clearProfileCompletionRequired();
+  persistAuthSession(response.data);
   return response.data;
 };
 
 export const impersonateAutoLogin = async (token: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/impersonate-login/', { token });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  clearProfileCompletionRequired();
+  persistAuthSession(response.data);
   return response.data;
 };
 

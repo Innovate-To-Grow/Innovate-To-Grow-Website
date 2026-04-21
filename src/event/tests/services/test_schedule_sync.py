@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from event.models import (
+    CurrentProject,
     CurrentProjectSchedule,
     EventAgendaItem,
     EventScheduleSection,
@@ -11,27 +12,11 @@ from event.models import (
 )
 from event.services import ScheduleSyncError, sync_schedule
 from event.tests.helpers import sample_projects_records, sample_tracks_records
-from projects.models import Project, Semester
 
 
 class ScheduleSyncServiceTest(TestCase):
     def setUp(self):
-        self.semester = Semester.objects.create(year=2025, season=1, is_published=True)
         self.config = CurrentProjectSchedule.objects.create(name="Demo Day")
-        self.cap_project = Project.objects.create(
-            semester=self.semester,
-            class_code="CAP",
-            team_number="CAP-101",
-            team_name="Alpha",
-            project_title="Smart Farm",
-        )
-        self.cse_project = Project.objects.create(
-            semester=self.semester,
-            class_code="CSE",
-            team_number="CSE-201",
-            team_name="Delta",
-            project_title="Campus Navigator",
-        )
 
     def test_sync_creates_sections_tracks_slots_and_agenda_items(self):
         stats = sync_schedule(
@@ -54,7 +39,9 @@ class ScheduleSyncServiceTest(TestCase):
         self.assertEqual(EventAgendaItem.objects.filter(config=self.config).count(), 4)
 
         cap_slot = EventScheduleSlot.objects.get(team_number="CAP-101")
-        self.assertEqual(cap_slot.project, self.cap_project)
+        self.assertIsNotNone(cap_slot.project)
+        self.assertIsInstance(cap_slot.project, CurrentProject)
+        self.assertEqual(cap_slot.project.project_title, "Smart Farm")
         self.assertEqual(cap_slot.display_text, "CAP-101")
 
         break_slot = EventScheduleSlot.objects.get(is_break=True)
@@ -62,6 +49,8 @@ class ScheduleSyncServiceTest(TestCase):
 
         cee_slot = EventScheduleSlot.objects.get(team_number="CEE-999")
         self.assertIsNotNone(cee_slot.project)
+
+        self.assertEqual(CurrentProject.objects.filter(schedule=self.config).count(), 3)
 
     def test_sync_replaces_existing_schedule(self):
         other_config = CurrentProjectSchedule.objects.create(name="Other")

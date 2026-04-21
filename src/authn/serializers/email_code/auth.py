@@ -16,6 +16,11 @@ from authn.services import (
 from .base import _CODE_RE, PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer
 
 Member = get_user_model()
+EMAIL_AUTH_SOURCE_CHOICES = (
+    ("login", "login"),
+    ("subscribe", "subscribe"),
+    ("event_registration", "event_registration"),
+)
 
 
 class LoginCodeRequestSerializer(BaseEmailSerializer):
@@ -26,6 +31,8 @@ class LoginCodeRequestSerializer(BaseEmailSerializer):
                 member=resolved.member,
                 purpose=PURPOSE.LOGIN,
                 target_email=resolved.delivery_email,
+                link_flow="login",
+                link_source="login",
             )
         return {"message": "If an eligible account exists, a verification code has been sent."}
 
@@ -35,6 +42,8 @@ class LoginCodeVerifySerializer(BaseCodeVerifySerializer):
 
 
 class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
+    source = serializers.ChoiceField(choices=EMAIL_AUTH_SOURCE_CHOICES, required=False, default="login")
+
     def _create_pending_member(self, email: str) -> Member:
         from authn.models import ContactEmail
 
@@ -57,6 +66,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
 
     def save(self):
         email = self.validated_data["email"]
+        source = self.validated_data["source"]
         generic_response = {"message": "Check your email for a verification code."}
         resolved = resolve_auth_email(email, require_active=True)
         if resolved is not None:
@@ -64,6 +74,8 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
                 member=resolved.member,
                 purpose=PURPOSE.LOGIN,
                 target_email=resolved.delivery_email,
+                link_flow="auth",
+                link_source=source,
             )
             return generic_response
 
@@ -79,7 +91,13 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
             raise serializers.ValidationError({"email": "This email cannot be used for registration."})
 
         member = pending_member or self._create_pending_member(email)
-        issue_email_challenge(member=member, purpose=PURPOSE.REGISTER, target_email=email)
+        issue_email_challenge(
+            member=member,
+            purpose=PURPOSE.REGISTER,
+            target_email=email,
+            link_flow="auth",
+            link_source=source,
+        )
         return generic_response
 
 
@@ -124,5 +142,11 @@ class RegisterResendCodeSerializer(BaseEmailSerializer):
         member = contact.member if contact else None
         if member is None:
             raise serializers.ValidationError({"email": "No pending registration was found for this email."})
-        issue_email_challenge(member=member, purpose=PURPOSE.REGISTER, target_email=self.validated_data["email"])
+        issue_email_challenge(
+            member=member,
+            purpose=PURPOSE.REGISTER,
+            target_email=self.validated_data["email"],
+            link_flow="register",
+            link_source="register",
+        )
         return {"message": "Verification code sent."}

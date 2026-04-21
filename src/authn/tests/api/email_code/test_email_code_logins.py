@@ -44,6 +44,8 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(response.data["user"]["email"], self.primary_email.email_address)
         self.assertNotIn("username", response.data["user"])
         self.assertIn("access", response.data)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
 
     def test_password_login_rejects_unverified_contact_email(self, _mock_code, _mock_send):
         unverified = ContactEmail.objects.create(
@@ -72,6 +74,8 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(request_response.status_code, 202)
         self.assertEqual(EmailAuthChallenge.objects.count(), 1)
         mock_send.assert_called_once()
+        self.assertEqual(mock_send.call_args.kwargs["link_flow"], "login")
+        self.assertEqual(mock_send.call_args.kwargs["link_source"], "login")
 
         verify_response = self.client.post(
             "/authn/login/verify-code/",
@@ -82,8 +86,46 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(verify_response.status_code, 200)
         self.assertEqual(verify_response.data["user"]["email"], self.primary_email.email_address)
         self.assertEqual(EmailAuthChallenge.objects.first().status, EmailAuthChallenge.Status.CONSUMED)
+        self.assertEqual(verify_response.data["next_step"], "complete_profile")
+        self.assertTrue(verify_response.data["requires_profile_completion"])
 
-    def test_unified_email_auth_uses_login_flow_for_active_primary_email(self, _mock_code, _mock_send):
+    def test_password_login_routes_incomplete_profile_to_complete_profile(self, _mock_code, _mock_send):
+        self.member.first_name = ""
+        self.member.last_name = ""
+        self.member.save(update_fields=["first_name", "last_name", "updated_at"])
+
+        response = self.client.post(
+            "/authn/login/",
+            {"email": self.alias.email_address, "password": self.password},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
+
+    def test_login_code_flow_routes_incomplete_profile_to_complete_profile(self, _mock_code, _mock_send):
+        self.member.first_name = ""
+        self.member.last_name = ""
+        self.member.save(update_fields=["first_name", "last_name", "updated_at"])
+
+        self.client.post(
+            "/authn/login/request-code/",
+            {"email": self.alias.email_address},
+            format="json",
+        )
+
+        verify_response = self.client.post(
+            "/authn/login/verify-code/",
+            {"email": self.alias.email_address, "code": "654321"},
+            format="json",
+        )
+
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertEqual(verify_response.data["next_step"], "complete_profile")
+        self.assertTrue(verify_response.data["requires_profile_completion"])
+
+    def test_unified_email_auth_uses_login_flow_for_active_primary_email(self, _mock_code, mock_send):
         request_response = self.client.post(
             "/authn/email-auth/request-code/",
             {"email": self.primary_email.email_address},
@@ -93,6 +135,8 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(request_response.status_code, 202)
         self.assertNotIn("flow", request_response.data)
         self.assertNotIn("next_step", request_response.data)
+        self.assertEqual(mock_send.call_args.kwargs["link_flow"], "auth")
+        self.assertEqual(mock_send.call_args.kwargs["link_source"], "login")
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
@@ -101,9 +145,20 @@ class EmailCodeAuthLoginTests(APITestCase):
         )
 
         self.assertEqual(verify_response.status_code, 200)
-        self.assertEqual(verify_response.data["next_step"], "account")
-        self.assertFalse(verify_response.data["requires_profile_completion"])
+        self.assertEqual(verify_response.data["next_step"], "complete_profile")
+        self.assertTrue(verify_response.data["requires_profile_completion"])
         self.assertIn("access", verify_response.data)
+
+    def test_unified_email_auth_uses_requested_source_for_email_link(self, _mock_code, mock_send):
+        response = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": self.primary_email.email_address, "source": "subscribe"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(mock_send.call_args.kwargs["link_flow"], "auth")
+        self.assertEqual(mock_send.call_args.kwargs["link_source"], "subscribe")
 
     def test_unified_email_auth_uses_login_flow_for_verified_contact_email(self, _mock_code, _mock_send):
         request_response = self.client.post(
@@ -123,8 +178,8 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         self.assertEqual(verify_response.status_code, 200)
         self.assertEqual(verify_response.data["user"]["email"], self.primary_email.email_address)
-        self.assertEqual(verify_response.data["next_step"], "account")
-        self.assertFalse(verify_response.data["requires_profile_completion"])
+        self.assertEqual(verify_response.data["next_step"], "complete_profile")
+        self.assertTrue(verify_response.data["requires_profile_completion"])
 
     def test_unified_email_auth_creates_pending_member_without_password(self, _mock_code, _mock_send):
         request_response = self.client.post(

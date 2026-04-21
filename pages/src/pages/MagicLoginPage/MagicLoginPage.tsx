@@ -2,7 +2,7 @@ import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
 import {magicAutoLogin} from '../../services/auth';
 import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
-import {getSafeInternalRedirectPath} from '../../shared/auth/redirects';
+import {getPostAuthPath} from '../../shared/auth/redirects';
 
 export function MagicLoginPage() {
   const [searchParams] = useSearchParams();
@@ -21,7 +21,7 @@ export function MagicLoginPage() {
       .then((response) => {
         if (!cancelled) {
           dispatchAuthStateChange();
-          navigate(getSafeInternalRedirectPath(response.redirect_to) ?? '/account', {replace: true});
+          navigate(getPostAuthPath(response), {replace: true});
         }
       })
       .catch(() => {

@@ -14,7 +14,7 @@ class CurrentEventScheduleView(APIView):
     # noinspection PyMethodMayBeStatic
     def get(self, request):
         config = CurrentProjectSchedule.load()
-        if not config.pk:
+        if not config:
             return Response({"detail": "No schedule configured."}, status=status.HTTP_404_NOT_FOUND)
 
         config = (

@@ -1,5 +1,5 @@
 from .checkin import CheckInAdmin, CheckInRecordAdmin
-from .current_project import CurrentProjectScheduleAdmin
+from .current_project import CurrentProjectAdmin, CurrentProjectScheduleAdmin
 from .event import EventAdmin
 from .registration import EventRegistrationAdmin
 from .sync_log import RegistrationSheetSyncLogAdmin
@@ -7,6 +7,7 @@ from .sync_log import RegistrationSheetSyncLogAdmin
 __all__ = [
     "CheckInAdmin",
     "CheckInRecordAdmin",
+    "CurrentProjectAdmin",
     "CurrentProjectScheduleAdmin",
     "EventAdmin",
     "EventRegistrationAdmin",

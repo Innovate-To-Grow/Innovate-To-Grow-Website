@@ -3,9 +3,10 @@
 from smtplib import SMTPAuthenticationError, SMTPServerDisconnected
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from authn.services.email.send_email import (
+    _render_email_body,
     _send_via_ses,
     _send_via_smtp,
     send_verification_email,
@@ -103,6 +104,49 @@ class SendViaSmtpTests(TestCase):
 
 class SendVerificationEmailTests(TestCase):
     """Tests for the full send_verification_email flow."""
+
+    @override_settings(FRONTEND_URL="https://www.example.com")
+    def test_render_body_includes_register_continue_link(self):
+        html = _render_email_body(
+            recipient="new-user@example.com",
+            code="123456",
+            purpose="register",
+            link_flow="register",
+            link_source="register",
+        )
+
+        self.assertIn("Continue Registration", html)
+        self.assertIn("email-auth-link?flow=register", html)
+        self.assertIn("source=register", html)
+        self.assertIn("email=new-user%40example.com", html)
+        self.assertIn("code=123456", html)
+
+    @override_settings(FRONTEND_URL="https://www.example.com")
+    def test_render_body_includes_login_link_for_public_auth(self):
+        html = _render_email_body(
+            recipient="member@example.com",
+            code="123456",
+            purpose="login",
+            link_flow="auth",
+            link_source="login",
+        )
+
+        self.assertIn("Sign In to Your Account", html)
+        self.assertIn("email-auth-link?flow=auth", html)
+        self.assertIn("source=login", html)
+        self.assertIn("email=member%40example.com", html)
+
+    @override_settings(FRONTEND_URL="https://www.example.com")
+    def test_render_body_omits_public_link_for_admin_login(self):
+        html = _render_email_body(
+            recipient="admin@example.com",
+            code="123456",
+            purpose="admin_login",
+        )
+
+        self.assertNotIn("email-auth-link?", html)
+        self.assertNotIn("Continue Registration", html)
+        self.assertNotIn("Sign In to Your Account", html)
 
     @patch("authn.services.email.send_email._send_via_smtp")
     @patch("authn.services.email.send_email._send_via_ses", return_value=True)

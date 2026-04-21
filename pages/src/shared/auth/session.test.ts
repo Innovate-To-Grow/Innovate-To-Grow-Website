@@ -3,6 +3,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 const authApiPost = vi.fn();
 const clearTokens = vi.fn();
 const getRefreshToken = vi.fn<() => string | null>(() => 'refresh-token');
+const persistAuthSession = vi.fn();
 
 vi.mock('./client', () => ({
   default: {post: authApiPost},
@@ -13,6 +14,7 @@ vi.mock('./storage', () => ({
   clearProfileCompletionRequired: vi.fn(),
   getAccessToken: vi.fn(() => 'access-token'),
   getRefreshToken,
+  persistAuthSession,
   setTokens: vi.fn(),
 }));
 
@@ -22,6 +24,7 @@ describe('logout clears local state before awaiting server', () => {
     authApiPost.mockReset();
     clearTokens.mockReset();
     getRefreshToken.mockReset();
+    persistAuthSession.mockReset();
     getRefreshToken.mockReturnValue('refresh-token');
   });
 

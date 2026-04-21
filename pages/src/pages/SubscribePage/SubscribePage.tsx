@@ -1,6 +1,8 @@
 import {useEffect, useState, type FormEvent} from 'react';
+import {useSearchParams} from 'react-router-dom';
 import {useAuth} from '../../components/Auth';
 import {getProfile, updateProfileFields} from '../../services/auth';
+import {hasRequiredNameFields} from '../../shared/auth/profileCompletion';
 import type {ProfileResponse} from '../../shared/auth/types';
 import {CodeStep} from './steps/CodeStep';
 import {EmailStep} from './steps/EmailStep';
@@ -12,9 +14,23 @@ type Step = 'email' | 'code' | 'profile' | 'manage';
 type OrganizationType = 'individual' | 'organization';
 
 export const SubscribePage = () => {
-  const {isAuthenticated, isLoading, requestEmailAuthCode, verifyEmailAuthCode, clearError} = useAuth();
+  const [searchParams] = useSearchParams();
+  const {
+    isAuthenticated,
+    isLoading,
+    requestEmailAuthCode,
+    verifyEmailAuthCode,
+    clearError,
+    clearProfileCompletionRequirement,
+  } = useAuth();
+  const shouldStartInProfile = searchParams.get('step') === 'profile';
 
-  const [step, setStep] = useState<Step>(() => (isAuthenticated ? 'manage' : 'email'));
+  const [step, setStep] = useState<Step>(() => {
+    if (!isAuthenticated) {
+      return 'email';
+    }
+    return shouldStartInProfile ? 'profile' : 'manage';
+  });
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -29,10 +45,19 @@ export const SubscribePage = () => {
 
   // When auth state changes to authenticated, jump to manage
   useEffect(() => {
-    if (isAuthenticated && step !== 'manage' && step !== 'profile') {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    if (shouldStartInProfile) {
+      setStep('profile');
+      return;
+    }
+
+    if (step !== 'manage' && step !== 'profile') {
       setStep('manage');
     }
-  }, [isAuthenticated, step]);
+  }, [isAuthenticated, shouldStartInProfile, step]);
 
   // Fetch profile when entering manage step
   useEffect(() => {
@@ -52,7 +77,7 @@ export const SubscribePage = () => {
     event.preventDefault();
     clearPageError();
     try {
-      await requestEmailAuthCode(email.trim().toLowerCase());
+      await requestEmailAuthCode(email.trim().toLowerCase(), 'subscribe');
       setStep('code');
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
@@ -77,7 +102,7 @@ export const SubscribePage = () => {
   const handleResendCode = async () => {
     clearPageError();
     try {
-      await requestEmailAuthCode(email.trim().toLowerCase());
+      await requestEmailAuthCode(email.trim().toLowerCase(), 'subscribe');
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
     }
@@ -104,6 +129,9 @@ export const SubscribePage = () => {
         title: titleValue,
         email_subscribe: true,
       });
+      if (hasRequiredNameFields(updated)) {
+        clearProfileCompletionRequirement();
+      }
       setProfile(updated);
       setStep('manage');
     } catch (err: unknown) {

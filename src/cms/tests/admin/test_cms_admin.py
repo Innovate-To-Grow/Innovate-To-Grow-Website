@@ -60,6 +60,8 @@ class CMSPageAdminViewTests(TestCase):
     def setUp(self):
         self.admin_user = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Route",
+            last_name="Admin",
         )
         ContactEmail.objects.create(
             member=self.admin_user, email_address="admin@example.com", email_type="primary", verified=True
@@ -92,6 +94,8 @@ class CMSPageChangeFormRenderTests(TestCase):
         cache.clear()
         self.admin_user = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Editor",
+            last_name="Admin",
         )
         ContactEmail.objects.create(
             member=self.admin_user, email_address="editor@example.com", email_type="primary", verified=True

@@ -16,6 +16,12 @@ def build_auth_success_payload(
     next_step: str | None = None,
     requires_profile_completion: bool | None = None,
 ) -> dict:
+    resolved_requires_profile_completion = (
+        bool(requires_profile_completion)
+        if requires_profile_completion is not None
+        else bool(getattr(member, "requires_profile_completion", False))
+    )
+    resolved_next_step = next_step or ("complete_profile" if resolved_requires_profile_completion else "account")
     refresh = RefreshToken.for_user(member)
     payload = {
         "message": message,
@@ -26,11 +32,9 @@ def build_auth_success_payload(
             "email": member.get_primary_email(),
             "is_staff": member.is_staff,
         },
+        "next_step": resolved_next_step,
+        "requires_profile_completion": resolved_requires_profile_completion,
     }
-    if next_step is not None:
-        payload["next_step"] = next_step
-    if requires_profile_completion is not None:
-        payload["requires_profile_completion"] = requires_profile_completion
     return payload
 
 

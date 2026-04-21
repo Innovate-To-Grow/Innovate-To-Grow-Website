@@ -4,6 +4,7 @@ import {
   clearProfileCompletionRequired as clearProfileCompletionRequiredStorage,
   confirmPasswordChange as apiConfirmPasswordChange,
   confirmPasswordReset as apiConfirmPasswordReset,
+  type EmailAuthSource,
   getProfile as apiGetProfile,
   login as apiLogin,
   logout as apiLogout,
@@ -13,6 +14,7 @@ import {
   requestPasswordChangeCode as apiRequestPasswordChangeCode,
   requestPasswordReset as apiRequestPasswordReset,
   resendRegistrationCode as apiResendRegistrationCode,
+  type LoginResponse,
   type User,
   verifyEmailAuthCode as apiVerifyEmailAuthCode,
   verifyLoginCode as apiVerifyLoginCode,
@@ -42,6 +44,13 @@ export function useAuthActions({
     setError(null);
   }, [setError]);
 
+  const applyAuthResponse = useCallback(<T extends LoginResponse,>(response: T): T => {
+    setUser(response.user);
+    setRequiresProfileCompletion(Boolean(response.requires_profile_completion));
+    dispatchAuthStateChange();
+    return response;
+  }, [setRequiresProfileCompletion, setUser]);
+
   const runWithErrorHandling = useCallback(async <T, >(callback: () => Promise<T>): Promise<T> => {
     setError(null);
     setIsLoading(true);
@@ -57,43 +66,27 @@ export function useAuthActions({
 
   const login = useCallback(async (email: string, password: string) => {
     return runWithErrorHandling(async () => {
-      const response = await apiLogin(email, password);
-      setUser(response.user);
-      setRequiresProfileCompletion(false);
-      dispatchAuthStateChange();
-      return response;
+      return applyAuthResponse(await apiLogin(email, password));
     });
-  }, [runWithErrorHandling, setRequiresProfileCompletion, setUser]);
+  }, [applyAuthResponse, runWithErrorHandling]);
 
   const verifyEmailAuthCode = useCallback(async (email: string, code: string) => {
     return runWithErrorHandling(async () => {
-      const response = await apiVerifyEmailAuthCode(email, code);
-      setUser(response.user);
-      setRequiresProfileCompletion(response.requires_profile_completion);
-      dispatchAuthStateChange();
-      return response;
+      return applyAuthResponse(await apiVerifyEmailAuthCode(email, code));
     });
-  }, [runWithErrorHandling, setRequiresProfileCompletion, setUser]);
+  }, [applyAuthResponse, runWithErrorHandling]);
 
   const verifyLoginCode = useCallback(async (email: string, code: string) => {
     return runWithErrorHandling(async () => {
-      const response = await apiVerifyLoginCode(email, code);
-      setUser(response.user);
-      setRequiresProfileCompletion(false);
-      dispatchAuthStateChange();
-      return response;
+      return applyAuthResponse(await apiVerifyLoginCode(email, code));
     });
-  }, [runWithErrorHandling, setRequiresProfileCompletion, setUser]);
+  }, [applyAuthResponse, runWithErrorHandling]);
 
   const verifyRegistrationCode = useCallback(async (email: string, code: string) => {
     return runWithErrorHandling(async () => {
-      const response = await apiVerifyRegistrationCode(email, code);
-      setUser(response.user);
-      setRequiresProfileCompletion(false);
-      dispatchAuthStateChange();
-      return response;
+      return applyAuthResponse(await apiVerifyRegistrationCode(email, code));
     });
-  }, [runWithErrorHandling, setRequiresProfileCompletion, setUser]);
+  }, [applyAuthResponse, runWithErrorHandling]);
 
   const logout = useCallback(() => {
     apiLogout();
@@ -129,7 +122,10 @@ export function useAuthActions({
     register: useCallback(async (email: string, password: string, passwordConfirm: string, firstName: string, lastName: string, organization: string, title: string = '') => {
       return runWithErrorHandling(() => apiRegister(email, password, passwordConfirm, firstName, lastName, organization, title));
     }, [runWithErrorHandling]),
-    requestEmailAuthCode: useCallback(async (email: string) => runWithErrorHandling(() => apiRequestEmailAuthCode(email)), [runWithErrorHandling]),
+    requestEmailAuthCode: useCallback(
+      async (email: string, source: EmailAuthSource = 'login') => runWithErrorHandling(() => apiRequestEmailAuthCode(email, source)),
+      [runWithErrorHandling],
+    ),
     verifyEmailAuthCode,
     requestLoginCode: useCallback(async (email: string) => runWithErrorHandling(() => apiRequestLoginCode(email)), [runWithErrorHandling]),
     verifyLoginCode,

@@ -111,7 +111,11 @@ class CMSEmbedWidgetAdminFormTests(TestCase):
 class CMSEmbedWidgetAdminViewTests(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
-        self.admin_user = Member.objects.create_superuser(password="testpass123")
+        self.admin_user = Member.objects.create_superuser(
+            password="testpass123",
+            first_name="Embed",
+            last_name="Admin",
+        )
         ContactEmail.objects.create(
             member=self.admin_user,
             email_address="admin@example.com",

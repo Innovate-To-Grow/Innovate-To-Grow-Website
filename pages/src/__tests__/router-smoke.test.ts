@@ -44,6 +44,7 @@ describe('Router', () => {
     'subscribe',
     'unsubscribe-login',
     'magic-login',
+    'email-auth-link',
     'impersonate-login',
   ];
 

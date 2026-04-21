@@ -95,6 +95,8 @@ def create_default_admin(command):
         return
     member = Member.objects.create_superuser(
         password=command.DEV_DEFAULT_ADMIN_PASSWORD,
+        first_name="Dev",
+        last_name="Admin",
     )
     ContactEmail.objects.create(
         member=member,

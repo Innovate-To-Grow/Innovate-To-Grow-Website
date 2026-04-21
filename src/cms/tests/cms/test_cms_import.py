@@ -14,6 +14,8 @@ class CMSImportTest(TestCase):
         cache.clear()
         self.staff = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Import",
+            last_name="Admin",
         )
         self.client = APIClient()
         self.client.force_login(self.staff)

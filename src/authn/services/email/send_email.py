@@ -7,9 +7,11 @@ Credentials are loaded from the EmailServiceConfig singleton in the database.
 
 import logging
 import time
+from urllib.parse import urlencode
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
@@ -38,6 +40,19 @@ PURPOSE_DISPLAY = {
     "admin_login": "sign in to the admin panel",
 }
 
+PUBLIC_LINK_LABELS = {
+    "login": "Sign In to Your Account",
+    "subscribe": "Continue to Newsletter",
+    "event_registration": "Continue to Event Registration",
+    "register": "Continue Registration",
+}
+PUBLIC_LINK_DESCRIPTIONS = {
+    "login": "Use this secure link within the next 10 minutes to sign in instantly.",
+    "subscribe": "Use this secure link within the next 10 minutes to continue with your newsletter access.",
+    "event_registration": "Use this secure link within the next 10 minutes to continue with event registration.",
+    "register": "Use this secure link within the next 10 minutes to continue setting up your account.",
+}
+
 
 def _load_config():
     from core.models import EmailServiceConfig
@@ -45,13 +60,57 @@ def _load_config():
     return EmailServiceConfig.load()
 
 
-def _render_email_body(*, code: str, purpose: str) -> str:
+def _build_email_action(*, recipient: str, code: str, purpose: str, link_flow: str | None, link_source: str | None):
+    frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+    normalized_email = (recipient or "").strip().lower()
+    if (
+        purpose not in {"register", "login"}
+        or link_flow not in {"auth", "login", "register"}
+        or link_source not in PUBLIC_LINK_LABELS
+        or not frontend_url
+        or not normalized_email
+    ):
+        return {"url": "", "label": "", "description": ""}
+
+    params = urlencode(
+        {
+            "flow": link_flow,
+            "source": link_source,
+            "email": normalized_email,
+            "code": code,
+        }
+    )
+    return {
+        "url": f"{frontend_url}/email-auth-link?{params}",
+        "label": PUBLIC_LINK_LABELS[link_source],
+        "description": PUBLIC_LINK_DESCRIPTIONS[link_source],
+    }
+
+
+def _render_email_body(
+    *,
+    recipient: str,
+    code: str,
+    purpose: str,
+    link_flow: str | None = None,
+    link_source: str | None = None,
+) -> str:
+    action = _build_email_action(
+        recipient=recipient,
+        code=code,
+        purpose=purpose,
+        link_flow=link_flow,
+        link_source=link_source,
+    )
     return render_to_string(
         "authn/email/verification_code.html",
         {
             "code": code,
             "purpose_display": PURPOSE_DISPLAY.get(purpose, "complete your request"),
             "expiry_minutes": 10,
+            "action_url": action["url"],
+            "action_label": action["label"],
+            "action_description": action["description"],
         },
     )
 
@@ -140,7 +199,14 @@ def send_notification_email(*, recipient: str, subject: str, template: str, cont
         logger.exception("Failed to send notification email to %s", recipient)
 
 
-def send_verification_email(*, recipient: str, code: str, purpose: str):
+def send_verification_email(
+    *,
+    recipient: str,
+    code: str,
+    purpose: str,
+    link_flow: str | None = None,
+    link_source: str | None = None,
+):
     """
     Send a verification code email.
 
@@ -149,7 +215,13 @@ def send_verification_email(*, recipient: str, code: str, purpose: str):
     """
     config = _load_config()
     subject = PURPOSE_SUBJECTS.get(purpose, "Your verification code - Innovate to Grow")
-    html_body = _render_email_body(code=code, purpose=purpose)
+    html_body = _render_email_body(
+        recipient=recipient,
+        code=code,
+        purpose=purpose,
+        link_flow=link_flow,
+        link_source=link_source,
+    )
 
     if not config.ses_configured:
         logger.info(

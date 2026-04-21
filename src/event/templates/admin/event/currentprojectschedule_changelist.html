@@ -5,8 +5,8 @@
         <form method="post" action="{{ pull_url }}" class="inline">
             {% csrf_token %}
             <button type="submit"
-                    class="bg-primary-600 hover:bg-primary-700 flex items-center gap-1.5 justify-center rounded-default px-3 py-1.5 text-white text-xs font-medium transition-colors whitespace-nowrap">
-                <span class="material-symbols-outlined text-white !text-[16px]">sync</span>
+                    class="bg-primary-600 hover:bg-primary-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors whitespace-nowrap">
+                <span class="material-symbols-outlined text-white !text-[18px]">sync</span>
                 Pull Current Projects &amp; Schedule
             </button>
         </form>
@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="mb-6 grid gap-4 sm:grid-cols-2">
+    <div class="mb-6 grid gap-4 sm:grid-cols-3">
         {# Google Account Card #}
         <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
             <div class="flex items-center gap-2 mb-3">
@@ -42,17 +42,17 @@
             {% endif %}
         </div>
 
-        {# Current Semester Card #}
+        {# Current Schedule Card #}
         <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
             <div class="flex items-center gap-2 mb-3">
                 <span class="material-symbols-outlined text-primary-600 !text-[20px]">school</span>
-                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Current Semester</span>
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Current Schedule</span>
             </div>
-            {% if current_semester %}
+            {% if current_schedule_name %}
                 <div class="space-y-1.5 text-xs">
                     <div class="flex gap-2">
-                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Semester:</span>
-                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ current_semester.label }}</span>
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Schedule:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ current_schedule_name }}</span>
                     </div>
                     <div class="flex gap-2">
                         <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Projects:</span>
@@ -61,7 +61,51 @@
                 </div>
             {% else %}
                 <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
-                    No published semesters found.
+                    No active schedule configured.
+                </p>
+            {% endif %}
+        </div>
+
+        {# Sync Settings Card #}
+        <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600 !text-[20px]">sync</span>
+                    <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Auto Sync</span>
+                </div>
+                {% if config %}
+                    <a href="{{ sync_settings_url }}"
+                       class="border border-base-200 dark:border-base-700 rounded-default px-2.5 py-1 text-xs font-medium transition-all hover:bg-base-50 dark:hover:bg-base-800 text-font-default-light dark:text-font-default-dark">
+                        Settings
+                    </a>
+                {% endif %}
+            </div>
+            {% if config %}
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Status:</span>
+                        {% if config.auto_sync_enabled %}
+                            <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                                <span class="material-symbols-outlined !text-[14px]">check_circle</span> Enabled
+                            </span>
+                        {% else %}
+                            <span class="text-font-subtle-light dark:text-font-subtle-dark">Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Interval:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">Every {{ config.sync_interval_minutes }} min</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Last sync:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">
+                            {% if config.last_synced_at %}{{ config.last_synced_at }}{% else %}Never{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                    No active configuration.
                 </p>
             {% endif %}
         </div>
@@ -72,7 +116,7 @@
         <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
             <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
                 <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">
-                    Current Projects ({{ current_semester.label }})
+                    Current Projects ({{ current_schedule_name }})
                 </span>
             </div>
             <div class="overflow-x-auto">

@@ -22,6 +22,8 @@ class MemberAdminInlineVisibilityTest(TestCase):
         cache.clear()
         self.superuser = Member.objects.create_superuser(
             password="super123",
+            first_name="Super",
+            last_name="User",
             is_staff=True,
             is_active=True,
         )

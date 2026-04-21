@@ -21,6 +21,27 @@
               <p style="margin:0 0 16px;font-size:16px;color:#0b2653;line-height:1.5;">
                 Use the code below to {{ purpose_display }}.
               </p>
+              {% if action_url %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:4px 0 20px;">
+                    <a
+                      href="{{ action_url }}"
+                      style="display:inline-block;background-color:#0b1f3f;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 28px;border-radius:8px;"
+                    >
+                      {{ action_label }}
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:0 0 12px;">
+                    <p style="margin:0;font-size:14px;color:#4a5568;line-height:1.5;">
+                      {{ action_description }}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
               <!-- Code box -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
@@ -34,6 +55,11 @@
               <p style="margin:0 0 8px;font-size:14px;color:#4a5568;line-height:1.5;">
                 This code expires in <strong>{{ expiry_minutes }} minutes</strong>.
               </p>
+              {% if action_url %}
+              <p style="margin:0 0 8px;font-size:14px;color:#4a5568;line-height:1.5;">
+                You can also enter this code manually on the verification page.
+              </p>
+              {% endif %}
               <p style="margin:0;font-size:14px;color:#4a5568;line-height:1.5;">
                 If you did not request this code, you can safely ignore this email.
               </p>

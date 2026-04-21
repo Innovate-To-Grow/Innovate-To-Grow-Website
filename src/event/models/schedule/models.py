@@ -48,11 +48,11 @@ class EventScheduleTrack(ProjectControlModel):
 class EventScheduleSlot(ProjectControlModel):
     track = models.ForeignKey("event.EventScheduleTrack", on_delete=models.CASCADE, related_name="slots")
     project = models.ForeignKey(
-        "projects.Project",
+        "event.CurrentProject",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="event_schedule_slots",
+        related_name="schedule_slots",
     )
     slot_order = models.PositiveIntegerField()
     is_break = models.BooleanField(default=False)

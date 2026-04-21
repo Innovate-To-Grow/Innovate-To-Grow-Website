@@ -39,6 +39,7 @@ const baseAuth = {
   isLoading: false,
   error: null,
   clearError: vi.fn(),
+  clearProfileCompletionRequirement: vi.fn(),
   requestEmailAuthCode: vi.fn().mockResolvedValue({message: 'ok'}),
   verifyEmailAuthCode: vi.fn().mockResolvedValue({
     access: 'jwt',
@@ -69,6 +70,10 @@ describe('SubscribePage', () => {
     mockUseAuth.mockReset();
     mockGetProfile.mockReset();
     mockUpdateProfileFields.mockReset();
+    baseAuth.clearError.mockReset();
+    baseAuth.clearProfileCompletionRequirement.mockReset();
+    baseAuth.requestEmailAuthCode.mockClear();
+    baseAuth.verifyEmailAuthCode.mockClear();
 
     mockUseAuth.mockReturnValue({...baseAuth});
   });
@@ -94,7 +99,7 @@ describe('SubscribePage', () => {
     fireEvent.submit(screen.getByLabelText('Email').closest('form')!);
 
     await waitFor(() => {
-      expect(baseAuth.requestEmailAuthCode).toHaveBeenCalledWith('test@example.com');
+      expect(baseAuth.requestEmailAuthCode).toHaveBeenCalledWith('test@example.com', 'subscribe');
     });
 
     expect(await screen.findByLabelText('Verification Code')).toBeInTheDocument();
@@ -150,6 +155,22 @@ describe('SubscribePage', () => {
     expect(newsletterLabels.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('opens directly on the profile step when the query requests it', async () => {
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: 'member@example.com'},
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/subscribe?step=profile']}>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByLabelText(/first name/i)).toBeInTheDocument();
+  });
+
   it('toggles subscription in manage step', async () => {
     mockUseAuth.mockReturnValue({
       ...baseAuth,
@@ -197,9 +218,10 @@ describe('SubscribePage', () => {
     // Verify code → profile step
     fireEvent.change(screen.getByLabelText('Verification Code'), {target: {value: '123456'}});
     fireEvent.submit(screen.getByLabelText('Verification Code').closest('form')!);
-    await screen.findByText(/complete your profile/i);
+    await screen.findByLabelText(/first name/i);
 
     fireEvent.change(screen.getByLabelText(/first name/i), {target: {value: 'Ada'}});
+    fireEvent.change(screen.getByLabelText(/last name/i), {target: {value: 'Lovelace'}});
     const orgInputs = screen.getAllByPlaceholderText('Company or organization name');
     fireEvent.change(orgInputs[0], {target: {value: 'Acme Corp'}});
     fireEvent.submit(screen.getByLabelText(/first name/i).closest('form')!);
@@ -208,11 +230,13 @@ describe('SubscribePage', () => {
       expect(mockUpdateProfileFields).toHaveBeenCalledWith({
         first_name: 'Ada',
         middle_name: '',
-        last_name: '',
+        last_name: 'Lovelace',
         organization: 'Acme Corp',
         title: '',
         email_subscribe: true,
       });
     });
+
+    expect(baseAuth.clearProfileCompletionRequirement).toHaveBeenCalled();
   });
 });

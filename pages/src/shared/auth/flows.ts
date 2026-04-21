@@ -4,11 +4,12 @@ import { clearKeyCache, encryptPasswordWithCurrentKey } from '../../services/cry
 import authApi from './client';
 import {
   clearProfileCompletionRequired,
-  setProfileCompletionRequired,
-  setTokens,
+  persistAuthSession,
 } from './storage';
 import type {
+  EmailAuthFlow,
   EmailAuthRequestResponse,
+  EmailAuthSource,
   EmailAuthVerifyResponse,
   LoginResponse,
   MessageResponse,
@@ -69,9 +70,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
       password: encryptedPassword,
       key_id: keyId,
     });
-    const { access, refresh, user } = response.data;
-    setTokens({ access, refresh }, user);
-    clearProfileCompletionRequired();
+    persistAuthSession(response.data);
     return response.data;
   } catch (error) {
     if (isEncryptionFailure(error)) {
@@ -86,33 +85,48 @@ export const requestLoginCode = async (email: string): Promise<MessageResponse> 
   return response.data;
 };
 
-export const requestEmailAuthCode = async (email: string): Promise<EmailAuthRequestResponse> => {
-  const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', { email });
+export const requestEmailAuthCode = async (
+  email: string,
+  source: EmailAuthSource = 'login',
+): Promise<EmailAuthRequestResponse> => {
+  const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', { email, source });
   return response.data;
 };
 
 export const verifyLoginCode = async (email: string, code: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/login/verify-code/', { email, code });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  clearProfileCompletionRequired();
+  persistAuthSession(response.data);
   return response.data;
 };
 
 export const verifyEmailAuthCode = async (email: string, code: string): Promise<EmailAuthVerifyResponse> => {
   const response = await authApi.post<EmailAuthVerifyResponse>('/authn/email-auth/verify-code/', { email, code });
-  const { access, refresh, user, requires_profile_completion: requiresProfileCompletion } = response.data;
-  setTokens({ access, refresh }, user);
-  setProfileCompletionRequired(requiresProfileCompletion);
+  persistAuthSession(response.data);
   return response.data;
 };
 
 export const verifyRegistrationCode = async (email: string, code: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/register/verify-code/', { email, code });
-  const { access, refresh, user } = response.data;
-  setTokens({ access, refresh }, user);
-  clearProfileCompletionRequired();
+  persistAuthSession(response.data);
   return response.data;
+};
+
+export const consumeEmailAuthQuery = async ({
+  flow,
+  email,
+  code,
+}: {
+  flow: EmailAuthFlow;
+  email: string;
+  code: string;
+}): Promise<LoginResponse | EmailAuthVerifyResponse> => {
+  if (flow === 'auth') {
+    return verifyEmailAuthCode(email, code);
+  }
+  if (flow === 'login') {
+    return verifyLoginCode(email, code);
+  }
+  return verifyRegistrationCode(email, code);
 };
 
 export const resendRegistrationCode = async (email: string): Promise<MessageResponse> => {

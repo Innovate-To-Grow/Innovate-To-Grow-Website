@@ -8,7 +8,7 @@ import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/h
 export type OrganizationType = 'individual' | 'organization';
 
 export const useEventRegistration = () => {
-  const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode, clearProfileCompletionRequirement} = useAuth();
+  const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode} = useAuth();
   const [step, setStep] = useState<EventRegistrationStep>('loading');
   const [options, setOptions] = useState<EventRegistrationOptions | null>(null);
   const [registration, setRegistration] = useState<Registration | null>(null);
@@ -35,7 +35,6 @@ export const useEventRegistration = () => {
   const [phoneSending, setPhoneSending] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
-  const optionsLoaded = useRef(false);
   const initialPhoneRef = useRef<{digits: string; region: string} | null>(null);
   const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string; title: string} | null>(null);
 
@@ -67,7 +66,6 @@ export const useEventRegistration = () => {
     try {
       const data = await fetchRegistrationOptions();
       setOptions(data);
-      optionsLoaded.current = true;
 
       if (data.registration) {
         setRegistration(data.registration);
@@ -114,7 +112,6 @@ export const useEventRegistration = () => {
       fetchRegistrationOptions()
         .then((data) => {
           setOptions(data);
-          optionsLoaded.current = true;
           setStep('email');
         })
         .catch((err: unknown) => {
@@ -122,15 +119,14 @@ export const useEventRegistration = () => {
           setStep('email');
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, loadOptionsAndRoute]);
 
   const handleEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setAuthLoading(true);
     setError(null);
     try {
-      await requestEmailAuthCode(email.trim());
+      await requestEmailAuthCode(email.trim(), 'event_registration');
       setStep('code');
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
@@ -145,7 +141,6 @@ export const useEventRegistration = () => {
     setError(null);
     try {
       await verifyEmailAuthCode(email.trim(), code.trim());
-      clearProfileCompletionRequirement();
       setStep('loading');
       await loadOptionsAndRoute();
     } catch (err: unknown) {
@@ -157,7 +152,7 @@ export const useEventRegistration = () => {
 
   const handleRegistrationSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!options || !selectedTicketId || !attendeeFirstName.trim()) return;
+    if (!options || !selectedTicketId || !attendeeFirstName.trim() || !attendeeLastName.trim()) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -186,7 +181,7 @@ export const useEventRegistration = () => {
         event_slug: options.slug,
         ticket_id: selectedTicketId,
         attendee_first_name: attendeeFirstName.trim(),
-        attendee_last_name: attendeeLastName.trim() || undefined,
+        attendee_last_name: attendeeLastName.trim(),
         attendee_organization: orgValue,
         answers: Object.entries(answers).filter(([, value]) => value.trim()).map(([questionId, answer]) => ({question_id: questionId, answer})),
         attendee_secondary_email: options.allow_secondary_email ? attendeeSecondaryEmail.trim() || undefined : undefined,

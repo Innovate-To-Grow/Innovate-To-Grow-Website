@@ -30,6 +30,20 @@ class TicketAutoLoginViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
+
+    def test_incomplete_profile_routes_to_complete_profile(self):
+        self.member.first_name = ""
+        self.member.last_name = ""
+        self.member.save(update_fields=["first_name", "last_name", "updated_at"])
+        token = build_ticket_login_token(self.member)
+
+        response = self.client.post("/event/ticket-login/", {"token": token}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
 
     def test_token_can_only_be_used_once(self):
         token = build_ticket_login_token(self.member)

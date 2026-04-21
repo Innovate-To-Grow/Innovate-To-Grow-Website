@@ -29,6 +29,16 @@ class Member(AbstractUser, ProjectControlModel):
         """Return the member's UUID (alias for id from ProjectControlModel)."""
         return self.id
 
+    @property
+    def has_required_name_fields(self) -> bool:
+        """Return whether the member has the required first and last name fields."""
+        return bool((self.first_name or "").strip() and (self.last_name or "").strip())
+
+    @property
+    def requires_profile_completion(self) -> bool:
+        """Return whether the member must complete their profile before continuing."""
+        return not self.has_required_name_fields
+
     # organization
     organization = models.CharField(
         max_length=255,

@@ -2,6 +2,7 @@ import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
 import {impersonateAutoLogin} from '../../shared/auth/session';
 import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
+import {getPostAuthPath} from '../../shared/auth/redirects';
 
 export function ImpersonateLoginPage() {
   const [searchParams] = useSearchParams();
@@ -17,10 +18,10 @@ export function ImpersonateLoginPage() {
     let cancelled = false;
 
     impersonateAutoLogin(token)
-      .then(() => {
+      .then((response) => {
         if (!cancelled) {
           dispatchAuthStateChange();
-          navigate('/account', {replace: true});
+          navigate(getPostAuthPath(response), {replace: true});
         }
       })
       .catch(() => {
