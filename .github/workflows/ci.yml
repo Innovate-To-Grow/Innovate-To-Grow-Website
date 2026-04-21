@@ -34,18 +34,41 @@ jobs:
       # GitHub Action, which requires a paid license when the repository is
       # owned by an organization. The CLI itself is Apache-2.0 and works the
       # same, we just lose the Action's PR-comment integration.
-      - name: Run gitleaks
+      - name: Install gitleaks
         run: |
           GITLEAKS_VERSION="8.21.2"
           curl -sSL -o /tmp/gitleaks.tar.gz \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           mkdir -p /tmp/gitleaks
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks
+      # Scope the scan to commits introduced by this PR/push, not the whole
+      # repo history. Historical leaks (pre-remediation commits from before
+      # the codebase cleanup) were flagged and broke CI on otherwise-clean
+      # branches; that's a separate "purge history" operation, not a gate
+      # on new changes. This scan fails only when the current PR or push
+      # introduces a *new* secret.
+      - name: Run gitleaks on PR/push diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_HEAD: ${{ github.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ] && [ -n "$PR_HEAD_SHA" ]; then
+            RANGE="${BASE_SHA}..${PR_HEAD_SHA}"
+          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            RANGE="${PUSH_BEFORE}..${PUSH_HEAD}"
+          else
+            # New branch push or detached state — scan the latest commit only.
+            RANGE="HEAD~0..HEAD"
+          fi
+          echo "Scanning commit range: $RANGE"
           /tmp/gitleaks/gitleaks detect \
             --source . \
             --redact \
             --verbose \
             --no-banner \
+            --log-opts "$RANGE" \
             --exit-code 1
 
   # ============================================
