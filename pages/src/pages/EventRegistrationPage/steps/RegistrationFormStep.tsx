@@ -114,7 +114,9 @@ export const RegistrationFormStep = ({
     if (hasErrors) {
       requestAnimationFrame(() => {
         const firstError = document.querySelector('.event-reg-form-group--error');
-        firstError?.scrollIntoView({behavior: 'smooth', block: 'center'});
+        if (firstError && typeof firstError.scrollIntoView === 'function') {
+          firstError.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
       });
       return;
     }
