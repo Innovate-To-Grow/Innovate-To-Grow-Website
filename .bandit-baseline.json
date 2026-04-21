@@ -1,21 +1,8 @@
 {
   "errors": [],
-  "generated_at": "2026-04-21T06:13:00Z",
+  "generated_at": "2026-04-21T06:16:11Z",
   "metrics": {
-    "_totals": {
-      "CONFIDENCE.HIGH": 9,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 7,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 9,
-      "SEVERITY.MEDIUM": 7,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 18184,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/authn/__init__.py": {
+    "./authn/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -28,7 +15,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/__init__.py": {
+    "./authn/admin/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -41,7 +28,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/__init__.py": {
+    "./authn/admin/members/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -54,7 +41,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/contact.py": {
+    "./authn/admin/members/contact.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -67,7 +54,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/forms.py": {
+    "./authn/admin/members/forms.py": {
       "CONFIDENCE.HIGH": 2,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -80,7 +67,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/inlines.py": {
+    "./authn/admin/members/inlines.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -93,7 +80,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/invitation.py": {
+    "./authn/admin/members/invitation.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -106,7 +93,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/member.py": {
+    "./authn/admin/members/member.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -119,7 +106,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/members/member_helpers.py": {
+    "./authn/admin/members/member_helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -132,7 +119,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/security/__init__.py": {
+    "./authn/admin/security/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -145,7 +132,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/admin/security/security.py": {
+    "./authn/admin/security/security.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -158,7 +145,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/apps.py": {
+    "./authn/apps.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -171,7 +158,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/backends.py": {
+    "./authn/backends.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -184,7 +171,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/forms/__init__.py": {
+    "./authn/forms/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -197,7 +184,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/forms/admin_auth.py": {
+    "./authn/forms/admin_auth.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -210,7 +197,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/forms/admin_login.py": {
+    "./authn/forms/admin_login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -223,7 +210,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/forms/invitation.py": {
+    "./authn/forms/invitation.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -236,7 +223,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/management/__init__.py": {
+    "./authn/management/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -249,7 +236,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/__init__.py": {
+    "./authn/models/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -262,7 +249,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/contact/__init__.py": {
+    "./authn/models/contact/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -275,7 +262,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/contact/contact_info.py": {
+    "./authn/models/contact/contact_info.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -288,7 +275,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/contact/phone_regions.py": {
+    "./authn/models/contact/phone_regions.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -301,7 +288,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/members/__init__.py": {
+    "./authn/models/members/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -314,7 +301,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/members/admin_invitation.py": {
+    "./authn/models/members/admin_invitation.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -327,7 +314,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/members/manager.py": {
+    "./authn/models/members/manager.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -340,7 +327,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/members/member.py": {
+    "./authn/models/members/member.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -353,7 +340,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/schol/__init__.py": {
+    "./authn/models/schol/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -366,7 +353,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/schol/sso.py": {
+    "./authn/models/schol/sso.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -379,7 +366,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/security/__init__.py": {
+    "./authn/models/security/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -392,7 +379,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/security/email_auth_challenge.py": {
+    "./authn/models/security/email_auth_challenge.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -405,7 +392,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/security/impersonation_token.py": {
+    "./authn/models/security/impersonation_token.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -418,7 +405,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/models/security/rsa_keypair.py": {
+    "./authn/models/security/rsa_keypair.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -431,7 +418,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/__init__.py": {
+    "./authn/serializers/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -444,7 +431,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/change_password.py": {
+    "./authn/serializers/change_password.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -457,7 +444,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/contact_emails.py": {
+    "./authn/serializers/contact_emails.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -470,7 +457,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/contact_phones.py": {
+    "./authn/serializers/contact_phones.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -483,7 +470,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/email_code/__init__.py": {
+    "./authn/serializers/email_code/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -496,7 +483,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/email_code/account.py": {
+    "./authn/serializers/email_code/account.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -509,7 +496,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/email_code/auth.py": {
+    "./authn/serializers/email_code/auth.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -522,7 +509,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/email_code/base.py": {
+    "./authn/serializers/email_code/base.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -535,7 +522,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/email_code/passwords.py": {
+    "./authn/serializers/email_code/passwords.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -548,7 +535,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/helpers.py": {
+    "./authn/serializers/helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -561,7 +548,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/login.py": {
+    "./authn/serializers/login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -574,7 +561,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/profile.py": {
+    "./authn/serializers/profile.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -587,7 +574,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/register.py": {
+    "./authn/serializers/register.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
@@ -600,7 +587,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/serializers/subscribe.py": {
+    "./authn/serializers/subscribe.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -613,7 +600,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/__init__.py": {
+    "./authn/services/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -626,7 +613,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/account/__init__.py": {
+    "./authn/services/account/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -639,7 +626,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/account/delete_account.py": {
+    "./authn/services/account/delete_account.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -652,7 +639,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/contacts/__init__.py": {
+    "./authn/services/contacts/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -665,7 +652,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/contacts/contact_emails.py": {
+    "./authn/services/contacts/contact_emails.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -678,7 +665,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/contacts/contact_phones.py": {
+    "./authn/services/contacts/contact_phones.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -691,7 +678,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/create_member.py": {
+    "./authn/services/create_member.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -704,7 +691,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/email/__init__.py": {
+    "./authn/services/email/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -717,7 +704,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/email/auth_email.py": {
+    "./authn/services/email/auth_email.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -730,7 +717,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/email/send_email.py": {
+    "./authn/services/email/send_email.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -743,7 +730,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/email_challenges.py": {
+    "./authn/services/email_challenges.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -756,7 +743,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/export_members.py": {
+    "./authn/services/export_members.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -769,7 +756,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/import_members/__init__.py": {
+    "./authn/services/import_members/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -782,7 +769,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/import_members/excel.py": {
+    "./authn/services/import_members/excel.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -795,7 +782,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/import_members/operations.py": {
+    "./authn/services/import_members/operations.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -808,7 +795,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/import_members/parsing.py": {
+    "./authn/services/import_members/parsing.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -821,7 +808,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/import_members/template.py": {
+    "./authn/services/import_members/template.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -834,7 +821,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/import_members/types.py": {
+    "./authn/services/import_members/types.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -847,7 +834,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/key_encryption.py": {
+    "./authn/services/key_encryption.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -860,7 +847,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/rsa_manager.py": {
+    "./authn/services/rsa_manager.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -873,7 +860,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/sms/__init__.py": {
+    "./authn/services/sms/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -886,7 +873,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/sms/twilio_verify.py": {
+    "./authn/services/sms/twilio_verify.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -899,7 +886,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/services/unsubscribe_token.py": {
+    "./authn/services/unsubscribe_token.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -912,7 +899,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/throttles.py": {
+    "./authn/throttles.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -925,7 +912,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/urls.py": {
+    "./authn/urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -938,7 +925,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/utils.py": {
+    "./authn/utils.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -951,7 +938,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/__init__.py": {
+    "./authn/views/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -964,7 +951,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/account/__init__.py": {
+    "./authn/views/account/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -977,7 +964,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/account/change_password.py": {
+    "./authn/views/account/change_password.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -990,7 +977,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/account/contact_emails.py": {
+    "./authn/views/account/contact_emails.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1003,7 +990,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/account/contact_phones.py": {
+    "./authn/views/account/contact_phones.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1016,7 +1003,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/account/email_code.py": {
+    "./authn/views/account/email_code.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1029,7 +1016,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/account/profile.py": {
+    "./authn/views/account/profile.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1042,7 +1029,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/admin/__init__.py": {
+    "./authn/views/admin/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1055,7 +1042,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/admin/invitation.py": {
+    "./authn/views/admin/invitation.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1068,7 +1055,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/admin/login.py": {
+    "./authn/views/admin/login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1081,7 +1068,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/admin/login_helpers.py": {
+    "./authn/views/admin/login_helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1094,7 +1081,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/__init__.py": {
+    "./authn/views/auth/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1107,7 +1094,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/email_code.py": {
+    "./authn/views/auth/email_code.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1120,7 +1107,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/email_code_helpers.py": {
+    "./authn/views/auth/email_code_helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1133,7 +1120,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/login.py": {
+    "./authn/views/auth/login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1146,7 +1133,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/logout.py": {
+    "./authn/views/auth/logout.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1159,7 +1146,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/public_key.py": {
+    "./authn/views/auth/public_key.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1172,7 +1159,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/register.py": {
+    "./authn/views/auth/register.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1185,7 +1172,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/auth/token.py": {
+    "./authn/views/auth/token.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1198,7 +1185,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/helpers.py": {
+    "./authn/views/helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1211,7 +1198,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/impersonate_login.py": {
+    "./authn/views/impersonate_login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1224,7 +1211,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/subscribe.py": {
+    "./authn/views/subscribe.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1237,7 +1224,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/authn/views/unsubscribe_login.py": {
+    "./authn/views/unsubscribe_login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1250,7 +1237,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/__init__.py": {
+    "./cms/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1263,7 +1250,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/__init__.py": {
+    "./cms/admin/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1276,7 +1263,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/analytics/__init__.py": {
+    "./cms/admin/analytics/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1289,7 +1276,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/analytics/page_view.py": {
+    "./cms/admin/analytics/page_view.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1302,7 +1289,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/cms/__init__.py": {
+    "./cms/admin/cms/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1315,7 +1302,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/cms/cms_asset.py": {
+    "./cms/admin/cms/cms_asset.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1328,7 +1315,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/cms/cms_embed_widget.py": {
+    "./cms/admin/cms/cms_embed_widget.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1341,7 +1328,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/cms/cms_page.py": {
+    "./cms/admin/cms/cms_page.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1354,7 +1341,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/cms/page_admin/editor.py": {
+    "./cms/admin/cms/page_admin/editor.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1367,7 +1354,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/cms/page_admin/import_export.py": {
+    "./cms/admin/cms/page_admin/import_export.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1380,7 +1367,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/layout/__init__.py": {
+    "./cms/admin/layout/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1393,7 +1380,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/layout/footer_content.py": {
+    "./cms/admin/layout/footer_content.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1406,7 +1393,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/layout/menu.py": {
+    "./cms/admin/layout/menu.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1419,7 +1406,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/layout/route_options.py": {
+    "./cms/admin/layout/route_options.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1432,7 +1419,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/layout/site_settings.py": {
+    "./cms/admin/layout/site_settings.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1445,7 +1432,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/layout/style_sheet.py": {
+    "./cms/admin/layout/style_sheet.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1458,7 +1445,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/news/__init__.py": {
+    "./cms/admin/news/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1471,7 +1458,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/news/article.py": {
+    "./cms/admin/news/article.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1484,7 +1471,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/news/feed_source.py": {
+    "./cms/admin/news/feed_source.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1497,7 +1484,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/admin/news/sync_log.py": {
+    "./cms/admin/news/sync_log.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1510,7 +1497,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/analytics_urls.py": {
+    "./cms/analytics_urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1523,7 +1510,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/app_routes.py": {
+    "./cms/app_routes.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1536,7 +1523,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/apps.py": {
+    "./cms/apps.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1549,7 +1536,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/cms_urls.py": {
+    "./cms/cms_urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1562,7 +1549,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/management/__init__.py": {
+    "./cms/management/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1575,7 +1562,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/__init__.py": {
+    "./cms/models/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1588,7 +1575,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/__init__.py": {
+    "./cms/models/content/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1601,7 +1588,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/analytics/__init__.py": {
+    "./cms/models/content/analytics/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1614,7 +1601,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/analytics/page_view.py": {
+    "./cms/models/content/analytics/page_view.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1627,7 +1614,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/cms/__init__.py": {
+    "./cms/models/content/cms/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1640,7 +1627,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/cms/block_types.py": {
+    "./cms/models/content/cms/block_types.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1653,7 +1640,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/cms/cms_block.py": {
+    "./cms/models/content/cms/cms_block.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1666,7 +1653,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/cms/cms_embed_widget.py": {
+    "./cms/models/content/cms/cms_embed_widget.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1679,7 +1666,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/cms/cms_page.py": {
+    "./cms/models/content/cms/cms_page.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1692,7 +1679,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/layout/__init__.py": {
+    "./cms/models/content/layout/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1705,7 +1692,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/layout/footer_content.py": {
+    "./cms/models/content/layout/footer_content.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1718,7 +1705,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/layout/menu.py": {
+    "./cms/models/content/layout/menu.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1731,7 +1718,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/layout/site_settings.py": {
+    "./cms/models/content/layout/site_settings.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1744,7 +1731,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/layout/style_sheet.py": {
+    "./cms/models/content/layout/style_sheet.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1757,7 +1744,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/news/__init__.py": {
+    "./cms/models/content/news/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1770,7 +1757,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/news/article.py": {
+    "./cms/models/content/news/article.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1783,7 +1770,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/news/feed_source.py": {
+    "./cms/models/content/news/feed_source.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1796,7 +1783,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/news/sync_log.py": {
+    "./cms/models/content/news/sync_log.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1809,7 +1796,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/shared/__init__.py": {
+    "./cms/models/content/shared/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1822,7 +1809,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/content/shared/validators.py": {
+    "./cms/models/content/shared/validators.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1835,7 +1822,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/media.py": {
+    "./cms/models/media.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1848,7 +1835,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/models/uniforms/__init__.py": {
+    "./cms/models/uniforms/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1861,7 +1848,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/news_urls.py": {
+    "./cms/news_urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1874,7 +1861,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/serializers/__init__.py": {
+    "./cms/serializers/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1887,7 +1874,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/serializers/analytics.py": {
+    "./cms/serializers/analytics.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1900,7 +1887,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/serializers/cms.py": {
+    "./cms/serializers/cms.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1913,7 +1900,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/serializers/news.py": {
+    "./cms/serializers/news.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1926,7 +1913,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/serializers/serializers.py": {
+    "./cms/serializers/serializers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1939,7 +1926,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/__init__.py": {
+    "./cms/services/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1952,7 +1939,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/analytics/__init__.py": {
+    "./cms/services/analytics/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1965,7 +1952,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/analytics/buffer.py": {
+    "./cms/services/analytics/buffer.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1978,7 +1965,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/news/__init__.py": {
+    "./cms/services/news/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1991,7 +1978,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/news/feed_parser.py": {
+    "./cms/services/news/feed_parser.py": {
       "CONFIDENCE.HIGH": 3,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2004,7 +1991,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/news/scraper.py": {
+    "./cms/services/news/scraper.py": {
       "CONFIDENCE.HIGH": 1,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2017,7 +2004,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/news/sync.py": {
+    "./cms/services/news/sync.py": {
       "CONFIDENCE.HIGH": 1,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2030,7 +2017,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/services/sanitize.py": {
+    "./cms/services/sanitize.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2043,7 +2030,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/signals.py": {
+    "./cms/signals.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2056,7 +2043,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/urls.py": {
+    "./cms/urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2069,7 +2056,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/views/__init__.py": {
+    "./cms/views/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2082,7 +2069,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/views/analytics.py": {
+    "./cms/views/analytics.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2095,7 +2082,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/views/cms.py": {
+    "./cms/views/cms.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2108,7 +2095,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/views/news.py": {
+    "./cms/views/news.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2121,7 +2108,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/cms/views/views.py": {
+    "./cms/views/views.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2134,7 +2121,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/__init__.py": {
+    "./core/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2147,7 +2134,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/__init__.py": {
+    "./core/admin/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2160,7 +2147,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/base.py": {
+    "./core/admin/base.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2173,7 +2160,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/log_entry.py": {
+    "./core/admin/log_entry.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2186,7 +2173,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/maintenance.py": {
+    "./core/admin/maintenance.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
@@ -2199,7 +2186,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/mixins.py": {
+    "./core/admin/mixins.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2212,7 +2199,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/__init__.py": {
+    "./core/admin/service_credentials/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2225,7 +2212,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/aws.py": {
+    "./core/admin/service_credentials/aws.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2238,7 +2225,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/email.py": {
+    "./core/admin/service_credentials/email.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2251,7 +2238,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/gmail.py": {
+    "./core/admin/service_credentials/gmail.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2264,7 +2251,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/google.py": {
+    "./core/admin/service_credentials/google.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2277,7 +2264,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/helpers.py": {
+    "./core/admin/service_credentials/helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2290,7 +2277,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/service_credentials/sms.py": {
+    "./core/admin/service_credentials/sms.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2303,7 +2290,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/system_intelligence.py": {
+    "./core/admin/system_intelligence.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2316,7 +2303,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/admin/utils.py": {
+    "./core/admin/utils.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2329,7 +2316,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/apps.py": {
+    "./core/apps.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2342,7 +2329,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/asgi.py": {
+    "./core/asgi.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2355,7 +2342,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/management/__init__.py": {
+    "./core/management/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2368,7 +2355,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/middleware.py": {
+    "./core/middleware.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2381,7 +2368,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/__init__.py": {
+    "./core/models/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2394,7 +2381,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/__init__.py": {
+    "./core/models/base/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2407,7 +2394,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/control.py": {
+    "./core/models/base/control.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2420,7 +2407,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/service_credentials/__init__.py": {
+    "./core/models/base/service_credentials/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2433,7 +2420,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/service_credentials/aws.py": {
+    "./core/models/base/service_credentials/aws.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2446,7 +2433,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/service_credentials/email.py": {
+    "./core/models/base/service_credentials/email.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2459,7 +2446,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/service_credentials/gmail.py": {
+    "./core/models/base/service_credentials/gmail.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2472,7 +2459,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/service_credentials/google.py": {
+    "./core/models/base/service_credentials/google.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2485,7 +2472,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/service_credentials/sms.py": {
+    "./core/models/base/service_credentials/sms.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2498,7 +2485,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/system_intelligence.py": {
+    "./core/models/base/system_intelligence.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2511,7 +2498,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/base/web.py": {
+    "./core/models/base/web.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2524,7 +2511,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/managers/__init__.py": {
+    "./core/models/managers/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2537,7 +2524,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/managers/base.py": {
+    "./core/models/managers/base.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2550,7 +2537,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/mixins/__init__.py": {
+    "./core/models/mixins/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2563,7 +2550,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/models/mixins/base.py": {
+    "./core/models/mixins/base.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2576,7 +2563,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/__init__.py": {
+    "./core/services/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2589,7 +2576,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/bedrock.py": {
+    "./core/services/bedrock.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2602,7 +2589,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/db_tools/__init__.py": {
+    "./core/services/db_tools/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2615,7 +2602,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/db_tools/definitions.py": {
+    "./core/services/db_tools/definitions.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2628,7 +2615,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/db_tools/executor.py": {
+    "./core/services/db_tools/executor.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2641,7 +2628,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/db_tools/helpers.py": {
+    "./core/services/db_tools/helpers.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2654,7 +2641,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/services/db_tools/tools.py": {
+    "./core/services/db_tools/tools.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2667,7 +2654,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/__init__.py": {
+    "./core/settings/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2680,7 +2667,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/base.py": {
+    "./core/settings/base.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2693,7 +2680,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/ci.py": {
+    "./core/settings/ci.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
@@ -2706,7 +2693,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/__init__.py": {
+    "./core/settings/components/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2719,7 +2706,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/framework/__init__.py": {
+    "./core/settings/components/framework/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2732,7 +2719,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/framework/django.py": {
+    "./core/settings/components/framework/django.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2745,7 +2732,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/framework/environment.py": {
+    "./core/settings/components/framework/environment.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2758,7 +2745,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/integrations/__init__.py": {
+    "./core/settings/components/integrations/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2771,7 +2758,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/integrations/admin.py": {
+    "./core/settings/components/integrations/admin.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2784,7 +2771,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/integrations/api.py": {
+    "./core/settings/components/integrations/api.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2797,7 +2784,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/integrations/editor.py": {
+    "./core/settings/components/integrations/editor.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2810,7 +2797,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/components/production.py": {
+    "./core/settings/components/production.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
@@ -2823,7 +2810,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/dev.py": {
+    "./core/settings/dev.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 2,
@@ -2836,7 +2823,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/settings/prod.py": {
+    "./core/settings/prod.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2849,7 +2836,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/urls.py": {
+    "./core/urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2862,7 +2849,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/views.py": {
+    "./core/views.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2875,7 +2862,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/core/wsgi.py": {
+    "./core/wsgi.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2888,7 +2875,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/__init__.py": {
+    "./event/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2901,7 +2888,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/admin/__init__.py": {
+    "./event/admin/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2914,7 +2901,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/admin/checkin.py": {
+    "./event/admin/checkin.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2927,7 +2914,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/admin/current_project.py": {
+    "./event/admin/current_project.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2936,11 +2923,11 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 115,
+      "loc": 161,
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/admin/event.py": {
+    "./event/admin/event.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2953,7 +2940,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/admin/registration.py": {
+    "./event/admin/registration.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2966,7 +2953,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/admin/sync_log.py": {
+    "./event/admin/sync_log.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2979,7 +2966,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/apps.py": {
+    "./event/apps.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -2992,7 +2979,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/__init__.py": {
+    "./event/models/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3005,7 +2992,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/current_project.py": {
+    "./event/models/current_project.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3018,7 +3005,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/__init__.py": {
+    "./event/models/registration/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3031,7 +3018,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/checkin.py": {
+    "./event/models/registration/checkin.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3044,7 +3031,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/event.py": {
+    "./event/models/registration/event.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3057,7 +3044,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/question.py": {
+    "./event/models/registration/question.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3070,7 +3057,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/registration.py": {
+    "./event/models/registration/registration.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3083,7 +3070,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/sync_log.py": {
+    "./event/models/registration/sync_log.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3096,7 +3083,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/registration/ticket.py": {
+    "./event/models/registration/ticket.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3109,7 +3096,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/schedule/__init__.py": {
+    "./event/models/schedule/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3122,7 +3109,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/models/schedule/models.py": {
+    "./event/models/schedule/models.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3135,7 +3122,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/serializers/__init__.py": {
+    "./event/serializers/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3148,7 +3135,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/serializers/current_projects.py": {
+    "./event/serializers/current_projects.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3161,7 +3148,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/serializers/registration.py": {
+    "./event/serializers/registration.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3174,7 +3161,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/serializers/schedule.py": {
+    "./event/serializers/schedule.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3187,7 +3174,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/__init__.py": {
+    "./event/services/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3200,7 +3187,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/calendar.py": {
+    "./event/services/calendar.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3213,7 +3200,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/registration_sheet_sync.py": {
+    "./event/services/registration_sheet_sync.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3226,7 +3213,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/schedule_sync.py": {
+    "./event/services/schedule_sync.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3239,7 +3226,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/sync_registration_email.py": {
+    "./event/services/sync_registration_email.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3252,7 +3239,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/sync_registration_to_account.py": {
+    "./event/services/sync_registration_to_account.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3265,7 +3252,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/ticket_assets.py": {
+    "./event/services/ticket_assets.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
@@ -3278,7 +3265,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/services/ticket_mail.py": {
+    "./event/services/ticket_mail.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3291,7 +3278,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/urls.py": {
+    "./event/urls.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3304,7 +3291,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/views/__init__.py": {
+    "./event/views/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3317,7 +3304,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/views/checkin.py": {
+    "./event/views/checkin.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3330,579 +3317,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/event/views/current_projects.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 24,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/event/views/registration.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 303,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/event/views/schedule.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 31,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/event/views/ticket_login.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 21,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 0,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/admin/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 4,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/admin/campaign.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 537,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/admin/inbox.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 247,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/admin/recipient_log.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 39,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/apps.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 23,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/login_redirects.py": {
-      "CONFIDENCE.HIGH": 1,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 1,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 33,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/models/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 4,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/models/campaign.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 112,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/models/magic_login.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 50,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/models/recipient_log.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 36,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 26,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/audience.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 167,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/gmail_import.py": {
-      "CONFIDENCE.HIGH": 1,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 1,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 178,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/inbox.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 246,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/personalize.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 14,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/preview.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 48,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/scam_detector.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 259,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/send_campaign.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 177,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/services/unsubscribe_token.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 69,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/urls.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 8,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/mail/views.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 138,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/manage.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 17,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 0,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/admin/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 3,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/admin/project.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 43,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/admin/semester.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 96,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/apps.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 7,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/management/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 0,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/models/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 4,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/models/past_project_share.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 8,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/models/project.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 24,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/models/semester.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 18,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/pagination.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 5,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/serializers/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 12,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/serializers/past_project_share.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 32,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/serializers/project.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 43,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/serializers/semester.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 13,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/services/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 0,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/services/csv_import.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 88,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "src/projects/services/hooks.py": {
+    "./event/views/current_projects.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3915,7 +3330,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/signals.py": {
+    "./event/views/registration.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3924,11 +3339,11 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 12,
+      "loc": 303,
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/throttles.py": {
+    "./event/views/schedule.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3937,11 +3352,11 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 7,
+      "loc": 31,
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/urls.py": {
+    "./event/views/ticket_login.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3950,11 +3365,11 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 18,
+      "loc": 21,
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/views/__init__.py": {
+    "./mail/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3963,11 +3378,11 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 11,
+      "loc": 0,
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/views/all_past_projects.py": {
+    "./mail/admin/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3976,11 +3391,180 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 27,
+      "loc": 4,
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/views/past_project_share.py": {
+    "./mail/admin/campaign.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 537,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/admin/inbox.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 247,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/admin/recipient_log.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 39,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/apps.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 23,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/login_redirects.py": {
+      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 33,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/models/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 4,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/models/campaign.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 112,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/models/magic_login.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 50,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/models/recipient_log.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 36,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 26,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/audience.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 167,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/gmail_import.py": {
+      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 178,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/inbox.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 246,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/personalize.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -3993,7 +3577,85 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/views/past_projects.py": {
+    "./mail/services/preview.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 48,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/scam_detector.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 259,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/send_campaign.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 177,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/unsubscribe_token.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 69,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/urls.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 8,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/views.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 138,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./manage.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -4006,7 +3668,332 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "src/projects/views/project_detail.py": {
+    "./projects/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 0,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/admin/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 3,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/admin/project.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 43,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/admin/semester.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 96,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/apps.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 7,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/management/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 0,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/models/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 4,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/models/past_project_share.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 8,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/models/project.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 24,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/models/semester.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 18,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/pagination.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 5,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/serializers/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 12,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/serializers/past_project_share.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 32,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/serializers/project.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 43,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/serializers/semester.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 13,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/services/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 0,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/services/csv_import.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 88,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/services/hooks.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 29,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/signals.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 12,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/throttles.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 7,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/urls.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 18,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/views/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 11,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/views/all_past_projects.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 27,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/views/past_project_share.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 14,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/views/past_projects.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 17,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./projects/views/project_detail.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -4018,6 +4005,19 @@
       "loc": 9,
       "nosec": 0,
       "skipped_tests": 0
+    },
+    "_totals": {
+      "CONFIDENCE.HIGH": 9,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 7,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 9,
+      "SEVERITY.MEDIUM": 7,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 18235,
+      "nosec": 0,
+      "skipped_tests": 0
     }
   },
   "results": [
@@ -4025,7 +4025,7 @@
       "code": "59             )\n60             return mark_safe(preview + widget_html)\n61         return widget_html\n",
       "col_offset": 19,
       "end_col_offset": 51,
-      "filename": "src/authn/admin/members/forms.py",
+      "filename": "./authn/admin/members/forms.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 80,
@@ -4045,7 +4045,7 @@
       "code": "59             )\n60             return mark_safe(preview + widget_html)\n61         return widget_html\n",
       "col_offset": 19,
       "end_col_offset": 51,
-      "filename": "src/authn/admin/members/forms.py",
+      "filename": "./authn/admin/members/forms.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 79,
@@ -4065,7 +4065,7 @@
       "code": "98     def validate(self, attrs: dict) -> dict:\n99         attrs[\"_decrypted_password\"] = decrypt_password_pair(\n100             attrs,\n101             password_key=\"password\",\n102             confirm_key=\"password_confirm\",\n103         )\n104         return attrs\n",
       "col_offset": 39,
       "end_col_offset": 9,
-      "filename": "src/authn/serializers/register.py",
+      "filename": "./authn/serializers/register.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -4089,7 +4089,7 @@
       "code": "1 import re\n2 import xml.etree.ElementTree as ET  # noqa: N817\n3 from email.utils import parsedate_to_datetime\n",
       "col_offset": 0,
       "end_col_offset": 34,
-      "filename": "src/cms/services/news/feed_parser.py",
+      "filename": "./cms/services/news/feed_parser.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 20,
@@ -4109,7 +4109,7 @@
       "code": "12     req = Request(url, headers={\"User-Agent\": \"ITG-NewsSync/1.0\"})\n13     with urlopen(req, timeout=30) as resp:  # noqa: S310\n14         return resp.read()\n",
       "col_offset": 9,
       "end_col_offset": 33,
-      "filename": "src/cms/services/news/feed_parser.py",
+      "filename": "./cms/services/news/feed_parser.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 22,
@@ -4129,7 +4129,7 @@
       "code": "17 def parse_feed_items(xml_bytes: bytes) -> list[dict]:\n18     root = ET.fromstring(xml_bytes)  # noqa: S314\n19     items = []\n",
       "col_offset": 11,
       "end_col_offset": 35,
-      "filename": "src/cms/services/news/feed_parser.py",
+      "filename": "./cms/services/news/feed_parser.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 20,
@@ -4149,7 +4149,7 @@
       "code": "13     req = urllib.request.Request(url, headers={\"User-Agent\": \"ITG-News-Scraper/1.0\"})\n14     with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310\n15         html = resp.read().decode(\"utf-8\", errors=\"replace\")\n",
       "col_offset": 9,
       "end_col_offset": 54,
-      "filename": "src/cms/services/news/scraper.py",
+      "filename": "./cms/services/news/scraper.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 22,
@@ -4169,7 +4169,7 @@
       "code": "1 import logging\n2 import xml.etree.ElementTree as ET  # noqa: N817\n3 from concurrent.futures import ThreadPoolExecutor, as_completed\n",
       "col_offset": 0,
       "end_col_offset": 34,
-      "filename": "src/cms/services/news/sync.py",
+      "filename": "./cms/services/news/sync.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 20,
@@ -4189,7 +4189,7 @@
       "code": "30         if cleaned_data.get(\"clear_bypass_password\"):\n31             cleaned_data[\"bypass_password\"] = \"\"\n32         elif not cleaned_data.get(\"bypass_password\") and self.instance.pk:\n",
       "col_offset": 25,
       "end_col_offset": 42,
-      "filename": "src/core/admin/maintenance.py",
+      "filename": "./core/admin/maintenance.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -4209,7 +4209,7 @@
       "code": "12 \n13 SECRET_KEY = \"ci-secret-key\"\n14 DEBUG = False\n",
       "col_offset": 13,
       "end_col_offset": 28,
-      "filename": "src/core/settings/ci.py",
+      "filename": "./core/settings/ci.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -4229,7 +4229,7 @@
       "code": "177             \"BACKEND\": \"django.core.cache.backends.filebased.FileBasedCache\",\n178             \"LOCATION\": os.environ.get(\"DJANGO_CACHE_DIR\", \"/tmp/innovate-to-grow-cache\"),\n179             \"KEY_PREFIX\": \"i2g\",\n",
       "col_offset": 59,
       "end_col_offset": 88,
-      "filename": "src/core/settings/components/production.py",
+      "filename": "./core/settings/components/production.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 377,
@@ -4249,7 +4249,7 @@
       "code": "14 # ---------------------------------------------------------------------------\n15 SECRET_KEY = \"django-insecure-p+tt4i0o$9t!o1707ibkya=&-vlid7@88cz=gcc$*7h$$l1*ai\"\n16 DEBUG = True\n",
       "col_offset": 13,
       "end_col_offset": 81,
-      "filename": "src/core/settings/dev.py",
+      "filename": "./core/settings/dev.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -4269,7 +4269,7 @@
       "code": "17 \n18 ALLOWED_HOSTS = [\"localhost\", \"127.0.0.1\", \"0.0.0.0\"]\n19 extra = os.environ.get(\"EXTRA_ALLOWED_HOSTS\", \"\")\n",
       "col_offset": 43,
       "end_col_offset": 52,
-      "filename": "src/core/settings/dev.py",
+      "filename": "./core/settings/dev.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 605,
@@ -4289,7 +4289,7 @@
       "code": "15 \n16 _TICKET_TOKEN_SALT = \"event-ticket-access\"\n17 _TICKET_LOGIN_SALT = \"event-ticket-login\"\n",
       "col_offset": 21,
       "end_col_offset": 42,
-      "filename": "src/event/services/ticket_assets.py",
+      "filename": "./event/services/ticket_assets.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -4309,7 +4309,7 @@
       "code": "38             seen.add(path)\n39     except Exception:\n40         pass\n41 \n",
       "col_offset": 4,
       "end_col_offset": 12,
-      "filename": "src/mail/login_redirects.py",
+      "filename": "./mail/login_redirects.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
@@ -4330,7 +4330,7 @@
       "code": "93             return folder_name\n94         except Exception:\n95             continue\n96 \n",
       "col_offset": 8,
       "end_col_offset": 20,
-      "filename": "src/mail/services/gmail_import.py",
+      "filename": "./mail/services/gmail_import.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,
