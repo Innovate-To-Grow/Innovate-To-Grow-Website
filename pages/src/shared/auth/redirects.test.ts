@@ -31,10 +31,18 @@ describe('auth redirects', () => {
     })).toBe('/subscribe?step=profile');
   });
 
-  it('routes event registration email links back to the registration page', () => {
+  it('routes incomplete event registration email links through complete-profile first', () => {
     expect(getEmailAuthSourcePath('event_registration', {
       next_step: 'complete_profile',
       requires_profile_completion: true,
+      redirect_to: '/schedule',
+    })).toBe('/complete-profile?returnTo=%2Fevent-registration');
+  });
+
+  it('routes complete event registration email links back to the registration page', () => {
+    expect(getEmailAuthSourcePath('event_registration', {
+      next_step: 'account',
+      requires_profile_completion: false,
       redirect_to: '/schedule',
     })).toBe('/event-registration');
   });

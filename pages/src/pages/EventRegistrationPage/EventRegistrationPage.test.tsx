@@ -83,7 +83,7 @@ describe('EventRegistrationPage', () => {
     });
   });
 
-  it('returns email-auth signups to the registration form after verification', async () => {
+  it('redirects incomplete email-auth signups to complete-profile before showing the form', async () => {
     render(
       <MemoryRouter initialEntries={['/event-registration']}>
         <Routes>
@@ -109,6 +109,29 @@ describe('EventRegistrationPage', () => {
       expect(verifyEmailAuthCode).toHaveBeenCalledWith('ada@example.com', '123456');
     });
 
-    expect(await screen.findByLabelText(/first name/i)).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/complete-profile?returnTo=%2Fevent-registration', {replace: true});
+  });
+
+  it('redirects authenticated members with incomplete names before loading the form', async () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      requiresProfileCompletion: true,
+      requestEmailAuthCode,
+      verifyEmailAuthCode,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/complete-profile?returnTo=%2Fevent-registration', {replace: true});
+    });
+
+    expect(mockFetchRegistrationOptions).not.toHaveBeenCalled();
   });
 });

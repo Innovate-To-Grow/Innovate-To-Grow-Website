@@ -61,7 +61,7 @@ describe('EmailAuthLinkPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/subscribe?step=profile', {replace: true});
   });
 
-  it('routes event registration links back to the registration page', async () => {
+  it('routes incomplete event registration links through complete-profile first', async () => {
     mockConsumeEmailAuthQuery.mockResolvedValue({
       message: 'Login successful.',
       access: 'access-token',
@@ -80,7 +80,7 @@ describe('EmailAuthLinkPage', () => {
     );
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/event-registration', {replace: true});
+      expect(mockNavigate).toHaveBeenCalledWith('/complete-profile?returnTo=%2Fevent-registration', {replace: true});
     });
   });
 

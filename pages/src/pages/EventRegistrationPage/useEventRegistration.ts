@@ -1,14 +1,19 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../../components/Auth';
 import {updateProfileFields} from '../../services/auth';
 import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '../../features/events/api';
 import {maxPhoneDigits, validatePhoneDigits} from '../../constants/phoneRegions';
+import {hasRequiredNameFields} from '../../shared/auth/profileCompletion';
+import {buildCompleteProfilePath} from '../../shared/auth/redirects';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';
 
 export const useEventRegistration = () => {
-  const {isAuthenticated, requestEmailAuthCode, verifyEmailAuthCode} = useAuth();
+  const {isAuthenticated, requiresProfileCompletion, requestEmailAuthCode, verifyEmailAuthCode} = useAuth();
+  const navigate = useNavigate();
+  const completeProfilePath = buildCompleteProfilePath('/event-registration');
   const [step, setStep] = useState<EventRegistrationStep>('loading');
   const [options, setOptions] = useState<EventRegistrationOptions | null>(null);
   const [registration, setRegistration] = useState<Registration | null>(null);
@@ -89,6 +94,10 @@ export const useEventRegistration = () => {
         setPhoneCodeSent(Boolean(data.member_phone.verified));
         initialPhoneRef.current = {digits: normalizedDigits || phone, region};
       }
+      if (data.member_profile && !hasRequiredNameFields(data.member_profile)) {
+        navigate(completeProfilePath, {replace: true});
+        return;
+      }
       prefillFromProfile(data);
       setStep('form');
     } catch (err: unknown) {
@@ -101,10 +110,15 @@ export const useEventRegistration = () => {
       setError(message.toLowerCase().includes('no live event') ? 'No event is currently accepting registrations.' : message);
       setStep('loading');
     }
-  }, [prefillFromProfile]);
+  }, [completeProfilePath, navigate, prefillFromProfile]);
 
   // On mount: load options to determine initial step
   useEffect(() => {
+    if (isAuthenticated && requiresProfileCompletion) {
+      navigate(completeProfilePath, {replace: true});
+      return;
+    }
+
     if (isAuthenticated) {
       void loadOptionsAndRoute();
     } else {
@@ -119,7 +133,7 @@ export const useEventRegistration = () => {
           setStep('email');
         });
     }
-  }, [isAuthenticated, loadOptionsAndRoute]);
+  }, [completeProfilePath, isAuthenticated, loadOptionsAndRoute, navigate, requiresProfileCompletion]);
 
   const handleEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -140,7 +154,11 @@ export const useEventRegistration = () => {
     setAuthLoading(true);
     setError(null);
     try {
-      await verifyEmailAuthCode(email.trim(), code.trim());
+      const result = await verifyEmailAuthCode(email.trim(), code.trim());
+      if (result.next_step === 'complete_profile' || result.requires_profile_completion) {
+        navigate(completeProfilePath, {replace: true});
+        return;
+      }
       setStep('loading');
       await loadOptionsAndRoute();
     } catch (err: unknown) {

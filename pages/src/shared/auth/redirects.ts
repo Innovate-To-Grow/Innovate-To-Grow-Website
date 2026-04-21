@@ -40,6 +40,9 @@ export const getEmailAuthSourcePath = (
   }
 
   if (source === 'event_registration') {
+    if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
+      return buildCompleteProfilePath('/event-registration');
+    }
     return '/event-registration';
   }
 
