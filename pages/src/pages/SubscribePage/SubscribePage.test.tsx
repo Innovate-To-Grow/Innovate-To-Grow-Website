@@ -113,7 +113,7 @@ describe('SubscribePage', () => {
   it('transitions from code to profile step when profile is incomplete', async () => {
     const authState = {
       ...baseAuth,
-      user: null,
+      user: null as {member_uuid: string; email: string} | null,
       isAuthenticated: false,
       verifyEmailAuthCode: vi.fn().mockImplementation(async () => {
         authState.user = {member_uuid: 'uuid-1', email: 'test@example.com'};
@@ -304,7 +304,7 @@ describe('SubscribePage', () => {
   it('saves profile and auto-subscribes in profile step', async () => {
     const authState = {
       ...baseAuth,
-      user: null,
+      user: null as {member_uuid: string; email: string} | null,
       isAuthenticated: false,
       verifyEmailAuthCode: vi.fn().mockImplementation(async () => {
         authState.user = {member_uuid: 'uuid-1', email: 'test@example.com'};
