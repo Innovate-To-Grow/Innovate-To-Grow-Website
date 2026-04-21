@@ -57,6 +57,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
 
     def save(self):
         email = self.validated_data["email"]
+        generic_response = {"message": "Check your email for a verification code."}
         resolved = resolve_auth_email(email, require_active=True)
         if resolved is not None:
             issue_email_challenge(
@@ -64,11 +65,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
                 purpose=PURPOSE.LOGIN,
                 target_email=resolved.delivery_email,
             )
-            return {
-                "message": "Check your email for a verification code.",
-                "flow": "login",
-                "next_step": "verify_code",
-            }
+            return generic_response
 
         from authn.models import ContactEmail
 
@@ -83,11 +80,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
 
         member = pending_member or self._create_pending_member(email)
         issue_email_challenge(member=member, purpose=PURPOSE.REGISTER, target_email=email)
-        return {
-            "message": "Check your email for a verification code.",
-            "flow": "register",
-            "next_step": "verify_code",
-        }
+        return generic_response
 
 
 class UnifiedEmailAuthVerifySerializer(BaseEmailSerializer):

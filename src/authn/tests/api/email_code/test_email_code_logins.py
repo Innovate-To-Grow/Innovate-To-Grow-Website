@@ -91,8 +91,8 @@ class EmailCodeAuthLoginTests(APITestCase):
         )
 
         self.assertEqual(request_response.status_code, 202)
-        self.assertEqual(request_response.data["flow"], "login")
-        self.assertEqual(request_response.data["next_step"], "verify_code")
+        self.assertNotIn("flow", request_response.data)
+        self.assertNotIn("next_step", request_response.data)
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
@@ -113,7 +113,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         )
 
         self.assertEqual(request_response.status_code, 202)
-        self.assertEqual(request_response.data["flow"], "login")
+        self.assertNotIn("flow", request_response.data)
 
         verify_response = self.client.post(
             "/authn/email-auth/verify-code/",
@@ -134,7 +134,7 @@ class EmailCodeAuthLoginTests(APITestCase):
         )
 
         self.assertEqual(request_response.status_code, 202)
-        self.assertEqual(request_response.data["flow"], "register")
+        self.assertNotIn("flow", request_response.data)
         primary_contact = ContactEmail.objects.get(email_address="new-flow@example.com")
         pending = primary_contact.member
         self.assertFalse(pending.is_active)
@@ -176,7 +176,7 @@ class EmailCodeAuthLoginTests(APITestCase):
 
         pending.refresh_from_db()
         self.assertEqual(request_response.status_code, 202)
-        self.assertEqual(request_response.data["flow"], "register")
+        self.assertNotIn("flow", request_response.data)
         self.assertEqual(ContactEmail.objects.filter(email_address="pending-flow@example.com").count(), 1)
         self.assertEqual(pending.first_name, "Existing")
 

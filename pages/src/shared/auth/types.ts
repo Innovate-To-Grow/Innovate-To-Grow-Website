@@ -20,8 +20,6 @@ export interface LoginResponse {
 
 export interface EmailAuthRequestResponse {
   message: string;
-  flow: 'login' | 'register';
-  next_step: 'verify_code';
 }
 
 export interface EmailAuthVerifyResponse extends LoginResponse {

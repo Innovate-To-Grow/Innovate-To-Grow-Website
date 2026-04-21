@@ -39,7 +39,7 @@ const baseAuth = {
   isLoading: false,
   error: null,
   clearError: vi.fn(),
-  requestEmailAuthCode: vi.fn().mockResolvedValue({message: 'ok', flow: 'register', next_step: 'verify_code'}),
+  requestEmailAuthCode: vi.fn().mockResolvedValue({message: 'ok'}),
   verifyEmailAuthCode: vi.fn().mockResolvedValue({
     access: 'jwt',
     refresh: 'jwt-r',
