@@ -172,6 +172,4 @@ class EmailCampaign(ProjectControlModel):
         if ex:
             event_ex_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
             if ex in event_ex_types and not self.exclude_event_id:
-                raise ValidationError(
-                    {"exclude_event": "Select an event for this exclusion audience."}
-                )
+                raise ValidationError({"exclude_event": "Select an event for this exclusion audience."})
