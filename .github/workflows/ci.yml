@@ -137,16 +137,95 @@ jobs:
       - name: Check Django configuration
         run: python manage.py check
 
-      - name: Audit Python dependencies (non-blocking warning)
+  # ============================================
+  # Security audits (run in parallel with lint + tests)
+  # ============================================
+
+  # Python dependency audit — hard-fail on any known vuln. Moved out of
+  # django-build so a vulnerable dep doesn't mask (or get masked by) test
+  # failures, and so a flaky audit doesn't gate Django tests.
+  python-security-audit:
+    name: Python Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: src/requirements.txt
+
+      - name: Install pip-audit
+        run: pip install "pip-audit==2.7.3"
+
+      - name: Audit Python dependencies
+        id: audit
         run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt --ignore-vuln GHSA-None-Placeholder || echo "::warning::pip-audit found vulnerabilities (see output above)"
+          set -o pipefail
+          # pip-audit exits non-zero on ANY finding. We don't have a native
+          # severity filter; add specific GHSA/CVE ids to --ignore-vuln here
+          # with a written reason if a finding needs deferral.
+          pip-audit \
+            --requirement requirements.txt \
+            --progress-spinner off \
+            --format columns \
+            | tee "$GITHUB_STEP_SUMMARY"
+
+  # Frontend dependency audit — hard-fail only on CRITICAL per plan Q1.
+  # HIGH stays warn-only until `xlsx` (no upstream fix) is swapped; that
+  # swap is tracked as a separate follow-up.
+  frontend-security-audit:
+    name: Frontend Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pages
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (HIGH, warn-only)
+        run: |
+          set +e
+          npm audit --audit-level=high
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::npm audit found HIGH-severity issues (see above). CRITICAL fails the next step."
+          fi
+          exit 0
+
+      - name: npm audit (CRITICAL, hard-fail)
+        run: npm audit --audit-level=critical
 
   # Backend Docker Build Validation
   backend-docker-build:
     name: Backend Docker Build Test
     runs-on: ubuntu-latest
     needs: lint
+    # security-events: write is required by the SARIF-upload step.
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code
@@ -161,13 +240,49 @@ jobs:
       - name: Build backend Docker image
         run: docker build -t itg-backend-ci:${{ github.sha }} src/
 
-      - name: Scan image for OS/library CVEs (trivy)
+      # Trivy runs twice:
+      # 1) SARIF scan over CRITICAL+HIGH → upload to Security tab so HIGHs
+      #    are tracked/visible. exit-code 0 because we don't hard-fail on
+      #    fixed-upstream CVEs that Debian hasn't yet shipped into the
+      #    python:3.11-slim tag (openssl/libssl HIGHs, jaraco.context,
+      #    wheel — all "fixed" status but not in current base image).
+      # 2) CRITICAL-only gate with exit-code 1 — mirrors the npm audit
+      #    pattern for xlsx. Raise the bar to HIGH once the base image
+      #    includes the pending openssl/python-package fixes.
+      - name: Scan image (trivy, SARIF — CRITICAL/HIGH → Security tab)
+        id: trivy-sarif
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: itg-backend-ci:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        if: ${{ !cancelled() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-backend-image
+
+      - name: Trivy human-readable table (CRITICAL/HIGH, log only)
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table
           severity: CRITICAL,HIGH
-          exit-code: '0'  # warn-only until baseline is clean
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Trivy hard-fail gate (CRITICAL only)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: itg-backend-ci:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
           ignore-unfixed: true
 
       - name: Export backend Docker image
@@ -304,9 +419,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Audit npm dependencies (warn-only)
-        run: npm audit --audit-level=high || echo "::warning::npm audit found high-severity issues"
 
       - name: Build frontend
         run: npm run build
