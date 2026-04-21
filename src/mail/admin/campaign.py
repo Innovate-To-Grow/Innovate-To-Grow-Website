@@ -21,7 +21,7 @@ from event.models import Ticket
 
 from ..login_redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 from ..models import EmailCampaign, RecipientLog
-from ..models.campaign import ALL_AUDIENCE_CHOICES
+from ..models.campaign import ALL_AUDIENCE_CHOICES, EXCLUDE_AUDIENCE_CHOICES
 from ..services.audience import get_recipients
 from ..services.gmail_import import (
     GMAIL_FOLDER_DISPLAY,
@@ -94,6 +94,12 @@ class EmailCampaignForm(forms.ModelForm):
         label="Ticket type",
         widget=TicketSelectWidget,
     )
+    exclude_ticket = forms.ModelChoiceField(
+        queryset=Ticket.objects.select_related("event").order_by("event__name", "order", "name"),
+        required=False,
+        label="Exclude ticket type",
+        widget=TicketSelectWidget,
+    )
     body_format = forms.ChoiceField(
         choices=BODY_FORMAT_CHOICES,
         initial="plain",
@@ -119,6 +125,8 @@ class EmailCampaignForm(forms.ModelForm):
             "audience_type": UnfoldAdminSelectWidget,
             "event": UnfoldAdminSelectWidget,
             "member_email_scope": UnfoldAdminSelectWidget,
+            "exclude_audience_type": UnfoldAdminSelectWidget,
+            "exclude_event": UnfoldAdminSelectWidget,
         }
 
     def __init__(self, *args, **kwargs):
@@ -127,6 +135,10 @@ class EmailCampaignForm(forms.ModelForm):
         # original 4 to avoid a migration; extended list is form-only).
         if "audience_type" in self.fields:
             self.fields["audience_type"].choices = ALL_AUDIENCE_CHOICES
+        if "exclude_audience_type" in self.fields:
+            self.fields["exclude_audience_type"].choices = EXCLUDE_AUDIENCE_CHOICES
+        # Managed only via exclude_ticket (mirrors primary ticket + manual_emails).
+        self.fields.pop("exclude_ticket_id", None)
         current_path = self.initial.get("login_redirect_path") or getattr(self.instance, "login_redirect_path", None)
         if "login_redirect_path" in self.fields:
             self.fields["login_redirect_path"].choices = get_login_redirect_choices(current_path=current_path)
@@ -146,6 +158,10 @@ class EmailCampaignForm(forms.ModelForm):
                 "selected_members",
                 "member_email_scope",
                 "manual_emails",
+                "exclude_audience_type",
+                "exclude_event",
+                "exclude_ticket",
+                "exclude_members",
             ):
                 if field_name in self.fields:
                     self.fields[field_name].disabled = True
@@ -156,6 +172,15 @@ class EmailCampaignForm(forms.ModelForm):
             if ticket_id:
                 try:
                     self.initial["ticket"] = Ticket.objects.get(pk=ticket_id).pk
+                except Ticket.DoesNotExist:
+                    pass
+
+        # Restore exclude ticket from exclude_ticket_id for ticket_type exclusion
+        if self.instance and self.instance.pk and self.instance.exclude_audience_type == "ticket_type":
+            tid = self.instance.exclude_ticket_id.strip()
+            if tid:
+                try:
+                    self.initial["exclude_ticket"] = Ticket.objects.get(pk=tid).pk
                 except Ticket.DoesNotExist:
                     pass
 
@@ -178,6 +203,20 @@ class EmailCampaignForm(forms.ModelForm):
                 if event and ticket.event_id != event.pk:
                     self.add_error("ticket", "Selected ticket does not belong to the selected event.")
                 cleaned["manual_emails"] = str(ticket.pk)
+
+        ex = (cleaned.get("exclude_audience_type") or "").strip()
+        if ex == "ticket_type":
+            ex_ticket = cleaned.get("exclude_ticket")
+            if not ex_ticket:
+                self.add_error("exclude_ticket", "A ticket type must be selected for ticket exclusion.")
+            else:
+                ex_event = cleaned.get("exclude_event")
+                if ex_event and ex_ticket.event_id != ex_event.pk:
+                    self.add_error("exclude_ticket", "Selected ticket does not belong to the exclusion event.")
+                cleaned["exclude_ticket_id"] = str(ex_ticket.pk)
+        else:
+            cleaned["exclude_ticket_id"] = ""
+
         return cleaned
 
     def save(self, commit=True):
@@ -187,6 +226,14 @@ class EmailCampaignForm(forms.ModelForm):
             ticket = self.cleaned_data.get("ticket")
             if ticket:
                 instance.manual_emails = str(ticket.pk)
+
+        ex_strip = (instance.exclude_audience_type or "").strip()
+        if not ex_strip:
+            instance.exclude_event_id = None
+            instance.exclude_ticket_id = ""
+        else:
+            # exclude_ticket_id is not a form field (use exclude_ticket); set from cleaned_data.
+            instance.exclude_ticket_id = (self.cleaned_data.get("exclude_ticket_id") or "").strip()
 
         # Prepend raw-html marker when HTML format is selected
         if self.cleaned_data.get("body_format") == "html" and not instance.body.startswith(HTML_MARKER):
@@ -260,6 +307,10 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "selected_members",
                     "member_email_scope",
                     "manual_emails",
+                    "exclude_audience_type",
+                    "exclude_event",
+                    "exclude_ticket",
+                    "exclude_members",
                 ),
             },
         ),
@@ -268,7 +319,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
             {"fields": ("subject", "login_redirect_path", "include_unsubscribe_header", "body_format", "body")},
         ),
     )
-    filter_horizontal = ("selected_members",)
+    filter_horizontal = ("selected_members", "exclude_members")
     conditional_fields = {
         "event": (
             "audience_type === 'event_registrants' || audience_type === 'ticket_type'"
@@ -276,8 +327,17 @@ class EmailCampaignAdmin(BaseModelAdmin):
         ),
         "ticket": "audience_type === 'ticket_type'",
         "selected_members": "audience_type === 'selected_members'",
-        "member_email_scope": "audience_type === 'selected_members'",
+        "member_email_scope": (
+            "audience_type === 'subscribers' || audience_type === 'all_members'"
+            " || audience_type === 'staff' || audience_type === 'selected_members'"
+        ),
         "manual_emails": "audience_type === 'manual'",
+        "exclude_event": (
+            "exclude_audience_type === 'event_registrants' || exclude_audience_type === 'ticket_type'"
+            " || exclude_audience_type === 'checked_in' || exclude_audience_type === 'not_checked_in'"
+        ),
+        "exclude_ticket": "exclude_audience_type === 'ticket_type'",
+        "exclude_members": "exclude_audience_type === 'selected_members'",
     }
 
     @display(description="Subject")
@@ -326,6 +386,13 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "body",
                     "audience_type",
                     "event",
+                    "ticket",
+                    "selected_members",
+                    "member_email_scope",
+                    "manual_emails",
+                    "exclude_audience_type",
+                    "exclude_event",
+                    "exclude_members",
                 ]
             )
         return readonly
@@ -555,13 +622,24 @@ class EmailCampaignAdmin(BaseModelAdmin):
 
         obj = EmailCampaign.objects.get(pk=object_id)
 
+        # Trim error strings before they flow into the JSON response so
+        # stack traces / verbose exception dumps don't leak out of the
+        # admin view. The endpoint is staff-only, but trimming also keeps
+        # the polling payload small and defends against accidental exposure
+        # if the route is ever re-scoped.
+        def _short_error(msg: object) -> str:
+            if not msg:
+                return ""
+            first_line = str(msg).splitlines()[0]
+            return first_line[:200]
+
         recent_qs = RecipientLog.objects.filter(campaign=obj).exclude(status="pending").order_by("-updated_at")[:20]
         recent_logs = [
             {
                 "email": log.email_address,
                 "name": log.recipient_name,
                 "status": log.status,
-                "error": log.error_message,
+                "error": _short_error(log.error_message),
                 "sent_at": log.sent_at.isoformat() if log.sent_at else None,
             }
             for log in recent_qs
@@ -569,7 +647,12 @@ class EmailCampaignAdmin(BaseModelAdmin):
 
         failed_qs = RecipientLog.objects.filter(campaign=obj, status="failed").order_by("-updated_at")
         failed_logs = [
-            {"email": log.email_address, "name": log.recipient_name, "error": log.error_message} for log in failed_qs
+            {
+                "email": log.email_address,
+                "name": log.recipient_name,
+                "error": _short_error(log.error_message),
+            }
+            for log in failed_qs
         ]
 
         first_sent_at = (
@@ -584,7 +667,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
             "total": obj.total_recipients,
             "sent": obj.sent_count,
             "failed": obj.failed_count,
-            "error_message": obj.error_message,
+            "error_message": _short_error(obj.error_message),
             "started_at": first_sent_at.isoformat() if first_sent_at else None,
             "recent_logs": recent_logs,
             "failed_logs": failed_logs,

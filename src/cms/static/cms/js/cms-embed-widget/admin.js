@@ -183,6 +183,30 @@
     let previewDebounce = null;
     let currentPageRoute = '';
 
+    // Resolve the frontend origin once at module load. Used by the preview
+    // postMessage listener to reject messages from any other window.
+    const FRONTEND_ORIGIN = (function () {
+        try {
+            return config.frontendUrl ? new URL(config.frontendUrl).origin : '';
+        } catch (e) {
+            return '';
+        }
+    })();
+
+    // Return `url` unchanged if it's an http(s) URL; empty string otherwise.
+    // Guards iframe.src assignments so a crafted slug/route can't produce a
+    // javascript: or data: URL that executes in the admin context. The slug
+    // validator upstream rejects such inputs, but defense-in-depth at the
+    // sink keeps CodeQL's taint analysis happy and protects future edits.
+    function safeHttpUrl(url) {
+        try {
+            const u = new URL(url, window.location.href);
+            return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
     function previewSection() { return document.getElementById('cms-widget-preview-section'); }
     function previewIframe() { return document.getElementById('cms-widget-preview-iframe'); }
     function previewContainer() { return document.getElementById('cms-widget-preview-container'); }
@@ -202,22 +226,33 @@
         const iframe = previewIframe();
         if (!sec || !iframe) return;
 
+        const safeUrl = safeHttpUrl(embedUrl);
+        if (!safeUrl) {
+            hidePreview();
+            return;
+        }
+
         sec.style.display = '';
 
-        if (embedUrl === currentPreviewUrl) return;
-        currentPreviewUrl = embedUrl;
+        if (safeUrl === currentPreviewUrl) return;
+        currentPreviewUrl = safeUrl;
 
         clearTimeout(previewDebounce);
         previewDebounce = setTimeout(function () {
-            iframe.src = embedUrl;
+            iframe.src = safeUrl;
         }, 400);
     }
 
     function refreshPreview() {
         const iframe = previewIframe();
         if (!iframe || !currentPreviewUrl) return;
+        // currentPreviewUrl is already validated in showPreview, but re-check
+        // on refresh so the sink can't be reached with a stale unsafe value
+        // across re-entrancy.
+        const safeUrl = safeHttpUrl(currentPreviewUrl);
+        if (!safeUrl) return;
         iframe.src = '';
-        setTimeout(function () { iframe.src = currentPreviewUrl; }, 50);
+        setTimeout(function () { iframe.src = safeUrl; }, 50);
     }
 
     function showPagePreview(route) {
@@ -226,8 +261,12 @@
             hidePagePreview();
             return;
         }
+        var pageUrl = safeHttpUrl(frontend + route);
+        if (!pageUrl) {
+            hidePagePreview();
+            return;
+        }
         currentPageRoute = route;
-        var pageUrl = frontend + route;
         var sec = pagePreviewSection();
         var iframe = pagePreviewIframe();
         var routeLabel = document.getElementById('cms-widget-page-route-label');
@@ -250,7 +289,8 @@
         var iframe = pagePreviewIframe();
         var frontend = config.frontendUrl || '';
         if (!iframe || !currentPageRoute || !frontend) return;
-        var pageUrl = frontend + currentPageRoute;
+        var pageUrl = safeHttpUrl(frontend + currentPageRoute);
+        if (!pageUrl) return;
         iframe.src = '';
         setTimeout(function () { iframe.src = pageUrl; }, 50);
     }
@@ -301,10 +341,17 @@
         }
 
         window.addEventListener('message', function (e) {
+            // Only accept resize messages from the configured frontend origin
+            // (the embed iframe's own origin). Without this check, any frame
+            // on the admin page could forge resize events.
+            if (!FRONTEND_ORIGIN || e.origin !== FRONTEND_ORIGIN) return;
             if (!e.data || e.data.type !== 'i2g-embed-resize') return;
             var iframe = previewIframe();
-            if (iframe && e.data.height) {
-                iframe.style.height = e.data.height + 'px';
+            // Clamp height to a positive integer so a malformed payload
+            // can't inject CSS via string concatenation.
+            var height = Number(e.data.height);
+            if (iframe && Number.isFinite(height) && height > 0 && height < 10000) {
+                iframe.style.height = Math.floor(height) + 'px';
             }
         });
     }

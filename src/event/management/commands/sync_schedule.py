@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from event.models import CurrentProjectSchedule
 from event.services import ScheduleSyncError, sync_schedule
@@ -23,13 +23,17 @@ class Command(BaseCommand):
         self.stdout.write(f"Syncing '{config.name}' from Google Sheets...")
         try:
             stats = sync_schedule(config)
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"  Synced: {stats.sections_created} sections, "
-                    f"{stats.tracks_created} tracks, "
-                    f"{stats.slots_created} slots, "
-                    f"{stats.unmatched_slots} unmatched."
-                )
-            )
         except ScheduleSyncError as exc:
-            self.stderr.write(self.style.ERROR(f"  Sync failed: {exc}"))
+            # Raise CommandError so cron/CI supervisors that only watch exit
+            # codes see the failure. Previously this only printed to stderr
+            # and exited 0, so stale schedule data went unnoticed.
+            raise CommandError(f"Sync failed: {exc}") from exc
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"  Synced: {stats.sections_created} sections, "
+                f"{stats.tracks_created} tracks, "
+                f"{stats.slots_created} slots, "
+                f"{stats.unmatched_slots} unmatched."
+            )
+        )

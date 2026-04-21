@@ -19,9 +19,22 @@ ALL_AUDIENCE_CHOICES = [
 
 _ALL_AUDIENCE_LABELS = dict(ALL_AUDIENCE_CHOICES)
 
+# Subset of audience types that can be used as an exclusion group (no "Manual Emails").
+EXCLUDE_AUDIENCE_CHOICES = [
+    ("", "No exclusion"),
+    ("subscribers", "All Email Subscribers"),
+    ("event_registrants", "Event Registrants"),
+    ("ticket_type", "Event Ticket Type"),
+    ("checked_in", "Checked-In Attendees"),
+    ("not_checked_in", "No-Shows (Not Checked In)"),
+    ("all_members", "All Active Members"),
+    ("staff", "Staff Members"),
+    ("selected_members", "Selected Members"),
+]
+
 MEMBER_EMAIL_CHOICES = [
     ("primary", "Primary email only"),
-    ("all", "All emails (primary + secondary)"),
+    ("all", "All emails (primary + secondary + other)"),
 ]
 
 STATUS_CHOICES = [
@@ -70,6 +83,36 @@ class EmailCampaign(ProjectControlModel):
         default="",
         help_text="One email per line. Used when audience is 'Manual Emails'.",
     )
+
+    exclude_audience_type = models.CharField(
+        max_length=32,
+        choices=EXCLUDE_AUDIENCE_CHOICES,
+        blank=True,
+        default="",
+        verbose_name="Exclude audience",
+        help_text="Optionally remove recipients who belong to this group from the primary audience.",
+    )
+    exclude_event = models.ForeignKey(
+        "event.Event",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Event for the exclusion audience (when excluding event-based groups).",
+    )
+    exclude_ticket_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Ticket UUID when exclude audience is 'Event Ticket Type' (same format as primary ticket campaigns).",
+    )
+    exclude_members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="+",
+        help_text="Members to exclude when exclude audience is 'Selected Members'.",
+    )
+
     include_unsubscribe_header = models.BooleanField(
         default=True,
         verbose_name="Include one-click unsubscribe",
@@ -124,3 +167,11 @@ class EmailCampaign(ProjectControlModel):
             raise ValidationError({"manual_emails": "A ticket type must be selected."})
         if self.audience_type == "manual" and not self.manual_emails.strip():
             raise ValidationError({"manual_emails": "Please enter at least one email address."})
+
+        ex = (self.exclude_audience_type or "").strip()
+        if ex:
+            event_ex_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
+            if ex in event_ex_types and not self.exclude_event_id:
+                raise ValidationError(
+                    {"exclude_event": "Select an event for this exclusion audience."}
+                )

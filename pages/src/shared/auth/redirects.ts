@@ -22,8 +22,14 @@ export const getPostAuthPath = (
   response: Pick<LoginResponse, 'next_step' | 'redirect_to' | 'requires_profile_completion'>,
   fallback = '/account',
 ): string => {
+  // Preserve the backend-provided destination when the server asks us to
+  // detour through profile completion. Without this, magic/ticket/unsubscribe
+  // /impersonate logins drop users at /account after completing their
+  // profile, even though `redirect_to` specified (e.g.) a campaign landing
+  // page. `buildCompleteProfilePath` safely rejects the value if it isn't
+  // an internal path.
   if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
-    return buildCompleteProfilePath();
+    return buildCompleteProfilePath(response.redirect_to);
   }
   return getSafeInternalRedirectPath(response.redirect_to) ?? fallback;
 };

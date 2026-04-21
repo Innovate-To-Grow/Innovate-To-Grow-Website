@@ -36,7 +36,9 @@ def sync_name_to_account(member, first_name: str, last_name: str) -> None:
 
             schedule_member_sync()
         except Exception:
-            pass
+            # Best-effort: the member name was already persisted above; a
+            # sheet-sync failure must not break the registration flow.
+            logger.debug("schedule_member_sync failed after name sync", exc_info=True)
 
 
 def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:

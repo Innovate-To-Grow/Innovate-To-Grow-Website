@@ -101,10 +101,39 @@ def csp_report(request):
     Browsers POST a JSON report to this endpoint when a CSP rule is violated.
     We log at WARNING level so ops can observe violation patterns in CloudWatch
     before promoting the header from report-only to enforcing.
+
+    The endpoint is publicly reachable, so the body is attacker-controlled.
+    We parse it as JSON and log only the specific fields we care about — this
+    prevents log-injection (forged newlines, ANSI escapes) and drops the raw
+    bytes on the floor if the payload isn't a real report.
     """
     try:
-        body = request.body.decode("utf-8", errors="replace")[:4096]
-        logger.warning("CSP violation report: %s", body)
+        raw = request.body[:4096]
+        try:
+            payload = json.loads(raw.decode("utf-8", errors="replace"))
+        except (ValueError, UnicodeDecodeError):
+            logger.warning("CSP report with unparseable body (%d bytes)", len(raw))
+            return HttpResponse(status=204)
+
+        report = payload.get("csp-report") if isinstance(payload, dict) else None
+        if not isinstance(report, dict):
+            logger.warning("CSP report missing 'csp-report' object")
+            return HttpResponse(status=204)
+
+        def _clean(value: object) -> str:
+            # Drop control chars (including newlines) so an attacker can't
+            # forge extra log lines. 256-char cap per field keeps log volume
+            # bounded even under spray.
+            s = str(value) if value is not None else ""
+            return "".join(ch for ch in s if ch.isprintable())[:256]
+
+        logger.warning(
+            "CSP violation: directive=%s blocked=%s document=%s source=%s",
+            _clean(report.get("violated-directive") or report.get("effective-directive")),
+            _clean(report.get("blocked-uri")),
+            _clean(report.get("document-uri")),
+            _clean(report.get("source-file")),
+        )
     except Exception:
-        logger.exception("Failed to parse CSP violation report")
+        logger.exception("Unexpected error processing CSP violation report")
     return HttpResponse(status=204)

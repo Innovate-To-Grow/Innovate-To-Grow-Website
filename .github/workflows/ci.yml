@@ -60,7 +60,10 @@ jobs:
             RANGE="${PUSH_BEFORE}..${PUSH_HEAD}"
           else
             # New branch push or detached state — scan the latest commit only.
-            RANGE="HEAD~0..HEAD"
+            # `HEAD~0..HEAD` is an empty range; `HEAD^..HEAD` scans the one
+            # commit at HEAD, which is the correct fallback when we don't
+            # have a base SHA to diff against.
+            RANGE="HEAD^..HEAD"
           fi
           echo "Scanning commit range: $RANGE"
           /tmp/gitleaks/gitleaks detect \

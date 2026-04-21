@@ -1,5 +1,7 @@
 """Views for public email-code auth flows."""
 
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -21,6 +23,8 @@ from authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import build_auth_success_payload
 from .email_code_helpers import auth_challenge_response, request_code_response
+
+logger = logging.getLogger(__name__)
 
 
 class LoginCodeRequestView(APIView):
@@ -201,4 +205,6 @@ def _schedule_member_sync_safe():
 
         schedule_member_sync()
     except Exception:
-        pass
+        # Best-effort: the member/email state was already committed by the
+        # caller; a sheet-sync failure must not leak back into the auth flow.
+        logger.debug("schedule_member_sync failed in email-code flow", exc_info=True)

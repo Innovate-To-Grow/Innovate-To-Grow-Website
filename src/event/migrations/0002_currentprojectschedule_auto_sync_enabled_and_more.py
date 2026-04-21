@@ -5,6 +5,22 @@ import uuid
 from django.db import migrations, models
 
 
+def _null_stale_slot_project_fks(apps, schema_editor):
+    """Drop stale ``EventScheduleSlot.project`` references before retargeting the FK.
+
+    The original FK pointed to ``projects.Project``. This migration retargets
+    it to ``event.CurrentProject`` (a new table). Any already-populated
+    ``project_id`` values are UUIDs from ``projects.Project`` that will not
+    exist in ``event.CurrentProject``, so the new FK constraint would fail
+    to apply in environments with existing data. Nulling those values is
+    safe because the field is ``null=True, on_delete=SET_NULL`` — the slots
+    keep their display_text/code and simply have no linked project row
+    until the next schedule sync repopulates them.
+    """
+    EventScheduleSlot = apps.get_model("event", "EventScheduleSlot")
+    EventScheduleSlot.objects.exclude(project_id=None).update(project_id=None)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -89,6 +105,7 @@ class Migration(migrations.Migration):
                 "unique_together": {("schedule", "team_number", "project_title")},
             },
         ),
+        migrations.RunPython(_null_stale_slot_project_fks, reverse_code=migrations.RunPython.noop),
         migrations.AlterField(
             model_name="eventscheduleslot",
             name="project",
