@@ -14,6 +14,8 @@ class NewsArticleAdminTest(TestCase):
     def setUp(self):
         self.admin = Member.objects.create_superuser(
             password="testpass123",
+            first_name="News",
+            last_name="Admin",
         )
         ContactEmail.objects.get_or_create(
             member=self.admin, email_address="admin@test.com", defaults={"email_type": "primary", "verified": True}
@@ -29,6 +31,8 @@ class NewsFeedSourceAdminTest(TestCase):
     def setUp(self):
         self.admin = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Feed",
+            last_name="Admin",
         )
         ContactEmail.objects.get_or_create(
             member=self.admin, email_address="admin@test.com", defaults={"email_type": "primary", "verified": True}
@@ -106,6 +110,8 @@ class NewsSyncLogAdminTest(TestCase):
     def setUp(self):
         self.admin = Member.objects.create_superuser(
             password="testpass123",
+            first_name="Log",
+            last_name="Admin",
         )
         ContactEmail.objects.get_or_create(
             member=self.admin, email_address="admin@test.com", defaults={"email_type": "primary", "verified": True}

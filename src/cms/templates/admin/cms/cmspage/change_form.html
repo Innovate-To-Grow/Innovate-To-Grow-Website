@@ -74,35 +74,6 @@
         </div>
     </div>
 
-    <!-- Embed Widgets summary (read-only; edits happen in the dedicated admin) -->
-    {% if current_page_id %}
-        <div class="visual-editor-wrapper">
-            <div class="visual-editor-header">
-                <h3>Embed Widgets on this page</h3>
-                <a class="cms-inline-preview-toggle"
-                   href="{% url 'admin:cms_cmsembedwidget_changelist' %}?page__id__exact={{ current_page_id }}">
-                    <span class="material-symbols-outlined">open_in_new</span>
-                    Manage in Embed Widgets
-                </a>
-            </div>
-            <div class="visual-editor-content">
-                {% if related_widgets %}
-                    <ul class="cms-related-widgets-list">
-                        {% for w in related_widgets %}
-                            <li>
-                                <code>{{ w.slug }}</code>
-                                — {{ w.admin_label|default:"(no label)" }}
-                                · <a href="{% url 'admin:cms_cmsembedwidget_change' w.id %}">Edit</a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="cms-embeds-empty">No embed widgets defined for this page yet.</p>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
-
     <!-- Inline Live Preview Panel -->
     <div id="cms-inline-preview" class="cms-preview-wrapper">
         <div class="cms-preview-header">

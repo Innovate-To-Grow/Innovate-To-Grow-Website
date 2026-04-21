@@ -9,11 +9,35 @@ import type { CMSBlock } from '../../features/cms/api';
  * Message protocol:
  *   { type: 'cms-block-preview', block: { block_type, sort_order, data }, pageCssClass? }
  */
+
+// postMessage origin allowlist, frozen at module load.
+//
+// Same-origin is always trusted (covers dev via the Vite proxy and prod
+// deployments where admin and SPA share a host). Split frontend/backend
+// setups run the Django admin on a different origin — the admin embeds this
+// iframe using the configured FRONTEND_URL, so messages arrive with the
+// admin's origin as event.origin. `VITE_ADMIN_ORIGIN` lists those trusted
+// parent origins (comma-separated if there are multiple), e.g.
+// "https://admin.example.com".
+function parseAllowedOrigins(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+}
+
+const ALLOWED_PARENT_ORIGINS = new Set<string>([
+  window.location.origin,
+  ...parseAllowedOrigins(import.meta.env.VITE_ADMIN_ORIGIN),
+]);
+
 export const BlockPreviewPage = () => {
   const [block, setBlock] = useState<CMSBlock | null>(null);
   const [pageCssClass, setPageCssClass] = useState('');
 
   const handleMessage = useCallback((event: MessageEvent) => {
+    if (!ALLOWED_PARENT_ORIGINS.has(event.origin)) return;
     const msg = event.data;
     if (!msg || msg.type !== 'cms-block-preview') return;
     if (msg.block) {

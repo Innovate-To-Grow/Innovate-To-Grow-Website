@@ -15,17 +15,30 @@ logger = logging.getLogger(__name__)
 
 
 def sync_name_to_account(member, first_name: str, last_name: str) -> None:
-    """Update the member's first_name and last_name from the registration form."""
+    """Update the member's first_name and last_name from the registration form.
+
+    Only non-empty incoming values overwrite existing values — never clear a
+    previously-set name by passing in a blank string.
+    """
     changed = False
     if first_name and first_name != member.first_name:
         member.first_name = first_name
         changed = True
-    if last_name is not None and last_name != member.last_name:
+    if last_name and last_name != member.last_name:
         member.last_name = last_name
         changed = True
     if changed:
         member.save(update_fields=["first_name", "last_name", "updated_at"])
         logger.info("Synced name to member %s: %s %s", member.pk, first_name, last_name)
+
+        try:
+            from authn.services.member_sheet_sync import schedule_member_sync
+
+            schedule_member_sync()
+        except Exception:
+            # Best-effort: the member name was already persisted above; a
+            # sheet-sync failure must not break the registration flow.
+            logger.debug("schedule_member_sync failed after name sync", exc_info=True)
 
 
 def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:

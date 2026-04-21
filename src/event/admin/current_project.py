@@ -1,17 +1,42 @@
 from django.contrib import admin, messages
 from django.shortcuts import redirect
+from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from core.admin import BaseModelAdmin
 from core.models import GoogleCredentialConfig
 
-from ..models import CurrentProjectSchedule, EventScheduleTrack
+from ..models import CurrentProject, CurrentProjectSchedule, EventScheduleTrack
 from ..services import ScheduleSyncError, sync_schedule
+
+
+@admin.register(CurrentProject)
+class CurrentProjectAdmin(BaseModelAdmin):
+    list_display = (
+        "class_code",
+        "team_number",
+        "team_name",
+        "project_title",
+        "organization",
+        "is_presenting",
+        "schedule",
+    )
+    list_editable = ("is_presenting",)
+    list_filter = ("is_presenting", "class_code", "schedule")
+    search_fields = ("team_number", "team_name", "project_title", "organization")
+    list_per_page = 200
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(CurrentProjectSchedule)
 class CurrentProjectScheduleAdmin(BaseModelAdmin):
-    list_display = ("name", "last_synced_at", "sync_error_short")
+    list_display = ("name", "is_active", "last_synced_at", "sync_error_short", "created_at")
+    list_filter = ("is_active",)
     readonly_fields = ("last_synced_at", "sync_error", "created_at", "updated_at")
     change_list_template = "admin/event/currentprojectschedule_changelist.html"
 
@@ -19,7 +44,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         (
             "Event",
             {
-                "fields": ("name", "show_winners"),
+                "fields": ("name", "is_active", "show_winners"),
             },
         ),
         (
@@ -27,6 +52,16 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             {
                 "fields": ("sheet_id", "tracks_gid", "projects_gid"),
                 "description": "Configure the Google Sheet that contains current project and schedule data.",
+            },
+        ),
+        (
+            "Auto Sync",
+            {
+                "fields": ("auto_sync_enabled", "sync_interval_minutes"),
+                "description": (
+                    "Enable automatic syncing via cron. "
+                    "Run <code>python manage.py sync_schedule</code> every few minutes."
+                ),
             },
         ),
         (
@@ -50,11 +85,6 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             return obj.sync_error[:80] + "..." if len(obj.sync_error) > 80 else obj.sync_error
         return ""
 
-    def has_add_permission(self, request):
-        if CurrentProjectSchedule.objects.exists():
-            return False
-        return super().has_add_permission(request)
-
     def has_delete_permission(self, request, obj=None):
         return False
 
@@ -65,13 +95,18 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
                 self.admin_site.admin_view(self.pull_view),
                 name="event_currentprojectschedule_pull",
             ),
+            path(
+                "sync-settings/",
+                self.admin_site.admin_view(self.sync_settings_view),
+                name="event_currentprojectschedule_sync_settings",
+            ),
         ]
         return custom_urls + super().get_urls()
 
     def pull_view(self, request):
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
         config = CurrentProjectSchedule.load()
-        if not config.pk:
+        if not config:
             messages.error(request, "No configuration found. Add one first.")
             return redirect(changelist_url)
         try:
@@ -89,6 +124,33 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             messages.error(request, f"Sync failed: {exc}")
         return redirect(changelist_url)
 
+    def sync_settings_view(self, request):
+        changelist_url = reverse("admin:event_currentprojectschedule_changelist")
+        config = CurrentProjectSchedule.load()
+        if not config:
+            messages.error(request, "No active configuration to update.")
+            return redirect(changelist_url)
+
+        if request.method == "POST":
+            config.auto_sync_enabled = request.POST.get("auto_sync_enabled") == "1"
+            try:
+                interval = int(request.POST.get("sync_interval_minutes", 60))
+                config.sync_interval_minutes = max(1, interval)
+            except (ValueError, TypeError):
+                pass
+            config.save(update_fields=["auto_sync_enabled", "sync_interval_minutes", "updated_at"])
+            messages.success(request, "Auto-sync settings saved.")
+            return redirect(reverse("admin:event_currentprojectschedule_sync_settings"))
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Sync Settings",
+            "config": config,
+            "opts": self.model._meta,
+            "changelist_url": changelist_url,
+        }
+        return TemplateResponse(request, "admin/event/currentprojectschedule_sync_settings.html", context)
+
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
 
@@ -98,23 +160,18 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         extra_context["google_client_email"] = google_config.client_email
 
         config = CurrentProjectSchedule.load()
-        extra_context["config"] = config if config.pk else None
+        extra_context["config"] = config
         extra_context["pull_url"] = reverse("admin:event_currentprojectschedule_pull")
+        extra_context["sync_settings_url"] = reverse("admin:event_currentprojectschedule_sync_settings")
 
-        # Current projects (newest published semester)
-        from projects.models import Project, Semester
-
-        newest = Semester.objects.filter(is_published=True).first()
-        extra_context["current_semester"] = newest
-        if newest:
-            extra_context["current_projects"] = Project.objects.filter(semester=newest).order_by(
-                "class_code", "team_number"
-            )
+        if config:
+            extra_context["current_schedule_name"] = config.name
+            extra_context["current_projects"] = config.projects.order_by("class_code", "team_number")
         else:
+            extra_context["current_schedule_name"] = ""
             extra_context["current_projects"] = []
 
-        # Winners from schedule tracks
-        if config.pk:
+        if config:
             winners = (
                 EventScheduleTrack.objects.filter(section__config=config)
                 .exclude(winner="")

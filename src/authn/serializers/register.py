@@ -147,6 +147,8 @@ class RegisterSerializer(serializers.Serializer):
             member=member,
             purpose=EmailAuthChallenge.Purpose.REGISTER,
             target_email=email,
+            link_flow="register",
+            link_source="register",
         )
 
         return member

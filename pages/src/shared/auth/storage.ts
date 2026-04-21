@@ -1,4 +1,4 @@
-import type { AuthTokens, User } from './types';
+import type { AuthTokens, LoginResponse, User } from './types';
 
 const ACCESS_TOKEN_KEY = 'i2g_access_token';
 const REFRESH_TOKEN_KEY = 'i2g_refresh_token';
@@ -43,6 +43,11 @@ export const setTokens = (tokens: AuthTokens, user: User): void => {
   localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
   localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+};
+
+export const persistAuthSession = (response: Pick<LoginResponse, 'access' | 'refresh' | 'user' | 'requires_profile_completion'>): void => {
+  setTokens({ access: response.access, refresh: response.refresh }, response.user);
+  setProfileCompletionRequired(Boolean(response.requires_profile_completion));
 };
 
 export const updateStoredUser = (updater: (user: User) => User): void => {

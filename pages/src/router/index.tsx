@@ -1,10 +1,33 @@
-import React from 'react';
+import React, {Suspense, type ReactElement} from 'react';
 import {createBrowserRouter, Navigate} from 'react-router-dom';
 import {Layout} from '../components/Layout';
 import {CMSPageComponent} from '../components/CMS';
 import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '../components/CMS/BlockPreviewPage';
 import {EmbedBlockPage} from '../components/CMS/EmbedBlockPage';
+
+// Matches the inline spinner in pages/index.html (#root:empty::before) so
+// lazy-route fallbacks and the initial-load spinner share one visual language.
+const routeFallback = (
+    <div
+        aria-label="Loading"
+        role="status"
+        style={{
+            display: 'block',
+            width: 44,
+            height: 44,
+            margin: '96px auto',
+            border: '3px solid rgba(15, 45, 82, 0.15)',
+            borderTopColor: 'var(--itg-color-primary, #0f2d52)',
+            borderRadius: '50%',
+            animation: 'itg-init-loader-spin 0.9s linear infinite',
+        }}
+    />
+);
+
+const lazyRoute = (element: ReactElement): ReactElement => (
+    <Suspense fallback={routeFallback}>{element}</Suspense>
+);
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('../components/Auth/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -28,6 +51,7 @@ const TicketLoginPage = React.lazy(() => import('../pages/TicketLoginPage').then
 const SubscribePage = React.lazy(() => import('../pages/SubscribePage').then(m => ({default: m.SubscribePage})));
 const UnsubscribeLoginPage = React.lazy(() => import('../pages/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
 const MagicLoginPage = React.lazy(() => import('../pages/MagicLoginPage').then(m => ({default: m.MagicLoginPage})));
+const EmailAuthLinkPage = React.lazy(() => import('../pages/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('../pages/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
 export const router = createBrowserRouter([
@@ -41,22 +65,22 @@ export const router = createBrowserRouter([
         children: [
 
             // support rout pointer for support old url
-            {path: 'membership/events', element: <EventRegistrationPage/>},
+            {path: 'membership/events', element: lazyRoute(<EventRegistrationPage/>)},
 
             // homepage — resolved dynamically from SiteSettings.homepage_route
             {index: true, element: <HomepageResolver/>},
 
             // news pages
-            {path: 'news', element: <NewsPage/>},
-            {path: 'news/:id', element: <NewsDetailPage/>},
+            {path: 'news', element: lazyRoute(<NewsPage/>)},
+            {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
 
             // project pages
             {path: 'projects', element: <CMSPageComponent/>},
-            {path: 'current-projects', element: <ProjectsPage/>},
-            {path: 'past-projects', element: <PastProjectsPage/>},
-            {path: 'past-projects/:shareId', element: <PastProjectsPage/>},
+            {path: 'current-projects', element: lazyRoute(<ProjectsPage/>)},
+            {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>)},
+            {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'projects/past', element: <Navigate to="/past-projects" replace/>},
-            {path: 'projects/:id', element: <ProjectDetailPage/>},
+            {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
             {path: 'sample-proposals', element: <CMSPageComponent/>},
 
             // about pages
@@ -78,12 +102,12 @@ export const router = createBrowserRouter([
 
             // event pages
             {path: 'event', element: <CMSPageComponent/>},
-            {path: 'event-registration', element: <EventRegistrationPage/>},
-            {path: 'events/:eventSlug', element: <EventArchivePage/>},
-            {path: 'schedule', element: <SchedulePage/>},
+            {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>)},
+            {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
+            {path: 'schedule', element: lazyRoute(<SchedulePage/>)},
             {path: 'past-events', element: <CMSPageComponent/>},
             {path: 'post-event-home', element: <CMSPageComponent/>},
-            {path: 'acknowledgement', element: <AcknowledgementPage/>},
+            {path: 'acknowledgement', element: lazyRoute(<AcknowledgementPage/>)},
 
             // student pages
             {path: 'students', element: <CMSPageComponent/>},
@@ -116,26 +140,27 @@ export const router = createBrowserRouter([
             {path: '2020-fall-post-event', element: <Navigate to="/events/2020-fall" replace/>},
 
             // Subscribe
-            {path: 'subscribe', element: <SubscribePage/>},
+            {path: 'subscribe', element: lazyRoute(<SubscribePage/>)},
 
             // Auto-login from email links
-            {path: 'ticket-login', element: <TicketLoginPage/>},
-            {path: 'unsubscribe-login', element: <UnsubscribeLoginPage/>},
-            {path: 'magic-login', element: <MagicLoginPage/>},
-            {path: 'impersonate-login', element: <ImpersonateLoginPage/>},
+            {path: 'ticket-login', element: lazyRoute(<TicketLoginPage/>)},
+            {path: 'unsubscribe-login', element: lazyRoute(<UnsubscribeLoginPage/>)},
+            {path: 'magic-login', element: lazyRoute(<MagicLoginPage/>)},
+            {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>)},
+            {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>)},
 
             // Convenience redirects
             {path: 'profile', element: <Navigate to="/account" replace/>},
 
             // Auth pages
-            {path: 'login', element: <LoginPage/>},
-            {path: 'register', element: <RegisterPage/>},
-            {path: 'forgot-password', element: <ForgotPasswordPage/>},
-            {path: 'verify-email', element: <VerifyEmailPage/>},
-            {path: 'complete-profile', element: <CompleteProfilePage/>},
+            {path: 'login', element: lazyRoute(<LoginPage/>)},
+            {path: 'register', element: lazyRoute(<RegisterPage/>)},
+            {path: 'forgot-password', element: lazyRoute(<ForgotPasswordPage/>)},
+            {path: 'verify-email', element: lazyRoute(<VerifyEmailPage/>)},
+            {path: 'complete-profile', element: lazyRoute(<CompleteProfilePage/>)},
 
             // Account management
-            {path: 'account', element: <AccountPage/>},
+            {path: 'account', element: lazyRoute(<AccountPage/>)},
 
             // Catch-all CMS route
             {path: '*', element: <CMSPageComponent/>},

@@ -75,7 +75,7 @@ export const ProfileStep = ({
       <div className="subscribe-form-row">
         <div className="subscribe-form-group">
           <label className="subscribe-label" htmlFor="subscribe-last-name">
-            Last Name <span className="subscribe-optional">(optional)</span>
+            Last Name <span className="subscribe-required">*</span>
           </label>
           <input
             id="subscribe-last-name"
@@ -85,6 +85,7 @@ export const ProfileStep = ({
             onChange={(event) => onLastNameChange(event.target.value)}
             placeholder="Last name"
             autoComplete="family-name"
+            required
             disabled={saving}
           />
         </div>
@@ -142,7 +143,16 @@ export const ProfileStep = ({
           </div>
         </div>
       )}
-      <button type="submit" className="subscribe-submit" disabled={saving || !firstName.trim()}>
+      <button
+        type="submit"
+        className="subscribe-submit"
+        disabled={
+          saving ||
+          !firstName.trim() ||
+          !lastName.trim() ||
+          (organizationType === 'organization' && !organization.trim())
+        }
+      >
         {saving ? <><span className="subscribe-spinner" /> Saving...</> : 'Continue'}
       </button>
     </form>

@@ -10,22 +10,26 @@ export interface AuthTokens {
   refresh: string;
 }
 
+export type AuthNextStep = 'account' | 'complete_profile';
+export type EmailAuthSource = 'login' | 'subscribe' | 'event_registration' | 'register';
+export type EmailAuthFlow = 'auth' | 'login' | 'register';
+
 export interface LoginResponse {
   message: string;
   access: string;
   refresh: string;
   user: User;
+  next_step?: AuthNextStep;
+  requires_profile_completion?: boolean;
   redirect_to?: string;
 }
 
 export interface EmailAuthRequestResponse {
   message: string;
-  flow: 'login' | 'register';
-  next_step: 'verify_code';
 }
 
 export interface EmailAuthVerifyResponse extends LoginResponse {
-  next_step: 'account' | 'complete_profile';
+  next_step: AuthNextStep;
   requires_profile_completion: boolean;
 }
 

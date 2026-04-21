@@ -1,6 +1,9 @@
 # Innovate-To-Grow-Website
 Official Website of UC Merced Innovate To Grow
 
+[![CI](https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/actions/workflows/codeql.yml)
+
 > This website is currently under development
 
 ## Docs

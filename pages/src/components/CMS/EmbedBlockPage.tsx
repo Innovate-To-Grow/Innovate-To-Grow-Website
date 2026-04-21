@@ -16,6 +16,10 @@ import { fetchCMSEmbed, type CMSEmbedResponse } from '../../features/cms/api';
  *   preventing users from getting stuck in the chromeless iframe view.
  */
 
+// Wildcard is deliberate: the embed is designed to render inside arbitrary
+// third-party pages and the payload ({type, slug, height}) is non-sensitive.
+// Do not add sensitive fields to the postMessage payload without also
+// narrowing `POST_TARGET` to `document.referrer`.
 const POST_TARGET = '*';
 
 export const EmbedBlockPage = () => {
@@ -124,7 +128,7 @@ export const EmbedBlockPage = () => {
 
   return (
     <div ref={containerRef} className={data.page_css_class || 'cms-page'}>
-      <BlockRenderer blocks={[data.block]} />
+      <BlockRenderer blocks={data.blocks} />
     </div>
   );
 };

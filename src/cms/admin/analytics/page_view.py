@@ -13,7 +13,7 @@ from cms.models import PageView
 from core.admin import ReadOnlyModelAdmin
 
 _DASHBOARD_CACHE_KEY = "cms:analytics:dashboard"
-_DASHBOARD_CACHE_TTL = 60  # seconds
+_DASHBOARD_CACHE_TTL = 300  # seconds
 _IP_GEO_CACHE_PREFIX = "ip_geo:"
 _IP_GEO_CACHE_TTL = 86400  # 24 hours
 

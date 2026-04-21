@@ -60,3 +60,23 @@ indent-style = "space"
 
 # Unix-style line endings
 line-ending = "lf"
+
+# Bandit SAST. Runs over src/ in CI via .github/workflows/lint.yml with
+# --baseline .bandit-baseline.json so only *new* findings fail. Patterns
+# are fnmatch-style: use `*/tests/*` (not `*/tests`) so files *inside*
+# tests directories are excluded.
+[tool.bandit]
+exclude_dirs = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/management/commands/*",
+    "*/__pycache__/*",
+    ".venv",
+    "staticfiles",
+    "node_modules",
+]
+skips = [
+    # assert_used — asserts inside application code are intentional
+    # (e.g., type-narrowing invariants).
+    "B101",
+]

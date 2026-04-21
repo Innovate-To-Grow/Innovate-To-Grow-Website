@@ -53,6 +53,14 @@ UNFOLD = {
             ],
         },
         {
+            "models": ["event.event", "event.eventregistration", "event.checkin"],
+            "items": [
+                {"title": "Events", "link": "/admin/event/event/"},
+                {"title": "Registrations", "link": "/admin/event/eventregistration/"},
+                {"title": "Check-ins", "link": "/admin/event/checkin/"},
+            ],
+        },
+        {
             "models": ["authn.contactemail", "authn.contactphone"],
             "items": [
                 {"title": "Emails", "link": "/admin/authn/contactemail/"},
@@ -89,6 +97,14 @@ UNFOLD = {
                 {"title": "Style Sheets", "link": "/admin/cms/stylesheet/"},
             ],
         },
+        {
+            "models": ["authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+            "items": [
+                {"title": "Sync Config", "link": "/admin/authn/membersheetsyncconfig/"},
+                {"title": "Sync Logs", "link": "/admin/authn/membersheetsynclog/"},
+                {"title": "Auto Sync Settings", "link": "/admin/authn/membersheetsyncconfig/sync-settings/"},
+            ],
+        },
     ],
     "SIDEBAR": {
         "show_search": True,
@@ -107,23 +123,21 @@ UNFOLD = {
                 "items": [
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
-                    {"title": "Embed Widgets", "link": "/admin/cms/cmsembedwidget/"},
                     {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                 ],
             },
             {
                 "title": "Events",
                 "items": [
-                    {"title": "Events", "link": "/admin/event/event/"},
-                    {"title": "Registrations", "link": "/admin/event/eventregistration/"},
-                    {"title": "Check-ins", "link": "/admin/event/checkin/"},
+                    {"title": "Events & Registrations", "link": "/admin/event/event/"},
+                    {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
+                    {"title": "Current Projects (synced)", "link": "/admin/event/currentproject/"},
                     {"title": "Sheet Sync Logs", "link": "/admin/event/registrationsheetsynclog/"},
                 ],
             },
             {
                 "title": "Projects",
                 "items": [
-                    {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
                     {"title": "Semesters", "link": "/admin/projects/semester/"},
                     {"title": "Projects", "link": "/admin/projects/project/"},
                 ],
@@ -142,6 +156,7 @@ UNFOLD = {
                     {"title": "Members", "link": "/admin/authn/member/"},
                     {"title": "Contact Info", "link": "/admin/authn/contactemail/"},
                     {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
+                    {"title": "Member Sheet Sync", "link": "/admin/authn/membersheetsyncconfig/"},
                 ],
             },
         ],

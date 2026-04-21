@@ -19,9 +19,22 @@ ALL_AUDIENCE_CHOICES = [
 
 _ALL_AUDIENCE_LABELS = dict(ALL_AUDIENCE_CHOICES)
 
+# Subset of audience types that can be used as an exclusion group (no "Manual Emails").
+EXCLUDE_AUDIENCE_CHOICES = [
+    ("", "No exclusion"),
+    ("subscribers", "All Email Subscribers"),
+    ("event_registrants", "Event Registrants"),
+    ("ticket_type", "Event Ticket Type"),
+    ("checked_in", "Checked-In Attendees"),
+    ("not_checked_in", "No-Shows (Not Checked In)"),
+    ("all_members", "All Active Members"),
+    ("staff", "Staff Members"),
+    ("selected_members", "Selected Members"),
+]
+
 MEMBER_EMAIL_CHOICES = [
     ("primary", "Primary email only"),
-    ("all", "All emails (primary + secondary)"),
+    ("all", "All emails (primary + secondary + other)"),
 ]
 
 STATUS_CHOICES = [
@@ -63,13 +76,67 @@ class EmailCampaign(ProjectControlModel):
         choices=MEMBER_EMAIL_CHOICES,
         default="primary",
         verbose_name="Send to",
-        help_text="Send to primary email only, or all emails for each member.",
+        help_text=(
+            "For member-based audiences (subscribers, all active members, staff, selected members): "
+            "send only to each person's primary contact email, or to every saved contact email "
+            "(primary, secondary, and other). Event-based audiences (registrants, ticket, checked-in, "
+            "no-shows) use the registration's attendee email when set, otherwise the member's primary email."
+        ),
+    )
+    exclude_member_email_scope = models.CharField(
+        max_length=16,
+        choices=MEMBER_EMAIL_CHOICES,
+        default="primary",
+        verbose_name="Send to",
+        help_text=(
+            "When the exclude audience is member-based, which of each person's contact emails are used to "
+            "match against the main recipient list (primary only, or primary + secondary + other). "
+            "Ignored for event-based exclude audiences (they use attendee or primary as for registrations)."
+        ),
     )
     manual_emails = models.TextField(
         blank=True,
         default="",
         help_text="One email per line. Used when audience is 'Manual Emails'.",
     )
+
+    exclude_audience_type = models.CharField(
+        max_length=32,
+        choices=EXCLUDE_AUDIENCE_CHOICES,
+        blank=True,
+        default="",
+        verbose_name="Exclude audience",
+        help_text=(
+            "Remove anyone whose address appears in this group from the final list (case-insensitive). "
+            'For member-based exclusions, addresses follow the second "Send to" field below. '
+            "For event-based exclusions, each registration's attendee email, or the member's primary email "
+            "if the attendee email is empty."
+        ),
+    )
+    exclude_event = models.ForeignKey(
+        "event.Event",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Event used to build the exclusion list when the exclude audience is event-based.",
+    )
+    exclude_ticket_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Ticket UUID when exclude audience is 'Event Ticket Type' (same format as primary ticket campaigns).",
+    )
+    exclude_members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="+",
+        help_text=(
+            'When exclude audience is "Selected Members", pick members here; the exclude "Send to" '
+            "field controls which of their contact emails count for matching."
+        ),
+    )
+
     include_unsubscribe_header = models.BooleanField(
         default=True,
         verbose_name="Include one-click unsubscribe",
@@ -124,3 +191,9 @@ class EmailCampaign(ProjectControlModel):
             raise ValidationError({"manual_emails": "A ticket type must be selected."})
         if self.audience_type == "manual" and not self.manual_emails.strip():
             raise ValidationError({"manual_emails": "Please enter at least one email address."})
+
+        ex = (self.exclude_audience_type or "").strip()
+        if ex:
+            event_ex_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
+            if ex in event_ex_types and not self.exclude_event_id:
+                raise ValidationError({"exclude_event": "Select an event for this exclusion audience."})

@@ -17,41 +17,10 @@ from ..serializers import (
 
 LAYOUT_CACHE_KEY = "layout:data"
 # Bump suffix (:v2, :v3, ...) whenever the assembled stylesheet gains or loses a
-# non-token section (e.g. the init-loader CSS below). This retires existing
-# cached blobs instantly on deploy instead of waiting the TTL out.
-LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v2"
+# non-token section. This retires existing cached blobs instantly on deploy
+# instead of waiting the TTL out.
+LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v3"
 LAYOUT_CACHE_TIMEOUT = 600
-
-# Initial-load spinner. Shown via the #root:empty pseudo-class, so it appears
-# the moment /layout/styles.css arrives (body.itg-styles-ready flips on in
-# index.html) and disappears automatically the instant React mounts content
-# into #root. Pure CSS, no JS hook required.
-_INIT_LOADER_CSS = """
-/* ---- init loader ---- */
-@keyframes itg-init-loader-spin { to { transform: rotate(360deg); } }
-@keyframes itg-init-loader-fade-in { from { opacity: 0; } to { opacity: 1; } }
-#root:empty::before {
-  content: "";
-  display: block;
-  width: 44px;
-  height: 44px;
-  margin: 96px auto;
-  border: 3px solid rgba(15, 45, 82, 0.15);
-  border-top-color: var(--itg-color-primary, #0f2d52);
-  border-radius: 50%;
-  animation:
-    itg-init-loader-spin 0.9s linear infinite,
-    itg-init-loader-fade-in 0.25s ease-out;
-}
-/* Strip the loader in iframe-isolated routes (block preview + embed widget). */
-html[data-block-preview] #root:empty::before { display: none; }
-@media (prefers-reduced-motion: reduce) {
-  #root:empty::before {
-    animation: itg-init-loader-fade-in 0.25s ease-out;
-    opacity: 0.7;
-  }
-}
-"""
 
 # Mirrors GROUP_PREFIX in pages/src/components/Layout/LayoutProvider/LayoutProvider.tsx —
 # both must agree so the CSS variables emitted server-side match the names JS sets.
@@ -137,7 +106,7 @@ class LayoutStylesheetView(View):
             tokens_css = _design_tokens_to_css(settings.design_tokens)
             sheets = StyleSheet.objects.filter(is_active=True).values_list("css", flat=True)
             sheets_css = "\n".join(c for c in sheets if c)
-            css = (tokens_css + "\n" + sheets_css).strip() + "\n" + _INIT_LOADER_CSS
+            css = (tokens_css + "\n" + sheets_css).strip() + "\n"
             cache.set(LAYOUT_STYLESHEET_CACHE_KEY, css, timeout=LAYOUT_CACHE_TIMEOUT)
 
         response = HttpResponse(css, content_type="text/css; charset=utf-8")
@@ -150,6 +119,9 @@ class EmbedBlockView(APIView):
     """Public endpoint returning all blocks for a named embed widget.
 
     Sets permissive CORS + removes X-Frame-Options so third parties can iframe-render.
+    NOTE: the wildcard `Access-Control-Allow-Origin` is intentional — widgets are
+    designed for arbitrary third-party embedding. To tighten this, add an
+    `allowed_origins` field to CMSEmbedWidget and echo only matching origins.
     """
 
     permission_classes = [AllowAny]

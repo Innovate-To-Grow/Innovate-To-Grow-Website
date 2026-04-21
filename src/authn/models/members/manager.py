@@ -9,6 +9,13 @@ class MemberManager(BaseUserManager):
 
     use_in_migrations = True
 
+    @staticmethod
+    def _normalize_required_name(value, field_name: str) -> str:
+        normalized = str(value or "").strip()
+        if not normalized:
+            raise ValueError(f"Superuser {field_name} is required.")
+        return normalized
+
     def get_queryset(self):
         return ProjectControlQuerySet(self.model, using=self._db)
 
@@ -31,5 +38,8 @@ class MemberManager(BaseUserManager):
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
+
+        extra_fields["first_name"] = self._normalize_required_name(extra_fields.get("first_name"), "first name")
+        extra_fields["last_name"] = self._normalize_required_name(extra_fields.get("last_name"), "last name")
 
         return self._create_user(password, **extra_fields)

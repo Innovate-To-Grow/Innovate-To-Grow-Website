@@ -33,7 +33,7 @@ interface BlockRendererProps {
 
 export const BlockRenderer: React.FC<BlockRendererProps> = memo(({ blocks }) => (
   <>
-    {blocks.map((block) => {
+    {blocks.filter(Boolean).map((block) => {
       const Component = BLOCK_COMPONENTS[block.block_type];
       if (!Component) {
         console.warn(`Unknown CMS block type: ${block.block_type}`);

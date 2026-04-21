@@ -55,20 +55,27 @@ class Command(BaseCommand):
                     self.stderr.write("Error: Passwords do not match.")
                     password = None
 
-            if not first_name:
-                first_name = input("First name (optional): ").strip()
-            if not last_name:
-                last_name = input("Last name (optional): ").strip()
+            while not first_name.strip():
+                first_name = input("First name: ").strip()
+                if not first_name:
+                    self.stderr.write("Error: First name cannot be blank.")
+
+            while not last_name.strip():
+                last_name = input("Last name: ").strip()
+                if not last_name:
+                    self.stderr.write("Error: Last name cannot be blank.")
         else:
-            if not email or not password:
-                raise CommandError("--email and --password are required in non-interactive mode.")
+            if not email or not password or not first_name.strip() or not last_name.strip():
+                raise CommandError(
+                    "--email, --password, --first-name, and --last-name are required in non-interactive mode."
+                )
             if ContactEmail.objects.filter(email_address__iexact=email).exists():
                 raise CommandError(f"A contact email with address '{email}' already exists.")
 
         member = Member.objects.create_superuser(
             password=password,
-            first_name=first_name,
-            last_name=last_name,
+            first_name=first_name.strip(),
+            last_name=last_name.strip(),
         )
 
         ContactEmail.objects.create(

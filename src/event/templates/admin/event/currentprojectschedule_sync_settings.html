@@ -1,0 +1,102 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="container flex items-center h-16 mx-auto py-4">
+        <a href="{% url 'admin:index' %}" class="text-font-subtle-light dark:text-font-subtle-dark text-sm hover:text-primary-600">
+            <span class="material-symbols-outlined !text-[18px] align-middle">dock_to_right</span>
+        </a>
+        <span class="material-symbols-outlined text-font-subtle-light dark:text-font-subtle-dark !text-[18px] mx-1">chevron_right</span>
+        <a href="{{ changelist_url }}" class="text-font-subtle-light dark:text-font-subtle-dark text-sm hover:text-primary-600">{{ opts.verbose_name_plural|capfirst }}</a>
+        <span class="material-symbols-outlined text-font-subtle-light dark:text-font-subtle-dark !text-[18px] mx-1">chevron_right</span>
+        <span class="text-sm font-medium text-font-important-light dark:text-font-important-dark">{{ title }}</span>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto" style="max-width: 640px;">
+    <div class="border border-base-200 dark:border-base-700 rounded-default bg-white dark:bg-base-900 overflow-hidden">
+        <div class="bg-base-50 dark:bg-base-800 px-6 py-4 border-b border-base-200 dark:border-base-700">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600 !text-[20px]">sync</span>
+                <h2 class="text-base font-semibold text-font-important-light dark:text-font-important-dark">
+                    Auto Sync Settings
+                </h2>
+            </div>
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">
+                Configure automatic syncing for <strong>{{ config.name }}</strong> from Google Sheets.
+                Run <code class="bg-base-100 dark:bg-base-800 px-1 py-0.5 rounded text-[11px]">python manage.py sync_schedule</code> via cron.
+            </p>
+        </div>
+
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            {# Enable toggle #}
+            <div>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="hidden" name="auto_sync_enabled" value="0">
+                    <input type="checkbox" name="auto_sync_enabled" value="1"
+                           {% if config.auto_sync_enabled %}checked{% endif %}
+                           class="rounded border-base-300 dark:border-base-600 text-primary-600 focus:ring-primary-500 h-4 w-4">
+                    <div>
+                        <span class="text-sm font-medium text-font-important-light dark:text-font-important-dark">Enable auto sync</span>
+                        <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                            When enabled, the management command will automatically sync data on schedule.
+                        </p>
+                    </div>
+                </label>
+            </div>
+
+            {# Interval #}
+            <div>
+                <label for="id_sync_interval" class="block text-sm font-medium text-font-important-light dark:text-font-important-dark mb-1">
+                    Sync Interval
+                </label>
+                <div class="flex items-center gap-2">
+                    <input type="number" name="sync_interval_minutes" id="id_sync_interval"
+                           value="{{ config.sync_interval_minutes }}" min="1" max="1440"
+                           class="w-24 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-800 px-3 py-2 text-sm text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                    <span class="text-sm text-font-subtle-light dark:text-font-subtle-dark">minutes</span>
+                </div>
+                <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">
+                    How often to sync (1–1440 minutes). The cron job should run more frequently than this interval.
+                </p>
+            </div>
+
+            {# Status summary #}
+            <div class="border-t border-base-200 dark:border-base-700 pt-4">
+                <h3 class="text-sm font-medium text-font-important-light dark:text-font-important-dark mb-2">Current Status</h3>
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-24 shrink-0">Last synced:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">
+                            {% if config.last_synced_at %}{{ config.last_synced_at }}{% else %}Never{% endif %}
+                        </span>
+                    </div>
+                    {% if config.sync_error %}
+                        <div class="flex gap-2">
+                            <span class="text-font-subtle-light dark:text-font-subtle-dark w-24 shrink-0">Last error:</span>
+                            <span class="text-red-600 dark:text-red-400 font-medium">{{ config.sync_error|truncatechars:120 }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Actions #}
+            <div class="flex gap-3 pt-2">
+                <button type="submit"
+                        class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-default text-sm font-medium transition-colors">
+                    Save Settings
+                </button>
+                <a href="{{ changelist_url }}"
+                   class="border border-base-200 dark:border-base-700 px-4 py-2 rounded-default text-sm font-medium hover:bg-base-50 dark:hover:bg-base-800 text-font-default-light dark:text-font-default-dark transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -22,6 +22,7 @@ from django.urls import include, path
 
 from authn.views.admin.login import AdminLoginView
 from cms.views import LayoutAPIView, LayoutStylesheetView
+from core.middleware import csp_report
 from core.views import MaintenanceBypassView, robots_txt, root_index
 
 # Customize Django Admin
@@ -40,6 +41,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # maintenance bypass
     path("maintenance/bypass/", MaintenanceBypassView.as_view(), name="maintenance-bypass"),
+    # CSP violation report endpoint (logged to console)
+    path("csp-report/", csp_report, name="csp-report"),
     # layout (menus, footer)
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
     # render-blocking stylesheet (linked from index.html to prevent FOUC)

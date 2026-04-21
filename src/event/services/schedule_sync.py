@@ -8,13 +8,13 @@ from django.utils import timezone
 
 from core.models import GoogleCredentialConfig
 from event.models import (
+    CurrentProject,
     CurrentProjectSchedule,
     EventAgendaItem,
     EventScheduleSection,
     EventScheduleSlot,
     EventScheduleTrack,
 )
-from projects.models import Project
 
 SECTION_DEFAULTS = {
     "CAP": {
@@ -145,7 +145,7 @@ def _get_worksheet_by_gid(spreadsheet, worksheet_gid: int):
 
 def fetch_schedule_sheet_records() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     source = CurrentProjectSchedule.load()
-    if not source.pk or not source.sheet_id or not source.tracks_gid or not source.projects_gid:
+    if not source or not source.sheet_id or not source.tracks_gid or not source.projects_gid:
         raise ScheduleSyncError("Google Sheets source is not fully configured for this event.")
 
     credentials = GoogleCredentialConfig.load()
@@ -259,12 +259,11 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(slots, key=lambda item: (item["track_number"], item["slot_order"], item["team_number"]))
 
 
-def _sync_projects_from_slots(parsed_slots: list[dict[str, Any]]) -> dict[tuple[str, str], Project]:
-    """Create/update Semester + Project records from parsed slot data and return a lookup dict."""
-    from projects.models import Semester
-
-    semester_cache: dict[tuple[int, int], Semester] = {}
-    lookup: dict[tuple[str, str], Project] = {}
+def _sync_projects_from_slots(
+    config: CurrentProjectSchedule, parsed_slots: list[dict[str, Any]]
+) -> dict[tuple[str, str], CurrentProject]:
+    """Create/update CurrentProject records for the given config and return a lookup dict."""
+    lookup: dict[tuple[str, str], CurrentProject] = {}
 
     for slot in parsed_slots:
         if slot["is_break"]:
@@ -273,32 +272,11 @@ def _sync_projects_from_slots(parsed_slots: list[dict[str, Any]]) -> dict[tuple[
         if not title or title.lower() == "break":
             continue
 
-        # Parse year-semester (e.g. "2026-1 Spring" → year=2026, season=1)
-        year_semester = slot.get("year_semester", "")
-        year, season = None, None
-        if year_semester:
-            parts = year_semester.split("-", 1)
-            if len(parts) == 2:
-                year = _coerce_int(parts[0])
-                season = _coerce_int(parts[1].split()[0]) if parts[1] else None
-
-        if not year or not season:
-            continue
-
-        cache_key = (year, season)
-        if cache_key not in semester_cache:
-            sem, _ = Semester.objects.get_or_create(year=year, season=season)
-            if not sem.is_published:
-                sem.is_published = True
-                sem.save(update_fields=["is_published"])
-            semester_cache[cache_key] = sem
-
-        semester = semester_cache[cache_key]
         team_number = slot["team_number"].strip()
         section_code = _normalize_section_code(slot["class_code"])
 
-        project, _ = Project.objects.update_or_create(
-            semester=semester,
+        project, _ = CurrentProject.objects.update_or_create(
+            schedule=config,
             team_number=team_number,
             project_title=title,
             defaults={
@@ -334,7 +312,7 @@ def sync_schedule(
         if not parsed_tracks or not parsed_slots:
             raise ScheduleSyncError("The configured sheet does not contain any schedule tracks or slots.")
 
-        current_projects = _sync_projects_from_slots(parsed_slots)
+        current_projects = _sync_projects_from_slots(config, parsed_slots)
         stats = ScheduleSyncStats()
 
         with transaction.atomic():
@@ -342,6 +320,9 @@ def sync_schedule(
             EventScheduleTrack.objects.filter(section__config=config).delete()
             EventScheduleSection.objects.filter(config=config).delete()
             EventAgendaItem.objects.filter(config=config).delete()
+            CurrentProject.objects.filter(schedule=config).exclude(
+                pk__in=[p.pk for p in current_projects.values()]
+            ).delete()
 
             sections_by_code: dict[str, EventScheduleSection] = {}
             for code in sorted(
@@ -415,7 +396,6 @@ def sync_schedule(
         from django.core.cache import cache
 
         cache.delete("event:current-projects")
-        cache.delete("projects:past-all")
 
         return stats
     except Exception as exc:

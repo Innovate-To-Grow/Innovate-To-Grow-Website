@@ -25,8 +25,9 @@ google-auth>=2.35.0
 gspread>=5.5.0
 imap-tools>=1.7.0
 
-# Cryptography (RSA key generation)
-cryptography>=41.0.0
+# Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
+# in CVE fixes to the Rust bindings.
+cryptography>=43.0.0
 
 # Storage Backend (S3/R2/OSS compatible)
 django-storages[s3]>=1.14.2

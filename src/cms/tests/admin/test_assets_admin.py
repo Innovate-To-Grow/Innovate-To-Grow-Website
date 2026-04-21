@@ -19,7 +19,11 @@ class CMSAssetAdminTests(TestCase):
         self.media_override = override_settings(MEDIA_ROOT=self.temp_media_root)
         self.media_override.enable()
 
-        self.admin_user = Member.objects.create_superuser(password="testpass123")
+        self.admin_user = Member.objects.create_superuser(
+            password="testpass123",
+            first_name="Assets",
+            last_name="Admin",
+        )
         ContactEmail.objects.create(
             member=self.admin_user,
             email_address="assets-admin@example.com",

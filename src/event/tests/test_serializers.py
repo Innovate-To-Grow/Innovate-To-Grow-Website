@@ -48,46 +48,65 @@ class RegistrationAnswerInputSerializerTest(SimpleTestCase):
 
 
 class EventRegistrationCreateSerializerTest(SimpleTestCase):
-    def test_valid_minimal_data(self):
-        data = {"event_slug": "demo-day", "ticket_id": str(uuid.uuid4())}
-        s = EventRegistrationCreateSerializer(data=data)
-        self.assertTrue(s.is_valid())
-
-    def test_valid_full_data(self):
+    def _minimal(self, **overrides):
         data = {
             "event_slug": "demo-day",
             "ticket_id": str(uuid.uuid4()),
             "attendee_first_name": "John",
             "attendee_last_name": "Doe",
-            "attendee_organization": "Acme",
-            "answers": [{"question_id": str(uuid.uuid4()), "answer": "Yes"}],
         }
+        data.update(overrides)
+        return data
+
+    def test_valid_minimal_data(self):
+        s = EventRegistrationCreateSerializer(data=self._minimal())
+        self.assertTrue(s.is_valid())
+
+    def test_valid_full_data(self):
+        data = self._minimal(
+            attendee_organization="Acme",
+            answers=[{"question_id": str(uuid.uuid4()), "answer": "Yes"}],
+        )
         s = EventRegistrationCreateSerializer(data=data)
         self.assertTrue(s.is_valid())
 
     def test_missing_event_slug_invalid(self):
-        data = {"ticket_id": str(uuid.uuid4())}
+        data = self._minimal()
+        del data["event_slug"]
         s = EventRegistrationCreateSerializer(data=data)
         self.assertFalse(s.is_valid())
         self.assertIn("event_slug", s.errors)
 
     def test_missing_ticket_id_invalid(self):
-        data = {"event_slug": "demo-day"}
+        data = self._minimal()
+        del data["ticket_id"]
         s = EventRegistrationCreateSerializer(data=data)
         self.assertFalse(s.is_valid())
         self.assertIn("ticket_id", s.errors)
 
     def test_answers_default_to_empty_list(self):
-        data = {"event_slug": "demo-day", "ticket_id": str(uuid.uuid4())}
-        s = EventRegistrationCreateSerializer(data=data)
+        s = EventRegistrationCreateSerializer(data=self._minimal())
         s.is_valid()
         self.assertEqual(s.validated_data["answers"], [])
 
-    def test_attendee_fields_optional(self):
-        data = {"event_slug": "demo-day", "ticket_id": str(uuid.uuid4())}
+    def test_missing_attendee_first_name_invalid(self):
+        data = self._minimal()
+        del data["attendee_first_name"]
         s = EventRegistrationCreateSerializer(data=data)
-        self.assertTrue(s.is_valid())
-        self.assertEqual(s.validated_data["attendee_first_name"], "")
+        self.assertFalse(s.is_valid())
+        self.assertIn("attendee_first_name", s.errors)
+
+    def test_missing_attendee_last_name_invalid(self):
+        data = self._minimal()
+        del data["attendee_last_name"]
+        s = EventRegistrationCreateSerializer(data=data)
+        self.assertFalse(s.is_valid())
+        self.assertIn("attendee_last_name", s.errors)
+
+    def test_blank_attendee_last_name_invalid(self):
+        s = EventRegistrationCreateSerializer(data=self._minimal(attendee_last_name=""))
+        self.assertFalse(s.is_valid())
+        self.assertIn("attendee_last_name", s.errors)
 
 
 # ---------- _serialize_ticket_option ----------

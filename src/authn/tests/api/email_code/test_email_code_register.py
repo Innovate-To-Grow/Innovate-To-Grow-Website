@@ -33,7 +33,7 @@ class EmailCodeAuthRegisterTests(APITestCase):
             verified=True,
         )
 
-    def test_register_creates_inactive_member_then_activates_on_verify(self, _mock_code, _mock_send):
+    def test_register_creates_inactive_member_then_activates_on_verify(self, _mock_code, mock_send):
         response = self.client.post(
             "/authn/register/",
             {
@@ -48,6 +48,8 @@ class EmailCodeAuthRegisterTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 202)
+        self.assertEqual(mock_send.call_args.kwargs["link_flow"], "register")
+        self.assertEqual(mock_send.call_args.kwargs["link_source"], "register")
         contact = ContactEmail.objects.get(email_address="new-member@example.com")
         member = contact.member
         self.assertFalse(member.is_active)

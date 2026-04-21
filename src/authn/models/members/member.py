@@ -29,6 +29,16 @@ class Member(AbstractUser, ProjectControlModel):
         """Return the member's UUID (alias for id from ProjectControlModel)."""
         return self.id
 
+    @property
+    def has_required_name_fields(self) -> bool:
+        """Return whether the member has the required first and last name fields."""
+        return bool((self.first_name or "").strip() and (self.last_name or "").strip())
+
+    @property
+    def requires_profile_completion(self) -> bool:
+        """Return whether the member must complete their profile before continuing."""
+        return not self.has_required_name_fields
+
     # organization
     organization = models.CharField(
         max_length=255,
@@ -67,11 +77,28 @@ class Member(AbstractUser, ProjectControlModel):
             full_name += f" {self.last_name}"
         return full_name.strip()
 
+    def _primary_contact_from_prefetch(self):
+        """Return the primary ContactEmail from the prefetch cache, or None if not prefetched."""
+        cache = getattr(self, "_prefetched_objects_cache", None)
+        if not cache or "contact_emails" not in cache:
+            return None
+        primaries = [c for c in cache["contact_emails"] if c.email_type == "primary"]
+        if not primaries:
+            return None
+        primaries.sort(key=lambda c: c.created_at)
+        return primaries[0]
+
     def get_primary_email(self) -> str:
         """Return the primary ContactEmail address, or empty string."""
+        prefetched = self._primary_contact_from_prefetch()
+        if prefetched is not None:
+            return prefetched.email_address
         contact = self.contact_emails.filter(email_type="primary").order_by("created_at").first()
         return contact.email_address if contact else ""
 
     def get_primary_contact_email(self):
         """Return the primary ContactEmail object, or None."""
+        prefetched = self._primary_contact_from_prefetch()
+        if prefetched is not None:
+            return prefetched
         return self.contact_emails.filter(email_type="primary").order_by("created_at").first()

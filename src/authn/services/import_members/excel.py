@@ -84,6 +84,16 @@ def import_members_from_excel(file, default_password: str | None = None, update_
                     )
                 continue
 
+            if not parsed["first_name"]:
+                result.skipped_count += 1
+                result.errors.append(f"Row {parsed['row']}: Missing first name")
+                continue
+
+            if not parsed["last_name"]:
+                result.skipped_count += 1
+                result.errors.append(f"Row {parsed['row']}: Missing last name")
+                continue
+
             member = Member(
                 password=hashed_pw,
                 first_name=parsed["first_name"],

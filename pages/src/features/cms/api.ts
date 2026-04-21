@@ -52,7 +52,7 @@ export async function fetchCMSLivePreview(
 }
 
 export interface CMSEmbedResponse {
-  block: CMSBlock;
+  blocks: CMSBlock[];
   page_css_class: string;
   page_css: string;
 }

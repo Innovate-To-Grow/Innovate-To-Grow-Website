@@ -3,6 +3,7 @@ import {
   type FooterLink,
   type FooterSocialLink,
 } from '../../../services/api';
+import { safeHref } from '../../../shared/utils/safeHref';
 import {SafeHtml} from '../../SafeHtml/SafeHtml';
 import { useFooter } from '../LayoutProvider/context';
 
@@ -10,7 +11,7 @@ const buttonColor = (style?: FooterCTAButton['style']) => (style === 'gold' ? 'g
 
 const FooterLinkItem = ({ link }: { link: FooterLink }) => (
   <li>
-    <a href={link.href} target={link.target || undefined} rel={link.rel || undefined}>
+    <a href={safeHref(link.href)} target={link.target || undefined} rel={link.rel || undefined}>
       {link.label}
     </a>
   </li>
@@ -19,7 +20,7 @@ const FooterLinkItem = ({ link }: { link: FooterLink }) => (
 const SocialIcon = ({ link }: { link: FooterSocialLink }) => (
   <li className="fa-li">
     <a
-      href={link.href}
+      href={safeHref(link.href)}
       target={link.target || undefined}
       rel={link.rel || undefined}
       aria-label={link.aria_label || undefined}
@@ -65,7 +66,7 @@ export const Footer = () => {
             const color = buttonColor(cta.style);
             return (
               <div key={`${cta.label}-${index}`} className={`sb-col hb__buttons-${color}`}>
-                <a className={`btn--invert-${color} hb__play`} href={cta.href}>
+                <a className={`btn--invert-${color} hb__play`} href={safeHref(cta.href)}>
                   {cta.label}
                 </a>
               </div>

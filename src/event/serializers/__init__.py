@@ -1,3 +1,4 @@
+from .current_projects import CurrentProjectSerializer
 from .registration import (
     EventRegistrationCreateSerializer,
     RegistrationAnswerInputSerializer,
@@ -7,6 +8,7 @@ from .registration import (
 from .schedule import build_schedule_payload
 
 __all__ = [
+    "CurrentProjectSerializer",
     "EventRegistrationCreateSerializer",
     "RegistrationAnswerInputSerializer",
     "build_event_registration_option_payload",

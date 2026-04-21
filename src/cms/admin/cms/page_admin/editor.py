@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 
-from cms.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSEmbedWidget, CMSPage, validate_block_data
+from cms.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
 
 
@@ -27,7 +27,6 @@ def build_editor_context(obj=None):
     }
     if not obj:
         context["initial_blocks_json"] = "[]"
-        context["related_widgets"] = []
         return context
 
     blocks = obj.blocks.all().order_by("sort_order")
@@ -42,9 +41,6 @@ def build_editor_context(obj=None):
             for block in blocks
         ],
         cls=DjangoJSONEncoder,
-    )
-    context["related_widgets"] = list(
-        CMSEmbedWidget.objects.filter(page=obj).order_by("slug").only("id", "slug", "admin_label")
     )
     return context
 
@@ -62,7 +58,7 @@ def save_blocks_from_json(request, page, messages):
         messages.error(request, f"Invalid blocks JSON: {exc}")
         return
 
-    page.blocks.all().delete()
+    pending_blocks = []
     for index, block_data in enumerate(blocks_data):
         block_type = block_data.get("block_type", "")
         data = block_data.get("data", {})
@@ -71,13 +67,20 @@ def save_blocks_from_json(request, page, messages):
         except Exception as exc:  # noqa: BLE001
             messages.warning(request, f"Block #{index + 1} ({block_type}): {exc}")
             continue
-        CMSBlock.objects.create(
-            page=page,
-            block_type=block_type,
-            sort_order=index,
-            admin_label=block_data.get("admin_label", ""),
-            data=data,
+        pending_blocks.append(
+            CMSBlock(
+                page=page,
+                block_type=block_type,
+                sort_order=index,
+                admin_label=block_data.get("admin_label", ""),
+                data=data,
+            )
         )
+
+    with transaction.atomic():
+        page.blocks.all().delete()
+        if pending_blocks:
+            CMSBlock.objects.bulk_create(pending_blocks)
     transaction.on_commit(lambda: cache.delete(f"cms:page:{page.route}"))
 
 

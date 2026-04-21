@@ -1,5 +1,7 @@
 """Views for public email-code auth flows."""
 
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -21,6 +23,8 @@ from authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import build_auth_success_payload
 from .email_code_helpers import auth_challenge_response, request_code_response
+
+logger = logging.getLogger(__name__)
 
 
 class LoginCodeRequestView(APIView):
@@ -88,6 +92,7 @@ class EmailAuthVerifyCodeView(APIView):
             member.is_active = True
             member.save(update_fields=["is_active"])
             _link_email_subscriber(member)
+            _schedule_member_sync_safe()
         elif flow == "login" and not member.is_active:
             return Response(
                 {"detail": "Verification code is invalid or has expired."},
@@ -100,8 +105,6 @@ class EmailAuthVerifyCodeView(APIView):
             build_auth_success_payload(
                 member,
                 "Login successful." if flow == "login" else "Email verified. Registration successful.",
-                next_step="account" if flow == "login" else "complete_profile",
-                requires_profile_completion=flow == "register",
             ),
             status=status.HTTP_200_OK,
         )
@@ -124,6 +127,7 @@ class RegisterVerifyCodeView(APIView):
             member.is_active = True
             member.save(update_fields=["is_active"])
             _link_email_subscriber(member)
+            _schedule_member_sync_safe()
         _mark_contact_email_verified(member, challenge.target_email)
         consume_login_or_registration_challenge(challenge)
         return Response(
@@ -193,3 +197,14 @@ def _mark_contact_email_verified(member, email_address):
         email_address__iexact=email_address,
         verified=False,
     ).update(verified=True)
+
+
+def _schedule_member_sync_safe():
+    try:
+        from authn.services.member_sheet_sync import schedule_member_sync
+
+        schedule_member_sync()
+    except Exception:
+        # Best-effort: the member/email state was already committed by the
+        # caller; a sheet-sync failure must not leak back into the auth flow.
+        logger.debug("schedule_member_sync failed in email-code flow", exc_info=True)

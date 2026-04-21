@@ -29,6 +29,13 @@ class SubscribeViewTests(APITestCase):
         )
         self.assertEqual(response.status_code, 200)
 
+    def test_double_submit_does_not_create_duplicate(self):
+        first = self.client.post("/authn/subscribe/", {"email": "twice@example.com"}, format="json")
+        second = self.client.post("/authn/subscribe/", {"email": "twice@example.com"}, format="json")
+        self.assertIn(first.status_code, (200, 201))
+        self.assertIn(second.status_code, (200, 201))
+        self.assertEqual(ContactEmail.objects.filter(email_address="twice@example.com").count(), 1)
+
     def test_subscribe_resubscribe_flips_flag(self):
         ContactEmail.objects.create(email_address="unsub@example.com", subscribe=False, email_type="other")
         response = self.client.post(

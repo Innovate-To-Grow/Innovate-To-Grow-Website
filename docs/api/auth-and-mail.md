@@ -98,17 +98,29 @@ Creates an `EmailAuthChallenge` and sends a 6-digit code via email.
 ```json
 {
   "email": "user@example.com",
-  "purpose": "password_reset"
+  "source": "login"
 }
 ```
 
-**Purposes:** `register`, `login`, `password_reset`, `password_change`, `account_delete`, `contact_email_verify`, `admin_login`
+**Sources:** `login`, `subscribe`, `event_registration`
 
 **Behavior:**
+- If the email belongs to an active verified account, the challenge purpose is `login`
+- Otherwise the flow creates or reuses an inactive pending member and issues a `register` challenge
+- Public email-auth emails now include both a 6-digit code and a frontend GET link:
+  - `/email-auth-link?flow=auth&source=...&email=...&code=...`
 - Code hashed before storage (never stored in plain text)
 - Expires after 10 minutes
 - Maximum 5 verification attempts
 - Throttled: 10 requests/minute
+
+### `POST /authn/login/request-code/`
+
+Sends a 6-digit login code for an existing verified account email.
+
+**Behavior:**
+- Email includes both the 6-digit code and a frontend GET login link:
+  - `/email-auth-link?flow=login&source=login&email=...&code=...`
 
 ### `POST /authn/email-auth/verify-code/`
 
@@ -132,6 +144,18 @@ Validates the code and returns a verification token for the final action.
 ```
 
 **Throttled:** 20 requests/minute
+
+## Frontend email link landing
+
+### `GET /email-auth-link`
+
+Frontend-only landing page used by auth emails. The page reads `flow`, `source`, `email`, and `code` from the query string, then automatically calls one of the existing POST verification endpoints:
+
+- `flow=auth` -> `POST /authn/email-auth/verify-code/`
+- `flow=login` -> `POST /authn/login/verify-code/`
+- `flow=register` -> `POST /authn/register/verify-code/`
+
+On success it stores JWT credentials in the SPA and routes based on `source`.
 
 ## Password management
 

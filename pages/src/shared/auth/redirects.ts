@@ -1,3 +1,5 @@
+import type { EmailAuthSource, LoginResponse } from './types';
+
 export const getSafeInternalRedirectPath = (value: string | null | undefined): string | null => {
   const normalized = value?.trim() ?? '';
 
@@ -6,4 +8,49 @@ export const getSafeInternalRedirectPath = (value: string | null | undefined): s
   }
 
   return normalized;
+};
+
+export const buildCompleteProfilePath = (returnTo?: string | null): string => {
+  const safeReturnTo = getSafeInternalRedirectPath(returnTo);
+  if (!safeReturnTo) {
+    return '/complete-profile';
+  }
+  return `/complete-profile?returnTo=${encodeURIComponent(safeReturnTo)}`;
+};
+
+export const getPostAuthPath = (
+  response: Pick<LoginResponse, 'next_step' | 'redirect_to' | 'requires_profile_completion'>,
+  fallback = '/account',
+): string => {
+  // Preserve the backend-provided destination when the server asks us to
+  // detour through profile completion. Without this, magic/ticket/unsubscribe
+  // /impersonate logins drop users at /account after completing their
+  // profile, even though `redirect_to` specified (e.g.) a campaign landing
+  // page. `buildCompleteProfilePath` safely rejects the value if it isn't
+  // an internal path.
+  if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
+    return buildCompleteProfilePath(response.redirect_to);
+  }
+  return getSafeInternalRedirectPath(response.redirect_to) ?? fallback;
+};
+
+export const getEmailAuthSourcePath = (
+  source: EmailAuthSource,
+  response: Pick<LoginResponse, 'next_step' | 'redirect_to' | 'requires_profile_completion'>,
+): string => {
+  if (source === 'subscribe') {
+    if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
+      return '/subscribe?step=profile';
+    }
+    return '/subscribe';
+  }
+
+  if (source === 'event_registration') {
+    if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
+      return buildCompleteProfilePath('/event-registration');
+    }
+    return '/event-registration';
+  }
+
+  return getPostAuthPath(response);
 };

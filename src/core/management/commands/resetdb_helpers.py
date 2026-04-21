@@ -40,7 +40,9 @@ def reset_postgresql(connection):
         cursor.execute("GRANT ALL ON SCHEMA public TO public;")
         db_user = connection.settings_dict.get("USER")
         if db_user:
-            cursor.execute(f"GRANT ALL ON SCHEMA public TO {db_user};")
+            from psycopg2 import sql
+
+            cursor.execute(sql.SQL("GRANT ALL ON SCHEMA public TO {user};").format(user=sql.Identifier(db_user)))
 
 
 def reset_mysql(connection):
@@ -93,6 +95,8 @@ def create_default_admin(command):
         return
     member = Member.objects.create_superuser(
         password=command.DEV_DEFAULT_ADMIN_PASSWORD,
+        first_name="Dev",
+        last_name="Admin",
     )
     ContactEmail.objects.create(
         member=member,

@@ -65,4 +65,26 @@ describe('VerifyEmailPage', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/subscribe', {replace: true});
   });
+
+  it('resends auth codes through the email-auth endpoint with the login source', async () => {
+    render(
+      <MemoryRouter initialEntries={['/verify-email?flow=auth&email=ada@example.com']}>
+        <Routes>
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.requestEmailAuthCode.mockResolvedValue({message: 'Code resent.'});
+
+    const resendButtons = screen.getAllByRole('button', {name: 'Resend code'});
+    fireEvent.click(resendButtons.at(-1)!);
+
+    await waitFor(() => {
+      expect(authValue.requestEmailAuthCode).toHaveBeenCalledWith('ada@example.com', 'login');
+    });
+
+    expect(await screen.findByText('Code resent.')).toBeInTheDocument();
+  });
 });

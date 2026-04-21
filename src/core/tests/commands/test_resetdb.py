@@ -1,4 +1,3 @@
-import unittest
 from io import StringIO
 
 from django.core.management import CommandError, call_command
@@ -39,18 +38,33 @@ class ResetDBCommandTest(TestCase):
             str(cm.exception),
         )
 
-    @unittest.skip("Requires mocking destructive operations")
     @override_settings(DEBUG=False)
-    def test_allow_production_flag(self):
+    def test_allow_production_flag_bypasses_debug_guard(self):
+        """--allow-production must bypass the DEBUG=False guard.
+
+        The destructive helpers (reset_* / delete_migration_files / call_command)
+        are patched out so the test stays in dev without mutating the schema.
         """
-        Test that --allow-production bypasses the DEBUG=False check.
-        We expect it to fail later (or succeed if we mocked the actual reset),
-        but here we just check it doesn't raise the production guard error.
-        """
-        # We don't actually want to run the destructive part during tests.
-        # This is a bit tricky, so we'll just check it gets past the first guard.
-        # In a real scenario, we might mock the _reset_* methods.
-        pass
+        from unittest.mock import patch
+
+        with (
+            patch("core.management.commands.resetdb.delete_migration_files"),
+            patch("core.management.commands.resetdb.reset_postgresql"),
+            patch("core.management.commands.resetdb.reset_mysql"),
+            patch("core.management.commands.resetdb.reset_sqlite"),
+            patch("core.management.commands.resetdb.create_default_admin"),
+            patch("core.management.commands.resetdb.seed_archive_data"),
+            patch("core.management.commands.resetdb.call_command"),
+        ):
+            out = StringIO()
+            # This must not raise CommandError("Command restricted to DEBUG=True").
+            call_command(
+                "resetdb",
+                "--force",
+                "--confirm=RESET_DB",
+                "--allow-production",
+                stdout=out,
+            )
 
     # TODO: Add integration tests that use a separate test database to verify
     # the actual SQL execution for each vendor (PostgreSQL, MySQL, SQLite).

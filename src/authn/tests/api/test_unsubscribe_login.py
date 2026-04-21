@@ -34,6 +34,24 @@ class UnsubscribeAutoLoginViewTests(APITestCase):
         self.assertIn("refresh", response.data)
         self.assertIn("user", response.data)
         self.assertEqual(response.data["user"]["email"], "unsub@example.com")
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
+
+    def test_incomplete_profile_routes_to_complete_profile(self):
+        self.member.first_name = ""
+        self.member.last_name = ""
+        self.member.save(update_fields=["first_name", "last_name", "updated_at"])
+        token = build_unsubscribe_login_token(self.member)
+
+        response = self.client.post(
+            "/authn/unsubscribe-login/",
+            {"token": token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["next_step"], "complete_profile")
+        self.assertTrue(response.data["requires_profile_completion"])
 
     def test_invalid_token_returns_400(self):
         response = self.client.post(

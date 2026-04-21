@@ -15,8 +15,8 @@ from authn.services.email.auth_email import normalize_email
 logger = logging.getLogger(__name__)
 
 CHALLENGE_TTL = timedelta(minutes=10)
-RESEND_COOLDOWN = timedelta(seconds=10)
-MAX_CHALLENGES_PER_HOUR = 100
+RESEND_COOLDOWN = timedelta(seconds=60)
+MAX_CHALLENGES_PER_HOUR = 10
 
 
 class AuthChallengeError(RuntimeError):
@@ -120,7 +120,14 @@ def _create_challenge_record(*, member, purpose: str, target_email: str) -> tupl
     return challenge, code
 
 
-def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAuthChallenge:
+def issue_email_challenge(
+    *,
+    member,
+    purpose: str,
+    target_email: str,
+    link_flow: str | None = None,
+    link_source: str | None = None,
+) -> EmailAuthChallenge:
     """Create a challenge and send the verification code email."""
     from authn.services.email.send_email import send_verification_email
 
@@ -135,6 +142,8 @@ def issue_email_challenge(*, member, purpose: str, target_email: str) -> EmailAu
             recipient=challenge.target_email,
             code=plain_code,
             purpose=purpose,
+            link_flow=link_flow,
+            link_source=link_source,
         )
     except Exception as exc:
         logger.exception("Failed to send verification email to %s", challenge.target_email)

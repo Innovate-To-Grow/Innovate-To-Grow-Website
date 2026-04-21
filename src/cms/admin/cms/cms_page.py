@@ -2,6 +2,7 @@ import logging
 
 from django import forms
 from django.contrib import admin, messages
+from django.db.models import Count
 
 from cms.admin.cms.page_admin.editor import (
     build_editor_context,
@@ -71,10 +72,13 @@ class CMSPageAdmin(BaseModelAdmin):
         ("Timestamps", {"fields": ("published_at", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
-    def block_count(self, obj):
-        return obj.blocks.count()
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(_block_count=Count("blocks"))
 
-    block_count.short_description = "Blocks"
+    @admin.display(description="Blocks", ordering="_block_count")
+    def block_count(self, obj):
+        return getattr(obj, "_block_count", obj.blocks.count())
 
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
