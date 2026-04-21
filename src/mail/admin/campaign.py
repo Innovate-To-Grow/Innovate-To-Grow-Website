@@ -633,12 +633,22 @@ class EmailCampaignAdmin(BaseModelAdmin):
         # stack traces / verbose exception dumps don't leak out of the
         # admin view. The endpoint is staff-only, but trimming also keeps
         # the polling payload small and defends against accidental exposure
-        # if the route is ever re-scoped.
+        # if the route is ever re-scoped. Any message that looks like a
+        # Python traceback is replaced with a generic string so callers
+        # can tell that a send failed without receiving internal frames.
         def _short_error(msg: object) -> str:
             if not msg:
                 return ""
-            first_line = str(msg).splitlines()[0]
-            return first_line[:200]
+            text = str(msg)
+            # Python traceback markers — if we see any of these the message
+            # is effectively a stack dump and should never be returned to a
+            # client, even a staff-only one.
+            if "Traceback (most recent call last)" in text or '\n  File "' in text:
+                return "Send failed (see server logs for details)."
+            first_line = text.splitlines()[0] if text else ""
+            # Strip control chars to keep the JSON response safe to render.
+            cleaned = "".join(ch for ch in first_line if ch.isprintable())
+            return cleaned[:200]
 
         recent_qs = RecipientLog.objects.filter(campaign=obj).exclude(status="pending").order_by("-updated_at")[:20]
         recent_logs = [

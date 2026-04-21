@@ -4,10 +4,6 @@
     const config = window.CMS_EMBED_WIDGET || {};
     let selected = new Set((config.initialBlockSortOrders || []).map(Number));
 
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
     function hiddenField() { return document.getElementById('id_block_sort_orders'); }
     function slugField() { return document.getElementById('id_slug'); }
     function pageField() { return document.getElementById('id_page'); }
@@ -70,31 +66,57 @@
     function renderBlocks(blocks) {
         const container = picker();
         if (!container) return;
+        // Use DOM APIs instead of innerHTML so user-controlled block labels
+        // are never reinterpreted as HTML even if an upstream sanitizer is
+        // bypassed. CodeQL's taint analysis treats innerHTML = <string> as
+        // unsafe regardless of manual escaping.
+        while (container.firstChild) container.removeChild(container.firstChild);
         if (!blocks.length) {
-            container.innerHTML = '<p class="cms-widget-empty">This page has no blocks yet.</p>';
+            const empty = document.createElement('p');
+            empty.className = 'cms-widget-empty';
+            empty.textContent = 'This page has no blocks yet.';
+            container.appendChild(empty);
             return;
         }
-        container.innerHTML = blocks.map(b => {
+        blocks.forEach(b => {
             const order = Number(b.sort_order);
             const id = 'cms-widget-block-cb-' + order;
-            const label = escapeHtml(b.admin_label || '');
-            const checked = selected.has(order) ? ' checked' : '';
-            return '<div class="cms-widget-block-row">'
-                + '<input type="checkbox" id="' + id + '" data-order="' + order + '"' + checked + '>'
-                + '<label for="' + id + '">'
-                + '<span class="cms-widget-block-order">#' + (order + 1) + '</span>'
-                + '<span class="cms-widget-block-type">' + escapeHtml(b.block_type) + '</span>'
-                + (label ? ' — ' + label : '')
-                + '</label>'
-                + '</div>';
-        }).join('');
-        container.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            const row = document.createElement('div');
+            row.className = 'cms-widget-block-row';
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = id;
+            cb.dataset.order = String(order);
+            cb.checked = selected.has(order);
             cb.addEventListener('change', () => {
-                const order = Number(cb.dataset.order);
                 if (cb.checked) selected.add(order); else selected.delete(order);
                 syncHidden();
                 renderSnippet();
             });
+
+            const label = document.createElement('label');
+            label.htmlFor = id;
+
+            const orderSpan = document.createElement('span');
+            orderSpan.className = 'cms-widget-block-order';
+            orderSpan.textContent = '#' + (order + 1);
+
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'cms-widget-block-type';
+            typeSpan.textContent = String(b.block_type || '');
+
+            label.appendChild(orderSpan);
+            label.appendChild(typeSpan);
+
+            const adminLabel = String(b.admin_label || '');
+            if (adminLabel) {
+                label.appendChild(document.createTextNode(' — ' + adminLabel));
+            }
+
+            row.appendChild(cb);
+            row.appendChild(label);
+            container.appendChild(row);
         });
     }
 
@@ -342,9 +364,11 @@
 
         window.addEventListener('message', function (e) {
             // Only accept resize messages from the configured frontend origin
-            // (the embed iframe's own origin). Without this check, any frame
-            // on the admin page could forge resize events.
-            if (!FRONTEND_ORIGIN || e.origin !== FRONTEND_ORIGIN) return;
+            // (the embed iframe's own origin). Split into two separate checks
+            // so the origin allowlist is obvious to CodeQL's taint analysis
+            // and to future readers.
+            if (!FRONTEND_ORIGIN) return;
+            if (e.origin !== FRONTEND_ORIGIN) return;
             if (!e.data || e.data.type !== 'i2g-embed-resize') return;
             var iframe = previewIframe();
             // Clamp height to a positive integer so a malformed payload

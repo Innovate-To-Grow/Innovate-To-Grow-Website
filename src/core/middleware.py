@@ -123,16 +123,24 @@ def csp_report(request):
         def _clean(value: object) -> str:
             # Drop control chars (including newlines) so an attacker can't
             # forge extra log lines. 256-char cap per field keeps log volume
-            # bounded even under spray.
+            # bounded even under spray. Two-step strip: explicit `\r` / `\n`
+            # removal is the pattern CodeQL recognizes as a log-injection
+            # sanitizer; the printable-char filter follows to also catch
+            # ANSI escapes and other control bytes.
             s = str(value) if value is not None else ""
+            s = s.replace("\r", " ").replace("\n", " ")
             return "".join(ch for ch in s if ch.isprintable())[:256]
 
+        directive = _clean(report.get("violated-directive") or report.get("effective-directive"))
+        blocked = _clean(report.get("blocked-uri"))
+        document = _clean(report.get("document-uri"))
+        source = _clean(report.get("source-file"))
         logger.warning(
             "CSP violation: directive=%s blocked=%s document=%s source=%s",
-            _clean(report.get("violated-directive") or report.get("effective-directive")),
-            _clean(report.get("blocked-uri")),
-            _clean(report.get("document-uri")),
-            _clean(report.get("source-file")),
+            directive,
+            blocked,
+            document,
+            source,
         )
     except Exception:
         logger.exception("Unexpected error processing CSP violation report")
