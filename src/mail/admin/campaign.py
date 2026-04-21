@@ -302,17 +302,6 @@ class EmailCampaignAdmin(BaseModelAdmin):
         (
             "Audience",
             {
-                "description": (
-                    "<p><strong>Which email addresses are used</strong></p>"
-                    '<ul class="pl-5 list-disc space-y-1">'
-                    "<li><strong>Send to</strong> (when shown) applies to member-based audiences and to "
-                    "member-based <em>exclude</em> audiences: primary only, or primary + secondary + other.</li>"
-                    "<li>Event-based audiences and exclusions (registrants, ticket type, checked-in, no-shows) "
-                    "use each registration's <em>attendee</em> email when set; otherwise that "
-                    "member's <strong>primary</strong> contact email.</li>"
-                    "<li><strong>Manual emails</strong> uses exactly the addresses you type.</li>"
-                    "</ul>"
-                ),
                 "fields": (
                     "audience_type",
                     "event",
@@ -321,10 +310,10 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "member_email_scope",
                     "manual_emails",
                     "exclude_audience_type",
+                    "exclude_member_email_scope",
                     "exclude_event",
                     "exclude_ticket",
                     "exclude_members",
-                    "exclude_member_email_scope",
                 ),
             },
         ),
@@ -408,6 +397,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "manual_emails",
                     "selected_members",
                     "exclude_audience_type",
+                    "exclude_member_email_scope",
                     "exclude_event",
                     "exclude_members",
                 ]

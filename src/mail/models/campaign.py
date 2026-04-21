@@ -78,21 +78,20 @@ class EmailCampaign(ProjectControlModel):
         verbose_name="Send to",
         help_text=(
             "For member-based audiences (subscribers, all active members, staff, selected members): "
-            "send only to each person’s primary contact email, or to every saved contact email "
-            "(primary, secondary, and other). The same choice applies when the exclude audience is "
-            "one of those member-based types. Event-based audiences (registrants, ticket, checked-in, "
-            "no-shows) always use the registration’s attendee email when set, otherwise the member’s primary email."
+            "send only to each person's primary contact email, or to every saved contact email "
+            "(primary, secondary, and other). Event-based audiences (registrants, ticket, checked-in, "
+            "no-shows) use the registration's attendee email when set, otherwise the member's primary email."
         ),
     )
     exclude_member_email_scope = models.CharField(
         max_length=16,
         choices=MEMBER_EMAIL_CHOICES,
         default="primary",
-        verbose_name="Exclude send to",
+        verbose_name="Send to",
         help_text=(
-            "When the exclude audience is member-based (subscribers, all active members, staff, selected members), "
-            "choose whether exclusion matches only primary emails, or all saved contact emails "
-            "(primary, secondary, and other). Event-based exclusions always use attendee email (or member primary)."
+            "When the exclude audience is member-based, which of each person's contact emails are used to "
+            "match against the main recipient list (primary only, or primary + secondary + other). "
+            "Ignored for event-based exclude audiences (they use attendee or primary as for registrations)."
         ),
     )
     manual_emails = models.TextField(
@@ -109,8 +108,9 @@ class EmailCampaign(ProjectControlModel):
         verbose_name="Exclude audience",
         help_text=(
             "Remove anyone whose address appears in this group from the final list (case-insensitive). "
-            'Member-based exclusion uses the same "Send to" rule as above. Event-based exclusion uses '
-            "each registration's attendee email, or the member's primary email if the attendee email is empty."
+            'For member-based exclusions, addresses follow the second "Send to" field below. '
+            "For event-based exclusions, each registration's attendee email, or the member's primary email "
+            "if the attendee email is empty."
         ),
     )
     exclude_event = models.ForeignKey(
@@ -132,8 +132,8 @@ class EmailCampaign(ProjectControlModel):
         blank=True,
         related_name="+",
         help_text=(
-            'When exclude audience is "Selected Members", these people are dropped using the same '
-            '"Send to" addresses as for a primary selected-members audience.'
+            'When exclude audience is "Selected Members", pick members here; the exclude "Send to" '
+            "field controls which of their contact emails count for matching."
         ),
     )
 
