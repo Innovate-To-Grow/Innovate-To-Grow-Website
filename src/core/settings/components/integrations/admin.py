@@ -53,6 +53,14 @@ UNFOLD = {
             ],
         },
         {
+            "models": ["event.event", "event.eventregistration", "event.checkin"],
+            "items": [
+                {"title": "Events", "link": "/admin/event/event/"},
+                {"title": "Registrations", "link": "/admin/event/eventregistration/"},
+                {"title": "Check-ins", "link": "/admin/event/checkin/"},
+            ],
+        },
+        {
             "models": ["authn.contactemail", "authn.contactphone"],
             "items": [
                 {"title": "Emails", "link": "/admin/authn/contactemail/"},
@@ -121,9 +129,7 @@ UNFOLD = {
             {
                 "title": "Events",
                 "items": [
-                    {"title": "Events", "link": "/admin/event/event/"},
-                    {"title": "Registrations", "link": "/admin/event/eventregistration/"},
-                    {"title": "Check-ins", "link": "/admin/event/checkin/"},
+                    {"title": "Events & Registrations", "link": "/admin/event/event/"},
                     {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
                     {"title": "Current Projects (synced)", "link": "/admin/event/currentproject/"},
                     {"title": "Sheet Sync Logs", "link": "/admin/event/registrationsheetsynclog/"},

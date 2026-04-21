@@ -12,6 +12,14 @@ describe('auth redirects', () => {
       next_step: 'complete_profile',
       requires_profile_completion: true,
       redirect_to: '/schedule',
+    })).toBe('/complete-profile?returnTo=%2Fschedule');
+  });
+
+  it('drops an unsafe redirect_to when detouring through complete-profile', () => {
+    expect(getPostAuthPath({
+      next_step: 'complete_profile',
+      requires_profile_completion: true,
+      redirect_to: 'https://evil.example/phish',
     })).toBe('/complete-profile');
   });
 

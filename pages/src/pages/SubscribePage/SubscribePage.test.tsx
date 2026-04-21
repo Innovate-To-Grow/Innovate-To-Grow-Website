@@ -1,6 +1,6 @@
-import {fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {SubscribePage} from './SubscribePage';
 
@@ -66,6 +66,10 @@ const profileData = {
 };
 
 describe('SubscribePage', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     mockUseAuth.mockReset();
     mockGetProfile.mockReset();
@@ -75,6 +79,7 @@ describe('SubscribePage', () => {
     baseAuth.requestEmailAuthCode.mockClear();
     baseAuth.verifyEmailAuthCode.mockClear();
 
+    mockGetProfile.mockResolvedValue(profileData);
     mockUseAuth.mockReturnValue({...baseAuth});
   });
 
@@ -106,6 +111,23 @@ describe('SubscribePage', () => {
   });
 
   it('transitions from code to profile step when profile is incomplete', async () => {
+    const authState = {
+      ...baseAuth,
+      user: null,
+      isAuthenticated: false,
+      verifyEmailAuthCode: vi.fn().mockImplementation(async () => {
+        authState.user = {member_uuid: 'uuid-1', email: 'test@example.com'};
+        authState.isAuthenticated = true;
+        return {
+          access: 'jwt',
+          refresh: 'jwt-r',
+          user: authState.user,
+          requires_profile_completion: true,
+        };
+      }),
+    };
+    mockUseAuth.mockImplementation(() => authState);
+
     render(
       <MemoryRouter>
         <SubscribePage />
@@ -122,10 +144,14 @@ describe('SubscribePage', () => {
     fireEvent.submit(screen.getByLabelText('Verification Code').closest('form')!);
 
     await waitFor(() => {
-      expect(baseAuth.verifyEmailAuthCode).toHaveBeenCalledWith('test@example.com', '123456');
+      expect(authState.verifyEmailAuthCode).toHaveBeenCalledWith('test@example.com', '123456');
     });
 
-    expect(await screen.findByText(/complete your profile/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetProfile).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByLabelText(/first name/i)).toBeInTheDocument();
   });
 
   it('shows manage step directly for authenticated users', async () => {
@@ -162,13 +188,88 @@ describe('SubscribePage', () => {
       isAuthenticated: true,
     });
 
+    mockGetProfile.mockResolvedValue({
+      ...profileData,
+      organization: 'Acme Corp',
+      title: 'Director',
+    });
+
     render(
       <MemoryRouter initialEntries={['/subscribe?step=profile']}>
         <SubscribePage />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByLabelText(/first name/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGetProfile).toHaveBeenCalled();
+      expect(screen.getAllByLabelText(/first name/i).some((input) => (input as HTMLInputElement).value === 'Ada')).toBe(true);
+      expect(screen.getAllByLabelText(/last name/i).some((input) => (input as HTMLInputElement).value === 'Lovelace')).toBe(true);
+      expect(
+        screen.getAllByPlaceholderText('Company or organization name').some(
+          (input) => (input as HTMLInputElement).value === 'Acme Corp',
+        ),
+      ).toBe(true);
+      expect(
+        screen.getAllByPlaceholderText('Your title or position (e.g. CEO, Director)').some(
+          (input) => (input as HTMLInputElement).value === 'Director',
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it('preserves prefilled profile data from the direct link and advances to manage after save', async () => {
+    const incompleteProfile = {
+      ...profileData,
+      last_name: '',
+      organization: 'Acme Corp',
+      title: 'Director',
+    };
+    const completedProfile = {
+      ...incompleteProfile,
+      last_name: 'Lovelace',
+      email_subscribe: true,
+    };
+
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: 'member@example.com'},
+      isAuthenticated: true,
+    });
+    mockGetProfile
+      .mockResolvedValueOnce(incompleteProfile)
+      .mockResolvedValue(completedProfile);
+    mockUpdateProfileFields.mockResolvedValue(completedProfile);
+
+    render(
+      <MemoryRouter initialEntries={['/subscribe?step=profile']}>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    const activeFirstNameInput = await screen.findByLabelText(/first name/i);
+    const activeLastNameInput = screen.getByLabelText(/last name/i);
+    const activeOrgInput = screen.getByPlaceholderText('Company or organization name');
+    const activeTitleInput = screen.getByPlaceholderText('Your title or position (e.g. CEO, Director)');
+
+    expect(activeFirstNameInput).toHaveValue('Ada');
+    expect(activeOrgInput).toHaveValue('Acme Corp');
+    expect(activeTitleInput).toHaveValue('Director');
+
+    fireEvent.change(activeLastNameInput, {target: {value: 'Lovelace'}});
+    fireEvent.submit(activeFirstNameInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(mockUpdateProfileFields).toHaveBeenCalledWith({
+        first_name: 'Ada',
+        middle_name: '',
+        last_name: 'Lovelace',
+        organization: 'Acme Corp',
+        title: 'Director',
+        email_subscribe: true,
+      });
+    });
+
+    expect(await screen.findByText('Manage your email subscription preferences below.')).toBeInTheDocument();
   });
 
   it('toggles subscription in manage step', async () => {
@@ -201,8 +302,37 @@ describe('SubscribePage', () => {
   });
 
   it('saves profile and auto-subscribes in profile step', async () => {
-    mockUpdateProfileFields.mockResolvedValue({...profileData, email: 'test@example.com', email_subscribe: true});
-    mockGetProfile.mockResolvedValue({...profileData, email: 'test@example.com', email_subscribe: true});
+    const authState = {
+      ...baseAuth,
+      user: null,
+      isAuthenticated: false,
+      verifyEmailAuthCode: vi.fn().mockImplementation(async () => {
+        authState.user = {member_uuid: 'uuid-1', email: 'test@example.com'};
+        authState.isAuthenticated = true;
+        return {
+          access: 'jwt',
+          refresh: 'jwt-r',
+          user: authState.user,
+          requires_profile_completion: true,
+        };
+      }),
+    };
+    mockUseAuth.mockImplementation(() => authState);
+
+    mockUpdateProfileFields.mockResolvedValue({
+      ...profileData,
+      email: 'test@example.com',
+      organization: 'Acme Corp',
+      title: '',
+      email_subscribe: true,
+    });
+    mockGetProfile.mockResolvedValue({
+      ...profileData,
+      email: 'test@example.com',
+      organization: '',
+      title: '',
+      email_subscribe: true,
+    });
 
     render(
       <MemoryRouter>
@@ -218,13 +348,19 @@ describe('SubscribePage', () => {
     // Verify code → profile step
     fireEvent.change(screen.getByLabelText('Verification Code'), {target: {value: '123456'}});
     fireEvent.submit(screen.getByLabelText('Verification Code').closest('form')!);
-    await screen.findByLabelText(/first name/i);
+    await waitFor(() => {
+      expect(authState.verifyEmailAuthCode).toHaveBeenCalledWith('test@example.com', '123456');
+      expect(mockGetProfile).toHaveBeenCalled();
+    });
 
-    fireEvent.change(screen.getByLabelText(/first name/i), {target: {value: 'Ada'}});
-    fireEvent.change(screen.getByLabelText(/last name/i), {target: {value: 'Lovelace'}});
-    const orgInputs = screen.getAllByPlaceholderText('Company or organization name');
-    fireEvent.change(orgInputs[0], {target: {value: 'Acme Corp'}});
-    fireEvent.submit(screen.getByLabelText(/first name/i).closest('form')!);
+    const firstNameInput = await screen.findByLabelText(/first name/i);
+    const lastNameInput = screen.getByLabelText(/last name/i);
+    const orgInput = screen.getByPlaceholderText('Company or organization name');
+
+    fireEvent.change(firstNameInput, {target: {value: 'Ada'}});
+    fireEvent.change(lastNameInput, {target: {value: 'Lovelace'}});
+    fireEvent.change(orgInput, {target: {value: 'Acme Corp'}});
+    fireEvent.submit(firstNameInput.closest('form')!);
 
     await waitFor(() => {
       expect(mockUpdateProfileFields).toHaveBeenCalledWith({

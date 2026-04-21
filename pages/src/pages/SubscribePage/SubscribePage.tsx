@@ -41,31 +41,73 @@ export const SubscribePage = () => {
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(() => isAuthenticated && shouldStartInProfile);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
 
-  // When auth state changes to authenticated, jump to manage
+  const applyProfileToForm = (nextProfile: ProfileResponse) => {
+    setFirstName(nextProfile.first_name ?? '');
+    setMiddleName(nextProfile.middle_name ?? '');
+    setLastName(nextProfile.last_name ?? '');
+
+    const org = nextProfile.organization ?? '';
+    const normalized = org.trim().toLowerCase();
+    const isIndividual = ['individual', 'personal'].includes(normalized);
+    setOrganizationType(isIndividual ? 'individual' : 'organization');
+    setOrganization(isIndividual ? '' : org);
+    setTitle(nextProfile.title ?? '');
+  };
+
+  // When auth state changes after verification, advance out of the email/code
+  // steps, but do not override an in-progress profile or manage screen.
   useEffect(() => {
     if (!isAuthenticated) {
       return;
     }
 
-    if (shouldStartInProfile) {
-      setStep('profile');
-      return;
-    }
-
-    if (step !== 'manage' && step !== 'profile') {
-      setStep('manage');
+    if (step === 'email' || step === 'code') {
+      if (shouldStartInProfile) {
+        setProfileLoading(true);
+      }
+      setStep(shouldStartInProfile ? 'profile' : 'manage');
     }
   }, [isAuthenticated, shouldStartInProfile, step]);
 
-  // Fetch profile when entering manage step
+  // Fetch profile data for both the manage screen and the direct profile-link
+  // flow so existing account details are preserved.
   useEffect(() => {
-    if (step === 'manage' && isAuthenticated) {
-      getProfile()
-        .then(setProfile)
-        .catch(() => setError('Failed to load subscription status.'));
+    if (!isAuthenticated || (step !== 'manage' && step !== 'profile')) {
+      return;
     }
+
+    let cancelled = false;
+    if (step === 'profile') {
+      setProfileLoading(true);
+    }
+
+    getProfile()
+      .then((nextProfile) => {
+        if (cancelled) {
+          return;
+        }
+        setProfile(nextProfile);
+        if (step === 'profile') {
+          applyProfileToForm(nextProfile);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(step === 'profile' ? 'Failed to load your profile.' : 'Failed to load subscription status.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled && step === 'profile') {
+          setProfileLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [step, isAuthenticated]);
 
   const clearPageError = () => {
@@ -90,6 +132,7 @@ export const SubscribePage = () => {
     try {
       const result = await verifyEmailAuthCode(email.trim().toLowerCase(), code);
       if (result.requires_profile_completion) {
+        setProfileLoading(true);
         setStep('profile');
       } else {
         setStep('manage');
@@ -203,42 +246,48 @@ export const SubscribePage = () => {
       )}
 
       {step === 'profile' && (
-        <ProfileStep
-          firstName={firstName}
-          middleName={middleName}
-          lastName={lastName}
-          organizationType={organizationType}
-          organization={organization}
-          saving={saving}
-          onFirstNameChange={(value) => {
-            setFirstName(value);
-            clearPageError();
-          }}
-          onMiddleNameChange={(value) => {
-            setMiddleName(value);
-            clearPageError();
-          }}
-          onLastNameChange={(value) => {
-            setLastName(value);
-            clearPageError();
-          }}
-          onOrganizationTypeChange={(value) => {
-            setOrganizationType(value);
-            setOrganization('');
-            setTitle('');
-            clearPageError();
-          }}
-          onOrganizationChange={(value) => {
-            setOrganization(value);
-            clearPageError();
-          }}
-          title={title}
-          onTitleChange={(value) => {
-            setTitle(value);
-            clearPageError();
-          }}
-          onSubmit={handleProfileSubmit}
-        />
+        profileLoading ? (
+          <div className="subscribe-section" role="status">
+            Loading your profile...
+          </div>
+        ) : (
+          <ProfileStep
+            firstName={firstName}
+            middleName={middleName}
+            lastName={lastName}
+            organizationType={organizationType}
+            organization={organization}
+            saving={saving}
+            onFirstNameChange={(value) => {
+              setFirstName(value);
+              clearPageError();
+            }}
+            onMiddleNameChange={(value) => {
+              setMiddleName(value);
+              clearPageError();
+            }}
+            onLastNameChange={(value) => {
+              setLastName(value);
+              clearPageError();
+            }}
+            onOrganizationTypeChange={(value) => {
+              setOrganizationType(value);
+              setOrganization('');
+              setTitle('');
+              clearPageError();
+            }}
+            onOrganizationChange={(value) => {
+              setOrganization(value);
+              clearPageError();
+            }}
+            title={title}
+            onTitleChange={(value) => {
+              setTitle(value);
+              clearPageError();
+            }}
+            onSubmit={handleProfileSubmit}
+          />
+        )
       )}
 
       {step === 'manage' && (

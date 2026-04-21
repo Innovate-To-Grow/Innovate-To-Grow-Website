@@ -12,9 +12,13 @@ vi.mock('../../services/auth', () => ({
   consumeEmailAuthQuery: (...args: unknown[]) => mockConsumeEmailAuthQuery(...args),
 }));
 
-vi.mock('../../components/Auth/context/shared', () => ({
-  dispatchAuthStateChange: () => mockDispatchAuthStateChange(),
-}));
+vi.mock('../../components/Auth/context/shared', async () => {
+  const actual = await vi.importActual<typeof import('../../components/Auth/context/shared')>('../../components/Auth/context/shared');
+  return {
+    ...actual,
+    dispatchAuthStateChange: () => mockDispatchAuthStateChange(),
+  };
+});
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -127,8 +131,13 @@ describe('EmailAuthLinkPage', () => {
     expect(mockConsumeEmailAuthQuery).not.toHaveBeenCalled();
   });
 
-  it('shows an error when the verification code is invalid, expired, or already used', async () => {
-    mockConsumeEmailAuthQuery.mockRejectedValue(new Error('expired'));
+  it('shows the backend validation error when the verification code is invalid or expired', async () => {
+    mockConsumeEmailAuthQuery.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {detail: 'Verification code is invalid or has expired.'},
+      },
+    });
 
     render(
       <MemoryRouter initialEntries={['/email-auth-link?flow=auth&source=login&email=ada%40example.com&code=123456']}>
@@ -139,9 +148,31 @@ describe('EmailAuthLinkPage', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText('This email link is invalid, expired, or has already been used. Please request a new code.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Verification code is invalid or has expired.')).toBeInTheDocument();
+    });
+
+    expect(mockDispatchAuthStateChange).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('shows a transient error message when verification fails for non-code reasons', async () => {
+    mockConsumeEmailAuthQuery.mockRejectedValue({
+      response: {
+        status: 503,
+        data: {},
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/email-auth-link?flow=auth&source=login&email=ada%40example.com&code=123456']}>
+        <Routes>
+          <Route path="/email-auth-link" element={<EmailAuthLinkPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('A server error occurred. Please try again later.')).toBeInTheDocument();
     });
 
     expect(mockDispatchAuthStateChange).not.toHaveBeenCalled();

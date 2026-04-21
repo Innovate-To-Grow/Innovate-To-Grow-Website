@@ -103,6 +103,6 @@ describe('MagicLoginPage', () => {
       expect(mockMagicAutoLogin).toHaveBeenCalledWith('incomplete123');
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/complete-profile', {replace: true});
+    expect(mockNavigate).toHaveBeenCalledWith('/complete-profile?returnTo=%2Fschedule', {replace: true});
   });
 });

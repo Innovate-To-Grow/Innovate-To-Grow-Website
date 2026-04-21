@@ -22,9 +22,10 @@ def get_recipients(campaign):
 
     exclude_type = (campaign.exclude_audience_type or "").strip()
     if exclude_type:
+        exclude_send_all = campaign.exclude_member_email_scope == "all"
         excluded = _recipients_for_audience(
             exclude_type,
-            send_all=send_all,
+            send_all=exclude_send_all,
             event=campaign.exclude_event,
             ticket_uuid_str=campaign.exclude_ticket_id.strip() if exclude_type == "ticket_type" else "",
             selected_members=campaign.exclude_members,

@@ -127,6 +127,7 @@ class EmailCampaignForm(forms.ModelForm):
             "member_email_scope": UnfoldAdminSelectWidget,
             "exclude_audience_type": UnfoldAdminSelectWidget,
             "exclude_event": UnfoldAdminSelectWidget,
+            "exclude_member_email_scope": UnfoldAdminSelectWidget,
         }
 
     def __init__(self, *args, **kwargs):
@@ -162,6 +163,7 @@ class EmailCampaignForm(forms.ModelForm):
                 "exclude_event",
                 "exclude_ticket",
                 "exclude_members",
+                "exclude_member_email_scope",
             ):
                 if field_name in self.fields:
                     self.fields[field_name].disabled = True
@@ -300,6 +302,17 @@ class EmailCampaignAdmin(BaseModelAdmin):
         (
             "Audience",
             {
+                "description": (
+                    "<p><strong>Which email addresses are used</strong></p>"
+                    '<ul class="pl-5 list-disc space-y-1">'
+                    "<li><strong>Send to</strong> (when shown) applies to member-based audiences and to "
+                    "member-based <em>exclude</em> audiences: primary only, or primary + secondary + other.</li>"
+                    "<li>Event-based audiences and exclusions (registrants, ticket type, checked-in, no-shows) "
+                    "use each registration's <em>attendee</em> email when set; otherwise that "
+                    "member's <strong>primary</strong> contact email.</li>"
+                    "<li><strong>Manual emails</strong> uses exactly the addresses you type.</li>"
+                    "</ul>"
+                ),
                 "fields": (
                     "audience_type",
                     "event",
@@ -311,6 +324,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "exclude_event",
                     "exclude_ticket",
                     "exclude_members",
+                    "exclude_member_email_scope",
                 ),
             },
         ),
@@ -338,6 +352,10 @@ class EmailCampaignAdmin(BaseModelAdmin):
         ),
         "exclude_ticket": "exclude_audience_type === 'ticket_type'",
         "exclude_members": "exclude_audience_type === 'selected_members'",
+        "exclude_member_email_scope": (
+            "exclude_audience_type === 'subscribers' || exclude_audience_type === 'all_members'"
+            " || exclude_audience_type === 'staff' || exclude_audience_type === 'selected_members'"
+        ),
     }
 
     @display(description="Subject")
@@ -386,10 +404,9 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "body",
                     "audience_type",
                     "event",
-                    "ticket",
-                    "selected_members",
                     "member_email_scope",
                     "manual_emails",
+                    "selected_members",
                     "exclude_audience_type",
                     "exclude_event",
                     "exclude_members",

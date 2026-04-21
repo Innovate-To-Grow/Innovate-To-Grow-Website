@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useSearchParams} from 'react-router-dom';
-import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
+import {dispatchAuthStateChange, getAuthErrorMessage} from '../../components/Auth/context/shared';
 import {consumeEmailAuthQuery, type EmailAuthFlow, type EmailAuthSource} from '../../services/auth';
 import {getEmailAuthSourcePath} from '../../shared/auth/redirects';
 
@@ -37,9 +37,9 @@ export function EmailAuthLinkPage() {
           navigate(getEmailAuthSourcePath(source, response), {replace: true});
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
-          setError('This email link is invalid, expired, or has already been used. Please request a new code.');
+          setError(getAuthErrorMessage(err));
         }
       });
 
