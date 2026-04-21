@@ -193,6 +193,52 @@ describe('BlockPreviewPage', () => {
     expect(screen.queryByTestId('blk-rich_text')).not.toBeInTheDocument();
   });
 
+  it('accepts messages from a trusted parent origin configured via VITE_ADMIN_ORIGIN', async () => {
+    // Split frontend/backend setups put the Django admin on a different
+    // origin from the SPA; messages from that admin must pass the guard.
+    vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin.example.com');
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+
+    render(<ReloadedBlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://admin.example.com',
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'admin-sent'}},
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId('blk-rich_text')).toHaveTextContent('admin-sent');
+    vi.unstubAllEnvs();
+  });
+
+  it('accepts multiple comma-separated trusted origins', async () => {
+    vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin.example.com, https://cms.example.com');
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+
+    render(<ReloadedBlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://cms.example.com',
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'cms-sent'}},
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId('blk-rich_text')).toHaveTextContent('cms-sent');
+    vi.unstubAllEnvs();
+  });
+
   it('handles block payload with missing sort_order by defaulting to 0', () => {
     render(<BlockPreviewPage />);
     act(() => {

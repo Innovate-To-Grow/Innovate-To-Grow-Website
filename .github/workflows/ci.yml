@@ -30,10 +30,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # Run the gitleaks CLI directly instead of the `gitleaks/gitleaks-action`
+      # GitHub Action, which requires a paid license when the repository is
+      # owned by an organization. The CLI itself is Apache-2.0 and works the
+      # same, we just lose the Action's PR-comment integration.
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          GITLEAKS_VERSION="8.21.2"
+          curl -sSL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          mkdir -p /tmp/gitleaks
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks
+          /tmp/gitleaks/gitleaks detect \
+            --source . \
+            --redact \
+            --verbose \
+            --no-banner \
+            --exit-code 1
 
   # ============================================
   # Stage 1: Code Style Check
@@ -126,7 +139,7 @@ jobs:
         run: docker build -t itg-backend-ci:${{ github.sha }} src/
 
       - name: Scan image for OS/library CVEs (trivy)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table

@@ -72,3 +72,47 @@ class MagicLoginViewTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "This login link has expired.")
+
+
+class MagicLoginTokenAtomicConsumptionTests(APITestCase):
+    """The token must be consumed atomically so two concurrent login requests
+    with the same token can't both succeed. The view relies on
+    ``MagicLoginToken.try_mark_used()`` returning False when the row is
+    already marked used — so a conditional UPDATE in one transaction doesn't
+    see the other's unsaved read.
+    """
+
+    def setUp(self):
+        self.member = make_member(email="race@example.com")
+        self.campaign = EmailCampaign.objects.create(subject="s", body="b")
+
+    def test_try_mark_used_returns_false_when_already_used(self):
+        token = MagicLoginToken.generate_token()
+        magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
+
+        self.assertTrue(magic.try_mark_used())
+        # A second call must fail — the UPDATE ... WHERE is_used=False matches
+        # zero rows once the first call won.
+        self.assertFalse(magic.try_mark_used())
+
+    def test_try_mark_used_loses_race_when_another_request_marked_first(self):
+        # Simulate another concurrent request having already flipped is_used
+        # between our SELECT and our UPDATE.
+        token = MagicLoginToken.generate_token()
+        magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
+        MagicLoginToken.objects.filter(pk=magic.pk).update(is_used=True, used_at=timezone.now())
+
+        self.assertFalse(magic.try_mark_used())
+
+    def test_second_login_attempt_rejected_when_first_already_consumed_atomically(self):
+        # End-to-end: first request wins, second gets the 400 even though
+        # both loaded the same row state before either saved.
+        token = MagicLoginToken.generate_token()
+        MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
+
+        first = self.client.post("/mail/magic-login/", {"token": token}, format="json")
+        second = self.client.post("/mail/magic-login/", {"token": token}, format="json")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(second.data["detail"], "This login link has already been used.")

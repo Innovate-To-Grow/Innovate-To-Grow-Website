@@ -41,17 +41,19 @@ export const impersonateAutoLogin = async (token: string): Promise<LoginResponse
 };
 
 export const logout = async (): Promise<void> => {
+  // Clear local state first so any listener that responds to the auth-state
+  // change event reads empty storage, and so the user is effectively logged
+  // out even if the server call hangs or fails. The server-side blacklist is
+  // best-effort and fires in the background — callers that await logout()
+  // still return promptly.
   const refresh = getRefreshToken();
-  if (refresh) {
-    try {
-      await authApi.post('/authn/logout/', { refresh });
-    } catch {
-      // Best-effort blacklist — continue clearing local storage even if the
-      // server call fails (e.g., offline, token already blacklisted).
-    }
-  }
   clearTokens();
   window.dispatchEvent(new Event('i2g-auth-state-change'));
+  if (refresh) {
+    void authApi.post('/authn/logout/', { refresh }).catch(() => {
+      /* noop — local logout already complete */
+    });
+  }
 };
 
 export const isAuthenticated = (): boolean => {

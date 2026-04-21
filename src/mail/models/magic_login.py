@@ -42,6 +42,23 @@ class MagicLoginToken(models.Model):
         self.used_at = timezone.now()
         self.save(update_fields=["is_used", "used_at"])
 
+    def try_mark_used(self):
+        """Atomically claim this token. Returns True on success, False if another
+        request consumed it first.
+
+        Guards against the read-then-write race in the login view: two
+        concurrent requests could otherwise both read `is_used=False` before
+        either saved, and both would be issued JWTs. A conditional UPDATE
+        (``WHERE is_used=False``) serializes at the DB level so only one
+        request wins.
+        """
+        now = timezone.now()
+        updated = type(self).objects.filter(pk=self.pk, is_used=False).update(is_used=True, used_at=now)
+        if updated:
+            self.is_used = True
+            self.used_at = now
+        return bool(updated)
+
     @staticmethod
     def generate_token():
         return secrets.token_urlsafe(48)
