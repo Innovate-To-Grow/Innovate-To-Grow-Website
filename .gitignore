@@ -224,8 +224,10 @@ Thumbs.db
 # Project Specific
 # =====================================
 
-# Keep CLAUDE.md in version control
-!/.agent/CLAUDE.md
+# Local AI assistant metadata
+.agent/
+.agents/
+.claude/
 
 # =====================================
 # AWS Keys
