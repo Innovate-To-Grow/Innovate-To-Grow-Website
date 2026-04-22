@@ -91,7 +91,6 @@ class MemberCreationForm(UserCreationForm):
         self,
         password1_field_name="password1",
         password2_field_name="password2",
-        _usable_password_field_name="usable_password",
     ):
         p1 = self.cleaned_data.get(password1_field_name) or ""
         p2 = self.cleaned_data.get(password2_field_name) or ""

@@ -8,7 +8,6 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import escape, format_html
-from django.utils.safestring import mark_safe
 from unfold.admin import TabularInline
 from unfold.decorators import action, display
 from unfold.widgets import (
@@ -396,7 +395,8 @@ class EmailCampaignAdmin(BaseModelAdmin):
             "text-font-default-light shadow-xs dark:border-base-700 dark:bg-base-800 dark:text-font-default-dark"
             '">{body_escaped}</pre></div>',
             b64=b64,
-            body_escaped=mark_safe(escape(body)),
+            # escape() already returns a SafeString; avoid mark_safe (bandit B308/B703).
+            body_escaped=escape(body),
         )
 
     def get_fieldsets(self, request, obj=None):
