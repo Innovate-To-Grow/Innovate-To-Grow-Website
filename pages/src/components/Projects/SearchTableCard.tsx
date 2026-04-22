@@ -94,6 +94,8 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
         onSortChange={table.toggleSort}
         expandedKeys={table.expandedKeys}
         onToggleExpanded={table.toggleExpanded}
+        onToggleAllDetails={table.toggleAllDetails}
+        allDetailsExpanded={table.allDetailsExpanded}
         page={table.page}
         totalPages={table.totalPages}
         onPageChange={table.setPage}
@@ -119,9 +121,6 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
             </button>
             <button type="button" className="itg-btn itg-btn-outline" onClick={table.clearSelection}>
               Deselect
-            </button>
-            <button type="button" className="itg-btn itg-btn-outline" onClick={table.toggleAllDetails}>
-              {table.allDetailsExpanded ? 'Hide All Details' : 'Show All Details'}
             </button>
           </div>
         }

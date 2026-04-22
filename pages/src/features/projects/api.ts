@@ -1,4 +1,5 @@
 import api from '../../shared/api/client';
+import {formatSemesterLabel} from '../../shared/utils/semester';
 import type { PaginatedResponse } from '../../shared/api/types';
 import type { ScheduleProjectRow } from '../events/api';
 
@@ -81,7 +82,7 @@ export interface PastProjectShare {
 }
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
-  semester_label: project.semester_label,
+  semester_label: formatSemesterLabel(project.semester_label),
   class_code: project.class_code,
   team_number: project.team_number,
   team_name: project.team_name,
@@ -94,7 +95,7 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
 });
 
 export const scheduleProjectToGridRow = (row: ScheduleProjectRow): ProjectGridRow => ({
-  semester_label: row.year_semester,
+  semester_label: formatSemesterLabel(row.year_semester),
   class_code: row.class_code,
   team_number: row.team_number,
   team_name: row.team_name,

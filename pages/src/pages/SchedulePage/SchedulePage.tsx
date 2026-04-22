@@ -1,7 +1,7 @@
 import type {CSSProperties} from 'react';
 import {useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {ProjectGridTable, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
+import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentEventSchedule} from '../../features/events/useCurrentEventSchedule';
 import {scheduleProjectToGridRow} from '../../features/projects/api';
 import {addMinutes} from '../../shared/utils/time';
@@ -142,7 +142,10 @@ export const SchedulePage = () => {
     return parts.length > 0 ? parts.join(' · ') : null;
   }, [data]);
 
-  const projectGridRows = useMemo(() => (data ? data.projects.map(scheduleProjectToGridRow) : []), [data]);
+  const projectGridRows = useMemo(
+    () => (data ? data.projects.filter((p) => p.is_presenting).map(scheduleProjectToGridRow) : []),
+    [data],
+  );
   const projectItems = useMemo(() => createProjectGridItems(projectGridRows, 'schedule-projects'), [projectGridRows]);
   const projectTable = useProjectGridTable({
     rows: projectItems,
@@ -467,7 +470,7 @@ export const SchedulePage = () => {
           Click a team number above or search by title, organization, class, or track below.
         </p>
         <ProjectGridTable
-          columns={CURRENT_PROJECT_GRID_COLUMNS}
+          columns={PROJECT_GRID_COLUMNS}
           rows={projectItems}
           pagedRows={projectTable.pagedRows}
           filteredCount={projectTable.filteredRows.length}
@@ -479,6 +482,8 @@ export const SchedulePage = () => {
           onSortChange={projectTable.toggleSort}
           expandedKeys={projectTable.expandedKeys}
           onToggleExpanded={projectTable.toggleExpanded}
+          onToggleAllDetails={projectTable.toggleAllDetails}
+          allDetailsExpanded={projectTable.allDetailsExpanded}
           page={projectTable.page}
           totalPages={projectTable.totalPages}
           onPageChange={projectTable.setPage}

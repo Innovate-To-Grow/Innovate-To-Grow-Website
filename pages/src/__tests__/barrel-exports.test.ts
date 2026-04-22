@@ -49,7 +49,6 @@ describe('Component barrel exports', () => {
     expect(mod.PastProjectsBuilder).toBeDefined();
     expect(mod.ProjectGridTable).toBeDefined();
     expect(mod.useProjectGridTable).toBeDefined();
-    expect(mod.CURRENT_PROJECT_GRID_COLUMNS).toBeDefined();
     expect(mod.PAST_PROJECT_GRID_COLUMNS).toBeDefined();
     expect(mod.PROJECT_GRID_COLUMNS).toBeDefined();
     expect(mod.createProjectGridFingerprint).toBeDefined();
@@ -78,6 +77,7 @@ describe('Page barrel exports', () => {
     ['NewsPage', 'NewsPage'],
     ['NotFoundPage', 'NotFoundPage'],
     ['PastProjectsPage', 'PastProjectsPage'],
+    ['PresentingTeamsPage', 'PresentingTeamsPage'],
     ['ProjectDetailPage', 'ProjectDetailPage'],
     ['ProjectsPage', 'ProjectsPage'],
     ['SchedulePage', 'SchedulePage'],

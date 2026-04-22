@@ -95,6 +95,8 @@ export const MergedResultsTable = ({
         onSortChange={table.toggleSort}
         expandedKeys={table.expandedKeys}
         onToggleExpanded={table.toggleExpanded}
+        onToggleAllDetails={table.toggleAllDetails}
+        allDetailsExpanded={table.allDetailsExpanded}
         page={table.page}
         totalPages={table.totalPages}
         onPageChange={table.setPage}
@@ -106,11 +108,6 @@ export const MergedResultsTable = ({
         onDeleteRow={sharedMode ? undefined : onDeleteRow}
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-            <div className="project-grid-toolbar-cluster" aria-label="Row details">
-              <button type="button" className="itg-btn itg-btn-outline" onClick={table.toggleAllDetails}>
-                {table.allDetailsExpanded ? 'Hide Details' : 'Show Details'}
-              </button>
-            </div>
             <div className="project-grid-toolbar-cluster" aria-label="Export">
               <button
                 type="button"

@@ -3,10 +3,11 @@ import {useSearchParams} from 'react-router-dom';
 import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentProjectGridData} from '../../hooks/useProjectGridData';
 
-export const ProjectsPage = () => {
+export const PresentingTeamsPage = () => {
   const {rows, loading, error} = useCurrentProjectGridData();
   const [searchParams] = useSearchParams();
-  const items = useMemo(() => createProjectGridItems(rows, 'current-projects'), [rows]);
+  const presentingRows = useMemo(() => rows.filter((r) => r.is_presenting === 'Yes'), [rows]);
+  const items = useMemo(() => createProjectGridItems(presentingRows, 'presenting-teams'), [presentingRows]);
   const table = useProjectGridTable({
     rows: items,
     defaultSortField: 'class_code',
@@ -17,9 +18,9 @@ export const ProjectsPage = () => {
   return (
     <div className="projects-page">
       <header className="projects-page-hero">
-        <h1 className="projects-page-title">Current Projects</h1>
+        <h1 className="projects-page-title">Presenting Teams</h1>
         <p className="projects-page-lead">
-          Browse the current Innovate to Grow projects, search by team or organization, and expand rows to view abstracts and student names.
+          Teams presenting at this semester&apos;s Innovate to Grow showcase. Search by team, class, or organization and expand rows for abstracts and student names.
         </p>
       </header>
 
@@ -47,8 +48,8 @@ export const ProjectsPage = () => {
           onPageSizeChange={table.setPageSize}
           loading={loading}
           error={error}
-          emptyMessage="No current projects are available yet."
-          countLabel="projects"
+          emptyMessage="No presenting teams are available yet."
+          countLabel="teams"
         />
       </section>
     </div>

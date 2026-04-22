@@ -42,6 +42,7 @@ const NewsPage = React.lazy(() => import('../pages/NewsPage').then(m => ({defaul
 const NewsDetailPage = React.lazy(() => import('../pages/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
 const ProjectsPage = React.lazy(() => import('../pages/ProjectsPage').then(m => ({default: m.ProjectsPage})));
 const PastProjectsPage = React.lazy(() => import('../pages/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
+const PresentingTeamsPage = React.lazy(() => import('../pages/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
 const ProjectDetailPage = React.lazy(() => import('../pages/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
 const SchedulePage = React.lazy(() => import('../pages/SchedulePage').then(m => ({default: m.SchedulePage})));
 const AcknowledgementPage = React.lazy(() => import('../pages/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
             // project pages
             {path: 'projects', element: <CMSPageComponent/>},
             {path: 'current-projects', element: lazyRoute(<ProjectsPage/>)},
+            {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>)},
             {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'projects/past', element: <Navigate to="/past-projects" replace/>},

@@ -24,10 +24,6 @@ export const PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
   {key: 'industry', label: 'Industry'},
 ];
 
-export const CURRENT_PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
-  ...PROJECT_GRID_COLUMNS,
-  {key: 'is_presenting', label: 'Showcase Participation'},
-];
 export const PAST_PROJECT_GRID_COLUMNS = PROJECT_GRID_COLUMNS;
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({

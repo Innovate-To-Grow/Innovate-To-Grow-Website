@@ -2,12 +2,13 @@ import {useState, useEffect} from 'react';
 import {fetchCurrentProjectsFull} from '../features/projects/api';
 import type {ProjectTableRow} from '../features/projects/api';
 import type {SheetRow} from '../components/SheetsDataTable';
+import {formatSemesterLabel} from '../shared/utils/semester';
 
 function projectToSheetRow(p: ProjectTableRow): SheetRow {
   return {
     Track: String(p.track ?? ''),
     Order: String(p.presentation_order ?? ''),
-    'Year-Semester': p.semester_label,
+    'Year-Semester': formatSemesterLabel(p.semester_label),
     Class: p.class_code,
     'Team#': p.team_number,
     TeamName: p.team_name,

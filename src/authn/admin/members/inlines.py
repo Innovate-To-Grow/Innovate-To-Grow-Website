@@ -1,7 +1,17 @@
+from django import forms
 from django.core.exceptions import ValidationError
 from unfold.admin import TabularInline
 
 from ...models import ContactEmail, ContactPhone
+
+
+class NoneSafeUUIDField(forms.UUIDField):
+    """UUIDField that treats the literal string "None" as empty."""
+
+    def to_python(self, value):
+        if value in (None, "None", ""):
+            return None
+        return super().to_python(value)
 
 
 class StaffPermissionInlineMixin:
@@ -20,7 +30,17 @@ class StaffPermissionInlineMixin:
         return request.user.is_staff
 
 
-class ContactEmailInline(StaffPermissionInlineMixin, TabularInline):
+class UUIDInlineMixin:
+    """Mixin that prevents 'None' string from being sent to UUID form fields."""
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if formfield and isinstance(formfield, forms.UUIDField):
+            formfield.__class__ = NoneSafeUUIDField
+        return formfield
+
+
+class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
     """Inline admin for contact email records."""
 
     model = ContactEmail
@@ -48,7 +68,7 @@ class ContactEmailInline(StaffPermissionInlineMixin, TabularInline):
         return formset_class
 
 
-class ContactPhoneInline(StaffPermissionInlineMixin, TabularInline):
+class ContactPhoneInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
     """Inline admin for contact phone records."""
 
     model = ContactPhone

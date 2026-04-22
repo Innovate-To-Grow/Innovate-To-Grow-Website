@@ -2,7 +2,6 @@ export {MergedResultsTable} from './MergedResultsTable';
 export {PastProjectsBuilder} from './PastProjectsBuilder';
 export {ProjectGridTable} from './ProjectGridTable';
 export {
-  CURRENT_PROJECT_GRID_COLUMNS,
   PAST_PROJECT_GRID_COLUMNS,
   PROJECT_GRID_COLUMNS,
   createProjectGridFingerprint,

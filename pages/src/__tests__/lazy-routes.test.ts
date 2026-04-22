@@ -15,6 +15,7 @@ describe('Lazy route modules resolve', () => {
     ['NewsDetailPage', () => import('../pages/NewsDetailPage')],
     ['ProjectsPage', () => import('../pages/ProjectsPage')],
     ['PastProjectsPage', () => import('../pages/PastProjectsPage')],
+    ['PresentingTeamsPage', () => import('../pages/PresentingTeamsPage')],
     ['ProjectDetailPage', () => import('../pages/ProjectDetailPage')],
     ['SchedulePage', () => import('../pages/SchedulePage')],
     ['AcknowledgementPage', () => import('../pages/AcknowledgementPage')],

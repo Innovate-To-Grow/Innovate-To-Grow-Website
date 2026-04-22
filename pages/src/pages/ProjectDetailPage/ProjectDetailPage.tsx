@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchProjectDetail, type ProjectDetail } from '../../features/projects/api';
+import { formatSemesterLabel } from '../../shared/utils/semester';
 
 export const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -56,7 +57,7 @@ export const ProjectDetailPage = () => {
         {project.semester_label && (
           <div className="project-detail-meta-item">
             <span className="project-detail-meta-label">Semester</span>
-            <span className="project-detail-meta-value">{project.semester_label}</span>
+            <span className="project-detail-meta-value">{formatSemesterLabel(project.semester_label)}</span>
           </div>
         )}
         {project.team_name && (

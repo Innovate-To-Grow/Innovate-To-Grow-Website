@@ -32,6 +32,7 @@ describe('Router', () => {
     'news',
     'news/:id',
     'current-projects',
+    'presenting-teams',
     'past-projects',
     'past-projects/:shareId',
     'projects/:id',

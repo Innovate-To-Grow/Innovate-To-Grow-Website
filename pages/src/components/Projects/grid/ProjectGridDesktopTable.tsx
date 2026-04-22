@@ -1,9 +1,25 @@
 import {
   hasProjectGridDetails,
   type ProjectGridColumn,
+  type ProjectGridColumnKey,
   type ProjectGridItem,
   type ProjectGridSortDirection,
 } from '../projectGrid';
+
+const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
+  semester_label: '10%',
+  class_code: '7%',
+  team_number: '8%',
+  team_name: '13%',
+  project_title: '25%',
+  organization: '17%',
+  industry: '11%',
+  is_presenting: '9%',
+};
+const DEFAULT_COL_WIDTH = '10%';
+const SELECT_COL_WIDTH = '4%';
+const DETAIL_COL_WIDTH = '9%';
+const DELETE_COL_WIDTH = '9%';
 
 interface ProjectGridDesktopTableProps {
   columns: ProjectGridColumn[];
@@ -36,7 +52,15 @@ export const ProjectGridDesktopTable = ({
 
   return (
     <div className="project-grid-table-wrap">
-      <table className="project-grid-table">
+      <table className="project-grid-table" style={{tableLayout: 'fixed', width: '100%'}}>
+        <colgroup>
+          {selectable ? <col style={{width: SELECT_COL_WIDTH}} /> : null}
+          {columns.map((column) => (
+            <col key={column.key} style={{width: COLUMN_WIDTHS[column.key] ?? DEFAULT_COL_WIDTH}} />
+          ))}
+          <col style={{width: DETAIL_COL_WIDTH}} />
+          {onDeleteRow ? <col style={{width: DELETE_COL_WIDTH}} /> : null}
+        </colgroup>
         <thead>
           <tr>
             {selectable ? (

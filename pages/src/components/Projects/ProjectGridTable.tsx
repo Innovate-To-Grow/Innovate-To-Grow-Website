@@ -22,6 +22,8 @@ interface ProjectGridTableProps {
   onSortChange: (field: ProjectGridColumnKey) => void;
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
+  onToggleAllDetails?: () => void;
+  allDetailsExpanded?: boolean;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -54,6 +56,8 @@ export const ProjectGridTable = ({
   onSortChange,
   expandedKeys,
   onToggleExpanded,
+  onToggleAllDetails,
+  allDetailsExpanded = false,
   page,
   totalPages,
   onPageChange,
@@ -111,6 +115,15 @@ export const ProjectGridTable = ({
                   ))}
                 </select>
               </label>
+              {onToggleAllDetails ? (
+                <button
+                  type="button"
+                  className="itg-btn itg-btn-outline project-grid-toggle-details"
+                  onClick={onToggleAllDetails}
+                >
+                  {allDetailsExpanded ? 'Hide All Details' : 'Show All Details'}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
