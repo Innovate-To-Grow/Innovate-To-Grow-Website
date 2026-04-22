@@ -1,6 +1,7 @@
 import logging
 
 from rest_framework import status
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,6 +9,12 @@ from rest_framework.views import APIView
 from event.models import CheckIn, CheckInRecord, EventRegistration
 
 logger = logging.getLogger(__name__)
+
+
+def _ticket_type_name(registration: EventRegistration) -> str:
+    """Return a resilient ticket label even if relation is missing."""
+    ticket = getattr(registration, "ticket", None)
+    return getattr(ticket, "name", None) or "Unknown Ticket"
 
 
 def _parse_ticket_code(value: str) -> str:
@@ -23,6 +30,7 @@ def _parse_ticket_code(value: str) -> str:
 class CheckInStatusView(APIView):
     """Returns check-in stats: scanned count, total registrations, and not-yet-checked-in list."""
 
+    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAdminUser]
 
     # noinspection PyMethodMayBeStatic
@@ -46,7 +54,7 @@ class CheckInStatusView(APIView):
                     {
                         "name": reg.attendee_name,
                         "email": reg.attendee_email,
-                        "ticket_type": reg.ticket.name,
+                        "ticket_type": _ticket_type_name(reg),
                         "ticket_code": reg.ticket_code,
                     }
                 )
@@ -61,6 +69,7 @@ class CheckInStatusView(APIView):
 
 
 class CheckInScanView(APIView):
+    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAdminUser]
 
     # noinspection PyMethodMayBeStatic
@@ -103,7 +112,7 @@ class CheckInScanView(APIView):
         attendee_info = {
             "name": registration.attendee_name,
             "email": registration.attendee_email,
-            "ticket_type": registration.ticket.name,
+            "ticket_type": _ticket_type_name(registration),
             "ticket_code": registration.ticket_code,
         }
 

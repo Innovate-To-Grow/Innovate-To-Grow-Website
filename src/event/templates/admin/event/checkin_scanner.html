@@ -173,6 +173,32 @@
   .scanner-remaining-item:last-child { border-bottom: none; }
   .scanner-remaining-item .name { font-weight: 600; color: #1f2937; }
   .scanner-remaining-item .meta { color: #6b7280; font-size: 13px; }
+  .scanner-remaining-action {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    color: #003366;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .scanner-remaining-action:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+  }
+  .scanner-method-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #e5e7eb;
+    color: #374151;
+  }
   .scanner-remaining-empty {
     padding: 24px;
     text-align: center;
@@ -276,6 +302,15 @@
   // ---- Camera scanner ----
   function startCamera() {
     if (cameraRunning) return;
+    if (typeof Html5Qrcode !== "function" || typeof Html5QrcodeSupportedFormats === "undefined") {
+      cameraAvailable = false;
+      document.getElementById("mode-camera").disabled = true;
+      document.getElementById("mode-camera").style.opacity = "0.4";
+      document.getElementById("mode-camera").style.cursor = "not-allowed";
+      document.getElementById("mode-camera").textContent = "Camera (unavailable)";
+      switchMode("manual");
+      return;
+    }
     if (!html5QrCode) {
       html5QrCode = new Html5Qrcode("camera-reader");
     }
@@ -314,7 +349,7 @@
   function onCameraResult(decodedText) {
     if (processingBarcode) return;
     processingBarcode = true;
-    submitBarcode(decodedText).finally(() => {
+    submitBarcode(decodedText, "camera").finally(() => {
       setTimeout(() => { processingBarcode = false; }, 2000); // 2s cooldown between scans
     });
   }
@@ -325,7 +360,7 @@
     const input = document.getElementById("barcode-input");
     const value = input.value.trim();
     if (!value) return false;
-    submitBarcode(value).then(() => {
+    submitBarcode(value, "manual").then(() => {
       input.value = "";
       input.focus();
     });
@@ -333,11 +368,13 @@
   }
 
   // ---- Submit barcode to API ----
-  async function submitBarcode(value) {
+  async function submitBarcode(value, source = "manual") {
     const resultDiv = document.getElementById("scan-result");
+    const methodLabel = source === "camera" ? "Camera" : "Manual Input";
     try {
       const resp = await fetch(SCAN_URL, {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken") || CSRF_TOKEN,
@@ -349,26 +386,26 @@
       if (data.status === "success") {
         resultDiv.className = "scanner-result success";
         resultDiv.innerHTML = `
-          <h3>Checked In</h3>
+          <h3>Checked In <span class="scanner-method-badge">${methodLabel}</span></h3>
           <p><strong>${data.attendee.name}</strong></p>
           <p>${data.attendee.email} &middot; ${data.attendee.ticket_type}</p>
           <p>Code: ${data.attendee.ticket_code}</p>
         `;
-        addToHistory(data.attendee.name, data.attendee.ticket_type, "success");
+        addToHistory(data.attendee.name, data.attendee.ticket_type, "success", source);
         loadStatus();
       } else if (data.status === "duplicate") {
         resultDiv.className = "scanner-result duplicate";
         resultDiv.innerHTML = `
-          <h3>Already Checked In</h3>
+          <h3>Already Checked In <span class="scanner-method-badge">${methodLabel}</span></h3>
           <p><strong>${data.attendee.name}</strong></p>
           <p>${data.attendee.email} &middot; ${data.attendee.ticket_type}</p>
           <p>${data.detail}</p>
         `;
-        addToHistory(data.attendee.name, "Duplicate", "duplicate");
+        addToHistory(data.attendee.name, "Duplicate", "duplicate", source);
       } else {
         resultDiv.className = "scanner-result error";
         resultDiv.innerHTML = `<h3>Not Found</h3><p>${data.detail || "Unknown error"}</p>`;
-        addToHistory(value.substring(0, 20), "Not Found", "error");
+        addToHistory(value.substring(0, 20), "Not Found", "error", source);
       }
     } catch (err) {
       resultDiv.className = "scanner-result error";
@@ -376,21 +413,32 @@
     }
   }
 
-  function addToHistory(name, type, status) {
+  function addToHistory(name, type, status, source = "manual") {
     const history = document.getElementById("scan-history");
     const time = new Date().toLocaleTimeString();
+    const sourceLabel = source === "camera" ? "Camera" : "Manual";
     const item = document.createElement("div");
     item.className = "scanner-history-item";
-    item.innerHTML = `<span>${name} &middot; ${type}</span><span>${time}</span>`;
+    item.innerHTML = `<span>${name} &middot; ${type} <span class="scanner-method-badge">${sourceLabel}</span></span><span>${time}</span>`;
     history.insertBefore(item, history.firstChild);
+  }
+
+  function handleMemberCheckIn(ticketCode) {
+    if (!ticketCode) return;
+    submitBarcode(ticketCode, "manual");
   }
 
   // ---- Load status (not-checked-in list) ----
   async function loadStatus() {
     try {
       const resp = await fetch(STATUS_URL, {
+        credentials: "same-origin",
         headers: { "X-CSRFToken": getCookie("csrftoken") || CSRF_TOKEN },
       });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`HTTP ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 120)}` : ""}`);
+      }
       const data = await resp.json();
 
       document.getElementById("total-count").textContent = data.total;
@@ -408,19 +456,29 @@
               <span class="name">${a.name}</span>
               <span class="meta"> &middot; ${a.ticket_type}</span>
             </div>
-            <span class="meta">${a.email}</span>
+            <div>
+              <span class="meta">${a.email}</span>
+              <button class="scanner-remaining-action" data-ticket-code="${a.ticket_code}" type="button">Check In</button>
+            </div>
           </div>`
         ).join("");
       }
     } catch (err) {
       console.error("Failed to load check-in status", err);
+      const list = document.getElementById("remaining-list");
+      list.innerHTML = `<div class="scanner-remaining-empty" style="color:#b91c1c;">Failed to load attendees: ${err.message}</div>`;
     }
   }
 
   // Auto-start camera + load status on load
   document.addEventListener("DOMContentLoaded", () => {
-    startCamera();
     loadStatus();
+    startCamera();
+    document.getElementById("remaining-list").addEventListener("click", (event) => {
+      const button = event.target.closest(".scanner-remaining-action");
+      if (!button) return;
+      handleMemberCheckIn(button.dataset.ticketCode || "");
+    });
   });
 </script>
 {% endblock %}
