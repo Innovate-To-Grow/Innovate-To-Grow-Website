@@ -16,6 +16,7 @@ function projectToSheetRow(p: ProjectTableRow): SheetRow {
     Industry: p.industry,
     Abstract: p.abstract,
     'Student Names': p.student_names,
+    'Showcase Participation': p.is_presenting == null ? '' : p.is_presenting ? 'Yes' : 'No',
     NameTitle: '',
   };
 }

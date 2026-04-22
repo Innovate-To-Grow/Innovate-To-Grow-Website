@@ -10,6 +10,7 @@ export interface SheetRow {
   Industry: string;
   Abstract: string;
   'Student Names': string;
+  'Showcase Participation': string;
   NameTitle: string;
 }
 
