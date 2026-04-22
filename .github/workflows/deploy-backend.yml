@@ -45,21 +45,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push Docker image to ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest src/
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-
       - name: Validate required deployment configuration
         env:
           DJANGO_SECRET_KEY: ${{ vars.DJANGO_SECRET_KEY || secrets.DJANGO_SECRET_KEY }}
@@ -74,9 +59,11 @@ jobs:
           SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL || secrets.SES_FROM_EMAIL }}
           SES_FROM_NAME: ${{ vars.SES_FROM_NAME || secrets.SES_FROM_NAME }}
           BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
           missing=()
-          for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD AWS_STORAGE_BUCKET_NAME SES_AWS_ACCESS_KEY_ID SES_AWS_SECRET_ACCESS_KEY SES_AWS_REGION SES_FROM_EMAIL SES_FROM_NAME BACKEND_URL; do
+          for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD AWS_STORAGE_BUCKET_NAME SES_AWS_ACCESS_KEY_ID SES_AWS_SECRET_ACCESS_KEY SES_AWS_REGION SES_FROM_EMAIL SES_FROM_NAME BACKEND_URL ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
@@ -85,6 +72,21 @@ jobs:
             echo "Missing required config: ${missing[*]}"
             exit 1
           fi
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest src/
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Render ECS task definition from template
         id: task-def
@@ -188,10 +190,12 @@ jobs:
           # checked-in task-definition template.
           exec_role = env_value("ECS_EXECUTION_ROLE_ARN").strip()
           task_role = env_value("ECS_TASK_ROLE_ARN").strip()
-          if exec_role:
-              taskdef["executionRoleArn"] = exec_role
-          if task_role:
-              taskdef["taskRoleArn"] = task_role
+          if not exec_role:
+              raise SystemExit("ECS_EXECUTION_ROLE_ARN is required to render the ECS task definition.")
+          if not task_role:
+              raise SystemExit("ECS_TASK_ROLE_ARN is required to render the ECS task definition.")
+          taskdef["executionRoleArn"] = exec_role
+          taskdef["taskRoleArn"] = task_role
 
           container = taskdef["containerDefinitions"][0]
           container["image"] = os.environ["IMAGE_URI"]

@@ -3,6 +3,9 @@ Admin forms for authn app.
 """
 
 from django import forms
+from django.contrib.auth.forms import SetPasswordMixin
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from unfold.forms import UserChangeForm, UserCreationForm
 
 from ...models import Member
@@ -62,11 +65,50 @@ class Base64ImageWidget(forms.ClearableFileInput):
 
 
 class MemberCreationForm(UserCreationForm):
-    """User creation form for the Member model with Unfold-styled password widgets."""
+    """User creation form for the Member model with Unfold-styled password widgets.
+
+    Passwords are optional: leave both blank to create the member with an unusable password
+    (set a password later or use other auth). If either field is set, both must match.
+    """
 
     class Meta(UserCreationForm.Meta):
         model = Member
         fields = ()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The stock AdminUserCreationForm includes usable_password, but MemberAdmin.add_fieldsets
+        # does not — leaving defaults would still require a password. Drop the field and use
+        # validate_passwords() below.
+        if "usable_password" in self.fields:
+            del self.fields["usable_password"]
+        self.fields["password1"].help_text = _("Optional. If left empty, the member cannot sign in with a password until you set one (or they use other login methods).")
+        self.fields["password2"].help_text = _("Optional. Must match the password field if you enter a password.")
+
+    def validate_passwords(
+        self,
+        password1_field_name="password1",
+        password2_field_name="password2",
+        _usable_password_field_name="usable_password",
+    ):
+        p1 = self.cleaned_data.get(password1_field_name) or ""
+        p2 = self.cleaned_data.get(password2_field_name) or ""
+        if not p1 and not p2:
+            self.cleaned_data["set_usable_password"] = False
+            return
+        if bool(p1) != bool(p2):
+            self.add_error(
+                password2_field_name,
+                ValidationError(
+                    _("Enter the same password in both fields, or leave both empty."),
+                    code="password_incomplete",
+                ),
+            )
+            return
+        self.cleaned_data["set_usable_password"] = True
+        self.cleaned_data[password1_field_name] = p1
+        self.cleaned_data[password2_field_name] = p2
+        SetPasswordMixin.validate_passwords(self, password1_field_name, password2_field_name)
 
 
 class MemberChangeForm(UserChangeForm):
