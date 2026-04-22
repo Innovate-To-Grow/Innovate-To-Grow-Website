@@ -8,7 +8,16 @@ from ..models import ScheduleSyncLog
 
 @admin.register(ScheduleSyncLog)
 class ScheduleSyncLogAdmin(ReadOnlyModelAdmin):
-    list_display = ("config", "sync_type_badge", "status_badge", "sections_created", "tracks_created", "slots_created", "error_short", "created_at")
+    list_display = (
+        "config",
+        "sync_type_badge",
+        "status_badge",
+        "sections_created",
+        "tracks_created",
+        "slots_created",
+        "error_short",
+        "created_at",
+    )
     list_filter = ("sync_type", "status")
     ordering = ("-created_at",)
 
