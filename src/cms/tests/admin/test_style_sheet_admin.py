@@ -145,7 +145,10 @@ class StyleSheetAdminImportExportTests(TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(list(StyleSheet.objects.order_by("sort_order", "name").values_list("name", flat=True)), ["existing", "new-sheet"])
+        self.assertEqual(
+            list(StyleSheet.objects.order_by("sort_order", "name").values_list("name", flat=True)),
+            ["existing", "new-sheet"],
+        )
 
         existing = StyleSheet.objects.get(name="existing")
         self.assertEqual(existing.display_name, "Existing Updated")
