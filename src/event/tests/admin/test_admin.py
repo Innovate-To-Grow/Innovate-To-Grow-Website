@@ -61,7 +61,7 @@ class EventAdminTest(TestCase):
         response = self.client.post("/admin/event/currentprojectschedule/pull/")
 
         self.assertEqual(response.status_code, 302)
-        mock_sync.assert_called_once_with(config)
+        mock_sync.assert_called_once_with(config, sync_type="manual")
 
 
 class EventRegistrationAdminTest(TestCase):
