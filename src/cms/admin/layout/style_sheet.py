@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.core.cache import cache
 
+from cms.admin.layout.import_export import export_stylesheets_response, render_stylesheet_import
 from core.admin import BaseModelAdmin
 
 from ...models import StyleSheet
@@ -38,6 +39,7 @@ class StyleSheetForm(forms.ModelForm):
 @admin.register(StyleSheet)
 class StyleSheetAdmin(BaseModelAdmin):
     form = StyleSheetForm
+    change_list_template = "admin/cms/stylesheet/change_list.html"
     list_display = ("display_name", "name", "is_active", "sort_order")
     list_filter = ("is_active",)
     list_editable = ("is_active", "sort_order")
@@ -48,6 +50,30 @@ class StyleSheetAdmin(BaseModelAdmin):
         (None, {"fields": ("name", "display_name", "description", "is_active", "sort_order")}),
         ("CSS", {"fields": ("css",)}),
     )
+
+    def get_urls(self):
+        from django.urls import path
+
+        custom_urls = [
+            path("import/", self.admin_site.admin_view(self.import_view), name="cms_stylesheet_import"),
+            path("export/", self.admin_site.admin_view(self.export_all_view), name="cms_stylesheet_export"),
+        ]
+        return custom_urls + super().get_urls()
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {**(extra_context or {}), "show_import_buttons": True})
+
+    def export_all_view(self, request):
+        queryset = self.get_queryset(request)
+        return export_stylesheets_response(queryset)
+
+    def import_view(self, request):
+        return render_stylesheet_import(
+            self,
+            request,
+            title="Import Style Sheets",
+            template_name="admin/cms/stylesheet/import_form.html",
+        )
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)

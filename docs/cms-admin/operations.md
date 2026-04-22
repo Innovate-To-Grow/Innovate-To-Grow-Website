@@ -42,14 +42,6 @@ cd src && python manage.py migrate           # Apply
 
 **Critical rule:** Never edit a migration that has been merged to `main`. Create a new migration instead. The CI pipeline validates migrations against PostgreSQL to catch issues SQLite won't surface.
 
-### Data fixtures
-
-```bash
-cd src && python manage.py loaddata cms/fixtures/footer_content.json
-```
-
-Load default footer content. Other fixtures may exist in app `fixtures/` directories.
-
 ## Service configuration
 
 ### Seeding from .env

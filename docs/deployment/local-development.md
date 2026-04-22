@@ -98,7 +98,6 @@ ruff check .                                                            # Lint
 ruff check . --fix                                                      # Auto-fix lint
 ruff format .                                                           # Format
 python manage.py sync_news --settings=core.settings.dev                 # Sync RSS feeds
-python manage.py loaddata cms/fixtures/footer_content.json              # Load footer fixture
 ```
 
 ### Frontend

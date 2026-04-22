@@ -1,7 +1,8 @@
 """Populate StyleSheet records with CSS content migrated from frontend source files.
 
-Loads initial data from cms/fixtures/stylesheets.json which contains 15 stylesheet
-groups covering all 73 frontend CSS files that were migrated to backend management.
+Loads initial data from the migration-owned stylesheets.json snapshot, which
+contains 14 stylesheet groups covering all frontend CSS files that were
+migrated to backend management.
 """
 
 import json
@@ -13,11 +14,11 @@ from django.db import migrations
 def populate_stylesheets(apps, schema_editor):
     StyleSheet = apps.get_model("cms", "StyleSheet")
 
-    fixture_path = Path(__file__).resolve().parent.parent / "fixtures" / "stylesheets.json"
-    if not fixture_path.exists():
+    data_path = Path(__file__).resolve().parent / "data" / "stylesheets.json"
+    if not data_path.exists():
         return
 
-    with open(fixture_path) as f:
+    with open(data_path) as f:
         records = json.load(f)
 
     for record in records:
