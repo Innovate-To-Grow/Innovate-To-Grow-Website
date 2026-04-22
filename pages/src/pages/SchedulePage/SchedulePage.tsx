@@ -3,7 +3,7 @@ import {useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {ProjectGridTable, CURRENT_PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
 import {useCurrentEventSchedule} from '../../features/events/useCurrentEventSchedule';
-import type {ProjectGridRow} from '../../features/projects/api';
+import {scheduleProjectToGridRow} from '../../features/projects/api';
 import {addMinutes} from '../../shared/utils/time';
 
 const SECTION_ORDER = ['CAP', 'CEE', 'ENGSL', 'CSE'] as const;
@@ -49,30 +49,6 @@ const SECTION_THEMES: Record<
   },
 };
 
-
-function toGridRow(row: {
-  year_semester: string;
-  class_code: string;
-  team_number: string;
-  team_name: string;
-  project_title: string;
-  organization: string;
-  industry: string;
-  abstract: string;
-  student_names: string;
-}): ProjectGridRow {
-  return {
-    semester_label: row.year_semester,
-    class_code: row.class_code,
-    team_number: row.team_number,
-    team_name: row.team_name,
-    project_title: row.project_title,
-    organization: row.organization,
-    industry: row.industry,
-    abstract: row.abstract,
-    student_names: row.student_names,
-  };
-}
 
 function buildTimeSlots(startTime: string, slotMinutes: number, maxOrder: number): string[] {
   const slots: string[] = [];
@@ -166,7 +142,7 @@ export const SchedulePage = () => {
     return parts.length > 0 ? parts.join(' · ') : null;
   }, [data]);
 
-  const projectGridRows = useMemo(() => (data ? data.projects.map(toGridRow) : []), [data]);
+  const projectGridRows = useMemo(() => (data ? data.projects.map(scheduleProjectToGridRow) : []), [data]);
   const projectItems = useMemo(() => createProjectGridItems(projectGridRows, 'schedule-projects'), [projectGridRows]);
   const projectTable = useProjectGridTable({
     rows: projectItems,

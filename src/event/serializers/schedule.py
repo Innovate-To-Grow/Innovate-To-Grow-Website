@@ -51,6 +51,7 @@ def build_schedule_payload(config: CurrentProjectSchedule) -> dict:
                         "industry": slot.industry,
                         "abstract": slot.abstract,
                         "student_names": slot.student_names,
+                        "is_presenting": slot.project.is_presenting if slot.project else True,
                         "tooltip": slot.name_title,
                     }
                 )

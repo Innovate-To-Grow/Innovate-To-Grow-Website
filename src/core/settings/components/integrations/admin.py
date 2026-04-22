@@ -53,11 +53,24 @@ UNFOLD = {
             ],
         },
         {
-            "models": ["event.event", "event.eventregistration", "event.checkin"],
+            "models": ["event.event", "event.eventregistration", "event.checkin", "event.registrationsheetsynclog"],
             "items": [
                 {"title": "Events", "link": "/admin/event/event/"},
                 {"title": "Registrations", "link": "/admin/event/eventregistration/"},
                 {"title": "Check-ins", "link": "/admin/event/checkin/"},
+                {"title": "Registration Sync Logs", "link": "/admin/event/registrationsheetsynclog/"},
+            ],
+        },
+        {
+            "models": [
+                "event.currentprojectschedule",
+                "event.currentproject",
+                "event.schedulesynclog",
+            ],
+            "items": [
+                {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
+                {"title": "Current Projects (synced)", "link": "/admin/event/currentproject/"},
+                {"title": "Schedule Sync Logs", "link": "/admin/event/schedulesynclog/"},
             ],
         },
         {
@@ -98,11 +111,17 @@ UNFOLD = {
             ],
         },
         {
+            "models": ["mail.emailcampaign", "mail.recipientlog"],
+            "items": [
+                {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
+                {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
+            ],
+        },
+        {
             "models": ["authn.membersheetsyncconfig", "authn.membersheetsynclog"],
             "items": [
                 {"title": "Sync Config", "link": "/admin/authn/membersheetsyncconfig/"},
                 {"title": "Sync Logs", "link": "/admin/authn/membersheetsynclog/"},
-                {"title": "Auto Sync Settings", "link": "/admin/authn/membersheetsyncconfig/sync-settings/"},
             ],
         },
     ],
@@ -131,8 +150,6 @@ UNFOLD = {
                 "items": [
                     {"title": "Events & Registrations", "link": "/admin/event/event/"},
                     {"title": "Current Projects & Schedule", "link": "/admin/event/currentprojectschedule/"},
-                    {"title": "Current Projects (synced)", "link": "/admin/event/currentproject/"},
-                    {"title": "Sheet Sync Logs", "link": "/admin/event/registrationsheetsynclog/"},
                 ],
             },
             {
@@ -147,7 +164,6 @@ UNFOLD = {
                 "items": [
                     {"title": "Gmail", "link": "/admin/mail/inbox/"},
                     {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
-                    {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
                 ],
             },
             {

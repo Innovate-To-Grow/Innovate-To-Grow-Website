@@ -1,6 +1,7 @@
 from .current_project import CurrentProject, CurrentProjectSchedule
 from .registration import CheckIn, CheckInRecord, Event, EventRegistration, Question, RegistrationSheetSyncLog, Ticket
 from .schedule import EventAgendaItem, EventScheduleSection, EventScheduleSlot, EventScheduleTrack
+from .schedule_sync_log import ScheduleSyncLog
 
 __all__ = [
     "CurrentProject",
@@ -11,6 +12,7 @@ __all__ = [
     "EventRegistration",
     "Question",
     "RegistrationSheetSyncLog",
+    "ScheduleSyncLog",
     "Ticket",
     "EventAgendaItem",
     "EventScheduleSection",

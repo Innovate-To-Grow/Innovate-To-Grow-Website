@@ -72,7 +72,7 @@ export const ProjectGridTable = ({
   onDeleteRow,
 }: ProjectGridTableProps) => {
   return (
-    <div className="project-grid-table-shell">
+    <div className="project-grid-table-shell" style={{padding: 0}}>
       {toolbar ? <div className="project-grid-toolbar">{toolbar}</div> : null}
 
       <div className="project-grid-controls">

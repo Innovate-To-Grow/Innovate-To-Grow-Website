@@ -9,13 +9,30 @@ from ...models import StyleSheet
 
 class StyleSheetForm(forms.ModelForm):
     css = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 30, "style": "font-family: monospace; font-size: 13px; width: 100%;"}),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 36,
+                "spellcheck": "false",
+                "autocapitalize": "off",
+                "autocomplete": "off",
+                "class": "vLargeTextField code-editor-field",
+                "style": (
+                    "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "
+                    "'Liberation Mono', 'Courier New', monospace; "
+                    "font-size: 14px; line-height: 1.6; width: 100%; min-height: 70vh; "
+                    "tab-size: 2; white-space: pre; overflow: auto; resize: vertical;"
+                ),
+            }
+        ),
         required=False,
     )
 
     class Meta:
         model = StyleSheet
         fields = "__all__"
+
+    class Media:
+        css = {"all": ("admin/css/style-sheet-code-editor.css",)}
 
 
 @admin.register(StyleSheet)

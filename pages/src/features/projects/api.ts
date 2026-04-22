@@ -1,5 +1,6 @@
 import api from '../../shared/api/client';
 import type { PaginatedResponse } from '../../shared/api/types';
+import type { ScheduleProjectRow } from '../events/api';
 
 export type { PaginatedResponse } from '../../shared/api/types';
 
@@ -23,6 +24,7 @@ export interface ProjectTableRow {
   industry: string;
   abstract: string;
   student_names: string;
+  is_presenting?: boolean;
   track: number | null;
   presentation_order: number | null;
 }
@@ -37,6 +39,7 @@ export interface ProjectGridRow {
   industry: string;
   abstract: string;
   student_names: string;
+  is_presenting: string;
 }
 
 export interface ProjectDetail {
@@ -87,6 +90,20 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
   industry: project.industry,
   abstract: project.abstract,
   student_names: project.student_names,
+  is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
+});
+
+export const scheduleProjectToGridRow = (row: ScheduleProjectRow): ProjectGridRow => ({
+  semester_label: row.year_semester,
+  class_code: row.class_code,
+  team_number: row.team_number,
+  team_name: row.team_name,
+  project_title: row.project_title,
+  organization: row.organization,
+  industry: row.industry,
+  abstract: row.abstract,
+  student_names: row.student_names,
+  is_presenting: row.is_presenting ? 'Yes' : 'No',
 });
 
 export const fetchCurrentProjects = async (): Promise<SemesterWithProjects> => {

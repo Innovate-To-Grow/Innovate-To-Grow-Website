@@ -24,7 +24,10 @@ export const PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
   {key: 'industry', label: 'Industry'},
 ];
 
-export const CURRENT_PROJECT_GRID_COLUMNS = PROJECT_GRID_COLUMNS;
+export const CURRENT_PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
+  ...PROJECT_GRID_COLUMNS,
+  {key: 'is_presenting', label: 'Showcase Participation'},
+];
 export const PAST_PROJECT_GRID_COLUMNS = PROJECT_GRID_COLUMNS;
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
@@ -37,6 +40,7 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
   industry: project.industry,
   abstract: project.abstract,
   student_names: project.student_names,
+  is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
 });
 
 export const createProjectGridFingerprint = (row: ProjectGridRow) =>
@@ -50,6 +54,7 @@ export const createProjectGridFingerprint = (row: ProjectGridRow) =>
     row.industry,
     row.abstract,
     row.student_names,
+    row.is_presenting,
   ]);
 
 export const createProjectGridItems = (rows: ProjectGridRow[], namespace: string): ProjectGridItem[] =>
@@ -77,6 +82,7 @@ export const getProjectGridSearchValue = (row: ProjectGridRow) =>
     row.industry,
     row.abstract,
     row.student_names,
+    row.is_presenting,
   ]
     .join(' ')
     .toLowerCase();

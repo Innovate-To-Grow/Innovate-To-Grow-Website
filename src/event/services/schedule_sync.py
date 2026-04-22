@@ -301,7 +301,10 @@ def sync_schedule(
     *,
     tracks_records: list[dict[str, Any]] | None = None,
     projects_records: list[dict[str, Any]] | None = None,
+    sync_type: str = "",
 ) -> ScheduleSyncStats:
+    from event.models import ScheduleSyncLog
+
     try:
         if tracks_records is None or projects_records is None:
             tracks_records, projects_records = fetch_schedule_sheet_records()
@@ -397,11 +400,29 @@ def sync_schedule(
 
         cache.delete("event:current-projects")
 
+        log_type = sync_type or ScheduleSyncLog.SyncType.MANUAL
+        ScheduleSyncLog.objects.create(
+            config=config,
+            sync_type=log_type,
+            status=ScheduleSyncLog.Status.SUCCESS,
+            sections_created=stats.sections_created,
+            tracks_created=stats.tracks_created,
+            slots_created=stats.slots_created,
+        )
+
         return stats
     except Exception as exc:
         error_message = str(exc)
-        if config.pk:
+        config_saved = config.pk and not config._state.adding
+        if config_saved:
             CurrentProjectSchedule.objects.filter(pk=config.pk).update(sync_error=error_message[:4000])
+            log_type = sync_type or ScheduleSyncLog.SyncType.MANUAL
+            ScheduleSyncLog.objects.create(
+                config=config,
+                sync_type=log_type,
+                status=ScheduleSyncLog.Status.FAILED,
+                error_message=error_message[:4000],
+            )
         if isinstance(exc, ScheduleSyncError):
             raise
         raise ScheduleSyncError(error_message) from exc

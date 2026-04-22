@@ -22,7 +22,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Syncing '{config.name}' from Google Sheets...")
         try:
-            stats = sync_schedule(config)
+            stats = sync_schedule(config, sync_type="auto")
         except ScheduleSyncError as exc:
             # Raise CommandError so cron/CI supervisors that only watch exit
             # codes see the failure. Previously this only printed to stderr

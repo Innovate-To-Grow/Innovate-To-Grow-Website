@@ -1,6 +1,5 @@
 from django.contrib import admin, messages
 from django.shortcuts import redirect
-from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from core.admin import BaseModelAdmin
@@ -96,9 +95,9 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
                 name="event_currentprojectschedule_pull",
             ),
             path(
-                "sync-settings/",
-                self.admin_site.admin_view(self.sync_settings_view),
-                name="event_currentprojectschedule_sync_settings",
+                "save-sync-settings/",
+                self.admin_site.admin_view(self.save_sync_settings_view),
+                name="event_currentprojectschedule_save_sync_settings",
             ),
         ]
         return custom_urls + super().get_urls()
@@ -110,7 +109,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             messages.error(request, "No configuration found. Add one first.")
             return redirect(changelist_url)
         try:
-            stats = sync_schedule(config)
+            stats = sync_schedule(config, sync_type="manual")
             messages.success(
                 request,
                 (
@@ -124,32 +123,23 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             messages.error(request, f"Sync failed: {exc}")
         return redirect(changelist_url)
 
-    def sync_settings_view(self, request):
+    def save_sync_settings_view(self, request):
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
+        if request.method != "POST":
+            return redirect(changelist_url)
         config = CurrentProjectSchedule.load()
         if not config:
             messages.error(request, "No active configuration to update.")
             return redirect(changelist_url)
-
-        if request.method == "POST":
-            config.auto_sync_enabled = request.POST.get("auto_sync_enabled") == "1"
-            try:
-                interval = int(request.POST.get("sync_interval_minutes", 60))
-                config.sync_interval_minutes = max(1, interval)
-            except (ValueError, TypeError):
-                pass
-            config.save(update_fields=["auto_sync_enabled", "sync_interval_minutes", "updated_at"])
-            messages.success(request, "Auto-sync settings saved.")
-            return redirect(reverse("admin:event_currentprojectschedule_sync_settings"))
-
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "Sync Settings",
-            "config": config,
-            "opts": self.model._meta,
-            "changelist_url": changelist_url,
-        }
-        return TemplateResponse(request, "admin/event/currentprojectschedule_sync_settings.html", context)
+        config.auto_sync_enabled = request.POST.get("auto_sync_enabled") == "1"
+        try:
+            interval = int(request.POST.get("sync_interval_minutes", 60))
+            config.sync_interval_minutes = max(1, min(1440, interval))
+        except (ValueError, TypeError):
+            pass
+        config.save(update_fields=["auto_sync_enabled", "sync_interval_minutes", "updated_at"])
+        messages.success(request, "Auto-sync settings saved.")
+        return redirect(changelist_url)
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
@@ -162,7 +152,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         config = CurrentProjectSchedule.load()
         extra_context["config"] = config
         extra_context["pull_url"] = reverse("admin:event_currentprojectschedule_pull")
-        extra_context["sync_settings_url"] = reverse("admin:event_currentprojectschedule_sync_settings")
+        extra_context["save_sync_settings_url"] = reverse("admin:event_currentprojectschedule_save_sync_settings")
 
         if config:
             extra_context["current_schedule_name"] = config.name

@@ -142,6 +142,11 @@ def _flush_pending_sync(event_id: str) -> None:
 
         credentials = GoogleCredentialConfig.load()
         if not credentials.is_configured:
+            _record_sync_failure(
+                event,
+                "No active Google service account is configured.",
+                sync_type=RegistrationSheetSyncLog.SyncType.APPEND,
+            )
             return
 
         # Find registrations created after the last sync.
@@ -152,6 +157,21 @@ def _flush_pending_sync(event_id: str) -> None:
             new_registrations = list(qs)
 
         if not new_registrations:
+            event.registration_sheet_synced_at = timezone.now()
+            event.registration_sheet_sync_error = ""
+            event.save(
+                update_fields=[
+                    "registration_sheet_synced_at",
+                    "registration_sheet_sync_error",
+                    "updated_at",
+                ]
+            )
+            RegistrationSheetSyncLog.objects.create(
+                event=event,
+                sync_type=RegistrationSheetSyncLog.SyncType.APPEND,
+                status=RegistrationSheetSyncLog.Status.SUCCESS,
+                rows_written=0,
+            )
             return
 
         question_texts = list(event.questions.order_by("order").values_list("text", flat=True))
@@ -219,11 +239,15 @@ def sync_registrations_to_sheet(event: Event) -> int:
     Use this for recovery, initial setup, or when the sheet gets out of sync.
     """
     if not event.registration_sheet_id:
-        raise RegistrationSyncError("Registration Google Sheet ID is not configured.")
+        error_message = "Registration Google Sheet ID is not configured."
+        _record_sync_failure(event, error_message, sync_type=RegistrationSheetSyncLog.SyncType.FULL)
+        raise RegistrationSyncError(error_message)
 
     credentials = GoogleCredentialConfig.load()
     if not credentials.is_configured:
-        raise RegistrationSyncError("No active Google service account is configured.")
+        error_message = "No active Google service account is configured."
+        _record_sync_failure(event, error_message, sync_type=RegistrationSheetSyncLog.SyncType.FULL)
+        raise RegistrationSyncError(error_message)
 
     registrations = list(EventRegistration.objects.filter(event=event).select_related("ticket").order_by("created_at"))
 

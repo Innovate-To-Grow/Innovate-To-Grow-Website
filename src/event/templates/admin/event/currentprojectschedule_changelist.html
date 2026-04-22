@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="mb-6 grid gap-4 sm:grid-cols-3">
+    <div class="mb-6 grid gap-4 grid-cols-1 lg:grid-cols-2">
         {# Google Account Card #}
         <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
             <div class="flex items-center gap-2 mb-3">
@@ -66,89 +66,69 @@
             {% endif %}
         </div>
 
-        {# Sync Settings Card #}
-        <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
+        {# Sync Settings Card — inline form #}
+        <form method="post" action="{{ save_sync_settings_url }}"
+              class="lg:col-span-2 border border-base-200 dark:border-base-700 rounded-default bg-white dark:bg-base-900 flex flex-col">
+            {% csrf_token %}
+            <div class="p-4 flex-1 space-y-3">
+                <div class="flex items-center gap-2 mb-3">
                     <span class="material-symbols-outlined text-primary-600 !text-[20px]">sync</span>
                     <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Auto Sync</span>
                 </div>
                 {% if config %}
-                    <a href="{{ sync_settings_url }}"
-                       class="border border-base-200 dark:border-base-700 rounded-default px-2.5 py-1 text-xs font-medium transition-all hover:bg-base-50 dark:hover:bg-base-800 text-font-default-light dark:text-font-default-dark">
-                        Settings
-                    </a>
+                    <div class="grid gap-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                        <label class="flex items-center justify-between gap-2 cursor-pointer rounded-default border border-base-200 dark:border-base-700 px-2.5 py-2">
+                            <span class="text-font-default-light dark:text-font-default-dark font-medium">Enabled</span>
+                            <input type="hidden" name="auto_sync_enabled" value="0">
+                            <div class="flex items-center gap-2">
+                                {% if config.auto_sync_enabled %}
+                                    <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">On</span>
+                                {% else %}
+                                    <span class="inline-flex items-center rounded-full bg-base-50 dark:bg-base-800 px-1.5 py-0.5 text-[10px] font-medium text-font-subtle-light dark:text-font-subtle-dark ring-1 ring-inset ring-base-200 dark:ring-base-700">Off</span>
+                                {% endif %}
+                                <input type="checkbox" name="auto_sync_enabled" value="1"
+                                       {% if config.auto_sync_enabled %}checked{% endif %}
+                                       class="rounded border-base-300 dark:border-base-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5">
+                            </div>
+                        </label>
+                        <div class="rounded-default border border-base-200 dark:border-base-700 px-2.5 py-2">
+                            <div class="mb-1 text-font-subtle-light dark:text-font-subtle-dark">Interval</div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="sync_interval_minutes"
+                                       value="{{ config.sync_interval_minutes }}" min="1" max="1440"
+                                       class="w-20 rounded border border-base-200 dark:border-base-700 bg-white dark:bg-base-800 px-2 py-1 text-xs text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                                <span class="text-font-subtle-light dark:text-font-subtle-dark">minutes</span>
+                            </div>
+                        </div>
+                        <div class="rounded-default border border-base-200 dark:border-base-700 px-2.5 py-2">
+                            <div class="mb-1 text-font-subtle-light dark:text-font-subtle-dark">Last sync</div>
+                            <span class="block text-font-default-light dark:text-font-default-dark font-medium break-words leading-relaxed">
+                                {% if config.last_synced_at %}{{ config.last_synced_at }}{% else %}Never{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                        No active configuration.
+                    </p>
                 {% endif %}
             </div>
             {% if config %}
-                <div class="space-y-1.5 text-xs">
-                    <div class="flex gap-2">
-                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Status:</span>
-                        {% if config.auto_sync_enabled %}
-                            <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
-                                <span class="material-symbols-outlined !text-[14px]">check_circle</span> Enabled
-                            </span>
-                        {% else %}
-                            <span class="text-font-subtle-light dark:text-font-subtle-dark">Disabled</span>
-                        {% endif %}
-                    </div>
-                    <div class="flex gap-2">
-                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Interval:</span>
-                        <span class="text-font-default-light dark:text-font-default-dark font-medium">Every {{ config.sync_interval_minutes }} min</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Last sync:</span>
-                        <span class="text-font-default-light dark:text-font-default-dark font-medium">
-                            {% if config.last_synced_at %}{{ config.last_synced_at }}{% else %}Never{% endif %}
-                        </span>
-                    </div>
+                <div class="px-4 pb-3">
+                    <button type="submit"
+                            class="w-full border border-base-200 dark:border-base-700 rounded-default px-3 py-1.5 text-xs font-medium transition-all hover:bg-base-50 dark:hover:bg-base-800 text-font-default-light dark:text-font-default-dark">
+                        Save
+                    </button>
                 </div>
-            {% else %}
-                <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
-                    No active configuration.
-                </p>
             {% endif %}
-        </div>
+        </form>
     </div>
 
-    {# Current Projects Table #}
-    {% if current_projects %}
-        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
-            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
-                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">
-                    Current Projects ({{ current_schedule_name }})
-                </span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs">
-                    <thead>
-                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
-                            <th class="px-3 py-2 text-left font-medium">Class</th>
-                            <th class="px-3 py-2 text-left font-medium">Team #</th>
-                            <th class="px-3 py-2 text-left font-medium">Team Name</th>
-                            <th class="px-3 py-2 text-left font-medium">Project Title</th>
-                            <th class="px-3 py-2 text-left font-medium">Organization</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
-                        {% for project in current_projects %}
-                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
-                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.class_code }}</td>
-                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_number }}</td>
-                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_name }}</td>
-                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark font-medium">{{ project.project_title }}</td>
-                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.organization }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    {% endif %}
+    {{ block.super }}
 
     {# Winners #}
     {% if winners %}
-        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+        <div class="mt-6 mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
             <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
                 <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-1.5">
                     <span class="material-symbols-outlined !text-[18px] text-yellow-500">emoji_events</span>
@@ -180,5 +160,47 @@
         </div>
     {% endif %}
 
-    {{ block.super }}
+    {# Current Projects Table #}
+    {% if current_projects %}
+        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+                    Current Projects ({{ current_schedule_name }})
+                </span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
+                            <th class="px-3 py-2 text-left font-medium">Class</th>
+                            <th class="px-3 py-2 text-left font-medium">Team #</th>
+                            <th class="px-3 py-2 text-left font-medium">Team Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Project Title</th>
+                            <th class="px-3 py-2 text-left font-medium">Organization</th>
+                            <th class="px-3 py-2 text-center font-medium">Presenting</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for project in current_projects %}
+                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.class_code }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_number }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_name }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark font-medium">{{ project.project_title }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.organization }}</td>
+                                <td class="px-3 py-2 text-center">
+                                    {% if project.is_presenting %}
+                                        <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">Yes</span>
+                                    {% else %}
+                                        <span class="inline-flex items-center rounded-full bg-base-50 dark:bg-base-800 px-2 py-0.5 text-[10px] font-medium text-font-subtle-light dark:text-font-subtle-dark ring-1 ring-inset ring-base-200 dark:ring-base-700">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
 {% endblock %}

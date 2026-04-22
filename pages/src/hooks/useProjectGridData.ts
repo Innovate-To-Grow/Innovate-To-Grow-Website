@@ -1,12 +1,13 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   fetchAllPastProjects,
-  fetchCurrentProjectsFull,
   fetchPastProjectShare,
+  scheduleProjectToGridRow,
   toProjectGridRow,
   type PastProjectShare,
   type ProjectGridRow,
 } from '../features/projects/api';
+import {fetchCurrentSchedule} from '../features/events/api';
 
 interface ProjectGridDataResult {
   rows: ProjectGridRow[];
@@ -52,12 +53,12 @@ export function useCurrentProjectGridData(enabled: boolean = true): ProjectGridD
 
     let cancelled = false;
 
-    fetchCurrentProjectsFull()
-      .then((semester) => {
+    fetchCurrentSchedule()
+      .then((payload) => {
         if (cancelled) return;
         setState({
           requestKey,
-          rows: semester.projects.map(toProjectGridRow),
+          rows: payload.projects.map(scheduleProjectToGridRow),
           error: null,
         });
       })

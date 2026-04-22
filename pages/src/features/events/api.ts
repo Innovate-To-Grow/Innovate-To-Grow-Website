@@ -156,6 +156,7 @@ export interface ScheduleProjectRow {
   industry: string;
   abstract: string;
   student_names: string;
+  is_presenting: boolean;
   tooltip: string;
 }
 
