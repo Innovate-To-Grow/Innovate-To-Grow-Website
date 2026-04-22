@@ -1,8 +1,53 @@
 {% extends "admin/change_form.html" %}
 {% load static %}
 
+{% block form_before %}
+  {% if add %}
+    <div
+      class="mb-4 rounded-default border-2 border-red-600 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-xs dark:border-red-500 dark:bg-red-950/50 dark:text-red-100"
+      role="alert"
+    >
+      Please fill in the <strong>Audience</strong> and <strong>Subject</strong>, then <strong>save</strong> to see
+      more options (Preview, Send, Import Gmail, and recipient tools).
+    </div>
+  {% endif %}
+{% endblock %}
+
 {% block extrahead %}
   {{ block.super }}
+  <script>
+    (function () {
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest(".itg-copy-campaign-body");
+        if (!btn) return;
+        e.preventDefault();
+        var b64 = btn.getAttribute("data-b64");
+        if (!b64) return;
+        try {
+          var binary = atob(b64);
+          var bytes = new Uint8Array(binary.length);
+          for (var i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          var text = new TextDecoder("utf-8").decode(bytes);
+          if (!navigator.clipboard || !navigator.clipboard.writeText) {
+            return;
+          }
+          navigator.clipboard.writeText(text).then(function () {
+            var t = btn.textContent;
+            btn.textContent = "Copied!";
+            btn.setAttribute("disabled", "disabled");
+            setTimeout(function () {
+              btn.textContent = t;
+              btn.removeAttribute("disabled");
+            }, 2000);
+          });
+        } catch (err) {
+          console.error("Copy HTML failed", err);
+        }
+      });
+    })();
+  </script>
 
   {# CodeMirror for HTML body editing (only activated when Email format = HTML). #}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">

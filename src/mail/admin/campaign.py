@@ -1,3 +1,4 @@
+import base64
 import json
 import threading
 
@@ -6,6 +7,8 @@ from django.contrib import admin, messages
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 from unfold.admin import TabularInline
 from unfold.decorators import action, display
 from unfold.widgets import (
@@ -276,6 +279,7 @@ class AudienceTypeFilter(admin.SimpleListFilter):
 @admin.register(EmailCampaign)
 class EmailCampaignAdmin(BaseModelAdmin):
     form = EmailCampaignForm
+    change_form_template = "admin/mail/emailcampaign/change_form.html"
 
     class Media:
         js = ("mail/js/body_format_toggle.js", "mail/js/body_html_editor.js")
@@ -371,8 +375,40 @@ class EmailCampaignAdmin(BaseModelAdmin):
         colors = {"draft": "info", "sending": "warning", "sent": "success", "failed": "danger"}
         return obj.get_status_display(), colors.get(obj.status, "info")
 
+    @display(description="Email Content")
+    def body_readonly(self, obj):
+        """Read-only full body with Copy HTML (for non-draft campaigns)."""
+        if not obj:
+            return "—"
+        body = obj.body or ""
+        b64 = base64.b64encode(body.encode("utf-8")).decode("ascii")
+        return format_html(
+            '<div class="itg-campaign-body-readonly w-full max-w-3xl">'
+            '<div class="mb-2 flex flex-wrap items-center justify-end gap-2">'
+            '<button type="button" data-b64="{b64}" class="itg-copy-campaign-body '
+            "rounded-default border-2 border-primary-600 bg-white px-3 py-1.5 text-xs font-semibold "
+            "text-primary-700 shadow-sm hover:bg-primary-50 focus:outline focus:outline-2 "
+            "focus:outline-offset-2 focus:outline-primary-600 dark:border-primary-500 dark:bg-base-900 "
+            'dark:text-primary-300 dark:hover:bg-base-800">'
+            "Copy HTML</button></div>"
+            '<pre class="max-h-[70vh] max-w-2xl overflow-auto whitespace-pre-wrap break-words '
+            "rounded-default border border-base-200 bg-base-50 px-3 py-2 font-mono text-sm font-medium "
+            "text-font-default-light shadow-xs dark:border-base-700 dark:bg-base-800 dark:text-font-default-dark"
+            '">{body_escaped}</pre></div>',
+            b64=b64,
+            body_escaped=mark_safe(escape(body)),
+        )
+
     def get_fieldsets(self, request, obj=None):
         fieldsets = list(super().get_fieldsets(request, obj))
+        if obj and obj.status != "draft":
+            for i, (title, options) in enumerate(fieldsets):
+                if "fields" not in options:
+                    continue
+                fields = list(options["fields"])
+                if "body" in fields:
+                    fields[fields.index("body")] = "body_readonly"
+                    fieldsets[i] = (title, {**options, "fields": tuple(fields)})
         if obj and obj.error_message:
             fieldsets.append(
                 ("Error Details", {"fields": ("error_message",), "classes": ("collapse",)}),
@@ -390,7 +426,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
                     "subject",
                     "login_redirect_path",
                     "include_unsubscribe_header",
-                    "body",
+                    "body_readonly",
                     "audience_type",
                     "event",
                     "member_email_scope",

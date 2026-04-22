@@ -82,7 +82,9 @@ class MemberCreationForm(UserCreationForm):
         # validate_passwords() below.
         if "usable_password" in self.fields:
             del self.fields["usable_password"]
-        self.fields["password1"].help_text = _("Optional. If left empty, the member cannot sign in with a password until you set one (or they use other login methods).")
+        self.fields["password1"].help_text = _(
+            "Optional. If left empty, the member cannot sign in with a password until you set one (or they use other login methods)."
+        )
         self.fields["password2"].help_text = _("Optional. Must match the password field if you enter a password.")
 
     def validate_passwords(
