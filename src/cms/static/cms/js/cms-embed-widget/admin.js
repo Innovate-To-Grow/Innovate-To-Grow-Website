@@ -1,12 +1,17 @@
 (function () {
     const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
+    const WIDGET_TYPE_BLOCKS = 'blocks';
+    const WIDGET_TYPE_APP_ROUTE = 'app_route';
 
     const config = window.CMS_EMBED_WIDGET || {};
     let selected = new Set((config.initialBlockSortOrders || []).map(Number));
+    let currentWidgetType = config.initialWidgetType || WIDGET_TYPE_BLOCKS;
 
     function hiddenField() { return document.getElementById('id_block_sort_orders'); }
     function slugField() { return document.getElementById('id_slug'); }
     function pageField() { return document.getElementById('id_page'); }
+    function widgetTypeField() { return document.getElementById('id_widget_type'); }
+    function appRouteField() { return document.getElementById('id_app_route'); }
     function picker() { return document.getElementById('cms-widget-block-picker'); }
     function snippetEl() { return document.getElementById('cms-widget-snippet'); }
     function urlEl() { return document.getElementById('cms-widget-embed-url'); }
@@ -37,12 +42,22 @@
             }
             return;
         }
-        if (!selected.size) {
+        if (currentWidgetType === WIDGET_TYPE_BLOCKS && !selected.size) {
             urlEl().textContent = '(select at least one block)';
             linkEl().style.display = 'none';
             snippetEl().value = '';
             hidePreview();
             return;
+        }
+        if (currentWidgetType === WIDGET_TYPE_APP_ROUTE) {
+            const route = String((appRouteField() || {}).value || '').trim();
+            if (!route) {
+                urlEl().textContent = '(select an app route)';
+                linkEl().style.display = 'none';
+                snippetEl().value = '';
+                hidePreview();
+                return;
+            }
         }
         if (!frontend) {
             urlEl().textContent = '(FRONTEND_URL not configured)';
@@ -60,7 +75,14 @@
         link.href = embedUrl;
         link.style.display = '';
         snippetEl().value = window.ITGEmbedSnippet.buildEmbedSnippet(embedUrl, slug);
-        showPreview(embedUrl);
+        if (currentWidgetType === WIDGET_TYPE_APP_ROUTE) {
+            // App route widgets have a dedicated standalone preview section.
+            // Skip the Live Preview (/_embed/<slug>/) iframe to avoid a duplicate
+            // — and because it would 404 before the widget is saved.
+            hidePreview();
+        } else {
+            showPreview(embedUrl);
+        }
     }
 
     function renderBlocks(blocks) {
@@ -199,6 +221,175 @@
     function bindSlug() {
         const s = slugField();
         if (s) s.addEventListener('input', renderSnippet);
+    }
+
+    function blocksOnlyRows() {
+        const rows = [];
+        document.querySelectorAll('.form-row.field-page, .form-row.field-app_route').forEach(function (el) { rows.push(el); });
+        // Unfold/jazzmin may wrap fields differently; fall back to label-based lookup.
+        if (rows.length === 0) {
+            ['id_page', 'id_app_route'].forEach(function (id) {
+                const f = document.getElementById(id);
+                if (f) {
+                    const row = f.closest('.form-row, .field-box, .form-group');
+                    if (row) rows.push(row);
+                }
+            });
+        }
+        return rows;
+    }
+
+    function setFormRowVisibility(inputId, visible) {
+        const f = document.getElementById(inputId);
+        if (!f) return;
+        const row = f.closest('.form-row, .field-box, .form-group') || f.parentElement;
+        if (row) row.style.display = visible ? '' : 'none';
+    }
+
+    function applyWidgetTypeVisibility() {
+        const isAppRoute = currentWidgetType === WIDGET_TYPE_APP_ROUTE;
+        setFormRowVisibility('id_page', !isAppRoute);
+        setFormRowVisibility('id_app_route', isAppRoute);
+
+        document.querySelectorAll('.cms-widget-blocks-only').forEach(function (el) {
+            el.style.display = isAppRoute ? 'none' : '';
+        });
+        document.querySelectorAll('.cms-widget-app-route-only').forEach(function (el) {
+            el.style.display = isAppRoute ? '' : 'none';
+        });
+
+        if (isAppRoute) {
+            hidePreview();
+            hidePagePreview();
+            const route = String((appRouteField() || {}).value || '').trim();
+            showAppRoutePreview(route);
+        } else {
+            hideAppRoutePreview();
+        }
+        renderSnippet();
+    }
+
+    function onWidgetTypeChange() {
+        const sel = widgetTypeField();
+        if (!sel) return;
+        currentWidgetType = sel.value || WIDGET_TYPE_BLOCKS;
+        applyWidgetTypeVisibility();
+    }
+
+    function bindWidgetType() {
+        const sel = widgetTypeField();
+        if (!sel) return;
+        if (window.django && window.django.jQuery) {
+            window.django.jQuery(sel).on('change', onWidgetTypeChange);
+        } else {
+            sel.addEventListener('change', onWidgetTypeChange);
+        }
+    }
+
+    function prefillFromAppRoute(route) {
+        if (!route) return;
+        const slug = slugField();
+        const label = document.getElementById('id_admin_label');
+        const routeChoice = Array.prototype.find.call(
+            (appRouteField() || { options: [] }).options || [],
+            function (opt) { return opt.value === route; },
+        );
+        const title = routeChoice ? String(routeChoice.textContent || '').replace(/\s*\(.*\)\s*$/, '').trim() : '';
+        if (slug && !slug.value) {
+            const base = toKebab(route.replace(/^\/+|\/+$/g, ''));
+            if (base) slug.value = base + '-widget';
+        }
+        if (label && !label.value && title) {
+            label.value = title;
+        }
+    }
+
+    function bindAppRoute() {
+        const sel = appRouteField();
+        if (!sel) return;
+        const handler = function () {
+            const route = String(sel.value || '').trim();
+            if (route) {
+                prefillFromAppRoute(route);
+                showAppRoutePreview(route);
+            } else {
+                hideAppRoutePreview();
+            }
+            renderSnippet();
+        };
+        if (window.django && window.django.jQuery) {
+            window.django.jQuery(sel).on('change', handler);
+        } else {
+            sel.addEventListener('change', handler);
+        }
+    }
+
+    let currentAppRoute = '';
+
+    function appRouteSection() { return document.getElementById('cms-widget-app-route-section'); }
+    function appRoutePreviewIframe() { return document.getElementById('cms-widget-app-route-preview-iframe'); }
+    function appRoutePreviewContainer() { return document.getElementById('cms-widget-app-route-preview-container'); }
+
+    function showAppRoutePreview(route) {
+        const frontend = config.frontendUrl || '';
+        const sec = appRouteSection();
+        const iframe = appRoutePreviewIframe();
+        const label = document.getElementById('cms-widget-app-route-label');
+        const openLink = document.getElementById('cms-widget-app-route-open-link');
+        const placeholder = document.getElementById('cms-widget-app-route-placeholder');
+        if (!sec || !iframe) return;
+        sec.style.display = '';
+
+        if (!route) {
+            // Keep the section visible with a placeholder so users understand
+            // where the preview will render once they pick a route.
+            if (label) label.textContent = '(no route selected)';
+            if (openLink) {
+                openLink.removeAttribute('href');
+                openLink.style.display = 'none';
+            }
+            iframe.removeAttribute('src');
+            iframe.style.display = 'none';
+            if (placeholder) placeholder.style.display = '';
+            currentAppRoute = '';
+            return;
+        }
+
+        if (label) label.textContent = route;
+        if (placeholder) placeholder.style.display = 'none';
+        iframe.style.display = '';
+        if (openLink) openLink.style.display = '';
+
+        if (!frontend) {
+            iframe.removeAttribute('src');
+            if (openLink) openLink.removeAttribute('href');
+            return;
+        }
+        const isolatedUrl = safeHttpUrl(frontend + route + '?_isolated=1');
+        const openUrl = safeHttpUrl(frontend + route);
+        if (!isolatedUrl) {
+            iframe.removeAttribute('src');
+            return;
+        }
+        currentAppRoute = route;
+        if (openLink && openUrl) openLink.href = openUrl;
+        iframe.src = isolatedUrl;
+    }
+
+    function hideAppRoutePreview() {
+        const sec = appRouteSection();
+        if (sec) sec.style.display = 'none';
+        currentAppRoute = '';
+    }
+
+    function refreshAppRoutePreview() {
+        const iframe = appRoutePreviewIframe();
+        const frontend = config.frontendUrl || '';
+        if (!iframe || !currentAppRoute || !frontend) return;
+        const isolatedUrl = safeHttpUrl(frontend + currentAppRoute + '?_isolated=1');
+        if (!isolatedUrl) return;
+        iframe.src = '';
+        setTimeout(function () { iframe.src = isolatedUrl; }, 50);
     }
 
     let currentPreviewUrl = '';
@@ -362,6 +553,19 @@
             });
         }
 
+        var appRouteRefreshBtn = document.getElementById('cms-widget-app-route-refresh-btn');
+        if (appRouteRefreshBtn) {
+            appRouteRefreshBtn.addEventListener('click', refreshAppRoutePreview);
+        }
+
+        var appRouteWidthSelect = document.getElementById('cms-widget-app-route-preview-width');
+        if (appRouteWidthSelect) {
+            appRouteWidthSelect.addEventListener('change', function () {
+                var container = appRoutePreviewContainer();
+                if (container) container.style.maxWidth = appRouteWidthSelect.value;
+            });
+        }
+
         window.addEventListener('message', function (e) {
             // Only accept resize messages from the configured frontend origin
             // (the embed iframe's own origin). Split into two separate checks
@@ -406,13 +610,19 @@
         syncHidden();
         bindSlug();
         bindPageChange();
+        bindWidgetType();
+        bindAppRoute();
         bindCopy();
         bindPreview();
+        const sel = widgetTypeField();
+        currentWidgetType = (sel && sel.value) || currentWidgetType;
         const p = pageField();
         const initialId = p ? p.value : config.initialPageId;
-        fetchBlocks(initialId);
-        fetchPageRouteAndShowPreview(initialId);
-        renderSnippet();
+        if (currentWidgetType !== WIDGET_TYPE_APP_ROUTE) {
+            fetchBlocks(initialId);
+            fetchPageRouteAndShowPreview(initialId);
+        }
+        applyWidgetTypeVisibility();
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

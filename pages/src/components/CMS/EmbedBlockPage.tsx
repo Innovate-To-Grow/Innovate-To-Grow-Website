@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { createElement, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { BlockRenderer } from './BlockRenderer';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '../../features/cms/api';
+import { resolveEmbedAppRoute } from './embedAppRoutes';
 
 /**
  * Public embed page rendered inside a third-party iframe.
@@ -125,6 +126,37 @@ export const EmbedBlockPage = () => {
     );
   }
   if (!data) return null;
+
+  return (
+    <EmbedBody data={data} containerRef={containerRef} />
+  );
+};
+
+interface EmbedBodyProps {
+  data: CMSEmbedResponse;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}
+
+const EmbedBody = ({ data, containerRef }: EmbedBodyProps) => {
+  const appRouteComponent = useMemo(
+    () => (data.widget_type === 'app_route' ? resolveEmbedAppRoute(data.app_route) : null),
+    [data.widget_type, data.app_route],
+  );
+
+  if (data.widget_type === 'app_route') {
+    if (!appRouteComponent) {
+      return (
+        <div style={{ padding: '24px', color: '#6b7280', fontFamily: 'sans-serif', textAlign: 'center' }}>
+          App route <code>{data.app_route}</code> is not available for embedding.
+        </div>
+      );
+    }
+    return (
+      <div ref={containerRef} className="cms-embed-app-route">
+        <Suspense fallback={null}>{createElement(appRouteComponent)}</Suspense>
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={data.page_css_class || 'cms-page'}>

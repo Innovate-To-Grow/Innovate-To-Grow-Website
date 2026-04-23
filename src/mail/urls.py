@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import MagicLoginView, OneClickUnsubscribeView, ResubscribeView
+from .views import MagicLoginView, OneClickUnsubscribeView, ResubscribeView, SesEventWebhookView
 
 app_name = "mail"
 
@@ -8,4 +8,5 @@ urlpatterns = [
     path("magic-login/", MagicLoginView.as_view(), name="magic-login"),
     path("unsubscribe/<str:token>/", OneClickUnsubscribeView.as_view(), name="oneclick-unsubscribe"),
     path("resubscribe/<str:token>/", ResubscribeView.as_view(), name="resubscribe"),
+    path("ses/events/", SesEventWebhookView.as_view(), name="ses-events"),
 ]

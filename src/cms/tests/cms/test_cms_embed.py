@@ -170,4 +170,56 @@ class EmbedBlockViewTest(TestCase):
     def test_response_includes_expected_top_level_keys(self):
         response = self.client.get("/cms/embed/contact-widget/")
         data = response.json()
-        self.assertEqual(set(data.keys()), {"blocks", "page_css_class", "page_css"})
+        self.assertEqual(
+            set(data.keys()),
+            {"widget_type", "app_route", "blocks", "page_css_class", "page_css"},
+        )
+
+    def test_blocks_widget_reports_widget_type(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        data = response.json()
+        self.assertEqual(data["widget_type"], "blocks")
+        self.assertEqual(data["app_route"], "")
+
+
+class EmbedAppRouteWidgetViewTest(TestCase):
+    """Tests for widget_type='app_route' — returns an app-route identifier instead of blocks."""
+
+    # noinspection PyPep8Naming
+    def setUp(self):
+        self.client = APIClient()
+        self.widget = CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="schedule-embed",
+            admin_label="Schedule embed",
+        )
+
+    def test_returns_app_route_payload(self):
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["widget_type"], "app_route")
+        self.assertEqual(data["app_route"], "/schedule")
+        self.assertEqual(data["blocks"], [])
+        self.assertEqual(data["page_css_class"], "")
+        self.assertEqual(data["page_css"], "")
+
+    def test_does_not_require_page(self):
+        self.assertIsNone(self.widget.page_id)
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_cors_header_set(self):
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "*")
+
+    def test_x_frame_options_exempt(self):
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertNotIn("X-Frame-Options", response.headers)
+
+    def test_missing_app_route_returns_404(self):
+        self.widget.app_route = ""
+        self.widget.save(update_fields=["app_route"])
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertEqual(response.status_code, 404)

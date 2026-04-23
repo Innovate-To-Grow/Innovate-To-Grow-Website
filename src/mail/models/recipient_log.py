@@ -6,7 +6,18 @@ from core.models import ProjectControlModel
 DELIVERY_STATUS_CHOICES = [
     ("pending", "Pending"),
     ("sent", "Sent"),
+    ("delivered", "Delivered"),
+    ("bounced", "Bounced"),
+    ("complained", "Complained"),
+    ("rejected", "Rejected"),
     ("failed", "Failed"),
+]
+
+BOUNCE_TYPE_CHOICES = [
+    ("", ""),
+    ("Permanent", "Permanent"),
+    ("Transient", "Transient"),
+    ("Undetermined", "Undetermined"),
 ]
 
 
@@ -29,6 +40,19 @@ class RecipientLog(ProjectControlModel):
     provider = models.CharField(max_length=16, blank=True, default="")
     error_message = models.TextField(blank=True, default="")
     sent_at = models.DateTimeField(null=True, blank=True)
+
+    # SES async event tracking
+    ses_message_id = models.CharField(max_length=256, blank=True, default="", db_index=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    bounced_at = models.DateTimeField(null=True, blank=True)
+    complained_at = models.DateTimeField(null=True, blank=True)
+    bounce_type = models.CharField(max_length=16, blank=True, default="", choices=BOUNCE_TYPE_CHOICES)
+    bounce_subtype = models.CharField(max_length=32, blank=True, default="")
+    diagnostic_code = models.TextField(blank=True, default="")
+    complaint_feedback_type = models.CharField(max_length=32, blank=True, default="")
+    last_event_type = models.CharField(max_length=32, blank=True, default="")
+    last_event_at = models.DateTimeField(null=True, blank=True)
+    last_sns_message_id = models.CharField(max_length=128, blank=True, default="")
 
     class Meta:
         ordering = ["-updated_at"]

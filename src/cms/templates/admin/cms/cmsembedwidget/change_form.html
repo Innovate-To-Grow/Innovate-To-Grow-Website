@@ -9,7 +9,7 @@
 {% block after_field_sets %}
     {{ block.super }}
 
-    <div class="cms-widget-section">
+    <div class="cms-widget-section cms-widget-blocks-only">
         <h3>Blocks to include</h3>
         <p class="cms-widget-hint">
             Select the blocks from the chosen page that should appear inside this embed widget.
@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <div class="cms-widget-section" id="cms-widget-page-preview-section" style="display:none;">
+    <div class="cms-widget-section cms-widget-blocks-only" id="cms-widget-page-preview-section" style="display:none;">
         <div class="cms-widget-preview-header">
             <h3>Page Preview</h3>
             <div class="cms-widget-preview-actions">
@@ -39,6 +39,37 @@
                     class="cms-widget-preview-iframe cms-widget-page-preview-iframe"
                     sandbox="allow-scripts allow-same-origin allow-popups"
                     loading="lazy"></iframe>
+        </div>
+    </div>
+
+    <div class="cms-widget-section cms-widget-app-route-only" id="cms-widget-app-route-section" style="display:none;">
+        <h3>App route preview</h3>
+        <p class="cms-widget-hint">
+            Standalone preview of the selected app route (menu &amp; footer stripped) — this matches the
+            embed view as third-party sites will see it. Use &ldquo;Open&rdquo; to view the full page with
+            site chrome in a new tab.
+        </p>
+        <div class="cms-widget-preview-header">
+            <div class="cms-widget-preview-actions">
+                <span id="cms-widget-app-route-label" class="cms-widget-route-label">(no route selected)</span>
+                <button type="button" class="btn-widget-refresh" id="cms-widget-app-route-refresh-btn" title="Refresh preview">&#x21bb; Refresh</button>
+                <select id="cms-widget-app-route-preview-width" class="cms-widget-preview-select">
+                    <option value="100%">Desktop</option>
+                    <option value="768px">Tablet</option>
+                    <option value="375px">Mobile</option>
+                </select>
+                <a id="cms-widget-app-route-open-link" href="#" target="_blank" rel="noopener" class="btn-widget-refresh" style="display:none;text-decoration:none;">Open &rarr;</a>
+            </div>
+        </div>
+        <div class="cms-widget-preview-container cms-widget-page-preview-container" id="cms-widget-app-route-preview-container">
+            <p id="cms-widget-app-route-placeholder" class="cms-widget-empty" style="padding:24px;text-align:center;">
+                Pick an app route above to preview it here.
+            </p>
+            <iframe id="cms-widget-app-route-preview-iframe"
+                    class="cms-widget-preview-iframe cms-widget-page-preview-iframe"
+                    sandbox="allow-scripts allow-same-origin allow-popups"
+                    loading="lazy"
+                    style="display:none;"></iframe>
         </div>
     </div>
 
@@ -83,12 +114,15 @@
         window.CMS_EMBED_WIDGET = {
             pageBlocksUrl: "{{ page_blocks_url|escapejs }}",
             pageInfoUrl: "{{ page_info_url|escapejs }}",
+            appRoutesUrl: "{{ app_routes_url|escapejs }}",
             frontendUrl: "{{ frontend_url|escapejs }}",
             initialBlockSortOrders: {{ initial_block_sort_orders_json|safe }},
             initialSlug: "{{ initial_slug|escapejs }}",
             initialPageId: "{{ initial_page_id|escapejs }}",
+            initialWidgetType: "{{ initial_widget_type|escapejs }}",
+            initialAppRoute: "{{ initial_app_route|escapejs }}",
         };
     </script>
     <script src="{% static 'cms/js/cms-embed-widget/snippet.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=5"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=9"></script>
 {% endblock %}

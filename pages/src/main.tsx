@@ -25,7 +25,8 @@ createRoot(document.getElementById('root')!).render(
 
 // Skip menu and footer for isolated iframe routes (admin preview + public embed widget)
 const _path = window.location.pathname;
-const isBlockPreview = _path === '/_block-preview' || _path.startsWith('/_embed/');
+const _isolatedFlag = new URLSearchParams(window.location.search).has('_isolated');
+const isBlockPreview = _path === '/_block-preview' || _path.startsWith('/_embed/') || _isolatedFlag;
 
 // Mount MainMenu to #menu-root with AuthProvider and LayoutProvider
 // No BrowserRouter needed — MainMenu uses router.navigate() directly, not <Link> or router hooks

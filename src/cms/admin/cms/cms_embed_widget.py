@@ -5,41 +5,63 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
+from unfold.widgets import UnfoldAdminSelectWidget
 
+from cms.app_routes import APP_ROUTES
 from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 from core.admin import BaseModelAdmin
 
 
 class CMSEmbedWidgetAdminForm(forms.ModelForm):
+    app_route = forms.ChoiceField(
+        required=False,
+        choices=[("", "— select an app route —")] + [(r["url"], f"{r['title']} ({r['url']})") for r in APP_ROUTES],
+        label="App route",
+        help_text="The interactive app page to embed.",
+        widget=UnfoldAdminSelectWidget,
+    )
+
     class Meta:
         model = CMSEmbedWidget
-        fields = ("page", "slug", "admin_label", "block_sort_orders")
+        fields = ("widget_type", "page", "app_route", "slug", "admin_label", "block_sort_orders")
         widgets = {
             "block_sort_orders": forms.HiddenInput(),
+            "widget_type": UnfoldAdminSelectWidget,
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["slug"].widget.attrs["placeholder"] = "e.g. homepage-hero-banner"
+        if self.instance and self.instance.app_route:
+            self.fields["app_route"].initial = self.instance.app_route
 
 
 @admin.register(CMSEmbedWidget)
 class CMSEmbedWidgetAdmin(BaseModelAdmin):
     form = CMSEmbedWidgetAdminForm
     change_form_template = "admin/cms/cmsembedwidget/change_form.html"
-    list_display = ("slug", "page_link", "admin_label", "block_count", "updated_at")
-    list_filter = ("page",)
-    search_fields = ("slug", "admin_label", "page__title", "page__route")
+    list_display = ("slug", "widget_type", "target_label", "admin_label", "block_count", "updated_at")
+    list_filter = ("widget_type", "page")
+    search_fields = ("slug", "admin_label", "app_route", "page__title", "page__route")
     autocomplete_fields = ("page",)
     readonly_fields = ("created_at", "updated_at")
 
-    @admin.display(description="Page")
-    def page_link(self, obj):
-        url = reverse("admin:cms_cmspage_change", args=[obj.page_id])
-        return format_html('<a href="{}">{}</a>', url, obj.page.title)
+    def get_ordering(self, request):
+        return ["widget_type", "slug"]
+
+    @admin.display(description="Target")
+    def target_label(self, obj):
+        if obj.widget_type == "app_route":
+            return format_html("<code>{}</code>", obj.app_route or "—")
+        if obj.page_id:
+            url = reverse("admin:cms_cmspage_change", args=[obj.page_id])
+            return format_html('<a href="{}">{}</a>', url, obj.page.title)
+        return "—"
 
     @admin.display(description="Blocks")
     def block_count(self, obj):
+        if obj.widget_type == "app_route":
+            return "—"
         return len(obj.block_sort_orders or [])
 
     def get_urls(self):
@@ -54,8 +76,17 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
                 self.admin_site.admin_view(self.page_info_view),
                 name="cms_cmsembedwidget_page_info",
             ),
+            path(
+                "app-routes/",
+                self.admin_site.admin_view(self.app_routes_view),
+                name="cms_cmsembedwidget_app_routes",
+            ),
         ]
         return custom + super().get_urls()
+
+    # noinspection PyMethodMayBeStatic
+    def app_routes_view(self, request):
+        return JsonResponse({"routes": list(APP_ROUTES)})
 
     def page_blocks_view(self, request):
         page_id = request.GET.get("page_id") or ""
@@ -85,9 +116,12 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
             "frontend_url": (getattr(ds, "FRONTEND_URL", "") or "").rstrip("/"),
             "page_blocks_url": reverse("admin:cms_cmsembedwidget_page_blocks"),
             "page_info_url": reverse("admin:cms_cmsembedwidget_page_info"),
+            "app_routes_url": reverse("admin:cms_cmsembedwidget_app_routes"),
             "initial_block_sort_orders_json": json.dumps(obj.block_sort_orders if obj else []),
             "initial_slug": obj.slug if obj else "",
             "initial_page_id": str(obj.page_id) if obj and obj.page_id else "",
+            "initial_widget_type": obj.widget_type if obj else "blocks",
+            "initial_app_route": obj.app_route if obj else "",
         }
 
     def change_view(self, request, object_id, form_url="", extra_context=None):

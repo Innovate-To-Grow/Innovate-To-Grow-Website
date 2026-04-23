@@ -251,8 +251,17 @@ class EmailCampaignForm(forms.ModelForm):
 
 class RecipientLogInline(TabularInline):
     model = RecipientLog
-    fields = ("email_address", "recipient_name", "status", "error_message", "provider", "sent_at")
-    readonly_fields = ("email_address", "recipient_name", "status", "error_message", "provider", "sent_at")
+    fields = (
+        "email_address",
+        "recipient_name",
+        "status",
+        "bounce_type",
+        "error_message",
+        "provider",
+        "sent_at",
+        "last_event_at",
+    )
+    readonly_fields = fields
     extra = 0
     max_num = 0
     can_delete = False

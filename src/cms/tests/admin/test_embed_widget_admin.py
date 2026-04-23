@@ -66,6 +66,40 @@ class CMSEmbedWidgetModelTests(TestCase):
         with self.assertRaises(ValidationError):
             self._full_clean(slug="w4", block_sort_orders=["nope"])
 
+    def test_app_route_widget_requires_app_route(self):
+        widget = CMSEmbedWidget(widget_type="app_route", slug="app-embed")
+        with self.assertRaises(ValidationError) as ctx:
+            widget.full_clean()
+        self.assertIn("app_route", ctx.exception.message_dict)
+
+    def test_app_route_widget_rejects_unknown_route(self):
+        widget = CMSEmbedWidget(widget_type="app_route", slug="app-embed", app_route="/nope")
+        with self.assertRaises(ValidationError) as ctx:
+            widget.full_clean()
+        self.assertIn("app_route", ctx.exception.message_dict)
+
+    def test_app_route_widget_clears_block_sort_orders(self):
+        widget = CMSEmbedWidget(
+            widget_type="app_route",
+            slug="app-embed",
+            app_route="/schedule",
+            block_sort_orders=[0, 1, 2],
+        )
+        widget.full_clean()
+        self.assertEqual(widget.block_sort_orders, [])
+        self.assertEqual(widget.app_route, "/schedule")
+
+    def test_app_route_widget_does_not_require_page(self):
+        widget = CMSEmbedWidget(widget_type="app_route", slug="app-embed", app_route="/schedule")
+        widget.full_clean()
+        self.assertIsNone(widget.page_id)
+
+    def test_blocks_widget_requires_page(self):
+        widget = CMSEmbedWidget(widget_type="blocks", slug="bw", block_sort_orders=[0])
+        with self.assertRaises(ValidationError) as ctx:
+            widget.full_clean()
+        self.assertIn("page", ctx.exception.message_dict)
+
     def test_slug_is_globally_unique_at_db_level(self):
         CMSEmbedWidget.objects.create(page=self.page, slug="shared", block_sort_orders=[0])
         other = CMSPage.objects.create(slug="other", route="/other", title="Other", status="draft")
@@ -84,28 +118,65 @@ class CMSEmbedWidgetAdminFormTests(TestCase):
     def test_form_valid_with_hidden_block_sort_orders(self):
         form = CMSEmbedWidgetAdminForm(
             data={
+                "widget_type": "blocks",
                 "page": str(self.page.pk),
                 "slug": "valid-widget",
                 "admin_label": "Valid",
                 "block_sort_orders": "[0, 1]",
+                "app_route": "",
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
         widget = form.save()
         self.assertEqual(widget.slug, "valid-widget")
+        self.assertEqual(widget.widget_type, "blocks")
         self.assertEqual(widget.block_sort_orders, [0, 1])
 
     def test_form_rejects_invalid_slug(self):
         form = CMSEmbedWidgetAdminForm(
             data={
+                "widget_type": "blocks",
                 "page": str(self.page.pk),
                 "slug": "Bad Slug",
                 "admin_label": "",
                 "block_sort_orders": "[0]",
+                "app_route": "",
             }
         )
         self.assertFalse(form.is_valid())
         self.assertIn("slug", form.errors)
+
+    def test_form_valid_for_app_route_widget(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "app_route",
+                "page": "",
+                "slug": "schedule-embed",
+                "admin_label": "Schedule",
+                "block_sort_orders": "[]",
+                "app_route": "/schedule",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        widget = form.save()
+        self.assertEqual(widget.widget_type, "app_route")
+        self.assertEqual(widget.app_route, "/schedule")
+        self.assertIsNone(widget.page_id)
+        self.assertEqual(widget.block_sort_orders, [])
+
+    def test_form_rejects_app_route_widget_with_unknown_route(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "app_route",
+                "page": "",
+                "slug": "app-embed",
+                "admin_label": "",
+                "block_sort_orders": "[]",
+                "app_route": "/unknown",
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("app_route", form.errors)
 
 
 class CMSEmbedWidgetAdminViewTests(TestCase):
@@ -163,4 +234,19 @@ class CMSEmbedWidgetAdminViewTests(TestCase):
         url = reverse("admin:cms_cmsembedwidget_page_blocks")
         response = self.client.get(url, {"page_id": str(self.page.pk)})
         # Admin view redirects to login for anonymous users.
+        self.assertIn(response.status_code, (302, 403))
+
+    def test_app_routes_endpoint_returns_routes(self):
+        url = reverse("admin:cms_cmsembedwidget_app_routes")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        urls = [r["url"] for r in payload["routes"]]
+        self.assertIn("/schedule", urls)
+        self.assertIn("/presenting-teams", urls)
+
+    def test_app_routes_endpoint_requires_staff(self):
+        self.client.logout()
+        url = reverse("admin:cms_cmsembedwidget_app_routes")
+        response = self.client.get(url)
         self.assertIn(response.status_code, (302, 403))

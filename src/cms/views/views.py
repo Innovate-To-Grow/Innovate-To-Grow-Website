@@ -116,7 +116,12 @@ class LayoutStylesheetView(View):
 
 @method_decorator(xframe_options_exempt, name="dispatch")
 class EmbedBlockView(APIView):
-    """Public endpoint returning all blocks for a named embed widget.
+    """Public endpoint returning an embed widget's payload.
+
+    Two widget types:
+      - ``blocks`` — returns a subset of the source page's blocks plus page_css.
+      - ``app_route`` — returns an interactive app-route identifier (e.g. "/schedule")
+        the frontend mounts inside the embed iframe.
 
     Sets permissive CORS + removes X-Frame-Options so third parties can iframe-render.
     NOTE: the wildcard `Access-Control-Allow-Origin` is intentional — widgets are
@@ -128,22 +133,38 @@ class EmbedBlockView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, embed_slug, *args, **kwargs):
-        widget = CMSEmbedWidget.objects.select_related("page").filter(page__status="published", slug=embed_slug).first()
-        if widget is None:
+        widget = CMSEmbedWidget.objects.select_related("page").filter(slug=embed_slug).first()
+        if widget is None or not self._is_visible(widget):
             response = Response({"detail": "Not found."}, status=404)
             response["Access-Control-Allow-Origin"] = "*"
             return response
 
-        sort_orders = [o for o in (widget.block_sort_orders or []) if isinstance(o, int)]
-        blocks_qs = CMSBlock.objects.filter(page_id=widget.page_id, sort_order__in=sort_orders)
-        blocks_by_order = {b.sort_order: b for b in blocks_qs}
-        ordered_blocks = [blocks_by_order[o] for o in sort_orders if o in blocks_by_order]
-
-        data = {
-            "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
-            "page_css_class": widget.page.page_css_class or "",
-            "page_css": widget.page.page_css or "",
-        }
+        if widget.widget_type == "app_route":
+            data = {
+                "widget_type": "app_route",
+                "app_route": widget.app_route,
+                "blocks": [],
+                "page_css_class": "",
+                "page_css": "",
+            }
+        else:
+            sort_orders = [o for o in (widget.block_sort_orders or []) if isinstance(o, int)]
+            blocks_qs = CMSBlock.objects.filter(page_id=widget.page_id, sort_order__in=sort_orders)
+            blocks_by_order = {b.sort_order: b for b in blocks_qs}
+            ordered_blocks = [blocks_by_order[o] for o in sort_orders if o in blocks_by_order]
+            data = {
+                "widget_type": "blocks",
+                "app_route": "",
+                "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
+                "page_css_class": widget.page.page_css_class or "",
+                "page_css": widget.page.page_css or "",
+            }
         response = Response(data)
         response["Access-Control-Allow-Origin"] = "*"
         return response
+
+    # noinspection PyMethodMayBeStatic
+    def _is_visible(self, widget):
+        if widget.widget_type == "app_route":
+            return bool(widget.app_route)
+        return widget.page is not None and widget.page.status == "published"

@@ -51,7 +51,11 @@ export async function fetchCMSLivePreview(
   return response.data;
 }
 
+export type CMSEmbedWidgetType = 'blocks' | 'app_route';
+
 export interface CMSEmbedResponse {
+  widget_type?: CMSEmbedWidgetType;
+  app_route?: string;
   blocks: CMSBlock[];
   page_css_class: string;
   page_css: string;
