@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 
 BLOCK_TYPE_CHOICES = [
@@ -15,6 +17,8 @@ BLOCK_TYPE_CHOICES = [
     ("proposal_cards", "Proposal Cards"),
     ("navigation_grid", "Navigation Grid"),
     ("sponsor_year", "Sponsor Year"),
+    ("embed", "Embed (iframe)"),
+    ("embed_widget", "Embed CMS Widget"),
 ]
 
 BLOCK_TYPE_KEYS = {choice[0] for choice in BLOCK_TYPE_CHOICES}
@@ -35,7 +39,36 @@ BLOCK_SCHEMAS = {
     "proposal_cards": {"required": ["proposals"], "optional": ["heading", "footer_html"]},
     "navigation_grid": {"required": ["items"], "optional": ["heading"]},
     "sponsor_year": {"required": ["year", "sponsors"], "optional": []},
+    "embed": {
+        "required": ["src"],
+        "optional": ["heading", "title", "height", "aspect_ratio", "sandbox", "allow", "allowfullscreen"],
+    },
+    "embed_widget": {
+        "required": ["slug"],
+        "optional": ["heading", "height", "aspect_ratio", "hide_section_titles"],
+    },
 }
+
+ASPECT_RATIO_RE = re.compile(r"^\d+:\d+$")
+
+# Set of sandbox tokens the embed editor is allowed to emit. This is the
+# conservative modern subset; `allow-top-navigation` is intentionally omitted
+# so a malicious embed cannot redirect the parent page.
+SANDBOX_TOKENS = {
+    "allow-scripts",
+    "allow-same-origin",
+    "allow-forms",
+    "allow-popups",
+    "allow-popups-to-escape-sandbox",
+    "allow-modals",
+    "allow-downloads",
+    "allow-presentation",
+    "allow-orientation-lock",
+    "allow-pointer-lock",
+    "allow-storage-access-by-user-activation",
+}
+
+DEFAULT_SANDBOX = "allow-scripts allow-same-origin allow-forms allow-popups"
 
 
 def validate_block_data(block_type, data):
@@ -62,3 +95,69 @@ def validate_block_data(block_type, data):
                 raise ValidationError(f"Sponsor #{index + 1} must be an object.")
             if not str(sponsor.get("name", "")).strip():
                 raise ValidationError(f"Sponsor #{index + 1} requires a non-empty 'name'.")
+
+    if block_type == "embed":
+        _validate_embed_block(data)
+
+    if block_type == "embed_widget":
+        _validate_embed_widget_block(data)
+
+
+def _validate_embed_block(data):
+    from cms.services.embed_hosts import InvalidEmbedURL, is_host_allowed, parse_embed_url
+
+    try:
+        _, host = parse_embed_url(data.get("src", ""))
+    except InvalidEmbedURL as exc:
+        raise ValidationError(str(exc)) from exc
+
+    if not is_host_allowed(host):
+        raise ValidationError(
+            f"Host '{host}' is not in the embed allowlist. Add it under CMS > Embed Allowed Hosts first."
+        )
+
+    aspect_ratio = data.get("aspect_ratio")
+    if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):
+        raise ValidationError("'aspect_ratio' must look like '16:9' (digits:digits).")
+
+    height = data.get("height")
+    if height not in (None, ""):
+        try:
+            height_value = int(height)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("'height' must be a positive integer.") from exc
+        if height_value <= 0 or height_value > 5000:
+            raise ValidationError("'height' must be between 1 and 5000 pixels.")
+
+    sandbox = data.get("sandbox")
+    if sandbox:
+        tokens = [t for t in str(sandbox).split() if t]
+        unknown = [t for t in tokens if t not in SANDBOX_TOKENS]
+        if unknown:
+            raise ValidationError(f"Unknown sandbox token(s): {', '.join(unknown)}.")
+
+
+def _validate_embed_widget_block(data):
+    from cms.models import CMSEmbedWidget
+
+    slug = str(data.get("slug", "")).strip().lower()
+    if not slug:
+        raise ValidationError("Block type 'embed_widget' requires a non-empty 'slug'.")
+
+    if not CMSEmbedWidget.objects.filter(slug=slug).exists():
+        raise ValidationError(
+            f"No CMS embed widget found with slug '{slug}'. Create it under CMS > CMS Embed Widgets first."
+        )
+
+    aspect_ratio = data.get("aspect_ratio")
+    if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):
+        raise ValidationError("'aspect_ratio' must look like '16:9' (digits:digits).")
+
+    height = data.get("height")
+    if height not in (None, ""):
+        try:
+            height_value = int(height)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("'height' must be a positive integer.") from exc
+        if height_value <= 0 or height_value > 5000:
+            raise ValidationError("'height' must be between 1 and 5000 pixels.")

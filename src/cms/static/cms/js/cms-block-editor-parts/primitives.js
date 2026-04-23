@@ -22,6 +22,15 @@
         if (!schema) return {};
         const data = {};
         schema.required.forEach(field => { data[field] = ['items', 'sections', 'columns', 'rows', 'proposals', 'sponsors'].includes(field) ? [] : ''; });
+        if (blockType === 'embed') {
+            data.sandbox = window.CMS_EMBED_DEFAULT_SANDBOX || 'allow-scripts allow-same-origin allow-forms allow-popups';
+            data.aspect_ratio = '16:9';
+            data.allowfullscreen = true;
+        }
+        if (blockType === 'embed_widget') {
+            data.aspect_ratio = '';
+            data.hide_section_titles = false;
+        }
         return data;
     }
 

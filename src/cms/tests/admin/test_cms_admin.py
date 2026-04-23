@@ -181,7 +181,7 @@ class CMSPageChangeFormRenderTests(TestCase):
         changelist_url = reverse("admin:cms_cmsembedwidget_changelist")
         self.assertNotIn(f"{changelist_url}?page__id__exact={self.page.pk}", content)
 
-    def test_change_form_does_not_list_attached_widgets(self):
+    def test_change_form_does_not_list_attached_widgets_in_ui(self):
         CMSBlock.objects.create(
             page=self.page,
             block_type="rich_text",
@@ -197,12 +197,15 @@ class CMSPageChangeFormRenderTests(TestCase):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
         response = self.client.get(url)
         content = response.content.decode()
-        self.assertNotIn(widget.slug, content)
-        self.assertNotIn(widget.admin_label, content)
+        # No dedicated UI section listing widgets...
+        self.assertNotIn("Embed Widgets on this page", content)
         self.assertNotIn(
             reverse("admin:cms_cmsembedwidget_change", args=[widget.id]),
             content,
         )
+        # ...but the slug is exposed via window.CMS_EMBED_WIDGETS for the block editor picker.
+        self.assertIn("CMS_EMBED_WIDGETS", content)
+        self.assertIn(widget.slug, content)
 
 
 class BuildEditorContextTests(TestCase):

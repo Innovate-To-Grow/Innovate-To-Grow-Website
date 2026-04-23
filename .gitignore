@@ -240,3 +240,8 @@ Thumbs.db
 # Member Import Spreadsheet
 # =====================================
 /archive/legacy/MemberImport.xlsx
+
+# =====================================
+# Gemini AI
+# =====================================
+GEMINI.md

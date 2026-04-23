@@ -1,8 +1,10 @@
 import { createElement, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { BlockRenderer } from './BlockRenderer';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '../../features/cms/api';
 import { resolveEmbedAppRoute } from './embedAppRoutes';
+
+const TRUE_VALUES = new Set(['1', 'true', 'yes', 'on']);
 
 /**
  * Public embed page rendered inside a third-party iframe.
@@ -25,8 +27,12 @@ const POST_TARGET = '*';
 
 export const EmbedBlockPage = () => {
   const { embedSlug } = useParams<{ embedSlug: string }>();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<CMSEmbedResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
+
+  const hideTitlesFromQuery = TRUE_VALUES.has((searchParams.get('hide-titles') || '').toLowerCase());
+  const hideSectionTitles = hideTitlesFromQuery || Boolean(data?.hide_section_titles);
 
   // Fetch block data
   useEffect(() => {
@@ -87,6 +93,18 @@ export const EmbedBlockPage = () => {
       style.remove();
     };
   }, [data?.page_css]);
+
+  // Hide .section-title headings when requested (widget setting or ?hide-titles=1).
+  useEffect(() => {
+    if (!hideSectionTitles) return;
+    const style = document.createElement('style');
+    style.id = 'itg-embed-hide-titles';
+    style.textContent = '.section-title { display: none !important; }';
+    document.head.appendChild(style);
+    return () => {
+      style.remove();
+    };
+  }, [hideSectionTitles]);
 
   // Report height to parent (once data is rendered, and on any size change)
   useEffect(() => {

@@ -3,8 +3,9 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from cms.models import CMSBlock, CMSPage
+from cms.models import CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
 from cms.models.content.cms.block_types import BLOCK_SCHEMAS, BLOCK_TYPE_KEYS, validate_block_data
+from cms.services.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 
 
 class ValidateBlockDataTests(TestCase):
@@ -109,6 +110,101 @@ class ValidateBlockDataTests(TestCase):
         """Every block type in BLOCK_TYPE_KEYS must have a corresponding schema."""
         for key in BLOCK_TYPE_KEYS:
             self.assertIn(key, BLOCK_SCHEMAS, f"Missing schema for block type '{key}'")
+
+
+class EmbedBlockValidationTests(TestCase):
+    def setUp(self):
+        CMSEmbedAllowedHost.objects.all().delete()
+        CMSEmbedAllowedHost.objects.create(hostname="docs.google.com")
+        CMSEmbedAllowedHost.objects.create(hostname="*.youtube.com")
+        invalidate_embed_host_cache()
+
+    def tearDown(self):
+        invalidate_embed_host_cache()
+
+    def test_embed_requires_src(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed", {})
+
+    def test_embed_rejects_non_https(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("embed", {"src": "http://docs.google.com/forms/d/e/xyz/viewform"})
+        self.assertIn("https", str(ctx.exception))
+
+    def test_embed_rejects_disallowed_host(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("embed", {"src": "https://evil.example.com/widget"})
+        self.assertIn("allowlist", str(ctx.exception))
+
+    def test_embed_allows_exact_host(self):
+        validate_block_data("embed", {"src": "https://docs.google.com/forms/d/e/xyz/viewform"})
+
+    def test_embed_wildcard_matches_subdomain(self):
+        validate_block_data("embed", {"src": "https://www.youtube.com/embed/abc123"})
+
+    def test_embed_wildcard_does_not_match_sibling_domain(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed", {"src": "https://fakeyoutube.com/embed/abc"})
+
+    def test_embed_bad_aspect_ratio_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data(
+                "embed",
+                {"src": "https://docs.google.com/a", "aspect_ratio": "sixteen-by-nine"},
+            )
+
+    def test_embed_invalid_height_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed", {"src": "https://docs.google.com/a", "height": "tall"})
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed", {"src": "https://docs.google.com/a", "height": -10})
+
+    def test_embed_unknown_sandbox_token_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data(
+                "embed",
+                {"src": "https://docs.google.com/a", "sandbox": "allow-scripts allow-top-navigation"},
+            )
+
+
+class EmbedWidgetBlockValidationTests(TestCase):
+    def setUp(self):
+        CMSEmbedWidget.objects.all().delete()
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="schedule-embed",
+        )
+
+    def test_embed_widget_requires_slug(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {})
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": ""})
+
+    def test_embed_widget_requires_existing_slug(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("embed_widget", {"slug": "nonexistent-widget"})
+        self.assertIn("No CMS embed widget", str(ctx.exception))
+
+    def test_embed_widget_accepts_existing_slug(self):
+        validate_block_data("embed_widget", {"slug": "schedule-embed"})
+
+    def test_embed_widget_slug_is_lowercased_for_lookup(self):
+        validate_block_data("embed_widget", {"slug": "SCHEDULE-EMBED"})
+
+    def test_embed_widget_bad_aspect_ratio_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data(
+                "embed_widget",
+                {"slug": "schedule-embed", "aspect_ratio": "sixteen-by-nine"},
+            )
+
+    def test_embed_widget_invalid_height_rejected(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "schedule-embed", "height": "tall"})
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "schedule-embed", "height": -5})
 
 
 class CMSBlockCleanTests(TestCase):

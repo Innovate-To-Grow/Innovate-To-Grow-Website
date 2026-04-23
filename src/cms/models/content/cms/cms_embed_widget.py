@@ -47,6 +47,10 @@ class CMSEmbedWidget(ProjectControlModel):
         help_text="Globally unique kebab-case identifier used in the embed URL.",
     )
     admin_label = models.CharField(max_length=200, blank=True, default="")
+    hide_section_titles = models.BooleanField(
+        default=False,
+        help_text="Hide `.section-title` headings when this widget renders inside the embed iframe.",
+    )
     block_sort_orders = models.JSONField(
         default=list,
         blank=True,

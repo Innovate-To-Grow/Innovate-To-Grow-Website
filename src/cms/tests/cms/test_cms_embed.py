@@ -172,7 +172,7 @@ class EmbedBlockViewTest(TestCase):
         data = response.json()
         self.assertEqual(
             set(data.keys()),
-            {"widget_type", "app_route", "blocks", "page_css_class", "page_css"},
+            {"widget_type", "app_route", "blocks", "page_css_class", "page_css", "hide_section_titles"},
         )
 
     def test_blocks_widget_reports_widget_type(self):
@@ -180,6 +180,16 @@ class EmbedBlockViewTest(TestCase):
         data = response.json()
         self.assertEqual(data["widget_type"], "blocks")
         self.assertEqual(data["app_route"], "")
+
+    def test_hide_section_titles_defaults_to_false(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertFalse(response.json()["hide_section_titles"])
+
+    def test_hide_section_titles_reflects_widget_setting(self):
+        self.widget.hide_section_titles = True
+        self.widget.save(update_fields=["hide_section_titles"])
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertTrue(response.json()["hide_section_titles"])
 
 
 class EmbedAppRouteWidgetViewTest(TestCase):
@@ -223,3 +233,9 @@ class EmbedAppRouteWidgetViewTest(TestCase):
         self.widget.save(update_fields=["app_route"])
         response = self.client.get("/cms/embed/schedule-embed/")
         self.assertEqual(response.status_code, 404)
+
+    def test_hide_section_titles_reflects_widget_setting(self):
+        self.widget.hide_section_titles = True
+        self.widget.save(update_fields=["hide_section_titles"])
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertTrue(response.json()["hide_section_titles"])

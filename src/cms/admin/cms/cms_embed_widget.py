@@ -23,7 +23,15 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
 
     class Meta:
         model = CMSEmbedWidget
-        fields = ("widget_type", "page", "app_route", "slug", "admin_label", "block_sort_orders")
+        fields = (
+            "widget_type",
+            "page",
+            "app_route",
+            "slug",
+            "admin_label",
+            "hide_section_titles",
+            "block_sort_orders",
+        )
         widgets = {
             "block_sort_orders": forms.HiddenInput(),
             "widget_type": UnfoldAdminSelectWidget,

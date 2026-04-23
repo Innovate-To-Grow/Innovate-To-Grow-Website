@@ -97,6 +97,7 @@ UNFOLD = {
                 "cms.sitesettings",
                 "cms.cmspage",
                 "cms.cmsembedwidget",
+                "cms.cmsembedallowedhost",
                 "cms.menu",
                 "cms.footercontent",
                 "cms.stylesheet",
@@ -105,6 +106,7 @@ UNFOLD = {
                 {"title": "Home Page", "link": "/admin/cms/sitesettings/"},
                 {"title": "Pages", "link": "/admin/cms/cmspage/"},
                 {"title": "Embed Widgets", "link": "/admin/cms/cmsembedwidget/"},
+                {"title": "Embed Allowed Hosts", "link": "/admin/cms/cmsembedallowedhost/"},
                 {"title": "Menus", "link": "/admin/cms/menu/"},
                 {"title": "Footer", "link": "/admin/cms/footercontent/"},
                 {"title": "Style Sheets", "link": "/admin/cms/stylesheet/"},
@@ -142,6 +144,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
+                    {"title": "Embed Allowed Hosts", "link": "/admin/cms/cmsembedallowedhost/"},
                     {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                 ],
             },

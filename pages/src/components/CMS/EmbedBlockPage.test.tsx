@@ -62,7 +62,9 @@ describe('EmbedBlockPage', () => {
   afterEach(() => {
     cleanup();
     // Strip any <base> / <style id="itg-embed-*"> tags the component left on <head>
-    document.querySelectorAll('base, style#itg-embed-body, style#itg-embed-page-css').forEach((n) => n.remove());
+    document
+      .querySelectorAll('base, style#itg-embed-body, style#itg-embed-page-css, style#itg-embed-hide-titles')
+      .forEach((n) => n.remove());
     vi.restoreAllMocks();
   });
 
@@ -196,6 +198,58 @@ describe('EmbedBlockPage', () => {
       (args) => typeof args[0] === 'object' && args[0] && 'type' in (args[0] as object) && (args[0] as {type: string}).type === 'i2g-embed-resize',
     );
     expect(resizeCalls).toEqual([]);
+  });
+
+  it('injects a hide-titles stylesheet when hide_section_titles is true in the response', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hide_section_titles: true,
+    });
+
+    renderAtSlug('widget');
+    await waitFor(() => {
+      const tag = document.getElementById('itg-embed-hide-titles');
+      expect(tag).not.toBeNull();
+      expect(tag?.textContent).toContain('.section-title');
+      expect(tag?.textContent).toContain('display: none');
+    });
+  });
+
+  it('injects a hide-titles stylesheet when ?hide-titles=1 query param is set', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hide_section_titles: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/widget?hide-titles=1']}>
+        <Routes>
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const tag = document.getElementById('itg-embed-hide-titles');
+      expect(tag).not.toBeNull();
+    });
+  });
+
+  it('does not inject hide-titles stylesheet when both flag and query are off', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hide_section_titles: false,
+    });
+
+    renderAtSlug('widget');
+    await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
+    expect(document.getElementById('itg-embed-hide-titles')).toBeNull();
   });
 
   it('removes its injected <style> and <base> tags on unmount', async () => {

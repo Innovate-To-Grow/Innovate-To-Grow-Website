@@ -146,6 +146,7 @@ class EmbedBlockView(APIView):
                 "blocks": [],
                 "page_css_class": "",
                 "page_css": "",
+                "hide_section_titles": widget.hide_section_titles,
             }
         else:
             sort_orders = [o for o in (widget.block_sort_orders or []) if isinstance(o, int)]
@@ -158,6 +159,7 @@ class EmbedBlockView(APIView):
                 "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
                 "page_css_class": widget.page.page_css_class or "",
                 "page_css": widget.page.page_css or "",
+                "hide_section_titles": widget.hide_section_titles,
             }
         response = Response(data)
         response["Access-Control-Allow-Origin"] = "*"

@@ -1,6 +1,8 @@
 import { memo } from 'react';
 import type { CMSBlock } from '../../features/cms/api';
 import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
+import { EmbedBlock } from './blocks/content/EmbedBlock';
+import { EmbedWidgetBlock } from './blocks/content/EmbedWidgetBlock';
 import { FaqListBlock } from './blocks/content/FaqListBlock';
 import { ImageTextBlock } from './blocks/content/ImageTextBlock';
 import { LinkListBlock } from './blocks/content/LinkListBlock';
@@ -25,6 +27,8 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   proposal_cards: ProposalCardsBlock,
   table: TableBlock,
   sponsor_year: SponsorYearBlock,
+  embed: EmbedBlock,
+  embed_widget: EmbedWidgetBlock,
 };
 
 interface BlockRendererProps {
