@@ -103,6 +103,26 @@ def build_schedule_payload(config: CurrentProjectSchedule) -> dict:
 
     project_rows.sort(key=lambda row: (row["track"], row["order"], row["team_number"]))
 
+    for project in config.projects.filter(is_presenting=False).order_by("class_code", "team_number"):
+        project_rows.append(
+            {
+                "id": str(project.pk),
+                "track": 0,
+                "order": 0,
+                "year_semester": "",
+                "class_code": project.class_code,
+                "team_number": project.team_number,
+                "team_name": project.team_name,
+                "project_title": project.project_title,
+                "organization": project.organization,
+                "industry": project.industry,
+                "abstract": project.abstract,
+                "student_names": project.student_names,
+                "is_presenting": False,
+                "tooltip": "",
+            }
+        )
+
     return {
         "event": {
             "id": str(config.pk),

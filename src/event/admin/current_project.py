@@ -155,11 +155,14 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         extra_context["save_sync_settings_url"] = reverse("admin:event_currentprojectschedule_save_sync_settings")
 
         if config:
+            all_projects = list(config.projects.order_by("class_code", "team_number"))
             extra_context["current_schedule_name"] = config.name
-            extra_context["current_projects"] = config.projects.order_by("class_code", "team_number")
+            extra_context["current_projects"] = [p for p in all_projects if p.is_presenting]
+            extra_context["non_presenting_projects"] = [p for p in all_projects if not p.is_presenting]
         else:
             extra_context["current_schedule_name"] = ""
             extra_context["current_projects"] = []
+            extra_context["non_presenting_projects"] = []
 
         if config:
             winners = (

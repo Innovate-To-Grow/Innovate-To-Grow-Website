@@ -36,3 +36,22 @@ class CurrentEventScheduleViewTest(TestCase):
         self.assertEqual(response.data["sections"][0]["tracks"][0]["track_number"], 1)
         self.assertEqual(response.data["sections"][0]["tracks"][0]["slots"][0]["team_number"], "CAP-101")
         self.assertEqual(response.data["projects"][0]["team_number"], "CAP-101")
+
+    def test_projects_include_non_presenting_teams(self):
+        config = CurrentProjectSchedule.objects.create(name="Demo Day")
+        tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}]
+        projects = [
+            {"Track": 1, "Order": 1, "Class": "CAP", "Team#": "CAP-101", "Project Title": "Smart Farm"},
+            {"Track": "(fall)", "Order": 1, "Class": "CAP", "Team#": "CAP-FALL", "Project Title": "Archived"},
+        ]
+        sync_schedule(config, tracks_records=tracks, projects_records=projects)
+
+        response = self.client.get("/event/schedule/")
+
+        self.assertEqual(response.status_code, 200)
+        team_numbers = {row["team_number"] for row in response.data["projects"]}
+        self.assertIn("CAP-101", team_numbers)
+        self.assertIn("CAP-FALL", team_numbers)
+
+        fall_row = next(row for row in response.data["projects"] if row["team_number"] == "CAP-FALL")
+        self.assertFalse(fall_row["is_presenting"])

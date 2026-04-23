@@ -215,9 +215,13 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     slots: list[dict[str, Any]] = []
     for record in records:
         normalized = _normalize_record(record)
-        track_number = _coerce_int(_get_record_value(normalized, ["Track"]))
-        slot_order = _coerce_int(_get_record_value(normalized, ["Order"]))
-        if track_number is None or slot_order is None:
+        track_raw = _get_record_value(normalized, ["Track"])
+        order_raw = _get_record_value(normalized, ["Order"])
+        track_number = _coerce_int(track_raw)
+        slot_order = _coerce_int(order_raw)
+        is_fall = track_raw.strip().lower() == "(fall)" or order_raw.strip().lower() == "(fall)"
+
+        if not is_fall and (track_number is None or slot_order is None):
             continue
 
         team_number = _get_record_value(normalized, ["Team#", "Team #", "Team Number", "Team"])
@@ -230,8 +234,8 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             team_name,
             project_title,
         )
-        is_break = any(value.lower() == "break" for value in [team_name, project_title, organization])
-        if not is_break and not any([team_number, team_name, project_title, organization]):
+        is_break = (not is_fall) and any(value.lower() == "break" for value in [team_name, project_title, organization])
+        if not is_break and not team_number:
             continue
 
         display_text = team_number or team_name or project_title or ("Break" if is_break else "")
@@ -253,26 +257,38 @@ def _build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],
                 ),
                 "is_break": is_break,
+                "is_presenting": not is_fall,
                 "display_text": "Break" if is_break else display_text,
             }
         )
-    return sorted(slots, key=lambda item: (item["track_number"], item["slot_order"], item["team_number"]))
+    return sorted(
+        slots,
+        key=lambda item: (
+            not item["is_presenting"],
+            item["track_number"] or 0,
+            item["slot_order"] or 0,
+            item["team_number"],
+        ),
+    )
 
 
 def _sync_projects_from_slots(
     config: CurrentProjectSchedule, parsed_slots: list[dict[str, Any]]
-) -> dict[tuple[str, str], CurrentProject]:
-    """Create/update CurrentProject records for the given config and return a lookup dict."""
+) -> tuple[dict[tuple[str, str], CurrentProject], set[Any]]:
+    """Create/update CurrentProject records and return (presenting lookup, all touched pks)."""
     lookup: dict[tuple[str, str], CurrentProject] = {}
+    touched_pks: set[Any] = set()
 
     for slot in parsed_slots:
         if slot["is_break"]:
             continue
+        team_number = slot["team_number"].strip()
+        if not team_number:
+            continue
         title = slot["project_title"]
-        if not title or title.lower() == "break":
+        if title.lower() == "break":
             continue
 
-        team_number = slot["team_number"].strip()
         section_code = _normalize_section_code(slot["class_code"])
 
         project, _ = CurrentProject.objects.update_or_create(
@@ -286,14 +302,17 @@ def _sync_projects_from_slots(
                 "industry": slot["industry"],
                 "abstract": slot["abstract"],
                 "student_names": slot["student_names"],
+                "is_presenting": slot["is_presenting"],
             },
         )
+        touched_pks.add(project.pk)
 
-        key = (section_code, team_number.upper())
-        if key[0] and key[1] and key not in lookup:
-            lookup[key] = project
+        if slot["is_presenting"]:
+            key = (section_code, team_number.upper())
+            if key[0] and key[1] and key not in lookup:
+                lookup[key] = project
 
-    return lookup
+    return lookup, touched_pks
 
 
 def sync_schedule(
@@ -315,7 +334,7 @@ def sync_schedule(
         if not parsed_tracks or not parsed_slots:
             raise ScheduleSyncError("The configured sheet does not contain any schedule tracks or slots.")
 
-        current_projects = _sync_projects_from_slots(config, parsed_slots)
+        current_projects, touched_project_pks = _sync_projects_from_slots(config, parsed_slots)
         stats = ScheduleSyncStats()
 
         with transaction.atomic():
@@ -323,9 +342,7 @@ def sync_schedule(
             EventScheduleTrack.objects.filter(section__config=config).delete()
             EventScheduleSection.objects.filter(config=config).delete()
             EventAgendaItem.objects.filter(config=config).delete()
-            CurrentProject.objects.filter(schedule=config).exclude(
-                pk__in=[p.pk for p in current_projects.values()]
-            ).delete()
+            CurrentProject.objects.filter(schedule=config).exclude(pk__in=touched_project_pks).delete()
 
             sections_by_code: dict[str, EventScheduleSection] = {}
             for code in sorted(
@@ -359,6 +376,8 @@ def sync_schedule(
                 stats.tracks_created += 1
 
             for slot in parsed_slots:
+                if not slot["is_presenting"]:
+                    continue
                 track = tracks_by_number.get(slot["track_number"])
                 if track is None:
                     continue
