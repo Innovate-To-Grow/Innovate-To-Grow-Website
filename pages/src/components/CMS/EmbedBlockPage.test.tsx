@@ -239,6 +239,90 @@ describe('EmbedBlockPage', () => {
     });
   });
 
+  it.each(['true', 'yes', 'on', 'TRUE', 'YES'])(
+    'treats ?hide-titles=%s as truthy',
+    async (value) => {
+      fetchCMSEmbedMock.mockResolvedValue({
+        blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+        page_css_class: '',
+        page_css: '',
+        hide_section_titles: false,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
+          <Routes>
+            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(document.getElementById('itg-embed-hide-titles')).not.toBeNull();
+      });
+    },
+  );
+
+  it.each(['false', 'no', '0', 'off', ''])(
+    'treats ?hide-titles=%s as NOT truthy',
+    async (value) => {
+      fetchCMSEmbedMock.mockResolvedValue({
+        blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+        page_css_class: '',
+        page_css: '',
+        hide_section_titles: false,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
+          <Routes>
+            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
+      expect(document.getElementById('itg-embed-hide-titles')).toBeNull();
+    },
+  );
+
+  it('hides titles when the API flag is true even if the query param is false', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hide_section_titles: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/widget?hide-titles=false']}>
+        <Routes>
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(document.getElementById('itg-embed-hide-titles')).not.toBeNull();
+    });
+  });
+
+  it('removes #itg-embed-hide-titles on unmount', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hide_section_titles: true,
+    });
+
+    const {unmount} = renderAtSlug('widget');
+    await waitFor(() =>
+      expect(document.getElementById('itg-embed-hide-titles')).not.toBeNull(),
+    );
+    unmount();
+    expect(document.getElementById('itg-embed-hide-titles')).toBeNull();
+  });
+
   it('does not inject hide-titles stylesheet when both flag and query are off', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],

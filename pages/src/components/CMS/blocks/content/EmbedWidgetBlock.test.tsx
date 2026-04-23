@@ -1,5 +1,5 @@
 import {act, render} from '@testing-library/react';
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {EmbedWidgetBlock} from './EmbedWidgetBlock';
 
 describe('EmbedWidgetBlock', () => {
@@ -86,5 +86,107 @@ describe('EmbedWidgetBlock', () => {
       <EmbedWidgetBlock data={{slug: 'schedule-embed', heading: 'Event Schedule'}} />,
     );
     expect(getByRole('heading', {name: 'Event Schedule'})).not.toBeNull();
+  });
+
+  it('removes the message listener on unmount', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    const {unmount} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+
+    const added = addSpy.mock.calls.find((call) => call[0] === 'message');
+    expect(added).toBeDefined();
+
+    unmount();
+    const removed = removeSpy.mock.calls.find((call) => call[0] === 'message');
+    expect(removed).toBeDefined();
+    // Same handler reference must have been removed — otherwise we leak.
+    expect(removed?.[1]).toBe(added?.[1]);
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
+
+  it('does not attach a message listener when a fixed height is set', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    render(<EmbedWidgetBlock data={{slug: 'schedule-embed', height: 400}} />);
+    const messageListeners = addSpy.mock.calls.filter((call) => call[0] === 'message');
+    expect(messageListeners).toEqual([]);
+    addSpy.mockRestore();
+  });
+
+  it('does not attach a message listener when an aspect ratio is set', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    render(<EmbedWidgetBlock data={{slug: 'schedule-embed', aspect_ratio: '16:9'}} />);
+    const messageListeners = addSpy.mock.calls.filter((call) => call[0] === 'message');
+    expect(messageListeners).toEqual([]);
+    addSpy.mockRestore();
+  });
+
+  it('ignores postMessage events with a wrong type', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'other-message', slug: 'schedule-embed', height: 700},
+        }),
+      );
+    });
+    expect(frame.style.height).toBe('120px');
+  });
+
+  it('ignores postMessage events with a non-object payload', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {data: 'just a string'}));
+      window.dispatchEvent(new MessageEvent('message', {data: null}));
+      window.dispatchEvent(new MessageEvent('message', {data: 42}));
+    });
+    expect(frame.style.height).toBe('120px');
+  });
+
+  it('ignores postMessage events with a non-numeric height', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 'tall'},
+        }),
+      );
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: -300},
+        }),
+      );
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: NaN},
+        }),
+      );
+    });
+    expect(frame.style.height).toBe('120px');
+  });
+
+  it('lowercases and trims the slug before building the URL', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: '  Schedule-Embed  '}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
+  });
+
+  it('uses fixed height over aspect ratio when both are provided', () => {
+    const {container} = render(
+      <EmbedWidgetBlock
+        data={{slug: 'schedule-embed', height: 720, aspect_ratio: '16:9'}}
+      />,
+    );
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
+    expect(frame?.style.height).toBe('720px');
+    // aspectRatio must NOT be applied — height wins.
+    expect(frame?.style.aspectRatio).toBe('');
   });
 });

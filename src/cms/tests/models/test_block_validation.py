@@ -166,6 +166,31 @@ class EmbedBlockValidationTests(TestCase):
                 {"src": "https://docs.google.com/a", "sandbox": "allow-scripts allow-top-navigation"},
             )
 
+    def test_embed_accepts_all_valid_optionals(self):
+        validate_block_data(
+            "embed",
+            {
+                "src": "https://docs.google.com/forms/d/xyz/viewform",
+                "heading": "Sign-up form",
+                "title": "RSVP form",
+                "aspect_ratio": "16:9",
+                "height": 720,
+                "sandbox": "allow-scripts allow-same-origin allow-forms",
+                "allow": "fullscreen; clipboard-read",
+                "allowfullscreen": True,
+            },
+        )
+
+    def test_embed_height_upper_bound_enforced(self):
+        validate_block_data("embed", {"src": "https://docs.google.com/a", "height": 5000})
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed", {"src": "https://docs.google.com/a", "height": 5001})
+
+    def test_embed_empty_sandbox_falls_back_to_default(self):
+        # An empty string in the `sandbox` field means "use frontend default";
+        # the validator must treat it as acceptable, not as unknown tokens.
+        validate_block_data("embed", {"src": "https://docs.google.com/a", "sandbox": ""})
+
 
 class EmbedWidgetBlockValidationTests(TestCase):
     def setUp(self):
@@ -205,6 +230,44 @@ class EmbedWidgetBlockValidationTests(TestCase):
             validate_block_data("embed_widget", {"slug": "schedule-embed", "height": "tall"})
         with self.assertRaises(ValidationError):
             validate_block_data("embed_widget", {"slug": "schedule-embed", "height": -5})
+
+    def test_embed_widget_rejects_after_widget_deleted(self):
+        # Saving a block with a valid slug succeeds initially...
+        validate_block_data("embed_widget", {"slug": "schedule-embed"})
+        # ...but once the widget is removed, re-validation fails loudly so
+        # editors can't keep referencing a slug that no longer resolves.
+        CMSEmbedWidget.objects.filter(slug="schedule-embed").delete()
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "schedule-embed"})
+
+    def test_embed_widget_accepts_all_valid_optionals(self):
+        validate_block_data(
+            "embed_widget",
+            {
+                "slug": "schedule-embed",
+                "heading": "Event Schedule",
+                "aspect_ratio": "16:9",
+                "height": 480,
+                "hide_section_titles": True,
+            },
+        )
+
+    def test_embed_widget_accepts_aspect_ratio_without_height(self):
+        validate_block_data(
+            "embed_widget",
+            {"slug": "schedule-embed", "aspect_ratio": "4:3"},
+        )
+
+    def test_embed_widget_accepts_positive_height_without_aspect_ratio(self):
+        validate_block_data(
+            "embed_widget",
+            {"slug": "schedule-embed", "height": 720},
+        )
+
+    def test_embed_widget_height_upper_bound_enforced(self):
+        validate_block_data("embed_widget", {"slug": "schedule-embed", "height": 5000})
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "schedule-embed", "height": 5001})
 
 
 class CMSBlockCleanTests(TestCase):

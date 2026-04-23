@@ -98,3 +98,30 @@ class CMSEmbedAllowedHostAdminTests(TestCase):
             follow=True,
         )
         self.assertIn("two.example.com", get_allowed_hosts())
+
+    def test_delete_invalidates_cache(self):
+        host = CMSEmbedAllowedHost.objects.create(hostname="doomed.example.com")
+        # Prime the cache so we know a stale value would survive without invalidation.
+        self.assertIn("doomed.example.com", get_allowed_hosts())
+
+        url = reverse("admin:cms_cmsembedallowedhost_delete", args=[host.pk])
+        response = self.client.post(url, data={"post": "yes"}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CMSEmbedAllowedHost.objects.filter(pk=host.pk).exists())
+        self.assertNotIn("doomed.example.com", get_allowed_hosts())
+
+    def test_changing_is_active_via_admin_invalidates_cache(self):
+        host = CMSEmbedAllowedHost.objects.create(hostname="toggle.example.com", is_active=True)
+        self.assertIn("toggle.example.com", get_allowed_hosts())
+
+        url = reverse("admin:cms_cmsembedallowedhost_change", args=[host.pk])
+        self.client.post(
+            url,
+            data={
+                "hostname": "toggle.example.com",
+                "description": "",
+                # is_active intentionally omitted — admin treats this as unchecked
+            },
+            follow=True,
+        )
+        self.assertNotIn("toggle.example.com", get_allowed_hosts())

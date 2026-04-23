@@ -7,8 +7,8 @@ from django.urls import reverse
 
 from authn.models import ContactEmail
 from cms.admin.cms.cms_page import CMSPageAdminForm
-from cms.admin.cms.page_admin.editor import build_editor_context
-from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
+from cms.admin.cms.page_admin.editor import _format_widget_label, build_editor_context
+from cms.models import BLOCK_SCHEMAS, CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
 
 Member = get_user_model()
 
@@ -234,3 +234,119 @@ class BuildEditorContextTests(TestCase):
     def test_context_for_new_page_omits_related_widgets(self):
         context = build_editor_context()
         self.assertNotIn("related_widgets", context)
+
+    def test_context_injects_embed_allowed_hosts(self):
+        CMSEmbedAllowedHost.objects.all().delete()
+        CMSEmbedAllowedHost.objects.create(hostname="docs.google.com", is_active=True)
+        CMSEmbedAllowedHost.objects.create(hostname="inactive.example.com", is_active=False)
+        context = build_editor_context()
+        self.assertIn("embed_allowed_hosts_json", context)
+        hosts = json.loads(context["embed_allowed_hosts_json"])
+        self.assertIn("docs.google.com", hosts)
+        self.assertNotIn("inactive.example.com", hosts)
+
+    def test_context_injects_embed_default_sandbox(self):
+        context = build_editor_context()
+        self.assertIn("embed_default_sandbox", context)
+        sandbox = context["embed_default_sandbox"]
+        for token in ("allow-scripts", "allow-same-origin", "allow-forms", "allow-popups"):
+            self.assertIn(token, sandbox)
+
+    def test_context_injects_embed_widgets_with_labels(self):
+        page = CMSPage.objects.create(
+            slug="widget-ctx-src",
+            route="/widget-ctx-src",
+            title="Widget Ctx Source",
+            status="published",
+        )
+        CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=0, data={"body_html": "<p>x</p>"})
+        CMSEmbedWidget.objects.create(
+            widget_type="blocks",
+            page=page,
+            slug="ctx-blocks-widget",
+            admin_label="Ctx Blocks Widget",
+            block_sort_orders=[0],
+        )
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="ctx-route-widget",
+        )
+        context = build_editor_context()
+        self.assertIn("embed_widgets_json", context)
+        widgets = json.loads(context["embed_widgets_json"])
+        by_slug = {w["slug"]: w for w in widgets}
+        self.assertIn("ctx-blocks-widget", by_slug)
+        self.assertIn("ctx-route-widget", by_slug)
+        # Blocks-widget label carries admin_label + the source page title.
+        self.assertIn("Ctx Blocks Widget", by_slug["ctx-blocks-widget"]["label"])
+        self.assertIn("Widget Ctx Source", by_slug["ctx-blocks-widget"]["label"])
+        # App-route widget label exposes the route even without an admin_label.
+        self.assertIn("/schedule", by_slug["ctx-route-widget"]["label"])
+
+    def test_context_exposes_embed_widget_block_schema(self):
+        context = build_editor_context()
+        schemas = json.loads(context["block_schemas_json"])
+        self.assertIn("embed_widget", schemas)
+        self.assertEqual(schemas["embed_widget"]["required"], ["slug"])
+        # Sanity: BLOCK_SCHEMAS itself still matches (guards against silent drift).
+        self.assertEqual(schemas["embed_widget"], BLOCK_SCHEMAS["embed_widget"])
+
+
+class FormatWidgetLabelTests(TestCase):
+    """Cover `_format_widget_label` for each widget-type + admin_label variant."""
+
+    def setUp(self):
+        self.page = CMSPage.objects.create(
+            slug="fmt-src",
+            route="/fmt-src",
+            title="Fmt Source Page",
+            status="draft",
+        )
+        CMSBlock.objects.create(page=self.page, block_type="rich_text", sort_order=0, data={"body_html": "<p>x</p>"})
+
+    def test_blocks_widget_with_admin_label(self):
+        widget = CMSEmbedWidget.objects.create(
+            widget_type="blocks",
+            page=self.page,
+            slug="fmt-blocks-labeled",
+            admin_label="My Blocks",
+            block_sort_orders=[0],
+        )
+        label = _format_widget_label(widget)
+        self.assertIn("fmt-blocks-labeled", label)
+        self.assertIn("My Blocks", label)
+        self.assertIn("Fmt Source Page", label)
+
+    def test_blocks_widget_without_admin_label(self):
+        widget = CMSEmbedWidget.objects.create(
+            widget_type="blocks",
+            page=self.page,
+            slug="fmt-blocks-bare",
+            block_sort_orders=[0],
+        )
+        label = _format_widget_label(widget)
+        self.assertIn("fmt-blocks-bare", label)
+        self.assertIn("Fmt Source Page", label)
+
+    def test_app_route_widget_with_admin_label(self):
+        widget = CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="fmt-route-labeled",
+            admin_label="Event Schedule",
+        )
+        label = _format_widget_label(widget)
+        self.assertIn("fmt-route-labeled", label)
+        self.assertIn("Event Schedule", label)
+        self.assertIn("/schedule", label)
+
+    def test_app_route_widget_without_admin_label(self):
+        widget = CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="fmt-route-bare",
+        )
+        label = _format_widget_label(widget)
+        self.assertIn("fmt-route-bare", label)
+        self.assertIn("/schedule", label)

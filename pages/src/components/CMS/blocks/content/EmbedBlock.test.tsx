@@ -71,4 +71,43 @@ describe('EmbedBlock', () => {
     );
     expect(getByRole('heading', {name: 'My Form'})).not.toBeNull();
   });
+
+  it('uses explicit title on the iframe when provided', () => {
+    const {container} = render(
+      <EmbedBlock
+        data={{src: 'https://docs.google.com/a', title: 'RSVP Form', heading: 'Sign up'}}
+      />,
+    );
+    expect(container.querySelector('iframe')?.getAttribute('title')).toBe('RSVP Form');
+  });
+
+  it('falls back to heading as iframe title when title is missing', () => {
+    const {container} = render(
+      <EmbedBlock data={{src: 'https://docs.google.com/a', heading: 'Sign up'}} />,
+    );
+    expect(container.querySelector('iframe')?.getAttribute('title')).toBe('Sign up');
+  });
+
+  it('falls back to "Embedded content" when neither title nor heading is set', () => {
+    const {container} = render(<EmbedBlock data={{src: 'https://docs.google.com/a'}} />);
+    expect(container.querySelector('iframe')?.getAttribute('title')).toBe('Embedded content');
+  });
+
+  it('falls back to the default sandbox when an empty string is supplied', () => {
+    const {container} = render(
+      <EmbedBlock data={{src: 'https://docs.google.com/a', sandbox: ''}} />,
+    );
+    expect(container.querySelector('iframe')?.getAttribute('sandbox')).toBe(
+      'allow-scripts allow-same-origin allow-forms allow-popups',
+    );
+  });
+
+  it('renders the heading with the .section-title class so host CSS targets it', () => {
+    const {container} = render(
+      <EmbedBlock data={{src: 'https://docs.google.com/a', heading: 'My Form'}} />,
+    );
+    const heading = container.querySelector('h2.section-title');
+    expect(heading).not.toBeNull();
+    expect(heading?.textContent).toBe('My Form');
+  });
 });

@@ -239,3 +239,14 @@ class EmbedAppRouteWidgetViewTest(TestCase):
         self.widget.save(update_fields=["hide_section_titles"])
         response = self.client.get("/cms/embed/schedule-embed/")
         self.assertTrue(response.json()["hide_section_titles"])
+
+    def test_hide_section_titles_defaults_to_false(self):
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertFalse(response.json()["hide_section_titles"])
+
+    def test_response_contract_stable(self):
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertEqual(
+            set(response.json().keys()),
+            {"widget_type", "app_route", "blocks", "page_css_class", "page_css", "hide_section_titles"},
+        )

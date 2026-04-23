@@ -84,6 +84,23 @@ class IsHostAllowedTests(TestCase):
         self._add("docs.google.com")
         self.assertTrue(is_host_allowed("DOCS.GOOGLE.COM"))
 
+    def test_none_host_is_not_allowed(self):
+        self._add("docs.google.com")
+        self.assertFalse(is_host_allowed(None))  # type: ignore[arg-type]
+
+    def test_whitespace_only_host_is_not_allowed(self):
+        self._add("docs.google.com")
+        # Defensive check: the validator already parses+normalizes, but
+        # `is_host_allowed` is called from other sites too.
+        self.assertFalse(is_host_allowed("   "))
+
+    def test_wildcard_exact_base_match(self):
+        """Extra belt-and-suspenders for the wildcard base-match path."""
+        self._add("*.calendly.com")
+        self.assertTrue(is_host_allowed("calendly.com"))
+        self.assertTrue(is_host_allowed("team.calendly.com"))
+        self.assertFalse(is_host_allowed("calendly.com.attacker.io"))
+
 
 class GetAllowedHostsCachingTests(TestCase):
     def setUp(self):
@@ -100,3 +117,21 @@ class GetAllowedHostsCachingTests(TestCase):
         CMSEmbedAllowedHost.objects.create(hostname="two.example.com")
         invalidate_cache()
         self.assertCountEqual(get_allowed_hosts(), ["one.example.com", "two.example.com"])
+
+    def test_cache_survives_between_calls_without_invalidation(self):
+        """A second `get_allowed_hosts()` call with no writes must be a cache hit.
+
+        We prove this by priming the cache, then dropping the row directly via
+        `_base_manager` (which bypasses signals) — the cached copy still wins.
+        Calling `invalidate_cache()` afterwards forces a DB re-read.
+        """
+        CMSEmbedAllowedHost.objects.create(hostname="cached.example.com")
+        self.assertEqual(get_allowed_hosts(), ["cached.example.com"])
+
+        # Bypass signals to simulate a stale DB state vs. live cache.
+        CMSEmbedAllowedHost._base_manager.filter(hostname="cached.example.com").delete()
+        # Cache still reports the old row — proves we're not re-querying.
+        self.assertEqual(get_allowed_hosts(), ["cached.example.com"])
+
+        invalidate_cache()
+        self.assertEqual(get_allowed_hosts(), [])
