@@ -8,12 +8,16 @@ on:
       - 'pages/**'
       - 'aws/**'
       - '.github/workflows/**'
+      - 'pyproject.toml'
+      - '.bandit-baseline.json'
   pull_request:
     paths:
       - 'src/**'
       - 'pages/**'
       - 'aws/**'
       - '.github/workflows/**'
+      - 'pyproject.toml'
+      - '.bandit-baseline.json'
 
 permissions:
   contents: read
