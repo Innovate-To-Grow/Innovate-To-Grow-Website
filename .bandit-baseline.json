@@ -1,6 +1,6 @@
 {
   "errors": [],
-  "generated_at": "2026-04-21T06:16:11Z",
+  "generated_at": "2026-04-23T06:11:43Z",
   "metrics": {
     "./authn/__init__.py": {
       "CONFIDENCE.HIGH": 0,
@@ -24,7 +24,20 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 22,
+      "loc": 25,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./authn/admin/member_sheet_sync.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 41,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -63,7 +76,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 2,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 105,
+      "loc": 142,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -76,7 +89,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 43,
+      "loc": 57,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -102,7 +115,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 126,
+      "loc": 155,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -245,7 +258,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 16,
+      "loc": 20,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -288,6 +301,32 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "./authn/models/member_sheet_sync_config.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 55,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./authn/models/member_sheet_sync_log.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 19,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "./authn/models/members/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -323,7 +362,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 25,
+      "loc": 33,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -336,7 +375,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 72,
+      "loc": 80,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -505,7 +544,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 109,
+      "loc": 125,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -570,7 +609,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 97,
+      "loc": 104,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -583,7 +622,7 @@
       "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 127,
+      "loc": 129,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -726,7 +765,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 140,
+      "loc": 208,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -739,7 +778,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 167,
+      "loc": 176,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -778,7 +817,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 143,
+      "loc": 151,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -844,6 +883,19 @@
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
       "loc": 26,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./authn/services/member_sheet_sync.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 146,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1103,7 +1155,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 144,
+      "loc": 152,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1194,7 +1246,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 36,
+      "loc": 40,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1324,7 +1376,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 84,
+      "loc": 114,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1393,6 +1445,19 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "./cms/admin/layout/import_export.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 199,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "./cms/admin/layout/menu.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -1441,7 +1506,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 28,
+      "loc": 65,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1519,7 +1584,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 15,
+      "loc": 16,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -1662,7 +1727,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 56,
+      "loc": 94,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2117,7 +2182,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 112,
+      "loc": 131,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2364,7 +2429,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 84,
+      "loc": 111,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2767,7 +2832,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 142,
+      "loc": 173,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2780,7 +2845,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 34,
+      "loc": 35,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2897,7 +2962,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 14,
+      "loc": 16,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2923,7 +2988,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 161,
+      "loc": 158,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -2953,6 +3018,19 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "./event/admin/schedule_sync_log.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 33,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "./event/admin/sync_log.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -2979,6 +3057,19 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "./event/management/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 0,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "./event/models/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -2988,7 +3079,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 18,
+      "loc": 20,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3001,7 +3092,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 73,
+      "loc": 86,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3122,6 +3213,19 @@
       "nosec": 0,
       "skipped_tests": 0
     },
+    "./event/models/schedule_sync_log.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 26,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
     "./event/serializers/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -3144,7 +3248,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 27,
+      "loc": 17,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3170,7 +3274,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 106,
+      "loc": 127,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3209,7 +3313,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 220,
+      "loc": 244,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3222,7 +3326,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 356,
+      "loc": 386,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3248,7 +3352,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 53,
+      "loc": 61,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3313,7 +3417,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 111,
+      "loc": 118,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3326,7 +3430,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 29,
+      "loc": 23,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3404,7 +3508,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 537,
+      "loc": 661,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3430,7 +3534,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 39,
+      "loc": 80,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3482,7 +3586,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 112,
+      "loc": 180,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3508,7 +3612,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 36,
+      "loc": 57,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3534,7 +3638,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 167,
+      "loc": 186,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3612,7 +3716,33 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 177,
+      "loc": 215,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/ses_events.py": {
+      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 1,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 197,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./mail/services/sns_signature.py": {
+      "CONFIDENCE.HIGH": 2,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 2,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 83,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3638,7 +3768,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 8,
+      "loc": 9,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -3651,7 +3781,7 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 138,
+      "loc": 188,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -4007,22 +4137,22 @@
       "skipped_tests": 0
     },
     "_totals": {
-      "CONFIDENCE.HIGH": 9,
+      "CONFIDENCE.HIGH": 12,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 7,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
       "SEVERITY.LOW": 9,
-      "SEVERITY.MEDIUM": 7,
+      "SEVERITY.MEDIUM": 10,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 18235,
+      "loc": 19893,
       "nosec": 0,
       "skipped_tests": 0
     }
   },
   "results": [
     {
-      "code": "59             )\n60             return mark_safe(preview + widget_html)\n61         return widget_html\n",
+      "code": "62             )\n63             return mark_safe(preview + widget_html)\n64         return widget_html\n",
       "col_offset": 19,
       "end_col_offset": 51,
       "filename": "./authn/admin/members/forms.py",
@@ -4033,16 +4163,16 @@
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Potential XSS on mark_safe function.",
-      "line_number": 60,
+      "line_number": 63,
       "line_range": [
-        60
+        63
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.7.10/plugins/b703_django_mark_safe.html",
       "test_id": "B703",
       "test_name": "django_mark_safe"
     },
     {
-      "code": "59             )\n60             return mark_safe(preview + widget_html)\n61         return widget_html\n",
+      "code": "62             )\n63             return mark_safe(preview + widget_html)\n64         return widget_html\n",
       "col_offset": 19,
       "end_col_offset": 51,
       "filename": "./authn/admin/members/forms.py",
@@ -4053,9 +4183,9 @@
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Use of mark_safe() may expose cross-site scripting vulnerabilities and should be reviewed.",
-      "line_number": 60,
+      "line_number": 63,
       "line_range": [
-        60
+        63
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.7.10/blacklists/blacklist_calls.html#b308-mark-safe",
       "test_id": "B308",
@@ -4346,6 +4476,66 @@
       "more_info": "https://bandit.readthedocs.io/en/1.7.10/plugins/b112_try_except_continue.html",
       "test_id": "B112",
       "test_name": "try_except_continue"
+    },
+    {
+      "code": "57     try:\n58         with urllib.request.urlopen(subscribe_url, timeout=5) as resp:  # noqa: S310  # https + allowlist\n59             resp.read()\n",
+      "col_offset": 13,
+      "end_col_offset": 61,
+      "filename": "./mail/services/ses_events.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 22,
+        "link": "https://cwe.mitre.org/data/definitions/22.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "line_number": 58,
+      "line_range": [
+        58
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.10/blacklists/blacklist_calls.html#b310-urllib-urlopen",
+      "test_id": "B310",
+      "test_name": "blacklist"
+    },
+    {
+      "code": "66 \n67     with urllib.request.urlopen(cert_url, timeout=5) as resp:  # noqa: S310  # https + allowlist\n68         pem = resp.read()\n",
+      "col_offset": 9,
+      "end_col_offset": 52,
+      "filename": "./mail/services/sns_signature.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 22,
+        "link": "https://cwe.mitre.org/data/definitions/22.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "line_number": 67,
+      "line_range": [
+        67
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.10/blacklists/blacklist_calls.html#b310-urllib-urlopen",
+      "test_id": "B310",
+      "test_name": "blacklist"
+    },
+    {
+      "code": "103 \n104     hash_algo = hashes.SHA256() if signature_version == \"2\" else hashes.SHA1()  # noqa: S303  # legacy v1 SNS\n105 \n",
+      "col_offset": 65,
+      "end_col_offset": 78,
+      "filename": "./mail/services/sns_signature.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 327,
+        "link": "https://cwe.mitre.org/data/definitions/327.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Use of insecure MD2, MD4, MD5, or SHA1 hash function.",
+      "line_number": 104,
+      "line_range": [
+        104
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.10/blacklists/blacklist_calls.html#b303-md5",
+      "test_id": "B303",
+      "test_name": "blacklist"
     }
   ]
 }
