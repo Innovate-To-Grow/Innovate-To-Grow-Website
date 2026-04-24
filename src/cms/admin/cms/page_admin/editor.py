@@ -23,6 +23,21 @@ from cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
 
 
+# Mirrors Django's django.utils.html.json_script escape table so json.dumps
+# output is safe to inline inside a <script> block (notably </script>).
+_JSON_SCRIPT_ESCAPES = {
+    ord("<"): "\\u003C",
+    ord(">"): "\\u003E",
+    ord("&"): "\\u0026",
+    0x2028: "\\u2028",
+    0x2029: "\\u2029",
+}
+
+
+def _safe_json(value, **kwargs):
+    return json.dumps(value, **kwargs).translate(_JSON_SCRIPT_ESCAPES)
+
+
 def _format_widget_label(widget):
     parts = [widget.slug]
     if widget.admin_label:
@@ -48,10 +63,10 @@ def build_editor_context(obj=None):
         for widget in CMSEmbedWidget.objects.order_by("slug")
     ]
     context = {
-        "block_schemas_json": json.dumps(BLOCK_SCHEMAS),
-        "block_type_choices_json": json.dumps(BLOCK_TYPE_CHOICES),
-        "embed_allowed_hosts_json": json.dumps(allowed_hosts),
-        "embed_widgets_json": json.dumps(embed_widgets),
+        "block_schemas_json": _safe_json(BLOCK_SCHEMAS),
+        "block_type_choices_json": _safe_json(BLOCK_TYPE_CHOICES),
+        "embed_allowed_hosts_json": _safe_json(allowed_hosts),
+        "embed_widgets_json": _safe_json(embed_widgets),
         "embed_default_sandbox": DEFAULT_SANDBOX,
         "route_check_url": reverse("admin:cms_cmspage_route_conflict"),
         "current_page_id": str(obj.pk) if obj else "",
@@ -63,7 +78,7 @@ def build_editor_context(obj=None):
         return context
 
     blocks = obj.blocks.all().order_by("sort_order")
-    context["initial_blocks_json"] = json.dumps(
+    context["initial_blocks_json"] = _safe_json(
         [
             {
                 "block_type": block.block_type,

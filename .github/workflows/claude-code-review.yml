@@ -1,0 +1,99 @@
+name: Claude Code Review
+
+# Fires only after the "CI" workflow finishes on a pull_request run. The job
+# itself gates on `conclusion == 'success'`, so failed/cancelled CI runs skip
+# the review. This guarantees Claude only reviews PRs where lint, tests,
+# secrets-scan, etc. have already passed.
+#
+# NOTE: `workflow_run` reads the workflow file from the repo's default branch,
+# so edits to this file take effect once merged to main (not from PR branches).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: claude-review-${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  claude-review:
+    name: Claude Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Resolve PR context
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = context.payload.workflow_run.pull_requests;
+            if (!prs || prs.length === 0) {
+              core.notice('No same-repo PR associated with this CI run — skipping.');
+              core.setOutput('skip', 'true');
+              return;
+            }
+            const { data } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prs[0].number,
+            });
+            if (data.draft) {
+              core.notice(`PR #${data.number} is draft — skipping review.`);
+              core.setOutput('skip', 'true');
+              return;
+            }
+            core.setOutput('skip', 'false');
+            core.setOutput('number', data.number);
+            core.setOutput('head_sha', data.head.sha);
+
+      - name: Checkout PR head
+        if: steps.pr.outputs.skip == 'false'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        if: steps.pr.outputs.skip == 'false'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ steps.pr.outputs.number }}
+
+            Review this pull request against the conventions in this repo
+            (see .claude/CLAUDE.md and .claude/rules/*). Focus on:
+
+            - Correctness and obvious bugs, especially around auth, JWT,
+              UUID primary keys, soft-delete managers (`objects` vs
+              `all_objects`), and cross-root auth state sync.
+            - Security: input validation, XSS/SQLi risk, secret handling,
+              unsafe HTML/iframe embeds (this repo has CMS iframe allowlist
+              work in progress), missing permission checks.
+            - Django specifics: migration safety (never edit landed
+              migrations), thin view/serializer entrypoints, proper use of
+              `core.admin.BaseModelAdmin`, no global `DEFAULT_THROTTLE_CLASSES`.
+            - Frontend specifics: three React roots (`#root`, `#menu-root`,
+              `#footer-root`) sharing auth via `i2g-auth-state-change`;
+              feature-local APIs preferred over shared dumping grounds.
+            - Tests: coverage for new behavior; backend uses Django
+              `TestCase`, frontend uses vitest + @testing-library/react.
+            - Style: Ruff (line 120, double quotes), TypeScript strict.
+
+            Leave inline comments on problem lines via `gh pr comment` /
+            review APIs. Be concise — only flag issues that meaningfully
+            affect correctness, security, maintainability, or stated repo
+            conventions. Skip nits.
+          claude_args: '--allowed-tools "Bash(gh pr:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*)"'

@@ -52,6 +52,7 @@ describe('EmbedWidgetBlock', () => {
   it('auto-resizes when receiving a matching postMessage event', () => {
     const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
     const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
     // Starts with a small placeholder height until content reports back.
     expect(frame.style.height).toBe('120px');
 
@@ -59,6 +60,8 @@ describe('EmbedWidgetBlock', () => {
       window.dispatchEvent(
         new MessageEvent('message', {
           data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 742},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
         }),
       );
     });
@@ -69,11 +72,50 @@ describe('EmbedWidgetBlock', () => {
   it('ignores postMessage events for a different slug', () => {
     const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
     const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
 
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           data: {type: 'i2g-embed-resize', slug: 'other-widget', height: 900},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
+        }),
+      );
+    });
+
+    expect(frame.style.height).toBe('120px');
+  });
+
+  it('ignores postMessage events from a foreign window', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 900},
+          // source is not this block's iframe.contentWindow — must be rejected.
+          source: window,
+          origin: window.location.origin,
+        }),
+      );
+    });
+
+    expect(frame.style.height).toBe('120px');
+  });
+
+  it('ignores postMessage events from a foreign origin', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 900},
+          source: iframe.contentWindow,
+          origin: 'https://evil.example',
         }),
       );
     });
@@ -126,10 +168,13 @@ describe('EmbedWidgetBlock', () => {
   it('ignores postMessage events with a wrong type', () => {
     const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
     const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           data: {type: 'other-message', slug: 'schedule-embed', height: 700},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
         }),
       );
     });
@@ -139,10 +184,29 @@ describe('EmbedWidgetBlock', () => {
   it('ignores postMessage events with a non-object payload', () => {
     const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
     const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
     act(() => {
-      window.dispatchEvent(new MessageEvent('message', {data: 'just a string'}));
-      window.dispatchEvent(new MessageEvent('message', {data: null}));
-      window.dispatchEvent(new MessageEvent('message', {data: 42}));
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: 'just a string',
+          source: iframe.contentWindow,
+          origin: window.location.origin,
+        }),
+      );
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: null,
+          source: iframe.contentWindow,
+          origin: window.location.origin,
+        }),
+      );
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: 42,
+          source: iframe.contentWindow,
+          origin: window.location.origin,
+        }),
+      );
     });
     expect(frame.style.height).toBe('120px');
   });
@@ -150,20 +214,27 @@ describe('EmbedWidgetBlock', () => {
   it('ignores postMessage events with a non-numeric height', () => {
     const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
     const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
           data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 'tall'},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
         }),
       );
       window.dispatchEvent(
         new MessageEvent('message', {
           data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: -300},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
         }),
       );
       window.dispatchEvent(
         new MessageEvent('message', {
           data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: NaN},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
         }),
       );
     });

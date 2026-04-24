@@ -38,6 +38,8 @@ export const EmbedWidgetBlock: React.FC<{ data: EmbedWidgetData }> = ({ data }) 
   useEffect(() => {
     if (!useAutoResize || !validSlug) return;
     const handler = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.origin !== window.location.origin) return;
       const payload = event.data;
       if (!payload || typeof payload !== 'object') return;
       if (payload.type !== 'i2g-embed-resize') return;
