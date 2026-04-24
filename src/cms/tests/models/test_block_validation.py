@@ -191,6 +191,20 @@ class EmbedBlockValidationTests(TestCase):
         # the validator must treat it as acceptable, not as unknown tokens.
         validate_block_data("embed", {"src": "https://docs.google.com/a", "sandbox": ""})
 
+    def test_embed_whitespace_only_sandbox_normalized_to_empty(self):
+        # Whitespace-only input used to pass validation but be rendered as a
+        # present-but-empty sandbox attribute (most restrictive policy),
+        # silently breaking scripts/forms/popups. Validator must strip and
+        # treat it as blank so the frontend falls back to the default.
+        data = {"src": "https://docs.google.com/a", "sandbox": "   "}
+        validate_block_data("embed", data)
+        self.assertEqual(data["sandbox"], "")
+
+    def test_embed_sandbox_leading_trailing_whitespace_trimmed(self):
+        data = {"src": "https://docs.google.com/a", "sandbox": "  allow-scripts allow-forms  "}
+        validate_block_data("embed", data)
+        self.assertEqual(data["sandbox"], "allow-scripts allow-forms")
+
 
 class EmbedWidgetBlockValidationTests(TestCase):
     def setUp(self):

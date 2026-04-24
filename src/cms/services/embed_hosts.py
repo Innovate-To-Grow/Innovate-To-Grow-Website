@@ -63,8 +63,12 @@ def is_host_allowed(host: str) -> bool:
     for entry in get_allowed_hosts():
         entry = entry.lower()
         if entry.startswith("*."):
+            # Wildcard entries match subdomains only. To allow the apex
+            # (e.g. example.com) add a separate non-wildcard row — silently
+            # matching the apex here would broaden trust past what the admin
+            # spelled out with "*.example.com".
             base = entry[2:]
-            if host == base or host.endswith("." + base):
+            if host.endswith("." + base):
                 return True
         elif host == entry:
             return True

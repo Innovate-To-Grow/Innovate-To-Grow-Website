@@ -63,9 +63,18 @@ class IsHostAllowedTests(TestCase):
         self.assertTrue(is_host_allowed("m.youtube.com"))
         self.assertTrue(is_host_allowed("a.b.youtube.com"))
 
-    def test_wildcard_matches_base(self):
+    def test_wildcard_does_not_match_apex(self):
+        # Wildcard entries cover subdomains only. Allowing the apex off of
+        # "*.youtube.com" would silently broaden trust — admins must add an
+        # explicit non-wildcard row for the apex.
         self._add("*.youtube.com")
+        self.assertFalse(is_host_allowed("youtube.com"))
+
+    def test_wildcard_plus_explicit_apex_both_match(self):
+        self._add("*.youtube.com")
+        self._add("youtube.com")
         self.assertTrue(is_host_allowed("youtube.com"))
+        self.assertTrue(is_host_allowed("m.youtube.com"))
 
     def test_wildcard_does_not_match_sibling(self):
         self._add("*.youtube.com")
@@ -94,10 +103,9 @@ class IsHostAllowedTests(TestCase):
         # `is_host_allowed` is called from other sites too.
         self.assertFalse(is_host_allowed("   "))
 
-    def test_wildcard_exact_base_match(self):
-        """Extra belt-and-suspenders for the wildcard base-match path."""
+    def test_wildcard_only_covers_subdomains(self):
         self._add("*.calendly.com")
-        self.assertTrue(is_host_allowed("calendly.com"))
+        self.assertFalse(is_host_allowed("calendly.com"))
         self.assertTrue(is_host_allowed("team.calendly.com"))
         self.assertFalse(is_host_allowed("calendly.com.attacker.io"))
 

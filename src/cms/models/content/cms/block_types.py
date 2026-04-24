@@ -129,12 +129,17 @@ def _validate_embed_block(data):
         if height_value <= 0 or height_value > 5000:
             raise ValidationError("'height' must be between 1 and 5000 pixels.")
 
-    sandbox = data.get("sandbox")
-    if sandbox:
-        tokens = [t for t in str(sandbox).split() if t]
-        unknown = [t for t in tokens if t not in SANDBOX_TOKENS]
-        if unknown:
-            raise ValidationError(f"Unknown sandbox token(s): {', '.join(unknown)}.")
+    if "sandbox" in data:
+        # Normalize whitespace-only input (e.g. "   ") to empty string so the
+        # frontend falls back to its default sandbox. A present-but-empty
+        # sandbox attribute is the most restrictive policy and silently
+        # breaks scripts/forms/popups even though the editor intended blank.
+        sandbox = str(data.get("sandbox") or "").strip()
+        data["sandbox"] = sandbox
+        if sandbox:
+            unknown = [t for t in sandbox.split() if t not in SANDBOX_TOKENS]
+            if unknown:
+                raise ValidationError(f"Unknown sandbox token(s): {', '.join(unknown)}.")
 
 
 def _validate_embed_widget_block(data):
