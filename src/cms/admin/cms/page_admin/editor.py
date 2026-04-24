@@ -22,7 +22,6 @@ from cms.models import (
 from cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
 
-
 # Mirrors Django's django.utils.html.json_script escape table so json.dumps
 # output is safe to inline inside a <script> block (notably </script>).
 _JSON_SCRIPT_ESCAPES = {
