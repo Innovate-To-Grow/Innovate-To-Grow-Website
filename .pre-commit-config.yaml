@@ -1,18 +1,71 @@
-# Local developer git hooks — run the same lint and secrets scan the CI runs,
-# so problems are caught at commit time instead of after push.
+# Local developer git hooks. Commit hooks stay fast; slower SAST/frontend
+# checks run before push so CI failures are caught before leaving the laptop.
 #
-# Setup: pip install pre-commit && pre-commit install
+# Setup:
+#   pip install pre-commit
+#   pre-commit install --hook-type pre-commit --hook-type pre-push --install-hooks
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        stages: [pre-commit]
+      - id: check-toml
+        stages: [pre-commit]
+      - id: check-json
+        exclude: ^pages/tsconfig\.(app|node)\.json$
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: check-added-large-files
+        stages: [pre-commit]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        stages: [pre-commit]
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.0
     hooks:
       - id: ruff
         args: [--fix]
         files: ^src/
+        stages: [pre-commit]
       - id: ruff-format
         files: ^src/
+        stages: [pre-commit]
 
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.0
+  - repo: local
     hooks:
+      # Downloads and caches gitleaks v8.21.2 to match the CI secrets scan.
       - id: gitleaks
+        name: Gitleaks secrets scan
+        entry: bash scripts/pre-commit/gitleaks-protect.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: bandit-baseline
+        name: Bandit SAST (baseline)
+        entry: bash -c 'cd src && bandit -r . -c ../pyproject.toml --baseline ../.bandit-baseline.json'
+        language: python
+        additional_dependencies: ["bandit[toml]==1.7.10"]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: frontend-eslint
+        name: Frontend ESLint
+        entry: bash -c 'cd pages && npm run lint'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: frontend-typecheck
+        name: Frontend TypeScript type check
+        entry: bash -c 'cd pages && npx tsc --noEmit'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

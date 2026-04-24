@@ -231,6 +231,28 @@ class EmbedWidgetBlockValidationTests(TestCase):
         with self.assertRaises(ValidationError):
             validate_block_data("embed_widget", {"slug": "schedule-embed", "height": -5})
 
+    def test_embed_widget_rejects_draft_source_page(self):
+        # A blocks-type widget pointing at a draft page would 404 at render time
+        # via EmbedBlockView's visibility gate, so block validation must reject
+        # it up front rather than let the CMS page save a reference that is
+        # guaranteed to fail.
+        page = CMSPage.objects.create(slug="draft-page", route="/draft", title="Draft", status="draft")
+        CMSEmbedWidget.objects.create(widget_type="blocks", page=page, slug="draft-widget", block_sort_orders=[])
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("embed_widget", {"slug": "draft-widget"})
+        self.assertIn("not published", str(ctx.exception))
+
+    def test_embed_widget_rejects_archived_source_page(self):
+        page = CMSPage.objects.create(slug="old-page", route="/old", title="Old", status="archived")
+        CMSEmbedWidget.objects.create(widget_type="blocks", page=page, slug="old-widget", block_sort_orders=[])
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "old-widget"})
+
+    def test_embed_widget_accepts_published_source_page(self):
+        page = CMSPage.objects.create(slug="live-page", route="/live", title="Live", status="published")
+        CMSEmbedWidget.objects.create(widget_type="blocks", page=page, slug="live-widget", block_sort_orders=[])
+        validate_block_data("embed_widget", {"slug": "live-widget"})
+
     def test_embed_widget_rejects_after_widget_deleted(self):
         # Saving a block with a valid slug succeeds initially...
         validate_block_data("embed_widget", {"slug": "schedule-embed"})

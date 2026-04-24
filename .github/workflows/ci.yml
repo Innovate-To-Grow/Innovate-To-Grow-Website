@@ -9,6 +9,7 @@ on:
       - 'aws/**'
       - '.github/workflows/**'
       - 'pyproject.toml'
+      - '.pre-commit-config.yaml'
       - '.bandit-baseline.json'
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - 'aws/**'
       - '.github/workflows/**'
       - 'pyproject.toml'
+      - '.pre-commit-config.yaml'
       - '.bandit-baseline.json'
 
 permissions:

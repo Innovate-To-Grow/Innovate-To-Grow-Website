@@ -144,10 +144,18 @@ def _validate_embed_widget_block(data):
     if not slug:
         raise ValidationError("Block type 'embed_widget' requires a non-empty 'slug'.")
 
-    if not CMSEmbedWidget.objects.filter(slug=slug).exists():
+    widget = CMSEmbedWidget.objects.select_related("page").filter(slug=slug).first()
+    if widget is None:
         raise ValidationError(
             f"No CMS embed widget found with slug '{slug}'. Create it under CMS > CMS Embed Widgets first."
         )
+    if not widget.is_visible():
+        if widget.widget_type == "blocks":
+            raise ValidationError(
+                f"CMS embed widget '{slug}' cannot be embedded: its source page is not published. "
+                "Publish the source page first, or pick a different widget."
+            )
+        raise ValidationError(f"CMS embed widget '{slug}' cannot be embedded: its app route is not configured.")
 
     aspect_ratio = data.get("aspect_ratio")
     if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):

@@ -58,6 +58,15 @@ The Vite dev server proxies `/api`, `/media`, and `/static` to Django on port 80
 
 ## Quality checks
 
+Install local git hooks once to run fast checks before commit and slower Bandit/frontend checks before push:
+
+```bash
+pip install pre-commit
+pre-commit install --hook-type pre-commit --hook-type pre-push --install-hooks
+```
+
+The first secrets scan downloads the pinned gitleaks release used by CI. Run `npm install` in `pages/` before pushing so the frontend hooks can use the local toolchain.
+
 ```bash
 # Backend
 cd src && ruff check . && ruff format --check .
