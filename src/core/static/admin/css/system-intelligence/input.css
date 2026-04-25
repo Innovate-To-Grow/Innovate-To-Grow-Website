@@ -1,0 +1,96 @@
+/* Input bar */
+.si-input-bar {
+  padding: 12px 20px 16px;
+  border-top: 1px solid;
+  border-color: inherit;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.si-context-usage {
+  height: 40px;
+  min-width: 192px;
+  max-width: 240px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--color-base-200, #e5e7eb);
+  border-radius: 8px;
+  background: var(--color-base-50, #f9fafb);
+  color: var(--color-base-500, #6b7280);
+  user-select: none;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.dark .si-context-usage {
+  background: rgba(255,255,255,0.03);
+
+  border-color: rgba(255,255,255,0.08);
+}
+.si-context-usage-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  width: 100%;
+}
+.si-context-usage-label {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-base-500, #6b7280);
+}
+.si-context-usage-label::after {
+  content: "·";
+  margin-left: 6px;
+  color: var(--color-base-300, #d1d5db);
+  font-weight: 400;
+}
+.si-context-usage-detail {
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.si-context-usage[data-state="ready"],
+.si-context-usage[data-state="streaming"] {
+  border-color: color-mix(in srgb, var(--color-primary-500, #6366f1) 24%, var(--color-base-200, #e5e7eb));
+  background: color-mix(in srgb, var(--color-primary-500, #6366f1) 7%, transparent);
+}
+.si-input-bar textarea {
+  flex: 1 1 auto;
+  min-width: 180px;
+  resize: none;
+  border: 1px solid var(--color-base-300, #d1d5db);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  max-height: 120px;
+  outline: none;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+}
+.si-input-bar textarea:focus {
+  border-color: var(--color-primary-500, #6366f1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500, #6366f1) 20%, transparent);
+}
+.si-send-btn {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary-500, #6366f1);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.si-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.si-send-btn:not(:disabled):hover { opacity: 0.85; }
