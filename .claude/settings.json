@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch --show-current)",
+      "Bash(git ls-files:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh api:*)",
+      "Bash(cd pages && npm run lint)",
+      "Bash(cd pages && npx tsc --noEmit)",
+      "Bash(cd pages && npm test:*)",
+      "Bash(cd pages && npm run build)",
+      "Bash(cd src && ruff check .)",
+      "Bash(cd src && ruff format --check .)",
+      "Bash(cd src && python manage.py check --settings=core.settings.dev)",
+      "Bash(cd src && python manage.py test:*)",
+      "Bash(pre-commit run --all-files)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

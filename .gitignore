@@ -192,9 +192,14 @@ pages/dist/
 # Cursor Plans
 .cursor/plans/
 
-# Claude Code local settings (may contain secrets / credentials)
+# Claude Code: commit team config (.claude/CLAUDE.md, settings.json, rules/,
+# playbooks/, skills/, hooks/). Ignore personal/local overrides and runtime
+# artifacts. Never store credentials in any of these files.
 .claude/settings.local.json
 .claude/settings.local.*
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+CLAUDE.local.md
 
 # Abstra
 .abstra/
@@ -227,7 +232,8 @@ Thumbs.db
 # Local AI assistant metadata
 .agent/
 .agents/
-.claude/
+# Note: .claude/ itself is committed for team-shared config — see the
+# Claude Code section above for the specific files that are ignored.
 
 # =====================================
 # AWS Keys
