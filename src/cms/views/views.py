@@ -134,7 +134,7 @@ class EmbedBlockView(APIView):
     # noinspection PyMethodMayBeStatic
     def get(self, request, embed_slug, *args, **kwargs):
         widget = CMSEmbedWidget.objects.select_related("page").filter(slug=embed_slug).first()
-        if widget is None or not self._is_visible(widget):
+        if widget is None or not widget.is_visible():
             response = Response({"detail": "Not found."}, status=404)
             response["Access-Control-Allow-Origin"] = "*"
             return response
@@ -146,6 +146,7 @@ class EmbedBlockView(APIView):
                 "blocks": [],
                 "page_css_class": "",
                 "page_css": "",
+                "hide_section_titles": widget.hide_section_titles,
             }
         else:
             sort_orders = [o for o in (widget.block_sort_orders or []) if isinstance(o, int)]
@@ -158,13 +159,8 @@ class EmbedBlockView(APIView):
                 "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
                 "page_css_class": widget.page.page_css_class or "",
                 "page_css": widget.page.page_css or "",
+                "hide_section_titles": widget.hide_section_titles,
             }
         response = Response(data)
         response["Access-Control-Allow-Origin"] = "*"
         return response
-
-    # noinspection PyMethodMayBeStatic
-    def _is_visible(self, widget):
-        if widget.widget_type == "app_route":
-            return bool(widget.app_route)
-        return widget.page is not None and widget.page.status == "published"

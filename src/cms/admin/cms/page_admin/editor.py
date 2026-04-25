@@ -10,16 +10,63 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 
-from cms.models import BLOCK_SCHEMAS, BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
+from cms.models import (
+    BLOCK_SCHEMAS,
+    BLOCK_TYPE_CHOICES,
+    CMSBlock,
+    CMSEmbedAllowedHost,
+    CMSEmbedWidget,
+    CMSPage,
+    validate_block_data,
+)
+from cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
+
+# Mirrors Django's django.utils.html.json_script escape table so json.dumps
+# output is safe to inline inside a <script> block (notably </script>).
+_JSON_SCRIPT_ESCAPES = {
+    ord("<"): "\\u003C",
+    ord(">"): "\\u003E",
+    ord("&"): "\\u0026",
+    0x2028: "\\u2028",
+    0x2029: "\\u2029",
+}
+
+
+def _safe_json(value, **kwargs):
+    return json.dumps(value, **kwargs).translate(_JSON_SCRIPT_ESCAPES)
+
+
+def _format_widget_label(widget):
+    parts = [widget.slug]
+    if widget.admin_label:
+        parts.append(widget.admin_label)
+    if widget.widget_type == "app_route" and widget.app_route:
+        parts.append(f"app route: {widget.app_route}")
+    elif widget.page_id and widget.page:
+        parts.append(f"page: {widget.page.title}")
+    return " — ".join(parts)
 
 
 def build_editor_context(obj=None):
     from django.conf import settings as django_settings
 
+    allowed_hosts = list(
+        CMSEmbedAllowedHost.objects.filter(is_active=True).order_by("hostname").values_list("hostname", flat=True)
+    )
+    embed_widgets = [
+        {
+            "slug": widget.slug,
+            "label": _format_widget_label(widget),
+        }
+        for widget in CMSEmbedWidget.objects.order_by("slug")
+    ]
     context = {
-        "block_schemas_json": json.dumps(BLOCK_SCHEMAS),
-        "block_type_choices_json": json.dumps(BLOCK_TYPE_CHOICES),
+        "block_schemas_json": _safe_json(BLOCK_SCHEMAS),
+        "block_type_choices_json": _safe_json(BLOCK_TYPE_CHOICES),
+        "embed_allowed_hosts_json": _safe_json(allowed_hosts),
+        "embed_widgets_json": _safe_json(embed_widgets),
+        "embed_default_sandbox": DEFAULT_SANDBOX,
         "route_check_url": reverse("admin:cms_cmspage_route_conflict"),
         "current_page_id": str(obj.pk) if obj else "",
         "current_page_route": obj.route if obj else "",
@@ -30,7 +77,7 @@ def build_editor_context(obj=None):
         return context
 
     blocks = obj.blocks.all().order_by("sort_order")
-    context["initial_blocks_json"] = json.dumps(
+    context["initial_blocks_json"] = _safe_json(
         [
             {
                 "block_type": block.block_type,

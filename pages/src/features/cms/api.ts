@@ -59,6 +59,7 @@ export interface CMSEmbedResponse {
   blocks: CMSBlock[];
   page_css_class: string;
   page_css: string;
+  hide_section_titles?: boolean;
 }
 
 export async function fetchCMSEmbed(

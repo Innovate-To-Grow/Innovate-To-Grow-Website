@@ -62,6 +62,55 @@
     function renderNumberedListFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.htmlField('Preamble HTML', data.preamble_html, idx, 'preamble_html') + P.renderRepeater('Items', data.items || [], idx, 'items', (item, itemIdx) => P.textFieldDirect('Item Text', item, idx, 'items.' + itemIdx)); }
     function renderProposalCardsFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.htmlField('Footer HTML', data.footer_html, idx, 'footer_html') + P.renderRepeater('Proposals', data.proposals || [], idx, 'proposals', (proposal, proposalIdx) => '<div class="cms-block-field-row">' + P.textField('Type', proposal.type, idx, 'proposals.' + proposalIdx + '.type') + P.textField('Title', proposal.title, idx, 'proposals.' + proposalIdx + '.title') + P.textField('Organization', proposal.organization, idx, 'proposals.' + proposalIdx + '.organization') + '</div>' + P.htmlField('Background', proposal.background, idx, 'proposals.' + proposalIdx + '.background') + P.htmlField('Problem', proposal.problem, idx, 'proposals.' + proposalIdx + '.problem') + P.htmlField('Objectives', proposal.objectives, idx, 'proposals.' + proposalIdx + '.objectives')); }
     function renderNavigationGridFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.renderRepeater('Grid Items', data.items || [], idx, 'items', (item, itemIdx) => '<div class="cms-block-field-row">' + P.textField('Title', item.title, idx, 'items.' + itemIdx + '.title') + P.textField('URL', item.url, idx, 'items.' + itemIdx + '.url') + '</div>' + P.textField('Description', item.description, idx, 'items.' + itemIdx + '.description') + P.checkboxField('External link', item.is_external, idx, 'items.' + itemIdx + '.is_external')); }
+    function renderEmbedFields(data, idx) {
+        const allowedHosts = Array.isArray(window.CMS_EMBED_ALLOWED_HOSTS) ? window.CMS_EMBED_ALLOWED_HOSTS : [];
+        const hostsHint = allowedHosts.length
+            ? 'Allowed hosts: ' + allowedHosts.map(P.escapeHtml).join(', ')
+            : 'No hosts allowlisted yet. Add some under CMS > Embed Allowed Hosts.';
+        return P.textField('Heading (optional)', data.heading, idx, 'heading')
+            + P.textField('Embed URL (https)', data.src, idx, 'src')
+            + `<div class="cms-block-field"><span class="field-hint">${hostsHint}</span></div>`
+            + P.textField('Accessible Title', data.title, idx, 'title')
+            + '<div class="cms-block-field-row">'
+            + P.selectField('Aspect Ratio', data.aspect_ratio, idx, 'aspect_ratio', [
+                ['16:9', '16:9 (default)'],
+                ['4:3', '4:3'],
+                ['1:1', '1:1'],
+                ['21:9', '21:9'],
+                ['', 'Custom / fixed height'],
+            ])
+            + P.textField('Fixed Height (px, optional)', data.height, idx, 'height')
+            + '</div>'
+            + P.textField('Sandbox', data.sandbox, idx, 'sandbox')
+            + '<div class="cms-block-field"><span class="field-hint">Space-separated sandbox tokens. Defaults applied if blank.</span></div>'
+            + P.textField('Allow (permissions)', data.allow, idx, 'allow')
+            + P.checkboxField('Allow fullscreen', data.allowfullscreen, idx, 'allowfullscreen');
+    }
+
+    function renderEmbedWidgetFields(data, idx) {
+        const widgets = Array.isArray(window.CMS_EMBED_WIDGETS) ? window.CMS_EMBED_WIDGETS : [];
+        const options = [['', '— select a widget —']].concat(
+            widgets.map(w => [w.slug, w.label])
+        );
+        const emptyHint = widgets.length
+            ? ''
+            : '<div class="cms-block-field"><span class="field-hint">No embed widgets defined yet. Create one under CMS > CMS Embed Widgets.</span></div>';
+        return P.textField('Heading (optional)', data.heading, idx, 'heading')
+            + P.selectField('Widget', data.slug, idx, 'slug', options)
+            + emptyHint
+            + '<div class="cms-block-field-row">'
+            + P.selectField('Aspect Ratio', data.aspect_ratio, idx, 'aspect_ratio', [
+                ['', 'Auto (resize to content)'],
+                ['16:9', '16:9'],
+                ['4:3', '4:3'],
+                ['1:1', '1:1'],
+                ['21:9', '21:9'],
+            ])
+            + P.textField('Fixed Height (px, optional)', data.height, idx, 'height')
+            + '</div>'
+            + P.checkboxField('Hide section titles inside widget', data.hide_section_titles, idx, 'hide_section_titles');
+    }
+
     function renderSponsorYearFields(data, idx) {
         return P.textField('Year', data.year, idx, 'year')
             + '<div class="cms-block-field"><span class="field-hint">Upload logos under CMS Assets, then paste the public media URL into each sponsor item.</span></div>'
@@ -74,6 +123,6 @@
             );
     }
 
-    const renderers = { hero: renderHeroFields, rich_text: renderRichTextField, faq_list: renderFaqListFields, link_list: renderLinkListFields, cta_group: renderCtaGroupFields, image_text: renderImageTextFields, notice: renderNoticeFields, contact_info: renderContactInfoFields, section_group: renderSectionGroupFields, table: renderTableFields, numbered_list: renderNumberedListFields, proposal_cards: renderProposalCardsFields, navigation_grid: renderNavigationGridFields, sponsor_year: renderSponsorYearFields };
+    const renderers = { hero: renderHeroFields, rich_text: renderRichTextField, faq_list: renderFaqListFields, link_list: renderLinkListFields, cta_group: renderCtaGroupFields, image_text: renderImageTextFields, notice: renderNoticeFields, contact_info: renderContactInfoFields, section_group: renderSectionGroupFields, table: renderTableFields, numbered_list: renderNumberedListFields, proposal_cards: renderProposalCardsFields, navigation_grid: renderNavigationGridFields, sponsor_year: renderSponsorYearFields, embed: renderEmbedFields, embed_widget: renderEmbedWidgetFields };
     window.ITGCmsBlockRenderers = { renderAll: renderAll };
 })();

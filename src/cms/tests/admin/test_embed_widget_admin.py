@@ -107,6 +107,21 @@ class CMSEmbedWidgetModelTests(TestCase):
         with self.assertRaises(IntegrityError):
             CMSEmbedWidget.objects.create(page=other, slug="shared", block_sort_orders=[0])
 
+    def test_hide_section_titles_default_false(self):
+        widget = CMSEmbedWidget.objects.create(page=self.page, slug="default-hide-flag", block_sort_orders=[0])
+        widget.refresh_from_db()
+        self.assertFalse(widget.hide_section_titles)
+
+    def test_hide_section_titles_roundtrips_when_set_true(self):
+        widget = CMSEmbedWidget.objects.create(
+            page=self.page,
+            slug="enabled-hide-flag",
+            block_sort_orders=[0],
+            hide_section_titles=True,
+        )
+        widget.refresh_from_db()
+        self.assertTrue(widget.hide_section_titles)
+
 
 class CMSEmbedWidgetAdminFormTests(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
@@ -177,6 +192,40 @@ class CMSEmbedWidgetAdminFormTests(TestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertIn("app_route", form.errors)
+
+    def test_form_persists_hide_section_titles_flag(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "blocks",
+                "page": str(self.page.pk),
+                "slug": "hide-titles-on",
+                "admin_label": "",
+                "block_sort_orders": "[0]",
+                "app_route": "",
+                "hide_section_titles": "on",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        widget = form.save()
+        widget.refresh_from_db()
+        self.assertTrue(widget.hide_section_titles)
+
+    def test_form_defaults_hide_section_titles_off_when_omitted(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "blocks",
+                "page": str(self.page.pk),
+                "slug": "hide-titles-off",
+                "admin_label": "",
+                "block_sort_orders": "[0]",
+                "app_route": "",
+                # hide_section_titles intentionally omitted — HTML checkbox absence
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        widget = form.save()
+        widget.refresh_from_db()
+        self.assertFalse(widget.hide_section_titles)
 
 
 class CMSEmbedWidgetAdminViewTests(TestCase):

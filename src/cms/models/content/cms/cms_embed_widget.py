@@ -47,6 +47,10 @@ class CMSEmbedWidget(ProjectControlModel):
         help_text="Globally unique kebab-case identifier used in the embed URL.",
     )
     admin_label = models.CharField(max_length=200, blank=True, default="")
+    hide_section_titles = models.BooleanField(
+        default=False,
+        help_text="Hide `.section-title` headings when this widget renders inside the embed iframe.",
+    )
     block_sort_orders = models.JSONField(
         default=list,
         blank=True,
@@ -63,6 +67,15 @@ class CMSEmbedWidget(ProjectControlModel):
 
     def __str__(self):
         return f"{self.admin_label or self.slug} ({self.slug})"
+
+    def is_visible(self):
+        # Kept in sync with EmbedBlockView's 404 gate: a widget is renderable
+        # only when its source page is published (blocks) or its route is set
+        # (app_route). Block-level validation calls this to reject references
+        # that would resolve to a runtime 404 ("Embed not found").
+        if self.widget_type == WIDGET_TYPE_APP_ROUTE:
+            return bool(self.app_route)
+        return self.page is not None and self.page.status == "published"
 
     def clean(self):
         super().clean()

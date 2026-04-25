@@ -96,9 +96,10 @@ On every push and pull request, GitHub Actions runs:
 **Option 1: Pre-commit hooks (recommended)**
 ```bash
 pip install pre-commit
-pre-commit install
-# Now linting runs automatically before each commit
+pre-commit install --hook-type pre-commit --hook-type pre-push --install-hooks
+# Fast checks run before each commit; Bandit and frontend lint/type checks run before push
 ```
+The first secrets scan downloads the pinned gitleaks release used by CI. Run `npm install` in `pages/` before pushing so the frontend hooks can use the local toolchain.
 
 **Option 2: Manual linting**
 ```bash
