@@ -10,6 +10,7 @@ from .base import (
     ProjectControlModel,
     SiteMaintenanceControl,
     SMSServiceConfig,
+    SystemIntelligenceActionRequest,
     SystemIntelligenceConfig,
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
@@ -22,6 +23,7 @@ __all__ = [
     "AuthoredModel",
     "ChatConversation",
     "ChatMessage",
+    "SystemIntelligenceActionRequest",
     "EmailServiceConfig",
     "GmailImportConfig",
     "GoogleCredentialConfig",

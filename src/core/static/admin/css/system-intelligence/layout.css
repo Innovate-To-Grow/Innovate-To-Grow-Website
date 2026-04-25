@@ -1,0 +1,95 @@
+.si-wrap {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 320px;
+  border: 1px solid;
+  border-radius: var(--border-radius, 8px);
+  overflow: hidden;
+}
+.si-wrap { border-color: var(--color-base-200, #e5e7eb); }
+.dark .si-wrap { border-color: var(--color-base-700, #374151); }
+
+/* Sidebar */
+.si-sidebar {
+  flex: 0 0 240px;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid;
+  border-color: inherit;
+}
+.si-sidebar-header {
+  padding: 12px;
+  border-bottom: 1px solid;
+  border-color: inherit;
+}
+.si-convo-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.si-convo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.si-convo-item.is-active {
+  background: color-mix(in srgb, var(--color-primary-100, #dbeafe) 60%, transparent);
+  border-left-color: var(--color-primary-500, #6366f1);
+}
+.si-convo-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+.si-convo-date {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+.si-convo-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.si-convo-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  opacity: 0.4;
+  line-height: 1;
+}
+.si-convo-actions button:hover { opacity: 1; background: rgba(0,0,0,0.06); }
+
+/* Main chat area */
+.si-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.si-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.si-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+}

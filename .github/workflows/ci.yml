@@ -315,10 +315,26 @@ jobs:
           # pip-audit exits non-zero on ANY finding. We don't have a native
           # severity filter; add specific GHSA/CVE ids to --ignore-vuln here
           # with a written reason if a finding needs deferral.
+          #
+          # Deferral: litellm 1.83.13 currently pins python-dotenv==1.0.1
+          # and aiohttp==3.13.3, so fixed floors cannot be applied without
+          # making the resolver fail. Keep the ignores narrow and remove
+          # them when litellm publishes metadata that allows fixed versions.
           pip-audit \
             --requirement requirements.txt \
             --progress-spinner off \
             --format columns \
+            --ignore-vuln GHSA-mf9w-mj56-hr94 \
+            --ignore-vuln GHSA-p998-jp59-783m \
+            --ignore-vuln GHSA-hcc4-c3v8-rx92 \
+            --ignore-vuln GHSA-m5qp-6w8w-w647 \
+            --ignore-vuln GHSA-3wq7-rqq7-wx6j \
+            --ignore-vuln GHSA-mwh4-6h8g-pg8w \
+            --ignore-vuln GHSA-966j-vmvw-g2g9 \
+            --ignore-vuln GHSA-63hf-3vf5-4wqf \
+            --ignore-vuln GHSA-c427-h43c-vf67 \
+            --ignore-vuln GHSA-w2fm-2cpv-w7v5 \
+            --ignore-vuln GHSA-2vrm-gr82-f7m5 \
             | tee "$GITHUB_STEP_SUMMARY"
 
   # Frontend dependency audit — hard-fail only on CRITICAL per plan Q1.

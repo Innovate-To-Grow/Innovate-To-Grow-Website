@@ -6,7 +6,15 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence.css' %}">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/layout.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/messages.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/tools.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions-comparison.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/input.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/animations.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-panel.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-tools.css' %}?v=20260425-split">
 <style>
   /* Make the parent chain flex-column so .si-wrap fills remaining viewport height.
      When the <details> panel opens/closes the chat area resizes automatically. */
@@ -115,7 +123,8 @@
 
 <div class="si-wrap bg-white dark:bg-base-900" id="si-root"
      data-conversations-url="{% url 'admin:core_system_intelligence_conversations' %}"
-     data-new-url="{% url 'admin:core_system_intelligence_new' %}">
+     data-new-url="{% url 'admin:core_system_intelligence_new' %}"
+     data-context-window="{{ context_window|default:200000 }}">
 
   <!-- Sidebar -->
   <div class="si-sidebar bg-base-50 dark:bg-base-900">
@@ -140,6 +149,12 @@
       </div>
     </div>
     <div class="si-input-bar" id="si-input-bar" style="display:none;">
+      <div class="si-context-usage" id="si-context-usage" data-state="empty">
+        <div class="si-context-usage-main">
+          <span class="si-context-usage-label" id="si-context-usage-label">Context</span>
+          <span class="si-context-usage-detail" id="si-context-usage-detail">0% full · 0 / 200k</span>
+        </div>
+      </div>
       <textarea id="si-input" rows="1" placeholder="Type your message..." autocomplete="off"></textarea>
       <button class="si-send-btn" id="si-send-btn" disabled>
         <span class="material-symbols-outlined !text-[20px]">send</span>
@@ -154,9 +169,13 @@
     marked.setOptions({gfm: true, breaks: true});
   }
 </script>
-<script src="{% static 'admin/js/si-utils.js' %}"></script>
-<script src="{% static 'admin/js/si-render.js' %}"></script>
-<script src="{% static 'admin/js/si-sidebar.js' %}"></script>
-<script src="{% static 'admin/js/si-stream.js' %}"></script>
-<script src="{% static 'admin/js/system-intelligence.js' %}"></script>
+<script src="{% static 'admin/js/system-intelligence/utils.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/usage.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/tool-calls.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/actions.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/messages.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/sidebar.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/stream-events.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/stream.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/bootstrap.js' %}?v=20260425-split"></script>
 {% endblock %}

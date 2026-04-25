@@ -1,0 +1,123 @@
+/* Message bubbles */
+.si-msg { display: flex; gap: 10px; max-width: 85%; }
+.si-msg-user { align-self: flex-end; flex-direction: row-reverse; }
+.si-msg-assistant { align-self: flex-start; }
+.si-msg-avatar {
+  display: none;
+}
+.si-msg-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.si-msg-user .si-msg-bubble {
+  background: var(--color-primary-500, #6366f1);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
+}
+.si-msg-assistant .si-msg-bubble {
+  background: var(--color-base-100, #f3f4f6);
+  border-bottom-left-radius: 4px;
+}
+.dark .si-msg-assistant .si-msg-bubble {
+  background: var(--color-base-800, #1f2937);
+}
+.si-msg-bubble p { margin: 0 0 8px; }
+.si-msg-bubble p:last-child { margin-bottom: 0; }
+.si-msg-bubble pre {
+  background: rgba(0,0,0,0.06);
+  padding: 8px 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  margin: 6px 0;
+  white-space: pre-wrap;
+}
+.dark .si-msg-bubble pre { background: rgba(255,255,255,0.06); }
+.si-msg-bubble code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+}
+.si-msg-bubble :not(pre) > code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.dark .si-msg-bubble :not(pre) > code { background: rgba(255,255,255,0.08); }
+
+/* Markdown: tables */
+.si-msg-bubble table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.84rem;
+  width: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  display: block;
+}
+.si-msg-bubble th,
+.si-msg-bubble td {
+  border: 1px solid rgba(0,0,0,0.12);
+  padding: 5px 10px;
+  text-align: left;
+}
+.dark .si-msg-bubble th,
+.dark .si-msg-bubble td {
+  border-color: rgba(255,255,255,0.12);
+}
+.si-msg-bubble th {
+  font-weight: 600;
+  background: rgba(0,0,0,0.04);
+}
+.dark .si-msg-bubble th {
+  background: rgba(255,255,255,0.04);
+}
+
+/* Markdown: lists */
+.si-msg-bubble ul,
+.si-msg-bubble ol {
+  margin: 6px 0;
+  padding-left: 1.5em;
+}
+.si-msg-bubble li { margin: 2px 0; }
+
+/* Markdown: headings */
+.si-msg-bubble h1,
+.si-msg-bubble h2,
+.si-msg-bubble h3,
+.si-msg-bubble h4 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.si-msg-bubble h1 { font-size: 1.15em; }
+.si-msg-bubble h2 { font-size: 1.08em; }
+.si-msg-bubble h3 { font-size: 1em; }
+.si-msg-bubble h4 { font-size: 0.95em; opacity: 0.85; }
+
+/* Markdown: blockquote */
+.si-msg-bubble blockquote {
+  margin: 6px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--color-primary-300, #a5b4fc);
+  opacity: 0.85;
+}
+
+/* Markdown: horizontal rule */
+.si-msg-bubble hr {
+  border: none;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  margin: 10px 0;
+}
+.dark .si-msg-bubble hr { border-top-color: rgba(255,255,255,0.1); }
+
+/* Markdown: links */
+.si-msg-bubble a {
+  color: var(--color-primary-600, #4f46e5);
+  text-decoration: underline;
+}
+.dark .si-msg-bubble a { color: var(--color-primary-400, #818cf8); }
+.si-msg-user .si-msg-bubble a { color: inherit; }
