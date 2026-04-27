@@ -3,7 +3,11 @@ from unittest.mock import patch
 
 from django.urls import reverse
 
-from core.models.base.system_intelligence import ChatConversation, ChatMessage
+from core.models.base.system_intelligence import (
+    ChatConversation,
+    ChatMessage,
+    SystemIntelligenceActionRequest,
+)
 
 from .base import SystemIntelligenceAdminBase
 
@@ -148,6 +152,37 @@ class SystemIntelligenceCommandTests(SystemIntelligenceAdminBase):
         # The previous assistant turn is removed so prepare_conversation_context sees a trailing user message.
         self.assertFalse(ChatMessage.objects.filter(pk=prior_assistant.pk).exists())
         self.assertEqual(stream.call_args.args[0][-1], {"role": "user", "content": "Find Ada"})
+
+    def test_retry_rejects_pending_actions_attached_to_dropped_assistant_turn(self):
+        ChatMessage.objects.create(conversation=self.conversation, role="user", content="Add feed")
+        prior_assistant = ChatMessage.objects.create(
+            conversation=self.conversation, role="assistant", content="Proposed."
+        )
+        pending_action = SystemIntelligenceActionRequest.objects.create(
+            conversation=self.conversation,
+            assistant_message=prior_assistant,
+            action_type=SystemIntelligenceActionRequest.ACTION_DB_CREATE,
+            target_app_label="cms",
+            target_model="NewsFeedSource",
+            title="Create feed",
+            summary="",
+        )
+        with patch(
+            "core.admin.system_intelligence.invoke_system_intelligence_stream",
+            return_value=iter([{"type": "text", "chunk": "Retry attempt."}]),
+        ):
+            response = self.client.post(
+                _command_url(self.conversation.id),
+                data=json.dumps({"command": "retry"}),
+                content_type="application/json",
+            )
+            b"".join(response.streaming_content)
+
+        self.assertEqual(response.status_code, 200)
+        pending_action.refresh_from_db()
+        self.assertEqual(pending_action.status, SystemIntelligenceActionRequest.STATUS_REJECTED)
+        self.assertIsNone(pending_action.assistant_message_id)
+        self.assertIsNotNone(pending_action.reviewed_at)
 
     def test_retry_command_with_no_messages_returns_400(self):
         response = self.client.post(

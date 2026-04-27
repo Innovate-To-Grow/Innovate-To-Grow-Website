@@ -51,7 +51,11 @@ def approve_action_request(action_id: str | uuid.UUID, user) -> SystemIntelligen
             return action
     except Exception as exc:
         logger.exception("System intelligence action %s failed during approval", action_id)
-        if action is not None and action.status == SystemIntelligenceActionRequest.STATUS_PENDING:
+        if (
+            action is not None
+            and action.status == SystemIntelligenceActionRequest.STATUS_PENDING
+            and not isinstance(exc, PermissionDenied)
+        ):
             mark_action_failed(action.id, user, _safe_error_message(exc))
         raise
 

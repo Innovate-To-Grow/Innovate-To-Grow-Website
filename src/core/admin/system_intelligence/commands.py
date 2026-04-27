@@ -1,10 +1,12 @@
 import json
 
 from django.http import JsonResponse
+from django.utils import timezone
 
 from core.models import AWSCredentialConfig
 from core.models.base.system_intelligence import (
     ChatConversation,
+    SystemIntelligenceActionRequest,
     SystemIntelligenceConfig,
 )
 from core.services.system_intelligence_adk.context_manager import (
@@ -112,14 +114,32 @@ def _handle_retry(request, convo, _args):
     messages = list(convo.messages.order_by("-created_at"))
     if not messages:
         return JsonResponse({"error": "Nothing to retry yet."}, status=400)
-    deleted = 0
     while messages and messages[0].role == "assistant":
+        _reject_pending_actions_for_message(messages[0], request.user)
         messages[0].delete()
         messages.pop(0)
-        deleted += 1
     if not messages or messages[0].role != "user":
         return JsonResponse({"error": "No user message to retry."}, status=400)
     return build_stream_response(request, convo)
+
+
+def _reject_pending_actions_for_message(message, user):
+    """Reject pending action requests tied to ``message`` before it is deleted.
+
+    The FK uses on_delete=SET_NULL, so without this step the requests would
+    survive as orphaned pending records that leak into pending_action_context_message
+    on later turns even though the user can no longer review them.
+    """
+    now = timezone.now()
+    SystemIntelligenceActionRequest.objects.filter(
+        assistant_message=message,
+        status=SystemIntelligenceActionRequest.STATUS_PENDING,
+    ).update(
+        status=SystemIntelligenceActionRequest.STATUS_REJECTED,
+        reviewed_by=user,
+        reviewed_at=now,
+        updated_at=now,
+    )
 
 
 COMMAND_HANDLERS = {
