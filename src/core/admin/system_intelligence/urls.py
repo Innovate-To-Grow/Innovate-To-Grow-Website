@@ -5,6 +5,7 @@ from .actions import action_approve_view, action_full_preview_view, action_previ
 from .commands import chat_command_view
 from .context import chat_list_view
 from .conversations import chat_delete_view, chat_rename_view, chat_view, conversations_fragment, new_conversation_view
+from .exports import export_download_view
 from .stream import chat_send_view
 
 
@@ -66,5 +67,10 @@ def get_system_intelligence_urls():
             "core/system-intelligence/actions/<uuid:action_id>/preview/full/",
             admin.site.admin_view(action_full_preview_view),
             name="core_system_intelligence_action_full_preview",
+        ),
+        path(
+            "core/system-intelligence/exports/<uuid:export_id>/download/",
+            admin.site.admin_view(export_download_view),
+            name="core_system_intelligence_export_download",
         ),
     ]

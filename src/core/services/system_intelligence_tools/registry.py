@@ -33,6 +33,13 @@ from .events import (
     get_ticket_capacity_summary,
     search_event_registrations,
 )
+from .exports import (
+    export_events_to_excel,
+    export_members_to_excel,
+    export_news_to_excel,
+    export_projects_to_excel,
+    export_records_to_excel,
+)
 from .legacy import (
     count_members,
     get_campaign_stats,
@@ -115,6 +122,11 @@ def get_adk_tools(*, include_writes: bool = True) -> list:
         propose_db_create,
         propose_db_update,
         propose_db_delete,
+        export_records_to_excel,
+        export_members_to_excel,
+        export_events_to_excel,
+        export_projects_to_excel,
+        export_news_to_excel,
     ]
     if not include_writes:
         tools = [tool for tool in tools if tool.__name__ not in WRITE_TOOL_NAMES]
