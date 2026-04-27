@@ -7,14 +7,15 @@
 {% block extrahead %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/system-intelligence/layout.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/messages.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/messages.css' %}?v=20260426-confirmation-click-options">
 <link rel="stylesheet" href="{% static 'admin/css/system-intelligence/tools.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions-comparison.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/input.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions.css' %}?v=20260425-action-wide">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions-comparison.css' %}?v=20260427-db-record-card-2">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/input.css' %}?v=20260427-cmd-palette-3">
 <link rel="stylesheet" href="{% static 'admin/css/system-intelligence/animations.css' %}?v=20260425-split">
 <link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-panel.css' %}?v=20260425-split">
 <link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-tools.css' %}?v=20260425-split">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/commands.css' %}?v=20260427-cmd-palette-3">
 <style>
   /* Make the parent chain flex-column so .si-wrap fills remaining viewport height.
      When the <details> panel opens/closes the chat area resizes automatically. */
@@ -169,13 +170,14 @@
     marked.setOptions({gfm: true, breaks: true});
   }
 </script>
-<script src="{% static 'admin/js/system-intelligence/utils.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/utils.js' %}?v=20260426-confirmation-click-options"></script>
 <script src="{% static 'admin/js/system-intelligence/usage.js' %}?v=20260425-split"></script>
 <script src="{% static 'admin/js/system-intelligence/tool-calls.js' %}?v=20260425-split"></script>
-<script src="{% static 'admin/js/system-intelligence/actions.js' %}?v=20260425-split"></script>
-<script src="{% static 'admin/js/system-intelligence/messages.js' %}?v=20260425-split"></script>
-<script src="{% static 'admin/js/system-intelligence/sidebar.js' %}?v=20260425-split"></script>
-<script src="{% static 'admin/js/system-intelligence/stream-events.js' %}?v=20260425-split"></script>
-<script src="{% static 'admin/js/system-intelligence/stream.js' %}?v=20260425-split"></script>
-<script src="{% static 'admin/js/system-intelligence/bootstrap.js' %}?v=20260425-split"></script>
+<script src="{% static 'admin/js/system-intelligence/actions.js' %}?v=20260427-db-record-card-2"></script>
+<script src="{% static 'admin/js/system-intelligence/messages.js' %}?v=20260426-confirmation-click-options"></script>
+<script src="{% static 'admin/js/system-intelligence/sidebar.js' %}?v=20260427-cmd-palette-3"></script>
+<script src="{% static 'admin/js/system-intelligence/stream-events.js' %}?v=20260426-confirmation-click-options"></script>
+<script src="{% static 'admin/js/system-intelligence/stream.js' %}?v=20260427-cmd-palette-3"></script>
+<script src="{% static 'admin/js/system-intelligence/commands.js' %}?v=20260427-cmd-palette-3"></script>
+<script src="{% static 'admin/js/system-intelligence/bootstrap.js' %}?v=20260427-cmd-palette-3"></script>
 {% endblock %}

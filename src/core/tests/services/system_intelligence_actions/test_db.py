@@ -25,7 +25,12 @@ class SystemIntelligenceDBActionTests(SystemIntelligenceActionBase):
         self.assertEqual(action.status, SystemIntelligenceActionRequest.STATUS_APPLIED)
         self.assertEqual(source.name, "Updated Source")
         self.assertFalse(source.is_active)
-        self.assertEqual(response["action_request"]["comparison"], {})
+        comparison = response["action_request"]["comparison"]
+        self.assertEqual(comparison["type"], "db_record")
+        self.assertEqual(comparison["mode"], "update")
+        is_active_row = next(row for row in comparison["fields"] if row["field"] == "is_active")
+        self.assertEqual(is_active_row["before_display"], "Yes")
+        self.assertEqual(is_active_row["after_display"], "No")
 
     def test_db_create_and_delete_proposals_apply_after_approval(self):
         create_response = actions.propose_db_create(

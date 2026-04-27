@@ -32,7 +32,9 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertIn('event: context\ndata: {"contextWindow": 200000', body)
         self.assertIn('event: text\ndata: {"chunk": "Hello"}', body)
+        self.assertLess(body.index("event: context"), body.index("event: text"))
         self.assertIn('event: tool_call\ndata: {"type": "tool_call"', body)
         self.assertIn('event: usage\ndata: {"inputTokens": 2, "outputTokens": 3, "totalTokens": 5}', body)
         self.assertIn('event: done\ndata: {"id":', body)
@@ -43,6 +45,9 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
         self.assertEqual([message.role for message in messages], ["user", "assistant"])
         self.assertEqual(messages[1].content, "Hello")
         self.assertEqual(messages[1].token_usage, {"inputTokens": 2, "outputTokens": 3, "totalTokens": 5})
+        self.assertEqual(messages[1].context_usage["preparedMessageCount"], 1)
+        detail = self.client.get(reverse("admin:core_system_intelligence_detail", args=[self.conversation.id]))
+        self.assertEqual(detail.json()["messages"][-1]["context_usage"]["preparedMessageCount"], 1)
 
     def test_send_stream_emits_action_request_and_links_it_to_assistant_message(self):
         action = SystemIntelligenceActionRequest.objects.create(

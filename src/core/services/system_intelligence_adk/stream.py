@@ -26,6 +26,7 @@ def invoke_system_intelligence_stream(
     model_id: str | None = None,
     user_id: str | None = None,
     conversation_id: str | None = None,
+    mode: str = "normal",
 ):
     """Synchronously yield existing System Intelligence event dicts from ADK."""
     chat_config = chat_config or SystemIntelligenceConfig.load()
@@ -41,6 +42,7 @@ def invoke_system_intelligence_stream(
             model_id=model_id,
             user_id=user_id,
             conversation_id=conversation_id,
+            mode=mode,
         ):
             event_queue.put(event)
 
@@ -83,6 +85,7 @@ async def invoke_system_intelligence_stream_async(
     model_id: str | None = None,
     user_id: str | None = None,
     conversation_id: str | None = None,
+    mode: str = "normal",
 ):
     """Run one ADK invocation and yield normalized event dictionaries."""
     previous_messages, user_message = split_history_and_current_message(conversation_messages)
@@ -105,6 +108,7 @@ async def invoke_system_intelligence_stream_async(
             model_id=model_id,
             user_id=effective_user_id,
             include_temperature=include_temperature,
+            mode=mode,
         ):
             emitted_event = True
             yield event
@@ -121,6 +125,7 @@ async def invoke_system_intelligence_stream_async(
             model_id=model_id,
             user_id=effective_user_id,
             include_temperature=False,
+            mode=mode,
         ):
             yield event
     finally:

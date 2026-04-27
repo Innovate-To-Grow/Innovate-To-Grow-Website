@@ -11,10 +11,12 @@ from core.models import AWSCredentialConfig
 from core.models.base.system_intelligence import SystemIntelligenceConfig
 from core.services.system_intelligence_tools import get_adk_tools
 
-from .constants import AGENT_NAME, APP_NAME, APPROVAL_INSTRUCTION, MAX_LLM_CALLS
+from .constants import AGENT_NAME, APP_NAME, APPROVAL_INSTRUCTION, MAX_LLM_CALLS, PLAN_MODE_INSTRUCTION
 from .events import StreamState, normalize_adk_event
 from .history import seed_session_history
 from .litellm import build_lite_llm_model
+
+PLAN_MODE = "plan"
 
 
 async def run_adk_invocation(
@@ -26,12 +28,14 @@ async def run_adk_invocation(
     model_id: str,
     user_id: str,
     include_temperature: bool,
+    mode: str = "normal",
 ):
     runner, session_service = build_runner_callable()(
         chat_config=chat_config,
         aws_config=aws_config,
         model_id=model_id,
         include_temperature=include_temperature,
+        mode=mode,
     )
     session = await session_service.create_session(app_name=APP_NAME, user_id=user_id, session_id=f"si-{uuid.uuid4()}")
     await seed_session_history(session_service, session, previous_messages)
@@ -55,7 +59,12 @@ def build_runner_callable():
 
 
 def build_runner(
-    *, chat_config: SystemIntelligenceConfig, aws_config: AWSCredentialConfig, model_id: str, include_temperature=True
+    *,
+    chat_config: SystemIntelligenceConfig,
+    aws_config: AWSCredentialConfig,
+    model_id: str,
+    include_temperature=True,
+    mode: str = "normal",
 ):
     session_service = InMemorySessionService()
     agent = build_agent(
@@ -63,21 +72,33 @@ def build_runner(
         aws_config=aws_config,
         model_id=model_id,
         include_temperature=include_temperature,
+        mode=mode,
     )
     return Runner(agent=agent, app_name=APP_NAME, session_service=session_service), session_service
 
 
 def build_agent(
-    *, chat_config: SystemIntelligenceConfig, aws_config: AWSCredentialConfig, model_id: str, include_temperature=True
+    *,
+    chat_config: SystemIntelligenceConfig,
+    aws_config: AWSCredentialConfig,
+    model_id: str,
+    include_temperature=True,
+    mode: str = "normal",
 ):
     model = build_lite_llm_model(aws_config=aws_config, model_id=model_id)
     generate_content_config = build_generate_content_config(chat_config, include_temperature=include_temperature)
+    instruction = (chat_config.system_prompt or "") + APPROVAL_INSTRUCTION
+    if mode == PLAN_MODE:
+        instruction += PLAN_MODE_INSTRUCTION
+        tools = get_adk_tools(include_writes=False)
+    else:
+        tools = get_adk_tools()
     return LlmAgent(
         name=AGENT_NAME,
         description="Administrative assistant for Innovate to Grow operational data.",
         model=model,
-        instruction=(chat_config.system_prompt or "") + APPROVAL_INSTRUCTION,
-        tools=get_adk_tools(),
+        instruction=instruction,
+        tools=tools,
         generate_content_config=generate_content_config,
     )
 

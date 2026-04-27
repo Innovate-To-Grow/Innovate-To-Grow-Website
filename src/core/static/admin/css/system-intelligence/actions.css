@@ -6,7 +6,7 @@
   margin-top: 8px;
 }
 .si-action-card {
-  width: min(680px, 100%);
+  width: min(1120px, 100%);
   border: 1px solid color-mix(in srgb, var(--color-primary-300, #a5b4fc) 45%, var(--color-base-200, #e5e7eb));
   background: color-mix(in srgb, var(--color-primary-50, #eef2ff) 58%, #fff);
   border-radius: 8px;

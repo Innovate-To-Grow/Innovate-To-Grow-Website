@@ -1,15 +1,39 @@
 from django.db import close_old_connections
 
+from .analytics import get_page_view_summary, get_page_view_trend, get_top_paths
 from .approval_tools import (
     get_cms_page_detail,
     get_model_schema,
     get_record,
     list_database_models,
+    propose_campaign_update,
     propose_cms_page_update,
     propose_db_create,
     propose_db_delete,
     propose_db_update,
+    propose_event_update,
+    propose_member_update,
+    propose_menu_update,
+    propose_project_update,
     search_records,
+)
+from .cms import (
+    get_footer_content_detail,
+    get_menu_detail,
+    get_news_source_detail,
+    get_site_settings_detail,
+    get_style_sheet_detail,
+    search_cms_assets,
+    search_menus,
+    search_style_sheets,
+)
+from .events import (
+    get_checkin_breakdown,
+    get_event_detail,
+    get_event_question_summary,
+    get_registration_detail,
+    get_ticket_capacity_summary,
+    search_event_registrations,
 )
 from .legacy import (
     count_members,
@@ -26,6 +50,9 @@ from .legacy import (
     search_projects,
     search_semesters,
 )
+from .mail import get_campaign_recipient_logs, get_failed_recipient_report
+from .members import get_member_activity_summary, get_member_detail, search_contact_info
+from .projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
 from .registry import get_adk_tool_metadata, get_adk_tools
 
 __all__ = [
@@ -34,24 +61,54 @@ __all__ = [
     "get_adk_tool_metadata",
     "get_adk_tools",
     "get_campaign_stats",
+    "get_campaign_recipient_logs",
     "get_checkin_stats",
+    "get_checkin_breakdown",
     "get_cms_page_detail",
+    "get_current_project_schedule",
+    "get_event_detail",
     "get_event_registrations",
+    "get_event_question_summary",
+    "get_failed_recipient_report",
+    "get_footer_content_detail",
+    "get_menu_detail",
+    "get_member_activity_summary",
+    "get_member_detail",
     "get_model_schema",
+    "get_news_source_detail",
     "get_page_views",
+    "get_page_view_summary",
+    "get_page_view_trend",
+    "get_project_detail",
+    "get_registration_detail",
     "get_record",
+    "get_semester_project_summary",
+    "get_site_settings_detail",
+    "get_style_sheet_detail",
+    "get_ticket_capacity_summary",
+    "get_top_paths",
     "list_database_models",
+    "propose_campaign_update",
     "propose_cms_page_update",
     "propose_db_create",
     "propose_db_delete",
     "propose_db_update",
+    "propose_event_update",
+    "propose_member_update",
+    "propose_menu_update",
+    "propose_project_update",
     "run_custom_query",
+    "search_cms_assets",
     "search_cms_pages",
+    "search_contact_info",
     "search_email_campaigns",
+    "search_event_registrations",
     "search_events",
     "search_members",
+    "search_menus",
     "search_news",
     "search_projects",
     "search_records",
     "search_semesters",
+    "search_style_sheets",
 ]

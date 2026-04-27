@@ -8,7 +8,7 @@ from core.services import system_intelligence_actions
 
 def conversations_fragment(request):
     """Return JSON list of conversations for the current user."""
-    convos = ChatConversation.objects.filter(created_by=request.user).values("id", "title", "updated_at")
+    convos = ChatConversation.objects.filter(created_by=request.user).values("id", "title", "updated_at", "mode")
     return JsonResponse(
         {
             "conversations": [
@@ -16,6 +16,7 @@ def conversations_fragment(request):
                     "id": str(c["id"]),
                     "title": c["title"],
                     "updated_at": c["updated_at"].strftime("%b %d, %H:%M"),
+                    "mode": c["mode"],
                 }
                 for c in convos
             ]
@@ -28,7 +29,7 @@ def new_conversation_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     convo = ChatConversation.objects.create(created_by=request.user)
-    return JsonResponse({"id": str(convo.id), "title": convo.title})
+    return JsonResponse({"id": str(convo.id), "title": convo.title, "mode": convo.mode})
 
 
 def chat_view(request, conversation_id):
@@ -49,13 +50,14 @@ def chat_view(request, conversation_id):
                 "created_at": message.created_at.strftime("%b %d, %H:%M"),
                 "tool_calls": message.tool_calls or [],
                 "token_usage": message.token_usage or {},
+                "context_usage": message.context_usage or {},
                 "action_requests": [
                     system_intelligence_actions.serialize_action_request(action)
                     for action in message.action_requests.all().order_by("created_at")
                 ],
             }
         )
-    return JsonResponse({"messages": data, "title": convo.title})
+    return JsonResponse({"messages": data, "title": convo.title, "mode": convo.mode})
 
 
 def chat_delete_view(request, conversation_id):

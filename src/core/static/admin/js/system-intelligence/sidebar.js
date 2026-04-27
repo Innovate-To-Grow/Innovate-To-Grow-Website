@@ -63,8 +63,10 @@
         if (data.error) {
           messagesEl.innerHTML = '<div class="p-4 text-sm text-red-600">' + escapeHtml(data.error) + '</div>';
           updateContextUsage(null, {state: 'empty', detail: 'Ready'});
+          if (SI.setPlanMode) SI.setPlanMode(false);
           return;
         }
+        if (SI.setPlanMode) SI.setPlanMode(data.mode === 'plan');
         renderMessages(data.messages || []);
       });
     }
@@ -88,6 +90,7 @@
     newBtn.addEventListener('click', function() {
       api(root.getAttribute('data-new-url'), {method: 'POST'}).then(function(data) {
         if (data.id) {
+          if (SI.setPlanMode) SI.setPlanMode(false);
           loadConversations();
           loadMessages(data.id);
         }
@@ -96,9 +99,30 @@
 
     // --- Sidebar click delegation ---
     document.body.addEventListener('click', function(e) {
+      var confirmationSendBtn = e.target.closest('[data-si-confirmation-send]');
+      if (confirmationSendBtn) {
+        e.preventDefault();
+        handleConfirmationSend(confirmationSendBtn);
+        return;
+      }
+
+      var confirmationFillBtn = e.target.closest('[data-si-confirmation-fill]');
+      if (confirmationFillBtn) {
+        e.preventDefault();
+        handleConfirmationFill(confirmationFillBtn);
+        return;
+      }
+
       var toolToggle = e.target.closest('[data-tool-toggle]');
       if (toolToggle) {
         toolToggle.classList.toggle('is-expanded');
+        return;
+      }
+
+      var previewBtn = e.target.closest('[data-si-action-preview]');
+      if (previewBtn) {
+        e.preventDefault();
+        toggleActionPreview(previewBtn);
         return;
       }
 
@@ -109,6 +133,11 @@
         var actionId = (approveBtn || rejectBtn).getAttribute(approveBtn ? 'data-si-action-approve' : 'data-si-action-reject');
         var verb = approveBtn ? 'approve' : 'reject';
         if (!actionId) return;
+        if (approveBtn) {
+          var actionCard = approveBtn.closest('[data-si-action-id]');
+          var actionType = actionCard && actionCard.getAttribute('data-si-action-type');
+          if (actionType === 'db_delete' && !confirm('Delete this record? This cannot be undone.')) return;
+        }
         setActionButtonsDisabled(actionId, true);
         api(actionUrl(actionId, verb), {method: 'POST'}).then(function(data) {
           if (data.action_request) replaceActionRequestCard(data.action_request);
@@ -159,12 +188,85 @@
       return root.getAttribute('data-new-url').replace('/new/', '/actions/' + actionId + '/' + verb + '/');
     }
 
+    function handleConfirmationSend(button) {
+      if (!SI.sendSystemIntelligenceMessage) return;
+      var text = decodeURIComponent(button.getAttribute('data-si-confirmation-send') || '');
+      if (!text) return;
+      if (SI.sendSystemIntelligenceMessage(text)) markConfirmationChosen(button);
+    }
+
+    function handleConfirmationFill(button) {
+      if (!SI.fillSystemIntelligenceMessage) return;
+      var text = decodeURIComponent(button.getAttribute('data-si-confirmation-fill') || '');
+      if (!text) return;
+      SI.fillSystemIntelligenceMessage(text);
+      markConfirmationChosen(button, false);
+    }
+
+    function markConfirmationChosen(button, disable) {
+      var card = button.closest('.si-confirmation-card');
+      if (!card) return;
+      card.querySelectorAll('[data-si-confirmation-send], [data-si-confirmation-fill]').forEach(function(item) {
+        item.disabled = disable !== false;
+      });
+      card.querySelectorAll('.si-confirmation-option').forEach(function(item) {
+        item.classList.toggle('is-selected', item.contains(button));
+      });
+    }
+
+    function actionPreviewUrl(actionId, iframe) {
+      if (actionId) return root.getAttribute('data-new-url').replace('/new/', '/actions/' + actionId + '/preview/');
+      return iframe.getAttribute('data-si-preview-external-src') || 'about:blank';
+    }
+
     function setActionButtonsDisabled(actionId, disabled) {
       var card = document.querySelector('[data-si-action-id="' + CSS.escape(actionId) + '"]');
       if (!card) return;
       card.querySelectorAll('button').forEach(function(button) {
         button.disabled = disabled;
       });
+    }
+
+    function toggleActionPreview(button) {
+      var card = button.closest('[data-si-action-id]');
+      var panel = card ? card.querySelector('[data-si-preview-panel]') : null;
+      var iframe = panel ? panel.querySelector('[data-si-preview-frame]') : null;
+      if (!panel || !iframe) return;
+
+      var shouldOpen = panel.hidden;
+      panel.hidden = !shouldOpen;
+      button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+      button.classList.toggle('is-active', shouldOpen);
+
+      if (shouldOpen && !iframe.getAttribute('src')) {
+        iframe.addEventListener('load', function() {
+          resizeActionPreviewFrame(iframe);
+          setTimeout(function() { resizeActionPreviewFrame(iframe); }, 250);
+          setTimeout(function() { resizeActionPreviewFrame(iframe); }, 900);
+        }, {once: true});
+        iframe.setAttribute('src', actionPreviewUrl(card.getAttribute('data-si-action-id'), iframe));
+      }
+      if (shouldOpen) resizeActionPreviewFrame(iframe);
+      if (shouldOpen) {
+        setTimeout(function() {
+          messagesEl.scrollTop = Math.min(messagesEl.scrollHeight, card.offsetTop + panel.offsetTop - 12);
+        }, 0);
+      }
+    }
+
+    function resizeActionPreviewFrame(iframe) {
+      try {
+        var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        if (!doc || !doc.body) return;
+        var height = Math.max(
+          doc.body.scrollHeight,
+          doc.documentElement ? doc.documentElement.scrollHeight : 0,
+          180
+        );
+        iframe.style.height = Math.min(height + 2, 520) + 'px';
+      } catch (e) {
+        iframe.style.height = '260px';
+      }
     }
   }
 

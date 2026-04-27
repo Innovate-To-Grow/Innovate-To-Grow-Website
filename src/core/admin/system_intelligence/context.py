@@ -5,6 +5,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from core.models.base.system_intelligence import SystemIntelligenceConfig
+from core.services.system_intelligence_adk.context_window import estimate_context_window
 from core.services.system_intelligence_tools import get_adk_tool_metadata
 
 logger = logging.getLogger(__name__)
@@ -24,16 +25,6 @@ def _resolve_model_name(model_id):
     except Exception:
         logger.exception("Failed to resolve model display name for '%s'.", model_id)
     return model_id
-
-
-def _estimate_context_window(model_id):
-    """Return a conservative context-window estimate for the active Bedrock model."""
-    model_id = (model_id or "").lower()
-    if "anthropic" in model_id or "claude" in model_id:
-        return 200_000
-    if "llama" in model_id or "mistral" in model_id:
-        return 128_000
-    return 200_000
 
 
 def chat_list_view(request):
@@ -61,7 +52,7 @@ def chat_list_view(request):
         "aws_config": aws_config,
         "model_id": model_id or "",
         "model_name": _resolve_model_name(model_id),
-        "context_window": _estimate_context_window(model_id),
+        "context_window": estimate_context_window(model_id),
         "tools": tools,
         "tool_count": len(tools),
         "si_config_url": si_url,

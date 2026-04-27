@@ -76,3 +76,40 @@ async def propose_db_update(
 async def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | None = None):
     """Propose deleting one database record by primary key; does not apply without human approval."""
     return await run_action_service_async(action_services.propose_db_delete, app_label, model_name, pk, summary)
+
+
+async def propose_member_update(member_id: str, changes: dict[str, Any], summary: str | None = None) -> dict[str, Any]:
+    """Propose updating a member profile; does not apply without human approval."""
+    return await run_action_service_async(
+        action_services.propose_db_update, "authn", "Member", member_id, changes, summary
+    )
+
+
+async def propose_event_update(event_id: str, changes: dict[str, Any], summary: str | None = None) -> dict[str, Any]:
+    """Propose updating an event record; does not apply without human approval."""
+    return await run_action_service_async(
+        action_services.propose_db_update, "event", "Event", event_id, changes, summary
+    )
+
+
+async def propose_project_update(
+    project_id: str, changes: dict[str, Any], summary: str | None = None
+) -> dict[str, Any]:
+    """Propose updating a project record; does not apply without human approval."""
+    return await run_action_service_async(
+        action_services.propose_db_update, "projects", "Project", project_id, changes, summary
+    )
+
+
+async def propose_campaign_update(
+    campaign_id: str, changes: dict[str, Any], summary: str | None = None
+) -> dict[str, Any]:
+    """Propose updating an email campaign record; does not send email and requires human approval."""
+    return await run_action_service_async(
+        action_services.propose_db_update, "mail", "EmailCampaign", campaign_id, changes, summary
+    )
+
+
+async def propose_menu_update(menu_id: str, changes: dict[str, Any], summary: str | None = None) -> dict[str, Any]:
+    """Propose updating a layout menu record; does not apply without human approval."""
+    return await run_action_service_async(action_services.propose_db_update, "cms", "Menu", menu_id, changes, summary)

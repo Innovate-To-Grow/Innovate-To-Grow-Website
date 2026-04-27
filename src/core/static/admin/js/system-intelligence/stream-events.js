@@ -6,6 +6,7 @@
       if (eventType === 'text') return handleText(ctx, data);
       if (eventType === 'tool_call') return handleToolCall(ctx, data);
       if (eventType === 'action_request') return handleAction(ctx, data);
+      if (eventType === 'context') return handleContext(ctx, data);
       if (eventType === 'usage') return handleUsage(ctx, data);
       if (eventType === 'done') return handleDone(ctx, data);
       if (eventType === 'error') return handleError(ctx, data);
@@ -53,8 +54,13 @@
     scroll(ctx);
   }
 
+  function handleContext(ctx, data) {
+    ctx.contextUsage = data;
+    SI.updateContextUsage(data, {state: 'streaming', kind: 'context'});
+  }
+
   function handleUsage(ctx, data) {
-    SI.updateContextUsage(data, {state: 'streaming'});
+    SI.updateContextUsage(data, {state: 'streaming', kind: 'latest', reset: false});
     var usageEl = document.getElementById(ctx.streamId + '-usage');
     var usageText = document.getElementById(ctx.streamId + '-usage-text');
     if (usageEl) usageEl.style.display = '';
@@ -70,16 +76,26 @@
       ensureBubble(ctx);
       if (ctx.bubbleEl) ctx.bubbleEl.innerHTML = SI.formatMarkdown(ctx.rawText || '(empty response)');
     }
+    finalizeAssistantBody(ctx);
     collapseToolPills(ctx.toolsContainer);
     if (data.title) updateConversationTitle(ctx, data.title);
     finalizeUsage(ctx, data.token_usage);
-    SI.updateContextUsage(data.token_usage, {state: 'ready'});
+    SI.updateContextUsage(
+      {contextUsage: data.context_usage || ctx.contextUsage, latestUsage: data.token_usage},
+      {state: 'ready', reset: false}
+    );
   }
 
   function handleError(ctx, data) {
     var streamEl = document.getElementById(ctx.streamId);
     if (streamEl) streamEl.remove();
     ctx.messagesEl.insertAdjacentHTML('beforeend', '<div class="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg">' + SI.escapeHtml(data.error) + '</div>');
+  }
+
+  function finalizeAssistantBody(ctx) {
+    if (!ctx.bubbleEl || !SI.isConfirmationInfoMessage || !SI.isConfirmationInfoMessage(ctx.rawText)) return;
+    ctx.bubbleEl.outerHTML = SI.renderConfirmationInfoCard(ctx.rawText || '(empty response)');
+    ctx.bubbleEl = null;
   }
 
   function collapseToolPills(container) {

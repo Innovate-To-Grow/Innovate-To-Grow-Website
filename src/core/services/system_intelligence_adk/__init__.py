@@ -1,4 +1,4 @@
-from .constants import AGENT_NAME
+from .constants import AGENT_NAME, APP_NAME
 from .constants import TEMPERATURE_DEPRECATED_MODEL_IDS as _TEMPERATURE_DEPRECATED_MODEL_IDS
 from .errors import (
     SystemIntelligenceADKError,
@@ -56,6 +56,7 @@ from .stream import (
 
 __all__ = [
     "AGENT_NAME",
+    "APP_NAME",
     "SystemIntelligenceADKError",
     "format_system_intelligence_error",
     "invoke_system_intelligence_stream",

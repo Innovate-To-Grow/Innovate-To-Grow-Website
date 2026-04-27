@@ -1,5 +1,6 @@
 /* Input bar */
 .si-input-bar {
+  position: relative;
   padding: 12px 20px 16px;
   border-top: 1px solid;
   border-color: inherit;
@@ -9,8 +10,8 @@
 }
 .si-context-usage {
   height: 40px;
-  min-width: 192px;
-  max-width: 240px;
+  min-width: 260px;
+  max-width: 420px;
   display: flex;
   align-items: center;
   padding: 0 12px;

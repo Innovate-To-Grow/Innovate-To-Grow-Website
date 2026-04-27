@@ -2,12 +2,17 @@ import json
 from typing import Any
 
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import models
 
 from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 
 from .comparison_text import extract_block_text, limit_comparison_text
 from .constants import COMPARISON_MAX_BLOCKS, COMPARISON_MAX_FIELDS
+from .field_display import display_value, field_label, field_type_name
 from .utils import json_safe
+
+DB_CONTEXT_FIELD_LIMIT = 6
+SNAPSHOT_INTERNAL_KEYS = {"__repr__"}
 
 
 def build_diff(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:
@@ -40,6 +45,52 @@ def action_comparison(action: SystemIntelligenceActionRequest, payload: dict[str
     if action.action_type == SystemIntelligenceActionRequest.ACTION_CMS_PAGE_UPDATE:
         return build_cms_comparison(action.before_snapshot or {}, action.after_snapshot or {})
     return {}
+
+
+def build_db_comparison(
+    model: type[models.Model],
+    before: dict[str, Any],
+    after: dict[str, Any],
+    mode: str,
+) -> dict[str, Any]:
+    """Build the db_record comparison structure rendered by the chat card.
+
+    ``mode`` is ``"create"``, ``"update"``, or ``"delete"``. Snapshot keys
+    are sourced from ``serialize_model_instance(write=True)``, so FK keys
+    arrive as ``<name>_id``; ``field_label`` / ``display_value`` resolve
+    that back to the FK descriptor for verbose names and __str__ lookups.
+    """
+    before = before or {}
+    after = after or {}
+    keys = sorted((set(before) | set(after)) - SNAPSHOT_INTERNAL_KEYS)
+    changed_rows: list[dict[str, Any]] = []
+    context_rows: list[dict[str, Any]] = []
+    for key in keys:
+        before_raw = before.get(key)
+        after_raw = after.get(key)
+        changed = before_raw != after_raw
+        row = {
+            "field": key,
+            "label": field_label(model, key),
+            "type": field_type_name(model, key),
+            "before": json_safe(before_raw),
+            "after": json_safe(after_raw),
+            "before_display": display_value(model, key, before_raw),
+            "after_display": display_value(model, key, after_raw),
+            "changed": changed,
+        }
+        (changed_rows if changed else context_rows).append(row)
+
+    truncated = len(changed_rows) > COMPARISON_MAX_FIELDS or len(context_rows) > DB_CONTEXT_FIELD_LIMIT
+    return {
+        "type": "db_record",
+        "mode": mode,
+        "model_label": str(model._meta.verbose_name).title(),
+        "record_repr": str(after.get("__repr__") or before.get("__repr__") or ""),
+        "fields": changed_rows[:COMPARISON_MAX_FIELDS],
+        "context_fields": context_rows[:DB_CONTEXT_FIELD_LIMIT],
+        "truncated": truncated,
+    }
 
 
 def build_cms_comparison(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:

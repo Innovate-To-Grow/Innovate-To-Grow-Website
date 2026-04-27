@@ -62,7 +62,7 @@ def _stream_exception(conversation_id, exc, aws_config):
     return _sse("error", {"error": formatted})
 
 
-def _create_assistant_message(convo, full_text, model_id, tool_calls, total_usage, action_ids):
+def _create_assistant_message(convo, full_text, model_id, tool_calls, total_usage, action_ids, context_usage=None):
     assistant = ChatMessage.objects.create(
         conversation=convo,
         role="assistant",
@@ -70,6 +70,7 @@ def _create_assistant_message(convo, full_text, model_id, tool_calls, total_usag
         model_id=model_id,
         tool_calls=_tool_calls_for_storage(tool_calls),
         token_usage=total_usage,
+        context_usage=context_usage or {},
     )
     SystemIntelligenceActionRequest.objects.filter(
         id__in=[action_id for action_id in action_ids if action_id],

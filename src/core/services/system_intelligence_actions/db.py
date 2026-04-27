@@ -4,7 +4,7 @@ from django.db import models
 
 from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 
-from .comparison import build_diff
+from .comparison import build_db_comparison, build_diff
 from .context import current_conversation, current_user_id
 from .exceptions import ActionRequestError
 from .orm_records import (
@@ -29,6 +29,7 @@ def propose_db_create(app_label: str, model_name: str, fields: dict[str, Any], s
     assign_model_fields(obj, clean_fields)
     obj.full_clean()
     after = serialize_model_instance(obj, write=True)
+    comparison = build_db_comparison(model, {}, after, mode="create")
     action = SystemIntelligenceActionRequest.objects.create(
         conversation=conversation,
         created_by_id=current_user_id(),
@@ -38,7 +39,12 @@ def propose_db_create(app_label: str, model_name: str, fields: dict[str, Any], s
         target_repr=f"New {model._meta.verbose_name}",
         title=f"Create {model._meta.verbose_name}",
         summary=summary or "Review this new database record before applying it.",
-        payload={"app_label": model._meta.app_label, "model_name": model._meta.object_name, "fields": clean_fields},
+        payload={
+            "app_label": model._meta.app_label,
+            "model_name": model._meta.object_name,
+            "fields": clean_fields,
+            "comparison": comparison,
+        },
         before_snapshot={},
         after_snapshot=after,
         diff=build_diff({}, after),
@@ -59,6 +65,7 @@ def propose_db_update(app_label: str, model_name: str, pk: str, changes: dict[st
     assign_model_fields(proposed_obj, clean_changes)
     proposed_obj.full_clean()
     after = serialize_model_instance(proposed_obj, write=True)
+    comparison = build_db_comparison(model, before, after, mode="update")
     action = SystemIntelligenceActionRequest.objects.create(
         conversation=conversation,
         created_by_id=current_user_id(),
@@ -74,6 +81,7 @@ def propose_db_update(app_label: str, model_name: str, pk: str, changes: dict[st
             "model_name": model._meta.object_name,
             "pk": str(obj.pk),
             "changes": clean_changes,
+            "comparison": comparison,
         },
         before_snapshot=before,
         after_snapshot=after,
@@ -88,6 +96,7 @@ def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | N
     model = resolve_model(app_label, model_name, write=True)
     obj = get_object(model, pk)
     before = serialize_model_instance(obj, write=True)
+    comparison = build_db_comparison(model, before, {}, mode="delete")
     action = SystemIntelligenceActionRequest.objects.create(
         conversation=conversation,
         created_by_id=current_user_id(),
@@ -98,7 +107,12 @@ def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | N
         target_repr=record_repr(obj),
         title=f"Delete {model._meta.verbose_name}: {record_repr(obj)}",
         summary=summary or "Review this database deletion before applying it.",
-        payload={"app_label": model._meta.app_label, "model_name": model._meta.object_name, "pk": str(obj.pk)},
+        payload={
+            "app_label": model._meta.app_label,
+            "model_name": model._meta.object_name,
+            "pk": str(obj.pk),
+            "comparison": comparison,
+        },
         before_snapshot=before,
         after_snapshot={},
         diff=build_diff(before, {}),

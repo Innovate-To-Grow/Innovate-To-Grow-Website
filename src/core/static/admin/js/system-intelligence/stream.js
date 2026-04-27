@@ -11,19 +11,50 @@
       input.style.height = Math.min(input.scrollHeight, 120) + 'px';
     }
 
-    function sendMessage() {
-      var text = input.value.trim();
-      if (!text || sending || !SI.activeConvoId) return;
+    function sendMessageText(text) {
+      text = (text || '').trim();
+      if (!text) return false;
+      return startStream({
+        displayPrompt: text,
+        url: sendUrl(els.root),
+        body: {message: text},
+      });
+    }
+
+    function startStream(opts) {
+      var displayPrompt = (opts && opts.displayPrompt || '').trim();
+      if (!displayPrompt || sending || !SI.activeConvoId) return false;
       sending = true;
       sendBtn.disabled = true;
       input.value = '';
       autoResize();
-      appendUserAndStreamShell(els, text);
-      fetchStream(els, text).finally(function() {
+      SI.updateContextUsage(null, {state: 'loading', detail: 'Preparing...'});
+      appendUserAndStreamShell(els, displayPrompt);
+      fetchStream(els, opts.url, opts.body).finally(function() {
         sending = false;
         sendBtn.disabled = !input.value.trim();
         input.focus();
       });
+      return true;
+    }
+
+    function sendMessage() {
+      var text = (input.value || '').trim();
+      if (!text) return;
+      if (SI.maybeInterceptSend && SI.maybeInterceptSend(text)) {
+        input.value = '';
+        autoResize();
+        sendBtn.disabled = true;
+        return;
+      }
+      sendMessageText(text);
+    }
+
+    function fillMessage(text) {
+      input.value = text || '';
+      autoResize();
+      sendBtn.disabled = !input.value.trim() || sending;
+      input.focus();
     }
 
     input.addEventListener('input', function() {
@@ -37,6 +68,10 @@
       }
     });
     sendBtn.addEventListener('click', sendMessage);
+
+    SI.sendSystemIntelligenceMessage = sendMessageText;
+    SI.fillSystemIntelligenceMessage = fillMessage;
+    SI.startStreamForCommand = startStream;
   }
 
   function appendUserAndStreamShell(els, text) {
@@ -59,7 +94,7 @@
       '<div class="si-action-requests" id="' + streamId + '-actions"></div></div></div>';
   }
 
-  function fetchStream(els, text) {
+  function fetchStream(els, url, body) {
     var streamId = els.currentStreamId;
     var ctx = {
       streamId: streamId,
@@ -67,11 +102,12 @@
       messagesEl: els.messagesEl,
       toolsContainer: document.getElementById(streamId + '-tools'),
       actionsContainer: document.getElementById(streamId + '-actions'),
+      contextUsage: null,
       rawText: '',
       bubbleStarted: false,
       bubbleEl: null,
     };
-    return fetch(sendUrl(els.root), requestOptions(text))
+    return fetch(url, requestOptions(body))
       .then(validateResponse)
       .then(function(response) { return readSSE(response, SI.createStreamEventHandler(ctx)); })
       .catch(function() { networkError(ctx); });
@@ -81,12 +117,12 @@
     return root.getAttribute('data-new-url').replace('/new/', '/' + SI.activeConvoId + '/send/');
   }
 
-  function requestOptions(text) {
+  function requestOptions(body) {
     return {
       method: 'POST',
       credentials: 'same-origin',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': SI.csrfToken(), 'X-Requested-With': 'XMLHttpRequest'},
-      body: JSON.stringify({message: text}),
+      body: JSON.stringify(body || {}),
     };
   }
 

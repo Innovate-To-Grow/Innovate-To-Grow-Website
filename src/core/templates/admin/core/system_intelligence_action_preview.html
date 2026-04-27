@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title|default:action.title }} Preview</title>
+  <link rel="stylesheet" href="/layout/styles.css">
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #fff;
+      color: #1f2937;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .si-action-preview-shell {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .si-action-preview-banner {
+      margin: 0 0 18px;
+      padding: 10px 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1e40af;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .si-action-preview-block {
+      margin: 0 0 24px;
+    }
+    .si-action-preview-block-meta {
+      margin: 0 0 8px;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .si-action-preview-empty {
+      margin: 0;
+      color: #6b7280;
+      font-style: italic;
+    }
+    .si-action-preview-empty-state {
+      margin: 0;
+      padding: 18px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      color: #475569;
+      background: #f8fafc;
+    }
+    .si-action-preview-shell img,
+    .si-action-preview-shell iframe,
+    .si-action-preview-shell table {
+      max-width: 100%;
+    }
+    .si-action-preview-shell iframe {
+      border: 0;
+    }
+  </style>
+  {% if page.page_css %}
+    <style>{{ page.page_css|safe }}</style>
+  {% endif %}
+</head>
+<body>
+  <div class="si-action-preview-shell">
+    <div class="si-action-preview-banner">
+      {{ banner_text }}
+    </div>
+    <main class="{{ page.page_css_class|default:'cms-page' }}">
+      {% if has_preview_blocks %}
+        {{ block_html }}
+      {% else %}
+        <p class="si-action-preview-empty-state">{{ empty_text }}</p>
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>

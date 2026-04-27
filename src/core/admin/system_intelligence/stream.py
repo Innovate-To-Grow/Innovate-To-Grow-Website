@@ -9,6 +9,7 @@ from core.models.base.system_intelligence import (
     SystemIntelligenceConfig,
 )
 from core.services.system_intelligence_adk import invoke_system_intelligence_stream as _default_stream
+from core.services.system_intelligence_adk.context_manager import prepare_conversation_context
 
 from .stream_helpers import _create_assistant_message, _handle_stream_event, _sse, _stream_exception
 
@@ -34,19 +35,28 @@ def chat_send_view(request, conversation_id):
     if not user_content:
         return JsonResponse({"error": "Message cannot be empty"}, status=400)
 
+    persist_user_message(convo, user_content)
+    return build_stream_response(request, convo)
+
+
+def persist_user_message(convo, user_content):
+    """Persist a user message and update the conversation title on first turn."""
     ChatMessage.objects.create(conversation=convo, role="user", content=user_content)
     title_updated = convo.title == "New Chat"
     if title_updated:
         convo.title = user_content[:100]
     convo.save(update_fields=["title", "updated_at"] if title_updated else ["updated_at"])
 
-    history = list(convo.messages.order_by("created_at").values("role", "content"))
+
+def build_stream_response(request, convo):
+    """Stream the next assistant turn for ``convo``, honoring its current mode."""
+    messages = list(convo.messages.prefetch_related("action_requests").order_by("created_at"))
     chat_config = SystemIntelligenceConfig.load()
     aws_config = AWSCredentialConfig.load()
     model_id = aws_config.default_model_id
 
     response = StreamingHttpResponse(
-        _event_stream(request, convo, history, chat_config, aws_config, model_id),
+        _event_stream(request, convo, messages, chat_config, aws_config, model_id, mode=convo.mode),
         content_type="text/event-stream",
     )
     response["Cache-Control"] = "no-cache"
@@ -55,20 +65,36 @@ def chat_send_view(request, conversation_id):
     return response
 
 
-def _event_stream(request, convo, history, chat_config, aws_config, model_id):
+def _event_stream(request, convo, messages, chat_config, aws_config, model_id, *, mode="normal"):
     full_text = ""
     tool_calls = []
     action_ids = []
     action_requests = []
     total_usage = {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
+    context_usage = {}
     try:
+        prepared_context = prepare_conversation_context(
+            convo,
+            messages,
+            chat_config=chat_config,
+            aws_config=aws_config,
+            model_id=model_id,
+            user_id=str(request.user.pk),
+        )
+        context_usage = prepared_context.usage
+        if context_usage:
+            yield _sse("context", context_usage)
+        if prepared_context.error:
+            yield _sse("error", {"error": prepared_context.error})
+            return
         for event in _stream_callable()(
-            history,
+            prepared_context.messages,
             chat_config=chat_config,
             aws_config=aws_config,
             model_id=model_id,
             user_id=str(request.user.pk),
             conversation_id=str(convo.pk),
+            mode=mode,
         ):
             chunk = _handle_stream_event(
                 event, aws_config, full_text, tool_calls, action_ids, action_requests, total_usage
@@ -83,7 +109,9 @@ def _event_stream(request, convo, history, chat_config, aws_config, model_id):
         yield _stream_exception(convo.id, exc, aws_config)
         return
 
-    assistant = _create_assistant_message(convo, full_text, model_id, tool_calls, total_usage, action_ids)
+    assistant = _create_assistant_message(
+        convo, full_text, model_id, tool_calls, total_usage, action_ids, context_usage
+    )
     yield _sse(
         "done",
         {
@@ -93,5 +121,6 @@ def _event_stream(request, convo, history, chat_config, aws_config, model_id):
             "tool_calls": tool_calls,
             "action_requests": action_requests,
             "token_usage": total_usage,
+            "context_usage": context_usage,
         },
     )

@@ -15,5 +15,7 @@
   };
 
   var sidebar = SI.initSidebar(els);
+  SI.sidebar = sidebar;
   SI.initStream(els, sidebar);
+  if (SI.initCommands) SI.initCommands(els);
 })();

@@ -35,9 +35,15 @@
     return '<p>' + escapeHtml(text).replace(/\n/g, '<br>') + '</p>';
   }
 
+  function formatMarkdownInline(text) {
+    if (typeof marked !== 'undefined' && marked.parseInline) return marked.parseInline(text);
+    return escapeHtml(text);
+  }
+
   window.SI = window.SI || {};
   SI.csrfToken = csrfToken;
   SI.api = api;
   SI.escapeHtml = escapeHtml;
   SI.formatMarkdown = formatMarkdown;
+  SI.formatMarkdownInline = formatMarkdownInline;
 })();

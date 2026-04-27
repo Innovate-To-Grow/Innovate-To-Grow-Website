@@ -11,6 +11,7 @@ from core.models.base.system_intelligence import SystemIntelligenceConfig
 from core.services.system_intelligence_adk import (
     _TEMPERATURE_DEPRECATED_MODEL_IDS,
     AGENT_NAME,
+    APP_NAME,
     _invoke_system_intelligence_stream_async,
     invoke_system_intelligence_stream,
 )
@@ -77,6 +78,50 @@ class SystemIntelligenceADKInvocationTests(TestCase):
         self.assertEqual(seen["new_message"], "Current")
         self.assertEqual(seen["streaming_mode"], "sse")
         self.assertTrue(seen["session_id"].startswith("si-"))
+
+    def test_async_adapter_seeds_synthetic_summary_message_as_model_history(self):
+        seen = {}
+        session_service = InMemorySessionService()
+
+        class FakeRunner:
+            async def run_async(self, *, user_id, session_id, new_message, run_config):
+                session = await session_service.get_session(
+                    app_name=APP_NAME,
+                    user_id=user_id,
+                    session_id=session_id,
+                )
+                seen["history"] = [
+                    event.content.parts[0].text for event in session.events if event.content and event.content.parts
+                ]
+                seen["new_message"] = new_message.parts[0].text
+                yield Event(
+                    author=AGENT_NAME,
+                    partial=False,
+                    content=types.Content(role="model", parts=[types.Part.from_text(text="Done")]),
+                )
+
+        async def collect():
+            with patch(
+                "core.services.system_intelligence_adk._build_runner",
+                return_value=(FakeRunner(), session_service),
+            ):
+                return [
+                    event
+                    async for event in _invoke_system_intelligence_stream_async(
+                        [
+                            {"role": "assistant", "content": "Rolling summary of earlier context."},
+                            {"role": "user", "content": "Current"},
+                        ],
+                        chat_config=self.chat_config,
+                        aws_config=self.aws_config,
+                        model_id=self.aws_config.default_model_id,
+                        user_id="42",
+                    )
+                ]
+
+        self.assertEqual(asyncio.run(collect()), [{"type": "text", "chunk": "Done"}])
+        self.assertEqual(seen["history"], ["Rolling summary of earlier context."])
+        self.assertEqual(seen["new_message"], "Current")
 
     def test_async_adapter_retries_without_temperature_when_bedrock_deprecates_it(self):
         _TEMPERATURE_DEPRECATED_MODEL_IDS.clear()

@@ -7,12 +7,36 @@ from django.db import models
 class ChatConversation(models.Model):
     """A single AI chat conversation thread."""
 
+    MODE_NORMAL = "normal"
+    MODE_PLAN = "plan"
+    MODE_CHOICES = [(MODE_NORMAL, "Normal"), (MODE_PLAN, "Plan-only")]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200, default="New Chat")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="chat_conversations",
+    )
+    mode = models.CharField(
+        max_length=16,
+        choices=MODE_CHOICES,
+        default=MODE_NORMAL,
+        help_text="Plan mode disables write tools and steers the agent toward planning only.",
+    )
+    context_summary = models.TextField(
+        blank=True,
+        default="",
+        help_text="Rolling summary of older System Intelligence conversation context.",
+    )
+    context_summary_updated_at = models.DateTimeField(null=True, blank=True)
+    context_summary_through_message = models.ForeignKey(
+        "ChatMessage",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="Newest message included in the rolling context summary.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -54,6 +78,11 @@ class ChatMessage(models.Model):
         default=dict,
         blank=True,
         help_text="Token consumption for this turn (inputTokens, outputTokens, totalTokens).",
+    )
+    context_usage = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Estimated context prepared for this turn before invoking the model.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
