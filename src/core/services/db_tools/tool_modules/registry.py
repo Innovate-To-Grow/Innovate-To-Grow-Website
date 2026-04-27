@@ -1,6 +1,6 @@
 from .analytics import get_page_views
 from .cms import search_cms_pages, search_news
-from .custom_query import run_custom_query
+from .custom import run_custom_query
 from .events import get_checkin_stats, get_event_registrations, search_events
 from .mail import get_campaign_stats, search_email_campaigns
 from .members import count_members, search_members

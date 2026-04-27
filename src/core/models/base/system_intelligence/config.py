@@ -1,7 +1,9 @@
 from django.db import models
 
+from ..control import ProjectControlModel
 
-class SystemIntelligenceConfig(models.Model):
+
+class SystemIntelligenceConfig(ProjectControlModel):
     """System Intelligence configuration for Amazon Bedrock."""
 
     name = models.CharField(
@@ -36,7 +38,6 @@ class SystemIntelligenceConfig(models.Model):
         verbose_name="Temperature",
         help_text="Sampling temperature (0.0 = deterministic, 1.0 = creative).",
     )
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "System Intelligence Config"
@@ -56,7 +57,7 @@ class SystemIntelligenceConfig(models.Model):
         obj = cls.objects.filter(is_active=True).first()
         if obj is None:
             obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls()
+        return obj if obj is not None else cls(id=None)
 
     @property
     def is_configured(self):

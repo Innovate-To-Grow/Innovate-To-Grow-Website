@@ -1,12 +1,12 @@
 /* Input bar */
 .si-input-bar {
   position: relative;
-  padding: 12px 20px 16px;
-  border-top: 1px solid;
-  border-color: inherit;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--builder-border-color);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-end;
+  background: var(--builder-panel-background-color);
 }
 .si-context-usage {
   height: 40px;
@@ -14,19 +14,18 @@
   max-width: 420px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  border: 1px solid var(--color-base-200, #e5e7eb);
-  border-radius: 8px;
-  background: var(--color-base-50, #f9fafb);
-  color: var(--color-base-500, #6b7280);
+  padding: 0 14px;
+  border: 1px solid var(--builder-border-color);
+  border-radius: 999px;
+  background: var(--builder-form-field-background-color);
+  color: var(--builder-text-secondary-color);
   user-select: none;
   flex: 0 0 auto;
   overflow: hidden;
 }
 .dark .si-context-usage {
-  background: rgba(255,255,255,0.03);
-
-  border-color: rgba(255,255,255,0.08);
+  background: var(--builder-form-field-background-color);
+  border-color: var(--builder-border-color);
 }
 .si-context-usage-main {
   min-width: 0;
@@ -40,12 +39,12 @@
 .si-context-usage-label {
   flex-shrink: 0;
   font-weight: 600;
-  color: var(--color-base-500, #6b7280);
+  color: var(--builder-text-secondary-color);
 }
 .si-context-usage-label::after {
   content: "·";
   margin-left: 6px;
-  color: var(--color-base-300, #d1d5db);
+  color: var(--builder-text-muted-color);
   font-weight: 400;
 }
 .si-context-usage-detail {
@@ -58,40 +57,49 @@
 }
 .si-context-usage[data-state="ready"],
 .si-context-usage[data-state="streaming"] {
-  border-color: color-mix(in srgb, var(--color-primary-500, #6366f1) 24%, var(--color-base-200, #e5e7eb));
-  background: color-mix(in srgb, var(--color-primary-500, #6366f1) 7%, transparent);
+  border-color: color-mix(in srgb, var(--builder-button-primary-background-color) 36%, var(--builder-border-color));
+  background: color-mix(in srgb, var(--builder-button-primary-background-color) 9%, var(--builder-form-field-background-color));
 }
 .si-input-bar textarea {
   flex: 1 1 auto;
   min-width: 180px;
   resize: none;
-  border: 1px solid var(--color-base-300, #d1d5db);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border: 1px solid var(--builder-border-color);
+  border-radius: 22px;
+  padding: 11px 16px;
   font-size: 0.9rem;
   line-height: 1.4;
   max-height: 120px;
   outline: none;
   font-family: inherit;
-  background: transparent;
-  color: inherit;
+  background: var(--chat-message-textarea-background-color);
+  color: var(--chat-message-textarea-caret-color);
 }
 .si-input-bar textarea:focus {
-  border-color: var(--color-primary-500, #6366f1);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary-500, #6366f1) 20%, transparent);
+  background: var(--chat-message-textarea-focus-background-color);
+  border-color: var(--builder-button-primary-background-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--builder-button-primary-background-color) 22%, transparent);
+}
+.si-input-bar textarea::placeholder {
+  color: var(--chat-message-textarea-placeholder-color);
 }
 .si-send-btn {
   width: 40px; height: 40px;
-  border-radius: 8px;
+  border-radius: 999px;
   border: none;
-  background: var(--color-primary-500, #6366f1);
-  color: #fff;
+  background: var(--builder-button-primary-background-color);
+  color: var(--builder-button-primary-text-color);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
 }
 .si-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.si-send-btn:not(:disabled):hover { opacity: 0.85; }
+.si-send-btn:not(:disabled):hover {
+  background: var(--builder-button-primary-hover-color);
+}
+.si-send-btn:not(:disabled):active {
+  transform: translateY(1px);
+}

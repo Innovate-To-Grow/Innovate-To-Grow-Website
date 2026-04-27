@@ -4,12 +4,8 @@ Profile serializer for user information.
 
 from __future__ import annotations
 
-import logging
-
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-
-logger = logging.getLogger(__name__)
 
 Member = get_user_model()
 
@@ -112,15 +108,5 @@ class ProfileSerializer(serializers.Serializer):
 
         if member_fields_to_update:
             instance.save(update_fields=member_fields_to_update)
-
-            try:
-                from authn.services.member_sheet_sync import schedule_member_sync
-
-                schedule_member_sync()
-            except Exception:
-                # Best-effort: the member was saved successfully above; the
-                # sheet sync is a background nicety and must never block the
-                # profile update response.
-                logger.debug("schedule_member_sync failed after profile update", exc_info=True)
 
         return instance

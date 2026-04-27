@@ -9,8 +9,7 @@ from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 from .cms import apply_cms_page_update
 from .db import apply_db_create, apply_db_delete, apply_db_update
 from .exceptions import ActionRequestError
-from .orm_records import check_model_permission
-from .orm_safety import resolve_model
+from .orm import check_model_permission, resolve_model
 
 
 def approve_action_request(action_id: str | uuid.UUID, user) -> SystemIntelligenceActionRequest:

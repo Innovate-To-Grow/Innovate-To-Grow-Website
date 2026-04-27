@@ -14,7 +14,7 @@
   }
 
   function renderUserBody(content) {
-    return '<div class="si-msg-bubble">' + SI.escapeHtml(content) + '</div>';
+    return '<div class="si-msg-bubble">' + SI.escapeHtml(userDisplayContent(content)) + '</div>';
   }
 
   function renderAssistantBody(content) {
@@ -70,6 +70,7 @@
     for (var i = 0; i < options.length; i++) {
       var option = options[i];
       var prompt = optionPrompt(option);
+      var displayText = optionDisplayText(option);
       var needsInput = optionNeedsInput(option);
       var attr = needsInput ? 'data-si-confirmation-fill' : 'data-si-confirmation-send';
       var buttonText = needsInput ? 'Add value' : 'Create approval card';
@@ -79,7 +80,7 @@
           '<strong>' + SI.escapeHtml(option.title) + '</strong>' +
           (option.description ? '<p>' + SI.formatMarkdownInline(option.description) + '</p>' : '') +
         '</div>' +
-        '<button type="button" class="si-confirmation-option-btn" ' + attr + '="' + encodeURIComponent(prompt) + '">' +
+        '<button type="button" class="si-confirmation-option-btn" ' + attr + '="' + encodeURIComponent(prompt) + '" data-si-confirmation-display="' + encodeURIComponent(displayText) + '">' +
           '<span>' + buttonText + '</span>' +
         '</button>' +
       '</div>';
@@ -124,6 +125,17 @@
     return 'I choose option ' + option.number + ': ' + option.title + '. ' +
       (option.description ? 'Details: ' + stripMarkdown(option.description) + ' ' : '') +
       'Please create the pending approval proposal(s) for this exact option. Do not apply the database change directly; create the approval card so I can review and approve it.';
+  }
+
+  function optionDisplayText(option) {
+    return 'Create approval card for option ' + option.number + ': ' + option.title;
+  }
+
+  function userDisplayContent(content) {
+    var text = String(content || '').trim();
+    var match = text.match(/^I choose option\s+(\d+):\s+(.+?)(?:\.\s+Details:|\.\s+Please create|$)/i);
+    if (!match) return content;
+    return 'Create approval card for option ' + match[1] + ': ' + stripMarkdown(match[2]).replace(/[.。]\s*$/, '');
   }
 
   function optionNeedsInput(option) {

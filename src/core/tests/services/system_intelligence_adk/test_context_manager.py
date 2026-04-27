@@ -67,9 +67,13 @@ class SystemIntelligenceContextManagerTests(TestCase):
         self.add_message("user", "Current question")
 
         with (
-            patch("core.services.system_intelligence_adk.context_manager.estimate_context_window", return_value=1000),
             patch(
-                "core.services.system_intelligence_adk.context_manager.summarize_context", return_value="Useful summary"
+                "core.services.system_intelligence_adk.context_manager.prepare.estimate_context_window",
+                return_value=1000,
+            ),
+            patch(
+                "core.services.system_intelligence_adk.context_manager.summary.summarize_context",
+                return_value="Useful summary",
             ),
         ):
             prepared = self.prepare()
@@ -91,9 +95,13 @@ class SystemIntelligenceContextManagerTests(TestCase):
         self.add_message("user", "Current question")
 
         with (
-            patch("core.services.system_intelligence_adk.context_manager.estimate_context_window", return_value=1000),
             patch(
-                "core.services.system_intelligence_adk.context_manager.summarize_context", return_value="Useful summary"
+                "core.services.system_intelligence_adk.context_manager.prepare.estimate_context_window",
+                return_value=1000,
+            ),
+            patch(
+                "core.services.system_intelligence_adk.context_manager.summary.summarize_context",
+                return_value="Useful summary",
             ),
         ):
             prepared = self.prepare()
@@ -130,12 +138,15 @@ class SystemIntelligenceContextManagerTests(TestCase):
         initial_message_count = ChatMessage.objects.filter(conversation=self.conversation).count()
 
         with (
-            patch("core.services.system_intelligence_adk.context_manager.estimate_context_window", return_value=1000),
             patch(
-                "core.services.system_intelligence_adk.context_manager.summarize_context",
+                "core.services.system_intelligence_adk.context_manager.prepare.estimate_context_window",
+                return_value=1000,
+            ),
+            patch(
+                "core.services.system_intelligence_adk.context_manager.summary.summarize_context",
                 side_effect=RuntimeError("down"),
             ),
-            patch("core.services.system_intelligence_adk.context_manager.logger.exception"),
+            patch("core.services.system_intelligence_adk.context_manager.summary.logger.exception"),
         ):
             prepared = self.prepare()
 

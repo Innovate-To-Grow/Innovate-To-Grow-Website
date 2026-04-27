@@ -1,3 +1,6 @@
+import re
+from urllib.parse import urlparse
+
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, JsonResponse
@@ -9,6 +12,8 @@ from cms.services.sanitize import sanitize_html_for_render
 from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 from core.services import system_intelligence_actions
 from core.services.system_intelligence_actions.comparison import block_key
+
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 
 def action_approve_view(request, action_id):
@@ -77,6 +82,7 @@ def action_preview_view(request, action_id):
     )
 
 
+@xframe_options_sameorigin
 def action_full_preview_view(request, action_id):
     """Render the full proposed CMS page in a new admin preview tab."""
     try:
@@ -237,8 +243,8 @@ def _render_link_list(data):
             '<li><a href="{}">{}</a>{}</li>',
             (
                 (
-                    item.get("url", "#"),
-                    item.get("title") or item.get("label") or item.get("url", "Link"),
+                    _safe_href(item.get("url", "#")),
+                    _link_label(item),
                     format_html(" — {}", item.get("description", "")) if item.get("description") else "",
                 )
                 for item in items
@@ -270,6 +276,28 @@ def _render_table(data):
             ),
         ),
     )
+
+
+def _safe_href(url):
+    if not isinstance(url, str):
+        return "#"
+    href = _CONTROL_CHAR_RE.sub("", url).strip()
+    if not href or href.startswith(("//", "\\\\")):
+        return "#"
+    parsed = urlparse(href)
+    if parsed.scheme and parsed.scheme not in {"http", "https"}:
+        return "#"
+    if parsed.netloc and not parsed.scheme:
+        return "#"
+    return href
+
+
+def _link_label(item):
+    title = item.get("title") or item.get("label")
+    if title:
+        return title
+    url = item.get("url")
+    return url if _safe_href(url) != "#" else "Link"
 
 
 def _heading_level(value, default):

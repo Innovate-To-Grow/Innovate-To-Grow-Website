@@ -1,6 +1,5 @@
 from django.db import close_old_connections
 
-from .analytics import get_page_view_summary, get_page_view_trend, get_top_paths
 from .approval_tools import (
     get_cms_page_detail,
     get_model_schema,
@@ -27,6 +26,10 @@ from .cms import (
     search_menus,
     search_style_sheets,
 )
+from .domains.analytics import get_page_view_summary, get_page_view_trend, get_top_paths
+from .domains.mail import get_campaign_recipient_logs, get_failed_recipient_report
+from .domains.members import get_member_activity_summary, get_member_detail, search_contact_info
+from .domains.projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
 from .events import (
     get_checkin_breakdown,
     get_event_detail,
@@ -50,9 +53,6 @@ from .legacy import (
     search_projects,
     search_semesters,
 )
-from .mail import get_campaign_recipient_logs, get_failed_recipient_report
-from .members import get_member_activity_summary, get_member_detail, search_contact_info
-from .projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
 from .registry import get_adk_tool_metadata, get_adk_tools
 
 __all__ = [

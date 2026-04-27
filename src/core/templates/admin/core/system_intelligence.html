@@ -6,16 +6,17 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/layout.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/messages.css' %}?v=20260426-confirmation-click-options">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/tools.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions.css' %}?v=20260425-action-wide">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions-comparison.css' %}?v=20260427-db-record-card-2">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/input.css' %}?v=20260427-cmd-palette-3">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/animations.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-panel.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-tools.css' %}?v=20260425-split">
-<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/commands.css' %}?v=20260427-cmd-palette-3">
+<link rel="stylesheet" href="{% static 'admin/vendor/adk-web/adk-web-bridge.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/layout.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/messages.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/tools.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/actions-comparison.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/input.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/animations.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-panel.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/info-tools.css' %}?v=20260427-material-adk">
+<link rel="stylesheet" href="{% static 'admin/css/system-intelligence/commands.css' %}?v=20260427-material-adk">
 <style>
   /* Make the parent chain flex-column so .si-wrap fills remaining viewport height.
      When the <details> panel opens/closes the chat area resizes automatically. */
@@ -130,8 +131,7 @@
   <!-- Sidebar -->
   <div class="si-sidebar bg-base-50 dark:bg-base-900">
     <div class="si-sidebar-header">
-      <button id="si-new-btn" class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-white"
-              style="background:var(--color-primary-500,#6366f1);">
+      <button id="si-new-btn" class="si-new-chat-btn">
         <span class="material-symbols-outlined !text-[18px]">add</span>
         New Chat
       </button>

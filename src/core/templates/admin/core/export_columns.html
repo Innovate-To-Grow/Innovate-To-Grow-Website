@@ -7,31 +7,31 @@
 {% block content %}
 <style>
     .export-card {
-        background: var(--color-white, #fff);
-        border: 1px solid var(--color-base-200, #e5e7eb);
-        border-radius: .5rem;
+        background: var(--md-sys-color-surface-container-lowest, var(--color-white, #fff));
+        border: 1px solid var(--md-sys-color-outline-variant, var(--color-base-200, #e5e7eb));
+        border-radius: var(--md-sys-shape-corner-large, 1rem);
         padding: 1.25rem 1.5rem;
     }
     @media (prefers-color-scheme: dark) {
         .export-card {
-            background: var(--color-base-900, #111827);
-            border-color: var(--color-base-700, #374151);
+            background: var(--md-sys-color-surface-container, var(--color-base-900, #111827));
+            border-color: var(--md-sys-color-outline-variant, var(--color-base-700, #374151));
         }
     }
     .export-radio-card {
         display: flex;
         align-items: center;
         gap: .5rem;
-        border: 1px solid var(--color-base-200, #e5e7eb);
-        border-radius: .375rem;
+        border: 1px solid var(--md-sys-color-outline-variant, var(--color-base-200, #e5e7eb));
+        border-radius: 999px;
         padding: .5rem 1rem;
         cursor: pointer;
         transition: border-color .15s, box-shadow .15s;
         user-select: none;
     }
     .export-radio-card:has(input:checked) {
-        border-color: var(--color-primary-500, #7c3aed);
-        box-shadow: 0 0 0 1px var(--color-primary-500, #7c3aed);
+        border-color: var(--md-sys-color-primary, var(--color-primary-500, #305f9d));
+        box-shadow: 0 0 0 1px var(--md-sys-color-primary, var(--color-primary-500, #305f9d));
     }
     .export-field-item {
         display: flex;

@@ -1,30 +1,30 @@
 <style>
-    .login-box { background-color: white; padding: 1.5rem; border-radius: 6px; border: 1px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
-    .dark .login-box { background-color: #1f2937; border-color: #374151; }
+    .login-box { background-color: var(--md-sys-color-surface-container-lowest, #ffffff); padding: 1.5rem; border-radius: 24px; border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca); box-shadow: var(--md-sys-elevation-1, 0 1px 3px rgba(60, 64, 67, 0.18)); }
+    .dark .login-box { background-color: var(--md-sys-color-surface-container, #202124); border-color: var(--md-sys-color-outline-variant, #444746); }
     .login-logo { width: 56px; height: auto; display: block; }
     .login-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-    .login-title-wrap .login-subtitle { display: block; color: #1f2937; font-size: 1.125rem; line-height: 1.2; margin-bottom: 0.15rem; }
-    .login-title-wrap .login-title { display: block; color: #9333ea; font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
-    .dark .login-title-wrap .login-subtitle { color: #f3f4f6; }
-    .dark .login-title-wrap .login-title { color: #a855f7; }
-    .login-box #login-form input[type="text"], .login-box #login-form input[type="email"], .login-box #login-form input[type="password"] { display: block; width: 100%; min-height: 38px; padding: 0.5rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem; color: #1f2937; background-color: white; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
-    .login-box #login-form input[type="text"]:focus, .login-box #login-form input[type="email"]:focus, .login-box #login-form input[type="password"]:focus { outline: 2px solid #9333ea; outline-offset: -2px; border-color: #9333ea; }
-    .login-box #login-form input::placeholder { color: #9ca3af; }
-    .dark .login-box #login-form input[type="text"], .dark .login-box #login-form input[type="email"], .dark .login-box #login-form input[type="password"] { color: #f3f4f6; background-color: #1f2937; border-color: #374151; }
-    .dark .login-box #login-form input::placeholder { color: #6b7280; }
-    .dark .login-box #login-form input:focus { border-color: #a855f7; outline-color: #a855f7; }
+    .login-title-wrap .login-subtitle { display: block; color: var(--md-sys-color-on-surface, #202124); font-size: 1.125rem; line-height: 1.2; margin-bottom: 0.15rem; }
+    .login-title-wrap .login-title { display: block; color: var(--md-sys-color-primary, #305f9d); font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
+    .dark .login-title-wrap .login-subtitle { color: var(--md-sys-color-on-surface, #e8eaed); }
+    .dark .login-title-wrap .login-title { color: var(--md-sys-color-primary, #a8c7fa); }
+    .login-box #login-form input[type="text"], .login-box #login-form input[type="email"], .login-box #login-form input[type="password"] { display: block; width: 100%; min-height: 44px; padding: 0.625rem 0.875rem; font-size: 0.875rem; line-height: 1.25rem; color: var(--md-sys-color-on-surface, #202124); background-color: var(--md-sys-color-surface-container-lowest, #ffffff); border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca); border-radius: 12px; box-shadow: none; }
+    .login-box #login-form input[type="text"]:focus, .login-box #login-form input[type="email"]:focus, .login-box #login-form input[type="password"]:focus { outline: none; border-color: var(--md-sys-color-primary, #305f9d); box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary, #305f9d) 22%, transparent); }
+    .login-box #login-form input::placeholder { color: var(--md-sys-color-on-surface-variant, #5f6368); }
+    .dark .login-box #login-form input[type="text"], .dark .login-box #login-form input[type="email"], .dark .login-box #login-form input[type="password"] { color: var(--md-sys-color-on-surface, #e8eaed); background-color: var(--md-sys-color-surface-container-high, #2b2b2f); border-color: var(--md-sys-color-outline-variant, #444746); }
+    .dark .login-box #login-form input::placeholder { color: var(--md-sys-color-on-surface-variant, #c4c7c5); }
+    .dark .login-box #login-form input:focus { border-color: var(--md-sys-color-primary, #a8c7fa); }
     .code-input { font-size: 1.5rem !important; letter-spacing: 0.35em; text-align: center; font-weight: 600; }
-    .login-message { padding: 0.625rem 0.75rem; border-radius: 6px; font-size: 0.8125rem; line-height: 1.4; margin-bottom: 1rem; }
-    .login-message--info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-    .dark .login-message--info { background-color: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
-    .login-message--error { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .dark .login-message--error { background-color: #451a1a; color: #fca5a5; border-color: #991b1b; }
+    .login-message { padding: 0.75rem 0.875rem; border-radius: 16px; font-size: 0.8125rem; line-height: 1.4; margin-bottom: 1rem; }
+    .login-message--info { background-color: var(--md-sys-color-primary-container, #d5e3ff); color: var(--md-sys-color-on-primary-container, #001b3c); border: 1px solid color-mix(in srgb, var(--md-sys-color-primary, #305f9d) 28%, transparent); }
+    .dark .login-message--info { background-color: var(--md-sys-color-primary-container, #003061); color: var(--md-sys-color-on-primary-container, #d5e3ff); border-color: color-mix(in srgb, var(--md-sys-color-primary, #a8c7fa) 28%, transparent); }
+    .login-message--error { background-color: var(--md-sys-color-error-container, #ffdad6); color: var(--md-sys-color-error, #ba1a1a); border: 1px solid color-mix(in srgb, var(--md-sys-color-error, #ba1a1a) 28%, transparent); }
+    .dark .login-message--error { background-color: var(--md-sys-color-error-container, #690005); color: var(--md-sys-color-error, #ffb4ab); border-color: color-mix(in srgb, var(--md-sys-color-error, #ffb4ab) 28%, transparent); }
     .login-links { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; font-size: 0.8125rem; }
-    .login-links a, .login-links button { color: #9333ea; text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; font-size: inherit; }
+    .login-links a, .login-links button { color: var(--md-sys-color-primary, #305f9d); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; font-size: inherit; font-weight: 600; }
     .login-links a:hover, .login-links button:hover { text-decoration: underline; }
-    .dark .login-links a, .dark .login-links button { color: #a855f7; }
-    .login-email-hint { font-size: 0.8125rem; color: #6b7280; margin-bottom: 1rem; }
-    .login-email-hint strong { color: #1f2937; }
-    .dark .login-email-hint { color: #9ca3af; }
-    .dark .login-email-hint strong { color: #f3f4f6; }
+    .dark .login-links a, .dark .login-links button { color: var(--md-sys-color-primary, #a8c7fa); }
+    .login-email-hint { font-size: 0.8125rem; color: var(--md-sys-color-on-surface-variant, #5f6368); margin-bottom: 1rem; }
+    .login-email-hint strong { color: var(--md-sys-color-on-surface, #202124); }
+    .dark .login-email-hint { color: var(--md-sys-color-on-surface-variant, #c4c7c5); }
+    .dark .login-email-hint strong { color: var(--md-sys-color-on-surface, #e8eaed); }
 </style>

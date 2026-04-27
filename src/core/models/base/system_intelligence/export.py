@@ -1,8 +1,7 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
 
+from ..control import ProjectControlModel
 from .chat import ChatConversation
 
 
@@ -10,7 +9,7 @@ def _export_upload_to(instance, filename):
     return f"system_intelligence_exports/{instance.id}/{filename}"
 
 
-class SystemIntelligenceExport(models.Model):
+class SystemIntelligenceExport(ProjectControlModel):
     """A downloadable file (Excel) the AI generated on behalf of an admin.
 
     Created by ``export_*_to_excel`` tools. The ``file`` lives under
@@ -18,7 +17,6 @@ class SystemIntelligenceExport(models.Model):
     against ``created_by`` so admins only see their own exports.
     """
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         ChatConversation,
         on_delete=models.CASCADE,
@@ -35,7 +33,6 @@ class SystemIntelligenceExport(models.Model):
     model_label = models.CharField(max_length=100, blank=True, default="")
     field_names = models.JSONField(default=list, blank=True)
     row_count = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]

@@ -1,17 +1,16 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
 
+from ..control import ProjectControlModel
 
-class ChatConversation(models.Model):
+
+class ChatConversation(ProjectControlModel):
     """A single AI chat conversation thread."""
 
     MODE_NORMAL = "normal"
     MODE_PLAN = "plan"
     MODE_CHOICES = [(MODE_NORMAL, "Normal"), (MODE_PLAN, "Plan-only")]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200, default="New Chat")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -38,8 +37,6 @@ class ChatConversation(models.Model):
         related_name="+",
         help_text="Newest message included in the rolling context summary.",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-updated_at"]
@@ -49,12 +46,11 @@ class ChatConversation(models.Model):
         return f"{self.title} ({self.created_by})"
 
 
-class ChatMessage(models.Model):
+class ChatMessage(ProjectControlModel):
     """A single message within a conversation."""
 
     ROLE_CHOICES = [("user", "User"), ("assistant", "Assistant")]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         ChatConversation,
         on_delete=models.CASCADE,
@@ -84,7 +80,6 @@ class ChatMessage(models.Model):
         blank=True,
         help_text="Estimated context prepared for this turn before invoking the model.",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["created_at"]

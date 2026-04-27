@@ -191,8 +191,9 @@
     function handleConfirmationSend(button) {
       if (!SI.sendSystemIntelligenceMessage) return;
       var text = decodeURIComponent(button.getAttribute('data-si-confirmation-send') || '');
+      var displayText = decodeURIComponent(button.getAttribute('data-si-confirmation-display') || '');
       if (!text) return;
-      if (SI.sendSystemIntelligenceMessage(text)) markConfirmationChosen(button);
+      if (SI.sendSystemIntelligenceMessage(text, displayText || text)) markConfirmationChosen(button);
     }
 
     function handleConfirmationFill(button) {

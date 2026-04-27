@@ -16,7 +16,7 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .si-sidebar { flex: 0 0 200px; width: 200px; min-width: 200px; max-width: 200px; }
+  .si-sidebar { flex: 0 0 220px; width: 220px; min-width: 220px; max-width: 220px; }
   .si-msg { max-width: 95%; }
   .si-input-bar { flex-wrap: wrap; }
   .si-context-usage {
@@ -32,5 +32,5 @@
 }
 @media (max-width: 600px) {
   .si-wrap { flex-direction: column; min-height: 320px; }
-  .si-sidebar { flex: 0 0 auto; max-height: 200px; border-right: 0; border-bottom: 1px solid; border-color: inherit; }
+  .si-sidebar { flex: 0 0 auto; width: auto; min-width: 0; max-width: none; max-height: 200px; border-right: 0; border-bottom: 1px solid var(--builder-border-color); }
 }

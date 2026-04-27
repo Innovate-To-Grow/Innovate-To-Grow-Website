@@ -11,11 +11,11 @@
       input.style.height = Math.min(input.scrollHeight, 120) + 'px';
     }
 
-    function sendMessageText(text) {
+    function sendMessageText(text, displayText) {
       text = (text || '').trim();
       if (!text) return false;
       return startStream({
-        displayPrompt: text,
+        displayPrompt: (displayText || text).trim(),
         url: sendUrl(els.root),
         body: {message: text},
       });

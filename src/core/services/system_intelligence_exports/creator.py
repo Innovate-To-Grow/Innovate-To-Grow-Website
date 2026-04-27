@@ -22,7 +22,7 @@ from openpyxl.utils import get_column_letter
 from core.models.base.system_intelligence import SystemIntelligenceExport
 from core.services.system_intelligence_actions.context import current_conversation, current_user_id
 from core.services.system_intelligence_actions.exceptions import ActionRequestError
-from core.services.system_intelligence_actions.orm_safety import (
+from core.services.system_intelligence_actions.orm import (
     field_output_name,
     resolve_model,
     safe_model_fields,

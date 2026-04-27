@@ -2,6 +2,9 @@ import logging
 import os
 
 from core.models import AWSCredentialConfig
+from core.services.bedrock import normalize_bedrock_model_id
+
+from .errors import SystemIntelligenceADKError
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +22,10 @@ def build_lite_llm_model(*, aws_config: AWSCredentialConfig, model_id: str):
 
 
 def to_litellm_bedrock_model(model_id: str) -> str:
-    model_id = (model_id or "").strip()
-    if model_id.startswith("bedrock/"):
-        return model_id
-    return f"bedrock/{model_id}"
+    normalized_model_id = normalize_bedrock_model_id(model_id)
+    if not normalized_model_id:
+        raise SystemIntelligenceADKError("A Bedrock model ID is required for System Intelligence.")
+    return f"bedrock/{normalized_model_id}"
 
 
 def configure_litellm_bedrock_transport() -> None:

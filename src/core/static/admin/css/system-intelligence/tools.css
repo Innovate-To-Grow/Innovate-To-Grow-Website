@@ -2,7 +2,7 @@
 .si-tool-calls {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 8px;
   max-width: 85%;
 }
@@ -18,22 +18,23 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 18px;
   font-size: 0.8rem;
-  background: color-mix(in srgb, var(--color-primary-50, #eef2ff) 70%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary-200, #c7d2fe) 50%, transparent);
+  background: var(--builder-tool-item-background-color);
+  border: 1px solid var(--builder-tool-item-border-color);
+  color: var(--builder-text-secondary-color);
   cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
 }
 .si-tool-call.is-active .si-tool-call-name {
   background: linear-gradient(
     90deg,
-    var(--color-primary-800, #3730a3) 0%,
-    var(--color-primary-300, #a5b4fc) 45%,
-    var(--color-primary-800, #3730a3) 55%,
-    var(--color-primary-300, #a5b4fc) 100%
+    var(--builder-button-primary-background-color) 0%,
+    var(--builder-button-primary-hover-color) 45%,
+    var(--builder-button-primary-background-color) 55%,
+    var(--builder-button-primary-hover-color) 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -44,10 +45,10 @@
 .dark .si-tool-call.is-active .si-tool-call-name {
   background: linear-gradient(
     90deg,
-    var(--color-primary-200, #c7d2fe) 0%,
-    var(--color-primary-600, #4f46e5) 45%,
-    var(--color-primary-200, #c7d2fe) 55%,
-    var(--color-primary-600, #4f46e5) 100%
+    var(--builder-button-primary-background-color) 0%,
+    var(--builder-button-primary-hover-color) 45%,
+    var(--builder-button-primary-background-color) 55%,
+    var(--builder-button-primary-hover-color) 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -62,20 +63,20 @@
   animation: si-dot-pulse 1.2s ease infinite;
 }
 .dark .si-tool-call {
-  background: color-mix(in srgb, var(--color-primary-900, #1e3a5f) 30%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary-700, #1d4ed8) 25%, transparent);
+  background: var(--builder-tool-item-background-color);
+  border-color: var(--builder-tool-item-border-color);
 }
 .si-tool-call:hover {
-  background: color-mix(in srgb, var(--color-primary-100, #dbeafe) 70%, transparent);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--builder-tool-item-hover-background-color);
+  box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgba(60, 64, 67, 0.2));
 }
 .si-tool-call-icon { opacity: 0.5; flex-shrink: 0; }
 .si-tool-call-name {
   font-weight: 600;
-  color: var(--color-primary-700, #4338ca);
+  color: var(--builder-text-link-color);
   white-space: nowrap;
 }
-.dark .si-tool-call-name { color: var(--color-primary-300, #93c5fd); }
+.dark .si-tool-call-name { color: var(--builder-text-link-color); }
 .si-tool-call-params {
   opacity: 0.55;
   font-size: 0.74rem;
@@ -90,35 +91,35 @@
 .si-tool-call-detail {
   width: 100%;
   margin-top: 0;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: 0.73rem;
   font-family: 'SF Mono', 'Fira Code', monospace;
   line-height: 1.5;
-  background: rgba(0,0,0,0.04);
-  border-radius: 6px;
+  background: var(--builder-secondary-background-color);
+  border-radius: 14px;
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 0;
   opacity: 0;
   overflow: hidden;
   transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.3s ease, padding 0.3s ease;
-  color: var(--color-base-600, #4b5563);
+  color: var(--builder-text-secondary-color);
   border: 1px solid transparent;
 }
 .dark .si-tool-call-detail {
-  background: rgba(255,255,255,0.04);
-  color: var(--color-base-400, #9ca3af);
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-secondary-color);
 }
 .si-tool-call.is-expanded .si-tool-call-detail {
   max-height: 200px;
   opacity: 1;
   margin-top: 6px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   overflow-y: auto;
-  border-color: rgba(0,0,0,0.04);
+  border-color: var(--builder-border-color);
 }
 .dark .si-tool-call.is-expanded .si-tool-call-detail {
-  border-color: rgba(255,255,255,0.04);
+  border-color: var(--builder-border-color);
 }
 
 /* Message content wrapper (bubble + token badge) */
@@ -130,7 +131,7 @@
   align-items: center;
   gap: 4px;
   font-size: 0.68rem;
-  color: var(--color-base-400, #9ca3af);
+  color: var(--builder-text-muted-color);
   margin-top: 4px;
   padding: 0 2px;
   user-select: none;

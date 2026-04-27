@@ -7,15 +7,15 @@
 }
 .si-action-card {
   width: min(1120px, 100%);
-  border: 1px solid color-mix(in srgb, var(--color-primary-300, #a5b4fc) 45%, var(--color-base-200, #e5e7eb));
-  background: color-mix(in srgb, var(--color-primary-50, #eef2ff) 58%, #fff);
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--builder-border-color);
+  background: var(--builder-card-background-color);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgba(60, 64, 67, 0.2));
 }
 .dark .si-action-card {
-  background: color-mix(in srgb, var(--color-primary-900, #312e81) 18%, var(--color-base-900, #111827));
-  border-color: color-mix(in srgb, var(--color-primary-600, #4f46e5) 38%, var(--color-base-700, #374151));
+  background: var(--builder-card-background-color);
+  border-color: var(--builder-border-color);
 }
 .si-action-card-header {
   display: flex;
@@ -32,53 +32,53 @@
 .si-action-kicker {
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--color-primary-600, #4f46e5);
+  color: var(--builder-text-link-color);
   text-transform: uppercase;
   letter-spacing: 0;
 }
 .si-action-title {
   font-size: 0.9rem;
-  color: var(--color-base-800, #1f2937);
+  color: var(--builder-text-primary-color);
 }
-.dark .si-action-title { color: var(--color-base-100, #f3f4f6); }
+.dark .si-action-title { color: var(--builder-text-primary-color); }
 .si-action-status {
   flex: 0 0 auto;
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 4px 9px;
   font-size: 0.68rem;
   font-weight: 700;
-  background: var(--color-base-100, #f3f4f6);
-  color: var(--color-base-600, #4b5563);
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-secondary-color);
 }
 .si-action-status--pending {
-  background: #fff7ed;
-  color: #c2410c;
+  background: color-mix(in srgb, #f9ab00 18%, transparent);
+  color: #b06000;
 }
 .si-action-status--applied {
-  background: #dcfce7;
-  color: #15803d;
+  background: color-mix(in srgb, #1e8e3e 16%, transparent);
+  color: #137333;
 }
 .si-action-status--rejected {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-secondary-color);
 }
 .si-action-status--failed {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: color-mix(in srgb, var(--md-sys-color-error, #ba1a1a) 14%, transparent);
+  color: var(--md-sys-color-error, #ba1a1a);
 }
 .si-action-meta {
   margin-top: 6px;
   font-size: 0.74rem;
-  color: var(--color-base-500, #6b7280);
+  color: var(--builder-text-secondary-color);
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 .si-action-summary {
   margin: 8px 0 0;
-  color: var(--color-base-700, #374151);
+  color: var(--builder-text-primary-color);
   font-size: 0.82rem;
   line-height: 1.45;
 }
-.dark .si-action-summary { color: var(--color-base-300, #d1d5db); }
+.dark .si-action-summary { color: var(--builder-text-primary-color); }
 .si-action-diff {
   margin-top: 10px;
   display: flex;
@@ -95,7 +95,7 @@
 }
 .si-action-diff-field {
   font-weight: 700;
-  color: var(--color-base-600, #4b5563);
+  color: var(--builder-text-secondary-color);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -105,21 +105,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 6px;
+  background: var(--builder-secondary-background-color);
+  border: 1px solid var(--builder-border-color);
+  border-radius: 12px;
   padding: 4px 6px;
-  color: var(--color-base-700, #374151);
+  color: var(--builder-text-primary-color);
 }
 .dark .si-action-diff-value {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-base-200, #e5e7eb);
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-primary-color);
 }
 .si-action-diff-arrow {
-  color: var(--color-base-400, #9ca3af);
+  color: var(--builder-text-muted-color);
   font-weight: 700;
 }
 .si-action-diff-more {
   font-size: 0.72rem;
-  color: var(--color-base-500, #6b7280);
+  color: var(--builder-text-secondary-color);
 }

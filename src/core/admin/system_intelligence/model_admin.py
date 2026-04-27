@@ -35,9 +35,9 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
             },
         ),
         (_("System Prompt"), {"fields": ("system_prompt",)}),
-        (_("Info"), {"fields": ("updated_at",)}),
+        (_("Info"), {"fields": ("id", "created_at", "updated_at")}),
     )
-    readonly_fields = ("updated_at",)
+    readonly_fields = ("id", "created_at", "updated_at")
 
     @display(description="Status", label=True)
     def status_badge(self, obj):

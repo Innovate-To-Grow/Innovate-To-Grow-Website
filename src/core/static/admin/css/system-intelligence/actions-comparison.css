@@ -81,7 +81,7 @@
   border-radius: 999px;
   padding: 2px 7px;
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-primary-700, #4338ca) !important;
+  color: var(--builder-text-link-color) !important;
 }
 .si-action-before-after {
   display: grid;
@@ -140,7 +140,7 @@
   padding: 1px 7px;
   border-radius: 999px;
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-primary-700, #4338ca);
+  color: var(--builder-text-link-color);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -207,7 +207,7 @@
   padding: 4px 6px;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-primary-700, #4338ca);
+  color: var(--builder-text-link-color);
   cursor: pointer;
   font-family: inherit;
   line-height: 1.2;
@@ -216,7 +216,7 @@
 .si-action-preview:hover,
 .si-action-preview.is-active {
   background: rgba(99, 102, 241, 0.1);
-  color: var(--color-primary-700, #4338ca);
+  color: var(--builder-text-link-color);
   text-decoration: none;
 }
 .si-action-preview--full-page {
@@ -261,7 +261,7 @@
   cursor: wait;
 }
 .si-action-btn--approve {
-  background: var(--color-primary-600, #4f46e5);
+  background: var(--builder-button-primary-background-color);
   color: #fff;
 }
 .si-action-btn--reject {
@@ -310,4 +310,119 @@
     min-height: 180px;
     max-height: 460px;
   }
+}
+
+/* Material / ADK bridge overrides */
+.si-action-comparison-head,
+.si-action-block-head span,
+.si-action-side-label,
+.si-action-db-context,
+.si-action-diff-more {
+  color: var(--builder-text-secondary-color);
+}
+
+.si-action-comparison-head span:last-child,
+.si-action-diff-arrow {
+  color: var(--builder-text-muted-color);
+}
+
+.si-action-block-comparison,
+.si-action-db-row,
+.si-action-db-row .si-action-before-after,
+.si-action-preview-panel {
+  border-color: var(--builder-border-color);
+  border-radius: 16px;
+  background: var(--builder-card-background-color);
+}
+
+.dark .si-action-block-comparison,
+.dark .si-action-db-row,
+.dark .si-action-preview-panel {
+  background: var(--builder-card-background-color);
+  border-color: var(--builder-border-color);
+}
+
+.si-action-block-head {
+  border-bottom-color: var(--builder-border-color);
+}
+
+.si-action-block-head strong,
+.si-action-db-label,
+.si-action-side-text,
+.dark .si-action-block-head strong,
+.dark .si-action-db-label,
+.dark .si-action-side-text {
+  color: var(--builder-text-primary-color);
+}
+
+.si-action-block-keys,
+.si-action-field-type {
+  background: color-mix(in srgb, var(--builder-button-primary-background-color) 14%, transparent);
+  color: var(--builder-text-link-color) !important;
+}
+
+.si-action-side--before {
+  background: color-mix(in srgb, var(--md-sys-color-error, #ba1a1a) 9%, var(--builder-card-background-color));
+  border-right-color: var(--builder-border-color);
+}
+
+.si-action-side--after {
+  background: color-mix(in srgb, #1e8e3e 10%, var(--builder-card-background-color));
+}
+
+.dark .si-action-side--before {
+  background: color-mix(in srgb, var(--md-sys-color-error, #ffb4ab) 16%, var(--builder-card-background-color));
+}
+
+.dark .si-action-side--after {
+  background: color-mix(in srgb, #81c995 14%, var(--builder-card-background-color));
+}
+
+.si-action-preview {
+  border-radius: 999px;
+  color: var(--builder-text-link-color);
+}
+
+.si-action-preview:hover,
+.si-action-preview.is-active {
+  background: var(--builder-button-secondary-hover-background-color);
+  color: var(--builder-text-link-color);
+}
+
+.si-action-preview--full-page {
+  color: var(--builder-text-secondary-color);
+}
+
+.si-action-preview-iframe {
+  background: var(--builder-panel-background-color);
+}
+
+.si-action-btn {
+  border-radius: 999px;
+  padding: 7px 12px;
+}
+
+.si-action-btn--approve {
+  background: var(--builder-button-primary-background-color);
+  color: var(--builder-button-primary-text-color);
+}
+
+.si-action-btn--approve:hover {
+  background: var(--builder-button-primary-hover-color);
+}
+
+.si-action-btn--reject {
+  background: transparent;
+  border-color: var(--builder-button-secondary-border-color);
+  color: var(--builder-button-secondary-text-color);
+}
+
+.si-action-btn--reject:hover {
+  background: var(--builder-button-secondary-hover-background-color);
+}
+
+.si-action-error {
+  background: color-mix(in srgb, var(--md-sys-color-error, #ba1a1a) 14%, transparent);
+  color: var(--md-sys-color-error, #ba1a1a);
+  border-radius: 12px;
 }

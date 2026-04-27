@@ -1,12 +1,11 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
 
+from ..control import ProjectControlModel
 from .chat import ChatConversation, ChatMessage
 
 
-class SystemIntelligenceActionRequest(models.Model):
+class SystemIntelligenceActionRequest(ProjectControlModel):
     """A human-approved write action proposed by System Intelligence."""
 
     ACTION_CMS_PAGE_UPDATE = "cms_page_update"
@@ -31,7 +30,6 @@ class SystemIntelligenceActionRequest(models.Model):
         (STATUS_FAILED, "Failed"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         ChatConversation,
         on_delete=models.CASCADE,
@@ -74,8 +72,6 @@ class SystemIntelligenceActionRequest(models.Model):
     preview_url = models.URLField(max_length=1000, blank=True, default="")
     preview_expires_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     applied_at = models.DateTimeField(null=True, blank=True)
 

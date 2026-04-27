@@ -112,6 +112,10 @@ def import_members_from_excel(file, default_password: str | None = None, update_
             result.created_count += 1
 
         with transaction.atomic():
+            # bulk_create bypasses post_save signals, so the Google-Sheet sync
+            # signal handlers in authn/signals.py will not fire here. Admins
+            # should run the "Sync ALL members to Google Sheet" admin action
+            # after import if auto-sync is enabled.
             if members_to_create:
                 Member.objects.bulk_create(members_to_create, batch_size=BATCH_SIZE)
             if emails_to_create:
