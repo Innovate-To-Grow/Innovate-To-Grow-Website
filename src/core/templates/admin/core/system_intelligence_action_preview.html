@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title|default:action.title }} Preview</title>
+  <link rel="stylesheet" href="/layout/styles.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --md-sys-color-primary: #305f9d;
+      --md-sys-color-primary-container: #d5e3ff;
+      --md-sys-color-on-primary-container: #001b3c;
+      --md-sys-color-surface: #fffbfb;
+      --md-sys-color-surface-container: #f6f3f3;
+      --md-sys-color-on-surface: #202124;
+      --md-sys-color-on-surface-variant: #5f6368;
+      --md-sys-color-outline-variant: #c4c7ca;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      font-family: "Google Sans", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .si-action-preview-shell {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .si-action-preview-banner {
+      margin: 0 0 18px;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
+      border-radius: 18px;
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .si-action-preview-block {
+      margin: 0 0 24px;
+    }
+    .si-action-preview-block-meta {
+      margin: 0 0 8px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .si-action-preview-empty {
+      margin: 0;
+      color: var(--md-sys-color-on-surface-variant);
+      font-style: italic;
+    }
+    .si-action-preview-empty-state {
+      margin: 0;
+      padding: 18px;
+      border: 1px dashed var(--md-sys-color-outline-variant);
+      border-radius: 18px;
+      color: var(--md-sys-color-on-surface-variant);
+      background: var(--md-sys-color-surface-container);
+    }
+    .si-action-preview-shell img,
+    .si-action-preview-shell iframe,
+    .si-action-preview-shell table {
+      max-width: 100%;
+    }
+    .si-action-preview-shell iframe {
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="si-action-preview-shell">
+    <div class="si-action-preview-banner">
+      {{ banner_text }}
+    </div>
+    <main class="{{ page.page_css_class|default:'cms-page' }}">
+      {% if has_preview_blocks %}
+        {{ block_html }}
+      {% else %}
+        <p class="si-action-preview-empty-state">{{ empty_text }}</p>
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>

@@ -19,7 +19,11 @@ class MemberSheetSyncConfig(ProjectControlModel):
     auto_sync_enabled = models.BooleanField(
         default=False,
         verbose_name="Auto Sync",
-        help_text="Automatically sync to the sheet when a member is created or updated.",
+        help_text=(
+            "Automatically sync to the sheet when a member, contact email, or contact phone "
+            "is created, updated, or deleted. Each Gunicorn worker debounces independently — "
+            "in multi-worker deployments, bursts of writes may produce one sync per worker."
+        ),
     )
     google_sheet_id = models.CharField(
         max_length=255,
@@ -47,6 +51,13 @@ class MemberSheetSyncConfig(ProjectControlModel):
         status = "enabled" if self.is_enabled else "disabled"
         sheet = self.google_sheet_id[:20] if self.google_sheet_id else "no sheet"
         return f"MemberSync ({status}, {sheet})"
+
+    def save(self, *args, **kwargs):
+        # Enforce a single enabled config — saving an enabled row demotes any others.
+        # Mirrors the pattern in core.models.GoogleCredentialConfig.save().
+        if self.is_enabled:
+            type(self).objects.filter(is_enabled=True).exclude(pk=self.pk).update(is_enabled=False)
+        super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):

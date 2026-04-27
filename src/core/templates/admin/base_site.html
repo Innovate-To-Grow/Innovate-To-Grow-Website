@@ -1,11 +1,12 @@
 {% extends "admin/base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | I2G Admin{% endblock %}
 {% block branding %}{{ site_header|default:_("Innovate To Grow") }}{% endblock %}
 
 {% block extrahead %}
     {{ block.super }}
+    <script src="{% static 'admin/js/material-web-text-field.js' %}" defer></script>
     <script>
         (function () {
             var STORAGE_KEY = 'i2g_admin_sidebar_scroll_top';

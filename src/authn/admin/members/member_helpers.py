@@ -39,6 +39,22 @@ def export_members_response(queryset):
     return build_excel_response(content, filename)
 
 
+def build_vcard_response(content, filename):
+    response = HttpResponse(content, content_type="text/vcard; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def export_members_vcard_response(queryset):
+    from django.utils import timezone
+
+    from ...services.export_members_vcf import export_members_to_vcard
+
+    content = export_members_to_vcard(queryset)
+    filename = f"members_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.vcf"
+    return build_vcard_response(content, filename)
+
+
 def import_excel_view(admin_obj, request):
     from ...services.import_members import import_members_from_excel
 

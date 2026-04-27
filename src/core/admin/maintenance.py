@@ -1,14 +1,24 @@
 from django import forms
 from django.contrib import admin
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from unfold.widgets import UnfoldAdminPasswordWidget
 
 from core.admin.base import BaseModelAdmin
 from core.models import SiteMaintenanceControl
 
 
+class MaterialOutlinedPasswordWidget(UnfoldAdminPasswordWidget):
+    template_name = "admin/material_password_widget.html"
+
+    class Media:
+        js = ("admin/js/material-web-text-field.js",)
+
+
 class SiteMaintenanceControlAdminForm(forms.ModelForm):
     bypass_password = forms.CharField(
         required=False,
-        widget=forms.PasswordInput(render_value=False),
+        widget=MaterialOutlinedPasswordWidget(render_value=False),
         help_text="Enter a new bypass password to replace the current one.",
     )
     clear_bypass_password = forms.BooleanField(
@@ -40,6 +50,24 @@ class SiteMaintenanceControlAdmin(BaseModelAdmin):
     list_display = ("__str__", "is_maintenance", "updated_at")
     fields = ("is_maintenance", "message", "bypass_password", "clear_bypass_password", "updated_at")
     readonly_fields = ("updated_at",)
+
+    def changelist_view(self, request, extra_context=None):
+        opts = self.model._meta
+        config = SiteMaintenanceControl.objects.first()
+
+        if config:
+            url = reverse(
+                f"admin:{opts.app_label}_{opts.model_name}_change",
+                args=(config.pk,),
+                current_app=self.admin_site.name,
+            )
+        else:
+            url = reverse(
+                f"admin:{opts.app_label}_{opts.model_name}_add",
+                current_app=self.admin_site.name,
+            )
+
+        return HttpResponseRedirect(url)
 
     def has_add_permission(self, request):
         # Only allow one instance (singleton)

@@ -21,7 +21,19 @@ logger = logging.getLogger(__name__)
 
 _sync_timer: threading.Timer | None = None
 _sync_lock = threading.Lock()
+_sync_in_progress = threading.Event()
+_sync_pending = threading.Event()
 DEBOUNCE_SECONDS = 15
+
+# Cells beginning with these characters are interpreted as formulas by Sheets
+# under value_input_option="USER_ENTERED". Prefixing with an apostrophe forces
+# Sheets to treat the cell as literal text.
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe(value) -> str:
+    s = str(value or "")
+    return f"'{s}" if s.startswith(_FORMULA_TRIGGERS) else s
 
 
 class MemberSyncError(RuntimeError):
@@ -59,8 +71,8 @@ def _build_header() -> list[str]:
         "Primary Phone",
         "Organization",
         "Title",
-        "Date Joined",
-        "Last Updated",
+        "Date Joined (UTC)",
+        "Last Updated (UTC)",
         "Active",
     ]
 
@@ -75,13 +87,13 @@ def _build_row(member) -> list[str]:
 
     return [
         str(member.id),
-        member.first_name or "",
-        member.middle_name or "",
-        member.last_name or "",
-        member.get_primary_email(),
-        primary_phone,
-        member.organization or "",
-        member.title or "",
+        _safe(member.first_name),
+        _safe(member.middle_name),
+        _safe(member.last_name),
+        _safe(member.get_primary_email()),
+        _safe(primary_phone),
+        _safe(member.organization),
+        _safe(member.title),
         member.date_joined.strftime("%Y-%m-%d %H:%M"),
         member.updated_at.strftime("%Y-%m-%d %H:%M"),
         "Yes" if member.is_active else "No",
@@ -112,6 +124,18 @@ def schedule_member_sync() -> None:
         if _sync_timer is not None:
             _sync_timer.cancel()
         _sync_timer = threading.Timer(DEBOUNCE_SECONDS, _flush_pending_sync)
+        _sync_timer.daemon = True
+        _sync_timer.start()
+
+
+def _schedule_immediate_sync() -> None:
+    """Queue a follow-up sync for changes that arrived during an active write."""
+    global _sync_timer
+
+    with _sync_lock:
+        if _sync_timer is not None:
+            _sync_timer.cancel()
+        _sync_timer = threading.Timer(0, _flush_pending_sync)
         _sync_timer.daemon = True
         _sync_timer.start()
 
@@ -152,16 +176,24 @@ def sync_members_to_sheet(*, sync_type: str = "full") -> int:
     if not config.is_configured:
         raise MemberSyncError("Member sheet sync is not configured or not enabled.")
 
-    from django.contrib.auth import get_user_model
+    with _sync_lock:
+        if _sync_in_progress.is_set():
+            _sync_pending.set()
+            logger.info("Member sync already in progress in this worker; queued follow-up sync.")
+            return 0
+        _sync_in_progress.set()
 
-    Member = get_user_model()
-
-    members = list(Member.objects.all().prefetch_related("contact_emails", "contact_phones").order_by("date_joined"))
-
-    header = _build_header()
-    rows = [_build_row(m) for m in members]
-
+    rows = []
     try:
+        from django.contrib.auth import get_user_model
+
+        Member = get_user_model()
+        members = list(
+            Member.objects.all().prefetch_related("contact_emails", "contact_phones").order_by("date_joined")
+        )
+        header = _build_header()
+        rows = [_build_row(m) for m in members]
+
         worksheet = _get_worksheet(config)
         worksheet.clear()
         worksheet.update([header] + rows, value_input_option="USER_ENTERED")
@@ -172,6 +204,15 @@ def sync_members_to_sheet(*, sync_type: str = "full") -> int:
     except Exception as exc:
         _record_sync_failure(config, str(exc), sync_type=sync_type)
         raise MemberSyncError(f"Failed to write to Google Sheet: {exc}") from exc
+    finally:
+        should_sync_again = False
+        with _sync_lock:
+            _sync_in_progress.clear()
+            if _sync_pending.is_set():
+                _sync_pending.clear()
+                should_sync_again = True
+        if should_sync_again:
+            _schedule_immediate_sync()
 
     config.synced_at = timezone.now()
     config.sync_count = len(rows)
@@ -186,17 +227,16 @@ def sync_members_to_sheet(*, sync_type: str = "full") -> int:
     return len(rows)
 
 
-def _record_sync_failure(config, error_message: str, *, sync_type: str = "") -> None:
+def _record_sync_failure(config, error_message: str, *, sync_type: str) -> None:
     from authn.models import MemberSheetSyncLog
 
     config.synced_at = timezone.now()
     config.sync_error = error_message
     config.save(update_fields=["synced_at", "sync_error", "updated_at"])
 
-    if sync_type:
-        MemberSheetSyncLog.objects.create(
-            sync_type=sync_type,
-            status=MemberSheetSyncLog.Status.FAILED,
-            rows_written=0,
-            error_message=error_message,
-        )
+    MemberSheetSyncLog.objects.create(
+        sync_type=sync_type,
+        status=MemberSheetSyncLog.Status.FAILED,
+        rows_written=0,
+        error_message=error_message,
+    )

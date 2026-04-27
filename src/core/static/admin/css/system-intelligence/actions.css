@@ -1,0 +1,125 @@
+/* Human approval cards */
+.si-action-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.si-action-card {
+  width: min(1120px, 100%);
+  border: 1px solid var(--builder-border-color);
+  background: var(--builder-card-background-color);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgba(60, 64, 67, 0.2));
+}
+.dark .si-action-card {
+  background: var(--builder-card-background-color);
+  border-color: var(--builder-border-color);
+}
+.si-action-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.si-action-title-wrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.si-action-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--builder-text-link-color);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+.si-action-title {
+  font-size: 0.9rem;
+  color: var(--builder-text-primary-color);
+}
+.dark .si-action-title { color: var(--builder-text-primary-color); }
+.si-action-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-secondary-color);
+}
+.si-action-status--pending {
+  background: color-mix(in srgb, #f9ab00 18%, transparent);
+  color: #b06000;
+}
+.si-action-status--applied {
+  background: color-mix(in srgb, #1e8e3e 16%, transparent);
+  color: #137333;
+}
+.si-action-status--rejected {
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-secondary-color);
+}
+.si-action-status--failed {
+  background: color-mix(in srgb, var(--md-sys-color-error, #ba1a1a) 14%, transparent);
+  color: var(--md-sys-color-error, #ba1a1a);
+}
+.si-action-meta {
+  margin-top: 6px;
+  font-size: 0.74rem;
+  color: var(--builder-text-secondary-color);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.si-action-summary {
+  margin: 8px 0 0;
+  color: var(--builder-text-primary-color);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.dark .si-action-summary { color: var(--builder-text-primary-color); }
+.si-action-diff {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.si-action-diff-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.8fr) minmax(120px, 1fr) auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  min-width: 0;
+}
+.si-action-diff-field {
+  font-weight: 700;
+  color: var(--builder-text-secondary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.si-action-diff-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--builder-secondary-background-color);
+  border: 1px solid var(--builder-border-color);
+  border-radius: 12px;
+  padding: 4px 6px;
+  color: var(--builder-text-primary-color);
+}
+.dark .si-action-diff-value {
+  background: var(--builder-secondary-background-color);
+  color: var(--builder-text-primary-color);
+}
+.si-action-diff-arrow {
+  color: var(--builder-text-muted-color);
+  font-weight: 700;
+}
+.si-action-diff-more {
+  font-size: 0.72rem;
+  color: var(--builder-text-secondary-color);
+}

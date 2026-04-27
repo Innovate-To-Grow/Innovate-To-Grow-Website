@@ -59,6 +59,13 @@ class CSPHeaderTests(TestCase):
         _, header = self._header()
         self.assertIn("report-uri /csp-report/", header)
 
+    def test_script_src_allows_admin_material_web_dependencies(self):
+        _, header = self._header()
+        self.assertIn("script-src 'self'", header)
+        self.assertIn("https://esm.run", header)
+        self.assertIn("https://cdnjs.cloudflare.com", header)
+        self.assertIn("https://cdn.jsdelivr.net", header)
+
     def test_does_not_overwrite_existing_enforcing_header(self):
         def _view_with_enforcing(_request):
             from django.http import HttpResponse

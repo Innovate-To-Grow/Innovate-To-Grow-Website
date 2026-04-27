@@ -2,13 +2,13 @@
 {% load i18n admin_urls %}
 
 {% block object-tools-items %}
-    <div class="flex flex-row items-center gap-2">
+    <div class="i2g-admin-object-tools">
         <a href="{% url 'admin:authn_contactphone_normalize_preview' %}"
-           class="border border-base-200 dark:border-base-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-sm font-medium transition-all hover:bg-base-50 dark:hover:bg-base-900 text-font-default-light dark:text-font-default-dark"
+           class="i2g-admin-action"
            title="Normalize all phone numbers">
-            <span class="material-symbols-outlined !text-[18px]">cleaning_services</span>
+            <span class="material-symbols-outlined">cleaning_services</span>
             Normalize Phones
         </a>
+        {{ block.super }}
     </div>
-    {{ block.super }}
 {% endblock %}

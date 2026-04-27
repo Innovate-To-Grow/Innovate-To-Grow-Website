@@ -2,10 +2,18 @@
 
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from authn.models import ContactEmail, ContactPhone, Member, MemberSheetSyncConfig, MemberSheetSyncLog
-from authn.services.member_sheet_sync import MemberSyncError, _build_header, _build_row, sync_members_to_sheet
+from authn.services.member_sheet_sync import (
+    MemberSyncError,
+    _build_header,
+    _build_row,
+    _safe,
+    _sync_in_progress,
+    _sync_pending,
+    sync_members_to_sheet,
+)
 
 
 def _create_member(first="Alice", middle="", last="Smith", org="Acme", title="Dev", active=True):
@@ -40,8 +48,8 @@ class BuildHeaderTests(TestCase):
                 "Primary Phone",
                 "Organization",
                 "Title",
-                "Date Joined",
-                "Last Updated",
+                "Date Joined (UTC)",
+                "Last Updated (UTC)",
                 "Active",
             ],
         )
@@ -209,3 +217,123 @@ class ScheduleMemberSyncTests(TestCase):
 
         mock_timer_cls.assert_called_once()
         mock_timer.start.assert_called_once()
+
+
+class FormulaInjectionTests(TestCase):
+    def test_safe_passes_through_plain_text(self):
+        self.assertEqual(_safe("Alice"), "Alice")
+        self.assertEqual(_safe(""), "")
+        self.assertEqual(_safe(None), "")
+
+    def test_safe_escapes_each_trigger(self):
+        for trigger in ("=", "+", "-", "@", "\t", "\r"):
+            payload = f"{trigger}HACK()"
+            self.assertEqual(_safe(payload), f"'{payload}", f"trigger {trigger!r} not escaped")
+
+    def test_build_row_escapes_formula_in_first_name(self):
+        member = _create_member(first='=HYPERLINK("https://evil/","x")')
+        member = Member.objects.prefetch_related("contact_emails", "contact_phones").get(pk=member.pk)
+        row = _build_row(member)
+        self.assertTrue(row[1].startswith("'="))
+
+    def test_build_row_escapes_formula_in_organization(self):
+        member = _create_member(org="@SUM(A1:A10)")
+        member = Member.objects.prefetch_related("contact_emails", "contact_phones").get(pk=member.pk)
+        row = _build_row(member)
+        self.assertTrue(row[6].startswith("'@"))
+
+
+class SingletonEnforcementTests(TestCase):
+    def test_saving_enabled_config_disables_others(self):
+        first = MemberSheetSyncConfig.objects.create(is_enabled=True, google_sheet_id="sheet-a")
+        second = MemberSheetSyncConfig.objects.create(is_enabled=True, google_sheet_id="sheet-b")
+        first.refresh_from_db()
+        self.assertFalse(first.is_enabled)
+        self.assertTrue(second.is_enabled)
+
+    def test_saving_disabled_config_leaves_others_alone(self):
+        enabled = MemberSheetSyncConfig.objects.create(is_enabled=True, google_sheet_id="sheet-a")
+        MemberSheetSyncConfig.objects.create(is_enabled=False, google_sheet_id="sheet-b")
+        enabled.refresh_from_db()
+        self.assertTrue(enabled.is_enabled)
+
+
+class InFlightGuardTests(TestCase):
+    def setUp(self):
+        _enable_config()
+        _create_member()
+
+    def tearDown(self):
+        _sync_in_progress.clear()
+        _sync_pending.clear()
+
+    @patch("authn.services.member_sheet_sync._get_worksheet")
+    @patch("authn.services.member_sheet_sync.GoogleCredentialConfig")
+    def test_queues_follow_up_when_already_in_flight(self, mock_cred_cls, mock_get_ws):
+        mock_cred = MagicMock()
+        mock_cred.is_configured = True
+        mock_cred_cls.load.return_value = mock_cred
+
+        _sync_in_progress.set()
+        try:
+            result = sync_members_to_sheet(sync_type="full")
+        finally:
+            _sync_in_progress.clear()
+
+        self.assertEqual(result, 0)
+        self.assertTrue(_sync_pending.is_set())
+        mock_get_ws.assert_not_called()
+
+    @patch("authn.services.member_sheet_sync.threading.Timer")
+    @patch("authn.services.member_sheet_sync._get_worksheet")
+    @patch("authn.services.member_sheet_sync.GoogleCredentialConfig")
+    def test_pending_sync_schedules_follow_up_after_active_write_finishes(
+        self, mock_cred_cls, mock_get_ws, mock_timer_cls
+    ):
+        mock_cred = MagicMock()
+        mock_cred.is_configured = True
+        mock_cred_cls.load.return_value = mock_cred
+        mock_ws = MagicMock()
+        mock_get_ws.return_value = mock_ws
+        mock_timer = MagicMock()
+        mock_timer_cls.return_value = mock_timer
+        _sync_pending.set()
+
+        result = sync_members_to_sheet(sync_type="full")
+
+        self.assertEqual(result, 1)
+        self.assertFalse(_sync_pending.is_set())
+        self.assertFalse(_sync_in_progress.is_set())
+        mock_timer_cls.assert_called_once()
+        self.assertEqual(mock_timer_cls.call_args.args[0], 0)
+        mock_timer.start.assert_called_once()
+
+
+class SignalSchedulingTests(TransactionTestCase):
+    """post_save / post_delete on Member, ContactEmail, ContactPhone fire schedule_member_sync."""
+
+    @patch("authn.services.member_sheet_sync.schedule_member_sync")
+    def test_member_save_triggers_schedule(self, mock_schedule):
+        Member.objects.create_user(password="TestPass123!", first_name="Sig", last_name="Nal")
+        self.assertTrue(mock_schedule.called)
+
+    @patch("authn.services.member_sheet_sync.schedule_member_sync")
+    def test_member_delete_triggers_schedule(self, mock_schedule):
+        member = Member.objects.create_user(password="TestPass123!", first_name="Del", last_name="Me")
+        mock_schedule.reset_mock()
+        member.delete()
+        self.assertTrue(mock_schedule.called)
+
+    @patch("authn.services.member_sheet_sync.schedule_member_sync")
+    def test_contact_email_save_triggers_schedule(self, mock_schedule):
+        member = Member.objects.create_user(password="TestPass123!", first_name="Ce", last_name="Mail")
+        mock_schedule.reset_mock()
+        ContactEmail.objects.create(member=member, email_address="ce@example.com", email_type="primary")
+        self.assertTrue(mock_schedule.called)
+
+    @patch("authn.services.member_sheet_sync.schedule_member_sync")
+    def test_contact_phone_save_triggers_schedule(self, mock_schedule):
+        member = Member.objects.create_user(password="TestPass123!", first_name="Ph", last_name="One")
+        mock_schedule.reset_mock()
+        ContactPhone.objects.create(member=member, phone_number="2095551234", region="1-US")
+        self.assertTrue(mock_schedule.called)

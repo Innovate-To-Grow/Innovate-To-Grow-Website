@@ -19,6 +19,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.static import serve as static_serve
 
 from authn.views.admin.login import AdminLoginView
 from cms.views import LayoutAPIView, LayoutStylesheetView
@@ -68,5 +69,12 @@ urlpatterns = [
 handler404 = "core.views.custom_404"
 
 if settings.DEBUG:
+    urlpatterns += [
+        path(
+            "assets/<path:path>",
+            static_serve,
+            {"document_root": settings.BASE_DIR.parent / "pages" / "public" / "assets"},
+        )
+    ]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

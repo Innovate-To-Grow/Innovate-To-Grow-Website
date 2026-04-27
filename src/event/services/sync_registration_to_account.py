@@ -31,15 +31,6 @@ def sync_name_to_account(member, first_name: str, last_name: str) -> None:
         member.save(update_fields=["first_name", "last_name", "updated_at"])
         logger.info("Synced name to member %s: %s %s", member.pk, first_name, last_name)
 
-        try:
-            from authn.services.member_sheet_sync import schedule_member_sync
-
-            schedule_member_sync()
-        except Exception:
-            # Best-effort: the member name was already persisted above; a
-            # sheet-sync failure must not break the registration flow.
-            logger.debug("schedule_member_sync failed after name sync", exc_info=True)
-
 
 def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:
     """Sync event registration phone to the member's ContactPhone.

@@ -23,6 +23,7 @@ from .member_helpers import (
     download_template_view,
     export_excel_view,
     export_members_response,
+    export_members_vcard_response,
     get_full_name_display,
     get_primary_email_display,
     import_excel_view,
@@ -89,8 +90,8 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "activate_members",
         "deactivate_members",
         "export_members_to_excel",
+        "export_members_to_vcard",
         "sync_all_members_to_sheet",
-        "sync_selected_members_to_sheet",
     ]
 
     @admin.display(description="Primary Email")
@@ -113,6 +114,10 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     def export_members_to_excel(self, request, queryset):
         return export_members_response(queryset)
 
+    @admin.action(description="Export selected members as vCard (.vcf)")
+    def export_members_to_vcard(self, request, queryset):
+        return export_members_vcard_response(queryset)
+
     @admin.action(description="Sync ALL members to Google Sheet")
     def sync_all_members_to_sheet(self, request, queryset):
         try:
@@ -122,26 +127,6 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
             self.message_user(request, f"Synced {rows} members to Google Sheet.")
         except Exception as exc:
             self.message_user(request, f"Sheet sync failed: {exc}", level="error")
-
-    @admin.action(description="Sync ALL members to Google Sheet (selected confirms intent)")
-    def sync_selected_members_to_sheet(self, request, queryset):
-        try:
-            from authn.services.member_sheet_sync import sync_members_to_sheet
-
-            rows = sync_members_to_sheet(sync_type="full")
-            self.message_user(request, f"Synced {rows} members to Google Sheet.")
-        except Exception as exc:
-            self.message_user(request, f"Sheet sync failed: {exc}", level="error")
-
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-
-        try:
-            from authn.services.member_sheet_sync import schedule_member_sync
-
-            schedule_member_sync()
-        except Exception:
-            logger.exception("Member sheet sync scheduling failed for member %s", obj.pk)
 
     def get_urls(self):
         custom_urls = [

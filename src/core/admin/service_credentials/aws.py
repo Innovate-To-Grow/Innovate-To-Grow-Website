@@ -37,8 +37,13 @@ class AWSCredentialConfigForm(forms.ModelForm):
 
             grouped = get_available_models()
             choices = [("", "---------")]
+            seen_model_ids = set()
             for group, models in grouped:
+                seen_model_ids.update(model_id for model_id, _name in models)
                 choices.append((group, list(models)))
+            current = self.initial.get("default_model_id", "") or getattr(self.instance, "default_model_id", "") or ""
+            if current and current not in seen_model_ids:
+                choices.append(("Configured Model", [(current, current)]))
             self.fields["default_model_id"].choices = choices
         except Exception:
             logger.debug("Could not fetch Bedrock models for form choices", exc_info=True)

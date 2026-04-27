@@ -6,6 +6,8 @@ Defense-in-depth: the frontend also sanitizes via DOMPurify (SafeHtml component)
 
 import bleach
 
+from .embed_hosts import InvalidEmbedURL, is_host_allowed, parse_embed_url
+
 ALLOWED_TAGS = [
     "p",
     "br",
@@ -45,13 +47,32 @@ ALLOWED_TAGS = [
     "hr",
 ]
 
+_IFRAME_STATIC_ATTRS = {"width", "height", "frameborder", "allowfullscreen", "allow"}
+
+
+def _iframe_attr_filter(tag: str, name: str, value: str) -> bool:
+    """Allow iframe attributes only with an explicitly allowlisted host on src."""
+    if name in _IFRAME_STATIC_ATTRS:
+        return True
+    if name != "src":
+        return False
+    try:
+        _, host = parse_embed_url(value or "")
+    except InvalidEmbedURL:
+        return False
+    return is_host_allowed(host)
+
+
+# Wildcard intentionally excludes `style` — inline CSS would let approved
+# content overlay UI chrome (preview banners) or stage CSS-based phishing on
+# public pages.
 ALLOWED_ATTRS = {
     "a": ["href", "title", "target", "rel"],
     "img": ["src", "alt", "width", "height", "loading"],
-    "iframe": ["src", "width", "height", "frameborder", "allowfullscreen", "allow"],
+    "iframe": _iframe_attr_filter,
     "th": ["colspan", "rowspan", "scope"],
     "td": ["colspan", "rowspan"],
-    "*": ["class", "id", "style"],
+    "*": ["class", "id"],
 }
 
 
@@ -60,3 +81,15 @@ def sanitize_html(html: str) -> str:
     if not html:
         return html
     return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+
+
+class _SanitizedHTML(str):
+    """HTML string trusted only after passing through the CMS sanitizer."""
+
+    def __html__(self) -> str:
+        return str(self)
+
+
+def sanitize_html_for_render(html: str | None) -> _SanitizedHTML:
+    """Return sanitized CMS HTML approved for Django template rendering."""
+    return _SanitizedHTML(sanitize_html(html or ""))
