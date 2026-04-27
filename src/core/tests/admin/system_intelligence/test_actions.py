@@ -65,6 +65,66 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         self.assertContains(response, "New Copy")
         self.assertNotContains(response, "Old")
 
+    def test_action_preview_sanitizes_html_fragments_and_escapes_labels(self):
+        page = CMSPage.objects.create(slug="security", route="/security", title="Security", status="draft")
+        CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=0, data={"body_html": "<p>Old</p>"})
+
+        tokens = actions.set_action_context(str(self.conversation.pk), str(self.admin_user.pk))
+        try:
+            payload = actions.propose_cms_page_update(
+                page_id=str(page.pk),
+                blocks=[
+                    {
+                        "block_type": "rich_text",
+                        "admin_label": '<img src=x onerror="alert(1)">',
+                        "data": {
+                            "heading": '<strong onclick="alert(1)">Unsafe Heading</strong>',
+                            "body_html": '<p>Allowed <strong>safe</strong></p><script>alert("xss")</script>'
+                            '<a href="javascript:evil()">bad</a>',
+                        },
+                    },
+                    {
+                        "block_type": "section_group",
+                        "data": {
+                            "sections": [
+                                {
+                                    "heading": "Section",
+                                    "body_html": '<p>Section Body</p><script>alert("section")</script>',
+                                }
+                            ]
+                        },
+                    },
+                    {
+                        "block_type": "faq_list",
+                        "data": {
+                            "items": [
+                                {
+                                    "question": "FAQ",
+                                    "answer": '<p>Answer</p><a href="javascript:evil()">bad</a>',
+                                }
+                            ]
+                        },
+                    },
+                ],
+            )
+        finally:
+            actions.reset_action_context(tokens)
+
+        response = self.client.get(
+            reverse("admin:core_system_intelligence_action_preview", args=[payload["action_request"]["id"]])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<strong>safe</strong>", html=True)
+        self.assertContains(response, "Section Body")
+        self.assertContains(response, "Answer")
+        self.assertContains(response, "&lt;strong onclick=&quot;alert(1)&quot;&gt;Unsafe Heading&lt;/strong&gt;")
+        self.assertContains(response, "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;")
+        self.assertNotContains(response, "<script")
+        self.assertNotContains(response, '<img src=x onerror="alert(1)">')
+        self.assertNotContains(response, '<strong onclick="alert(1)">')
+        self.assertNotContains(response, "javascript:")
+
     def _propose_update(self, source, name):
         tokens = actions.set_action_context(str(self.conversation.pk), str(self.admin_user.pk))
         try:

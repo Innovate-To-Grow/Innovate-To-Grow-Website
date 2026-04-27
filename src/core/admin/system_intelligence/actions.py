@@ -3,10 +3,9 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, JsonResponse
 from django.template.response import TemplateResponse
 from django.utils.html import conditional_escape, format_html, format_html_join
-from django.utils.safestring import mark_safe
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
-from cms.services.sanitize import sanitize_html
+from cms.services.sanitize import sanitize_html_for_render
 from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 from core.services import system_intelligence_actions
 from core.services.system_intelligence_actions.comparison import block_key
@@ -69,7 +68,7 @@ def action_preview_view(request, action_id):
         {
             "action": action,
             "page": page,
-            "block_html": mark_safe("".join(_render_preview_block(block) for block in preview_blocks)),
+            "block_html": _render_preview_blocks(preview_blocks),
             "has_changed_blocks": bool(preview_blocks),
             "has_preview_blocks": bool(preview_blocks),
             "banner_text": "Previewing changed CMS block content. This change is not applied until approved.",
@@ -96,7 +95,7 @@ def action_full_preview_view(request, action_id):
         {
             "action": action,
             "page": page,
-            "block_html": mark_safe("".join(_render_preview_block(block) for block in blocks)),
+            "block_html": _render_preview_blocks(blocks),
             "has_changed_blocks": bool(blocks),
             "has_preview_blocks": bool(blocks),
             "banner_text": "Previewing full proposed CMS page content. This change is not applied until approved.",
@@ -140,6 +139,10 @@ def _changed_preview_blocks(action, page):
     return changed_blocks
 
 
+def _render_preview_blocks(blocks):
+    return format_html_join("", "{}", ((_render_preview_block(block),) for block in blocks))
+
+
 def _render_preview_block(block):
     if not isinstance(block, dict):
         return ""
@@ -181,8 +184,8 @@ def _render_heading_and_html(data, css_class):
         level = _heading_level(data.get("heading_level"), default=2)
         parts.append(format_html("<h{}>{}</h{}>", level, heading, level))
     if data.get("body_html"):
-        parts.append(format_html('<div class="{}">{}</div>', css_class, mark_safe(sanitize_html(data["body_html"]))))
-    return mark_safe("".join(str(part) for part in parts))
+        parts.append(format_html('<div class="{}">{}</div>', css_class, sanitize_html_for_render(data["body_html"])))
+    return format_html_join("", "{}", ((part,) for part in parts))
 
 
 def _render_section_group(data):
@@ -197,7 +200,7 @@ def _render_section_group(data):
                 _heading_level(section.get("heading_level"), default=2),
                 section.get("heading", ""),
                 _heading_level(section.get("heading_level"), default=2),
-                mark_safe(sanitize_html(section.get("body_html", ""))),
+                sanitize_html_for_render(section.get("body_html")),
             )
             for section in sections
             if isinstance(section, dict)
@@ -215,7 +218,7 @@ def _render_faq_list(data):
         (
             (
                 item.get("question") or item.get("heading") or "Question",
-                mark_safe(sanitize_html(item.get("answer", ""))),
+                sanitize_html_for_render(item.get("answer")),
             )
             for item in faqs
             if isinstance(item, dict)

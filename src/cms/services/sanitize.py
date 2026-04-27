@@ -60,3 +60,15 @@ def sanitize_html(html: str) -> str:
     if not html:
         return html
     return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+
+
+class _SanitizedHTML(str):
+    """HTML string trusted only after passing through the CMS sanitizer."""
+
+    def __html__(self) -> str:
+        return str(self)
+
+
+def sanitize_html_for_render(html: str | None) -> _SanitizedHTML:
+    """Return sanitized CMS HTML approved for Django template rendering."""
+    return _SanitizedHTML(sanitize_html(html or ""))
