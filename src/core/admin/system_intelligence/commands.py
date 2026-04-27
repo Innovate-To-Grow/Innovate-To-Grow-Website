@@ -106,7 +106,8 @@ def _handle_title(_request, convo, args):
             status=400,
         )
     convo.title = title[:TITLE_MAX_LENGTH]
-    convo.save(update_fields=["title", "updated_at"])
+    convo.auto_title = False
+    convo.save(update_fields=["title", "auto_title", "updated_at"])
     return JsonResponse({"ok": True, "title": convo.title})
 
 

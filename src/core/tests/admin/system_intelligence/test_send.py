@@ -90,6 +90,38 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
         detail = self.client.get(reverse("admin:core_system_intelligence_detail", args=[self.conversation.id]))
         self.assertEqual(detail.json()["messages"][-1]["action_requests"][0]["id"], str(action.id))
 
+    def test_send_rejects_messages_above_length_cap(self):
+        from core.admin.system_intelligence.stream import USER_MESSAGE_MAX_CHARS
+
+        oversized = "x" * (USER_MESSAGE_MAX_CHARS + 1)
+        response = self.client.post(
+            reverse("admin:core_system_intelligence_send", args=[self.conversation.id]),
+            data=json.dumps({"message": oversized}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("characters", response.json()["error"])
+        self.assertFalse(ChatMessage.objects.filter(conversation=self.conversation, role="user").exists())
+
+    def test_send_does_not_overwrite_user_renamed_title_named_new_chat(self):
+        from core.models.base.system_intelligence import ChatConversation
+
+        ChatConversation.objects.filter(pk=self.conversation.pk).update(title="New Chat", auto_title=False)
+        with patch(
+            "core.admin.system_intelligence.invoke_system_intelligence_stream",
+            return_value=iter([{"type": "text", "chunk": "Hi"}]),
+        ):
+            response = self.client.post(
+                reverse("admin:core_system_intelligence_send", args=[self.conversation.id]),
+                data=json.dumps({"message": "First message that would otherwise become the title."}),
+                content_type="application/json",
+            )
+            b"".join(response.streaming_content)
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.title, "New Chat")
+        self.assertFalse(self.conversation.auto_title)
+
     def test_send_stream_sanitizes_bedrock_dns_error(self):
         raw_error = "litellm.ServiceUnavailableError: BedrockException - Cannot connect to host bedrock-runtime.us-west-2.amazonaws.com:443 ssl:<ssl.SSLContext object> [Could not contact DNS servers]"
         with patch(

@@ -86,5 +86,6 @@ def chat_rename_view(request, conversation_id):
     if not new_title:
         return JsonResponse({"error": "Title cannot be empty"}, status=400)
     convo.title = new_title[:200]
-    convo.save(update_fields=["title", "updated_at"])
+    convo.auto_title = False
+    convo.save(update_fields=["title", "auto_title", "updated_at"])
     return JsonResponse({"ok": True, "title": convo.title})

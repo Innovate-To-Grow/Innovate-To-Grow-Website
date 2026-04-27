@@ -13,6 +13,8 @@ from core.services.system_intelligence_adk.context_manager import prepare_conver
 
 from .stream_helpers import _create_assistant_message, _handle_stream_event, _sse, _stream_exception
 
+USER_MESSAGE_MAX_CHARS = 20_000
+
 
 def _stream_callable():
     import core.admin.system_intelligence as package
@@ -34,18 +36,31 @@ def chat_send_view(request, conversation_id):
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
     if not user_content:
         return JsonResponse({"error": "Message cannot be empty"}, status=400)
+    if len(user_content) > USER_MESSAGE_MAX_CHARS:
+        return JsonResponse(
+            {"error": f"Message exceeds {USER_MESSAGE_MAX_CHARS:,} characters."},
+            status=400,
+        )
 
     persist_user_message(convo, user_content)
     return build_stream_response(request, convo)
 
 
 def persist_user_message(convo, user_content):
-    """Persist a user message and update the conversation title on first turn."""
+    """Persist a user message and auto-rename the conversation on first turn.
+
+    The auto-rename runs only while ``convo.auto_title`` is true, which the
+    rename view clears as soon as a human picks a title. That way a user who
+    deliberately renames a conversation back to "New Chat" doesn't get their
+    next message silently overwriting the title.
+    """
     ChatMessage.objects.create(conversation=convo, role="user", content=user_content)
-    title_updated = convo.title == "New Chat"
-    if title_updated:
+    if convo.auto_title:
         convo.title = user_content[:100]
-    convo.save(update_fields=["title", "updated_at"] if title_updated else ["updated_at"])
+        convo.auto_title = False
+        convo.save(update_fields=["title", "auto_title", "updated_at"])
+    else:
+        convo.save(update_fields=["updated_at"])
 
 
 def build_stream_response(request, convo):

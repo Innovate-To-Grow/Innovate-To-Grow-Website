@@ -12,6 +12,10 @@ class ChatConversation(ProjectControlModel):
     MODE_CHOICES = [(MODE_NORMAL, "Normal"), (MODE_PLAN, "Plan-only")]
 
     title = models.CharField(max_length=200, default="New Chat")
+    auto_title = models.BooleanField(
+        default=True,
+        help_text="True until the title has been explicitly set, either by the user or by the first-turn auto-rename.",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

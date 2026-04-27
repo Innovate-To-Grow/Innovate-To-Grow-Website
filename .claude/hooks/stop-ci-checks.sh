@@ -20,29 +20,60 @@ ts_files=$(echo "$changed" | grep -E '^pages/src/.*\.(ts|tsx)$')
 
 results=()
 
+# Build arrays from newline-delimited file lists so paths with spaces or
+# shell metacharacters (rare in this repo, but possible) don't get split
+# or interpreted by the shell.
+py_array=()
 if [ -n "$py_files" ]; then
-  py_count=$(echo "$py_files" | wc -l | tr -d ' ')
-  rel_py=$(echo "$py_files" | sed 's|^src/||' | tr '\n' ' ')
-  if (cd src && ruff check $rel_py >/dev/null 2>&1); then
+  while IFS= read -r line; do
+    [ -n "$line" ] && py_array+=("${line#src/}")
+  done <<<"$py_files"
+fi
+ts_array=()
+if [ -n "$ts_files" ]; then
+  while IFS= read -r line; do
+    [ -n "$line" ] && ts_array+=("${line#pages/}")
+  done <<<"$ts_files"
+fi
+
+# `npx --no-install <bin>` exits 1 when the binary is missing -- which
+# looks identical to a real lint failure. This wrapper distinguishes the
+# two cases so a missing toolchain shows as `skip` instead of `✗`.
+run_with_npx() {
+  local label="$1"; shift
+  local out
+  out=$(cd pages && npx --no-install "$@" 2>&1)
+  local code=$?
+  if [ $code -eq 0 ]; then
+    echo "ok"
+  elif echo "$out" | grep -qiE 'could not determine executable|not found|no such file'; then
+    echo "skip"
+  else
+    echo "fail"
+  fi
+}
+
+if [ ${#py_array[@]} -gt 0 ]; then
+  py_count=${#py_array[@]}
+  if (cd src && ruff check "${py_array[@]}" >/dev/null 2>&1); then
     results+=("ruff ✓ ${py_count}py")
   else
     results+=("ruff ✗ ${py_count}py")
   fi
 fi
 
-if [ -n "$ts_files" ]; then
-  ts_count=$(echo "$ts_files" | wc -l | tr -d ' ')
-  rel_ts=$(echo "$ts_files" | sed 's|^pages/||' | tr '\n' ' ')
-  if (cd pages && npx --no-install eslint --max-warnings=0 $rel_ts >/dev/null 2>&1); then
-    results+=("eslint ✓ ${ts_count}ts")
-  else
-    results+=("eslint ✗ ${ts_count}ts")
-  fi
-  if (cd pages && npx --no-install tsc --noEmit >/dev/null 2>&1); then
-    results+=("tsc ✓")
-  else
-    results+=("tsc ✗")
-  fi
+if [ ${#ts_array[@]} -gt 0 ]; then
+  ts_count=${#ts_array[@]}
+  case "$(run_with_npx eslint eslint --max-warnings=0 "${ts_array[@]}")" in
+    ok)   results+=("eslint ✓ ${ts_count}ts") ;;
+    skip) results+=("eslint ⊘ ${ts_count}ts") ;;
+    *)    results+=("eslint ✗ ${ts_count}ts") ;;
+  esac
+  case "$(run_with_npx tsc tsc --noEmit)" in
+    ok)   results+=("tsc ✓") ;;
+    skip) results+=("tsc ⊘") ;;
+    *)    results+=("tsc ✗") ;;
+  esac
 fi
 
 [ ${#results[@]} -eq 0 ] && exit 0
