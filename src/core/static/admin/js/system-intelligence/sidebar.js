@@ -215,17 +215,26 @@
       });
     }
 
-    var SAFE_PREVIEW_PATH_RE = /^\/admin\/[A-Za-z0-9_\/-]+\/preview\/?$/;
     var SAFE_ACTION_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
+    var ACTION_PREVIEW_BASE = '/admin/core/system-intelligence/actions/';
+    var ACTION_PREVIEW_SUFFIX = '/preview/';
 
     function actionPreviewUrl(actionId, iframe) {
       if (actionId && SAFE_ACTION_ID_RE.test(actionId)) {
-        var base = root.getAttribute('data-new-url') || '';
-        var candidate = base.replace('/new/', '/actions/' + actionId + '/preview/');
-        if (SAFE_PREVIEW_PATH_RE.test(candidate)) return candidate;
+        return ACTION_PREVIEW_BASE + encodeURIComponent(actionId) + ACTION_PREVIEW_SUFFIX;
       }
-      var external = iframe.getAttribute('data-si-preview-external-src') || '';
-      return SAFE_PREVIEW_PATH_RE.test(external) ? external : 'about:blank';
+      return safeExternalPreviewUrl(iframe.getAttribute('data-si-preview-external-src') || '');
+    }
+
+    function safeExternalPreviewUrl(candidate) {
+      if (!candidate) return 'about:blank';
+      try {
+        var parsed = new URL(candidate, window.location.origin);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'about:blank';
+        return parsed.href;
+      } catch (e) {
+        return 'about:blank';
+      }
     }
 
     function setActionButtonsDisabled(actionId, disabled) {
