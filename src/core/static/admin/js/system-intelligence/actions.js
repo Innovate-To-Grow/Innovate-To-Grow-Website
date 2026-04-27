@@ -25,7 +25,7 @@
       (!hasStructuredComparison ? renderActionDiff(action.diff || []) : '') +
       '<div class="si-action-footer">' + previewButtonHtml + buttons + '</div>' +
       previewFrameHtml +
-      (action.error_message ? '<div class="si-action-error">' + SI.escapeHtml(action.error_message) + '</div>' : '') +
+      (action.failure_notice ? '<div class="si-action-error">' + SI.escapeHtml(action.failure_notice) + '</div>' : '') +
     '</div>';
   }
 

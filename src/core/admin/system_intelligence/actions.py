@@ -54,29 +54,28 @@ def action_reject_view(request, action_id):
 
 
 def _action_error_response(exc, *, action):
-    """Build a JsonResponse using a vetted error message and log full detail."""
+    """Build a JsonResponse using a class-derived literal and log full detail.
+
+    The response message is never derived from the exception text. Each
+    exception class maps to a fixed string so no provider, ORM, or stack
+    trace detail can flow into the user-facing JSON body.
+    """
+    action_id = getattr(action, "id", None)
     if isinstance(exc, system_intelligence_actions.ActionRequestError):
-        message = _safe_message(exc.args[0] if exc.args else "") or _GENERIC_ACTION_ERROR
+        logger.warning("Action %s rejected by validation", action_id, exc_info=exc)
+        message = _GENERIC_ACTION_ERROR
     elif isinstance(exc, PermissionDenied):
         message = _GENERIC_PERMISSION_ERROR
     elif isinstance(exc, ValidationError):
-        logger.warning("Action %s validation error", getattr(action, "id", None), exc_info=exc)
+        logger.warning("Action %s validation error", action_id, exc_info=exc)
         message = _GENERIC_VALIDATION_ERROR
     else:
-        logger.exception("Unexpected error handling action %s", getattr(action, "id", None))
+        logger.exception("Unexpected error handling action %s", action_id)
         message = _GENERIC_ACTION_ERROR
     return JsonResponse(
         {"error": message, "action_request": system_intelligence_actions.serialize_action_request(action)},
         status=400,
     )
-
-
-def _safe_message(value):
-    """Return a short, control-character-free string suitable for JSON error fields."""
-    if not isinstance(value, str):
-        return ""
-    cleaned = _CONTROL_CHAR_RE.sub("", value).strip()
-    return cleaned[:300]
 
 
 @xframe_options_sameorigin

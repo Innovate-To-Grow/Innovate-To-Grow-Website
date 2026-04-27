@@ -215,9 +215,17 @@
       });
     }
 
+    var SAFE_PREVIEW_PATH_RE = /^\/admin\/[A-Za-z0-9_\/-]+\/preview\/?$/;
+    var SAFE_ACTION_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
+
     function actionPreviewUrl(actionId, iframe) {
-      if (actionId) return root.getAttribute('data-new-url').replace('/new/', '/actions/' + actionId + '/preview/');
-      return iframe.getAttribute('data-si-preview-external-src') || 'about:blank';
+      if (actionId && SAFE_ACTION_ID_RE.test(actionId)) {
+        var base = root.getAttribute('data-new-url') || '';
+        var candidate = base.replace('/new/', '/actions/' + actionId + '/preview/');
+        if (SAFE_PREVIEW_PATH_RE.test(candidate)) return candidate;
+      }
+      var external = iframe.getAttribute('data-si-preview-external-src') || '';
+      return SAFE_PREVIEW_PATH_RE.test(external) ? external : 'about:blank';
     }
 
     function setActionButtonsDisabled(actionId, disabled) {

@@ -4,9 +4,21 @@ from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 
 from .comparison import action_comparison
 
+_FAILURE_NOTICE_BY_STATUS: dict[str, str] = {
+    SystemIntelligenceActionRequest.STATUS_FAILED: (
+        "This action could not be applied. Try proposing it again or contact an admin."
+    ),
+}
+
 
 def serialize_action_request(action: SystemIntelligenceActionRequest) -> dict[str, Any]:
-    """Return the stable JSON payload used by SSE and the admin chat UI."""
+    """Return the stable JSON payload used by SSE and the admin chat UI.
+
+    The raw ``error_message`` field is intentionally excluded; only a
+    status-derived notice is returned. This keeps any exception text the
+    backend persisted on failure out of the public response and confines
+    failure detail to the admin model view + server logs.
+    """
     payload = action.payload if isinstance(action.payload, dict) else {}
     return {
         "id": str(action.id),
@@ -26,7 +38,7 @@ def serialize_action_request(action: SystemIntelligenceActionRequest) -> dict[st
         "created_at": action.created_at.isoformat() if action.created_at else "",
         "reviewed_at": action.reviewed_at.isoformat() if action.reviewed_at else "",
         "applied_at": action.applied_at.isoformat() if action.applied_at else "",
-        "error_message": action.error_message,
+        "failure_notice": _FAILURE_NOTICE_BY_STATUS.get(action.status, ""),
     }
 
 

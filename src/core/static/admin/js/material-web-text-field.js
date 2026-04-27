@@ -68,7 +68,7 @@
         var label = document.querySelector('label[for="' + CSS.escape(nativeField.id) + '"]');
         if (!label) return "";
 
-        return (label.textContent || "").replace("*", "").trim();
+        return (label.textContent || "").replace(/\*/g, "").trim();
     }
 
     function enhanceTextField(nativeField) {

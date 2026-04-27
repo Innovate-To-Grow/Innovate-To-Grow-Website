@@ -1,10 +1,17 @@
 import json
 import logging
+import re
 
 from core.models.base.system_intelligence import ChatMessage, SystemIntelligenceActionRequest
 from core.services.system_intelligence_adk import format_system_intelligence_error
+from core.services.system_intelligence_adk.errors import (
+    exception_chain_message,
+    is_bedrock_connectivity_error,
+)
 
 logger = logging.getLogger(__name__)
+
+_AWS_REGION_RE = re.compile(r"^[a-z]{2,4}-[a-z]+-\d+$")
 
 
 def _sse(event, data):
@@ -57,10 +64,25 @@ _GENERIC_STREAM_ERROR = "The assistant could not complete this turn. See server 
 
 
 def _stream_exception(conversation_id, exc, aws_config):
-    formatted = format_system_intelligence_error(exc, aws_config=aws_config)
-    if formatted != str(exc):
-        logger.warning("Stream provider connectivity failed for conversation %s: %s", conversation_id, formatted)
-        message = formatted
+    """Build a user-facing SSE error from a controlled string template.
+
+    The exception text is logged but never copied into the response. For
+    recognised Bedrock connectivity failures we substitute a regex-validated
+    region from aws_config. Anything else gets a generic message.
+    """
+    chain = exception_chain_message(exc)
+    if is_bedrock_connectivity_error(chain):
+        region_raw = (getattr(aws_config, "default_region", None) or "").strip()
+        region = region_raw if _AWS_REGION_RE.fullmatch(region_raw) else "the configured region"
+        logger.warning(
+            "Stream provider connectivity failed for conversation %s in region %s",
+            conversation_id,
+            region,
+        )
+        message = (
+            f"Unable to reach AWS Bedrock Runtime in {region}. "
+            "Check network/DNS connectivity for the server and try again."
+        )
     else:
         logger.exception("Stream error for conversation %s", conversation_id)
         message = _GENERIC_STREAM_ERROR
