@@ -1,4 +1,5 @@
 import re
+import time
 
 APP_NAME = "innovate_to_grow_system_intelligence"
 AGENT_NAME = "system_intelligence"
@@ -50,7 +51,38 @@ WRITE_TOOL_NAMES: frozenset[str] = frozenset(
     }
 )
 SENTINEL = object()
-TEMPERATURE_DEPRECATED_MODEL_IDS: set[str] = set()
+TEMPERATURE_DEPRECATED_MODEL_TTL_SECONDS = 3600
+
+
+class _TTLSet:
+    """Simple TTL-bounded set used to suppress temperature retries per model.
+
+    A misclassified transient error self-heals after the TTL expires instead of
+    silently disabling temperature for the remaining lifetime of the worker.
+    Supports the ``add``/``clear``/``in`` interface used elsewhere.
+    """
+
+    def __init__(self, ttl_seconds: int):
+        self._ttl = ttl_seconds
+        self._entries: dict[str, float] = {}
+
+    def add(self, key: str) -> None:
+        self._entries[key] = time.monotonic() + self._ttl
+
+    def clear(self) -> None:
+        self._entries.clear()
+
+    def __contains__(self, key: str) -> bool:
+        expires = self._entries.get(key)
+        if expires is None:
+            return False
+        if expires <= time.monotonic():
+            self._entries.pop(key, None)
+            return False
+        return True
+
+
+TEMPERATURE_DEPRECATED_MODEL_IDS = _TTLSet(TEMPERATURE_DEPRECATED_MODEL_TTL_SECONDS)
 BEDROCK_HOST_RE = re.compile(r"bedrock-runtime\.([a-z0-9-]+)\.amazonaws\.com", re.IGNORECASE)
 BEDROCK_CONNECTIVITY_KEYWORDS = (
     "serviceunavailable",

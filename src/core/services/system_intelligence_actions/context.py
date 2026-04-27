@@ -1,5 +1,7 @@
 import contextvars
 
+from django.contrib.auth import get_user_model
+
 from core.models.base.system_intelligence import ChatConversation
 
 from .exceptions import ActionRequestError
@@ -40,3 +42,15 @@ def current_conversation() -> ChatConversation:
 
 def current_user_id() -> str | None:
     return ACTION_USER_ID.get()
+
+
+def current_user():
+    """Resolve the active staff user for permission checks; returns None if not set."""
+    user_id = ACTION_USER_ID.get()
+    if not user_id:
+        return None
+    User = get_user_model()
+    try:
+        return User.objects.get(pk=user_id)
+    except (User.DoesNotExist, ValueError, TypeError):
+        return None

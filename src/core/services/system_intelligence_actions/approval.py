@@ -48,14 +48,15 @@ def approve_action_request(action_id: str | uuid.UUID, user) -> SystemIntelligen
 
 def reject_action_request(action_id: str | uuid.UUID, user) -> SystemIntelligenceActionRequest:
     """Reject a pending action request without changing target data."""
-    action = SystemIntelligenceActionRequest.objects.get(id=action_id)
-    if action.status != SystemIntelligenceActionRequest.STATUS_PENDING:
-        raise ActionRequestError(f"Action request is already {action.status}.")
-    action.status = SystemIntelligenceActionRequest.STATUS_REJECTED
-    action.reviewed_by = user
-    action.reviewed_at = timezone.now()
-    action.save(update_fields=["status", "reviewed_by", "reviewed_at", "updated_at"])
-    return action
+    with transaction.atomic():
+        action = SystemIntelligenceActionRequest.objects.select_for_update().get(id=action_id)
+        if action.status != SystemIntelligenceActionRequest.STATUS_PENDING:
+            raise ActionRequestError(f"Action request is already {action.status}.")
+        action.status = SystemIntelligenceActionRequest.STATUS_REJECTED
+        action.reviewed_by = user
+        action.reviewed_at = timezone.now()
+        action.save(update_fields=["status", "reviewed_by", "reviewed_at", "updated_at"])
+        return action
 
 
 def mark_action_failed(action_id: str | uuid.UUID, user, error_message: str) -> None:

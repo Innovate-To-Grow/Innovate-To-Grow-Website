@@ -26,7 +26,6 @@ ALLOWED_QUERY_FIELDS = {
         "last_name",
         "organization",
         "title",
-        "is_staff",
         "is_active",
         "created_at",
         "updated_at",
@@ -98,7 +97,7 @@ ALLOWED_QUERY_FIELDS = {
         "updated_at",
     },
     "NewsFeedSource": {"id", "name", "feed_url", "is_active", "created_at", "updated_at"},
-    "PageView": {"id", "path", "timestamp", "ip_address", "created_at"},
+    "PageView": {"id", "path", "timestamp", "created_at"},
     "Menu": {"id", "name", "display_name", "is_active", "created_at", "updated_at"},
 }
 
@@ -127,7 +126,5 @@ SAFE_LOOKUPS = frozenset(
         "minute",
         "second",
         "isnull",
-        "regex",
-        "iregex",
     }
 )

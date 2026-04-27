@@ -5,11 +5,12 @@ from django.db import models
 from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 
 from ..comparison import build_db_comparison, build_diff
-from ..context import current_conversation, current_user_id
+from ..context import current_conversation, current_user, current_user_id
 from ..exceptions import ActionRequestError
 from ..orm import (
     assert_snapshot_unchanged,
     assign_model_fields,
+    check_model_permission,
     clone_model_instance,
     get_object,
     record_repr,
@@ -18,12 +19,14 @@ from ..orm import (
     validate_write_payload,
 )
 from ..serialization import proposal_tool_response
+from .cascade import cascade_summary, collect_cascade_impact
 
 
 def propose_db_create(app_label: str, model_name: str, fields: dict[str, Any], summary: str | None = None):
     """Create a pending single-record ORM create action."""
     conversation = current_conversation()
     model = resolve_model(app_label, model_name, write=True)
+    check_model_permission(current_user(), model, "view")
     if not isinstance(fields, dict) or not fields:
         raise ActionRequestError("fields must be a non-empty object.")
     clean_fields = validate_write_payload(model, fields)
@@ -58,6 +61,7 @@ def propose_db_update(app_label: str, model_name: str, pk: str, changes: dict[st
     """Create a pending single-record ORM update action."""
     conversation = current_conversation()
     model = resolve_model(app_label, model_name, write=True)
+    check_model_permission(current_user(), model, "view")
     obj = get_object(model, pk)
     if not isinstance(changes, dict) or not changes:
         raise ActionRequestError("changes must be a non-empty object.")
@@ -96,9 +100,12 @@ def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | N
     """Create a pending single-record ORM delete action."""
     conversation = current_conversation()
     model = resolve_model(app_label, model_name, write=True)
+    check_model_permission(current_user(), model, "view")
     obj = get_object(model, pk)
     before = serialize_model_instance(obj, write=True)
+    cascade = collect_cascade_impact(obj)
     comparison = build_db_comparison(model, before, {}, mode="delete")
+    comparison["cascade"] = cascade
     action = SystemIntelligenceActionRequest.objects.create(
         conversation=conversation,
         created_by_id=current_user_id(),
@@ -108,12 +115,13 @@ def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | N
         target_pk=str(obj.pk),
         target_repr=record_repr(obj),
         title=f"Delete {model._meta.verbose_name}: {record_repr(obj)}",
-        summary=summary or "Review this database deletion before applying it.",
+        summary=cascade_summary(summary, cascade) or "Review this database deletion before applying it.",
         payload={
             "app_label": model._meta.app_label,
             "model_name": model._meta.object_name,
             "pk": str(obj.pk),
             "comparison": comparison,
+            "cascade": cascade,
         },
         before_snapshot=before,
         after_snapshot={},
