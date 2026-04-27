@@ -2,17 +2,17 @@
 {% load i18n %}
 
 {% block object-tools-items %}
-    <div class="flex flex-row items-center gap-3">
+    <div class="i2g-admin-object-tools">
         {% if show_import_buttons %}
             <a
                     href="{% url 'admin:cms_stylesheet_export' %}"
-                    class="whitespace-nowrap rounded-default border border-base-300 bg-white px-3 py-2 text-sm font-medium text-font-default-light shadow-xs transition hover:border-primary-500 hover:text-primary-700 dark:border-base-700 dark:bg-base-900 dark:text-font-default-dark"
+                    class="i2g-admin-action"
             >
                 Export JSON
             </a>
             <a
                     href="{% url 'admin:cms_stylesheet_import' %}"
-                    class="whitespace-nowrap rounded-default border border-base-300 bg-white px-3 py-2 text-sm font-medium text-font-default-light shadow-xs transition hover:border-primary-500 hover:text-primary-700 dark:border-base-700 dark:bg-base-900 dark:text-font-default-dark"
+                    class="i2g-admin-action"
             >
                 Import JSON
             </a>

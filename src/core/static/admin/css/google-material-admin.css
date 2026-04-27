@@ -145,7 +145,7 @@ a:hover {
 }
 
 button,
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea,
 .button,
@@ -168,7 +168,7 @@ textarea {
     color: var(--md-sys-color-on-surface) !important;
 }
 
-input:focus,
+input:not([type="checkbox"]):not([type="radio"]):focus,
 select:focus,
 textarea:focus {
     border-color: var(--md-sys-color-primary) !important;
@@ -211,7 +211,7 @@ textarea:focus {
 
 .bg-primary-600,
 .bg-primary-500,
-button[type="submit"],
+button[type="submit"]:not(#searchbar-submit),
 input[type="submit"],
 .submit-row input,
 .submit-row button {
@@ -221,7 +221,7 @@ input[type="submit"],
 
 .bg-primary-600:hover,
 .bg-primary-500:hover,
-button[type="submit"]:hover,
+button[type="submit"]:not(#searchbar-submit):hover,
 input[type="submit"]:hover,
 .submit-row input:hover,
 .submit-row button:hover {
@@ -263,4 +263,257 @@ header,
 
 .material-symbols-outlined {
     color: currentColor;
+}
+
+#searchbar-submit {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: var(--md-sys-color-on-surface-variant) !important;
+    height: auto;
+    padding: 0 !important;
+}
+
+#searchbar-submit:hover {
+    background: transparent !important;
+    color: var(--md-sys-color-primary) !important;
+}
+
+#changelist-search .material-symbols-outlined {
+    display: block;
+    font-size: 18px !important;
+    line-height: 1 !important;
+}
+
+input[type="checkbox"].appearance-none.w-8 {
+    appearance: none !important;
+    background-color: var(--md-sys-color-outline-variant) !important;
+    border: 0 !important;
+    border-radius: 9999px !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    display: block;
+    height: 1.25rem;
+    min-width: 2rem;
+    pointer-events: auto;
+    position: relative;
+    transition: background-color 150ms ease;
+    width: 2rem;
+}
+
+input[type="checkbox"].appearance-none.w-8::after {
+    background-color: #ffffff !important;
+    border-radius: 9999px;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+    content: "";
+    height: 0.75rem;
+    left: 0.25rem;
+    position: absolute;
+    top: 0.25rem;
+    transition: left 150ms ease;
+    width: 0.75rem;
+}
+
+input[type="checkbox"].appearance-none.w-8:checked {
+    background-color: #22c55e !important;
+}
+
+input[type="checkbox"].appearance-none.w-8:checked::after {
+    left: 1rem;
+}
+
+input[type="checkbox"].appearance-none.w-8:focus {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent) !important;
+    outline: none !important;
+}
+
+input[type="checkbox"].appearance-none.w-8:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.i2g-md-field {
+    display: block;
+    max-width: 42rem;
+    position: relative;
+    width: 100%;
+}
+
+.i2g-md-field__component {
+    display: none;
+    width: 100%;
+}
+
+.i2g-md-field--enhanced .i2g-md-field__native,
+.i2g-md-field--enhanced > input,
+.i2g-md-field--enhanced > select,
+.i2g-md-field--enhanced > textarea {
+    height: 1px !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    width: 1px !important;
+}
+
+.i2g-md-field--enhanced .i2g-md-field__component {
+    display: block;
+}
+
+md-outlined-text-field.i2g-md-field__component,
+md-outlined-select.i2g-md-field__component {
+    --md-outlined-text-field-container-shape: var(--md-sys-shape-corner-medium);
+    --md-outlined-text-field-container-height: 44px;
+    --md-outlined-text-field-caret-color: var(--md-sys-color-primary);
+    --md-outlined-text-field-focus-outline-color: var(--md-sys-color-primary);
+    --md-outlined-text-field-hover-outline-color: var(--md-sys-color-primary);
+    --md-outlined-text-field-input-text-color: var(--md-sys-color-on-surface);
+    --md-outlined-text-field-input-text-font: var(--font-family-primary);
+    --md-outlined-text-field-input-text-size: 0.875rem;
+    --md-outlined-text-field-outline-color: var(--md-sys-color-outline-variant);
+    --md-outlined-text-field-placeholder-text-color: var(--md-sys-color-on-surface-variant);
+    --md-outlined-select-text-field-container-shape: var(--md-sys-shape-corner-medium);
+    --md-outlined-select-text-field-container-height: 44px;
+    --md-outlined-select-text-field-focus-outline-color: var(--md-sys-color-primary);
+    --md-outlined-select-text-field-hover-outline-color: var(--md-sys-color-primary);
+    --md-outlined-select-text-field-input-text-color: var(--md-sys-color-on-surface);
+    --md-outlined-select-text-field-input-text-font: var(--font-family-primary);
+    --md-outlined-select-text-field-input-text-size: 0.875rem;
+    --md-outlined-select-text-field-outline-color: var(--md-sys-color-outline-variant);
+}
+
+md-checkbox.i2g-md-toggle__component,
+md-radio.i2g-md-toggle__component,
+md-switch.i2g-md-toggle__component {
+    --md-checkbox-selected-container-color: var(--md-sys-color-primary);
+    --md-checkbox-selected-icon-color: var(--md-sys-color-on-primary);
+    --md-checkbox-selected-focus-container-color: var(--md-sys-color-primary);
+    --md-checkbox-selected-hover-container-color: var(--md-sys-color-primary);
+    --md-checkbox-unselected-outline-color: var(--md-sys-color-outline);
+    --md-radio-selected-icon-color: var(--md-sys-color-primary);
+    --md-radio-selected-focus-icon-color: var(--md-sys-color-primary);
+    --md-radio-selected-hover-icon-color: var(--md-sys-color-primary);
+    --md-radio-unselected-icon-color: var(--md-sys-color-outline);
+    --md-switch-selected-handle-color: var(--md-sys-color-on-primary);
+    --md-switch-selected-track-color: var(--md-sys-color-primary);
+    --md-switch-unselected-handle-color: var(--md-sys-color-outline);
+    --md-switch-unselected-track-color: var(--md-sys-color-surface-container-highest);
+}
+
+.i2g-md-toggle {
+    display: inline-flex;
+    max-width: max-content;
+}
+
+.i2g-admin-object-tools {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+}
+
+.i2g-admin-object-tools > * {
+    display: inline-flex;
+    position: relative;
+}
+
+.i2g-admin-object-tools > * + * {
+    margin-left: -1px;
+}
+
+.i2g-admin-object-tools > *:hover,
+.i2g-admin-object-tools > *:focus-within {
+    z-index: 1;
+}
+
+.i2g-admin-object-tools--separated {
+    gap: 0.5rem;
+}
+
+.i2g-admin-object-tools--separated > * + * {
+    margin-left: 0;
+}
+
+.i2g-admin-object-tools form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.i2g-admin-action,
+.i2g-admin-object-tools .addlink {
+    align-items: center;
+    background-color: var(--md-sys-color-surface-container-lowest) !important;
+    border: 1px solid var(--md-sys-color-outline-variant) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: var(--md-sys-color-on-surface) !important;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
+    height: 38px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0 0.875rem;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    white-space: nowrap;
+}
+
+.i2g-admin-object-tools .addlink {
+    background-color: var(--md-sys-color-primary) !important;
+    border-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-on-primary) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 38px;
+}
+
+.i2g-admin-action:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent) !important;
+    border-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-primary) !important;
+}
+
+.i2g-admin-action--primary {
+    background-color: var(--md-sys-color-primary) !important;
+    border-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.i2g-admin-action--primary:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    border-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.i2g-admin-object-tools .addlink:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    border-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.i2g-admin-object-tools > .i2g-admin-action:first-child,
+.i2g-admin-object-tools > form:first-child > .i2g-admin-action,
+.i2g-admin-object-tools > div:first-child > .addlink {
+    border-bottom-left-radius: var(--md-sys-shape-corner-extra-large) !important;
+    border-top-left-radius: var(--md-sys-shape-corner-extra-large) !important;
+}
+
+.i2g-admin-object-tools > .i2g-admin-action:last-child,
+.i2g-admin-object-tools > form:last-child > .i2g-admin-action,
+.i2g-admin-object-tools > div:last-child > .addlink {
+    border-bottom-right-radius: var(--md-sys-shape-corner-extra-large) !important;
+    border-top-right-radius: var(--md-sys-shape-corner-extra-large) !important;
+}
+
+.i2g-admin-object-tools--separated .i2g-admin-action,
+.i2g-admin-object-tools--separated .addlink {
+    border-radius: var(--md-sys-shape-corner-extra-large) !important;
+}
+
+.i2g-admin-action .material-symbols-outlined,
+.i2g-admin-object-tools .addlink .material-symbols-outlined {
+    font-size: 18px !important;
 }

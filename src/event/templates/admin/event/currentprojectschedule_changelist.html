@@ -1,17 +1,17 @@
 {% extends "admin/change_list.html" %}
 
 {% block object-tools-items %}
-    <div class="flex flex-row items-center gap-2">
-        <form method="post" action="{{ pull_url }}" class="inline">
+    <div class="i2g-admin-object-tools i2g-admin-object-tools--separated">
+        <form method="post" action="{{ pull_url }}">
             {% csrf_token %}
             <button type="submit"
-                    class="bg-primary-600 hover:bg-primary-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors whitespace-nowrap">
-                <span class="material-symbols-outlined text-white !text-[18px]">sync</span>
+                    class="i2g-admin-action i2g-admin-action--primary">
+                <span class="material-symbols-outlined">sync</span>
                 Pull Current Projects &amp; Schedule
             </button>
         </form>
+        {{ block.super }}
     </div>
-    {{ block.super }}
 {% endblock %}
 
 {% block content %}

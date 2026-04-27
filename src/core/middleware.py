@@ -74,7 +74,7 @@ class ContentSecurityPolicyMiddleware:
 
     CSP_HEADER = (
         "default-src 'self'; "
-        "script-src 'self'; "
+        "script-src 'self' https://esm.run https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: https:; "
         "font-src 'self' data:; "

@@ -1,0 +1,58 @@
+from pathlib import Path
+
+from django.contrib.staticfiles import finders
+from django.test import TestCase
+from django.urls import reverse
+
+from cms.models import StyleSheet
+from core.models import SiteMaintenanceControl
+from event.tests.helpers import make_superuser
+from mail.models import EmailCampaign
+
+
+class MaterialWebAdminEnhancerTests(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+
+    def _enhancer_source(self):
+        path = finders.find("admin/js/material-web-text-field.js")
+        self.assertIsNotNone(path)
+        return Path(path).read_text()
+
+    def test_admin_base_loads_material_web_enhancer(self):
+        config = SiteMaintenanceControl.objects.create(is_maintenance=False)
+
+        response = self.client.get(reverse("admin:core_sitemaintenancecontrol_change", args=[config.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "admin/js/material-web-text-field.js")
+        self.assertContains(response, "md-outlined-text-field")
+
+    def test_enhancer_skips_specialized_admin_widgets(self):
+        source = self._enhancer_source()
+
+        self.assertIn('field.classList.contains("code-editor-field")', source)
+        self.assertIn('field.name === "manual_emails"', source)
+        self.assertIn("document.querySelector('input[name=\"body_format\"]')", source)
+        self.assertIn('field.classList.contains("admin-autocomplete")', source)
+        self.assertIn('field.tagName === "SELECT" && field.multiple', source)
+
+    def test_stylesheet_code_editor_page_keeps_code_textarea_available(self):
+        stylesheet = StyleSheet.objects.create(name="admin-test", display_name="Admin Test", css="body { color: red; }")
+
+        response = self.client.get(reverse("admin:cms_stylesheet_change", args=[stylesheet.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "code-editor-field")
+        self.assertContains(response, "admin/js/material-web-text-field.js")
+
+    def test_email_campaign_editor_page_keeps_body_editor_hooks_available(self):
+        campaign = EmailCampaign.objects.create(subject="Admin Test", body="<p>Hello</p>")
+
+        response = self.client.get(reverse("admin:mail_emailcampaign_change", args=[campaign.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "mail/js/body_html_editor.js")
+        self.assertContains(response, 'name="body_format"')
+        self.assertContains(response, 'name="body"')

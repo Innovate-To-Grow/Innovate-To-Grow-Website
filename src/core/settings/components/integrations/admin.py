@@ -145,7 +145,6 @@ UNFOLD = {
                 "items": [
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
-                    {"title": "Embed Allowed Hosts", "link": "/admin/cms/cmsembedallowedhost/"},
                     {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                 ],
             },
