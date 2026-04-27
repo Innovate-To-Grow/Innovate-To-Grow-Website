@@ -186,7 +186,7 @@ jobs:
       #    includes the pending openssl/python-package fixes.
       - name: Scan image (trivy, SARIF — CRITICAL/HIGH → Security tab)
         id: trivy-sarif
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: sarif
@@ -203,7 +203,7 @@ jobs:
           category: trivy-backend-image
 
       - name: Trivy human-readable table (CRITICAL/HIGH, log only)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table
@@ -212,7 +212,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Trivy hard-fail gate (CRITICAL only)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table
