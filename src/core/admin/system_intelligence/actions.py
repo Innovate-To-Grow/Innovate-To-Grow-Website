@@ -1,3 +1,4 @@
+import logging
 import re
 from urllib.parse import urlparse
 
@@ -13,7 +14,12 @@ from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 from core.services import system_intelligence_actions
 from core.services.system_intelligence_actions.comparison import block_key
 
+logger = logging.getLogger(__name__)
+
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
+_GENERIC_ACTION_ERROR = "Could not process this action request."
+_GENERIC_PERMISSION_ERROR = "Action request not found."
+_GENERIC_VALIDATION_ERROR = "Validation failed for the proposed change."
 
 
 def action_approve_view(request, action_id):
@@ -22,16 +28,13 @@ def action_approve_view(request, action_id):
         return JsonResponse({"error": "POST required"}, status=405)
     try:
         action = _get_user_action_request(request, action_id)
-    except PermissionDenied as exc:
-        return JsonResponse({"error": str(exc)}, status=404)
+    except PermissionDenied:
+        return JsonResponse({"error": _GENERIC_PERMISSION_ERROR}, status=404)
     try:
         action = system_intelligence_actions.approve_action_request(action.id, request.user)
     except (PermissionDenied, system_intelligence_actions.ActionRequestError, ValidationError, ValueError) as exc:
         action.refresh_from_db()
-        return JsonResponse(
-            {"error": str(exc), "action_request": system_intelligence_actions.serialize_action_request(action)},
-            status=400,
-        )
+        return _action_error_response(exc, action=action)
     return JsonResponse({"ok": True, "action_request": system_intelligence_actions.serialize_action_request(action)})
 
 
@@ -41,16 +44,39 @@ def action_reject_view(request, action_id):
         return JsonResponse({"error": "POST required"}, status=405)
     try:
         action = _get_user_action_request(request, action_id)
-    except PermissionDenied as exc:
-        return JsonResponse({"error": str(exc)}, status=404)
+    except PermissionDenied:
+        return JsonResponse({"error": _GENERIC_PERMISSION_ERROR}, status=404)
     try:
         action = system_intelligence_actions.reject_action_request(action.id, request.user)
     except system_intelligence_actions.ActionRequestError as exc:
-        return JsonResponse(
-            {"error": str(exc), "action_request": system_intelligence_actions.serialize_action_request(action)},
-            status=400,
-        )
+        return _action_error_response(exc, action=action)
     return JsonResponse({"ok": True, "action_request": system_intelligence_actions.serialize_action_request(action)})
+
+
+def _action_error_response(exc, *, action):
+    """Build a JsonResponse using a vetted error message and log full detail."""
+    if isinstance(exc, system_intelligence_actions.ActionRequestError):
+        message = _safe_message(exc.args[0] if exc.args else "") or _GENERIC_ACTION_ERROR
+    elif isinstance(exc, PermissionDenied):
+        message = _GENERIC_PERMISSION_ERROR
+    elif isinstance(exc, ValidationError):
+        logger.warning("Action %s validation error", getattr(action, "id", None), exc_info=exc)
+        message = _GENERIC_VALIDATION_ERROR
+    else:
+        logger.exception("Unexpected error handling action %s", getattr(action, "id", None))
+        message = _GENERIC_ACTION_ERROR
+    return JsonResponse(
+        {"error": message, "action_request": system_intelligence_actions.serialize_action_request(action)},
+        status=400,
+    )
+
+
+def _safe_message(value):
+    """Return a short, control-character-free string suitable for JSON error fields."""
+    if not isinstance(value, str):
+        return ""
+    cleaned = _CONTROL_CHAR_RE.sub("", value).strip()
+    return cleaned[:300]
 
 
 @xframe_options_sameorigin

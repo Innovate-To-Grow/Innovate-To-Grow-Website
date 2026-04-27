@@ -53,13 +53,18 @@ def _handle_stream_event(event, aws_config, full_text, tool_calls, action_ids, a
     return _result(full_text, "")
 
 
+_GENERIC_STREAM_ERROR = "The assistant could not complete this turn. See server logs for details."
+
+
 def _stream_exception(conversation_id, exc, aws_config):
     formatted = format_system_intelligence_error(exc, aws_config=aws_config)
     if formatted != str(exc):
         logger.warning("Stream provider connectivity failed for conversation %s: %s", conversation_id, formatted)
+        message = formatted
     else:
         logger.exception("Stream error for conversation %s", conversation_id)
-    return _sse("error", {"error": formatted})
+        message = _GENERIC_STREAM_ERROR
+    return _sse("error", {"error": message})
 
 
 def _create_assistant_message(convo, full_text, model_id, tool_calls, total_usage, action_ids, context_usage=None):

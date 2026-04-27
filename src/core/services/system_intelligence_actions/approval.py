@@ -1,5 +1,8 @@
+import logging
+import re
 import uuid
 
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
@@ -10,6 +13,12 @@ from .cms import apply_cms_page_update
 from .db import apply_db_create, apply_db_delete, apply_db_update
 from .exceptions import ActionRequestError
 from .orm import check_model_permission, resolve_model
+
+logger = logging.getLogger(__name__)
+
+_ERROR_MESSAGE_MAX_LEN = 300
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
+_GENERIC_FAILURE_MESSAGE = "Action could not be applied. See server logs for details."
 
 
 def approve_action_request(action_id: str | uuid.UUID, user) -> SystemIntelligenceActionRequest:
@@ -41,8 +50,9 @@ def approve_action_request(action_id: str | uuid.UUID, user) -> SystemIntelligen
             )
             return action
     except Exception as exc:
+        logger.exception("System intelligence action %s failed during approval", action_id)
         if action is not None and action.status == SystemIntelligenceActionRequest.STATUS_PENDING:
-            mark_action_failed(action.id, user, str(exc))
+            mark_action_failed(action.id, user, _safe_error_message(exc))
         raise
 
 
@@ -68,9 +78,29 @@ def mark_action_failed(action_id: str | uuid.UUID, user, error_message: str) -> 
         status=SystemIntelligenceActionRequest.STATUS_FAILED,
         reviewed_by_id=getattr(user, "pk", None),
         reviewed_at=now,
-        error_message=error_message,
+        error_message=_sanitize_persisted_message(error_message),
         updated_at=now,
     )
+
+
+def _safe_error_message(exc: BaseException) -> str:
+    """Return a vetted message string for persisted error_message fields.
+
+    Pass through messages from exceptions we author (ActionRequestError) or
+    from Django framework exceptions whose messages are user-facing
+    (PermissionDenied, ValidationError). Replace anything else with a
+    generic message; the full traceback is captured via logger.exception.
+    """
+    if isinstance(exc, ActionRequestError | PermissionDenied | ValidationError):
+        return _sanitize_persisted_message(str(exc))
+    return _GENERIC_FAILURE_MESSAGE
+
+
+def _sanitize_persisted_message(message: str) -> str:
+    if not isinstance(message, str):
+        return _GENERIC_FAILURE_MESSAGE
+    cleaned = _CONTROL_CHAR_RE.sub(" ", message).strip()
+    return cleaned[:_ERROR_MESSAGE_MAX_LEN] or _GENERIC_FAILURE_MESSAGE
 
 
 def apply_action(action: SystemIntelligenceActionRequest, user) -> None:
