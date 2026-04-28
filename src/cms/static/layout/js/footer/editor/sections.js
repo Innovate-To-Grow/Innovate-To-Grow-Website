@@ -24,7 +24,7 @@
 
     function renderSocialLinks(data) {
         const iconOptions = [{value: 'fa fa-facebook', label: 'Facebook'}, {value: 'fa fa-twitter', label: 'Twitter/X'}, {value: 'fa fa-linkedin', label: 'LinkedIn'}, {value: 'fa fa-instagram', label: 'Instagram'}, {value: 'fa fa-youtube', label: 'YouTube'}, {value: 'fa fa-github', label: 'GitHub'}];
-        document.getElementById('social-list').innerHTML = (data.social_links || []).map((link, idx) => `<div class="item-card"><div class="item-card-header"><span class="item-card-title"><i class="${link.icon_class}"></i> ${escapeHtml(link.aria_label)}</span><div class="item-card-actions"><button type="button" class="btn-delete" onclick="removeSocialLink(${idx})">Delete</button></div></div><div class="item-row"><div class="item-field"><label>Platform</label><select onchange="updateSocialLink(${idx}, 'icon_class', this.value); updateSocialLink(${idx}, 'aria_label', this.options[this.selectedIndex].text);">${iconOptions.map(opt => `<option value="${opt.value}" ${link.icon_class === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div><div class="item-field"><label>URL</label><input type="text" value="${escapeAttr(link.href)}" onchange="updateSocialLink(${idx}, 'href', this.value)"></div></div></div>`).join('');
+        document.getElementById('social-list').innerHTML = (data.social_links || []).map((link, idx) => `<div class="item-card"><div class="item-card-header"><span class="item-card-title"><i class="${escapeAttr(link.icon_class)}"></i> ${escapeHtml(link.aria_label)}</span><div class="item-card-actions"><button type="button" class="btn-delete" onclick="removeSocialLink(${idx})">Delete</button></div></div><div class="item-row"><div class="item-field"><label>Platform</label><select onchange="updateSocialLink(${idx}, 'icon_class', this.value); updateSocialLink(${idx}, 'aria_label', this.options[this.selectedIndex].text);">${iconOptions.map(opt => `<option value="${opt.value}" ${link.icon_class === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}</select></div><div class="item-field"><label>URL</label><input type="text" value="${escapeAttr(link.href)}" onchange="updateSocialLink(${idx}, 'href', this.value)"></div></div></div>`).join('');
     }
 
     function renderFooterLinks(data, routes, isCmsRoute) {
@@ -37,7 +37,7 @@
     }
 
     function selectField(label, handlerName, idx, currentValue, options) {
-        return `<div class="item-field"><label>${label}</label><select onchange="${handlerName}(${idx}, this.value)"><option value="">-- Select Page --</option>${options.map(route => `<option value="${escapeAttr(route.url)}" ${currentValue === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${route.url})</option>`).join('')}</select></div>`;
+        return `<div class="item-field"><label>${label}</label><select onchange="${handlerName}(${idx}, this.value)"><option value="">-- Select Page --</option>${options.map(route => `<option value="${escapeAttr(route.url)}" ${currentValue === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${escapeHtml(route.url)})</option>`).join('')}</select></div>`;
     }
 
     window.ITGFooterSections = {

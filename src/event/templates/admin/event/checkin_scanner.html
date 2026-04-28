@@ -367,9 +367,50 @@
     return false;
   }
 
+  function node(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = String(text);
+    return el;
+  }
+
+  function methodBadge(label) {
+    return node("span", "scanner-method-badge", label);
+  }
+
+  function resultHeading(text, label) {
+    const heading = document.createElement("h3");
+    heading.textContent = text + " ";
+    heading.appendChild(methodBadge(label));
+    return heading;
+  }
+
+  function resultParagraph(text, strong = false) {
+    const paragraph = document.createElement("p");
+    if (strong) {
+      const strongEl = document.createElement("strong");
+      strongEl.textContent = String(text || "");
+      paragraph.appendChild(strongEl);
+    } else {
+      paragraph.textContent = String(text || "");
+    }
+    return paragraph;
+  }
+
+  function renderResult(className, children) {
+    const resultDiv = document.getElementById("scan-result");
+    resultDiv.className = "scanner-result " + className;
+    resultDiv.replaceChildren(...children);
+  }
+
+  function addMetaLine(left, right) {
+    const paragraph = document.createElement("p");
+    paragraph.append(document.createTextNode(String(left || "")), document.createTextNode(" · "), document.createTextNode(String(right || "")));
+    return paragraph;
+  }
+
   // ---- Submit barcode to API ----
   async function submitBarcode(value, source = "manual") {
-    const resultDiv = document.getElementById("scan-result");
     const methodLabel = source === "camera" ? "Camera" : "Manual Input";
     try {
       const resp = await fetch(SCAN_URL, {
@@ -384,32 +425,34 @@
       const data = await resp.json();
 
       if (data.status === "success") {
-        resultDiv.className = "scanner-result success";
-        resultDiv.innerHTML = `
-          <h3>Checked In <span class="scanner-method-badge">${methodLabel}</span></h3>
-          <p><strong>${data.attendee.name}</strong></p>
-          <p>${data.attendee.email} &middot; ${data.attendee.ticket_type}</p>
-          <p>Code: ${data.attendee.ticket_code}</p>
-        `;
+        renderResult("success", [
+          resultHeading("Checked In", methodLabel),
+          resultParagraph(data.attendee.name, true),
+          addMetaLine(data.attendee.email, data.attendee.ticket_type),
+          resultParagraph("Code: " + data.attendee.ticket_code),
+        ]);
         addToHistory(data.attendee.name, data.attendee.ticket_type, "success", source);
         loadStatus();
       } else if (data.status === "duplicate") {
-        resultDiv.className = "scanner-result duplicate";
-        resultDiv.innerHTML = `
-          <h3>Already Checked In <span class="scanner-method-badge">${methodLabel}</span></h3>
-          <p><strong>${data.attendee.name}</strong></p>
-          <p>${data.attendee.email} &middot; ${data.attendee.ticket_type}</p>
-          <p>${data.detail}</p>
-        `;
+        renderResult("duplicate", [
+          resultHeading("Already Checked In", methodLabel),
+          resultParagraph(data.attendee.name, true),
+          addMetaLine(data.attendee.email, data.attendee.ticket_type),
+          resultParagraph(data.detail),
+        ]);
         addToHistory(data.attendee.name, "Duplicate", "duplicate", source);
       } else {
-        resultDiv.className = "scanner-result error";
-        resultDiv.innerHTML = `<h3>Not Found</h3><p>${data.detail || "Unknown error"}</p>`;
+        renderResult("error", [
+          node("h3", "", "Not Found"),
+          resultParagraph(data.detail || "Unknown error"),
+        ]);
         addToHistory(value.substring(0, 20), "Not Found", "error", source);
       }
     } catch (err) {
-      resultDiv.className = "scanner-result error";
-      resultDiv.innerHTML = `<h3>Error</h3><p>${err.message}</p>`;
+      renderResult("error", [
+        node("h3", "", "Error"),
+        resultParagraph(err.message),
+      ]);
     }
   }
 
@@ -419,8 +462,31 @@
     const sourceLabel = source === "camera" ? "Camera" : "Manual";
     const item = document.createElement("div");
     item.className = "scanner-history-item";
-    item.innerHTML = `<span>${name} &middot; ${type} <span class="scanner-method-badge">${sourceLabel}</span></span><span>${time}</span>`;
+    const details = document.createElement("span");
+    details.append(document.createTextNode(String(name || "")), document.createTextNode(" · "), document.createTextNode(String(type || "")), document.createTextNode(" "));
+    details.appendChild(methodBadge(sourceLabel));
+    item.append(details, node("span", "", time));
     history.insertBefore(item, history.firstChild);
+  }
+
+  function renderRemainingEmpty(list, text, isError = false) {
+    const empty = node("div", "scanner-remaining-empty", text);
+    if (isError) empty.style.color = "#b91c1c";
+    list.replaceChildren(empty);
+  }
+
+  function renderRemainingAttendee(attendee) {
+    const item = node("div", "scanner-remaining-item");
+    const details = document.createElement("div");
+    details.append(node("span", "name", attendee.name), node("span", "meta", " · " + attendee.ticket_type));
+    const actionWrap = document.createElement("div");
+    actionWrap.appendChild(node("span", "meta", attendee.email));
+    const button = node("button", "scanner-remaining-action", "Check In");
+    button.dataset.ticketCode = attendee.ticket_code || "";
+    button.type = "button";
+    actionWrap.appendChild(button);
+    item.append(details, actionWrap);
+    return item;
   }
 
   function handleMemberCheckIn(ticketCode) {
@@ -448,25 +514,14 @@
 
       const list = document.getElementById("remaining-list");
       if (data.not_checked_in.length === 0) {
-        list.innerHTML = '<div class="scanner-remaining-empty">Everyone is checked in!</div>';
+        renderRemainingEmpty(list, "Everyone is checked in!");
       } else {
-        list.innerHTML = data.not_checked_in.map(a =>
-          `<div class="scanner-remaining-item">
-            <div>
-              <span class="name">${a.name}</span>
-              <span class="meta"> &middot; ${a.ticket_type}</span>
-            </div>
-            <div>
-              <span class="meta">${a.email}</span>
-              <button class="scanner-remaining-action" data-ticket-code="${a.ticket_code}" type="button">Check In</button>
-            </div>
-          </div>`
-        ).join("");
+        list.replaceChildren(...data.not_checked_in.map(renderRemainingAttendee));
       }
     } catch (err) {
       console.error("Failed to load check-in status", err);
       const list = document.getElementById("remaining-list");
-      list.innerHTML = `<div class="scanner-remaining-empty" style="color:#b91c1c;">Failed to load attendees: ${err.message}</div>`;
+      renderRemainingEmpty(list, "Failed to load attendees: " + err.message, true);
     }
   }
 

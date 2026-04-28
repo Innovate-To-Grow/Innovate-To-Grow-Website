@@ -11,16 +11,21 @@
         return String(val || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function safeItemType(item) {
+        return ['home', 'external', 'app'].includes(item.type) ? item.type : 'app';
+    }
+
     function renderItems(items, path, routes, isTopLevel = true) {
         if (!items || items.length === 0) return '<p style="color: #999; font-style: italic;">No menu items yet. Add items using the buttons below.</p>';
         return items.map((item, idx) => {
             const itemPath = `${path}[${idx}]`;
+            const itemType = safeItemType(item);
             const hasChildren = item.children && item.children.length > 0;
-            const isCmsPage = item.type === 'app' && routes.cmsRoutes.some(route => route.url === item.url);
-            const typeBadgeClass = isCmsPage ? 'type-cms' : `type-${item.type}`;
-            const typeLabel = item.type === 'home' ? 'Home' : item.type === 'external' ? 'External' : isCmsPage ? 'CMS Page' : 'App';
-            const typeSelector = `<div class="item-field" style="max-width: 120px;"><label>Type</label><select onchange="changeItemType('${itemPath}', this.value)"><option value="home" ${item.type === 'home' ? 'selected' : ''}>Home</option><option value="app" ${item.type === 'app' ? 'selected' : ''}>${isCmsPage ? 'CMS Page' : 'App Route'}</option><option value="external" ${item.type === 'external' ? 'selected' : ''}>External</option></select></div>`;
-            const fieldsHtml = item.type === 'home' ? renderHomeFields(item, itemPath, typeSelector) : item.type === 'external' ? renderExternalFields(item, itemPath, typeSelector) : renderAppFields(item, itemPath, typeSelector, routes);
+            const isCmsPage = itemType === 'app' && routes.cmsRoutes.some(route => route.url === item.url);
+            const typeBadgeClass = isCmsPage ? 'type-cms' : `type-${itemType}`;
+            const typeLabel = itemType === 'home' ? 'Home' : itemType === 'external' ? 'External' : isCmsPage ? 'CMS Page' : 'App';
+            const typeSelector = `<div class="item-field" style="max-width: 120px;"><label>Type</label><select onchange="changeItemType('${itemPath}', this.value)"><option value="home" ${itemType === 'home' ? 'selected' : ''}>Home</option><option value="app" ${itemType === 'app' ? 'selected' : ''}>${isCmsPage ? 'CMS Page' : 'App Route'}</option><option value="external" ${itemType === 'external' ? 'selected' : ''}>External</option></select></div>`;
+            const fieldsHtml = itemType === 'home' ? renderHomeFields(item, itemPath, typeSelector) : itemType === 'external' ? renderExternalFields(item, itemPath, typeSelector) : renderAppFields(item, itemPath, typeSelector, routes);
             const childrenHtml = hasChildren ? `<div class="menu-children-container">${renderItems(item.children, `${itemPath}.children`, routes, false)}</div>` : '';
             let actionButtons = '';
             if (idx > 0) actionButtons += `<button type="button" class="btn-move" onclick="moveItem('${itemPath}', -1)">↑</button>`;
@@ -39,8 +44,8 @@
     }
 
     function renderAppFields(item, itemPath, typeSelector, routes) {
-        const appOptions = routes.appRoutes.map(route => `<option value="${escapeAttr(route.url)}" ${item.url === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${route.url})</option>`).join('');
-        const cmsOptions = routes.cmsRoutes.map(route => `<option value="${escapeAttr(route.url)}" ${item.url === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${route.url})</option>`).join('');
+        const appOptions = routes.appRoutes.map(route => `<option value="${escapeAttr(route.url)}" ${item.url === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${escapeHtml(route.url)})</option>`).join('');
+        const cmsOptions = routes.cmsRoutes.map(route => `<option value="${escapeAttr(route.url)}" ${item.url === route.url ? 'selected' : ''}>${escapeHtml(route.title)} (${escapeHtml(route.url)})</option>`).join('');
         const knownUrl = !item.url || routes.allRoutes.some(route => route.url === item.url);
         const warningHtml = knownUrl ? '' : '<span style="color:#dc3545;font-size:12px;margin-left:4px;" title="This URL does not match any known route or CMS page">&#9888; Unknown route</span>';
         return `<div class="item-row">${typeSelector}<div class="item-field"><label>Title</label><input type="text" value="${escapeAttr(item.title)}" onchange="updateItem('${itemPath}', 'title', this.value)"></div><div class="item-field"><label>Route${warningHtml}</label><select onchange="selectAppRoute('${itemPath}', this.value)"><option value="">-- Select Route --</option>${appOptions ? `<optgroup label="App Routes">${appOptions}</optgroup>` : ''}${cmsOptions ? `<optgroup label="CMS Pages">${cmsOptions}</optgroup>` : ''}</select></div><div class="item-field item-field-small"><label>Icon</label><input type="text" value="${escapeAttr(item.icon || '')}" placeholder="fa-calendar" onchange="updateItem('${itemPath}', 'icon', this.value)"></div></div>`;
@@ -51,7 +56,7 @@
         return items.map(item => {
             const href = item.url || '#';
             const targetAttr = item.type === 'external' && item.open_in_new_tab ? ' target="_blank" rel="noopener noreferrer"' : '';
-            const icon = item.icon ? `<i class="fa ${item.icon}"></i> ` : '';
+            const icon = item.icon ? `<i class="fa ${escapeAttr(item.icon)}"></i> ` : '';
             const hasChildren = item.children && item.children.length > 0;
             if (level === 0) {
                 const childrenHtml = hasChildren ? `<div class="menu-dropdown is-open">${renderMenuItemsHtml(item.children, 1)}</div>` : '';

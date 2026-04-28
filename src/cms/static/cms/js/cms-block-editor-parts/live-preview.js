@@ -13,14 +13,33 @@
     function isActive() { var key = getLivePreviewKey(); return key ? sessionStorage.getItem(key) === 'true' : false; }
     function setActive(active) { var key = getLivePreviewKey(); if (!key) return; active ? sessionStorage.setItem(key, 'true') : sessionStorage.removeItem(key); }
 
+    function getSafePreviewRoute(route) {
+        route = String(route || '').trim() || '/';
+        if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(route) || route.indexOf('\\') !== -1 || route.indexOf('//') === 0) return '';
+        return route.charAt(0) === '/' ? route : '/' + route;
+    }
+
+    function getSafePreviewBase(frontendUrl) {
+        try {
+            var base = new URL(String(frontendUrl || window.location.origin), window.location.origin);
+            if (base.protocol !== 'http:' && base.protocol !== 'https:') return null;
+            if (base.username || base.password) return null;
+            return base;
+        } catch (err) {
+            return null;
+        }
+    }
+
     function getPreviewUrl() {
         var config = window.CMS_ROUTE_EDITOR || {};
         if (!config.pageId) return '';
         var routeEl = document.getElementById('id_route');
-        var route = routeEl ? routeEl.value : (config.pageRoute || '/');
-        if (route.charAt(0) !== '/') route = '/' + route;
-        var base = (config.frontendUrl || '').replace(/\/+$/, '') || window.location.origin;
-        return base + route + '?cms_live_preview=' + config.pageId;
+        var route = getSafePreviewRoute(routeEl ? routeEl.value : (config.pageRoute || '/'));
+        var base = getSafePreviewBase(config.frontendUrl || '');
+        if (!route || !base) return '';
+        var url = new URL(route, base);
+        url.searchParams.set('cms_live_preview', config.pageId);
+        return url.toString();
     }
 
     function gatherPageData(blocks) {
@@ -78,8 +97,10 @@
     function open(blocks) {
         var config = window.CMS_ROUTE_EDITOR || {};
         if (!config.pageId) { alert('Save the page first before previewing.'); return; }
+        var previewUrl = getPreviewUrl();
+        if (!previewUrl) { alert('Preview URL is not configured correctly.'); return; }
         setActive(true);
-        window.open(getPreviewUrl(), '_blank');
+        window.open(previewUrl, '_blank');
         post(blocks);
     }
 
@@ -103,7 +124,8 @@
             setActive(true);
             if (!inlineLoaded) {
                 var iframe = document.getElementById('cms-preview-iframe');
-                if (iframe) iframe.src = getPreviewUrl();
+                var previewUrl = getPreviewUrl();
+                if (iframe && previewUrl) iframe.src = previewUrl;
                 inlineLoaded = true;
             }
             post(blocks);
