@@ -55,7 +55,7 @@ def start_phone_verification(phone_number: str) -> str:
         )
         return verification.status
     except TwilioRestException as exc:
-        logger.exception("Twilio verification start failed")
+        logger.warning("Twilio verification start failed")
         if exc.code == 60203:
             raise PhoneVerificationThrottled("Too many verification attempts. Please try again later.") from exc
         if exc.code in (60200, 21211, 21608):
@@ -76,7 +76,7 @@ def check_phone_verification(phone_number: str, code: str) -> str:
             return check.status
         raise PhoneVerificationInvalid("Verification code is invalid or has expired.")
     except TwilioRestException as exc:
-        logger.exception("Twilio verification check failed")
+        logger.warning("Twilio verification check failed")
         if exc.code == 60202:
             raise PhoneVerificationThrottled("Too many failed attempts. Please request a new code.") from exc
         raise PhoneVerificationInvalid("Verification code is invalid or has expired.") from exc

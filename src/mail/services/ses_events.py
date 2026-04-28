@@ -44,7 +44,7 @@ def process_sns_envelope(envelope: dict[str, Any]) -> None:
     elif msg_type == "Notification":
         _handle_notification(envelope)
     else:
-        raise SesEventError(f"Unknown SNS Type: {msg_type!r}")
+        raise SesEventError("Unknown SNS Type")
 
 
 def _handle_subscription_confirmation(envelope: dict[str, Any]) -> None:
@@ -66,7 +66,7 @@ def _handle_subscription_confirmation(envelope: dict[str, Any]) -> None:
             resp.read()
         logger.info("SNS subscription confirmed")
     except Exception:
-        logger.exception("Failed to auto-confirm SNS subscription")
+        logger.warning("Failed to auto-confirm SNS subscription")
 
 
 def _handle_notification(envelope: dict[str, Any]) -> None:
@@ -74,7 +74,7 @@ def _handle_notification(envelope: dict[str, Any]) -> None:
     try:
         ses_event = json.loads(envelope.get("Message", ""))
     except json.JSONDecodeError as exc:
-        raise SesEventError(f"SNS Message is not JSON: {exc}") from exc
+        raise SesEventError("SNS Message is not JSON") from exc
 
     event_type = ses_event.get("eventType") or ses_event.get("notificationType") or ""
     mail_block = ses_event.get("mail", {})

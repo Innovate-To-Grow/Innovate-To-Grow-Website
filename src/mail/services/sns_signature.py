@@ -39,7 +39,7 @@ def _canonical_string(envelope: dict) -> bytes:
     elif msg_type in ("SubscriptionConfirmation", "UnsubscribeConfirmation"):
         fields = _SIGNED_FIELDS_SUBSCRIPTION
     else:
-        raise SnsVerificationError(f"Unknown Type: {msg_type!r}")
+        raise SnsVerificationError("Unknown SNS Type")
 
     lines: list[str] = []
     for key in fields:
@@ -82,12 +82,12 @@ def verify_sns_message(envelope: dict, *, allowed_topic_arns: set[str] | None = 
     signature_version = envelope.get("SignatureVersion") or "1"
 
     if signature_version not in ("1", "2"):
-        raise SnsVerificationError(f"Unsupported SignatureVersion: {signature_version}")
+        raise SnsVerificationError("Unsupported SNS SignatureVersion")
 
     if allowed_topic_arns is not None:
         arn = envelope.get("TopicArn", "")
         if arn not in allowed_topic_arns:
-            raise SnsVerificationError(f"TopicArn not allowed: {arn!r}")
+            raise SnsVerificationError("SNS TopicArn not allowed")
 
     pem = _fetch_cert(cert_url)
     cert = load_pem_x509_certificate(pem)

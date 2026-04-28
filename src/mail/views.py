@@ -72,8 +72,8 @@ class OneClickUnsubscribeView(APIView):
         """Validate *token*, opt the member out, and return the member or an error string."""
         try:
             member = get_member_from_oneclick_token(token)
-        except ValueError as exc:
-            logger.info("One-click unsubscribe token rejected: %s", exc)
+        except ValueError:
+            logger.info("One-click unsubscribe token rejected")
             return UNSUBSCRIBE_LINK_INVALID_MESSAGE
 
         primary = member.get_primary_contact_email()
@@ -112,8 +112,8 @@ class ResubscribeView(APIView):
     def post(self, request, token):
         try:
             member = get_member_from_resubscribe_token(token)
-        except ValueError as exc:
-            logger.info("Resubscribe token rejected: %s", exc)
+        except ValueError:
+            logger.info("Resubscribe token rejected")
             return HttpResponse(
                 _render_resubscribe_page(error=RESUBSCRIBE_LINK_INVALID_MESSAGE),
                 status=400,
@@ -177,8 +177,8 @@ class SesEventWebhookView(APIView):
 
         try:
             verify_sns_message(envelope, allowed_topic_arns=allowed)
-        except SnsVerificationError as exc:
-            logger.warning("SNS signature rejected: %s", exc)
+        except SnsVerificationError:
+            logger.warning("SNS signature rejected")
             return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -187,7 +187,7 @@ class SesEventWebhookView(APIView):
             # Return 200 anyway — AWS retries repeatedly on 5xx and will
             # saturate this endpoint on a permanent decoding bug. The
             # failure is logged; operators can replay from the SNS DLQ.
-            logger.exception("SES event processing failed")
+            logger.warning("SES event processing failed")
             return Response({"detail": "ok, but logged"}, status=status.HTTP_200_OK)
 
         return Response({"detail": "ok"}, status=status.HTTP_200_OK)
