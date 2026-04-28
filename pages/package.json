@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "axios": "^1.15.1",
+    "axios": "^1.15.2",
     "dompurify": "^3.4.0",
     "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",
