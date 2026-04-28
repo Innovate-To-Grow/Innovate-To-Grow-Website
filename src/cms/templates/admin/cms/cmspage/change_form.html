@@ -21,7 +21,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
     <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
@@ -124,11 +124,11 @@
             frontendUrl: "{{ frontend_url|escapejs }}",
         };
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="{% static 'vendor/codemirror/5.65.16/codemirror.min.js' %}"></script>
+    <script src="{% static 'vendor/codemirror/5.65.16/mode/xml/xml.min.js' %}"></script>
+    <script src="{% static 'vendor/codemirror/5.65.16/mode/javascript/javascript.min.js' %}"></script>
+    <script src="{% static 'vendor/codemirror/5.65.16/mode/css/css.min.js' %}"></script>
+    <script src="{% static 'vendor/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js' %}"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=3"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=1"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=6"></script>
