@@ -11,16 +11,15 @@ SSRF to arbitrary hosts.
 import base64
 import logging
 import urllib.request
-from urllib.parse import urlparse
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.x509 import load_pem_x509_certificate
 
-logger = logging.getLogger(__name__)
+from core.security import SecurityValidationError, validate_aws_sns_https_url
 
-_ALLOWED_CERT_HOST_SUFFIXES = (".amazonaws.com",)
+logger = logging.getLogger(__name__)
 
 _CERT_CACHE: dict[str, bytes] = {}
 _CERT_CACHE_MAX = 16
@@ -55,12 +54,11 @@ def _canonical_string(envelope: dict) -> bytes:
 
 
 def _fetch_cert(cert_url: str) -> bytes:
-    parsed = urlparse(cert_url)
-    if parsed.scheme != "https":
-        raise SnsVerificationError("SigningCertURL must be https")
-    host = parsed.hostname or ""
-    if not any(host.endswith(suffix) for suffix in _ALLOWED_CERT_HOST_SUFFIXES):
-        raise SnsVerificationError(f"SigningCertURL host not allowed: {host!r}")
+    try:
+        cert_url = validate_aws_sns_https_url(cert_url)
+    except SecurityValidationError as exc:
+        raise SnsVerificationError(str(exc)) from exc
+
     if cert_url in _CERT_CACHE:
         return _CERT_CACHE[cert_url]
 

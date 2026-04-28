@@ -174,10 +174,30 @@ class SubscriptionConfirmationTests(TestCase):
             process_sns_envelope(envelope)
             mock_urlopen.assert_not_called()
 
+    def test_amazonaws_lookalike_subscribe_url_is_skipped(self):
+        envelope = {
+            "Type": "SubscriptionConfirmation",
+            "SubscribeURL": "https://sns.us-west-2.amazonaws.com.evil.example/?Action=ConfirmSubscription",
+            "TopicArn": "arn:aws:sns:us-west-2:123:t",
+        }
+        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+            process_sns_envelope(envelope)
+            mock_urlopen.assert_not_called()
+
     def test_http_subscribe_url_is_skipped(self):
         envelope = {
             "Type": "SubscriptionConfirmation",
             "SubscribeURL": "http://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription",
+            "TopicArn": "arn:aws:sns:us-west-2:123:t",
+        }
+        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+            process_sns_envelope(envelope)
+            mock_urlopen.assert_not_called()
+
+    def test_non_confirm_subscribe_url_action_is_skipped(self):
+        envelope = {
+            "Type": "SubscriptionConfirmation",
+            "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=GetTopicAttributes",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
         with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
