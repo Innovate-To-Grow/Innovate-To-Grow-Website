@@ -2,14 +2,28 @@
 
 from __future__ import annotations
 
-import re
 from urllib.parse import urlparse
-
-_SNS_HOST_RE = re.compile(r"^sns(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?$")
 
 
 class SecurityValidationError(ValueError):
     """Raised when untrusted input fails a security boundary check."""
+
+
+def _is_safe_dns_label(label: str) -> bool:
+    if not label or len(label) > 63 or label.startswith("-") or label.endswith("-"):
+        return False
+    return all(char.isascii() and (char.isalnum() or char == "-") for char in label)
+
+
+def _is_allowed_sns_host(host: str) -> bool:
+    for suffix in (".amazonaws.com", ".amazonaws.com.cn"):
+        if host == f"sns{suffix}":
+            return True
+        if not host.endswith(suffix):
+            continue
+        labels = host[: -len(suffix)].split(".")
+        return labels[0] == "sns" and all(_is_safe_dns_label(label) for label in labels[1:])
+    return False
 
 
 def validate_aws_sns_https_url(url: str) -> str:
@@ -22,6 +36,6 @@ def validate_aws_sns_https_url(url: str) -> str:
         raise SecurityValidationError("SNS URL must not include credentials")
     if parsed.port not in (None, 443):
         raise SecurityValidationError("SNS URL must use the default HTTPS port")
-    if not _SNS_HOST_RE.fullmatch(host):
+    if not _is_allowed_sns_host(host):
         raise SecurityValidationError("SNS URL host is not allowed")
     return url

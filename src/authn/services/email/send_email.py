@@ -225,15 +225,14 @@ def send_verification_email(
 
     if not config.ses_configured:
         logger.info(
-            "SES not configured; sending verification email via SMTP (host=%s, purpose=%s)",
+            "SES not configured; sending verification email via SMTP (host=%s)",
             config.smtp_host,
-            purpose,
         )
     elif _send_via_ses(config=config, recipient=recipient, subject=subject, html_body=html_body):
-        logger.info("Verification email sent via SES (purpose=%s)", purpose)
+        logger.info("Verification email sent via SES")
         return
     else:
         logger.warning("SES send failed; falling back to SMTP (host=%s)", config.smtp_host)
 
     _send_via_smtp(config=config, recipient=recipient, subject=subject, html_body=html_body)
-    logger.info("Verification email sent via SMTP (purpose=%s)", purpose)
+    logger.info("Verification email sent via SMTP")
