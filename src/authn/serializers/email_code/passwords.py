@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from authn.security_messages import VERIFICATION_INVALID
+from authn.security_messages import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
 from authn.serializers.helpers import decrypt_password_pair
 from authn.services import (
     AuthChallengeInvalid,
@@ -62,11 +62,14 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return attrs
 
     def save(self):
-        challenge = consume_verification_token(
-            purpose=PURPOSE.PASSWORD_RESET,
-            verification_token=self.validated_data["verification_token"],
-            member=self.validated_data["resolved_member"],
-        )
+        try:
+            challenge = consume_verification_token(
+                purpose=PURPOSE.PASSWORD_RESET,
+                verification_token=self.validated_data["verification_token"],
+                member=self.validated_data["resolved_member"],
+            )
+        except AuthChallengeInvalid as exc:
+            raise serializers.ValidationError({"detail": VERIFICATION_CONFIRM_INVALID}) from exc
         member = challenge.member
         member.set_password(self.validated_data["decrypted_new_password"])
         member.save(update_fields=["password"])

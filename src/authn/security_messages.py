@@ -3,6 +3,7 @@
 ENCRYPTED_FIELD_DECRYPT_FAILED = "Failed to decrypt secure field."
 VERIFICATION_INVALID = "Verification code is invalid or has expired."
 VERIFICATION_LINK_INVALID = "Verification link is invalid or has expired."
+VERIFICATION_CONFIRM_INVALID = "Verification token is invalid or has expired."
 VERIFICATION_THROTTLED = "Too many verification attempts. Please try again later."
 PHONE_VERIFICATION_DELIVERY_FAILED = "Failed to send verification SMS."
 CONTACT_EMAIL_ADD_FAILED = "Unable to add this email address."
