@@ -40,7 +40,7 @@ def process_sns_envelope(envelope: dict[str, Any]) -> None:
     if msg_type == "SubscriptionConfirmation":
         _handle_subscription_confirmation(envelope)
     elif msg_type == "UnsubscribeConfirmation":
-        logger.info("SNS topic unsubscribed: %s", envelope.get("TopicArn"))
+        logger.info("SNS topic unsubscribed")
     elif msg_type == "Notification":
         _handle_notification(envelope)
     else:
@@ -64,7 +64,7 @@ def _handle_subscription_confirmation(envelope: dict[str, Any]) -> None:
     try:
         with urllib.request.urlopen(subscribe_url, timeout=5) as resp:  # noqa: S310  # https + allowlist
             resp.read()
-        logger.info("SNS subscription confirmed for topic %s", envelope.get("TopicArn"))
+        logger.info("SNS subscription confirmed")
     except Exception:
         logger.exception("Failed to auto-confirm SNS subscription")
 
@@ -80,7 +80,7 @@ def _handle_notification(envelope: dict[str, Any]) -> None:
     mail_block = ses_event.get("mail", {})
     ses_message_id = mail_block.get("messageId", "")
     if not ses_message_id:
-        logger.info("SES event without messageId; skipping (type=%s)", event_type)
+        logger.info("SES event without messageId; skipping")
         return
 
     handler = _EVENT_HANDLERS.get(event_type, _unknown)
@@ -209,11 +209,7 @@ def _noop_with_idempotency(log: RecipientLog, ses_event: dict, sns_message_id: s
 
 
 def _unknown(log: RecipientLog, ses_event: dict, sns_message_id: str) -> None:
-    logger.info(
-        "Unknown SES event type for %s: %s",
-        log.ses_message_id,
-        ses_event.get("eventType") or ses_event.get("notificationType"),
-    )
+    logger.info("Unknown SES event type; skipping")
 
 
 _EVENT_HANDLERS = {

@@ -136,7 +136,7 @@ def _send_via_ses(*, config, recipient: str, subject: str, html_body: str) -> bo
         )
         return True
     except (BotoCoreError, ClientError):
-        logger.exception("SES send failed for %s", recipient)
+        logger.exception("SES send failed while sending email")
         return False
 
 
@@ -172,7 +172,7 @@ def _send_via_smtp(*, config, recipient: str, subject: str, html_body: str):
             return
         except Exception as exc:
             last_exc = exc
-            logger.warning("SMTP attempt %d/%d failed for %s: %s", attempt, _SMTP_MAX_RETRIES, recipient, exc)
+            logger.warning("SMTP attempt %d/%d failed.", attempt, _SMTP_MAX_RETRIES, exc_info=True)
             if attempt < _SMTP_MAX_RETRIES:
                 time.sleep(1)
     raise last_exc
@@ -188,15 +188,15 @@ def send_notification_email(*, recipient: str, subject: str, template: str, cont
     html_body = render_to_string(template, context)
 
     if _send_via_ses(config=config, recipient=recipient, subject=subject, html_body=html_body):
-        logger.info("Notification email sent via SES to %s", recipient)
+        logger.info("Notification email sent via SES")
         return
 
-    logger.info("SES unavailable; falling back to SMTP for notification to %s", recipient)
+    logger.info("SES unavailable; falling back to SMTP for notification email")
     try:
         _send_via_smtp(config=config, recipient=recipient, subject=subject, html_body=html_body)
-        logger.info("Notification email sent via SMTP to %s", recipient)
+        logger.info("Notification email sent via SMTP")
     except Exception:
-        logger.exception("Failed to send notification email to %s", recipient)
+        logger.exception("Failed to send notification email")
 
 
 def send_verification_email(
@@ -225,16 +225,15 @@ def send_verification_email(
 
     if not config.ses_configured:
         logger.info(
-            "SES not configured (no credentials); sending via SMTP to %s (host=%s, purpose=%s)",
-            recipient,
+            "SES not configured; sending verification email via SMTP (host=%s, purpose=%s)",
             config.smtp_host,
             purpose,
         )
     elif _send_via_ses(config=config, recipient=recipient, subject=subject, html_body=html_body):
-        logger.info("Verification email sent via SES to %s (purpose=%s)", recipient, purpose)
+        logger.info("Verification email sent via SES (purpose=%s)", purpose)
         return
     else:
-        logger.warning("SES send failed for %s; falling back to SMTP (host=%s)", recipient, config.smtp_host)
+        logger.warning("SES send failed; falling back to SMTP (host=%s)", config.smtp_host)
 
     _send_via_smtp(config=config, recipient=recipient, subject=subject, html_body=html_body)
-    logger.info("Verification email sent via SMTP to %s (purpose=%s)", recipient, purpose)
+    logger.info("Verification email sent via SMTP (purpose=%s)", purpose)

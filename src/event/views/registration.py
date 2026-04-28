@@ -299,13 +299,13 @@ class SendPhoneCodeView(APIView):
         except PhoneVerificationInvalid:
             return Response({"detail": "Invalid phone number."}, status=status.HTTP_400_BAD_REQUEST)
         except PhoneVerificationDeliveryError:
-            logger.exception("Failed to send phone verification SMS to %s", phone)
+            logger.exception("Failed to send phone verification SMS")
             return Response(
                 {"detail": "Failed to send verification code. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception:
-            logger.exception("Failed to send phone verification SMS to %s", phone)
+            logger.exception("Failed to send phone verification SMS")
             return Response(
                 {"detail": "Failed to send verification code. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -342,7 +342,7 @@ class VerifyPhoneCodeView(APIView):
         except PhoneVerificationInvalid:
             return Response({"detail": "Invalid or expired verification code."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
-            logger.exception("Phone verification failed for %s", phone)
+            logger.exception("Phone verification failed")
             return Response(
                 {"detail": "Verification service is unavailable. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
