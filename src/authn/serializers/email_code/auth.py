@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from authn.security_messages import VERIFICATION_INVALID
 from authn.services import (
     AuthChallengeInvalid,
     issue_email_challenge,
@@ -119,7 +120,7 @@ class UnifiedEmailAuthVerifySerializer(BaseEmailSerializer):
                 code=attrs["code"],
             )
         except AuthChallengeInvalid as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from exc
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
         attrs["challenge"] = challenge
         attrs["flow"] = "register" if challenge.purpose == PURPOSE.REGISTER else "login"

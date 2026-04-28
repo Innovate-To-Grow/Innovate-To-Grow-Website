@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from authn.security_messages import VERIFICATION_INVALID
 from authn.serializers.helpers import decrypt_password_pair
 from authn.services import (
     AuthChallengeInvalid,
@@ -162,7 +163,7 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
                 code=attrs["code"],
             )
         except AuthChallengeInvalid as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from exc
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
         if challenge.member != member:
             raise serializers.ValidationError({"detail": "Verification code is invalid or has expired."})

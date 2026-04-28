@@ -9,7 +9,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authn.services.unsubscribe_token import get_member_from_unsubscribe_token
+from authn.security_messages import UNSUBSCRIBE_LOGIN_ALREADY_USED, UNSUBSCRIBE_LOGIN_INVALID
+from authn.services.unsubscribe_token import (
+    UnsubscribeLoginTokenAlreadyUsed,
+    UnsubscribeLoginTokenInvalid,
+    get_member_from_unsubscribe_token,
+)
 from authn.throttles import LoginRateThrottle
 from authn.views.helpers import build_auth_success_payload
 
@@ -52,8 +57,12 @@ class UnsubscribeAutoLoginView(APIView):
 
         try:
             member = get_member_from_unsubscribe_token(token)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except UnsubscribeLoginTokenAlreadyUsed:
+            detail = UNSUBSCRIBE_LOGIN_ALREADY_USED
+            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+        except UnsubscribeLoginTokenInvalid:
+            detail = UNSUBSCRIBE_LOGIN_INVALID
+            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
 
         primary = member.get_primary_contact_email()
         if primary and primary.subscribe:

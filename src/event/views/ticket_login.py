@@ -24,8 +24,8 @@ class TicketAutoLoginView(APIView):
 
         try:
             member = get_member_from_login_token(token)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response({"detail": "Invalid or expired ticket login link."}, status=status.HTTP_400_BAD_REQUEST)
 
         payload = build_auth_success_payload(member, "Login successful.")
         return Response(payload, status=status.HTTP_200_OK)

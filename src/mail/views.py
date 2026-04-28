@@ -27,6 +27,9 @@ from .services.unsubscribe_token import (
 
 logger = logging.getLogger(__name__)
 
+UNSUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired unsubscribe link."
+RESUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired resubscribe link."
+
 
 class MagicLoginView(APIView):
     """Exchange a campaign login token for JWT credentials."""
@@ -70,7 +73,8 @@ class OneClickUnsubscribeView(APIView):
         try:
             member = get_member_from_oneclick_token(token)
         except ValueError as exc:
-            return str(exc)
+            logger.info("One-click unsubscribe token rejected: %s", exc)
+            return UNSUBSCRIBE_LINK_INVALID_MESSAGE
 
         primary = member.get_primary_contact_email()
         if primary and primary.subscribe:
@@ -109,7 +113,12 @@ class ResubscribeView(APIView):
         try:
             member = get_member_from_resubscribe_token(token)
         except ValueError as exc:
-            return HttpResponse(_render_resubscribe_page(error=str(exc)), status=400, content_type="text/html")
+            logger.info("Resubscribe token rejected: %s", exc)
+            return HttpResponse(
+                _render_resubscribe_page(error=RESUBSCRIBE_LINK_INVALID_MESSAGE),
+                status=400,
+                content_type="text/html",
+            )
 
         primary = member.get_primary_contact_email()
         if primary and not primary.subscribe:

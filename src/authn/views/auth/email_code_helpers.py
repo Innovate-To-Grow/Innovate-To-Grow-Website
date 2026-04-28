@@ -3,6 +3,7 @@
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+from authn.security_messages import VERIFICATION_INVALID
 from authn.services import AuthChallengeInvalid
 
 from ..helpers import challenge_error_response
@@ -27,6 +28,6 @@ def auth_challenge_response(request, serializer_class):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     try:
         payload = serializer.save()
-    except AuthChallengeInvalid as exc:
-        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except AuthChallengeInvalid:
+        return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
     return Response(payload, status=status.HTTP_200_OK)

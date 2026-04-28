@@ -775,12 +775,12 @@ class EmailCampaignAdmin(BaseModelAdmin):
         user = User.objects.get(pk=user_pk)
         try:
             send_campaign(campaign, sent_by=user)
-        except Exception as exc:
+        except Exception:
             import logging
 
             logging.getLogger(__name__).exception("Background send failed for campaign %s", campaign_pk)
             campaign.refresh_from_db()
             if campaign.status in ("draft", "sending"):
                 campaign.status = "failed"
-            campaign.error_message = str(exc)
+            campaign.error_message = "Campaign send failed. Check server logs for details."
             campaign.save(update_fields=["status", "error_message"])

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from authn.security_messages import ENCRYPTED_FIELD_DECRYPT_FAILED
 from authn.services import RSADecryptionError, decrypt_password, is_encrypted_password
 
 
@@ -20,7 +21,7 @@ def decrypt_field(value: str, key_id: str | None = None) -> str:
         try:
             return decrypt_password(value, key_id or None)
         except RSADecryptionError as exc:
-            raise serializers.ValidationError(f"Failed to decrypt: {exc}") from exc
+            raise serializers.ValidationError(ENCRYPTED_FIELD_DECRYPT_FAILED) from exc
     if getattr(settings, "REQUIRE_ENCRYPTED_PASSWORDS", False):
         raise serializers.ValidationError("Encrypted password required.")
     return value
