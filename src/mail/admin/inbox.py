@@ -2,6 +2,7 @@
 
 import json
 import logging
+from html import escape
 
 from django.contrib import admin, messages
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -68,6 +69,12 @@ def _parse_limit(request) -> int:
     return value if value in INBOX_LIMIT_CHOICES else INBOX_DEFAULT_LIMIT
 
 
+def _message_body_html(msg: dict) -> str:
+    if msg["html"]:
+        return msg["html"]
+    return f"<pre>{escape(msg['text'] or '')}</pre>"
+
+
 def inbox_list_view(request):
     """Render the inbox shell instantly; JS fetches content asynchronously."""
     context = {
@@ -124,7 +131,7 @@ def inbox_detail_view(request, uid):
         messages.error(request, INBOX_MESSAGE_ERROR_MESSAGE)
         return HttpResponseRedirect(list_url)
 
-    body_html = msg["html"] or f"<pre>{msg['text']}</pre>"
+    body_html = _message_body_html(msg)
     scam_analysis = analyze_email(msg)
 
     context = {
@@ -156,7 +163,7 @@ def inbox_detail_fragment_view(request, uid):
             status=200,
         )
 
-    body_html = msg["html"] or f"<pre>{msg['text']}</pre>"
+    body_html = _message_body_html(msg)
     scam_analysis = analyze_email(msg)
 
     html = render_to_string(

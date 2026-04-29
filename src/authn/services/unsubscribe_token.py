@@ -29,6 +29,7 @@ class UnsubscribeLoginTokenInvalid(UnsubscribeLoginTokenError):
 
 def _consume_one_time_token(token: str) -> bool:
     token_digest = sha256(token.encode("utf-8")).hexdigest()
+    # Replay protection depends on cache retention; a cache flush or eviction resets this used-token marker.
     return cache.add(f"authn:unsubscribe-login-used:{token_digest}", True, timeout=_UNSUBSCRIBE_LOGIN_MAX_AGE)
 
 

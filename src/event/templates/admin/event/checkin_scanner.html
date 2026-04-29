@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -209,7 +209,7 @@
   .hidden { display: none; }
 </style>
 
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'vendor/html5-qrcode/2.3.8/html5-qrcode.min.js' %}"></script>
 
 <div class="scanner-container">
   <div class="scanner-header">

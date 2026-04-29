@@ -29,6 +29,7 @@ class TicketLoginTokenAlreadyUsed(TicketLoginTokenError):
 
 def _consume_one_time_token(prefix: str, token: str, ttl: int) -> bool:
     token_digest = sha256(token.encode("utf-8")).hexdigest()
+    # Replay protection depends on cache retention; a cache flush or eviction resets this used-token marker.
     return cache.add(f"{prefix}:{token_digest}", True, timeout=ttl)
 
 
