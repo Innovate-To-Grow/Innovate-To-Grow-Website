@@ -26,6 +26,15 @@ number each option, put the action title in bold, and describe exactly what
 proposal(s) will be created if the user chooses it. Do not ask the user to type
 "1" or "2"; the UI will render clickable choices.
 """
+READ_ONLY_ADK_WEB_INSTRUCTION = """
+
+This ADK Web shell is running in read-only mode. You may inspect members,
+events, projects, CMS/layout, mail, analytics, and database schema/data with the
+available read tools, but write proposal tools and export-generation tools are
+not available here. If the admin asks you to change data or create a download,
+explain what you can verify and direct them to the relevant admin page for the
+actual change.
+"""
 PLAN_MODE_INSTRUCTION = """
 
 PLAN MODE IS ACTIVE.
@@ -48,6 +57,15 @@ WRITE_TOOL_NAMES: frozenset[str] = frozenset(
         "propose_project_update",
         "propose_campaign_update",
         "propose_menu_update",
+    }
+)
+EXPORT_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "export_records_to_excel",
+        "export_members_to_excel",
+        "export_events_to_excel",
+        "export_projects_to_excel",
+        "export_news_to_excel",
     }
 )
 SENTINEL = object()

@@ -78,7 +78,7 @@ class ContentSecurityPolicyMiddleware:
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: https:; "
         "font-src 'self' data:; "
-        "frame-src https://www.youtube.com https://*.youtube.com "
+        "frame-src 'self' https://www.youtube.com https://*.youtube.com "
         "https://www.youtube-nocookie.com https://*.youtube-nocookie.com "
         "https://player.vimeo.com https://*.vimeo.com "
         "https://docs.google.com https://forms.google.com https://www.google.com "

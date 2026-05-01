@@ -35,6 +35,7 @@ class CSPHeaderTests(TestCase):
     def test_frame_src_allows_seeded_hosts(self):
         _, header = self._header()
         expected_frame_src_entries = [
+            "'self'",
             "https://www.youtube.com",
             "https://*.youtube.com",
             "https://www.youtube-nocookie.com",

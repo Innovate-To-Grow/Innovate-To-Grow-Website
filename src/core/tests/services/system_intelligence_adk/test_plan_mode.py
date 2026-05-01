@@ -6,7 +6,9 @@ from core.models import AWSCredentialConfig
 from core.models.base.system_intelligence import SystemIntelligenceConfig
 from core.services.system_intelligence_adk.constants import (
     APPROVAL_INSTRUCTION,
+    EXPORT_TOOL_NAMES,
     PLAN_MODE_INSTRUCTION,
+    READ_ONLY_ADK_WEB_INSTRUCTION,
     WRITE_TOOL_NAMES,
 )
 from core.services.system_intelligence_adk.runner import build_agent
@@ -29,7 +31,7 @@ class PlanModeAgentTests(TestCase):
             system_prompt="Use tools.",
         )
 
-    def _build(self, *, mode):
+    def _build(self, *, mode, include_writes=True, include_exports=True):
         # LlmAgent accepts a raw model-id string instead of a constructed BaseLlm,
         # which lets us assemble the agent without contacting Bedrock.
         with patch(
@@ -42,6 +44,8 @@ class PlanModeAgentTests(TestCase):
                 model_id=self.aws_config.default_model_id,
                 include_temperature=False,
                 mode=mode,
+                include_writes=include_writes,
+                include_exports=include_exports,
             )
 
     def test_normal_mode_includes_write_tools_and_no_plan_suffix(self):
@@ -59,3 +63,11 @@ class PlanModeAgentTests(TestCase):
         # Plan mode keeps read-only tools available for grounding plans.
         read_only_names = {tool.__name__ for tool in get_adk_tools(include_writes=False)}
         self.assertTrue(read_only_names.issubset(tool_names))
+
+    def test_adk_web_read_only_mode_filters_write_and_export_tools(self):
+        agent = self._build(mode="normal", include_writes=False, include_exports=False)
+        tool_names = {tool.__name__ for tool in agent.tools}
+        self.assertFalse(tool_names & WRITE_TOOL_NAMES)
+        self.assertFalse(tool_names & EXPORT_TOOL_NAMES)
+        self.assertIn(READ_ONLY_ADK_WEB_INSTRUCTION.strip(), agent.instruction)
+        self.assertNotIn(APPROVAL_INSTRUCTION.strip(), agent.instruction)

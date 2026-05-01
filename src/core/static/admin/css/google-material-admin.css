@@ -203,6 +203,27 @@ textarea:focus {
     border-color: var(--md-sys-color-outline-variant) !important;
 }
 
+/* Unfold renders app-list titles as table captions; use padding for reliable spacing. */
+.module > .bg-base-50.mb-6 > table > caption {
+    line-height: 1.4 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0.75rem !important;
+}
+
+.module > .bg-base-50.mb-6 > table th,
+.module > .bg-base-50.mb-6 > table td {
+    line-height: 1.4 !important;
+    vertical-align: middle !important;
+}
+
+.module > .bg-base-50.mb-6 > table th a {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
 .text-primary-600,
 .text-primary-700,
 .dark .dark\:text-primary-300 {

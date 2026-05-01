@@ -11,6 +11,16 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings.dev")
 
-application = get_asgi_application()
+django_application = get_asgi_application()
+
+from core.admin.system_intelligence.adk_web import (  # noqa: E402
+    SystemIntelligenceADKRouter,
+    get_protected_system_intelligence_adk_asgi_application,
+)
+
+application = SystemIntelligenceADKRouter(
+    django_application,
+    get_protected_system_intelligence_adk_asgi_application(),
+)

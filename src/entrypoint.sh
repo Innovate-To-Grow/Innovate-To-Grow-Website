@@ -16,5 +16,5 @@ if [ ! -d "staticfiles" ] || [ -z "$(ls -A staticfiles 2>/dev/null)" ]; then
   python manage.py collectstatic --noinput || echo "collectstatic failed (non-fatal)"
 fi
 
-echo "Starting Gunicorn..."
-exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 120
+echo "Starting Uvicorn..."
+exec uvicorn core.asgi:application --host 0.0.0.0 --port 8000 --workers "${WEB_CONCURRENCY:-4}"

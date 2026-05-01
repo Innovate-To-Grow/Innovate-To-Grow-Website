@@ -1,5 +1,8 @@
 from django.conf import settings
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from django.urls import reverse
+
+from event.tests.helpers import make_superuser
 
 
 class AdminSidebarNavigationTest(SimpleTestCase):
@@ -29,3 +32,21 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertIn("Gmail Import", item_titles)
         self.assertIn("SMS Config", item_titles)
         self.assertIn("Google Credentials", item_titles)
+
+
+class AdminIndexNavigationTest(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+
+    def test_admin_index_uses_sidebar_navigation_groups(self):
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "admin/index.html")
+        self.assertContains(response, "Site Settings")
+        self.assertContains(response, "Site Maintenance Control")
+        self.assertContains(response, "Content Management System")
+        self.assertContains(response, "Page Analytics")
+        self.assertContains(response, 'href="/admin/core/system-intelligence/"')
+        self.assertNotContains(response, "Models in the Administration application")
