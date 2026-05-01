@@ -7,11 +7,18 @@ from __future__ import annotations
 import re
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from rest_framework import serializers
 
 from authn.models.security import EmailAuthChallenge
 from authn.serializers.helpers import decrypt_password_pair
-from authn.services import issue_email_challenge, normalize_email, registration_email_conflicts
+from authn.services import (
+    claim_unclaimed_contact_email,
+    get_pending_registration_member,
+    issue_email_challenge,
+    normalize_email,
+    registration_email_conflicts,
+)
 
 Member = get_user_model()
 
@@ -80,16 +87,13 @@ class RegisterSerializer(serializers.Serializer):
 
     # noinspection PyAttributeOutsideInit
     def validate_email(self, value: str) -> str:
-        from authn.models import ContactEmail
-
         email_lower = normalize_email(value)
-        pending_contact = (
-            ContactEmail.objects.filter(email_address__iexact=email_lower, member__is_active=False)
-            .select_related("member")
-            .first()
-        )
-        pending_member = pending_contact.member if pending_contact else None
-        if registration_email_conflicts(email_lower, exclude_member_id=pending_member.pk if pending_member else None):
+        pending_member = get_pending_registration_member(email_lower)
+        if registration_email_conflicts(
+            email_lower,
+            exclude_member_id=pending_member.pk if pending_member else None,
+            allow_unclaimed=True,
+        ):
             raise serializers.ValidationError("Unable to register with this email address.")
         self._pending_member = pending_member
         return email_lower
@@ -126,17 +130,32 @@ class RegisterSerializer(serializers.Serializer):
                 last_name=last_name,
                 is_active=False,
             )
-            ContactEmail.objects.create(
-                member=member,
-                email_address=email,
-                email_type="primary",
-                verified=False,
-            )
-        else:
-            member.first_name = first_name
-            member.last_name = last_name
-            member.is_active = False
-            member.set_password(password)
+            if claim_unclaimed_contact_email(email, member=member) is None:
+                pending_member = get_pending_registration_member(email)
+                if pending_member is not None:
+                    member.delete()
+                    member = pending_member
+                else:
+                    try:
+                        ContactEmail.objects.create(
+                            member=member,
+                            email_address=email,
+                            email_type="primary",
+                            verified=False,
+                        )
+                    except IntegrityError as exc:
+                        pending_member = get_pending_registration_member(email)
+                        member.delete()
+                        if pending_member is None:
+                            raise serializers.ValidationError(
+                                {"email": "Unable to register with this email address."}
+                            ) from exc
+                        member = pending_member
+
+        member.first_name = first_name
+        member.last_name = last_name
+        member.is_active = False
+        member.set_password(password)
 
         member.organization = organization or ""
         member.title = title or ""

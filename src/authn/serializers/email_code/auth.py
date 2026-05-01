@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from rest_framework import serializers
 
 from authn.security_messages import VERIFICATION_INVALID
 from authn.services import (
     AuthChallengeInvalid,
+    claim_unclaimed_contact_email,
+    get_pending_registration_member,
     issue_email_challenge,
     registration_email_conflicts,
     resolve_auth_email,
@@ -56,13 +59,25 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
         )
         member.set_unusable_password()
         member.save()
-        ContactEmail.objects.create(
-            member=member,
-            email_address=email,
-            email_type="primary",
-            verified=False,
-            subscribe=True,
-        )
+        if claim_unclaimed_contact_email(email, member=member) is None:
+            pending_member = get_pending_registration_member(email)
+            if pending_member is not None:
+                member.delete()
+                return pending_member
+            try:
+                ContactEmail.objects.create(
+                    member=member,
+                    email_address=email,
+                    email_type="primary",
+                    verified=False,
+                    subscribe=True,
+                )
+            except IntegrityError as exc:
+                pending_member = get_pending_registration_member(email)
+                member.delete()
+                if pending_member is not None:
+                    return pending_member
+                raise serializers.ValidationError({"email": "This email cannot be used for registration."}) from exc
         return member
 
     def save(self):
@@ -80,15 +95,12 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
             )
             return generic_response
 
-        from authn.models import ContactEmail
-
-        pending_contact = (
-            ContactEmail.objects.filter(email_address__iexact=email, member__is_active=False)
-            .select_related("member")
-            .first()
-        )
-        pending_member = pending_contact.member if pending_contact else None
-        if registration_email_conflicts(email, exclude_member_id=pending_member.pk if pending_member else None):
+        pending_member = get_pending_registration_member(email)
+        if registration_email_conflicts(
+            email,
+            exclude_member_id=pending_member.pk if pending_member else None,
+            allow_unclaimed=True,
+        ):
             raise serializers.ValidationError({"email": "This email cannot be used for registration."})
 
         member = pending_member or self._create_pending_member(email)

@@ -19,7 +19,9 @@ from .contacts.contact_phones import (
 from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
+    claim_unclaimed_contact_email,
     get_member_auth_emails,
+    get_pending_registration_member,
     normalize_email,
     registration_email_conflicts,
     resolve_auth_email,
@@ -67,6 +69,8 @@ __all__ = [
     "normalize_email",
     "resolve_auth_email",
     "get_member_auth_emails",
+    "claim_unclaimed_contact_email",
+    "get_pending_registration_member",
     "registration_email_conflicts",
     "issue_email_challenge",
     "verify_email_code",
