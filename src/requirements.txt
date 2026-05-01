@@ -20,7 +20,7 @@ pdf417gen>=0.7.0
 openpyxl>=3.1.0
 
 # Google APIs
-google-api-python-client>=2.170.0
+google-api-python-client>=2.194.0
 google-auth>=2.35.0
 google-adk>=1.31.1,<2.0
 litellm>=1.83.13,<2.0
@@ -29,16 +29,16 @@ imap-tools>=1.7.0
 
 # Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
 # in CVE fixes to the Rust bindings.
-cryptography>=43.0.0
+cryptography>=47.0.0
 
 # Storage Backend (S3/R2/OSS compatible)
-django-storages[s3]>=1.14.2
-boto3>=1.34.0
+django-storages[s3]>=1.14.6
+boto3>=1.42.96
 
 # Production Dependencies
 gunicorn>=21.0.0
 uvicorn[standard]>=0.30.0,<1.0
-psycopg2-binary>=2.9.0  # PostgreSQL adapter
+psycopg2-binary>=2.9.12  # PostgreSQL adapter
 django-redis>=5.4.0  # Redis cache backend
 django-cors-headers>=4.4.0
 
