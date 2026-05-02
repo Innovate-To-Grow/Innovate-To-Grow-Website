@@ -99,7 +99,7 @@ class ChangePasswordCodeVerifySerializer(BaseCodeVerifySerializer):
     def validate(self, attrs: dict) -> dict:
         attrs = super().validate(attrs)
         if attrs["member"] != self.context["request"].user:
-            raise serializers.ValidationError({"detail": "Verification code is invalid or has expired."})
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
         return attrs
 
     def save(self):
@@ -169,7 +169,7 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
         if challenge.member != member:
-            raise serializers.ValidationError({"detail": "Verification code is invalid or has expired."})
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
 
         attrs["challenge"] = challenge
         return attrs

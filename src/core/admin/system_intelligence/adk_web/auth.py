@@ -58,6 +58,7 @@ def _load_staff_user_id_from_headers_sync(headers) -> str | None:
         engine = import_module(settings.SESSION_ENGINE)
         session = engine.SessionStore(session_key=session_key)
         user_id = session.get(SESSION_KEY)
+        # Member primary keys are UUIDs, so no valid persisted user id is falsy.
         if not user_id:
             return None
 

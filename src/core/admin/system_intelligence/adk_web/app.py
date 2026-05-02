@@ -2,6 +2,8 @@ import json
 import mimetypes
 import os
 import shutil
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 from django.conf import settings
@@ -15,6 +17,8 @@ from .constants import (
     SYSTEM_INTELLIGENCE_ADK_RUNTIME_DIRNAME,
 )
 from .loader import SystemIntelligenceAgentLoader
+
+_BROWSER_ASSETS_STAMP_FILENAME = ".browser-assets.stamp.json"
 
 
 def get_system_intelligence_adk_asgi_application():
@@ -99,19 +103,62 @@ def get_protected_system_intelligence_adk_asgi_application():
 def _prepare_browser_assets(runtime_dir: Path, fast_api_file: str) -> Path:
     source_dir = Path(fast_api_file).resolve().parent / "browser"
     target_dir = runtime_dir / "browser"
+    runtime_config_path = _browser_runtime_config_path(target_dir)
+    stamp_file = target_dir / _BROWSER_ASSETS_STAMP_FILENAME
+    runtime_config = _browser_runtime_config()
+    stamp = _browser_assets_stamp(source_dir, runtime_config)
+    if (
+        target_dir.exists()
+        and _json_file_matches(runtime_config_path, runtime_config)
+        and _json_file_matches(stamp_file, stamp)
+    ):
+        return target_dir
+
     shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
-    runtime_config_dir = target_dir / "assets" / "config"
-    runtime_config_dir.mkdir(parents=True, exist_ok=True)
-    with (runtime_config_dir / "runtime-config.json").open("w") as config_file:
-        json.dump(
-            {
-                "backendUrl": SYSTEM_INTELLIGENCE_ADK_PREFIX,
-                "logo": {
-                    "text": "System Intelligence",
-                    "imageUrl": SYSTEM_INTELLIGENCE_ADK_LOGO_URL,
-                },
-            },
-            config_file,
-            indent=2,
-        )
+    _write_json_file(runtime_config_path, runtime_config)
+    _write_json_file(stamp_file, stamp)
     return target_dir
+
+
+def _browser_runtime_config_path(browser_assets_dir: Path) -> Path:
+    return browser_assets_dir / "assets" / "config" / "runtime-config.json"
+
+
+def _browser_runtime_config() -> dict:
+    return {
+        "backendUrl": SYSTEM_INTELLIGENCE_ADK_PREFIX,
+        "logo": {
+            "text": "System Intelligence",
+            "imageUrl": SYSTEM_INTELLIGENCE_ADK_LOGO_URL,
+        },
+    }
+
+
+def _browser_assets_stamp(source_dir: Path, runtime_config: dict) -> dict:
+    return {
+        "adk_version": _google_adk_version(),
+        "runtime_config": runtime_config,
+        "source_dir": str(source_dir),
+    }
+
+
+def _google_adk_version() -> str:
+    try:
+        return package_version("google-adk")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+def _json_file_matches(path: Path, expected: dict) -> bool:
+    try:
+        with path.open(encoding="utf-8") as file:
+            return json.load(file) == expected
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
+def _write_json_file(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2, sort_keys=True)
+        file.write("\n")
