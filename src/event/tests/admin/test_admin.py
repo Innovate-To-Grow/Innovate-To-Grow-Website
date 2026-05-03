@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from authn.models import ContactEmail, Member
 from event.admin.registration import EventRegistrationAdmin
-from event.models import Event, EventRegistration, Ticket
+from event.models import CheckIn, Event, EventRegistration, Ticket
 from event.services import ScheduleSyncStats
 from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 
@@ -63,6 +63,45 @@ class EventAdminTest(TestCase):
 
         self.assertEqual(response.status_code, 302)
         mock_sync.assert_called_once_with(config, sync_type="manual")
+
+
+class CheckInAdminTest(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser(email="checkin-admin@example.com")
+        self.client.login(username="checkin-admin@example.com", password="testpass123")
+        self.event = make_event(name="Admin Check-in Event")
+        self.check_in = CheckIn.objects.create(event=self.event, name="Main Entrance")
+
+    def test_change_page_shows_console_link(self):
+        response = self.client.get(f"/admin/event/checkin/{self.check_in.pk}/change/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Open Check-in Console")
+        self.assertContains(response, reverse("admin:event_checkin_scanner", args=[self.check_in.pk]))
+        self.assertNotContains(response, "Check in records")
+
+    def test_scanner_page_is_available_to_staff(self):
+        response = self.client.get(reverse("admin:event_checkin_scanner", args=[self.check_in.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "checkin-console-config")
+        self.assertContains(response, "event/css/checkin_console.css")
+        self.assertContains(response, "event/js/checkin_console.js")
+        self.assertContains(response, "data-sync-status")
+        self.assertContains(response, "statusPollIntervalMs")
+        self.assertContains(response, "data-camera-message")
+        self.assertContains(response, f"/event/check-in/{self.check_in.pk}/scan/")
+        self.assertContains(response, f"/event/check-in/{self.check_in.pk}/status/")
+        self.assertContains(response, f"/event/check-in/{self.check_in.pk}/records/__record_id__/undo/")
+        self.assertNotContains(response, "function startCamera")
+
+    def test_scanner_page_rejects_non_staff_user(self):
+        user = make_member(email="nonstaff-checkin@example.com")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("admin:event_checkin_scanner", args=[self.check_in.pk]))
+
+        self.assertNotEqual(response.status_code, 200)
 
 
 class EventRegistrationAdminTest(TestCase):

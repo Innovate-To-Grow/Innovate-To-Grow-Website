@@ -1,539 +1,130 @@
 {% extends "admin/base_site.html" %}
-{% load i18n static %}
+{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'event/css/checkin_console.css' %}">
+    <script src="{% static 'vendor/html5-qrcode/2.3.8/html5-qrcode.min.js' %}" defer></script>
+    <script src="{% static 'event/js/checkin_console.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
-<style>
-  .scanner-container {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 24px;
-  }
-  .scanner-header {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  .scanner-header h2 { margin: 0 0 4px; font-size: 24px; }
-  .scanner-header p { margin: 0; color: #6b7280; font-size: 14px; }
+    {{ scanner_config|json_script:"checkin-console-config" }}
 
-  .scanner-stats {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    margin-bottom: 24px;
-    font-size: 14px;
-    color: #6b7280;
-  }
-  .scanner-stats strong { color: #111827; }
+    <main class="i2g-checkin-console" data-checkin-console>
+        <header class="i2g-checkin-header">
+            <div>
+                <a class="i2g-checkin-back" href="{{ change_url }}">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    Back to Check-in
+                </a>
+                <h1>{{ check_in.name }}</h1>
+                <p>{{ check_in.event.name }}</p>
+            </div>
+            <div class="i2g-checkin-header-actions">
+                <div data-sync-status class="i2g-checkin-sync is-syncing" role="status" aria-live="polite">
+                    <span class="i2g-checkin-sync-dot" aria-hidden="true"></span>
+                    <span data-sync-label>Syncing...</span>
+                </div>
+                <div class="i2g-checkin-state {% if check_in.is_active %}is-active{% else %}is-closed{% endif %}">
+                    <span class="material-symbols-outlined">{% if check_in.is_active %}radio_button_checked{% else %}lock{% endif %}</span>
+                    {% if check_in.is_active %}Active{% else %}Closed{% endif %}
+                </div>
+            </div>
+        </header>
 
-  /* Mode toggle */
-  .scanner-mode-toggle {
-    display: flex;
-    gap: 0;
-    margin-bottom: 20px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .scanner-mode-btn {
-    flex: 1;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    background: #fff;
-    color: #6b7280;
-    transition: background 0.15s, color 0.15s;
-  }
-  .scanner-mode-btn.active {
-    background: #003366;
-    color: #fff;
-  }
-  .scanner-mode-btn:not(.active):hover {
-    background: #f3f4f6;
-  }
+        <section class="i2g-checkin-stats" aria-label="Check-in stats">
+            <div>
+                <span>Total</span>
+                <strong data-stat-total>-</strong>
+            </div>
+            <div>
+                <span>Checked in</span>
+                <strong data-stat-scanned>-</strong>
+            </div>
+            <div>
+                <span>This station</span>
+                <strong data-stat-station>{{ scan_count }}</strong>
+            </div>
+            <div>
+                <span>Remaining</span>
+                <strong data-stat-remaining>-</strong>
+            </div>
+        </section>
 
-  /* Manual input */
-  .scanner-input-group {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-  .scanner-input {
-    flex: 1;
-    padding: 12px 16px;
-    font-size: 18px;
-    border: 2px solid #d1d5db;
-    border-radius: 8px;
-    outline: none;
-    font-family: "Courier New", monospace;
-    letter-spacing: 1px;
-  }
-  .scanner-input:focus {
-    border-color: #003366;
-    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
-  }
-  .scanner-btn {
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    background: #003366;
-    color: #fff;
-  }
-  .scanner-btn:hover { background: #002244; }
-  .scanner-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        <section class="i2g-checkin-primary">
+            <form data-scan-form class="i2g-checkin-scan-form">
+                <label for="checkin-code">Ticket code</label>
+                <div class="i2g-checkin-input-row">
+                    <input
+                        id="checkin-code"
+                        data-scan-input
+                        type="text"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="I2G ticket code"
+                    >
+                    <button data-scan-button type="submit">
+                        <span class="material-symbols-outlined">login</span>
+                        Check In
+                    </button>
+                </div>
+            </form>
 
-  /* Camera */
-  .scanner-camera-section { margin-bottom: 20px; }
-  #camera-reader {
-    width: 100%;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  #camera-reader video { border-radius: 8px; }
-  /* Override html5-qrcode default styles */
-  #camera-reader img[alt="Info icon"] { display: none; }
-  #camera-reader__dashboard { padding: 8px 0 !important; }
-  #camera-reader__dashboard_section { padding: 0 !important; }
-  #camera-reader__dashboard_section_csr button {
-    padding: 8px 16px !important;
-    border-radius: 6px !important;
-    background: #003366 !important;
-    color: #fff !important;
-    border: none !important;
-    font-size: 14px !important;
-    cursor: pointer !important;
-  }
-  #camera-reader__dashboard_section_csr select {
-    padding: 6px 8px !important;
-    border-radius: 6px !important;
-    border: 1px solid #d1d5db !important;
-    font-size: 14px !important;
-  }
+            <div data-scan-result class="i2g-checkin-result" role="status" aria-live="polite"></div>
+        </section>
 
-  /* Result */
-  .scanner-result {
-    padding: 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    display: none;
-  }
-  .scanner-result.success { background: #ecfdf5; border: 1px solid #6ee7b7; display: block; }
-  .scanner-result.duplicate { background: #fffbeb; border: 1px solid #fcd34d; display: block; }
-  .scanner-result.error { background: #fef2f2; border: 1px solid #fca5a5; display: block; }
-  .scanner-result h3 { margin: 0 0 8px; font-size: 16px; }
-  .scanner-result p { margin: 4px 0; font-size: 14px; }
+        <section class="i2g-checkin-grid">
+            <div class="i2g-checkin-panel">
+                <div class="i2g-checkin-panel-header">
+                    <h2>Remaining attendees</h2>
+                    <button data-refresh-button type="button" class="i2g-checkin-icon-button" title="Refresh">
+                        <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                </div>
+                <input
+                    data-roster-search
+                    class="i2g-checkin-search"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Search name, email, or code"
+                >
+                <div data-roster-list class="i2g-checkin-list">
+                    <div class="i2g-checkin-empty">Loading attendees...</div>
+                </div>
+            </div>
 
-  /* History */
-  .scanner-history { margin-top: 32px; }
-  .scanner-history h3 { font-size: 16px; margin-bottom: 12px; }
-  .scanner-history-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 14px;
-  }
-  .scanner-history-item:first-child { border-top: 1px solid #e5e7eb; }
+            <div class="i2g-checkin-side">
+                <div class="i2g-checkin-panel">
+                    <div class="i2g-checkin-panel-header">
+                        <h2>Recent scans</h2>
+                    </div>
+                    <div data-recent-list class="i2g-checkin-list i2g-checkin-list--compact">
+                        <div class="i2g-checkin-empty">No scans yet.</div>
+                    </div>
+                </div>
 
-  /* Not checked in list */
-  .scanner-remaining { margin-top: 32px; }
-  .scanner-remaining h3 {
-    font-size: 16px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .scanner-remaining-count {
-    font-size: 13px;
-    font-weight: 400;
-    color: #6b7280;
-  }
-  .scanner-remaining-list {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
-    max-height: 400px;
-    overflow-y: auto;
-  }
-  .scanner-remaining-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid #f3f4f6;
-    font-size: 14px;
-  }
-  .scanner-remaining-item:last-child { border-bottom: none; }
-  .scanner-remaining-item .name { font-weight: 600; color: #1f2937; }
-  .scanner-remaining-item .meta { color: #6b7280; font-size: 13px; }
-  .scanner-remaining-action {
-    padding: 6px 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #fff;
-    color: #003366;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .scanner-remaining-action:hover {
-    background: #eff6ff;
-    border-color: #93c5fd;
-  }
-  .scanner-method-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 6px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    background: #e5e7eb;
-    color: #374151;
-  }
-  .scanner-remaining-empty {
-    padding: 24px;
-    text-align: center;
-    color: #16a34a;
-    font-weight: 600;
-  }
-
-  .hidden { display: none; }
-</style>
-
-<script src="{% static 'vendor/html5-qrcode/2.3.8/html5-qrcode.min.js' %}"></script>
-
-<div class="scanner-container">
-  <div class="scanner-header">
-    <h2>{{ check_in.name }}</h2>
-    <p>{{ check_in.event.name }}</p>
-  </div>
-
-  <div class="scanner-stats">
-    <span>Scanned: <strong id="scan-count">{{ scan_count }}</strong> / <strong id="total-count">-</strong></span>
-    <span>Remaining: <strong id="remaining-count">-</strong></span>
-    <span>Status: <strong>{% if check_in.is_active %}Active{% else %}Closed{% endif %}</strong></span>
-  </div>
-
-  <!-- Mode toggle -->
-  <div class="scanner-mode-toggle">
-    <button class="scanner-mode-btn active" id="mode-camera" onclick="switchMode('camera')">Camera</button>
-    <button class="scanner-mode-btn" id="mode-manual" onclick="switchMode('manual')">Manual Input</button>
-  </div>
-
-  <!-- Camera scanner -->
-  <div id="camera-section" class="scanner-camera-section">
-    <div id="camera-reader"></div>
-  </div>
-
-  <!-- Manual input -->
-  <div id="manual-section" class="hidden">
-    <form id="scanner-form" onsubmit="return handleManualScan(event)">
-      <div class="scanner-input-group">
-        <input
-          type="text"
-          id="barcode-input"
-          class="scanner-input"
-          placeholder="Scan barcode or type ticket code..."
-          autocomplete="off"
-        />
-        <button type="submit" class="scanner-btn" id="scan-btn">Scan</button>
-      </div>
-    </form>
-  </div>
-
-  <div id="scan-result" class="scanner-result"></div>
-
-  <div class="scanner-history">
-    <h3>Recent Scans</h3>
-    <div id="scan-history"></div>
-  </div>
-
-  <div class="scanner-remaining">
-    <h3>
-      Not Checked In
-      <span class="scanner-remaining-count" id="remaining-label"></span>
-    </h3>
-    <div class="scanner-remaining-list" id="remaining-list">
-      <div class="scanner-remaining-empty">Loading...</div>
-    </div>
-  </div>
-</div>
-
-<script>
-  const SCAN_URL = "{{ scan_url }}";
-  const STATUS_URL = SCAN_URL.replace("/scan/", "/status/");
-  const CSRF_TOKEN = "{{ csrf_token }}";
-  let html5QrCode = null;
-  let cameraRunning = false;
-  let cameraAvailable = true;
-  let processingBarcode = false;
-
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(";").shift();
-  }
-
-  // ---- Mode switching ----
-  function switchMode(mode) {
-    if (mode === "camera" && !cameraAvailable) return; // Camera not available on this device
-    document.getElementById("mode-camera").classList.toggle("active", mode === "camera");
-    document.getElementById("mode-manual").classList.toggle("active", mode === "manual");
-    document.getElementById("camera-section").classList.toggle("hidden", mode !== "camera");
-    document.getElementById("manual-section").classList.toggle("hidden", mode !== "manual");
-
-    if (mode === "camera") {
-      startCamera();
-    } else {
-      stopCamera();
-      document.getElementById("barcode-input").focus();
-    }
-  }
-
-  // ---- Camera scanner ----
-  function startCamera() {
-    if (cameraRunning) return;
-    if (typeof Html5Qrcode !== "function" || typeof Html5QrcodeSupportedFormats === "undefined") {
-      cameraAvailable = false;
-      document.getElementById("mode-camera").disabled = true;
-      document.getElementById("mode-camera").style.opacity = "0.4";
-      document.getElementById("mode-camera").style.cursor = "not-allowed";
-      document.getElementById("mode-camera").textContent = "Camera (unavailable)";
-      switchMode("manual");
-      return;
-    }
-    if (!html5QrCode) {
-      html5QrCode = new Html5Qrcode("camera-reader");
-    }
-    html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: { width: 300, height: 150 },
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.PDF_417,
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-        ],
-      },
-      onCameraResult,
-      () => {} // ignore errors (no barcode in frame)
-    ).then(() => {
-      cameraRunning = true;
-    }).catch(() => {
-      cameraAvailable = false;
-      document.getElementById("mode-camera").disabled = true;
-      document.getElementById("mode-camera").style.opacity = "0.4";
-      document.getElementById("mode-camera").style.cursor = "not-allowed";
-      document.getElementById("mode-camera").textContent = "Camera (unavailable)";
-      switchMode("manual");
-    });
-  }
-
-  function stopCamera() {
-    if (html5QrCode && cameraRunning) {
-      html5QrCode.stop().then(() => { cameraRunning = false; }).catch(() => {});
-    }
-  }
-
-  function onCameraResult(decodedText) {
-    if (processingBarcode) return;
-    processingBarcode = true;
-    submitBarcode(decodedText, "camera").finally(() => {
-      setTimeout(() => { processingBarcode = false; }, 2000); // 2s cooldown between scans
-    });
-  }
-
-  // ---- Manual input ----
-  function handleManualScan(e) {
-    e.preventDefault();
-    const input = document.getElementById("barcode-input");
-    const value = input.value.trim();
-    if (!value) return false;
-    submitBarcode(value, "manual").then(() => {
-      input.value = "";
-      input.focus();
-    });
-    return false;
-  }
-
-  function node(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = String(text);
-    return el;
-  }
-
-  function methodBadge(label) {
-    return node("span", "scanner-method-badge", label);
-  }
-
-  function resultHeading(text, label) {
-    const heading = document.createElement("h3");
-    heading.textContent = text + " ";
-    heading.appendChild(methodBadge(label));
-    return heading;
-  }
-
-  function resultParagraph(text, strong = false) {
-    const paragraph = document.createElement("p");
-    if (strong) {
-      const strongEl = document.createElement("strong");
-      strongEl.textContent = String(text || "");
-      paragraph.appendChild(strongEl);
-    } else {
-      paragraph.textContent = String(text || "");
-    }
-    return paragraph;
-  }
-
-  function renderResult(className, children) {
-    const resultDiv = document.getElementById("scan-result");
-    resultDiv.className = "scanner-result " + className;
-    resultDiv.replaceChildren(...children);
-  }
-
-  function addMetaLine(left, right) {
-    const paragraph = document.createElement("p");
-    paragraph.append(document.createTextNode(String(left || "")), document.createTextNode(" · "), document.createTextNode(String(right || "")));
-    return paragraph;
-  }
-
-  // ---- Submit barcode to API ----
-  async function submitBarcode(value, source = "manual") {
-    const methodLabel = source === "camera" ? "Camera" : "Manual Input";
-    try {
-      const resp = await fetch(SCAN_URL, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken") || CSRF_TOKEN,
-        },
-        body: JSON.stringify({ barcode: value }),
-      });
-      const data = await resp.json();
-
-      if (data.status === "success") {
-        renderResult("success", [
-          resultHeading("Checked In", methodLabel),
-          resultParagraph(data.attendee.name, true),
-          addMetaLine(data.attendee.email, data.attendee.ticket_type),
-          resultParagraph("Code: " + data.attendee.ticket_code),
-        ]);
-        addToHistory(data.attendee.name, data.attendee.ticket_type, "success", source);
-        loadStatus();
-      } else if (data.status === "duplicate") {
-        renderResult("duplicate", [
-          resultHeading("Already Checked In", methodLabel),
-          resultParagraph(data.attendee.name, true),
-          addMetaLine(data.attendee.email, data.attendee.ticket_type),
-          resultParagraph(data.detail),
-        ]);
-        addToHistory(data.attendee.name, "Duplicate", "duplicate", source);
-      } else {
-        renderResult("error", [
-          node("h3", "", "Not Found"),
-          resultParagraph(data.detail || "Unknown error"),
-        ]);
-        addToHistory(value.substring(0, 20), "Not Found", "error", source);
-      }
-    } catch (err) {
-      renderResult("error", [
-        node("h3", "", "Error"),
-        resultParagraph(err.message),
-      ]);
-    }
-  }
-
-  function addToHistory(name, type, status, source = "manual") {
-    const history = document.getElementById("scan-history");
-    const time = new Date().toLocaleTimeString();
-    const sourceLabel = source === "camera" ? "Camera" : "Manual";
-    const item = document.createElement("div");
-    item.className = "scanner-history-item";
-    const details = document.createElement("span");
-    details.append(document.createTextNode(String(name || "")), document.createTextNode(" · "), document.createTextNode(String(type || "")), document.createTextNode(" "));
-    details.appendChild(methodBadge(sourceLabel));
-    item.append(details, node("span", "", time));
-    history.insertBefore(item, history.firstChild);
-  }
-
-  function renderRemainingEmpty(list, text, isError = false) {
-    const empty = node("div", "scanner-remaining-empty", text);
-    if (isError) empty.style.color = "#b91c1c";
-    list.replaceChildren(empty);
-  }
-
-  function renderRemainingAttendee(attendee) {
-    const item = node("div", "scanner-remaining-item");
-    const details = document.createElement("div");
-    details.append(node("span", "name", attendee.name), node("span", "meta", " · " + attendee.ticket_type));
-    const actionWrap = document.createElement("div");
-    actionWrap.appendChild(node("span", "meta", attendee.email));
-    const button = node("button", "scanner-remaining-action", "Check In");
-    button.dataset.ticketCode = attendee.ticket_code || "";
-    button.type = "button";
-    actionWrap.appendChild(button);
-    item.append(details, actionWrap);
-    return item;
-  }
-
-  function handleMemberCheckIn(ticketCode) {
-    if (!ticketCode) return;
-    submitBarcode(ticketCode, "manual");
-  }
-
-  // ---- Load status (not-checked-in list) ----
-  async function loadStatus() {
-    try {
-      const resp = await fetch(STATUS_URL, {
-        credentials: "same-origin",
-        headers: { "X-CSRFToken": getCookie("csrftoken") || CSRF_TOKEN },
-      });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(`HTTP ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 120)}` : ""}`);
-      }
-      const data = await resp.json();
-
-      document.getElementById("total-count").textContent = data.total;
-      document.getElementById("scan-count").textContent = data.scanned;
-      document.getElementById("remaining-count").textContent = data.not_checked_in.length;
-      document.getElementById("remaining-label").textContent = `${data.not_checked_in.length} of ${data.total}`;
-
-      const list = document.getElementById("remaining-list");
-      if (data.not_checked_in.length === 0) {
-        renderRemainingEmpty(list, "Everyone is checked in!");
-      } else {
-        list.replaceChildren(...data.not_checked_in.map(renderRemainingAttendee));
-      }
-    } catch (err) {
-      console.error("Failed to load check-in status", err);
-      const list = document.getElementById("remaining-list");
-      renderRemainingEmpty(list, "Failed to load attendees: " + err.message, true);
-    }
-  }
-
-  // Auto-start camera + load status on load
-  document.addEventListener("DOMContentLoaded", () => {
-    loadStatus();
-    startCamera();
-    document.getElementById("remaining-list").addEventListener("click", (event) => {
-      const button = event.target.closest(".scanner-remaining-action");
-      if (!button) return;
-      handleMemberCheckIn(button.dataset.ticketCode || "");
-    });
-  });
-</script>
+                <div class="i2g-checkin-panel">
+                    <div class="i2g-checkin-panel-header">
+                        <h2>Camera</h2>
+                        <span data-camera-status class="i2g-checkin-camera-status">Idle</span>
+                    </div>
+                    <div data-camera-reader class="i2g-checkin-camera-reader"></div>
+                    <div data-camera-message class="i2g-checkin-camera-message"></div>
+                    <div class="i2g-checkin-camera-actions">
+                        <button data-camera-start type="button">
+                            <span class="material-symbols-outlined">photo_camera</span>
+                            Start camera
+                        </button>
+                        <button data-camera-stop type="button" disabled>
+                            <span class="material-symbols-outlined">stop_circle</span>
+                            Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 {% endblock %}

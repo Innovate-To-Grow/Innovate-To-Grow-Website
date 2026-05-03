@@ -5,10 +5,10 @@
 {% if original %}
 <div style="margin-bottom:1.5rem;padding:1rem 1.25rem;background:#f0f4f8;border:1px solid #dbe3ef;border-radius:10px;display:flex;align-items:center;justify-content:space-between;">
   <div>
-    <strong style="font-size:1rem;color:#003366;">Barcode Scanner</strong>
+    <strong style="font-size:1rem;color:#003366;">Check-in Console</strong>
     <p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6b7280;">
-      Scan attendee barcodes to check them in.
-      <strong>{{ original.scan_count }}</strong> scanned so far.
+      Use the dedicated console for live check-in.
+      <strong>{{ original.scan_count }}</strong> scanned at this station.
     </p>
   </div>
   <a
@@ -16,7 +16,7 @@
     target="_blank"
     style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.625rem 1.25rem;background:#003366;color:#fff;font-weight:600;font-size:0.9rem;border-radius:8px;text-decoration:none;white-space:nowrap;"
   >
-    Open Scanner
+    Open Check-in Console
   </a>
 </div>
 {% endif %}

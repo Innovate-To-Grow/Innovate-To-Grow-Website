@@ -1,25 +1,15 @@
 from django.contrib import admin
 from django.db.models import Count
 from django.http import Http404
+from django.middleware.csrf import get_token
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
-from unfold.admin import TabularInline
 from unfold.decorators import display
 
 from core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 
 from ..models import CheckIn, CheckInRecord
-
-
-class CheckInRecordInline(TabularInline):
-    model = CheckInRecord
-    extra = 0
-    readonly_fields = ("registration", "scanned_by", "created_at")
-    fields = ("registration", "scanned_by", "created_at")
-
-    def has_add_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(CheckIn)
@@ -29,7 +19,6 @@ class CheckInAdmin(BaseModelAdmin):
     list_filter = ("event", "is_active")
     search_fields = ("name", "event__name")
     readonly_fields = ("created_at", "updated_at")
-    inlines = [CheckInRecordInline]
 
     fieldsets = (
         (
@@ -64,7 +53,7 @@ class CheckInAdmin(BaseModelAdmin):
         if not obj.pk:
             return "-"
         url = reverse("admin:event_checkin_scanner", args=[obj.pk])
-        return format_html('<a href="{}" target="_blank">Open Scanner</a>', url)
+        return format_html('<a href="{}" target="_blank">Open Console</a>', url)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -85,10 +74,22 @@ class CheckInAdmin(BaseModelAdmin):
 
         context = {
             **self.admin_site.each_context(request),
-            "title": f"Scanner — {check_in.name}",
+            "title": f"Check-in Console — {check_in.name}",
             "check_in": check_in,
             "scan_url": f"/event/check-in/{check_in.pk}/scan/",
+            "status_url": f"/event/check-in/{check_in.pk}/status/",
+            "undo_url_template": f"/event/check-in/{check_in.pk}/records/__record_id__/undo/",
             "scan_count": check_in.scan_count,
+            "scanner_config": {
+                "scanUrl": f"/event/check-in/{check_in.pk}/scan/",
+                "statusUrl": f"/event/check-in/{check_in.pk}/status/",
+                "undoUrlTemplate": f"/event/check-in/{check_in.pk}/records/__record_id__/undo/",
+                "csrfToken": get_token(request),
+                "checkInId": str(check_in.pk),
+                "isActive": check_in.is_active,
+                "statusPollIntervalMs": 2000,
+            },
+            "change_url": reverse("admin:event_checkin_change", args=[check_in.pk]),
         }
         return TemplateResponse(request, "admin/event/checkin_scanner.html", context)
 

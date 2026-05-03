@@ -37,8 +37,8 @@ class CheckInRecord(ProjectControlModel):
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["check_in", "registration"],
-                name="unique_checkin_per_registration",
+                fields=["registration"],
+                name="unique_checkin_record_per_registration",
             ),
         ]
 

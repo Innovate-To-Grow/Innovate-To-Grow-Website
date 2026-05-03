@@ -3,6 +3,7 @@ from django.urls import path
 from event.views import (
     CheckInScanView,
     CheckInStatusView,
+    CheckInUndoView,
     CurrentEventScheduleView,
     CurrentProjectsAPIView,
     EventRegistrationCreateView,
@@ -27,5 +28,6 @@ urlpatterns = [
     path("verify-phone-code/", VerifyPhoneCodeView.as_view(), name="verify-phone-code"),
     path("check-in/<uuid:checkin_id>/scan/", CheckInScanView.as_view(), name="checkin-scan"),
     path("check-in/<uuid:checkin_id>/status/", CheckInStatusView.as_view(), name="checkin-status"),
+    path("check-in/<uuid:checkin_id>/records/<uuid:record_id>/undo/", CheckInUndoView.as_view(), name="checkin-undo"),
     path("ticket-login/", TicketAutoLoginView.as_view(), name="ticket-login"),
 ]
