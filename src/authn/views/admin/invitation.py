@@ -4,6 +4,7 @@ View for accepting admin invitations (plain Django, not DRF).
 
 from django.contrib import admin
 from django.core.cache import cache
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views import View
@@ -43,12 +44,7 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
-        contact = (
-            ContactEmail.objects.filter(email_address__iexact=invitation.email, verified=True)
-            .select_related("member")
-            .first()
-        )
-        existing = contact.member if contact else None
+        existing = self._get_verified_member(invitation)
         if existing:
             self._upgrade_member(existing, invitation)
             return render(
@@ -75,12 +71,7 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
-        contact = (
-            ContactEmail.objects.filter(email_address__iexact=invitation.email, verified=True)
-            .select_related("member")
-            .first()
-        )
-        existing = contact.member if contact else None
+        existing = self._get_verified_member(invitation)
         if existing:
             self._upgrade_member(existing, invitation)
             return render(
@@ -97,27 +88,22 @@ class AcceptInvitationView(View):
                 {"form": form, "invitation": invitation, **_get_unfold_context(request)},
             )
 
-        # noinspection PyPep8Naming
-        MemberModel = _get_member_model()
-        member = MemberModel(
-            first_name=form.cleaned_data["first_name"],
-            last_name=form.cleaned_data["last_name"],
-            organization=form.cleaned_data.get("organization", ""),
-            is_staff=True,
-            is_active=True,
-        )
-        member.set_password(form.cleaned_data["password1"])
-        member.save()
+        with transaction.atomic():
+            # noinspection PyPep8Naming
+            MemberModel = _get_member_model()
+            member = MemberModel(
+                first_name=form.cleaned_data["first_name"],
+                last_name=form.cleaned_data["last_name"],
+                organization=form.cleaned_data.get("organization", ""),
+                is_staff=True,
+                is_active=True,
+            )
+            member.set_password(form.cleaned_data["password1"])
+            member.save()
 
-        ContactEmail.objects.create(
-            member=member,
-            email_address=invitation.email,
-            email_type="primary",
-            verified=True,
-            subscribe=True,
-        )
+            self._attach_invitation_email(member, invitation)
+            invitation.mark_accepted(member)
 
-        invitation.mark_accepted(member)
         return render(
             request,
             "authn/invitation/success.html",
@@ -139,7 +125,39 @@ class AcceptInvitationView(View):
         return invitation
 
     # noinspection PyMethodMayBeStatic
+    def _get_verified_member(self, invitation):
+        contact = (
+            ContactEmail.objects.filter(
+                email_address__iexact=invitation.email,
+                verified=True,
+                member__isnull=False,
+            )
+            .select_related("member")
+            .first()
+        )
+        return contact.member if contact else None
+
+    # noinspection PyMethodMayBeStatic
+    def _attach_invitation_email(self, member, invitation):
+        contact = ContactEmail.objects.select_for_update().filter(email_address__iexact=invitation.email).first()
+        if contact is None:
+            ContactEmail.objects.create(
+                member=member,
+                email_address=invitation.email,
+                email_type="primary",
+                verified=True,
+                subscribe=True,
+            )
+            return
+
+        contact.member = member
+        contact.email_type = "primary"
+        contact.verified = True
+        contact.save(update_fields=["member", "email_type", "verified", "updated_at"])
+
+    # noinspection PyMethodMayBeStatic
     def _upgrade_member(self, member, invitation):
         member.is_staff = True
-        member.save(update_fields=["is_staff", "updated_at"])
+        member.is_active = True
+        member.save(update_fields=["is_staff", "is_active", "updated_at"])
         invitation.mark_accepted(member)

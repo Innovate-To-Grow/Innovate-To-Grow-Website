@@ -6,6 +6,7 @@ import logging
 
 from django.contrib import admin, messages
 from django.utils import timezone
+from django.utils.html import format_html
 
 from authn.models import AdminInvitation
 from core.admin import BaseModelAdmin
@@ -28,7 +29,7 @@ class AdminInvitationAdmin(BaseModelAdmin):
         "created_at",
         "updated_at",
     ]
-    actions = ["cancel_invitations"]
+    actions = ["resend_invitations", "cancel_invitations"]
 
     # noinspection PyUnusedLocal
     def get_fieldsets(self, request, obj=None):
@@ -62,11 +63,14 @@ class AdminInvitationAdmin(BaseModelAdmin):
             status = AdminInvitation.Status.EXPIRED
         color = colors.get(status, "#6b7280")
         label = AdminInvitation.Status(status).label if status != obj.status else obj.get_status_display()
-        return f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;color:#fff;background:{color};">{label}</span>'
-
-    status_badge.allow_tags = True
+        return format_html(
+            '<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;color:#fff;background:{};">{}</span>',
+            color,
+            label,
+        )
 
     def save_model(self, request, obj, form, change):
+        obj.email = (obj.email or "").strip().lower()
         if not change:
             obj.token = AdminInvitation.generate_token()
             obj.invited_by = request.user
@@ -79,9 +83,51 @@ class AdminInvitationAdmin(BaseModelAdmin):
             ).update(status=AdminInvitation.Status.CANCELLED, updated_at=timezone.now())
 
             super().save_model(request, obj, form, change)
-            messages.success(request, f"Invitation created for {obj.email}.")
+            self._send_invitation_message(request, obj, created=True)
         else:
             super().save_model(request, obj, form, change)
+
+    def _send_invitation_message(self, request, invitation, *, created=False, show_success=True):
+        from authn.services.email import send_admin_invitation_email
+
+        try:
+            send_admin_invitation_email(invitation=invitation, request=request)
+        except Exception:
+            logger.exception("Failed to send admin invitation email for %s", invitation.email)
+            created_text = "created, but " if created else ""
+            messages.error(
+                request,
+                (
+                    f"Invitation {created_text}email could not be sent to {invitation.email}. "
+                    f"Copy the invitation link manually: {invitation.get_acceptance_url(request)}"
+                ),
+            )
+            return False
+
+        if show_success:
+            verb = "created and sent" if created else "resent"
+            messages.success(request, f"Invitation {verb} for {invitation.email}.")
+        return True
+
+    @admin.action(description="Resend selected pending invitations")
+    def resend_invitations(self, request, queryset):
+        sent = 0
+        skipped = 0
+
+        for invitation in queryset:
+            if not invitation.is_valid:
+                if invitation.status == AdminInvitation.Status.PENDING and invitation.is_expired:
+                    invitation.mark_expired()
+                skipped += 1
+                continue
+
+            if self._send_invitation_message(request, invitation, show_success=False):
+                sent += 1
+
+        if skipped:
+            messages.warning(request, f"Skipped {skipped} invalid, expired, or already-used invitation(s).")
+        if sent:
+            messages.success(request, f"Resent {sent} invitation email(s).")
 
     @admin.action(description="Cancel selected invitations")
     def cancel_invitations(self, request, queryset):

@@ -4,11 +4,13 @@ from smtplib import SMTPAuthenticationError, SMTPServerDisconnected
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from authn.services.email.send_email import (
     _render_email_body,
     _send_via_ses,
     _send_via_smtp,
+    send_admin_invitation_email,
     send_verification_email,
 )
 
@@ -181,3 +183,45 @@ class SendVerificationEmailTests(TestCase):
         mock_config.return_value = _fake_config(ses_configured=False)
         with self.assertRaises(SMTPAuthenticationError):
             send_verification_email(recipient="a@b.com", code="123456", purpose="admin_login")
+
+
+class SendAdminInvitationEmailTests(TestCase):
+    """Tests for the admin invitation email flow."""
+
+    def _invitation(self):
+        invitation = MagicMock()
+        invitation.email = "new-admin@example.com"
+        invitation.expires_at = timezone.now() + timezone.timedelta(days=7)
+        invitation.invited_by = None
+        invitation.message = "Please help manage the spring event."
+        invitation.get_acceptance_url.return_value = "https://admin.example.com/authn/invite/token/"
+        invitation.get_role_display.return_value = "Admin"
+        return invitation
+
+    @patch("authn.services.email.send_email._send_via_smtp")
+    @patch("authn.services.email.send_email._send_via_ses")
+    @patch("authn.services.email.send_email._load_config")
+    def test_smtp_email_includes_acceptance_link(self, mock_config, mock_ses, mock_smtp):
+        mock_config.return_value = _fake_config(ses_configured=False)
+        invitation = self._invitation()
+
+        send_admin_invitation_email(invitation=invitation)
+
+        mock_ses.assert_not_called()
+        mock_smtp.assert_called_once()
+        call_kwargs = mock_smtp.call_args.kwargs
+        self.assertEqual(call_kwargs["recipient"], "new-admin@example.com")
+        self.assertIn("invited to join", call_kwargs["subject"])
+        self.assertIn("https://admin.example.com/authn/invite/token/", call_kwargs["html_body"])
+        self.assertIn("Please help manage the spring event.", call_kwargs["html_body"])
+
+    @patch("authn.services.email.send_email._send_via_smtp")
+    @patch("authn.services.email.send_email._send_via_ses", return_value=True)
+    @patch("authn.services.email.send_email._load_config")
+    def test_ses_success_skips_smtp(self, mock_config, mock_ses, mock_smtp):
+        mock_config.return_value = _fake_config(ses_configured=True)
+
+        send_admin_invitation_email(invitation=self._invitation())
+
+        mock_ses.assert_called_once()
+        mock_smtp.assert_not_called()
