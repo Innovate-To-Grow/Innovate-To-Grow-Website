@@ -1,6 +1,7 @@
 (function () {
     const BLOCK_SCHEMAS = window.CMS_BLOCK_SCHEMAS || {};
     const BLOCK_TYPE_CHOICES = window.CMS_BLOCK_TYPE_CHOICES || [];
+    const PROTOTYPE_POLLUTION_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
     function escapeHtml(val) {
         const div = document.createElement('div');
@@ -52,15 +53,31 @@
         return `<div class="cms-repeater"><div class="cms-repeater-header"><label>${escapeHtml(label)}</label></div><div class="cms-repeater-items">${itemsHtml}</div><button type="button" class="btn-repeater-add" onclick="addRepeaterItem(${blockIdx}, '${fieldName}')">+ Add ${escapeHtml(label.replace(/s$/, ''))}</button></div>`;
     }
 
+    function isSafePathPart(part) {
+        return part !== '' && !PROTOTYPE_POLLUTION_KEYS.has(part);
+    }
+
+    function pathKey(part) {
+        return /^\d+$/.test(part) ? parseInt(part, 10) : part;
+    }
+
     function setNestedValue(obj, path, value) {
+        if (!obj || typeof obj !== 'object' || typeof path !== 'string') return;
         const parts = path.split('.');
+        if (!parts.length || !parts.every(isSafePathPart)) return;
         let current = obj;
         for (let i = 0; i < parts.length - 1; i++) {
-            let key = /^\d+$/.test(parts[i]) ? parseInt(parts[i], 10) : parts[i];
-            if (current[key] === undefined) current[key] = {};
+            const key = pathKey(parts[i]);
+            if (
+                !Object.prototype.hasOwnProperty.call(current, key) ||
+                current[key] === null ||
+                typeof current[key] !== 'object'
+            ) {
+                current[key] = {};
+            }
             current = current[key];
         }
-        let lastKey = /^\d+$/.test(parts[parts.length - 1]) ? parseInt(parts[parts.length - 1], 10) : parts[parts.length - 1];
+        const lastKey = pathKey(parts[parts.length - 1]);
         current[lastKey] = value;
     }
 

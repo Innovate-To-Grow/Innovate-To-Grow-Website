@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from authn.models import ContactEmail
 
@@ -55,9 +56,51 @@ def get_member_auth_emails(member: Member) -> list[str]:
     return emails
 
 
-def registration_email_conflicts(email: str, *, exclude_member_id=None) -> bool:
+def get_unclaimed_contact_email(email: str) -> ContactEmail | None:
+    normalized = normalize_email(email)
+    if not normalized:
+        return None
+    return ContactEmail.objects.filter(email_address__iexact=normalized, member__isnull=True).first()
+
+
+def claim_unclaimed_contact_email(
+    email: str,
+    *,
+    member: Member,
+    email_type: str = "primary",
+    verified: bool = False,
+) -> ContactEmail | None:
+    normalized = normalize_email(email)
+    if not normalized:
+        return None
+    updated = ContactEmail.objects.filter(email_address__iexact=normalized, member__isnull=True).update(
+        member=member,
+        email_type=email_type,
+        verified=verified,
+        updated_at=timezone.now(),
+    )
+    if not updated:
+        return None
+    return ContactEmail.objects.filter(email_address__iexact=normalized, member=member).first()
+
+
+def get_pending_registration_member(email: str) -> Member | None:
+    normalized = normalize_email(email)
+    if not normalized:
+        return None
+    contact = (
+        ContactEmail.objects.select_related("member")
+        .filter(email_address__iexact=normalized, member__is_active=False)
+        .first()
+    )
+    return contact.member if contact else None
+
+
+def registration_email_conflicts(email: str, *, exclude_member_id=None, allow_unclaimed: bool = False) -> bool:
     normalized = normalize_email(email)
     qs = ContactEmail.objects.filter(email_address__iexact=normalized)
     if exclude_member_id:
         qs = qs.exclude(member_id=exclude_member_id)
+    if allow_unclaimed:
+        qs = qs.exclude(member__isnull=True)
     return qs.exists()

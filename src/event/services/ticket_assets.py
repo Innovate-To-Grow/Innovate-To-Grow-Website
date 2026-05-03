@@ -19,8 +19,17 @@ _TICKET_ACCESS_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 _TICKET_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 
+class TicketLoginTokenError(ValueError):
+    """Base error for invalid ticket login tokens."""
+
+
+class TicketLoginTokenAlreadyUsed(TicketLoginTokenError):
+    """Raised when a one-time ticket login token has already been consumed."""
+
+
 def _consume_one_time_token(prefix: str, token: str, ttl: int) -> bool:
     token_digest = sha256(token.encode("utf-8")).hexdigest()
+    # Replay protection depends on cache retention; a cache flush or eviction resets this used-token marker.
     return cache.add(f"{prefix}:{token_digest}", True, timeout=ttl)
 
 
@@ -54,15 +63,15 @@ def get_member_from_login_token(token: str):
         payload = signing.loads(token, salt=_TICKET_LOGIN_SALT, max_age=_TICKET_LOGIN_MAX_AGE)
         member_id = payload["member_id"]
     except signing.BadSignature as exc:
-        raise ValueError("Invalid or expired login link.") from exc
+        raise TicketLoginTokenError("Invalid or expired login link.") from exc
 
     try:
         member = Member.objects.get(pk=member_id, is_active=True)
     except Member.DoesNotExist as exc:
-        raise ValueError("Account not found.") from exc
+        raise TicketLoginTokenError("Account not found.") from exc
 
     if not _consume_one_time_token("event:ticket-login-used", token, _TICKET_LOGIN_MAX_AGE):
-        raise ValueError("This login link has already been used.")
+        raise TicketLoginTokenAlreadyUsed("This login link has already been used.")
 
     return member
 

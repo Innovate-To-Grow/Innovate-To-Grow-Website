@@ -37,6 +37,7 @@ boto3>=1.42.96
 
 # Production Dependencies
 gunicorn>=21.0.0
+uvicorn[standard]>=0.30.0,<1.0
 psycopg2-binary>=2.9.12  # PostgreSQL adapter
 django-redis>=5.4.0  # Redis cache backend
 django-cors-headers>=4.4.0

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from authn.security_messages import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
 from authn.serializers.helpers import decrypt_password_pair
 from authn.services import (
     AuthChallengeInvalid,
@@ -61,11 +62,14 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return attrs
 
     def save(self):
-        challenge = consume_verification_token(
-            purpose=PURPOSE.PASSWORD_RESET,
-            verification_token=self.validated_data["verification_token"],
-            member=self.validated_data["resolved_member"],
-        )
+        try:
+            challenge = consume_verification_token(
+                purpose=PURPOSE.PASSWORD_RESET,
+                verification_token=self.validated_data["verification_token"],
+                member=self.validated_data["resolved_member"],
+            )
+        except AuthChallengeInvalid as exc:
+            raise serializers.ValidationError({"detail": VERIFICATION_CONFIRM_INVALID}) from exc
         member = challenge.member
         member.set_password(self.validated_data["decrypted_new_password"])
         member.save(update_fields=["password"])
@@ -95,7 +99,7 @@ class ChangePasswordCodeVerifySerializer(BaseCodeVerifySerializer):
     def validate(self, attrs: dict) -> dict:
         attrs = super().validate(attrs)
         if attrs["member"] != self.context["request"].user:
-            raise serializers.ValidationError({"detail": "Verification code is invalid or has expired."})
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
         return attrs
 
     def save(self):
@@ -162,10 +166,10 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
                 code=attrs["code"],
             )
         except AuthChallengeInvalid as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from exc
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
         if challenge.member != member:
-            raise serializers.ValidationError({"detail": "Verification code is invalid or has expired."})
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
 
         attrs["challenge"] = challenge
         return attrs

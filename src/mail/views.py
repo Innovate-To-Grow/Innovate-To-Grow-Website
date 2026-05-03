@@ -27,6 +27,9 @@ from .services.unsubscribe_token import (
 
 logger = logging.getLogger(__name__)
 
+UNSUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired unsubscribe link."
+RESUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired resubscribe link."
+
 
 class MagicLoginView(APIView):
     """Exchange a campaign login token for JWT credentials."""
@@ -69,8 +72,9 @@ class OneClickUnsubscribeView(APIView):
         """Validate *token*, opt the member out, and return the member or an error string."""
         try:
             member = get_member_from_oneclick_token(token)
-        except ValueError as exc:
-            return str(exc)
+        except ValueError:
+            logger.info("One-click unsubscribe token rejected")
+            return UNSUBSCRIBE_LINK_INVALID_MESSAGE
 
         primary = member.get_primary_contact_email()
         if primary and primary.subscribe:
@@ -108,8 +112,13 @@ class ResubscribeView(APIView):
     def post(self, request, token):
         try:
             member = get_member_from_resubscribe_token(token)
-        except ValueError as exc:
-            return HttpResponse(_render_resubscribe_page(error=str(exc)), status=400, content_type="text/html")
+        except ValueError:
+            logger.info("Resubscribe token rejected")
+            return HttpResponse(
+                _render_resubscribe_page(error=RESUBSCRIBE_LINK_INVALID_MESSAGE),
+                status=400,
+                content_type="text/html",
+            )
 
         primary = member.get_primary_contact_email()
         if primary and not primary.subscribe:
@@ -168,8 +177,8 @@ class SesEventWebhookView(APIView):
 
         try:
             verify_sns_message(envelope, allowed_topic_arns=allowed)
-        except SnsVerificationError as exc:
-            logger.warning("SNS signature rejected: %s", exc)
+        except SnsVerificationError:
+            logger.warning("SNS signature rejected", exc_info=True)
             return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -178,7 +187,7 @@ class SesEventWebhookView(APIView):
             # Return 200 anyway — AWS retries repeatedly on 5xx and will
             # saturate this endpoint on a permanent decoding bug. The
             # failure is logged; operators can replay from the SNS DLQ.
-            logger.exception("SES event processing failed")
+            logger.warning("SES event processing failed", exc_info=True)
             return Response({"detail": "ok, but logged"}, status=status.HTTP_200_OK)
 
         return Response({"detail": "ok"}, status=status.HTTP_200_OK)

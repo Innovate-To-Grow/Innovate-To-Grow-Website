@@ -2,6 +2,7 @@
 
 import json
 import logging
+from html import escape
 
 from django.contrib import admin, messages
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -15,6 +16,10 @@ from ..services.inbox import INBOX_LIMIT_CHOICES, InboxError, fetch_inbox_messag
 from ..services.scam_detector import analyze_email
 
 logger = logging.getLogger(__name__)
+
+INBOX_CONFIG_ERROR_MESSAGE = "Inbox is not available. Check Gmail import configuration."
+INBOX_UNEXPECTED_ERROR_MESSAGE = "Inbox could not be loaded. Check server logs."
+INBOX_MESSAGE_ERROR_MESSAGE = "Message could not be loaded. Check server logs."
 
 
 def get_inbox_urls():
@@ -64,6 +69,12 @@ def _parse_limit(request) -> int:
     return value if value in INBOX_LIMIT_CHOICES else INBOX_DEFAULT_LIMIT
 
 
+def _message_body_html(msg: dict) -> str:
+    if msg["html"]:
+        return msg["html"]
+    return f"<pre>{escape(msg['text'] or '')}</pre>"
+
+
 def inbox_list_view(request):
     """Render the inbox shell instantly; JS fetches content asynchronously."""
     context = {
@@ -85,10 +96,11 @@ def inbox_fragment_view(request):
     try:
         inbox_messages = list_inbox_messages(limit=limit, force_refresh=force_refresh)
     except InboxError as exc:
-        error_message = str(exc)
-    except Exception as exc:
+        logger.warning("Inbox fragment could not be loaded: %s", exc)
+        error_message = INBOX_CONFIG_ERROR_MESSAGE
+    except Exception:
         logger.exception("Unexpected error refreshing inbox fragment.")
-        error_message = f"Unexpected error: {exc}"
+        error_message = INBOX_UNEXPECTED_ERROR_MESSAGE
 
     html = render_to_string(
         "admin/mail/inbox/_inbox_full_body.html",
@@ -111,14 +123,15 @@ def inbox_detail_view(request, uid):
     try:
         msg = fetch_inbox_message(uid)
     except InboxError as exc:
-        messages.error(request, str(exc))
+        logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
+        messages.error(request, INBOX_MESSAGE_ERROR_MESSAGE)
         return HttpResponseRedirect(list_url)
-    except Exception as exc:
+    except Exception:
         logger.exception("Unexpected error fetching message uid=%s.", uid)
-        messages.error(request, f"Unexpected error: {exc}")
+        messages.error(request, INBOX_MESSAGE_ERROR_MESSAGE)
         return HttpResponseRedirect(list_url)
 
-    body_html = msg["html"] or f"<pre>{msg['text']}</pre>"
+    body_html = _message_body_html(msg)
     scam_analysis = analyze_email(msg)
 
     context = {
@@ -138,18 +151,19 @@ def inbox_detail_fragment_view(request, uid):
     try:
         msg = fetch_inbox_message(uid)
     except InboxError as exc:
+        logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
         return HttpResponse(
-            f'<div class="p-4 text-sm text-red-600">{exc}</div>',
+            f'<div class="p-4 text-sm text-red-600">{INBOX_MESSAGE_ERROR_MESSAGE}</div>',
             status=200,
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Unexpected error fetching message uid=%s.", uid)
         return HttpResponse(
-            f'<div class="p-4 text-sm text-red-600">Unexpected error: {exc}</div>',
+            f'<div class="p-4 text-sm text-red-600">{INBOX_MESSAGE_ERROR_MESSAGE}</div>',
             status=200,
         )
 
-    body_html = msg["html"] or f"<pre>{msg['text']}</pre>"
+    body_html = _message_body_html(msg)
     scam_analysis = analyze_email(msg)
 
     html = render_to_string(
@@ -174,7 +188,8 @@ def inbox_reply_view(request, uid):
     try:
         msg = fetch_inbox_message(uid)
     except InboxError as exc:
-        messages.error(request, str(exc))
+        logger.warning("Inbox message uid=%s could not be loaded for reply: %s", uid, exc)
+        messages.error(request, INBOX_MESSAGE_ERROR_MESSAGE)
         return HttpResponseRedirect(list_url)
 
     email_config = EmailServiceConfig.load()
@@ -240,9 +255,13 @@ def inbox_reply_fragment_view(request, uid):
     try:
         msg = fetch_inbox_message(uid)
     except (InboxError, Exception) as exc:
+        if isinstance(exc, InboxError):
+            logger.warning("Inbox message uid=%s could not be loaded for reply fragment: %s", uid, exc)
+        else:
+            logger.exception("Unexpected error loading reply fragment uid=%s.", uid)
         if request.method == "POST":
-            return JsonResponse({"ok": False, "error": str(exc)})
-        return HttpResponse(f'<div class="p-4 text-sm text-red-600">{exc}</div>')
+            return JsonResponse({"ok": False, "error": INBOX_MESSAGE_ERROR_MESSAGE})
+        return HttpResponse(f'<div class="p-4 text-sm text-red-600">{INBOX_MESSAGE_ERROR_MESSAGE}</div>')
 
     email_config = EmailServiceConfig.load()
     original_subject = msg["subject"]

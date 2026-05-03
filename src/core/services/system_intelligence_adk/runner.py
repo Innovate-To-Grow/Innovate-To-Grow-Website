@@ -11,7 +11,14 @@ from core.models import AWSCredentialConfig
 from core.models.base.system_intelligence import SystemIntelligenceConfig
 from core.services.system_intelligence_tools import get_adk_tools
 
-from .constants import AGENT_NAME, APP_NAME, APPROVAL_INSTRUCTION, MAX_LLM_CALLS, PLAN_MODE_INSTRUCTION
+from .constants import (
+    AGENT_NAME,
+    APP_NAME,
+    APPROVAL_INSTRUCTION,
+    MAX_LLM_CALLS,
+    PLAN_MODE_INSTRUCTION,
+    READ_ONLY_ADK_WEB_INSTRUCTION,
+)
 from .events import StreamState, normalize_adk_event
 from .history import seed_session_history
 from .litellm import build_lite_llm_model
@@ -65,6 +72,8 @@ def build_runner(
     model_id: str,
     include_temperature=True,
     mode: str = "normal",
+    include_writes: bool = True,
+    include_exports: bool = True,
 ):
     session_service = InMemorySessionService()
     agent = build_agent(
@@ -73,6 +82,8 @@ def build_runner(
         model_id=model_id,
         include_temperature=include_temperature,
         mode=mode,
+        include_writes=include_writes,
+        include_exports=include_exports,
     )
     return Runner(agent=agent, app_name=APP_NAME, session_service=session_service), session_service
 
@@ -84,15 +95,19 @@ def build_agent(
     model_id: str,
     include_temperature=True,
     mode: str = "normal",
+    include_writes: bool = True,
+    include_exports: bool = True,
 ):
     model = build_lite_llm_model(aws_config=aws_config, model_id=model_id)
     generate_content_config = build_generate_content_config(chat_config, include_temperature=include_temperature)
-    instruction = (chat_config.system_prompt or "") + APPROVAL_INSTRUCTION
+    instruction = (chat_config.system_prompt or "") + (
+        APPROVAL_INSTRUCTION if include_writes else READ_ONLY_ADK_WEB_INSTRUCTION
+    )
+    tool_include_writes = include_writes
     if mode == PLAN_MODE:
         instruction += PLAN_MODE_INSTRUCTION
-        tools = get_adk_tools(include_writes=False)
-    else:
-        tools = get_adk_tools()
+        tool_include_writes = False
+    tools = get_adk_tools(include_writes=tool_include_writes, include_exports=include_exports)
     return LlmAgent(
         name=AGENT_NAME,
         description="Administrative assistant for Innovate to Grow operational data.",

@@ -15,8 +15,21 @@ _UNSUBSCRIBE_LOGIN_SALT = "email-unsubscribe-login"
 _UNSUBSCRIBE_LOGIN_MAX_AGE = 60 * 60 * 24 * 90  # 90 days
 
 
+class UnsubscribeLoginTokenError(ValueError):
+    """Base error for unsubscribe login token validation."""
+
+
+class UnsubscribeLoginTokenAlreadyUsed(UnsubscribeLoginTokenError):
+    """Raised when an unsubscribe login token has already been consumed."""
+
+
+class UnsubscribeLoginTokenInvalid(UnsubscribeLoginTokenError):
+    """Raised when an unsubscribe login token is invalid or not usable."""
+
+
 def _consume_one_time_token(token: str) -> bool:
     token_digest = sha256(token.encode("utf-8")).hexdigest()
+    # Replay protection depends on cache retention; a cache flush or eviction resets this used-token marker.
     return cache.add(f"authn:unsubscribe-login-used:{token_digest}", True, timeout=_UNSUBSCRIBE_LOGIN_MAX_AGE)
 
 
@@ -33,15 +46,15 @@ def get_member_from_unsubscribe_token(token: str):
         payload = signing.loads(token, salt=_UNSUBSCRIBE_LOGIN_SALT, max_age=_UNSUBSCRIBE_LOGIN_MAX_AGE)
         member_id = payload["member_id"]
     except signing.BadSignature as exc:
-        raise ValueError("Invalid or expired login link.") from exc
+        raise UnsubscribeLoginTokenInvalid("Invalid or expired login link.") from exc
 
     try:
         member = Member.objects.get(pk=member_id, is_active=True)
     except Member.DoesNotExist as exc:
-        raise ValueError("Account not found.") from exc
+        raise UnsubscribeLoginTokenInvalid("Account not found.") from exc
 
     if not _consume_one_time_token(token):
-        raise ValueError("This login link has already been used.")
+        raise UnsubscribeLoginTokenAlreadyUsed("This login link has already been used.")
 
     return member
 

@@ -29,7 +29,7 @@ def sync_name_to_account(member, first_name: str, last_name: str) -> None:
         changed = True
     if changed:
         member.save(update_fields=["first_name", "last_name", "updated_at"])
-        logger.info("Synced name to member %s: %s %s", member.pk, first_name, last_name)
+        logger.info("Synced registration name fields to member %s.", member.pk)
 
 
 def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:
@@ -53,9 +53,9 @@ def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", ve
             if verified and not existing.verified:
                 existing.verified = True
                 existing.save(update_fields=["verified", "updated_at"])
-                logger.info("Marked phone %s as verified for member %s.", national, member.pk)
+                logger.info("Marked registration phone as verified for member %s.", member.pk)
         else:
-            logger.info("Phone %s belongs to another member, not syncing to member %s.", national, member.pk)
+            logger.info("Registration phone belongs to another member; not syncing to member %s.", member.pk)
         return
 
     try:
@@ -65,6 +65,6 @@ def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", ve
             region=region,
             verified=verified,
         )
-        logger.info("Synced phone %s to member %s account.", national, member.pk)
+        logger.info("Synced registration phone to member %s account.", member.pk)
     except IntegrityError:
-        logger.warning("Phone %s was claimed concurrently, skipping sync for member %s.", national, member.pk)
+        logger.warning("Registration phone was claimed concurrently; skipping sync for member %s.", member.pk)

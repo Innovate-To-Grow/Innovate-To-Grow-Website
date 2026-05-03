@@ -91,7 +91,25 @@ class VerifySnsMessageTests(TestCase):
         sns_signature._CERT_CACHE.clear()  # would otherwise short-circuit the host check
         with self.assertRaises(SnsVerificationError) as ctx:
             verify_sns_message(envelope)
-        self.assertIn("host not allowed", str(ctx.exception))
+        self.assertIn("host is not allowed", str(ctx.exception))
+
+    def test_amazonaws_lookalike_cert_url_is_rejected(self):
+        envelope = _base_notification()
+        envelope["SigningCertURL"] = "https://sns.us-west-2.amazonaws.com.evil.example/cert.pem"
+        envelope = _sign_envelope(envelope, self.key)
+        sns_signature._CERT_CACHE.clear()
+        with self.assertRaises(SnsVerificationError) as ctx:
+            verify_sns_message(envelope)
+        self.assertIn("host is not allowed", str(ctx.exception))
+
+    def test_cert_url_with_credentials_is_rejected(self):
+        envelope = _base_notification()
+        envelope["SigningCertURL"] = "https://user:pass@sns.us-west-2.amazonaws.com/cert.pem"
+        envelope = _sign_envelope(envelope, self.key)
+        sns_signature._CERT_CACHE.clear()
+        with self.assertRaises(SnsVerificationError) as ctx:
+            verify_sns_message(envelope)
+        self.assertIn("credentials", str(ctx.exception))
 
     def test_http_cert_url_is_rejected(self):
         envelope = _base_notification()

@@ -32,7 +32,9 @@ RUN pip install "pip==26.0.1" \
 FROM python:3.11-slim AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Runtime libs only. libpq5 is the runtime sibling of libpq-dev used by
 # psycopg2. Version pinned (DL3008); refresh alongside libpq-dev above.
@@ -47,6 +49,11 @@ WORKDIR /app
 # Copy installed Python packages from the builder.
 COPY --from=builder /install /usr/local
 
+# Refresh packaging tools in the runtime image as well. The base image ships
+# older pip/setuptools/wheel under /usr/local, and Trivy scans those packages
+# even though application dependencies are copied from the builder.
+RUN pip install "pip==26.0.1" "setuptools==82.0.1" "wheel==0.46.3"
+
 # Copy the application source.
 COPY --chown=app:app . .
 
@@ -56,6 +63,8 @@ COPY --chown=app:app . .
 # is made executable in the same layer so there's one RUN for app setup.
 ENV DJANGO_SETTINGS_MODULE=core.settings.dev
 RUN chmod +x entrypoint.sh \
+ && mkdir -p data \
+ && chown app:app data \
  && python manage.py collectstatic --noinput
 
 USER app

@@ -52,6 +52,83 @@
     popup = overlay = null;
   }
 
+  function icon(name, size) {
+    var span = document.createElement('span');
+    span.className = 'material-symbols-outlined';
+    span.style.fontSize = size || '16px';
+    span.textContent = name;
+    return span;
+  }
+
+  function popupHeader(ip) {
+    var header = document.createElement('div');
+    header.className = 'ip-geo-popup-header';
+    var title = document.createElement('strong');
+    title.textContent = ip;
+    var button = document.createElement('button');
+    button.className = 'ip-geo-popup-close';
+    button.appendChild(icon('close', '18px'));
+    button.addEventListener('click', close);
+    header.append(title, button);
+    return header;
+  }
+
+  function popupRow(label, value) {
+    var row = document.createElement('div');
+    row.className = 'ip-geo-popup-row';
+    var labelEl = document.createElement('span');
+    labelEl.className = 'ip-geo-popup-label';
+    labelEl.textContent = label;
+    var valueEl = document.createElement('span');
+    valueEl.className = 'ip-geo-popup-value';
+    valueEl.textContent = value;
+    row.append(labelEl, valueEl);
+    return row;
+  }
+
+  function setPopupLoading(ip) {
+    popup.replaceChildren(popupHeader(ip));
+    var loading = document.createElement('div');
+    loading.className = 'ip-geo-popup-loading';
+    var spinner = icon('progress_activity', '16px');
+    spinner.style.animation = 'spin 1s linear infinite';
+    loading.append(spinner, document.createTextNode(' Loading...'));
+    popup.appendChild(loading);
+  }
+
+  function setPopupError(message) {
+    var loading = popup && popup.querySelector('.ip-geo-popup-loading');
+    if (!loading) return;
+    var error = document.createElement('span');
+    error.style.color = 'var(--color-red-600,#dc2626)';
+    error.textContent = message;
+    loading.replaceChildren(error);
+  }
+
+  function renderGeoDetails(ip, d) {
+    if (!popup) return;
+    var loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
+    var children = [popupHeader(ip)];
+    if (loc) children.push(popupRow('Location', loc));
+    if (d.zip) children.push(popupRow('ZIP', String(d.zip)));
+    if (d.isp) children.push(popupRow('ISP', String(d.isp)));
+    if (d.org) children.push(popupRow('Org', String(d.org)));
+
+    var lat = Number(d.lat);
+    var lon = Number(d.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      children.push(popupRow('Coords', lat + ', ' + lon));
+      var link = document.createElement('a');
+      link.className = 'ip-geo-popup-map-link';
+      link.href = 'https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lon);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.append(icon('map', '16px'), document.createTextNode(' View on Map'));
+      children.push(link);
+    }
+    popup.replaceChildren.apply(popup, children);
+  }
+
   function show(ip, rect) {
     close();
     overlay = document.createElement('div');
@@ -61,8 +138,7 @@
 
     popup = document.createElement('div');
     popup.className = 'ip-geo-popup';
-    popup.innerHTML = '<div class="ip-geo-popup-header"><strong>' + ip + '</strong><button class="ip-geo-popup-close"><span class="material-symbols-outlined" style="font-size:18px">close</span></button></div><div class="ip-geo-popup-loading"><span class="material-symbols-outlined" style="font-size:16px;animation:spin 1s linear infinite">progress_activity</span> Loading...</div>';
-    popup.querySelector('.ip-geo-popup-close').addEventListener('click', close);
+    setPopupLoading(ip);
 
     var top = rect.bottom + 6, left = rect.left;
     if (top + 280 > window.innerHeight) top = rect.top - 280;
@@ -76,21 +152,10 @@
       .then(function(d) {
         if (!popup) return;
         if (d.error) {
-          popup.querySelector('.ip-geo-popup-loading').innerHTML = '<span style="color:var(--color-red-600,#dc2626)">' + d.error + '</span>';
+          setPopupError(d.error);
           return;
         }
-        var loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
-        var html = '<div class="ip-geo-popup-header"><strong>' + ip + '</strong><button class="ip-geo-popup-close"><span class="material-symbols-outlined" style="font-size:18px">close</span></button></div>';
-        if (loc) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">Location</span><span class="ip-geo-popup-value">' + loc + '</span></div>';
-        if (d.zip) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">ZIP</span><span class="ip-geo-popup-value">' + d.zip + '</span></div>';
-        if (d.isp) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">ISP</span><span class="ip-geo-popup-value">' + d.isp + '</span></div>';
-        if (d.org) html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">Org</span><span class="ip-geo-popup-value">' + d.org + '</span></div>';
-        if (d.lat != null && d.lon != null) {
-          html += '<div class="ip-geo-popup-row"><span class="ip-geo-popup-label">Coords</span><span class="ip-geo-popup-value">' + d.lat + ', ' + d.lon + '</span></div>';
-          html += '<a class="ip-geo-popup-map-link" href="https://www.google.com/maps?q=' + d.lat + ',' + d.lon + '" target="_blank" rel="noopener"><span class="material-symbols-outlined" style="font-size:16px">map</span> View on Map</a>';
-        }
-        popup.innerHTML = html;
-        popup.querySelector('.ip-geo-popup-close').addEventListener('click', close);
+        renderGeoDetails(ip, d);
       })
       .catch(function() {
         if (popup) popup.querySelector('.ip-geo-popup-loading').textContent = 'Network error';

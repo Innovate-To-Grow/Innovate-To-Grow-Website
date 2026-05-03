@@ -146,7 +146,7 @@ def issue_email_challenge(
             link_source=link_source,
         )
     except Exception as exc:
-        logger.exception("Failed to send verification email to %s", challenge.target_email)
+        logger.exception("Failed to send verification email")
         # Delete the challenge so it does not count toward the hourly
         # rate-limit or resend-cooldown on subsequent retry attempts.
         with transaction.atomic():

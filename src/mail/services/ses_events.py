@@ -16,12 +16,13 @@ import logging
 import urllib.request
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from core.security import SecurityValidationError, validate_aws_sns_https_url
 from mail.models import RecipientLog
 
 logger = logging.getLogger(__name__)
@@ -39,27 +40,33 @@ def process_sns_envelope(envelope: dict[str, Any]) -> None:
     if msg_type == "SubscriptionConfirmation":
         _handle_subscription_confirmation(envelope)
     elif msg_type == "UnsubscribeConfirmation":
-        logger.info("SNS topic unsubscribed: %s", envelope.get("TopicArn"))
+        logger.info("SNS topic unsubscribed")
     elif msg_type == "Notification":
         _handle_notification(envelope)
     else:
-        raise SesEventError(f"Unknown SNS Type: {msg_type!r}")
+        raise SesEventError("Unknown SNS Type")
 
 
 def _handle_subscription_confirmation(envelope: dict[str, Any]) -> None:
     subscribe_url = envelope.get("SubscribeURL", "")
+    try:
+        subscribe_url = validate_aws_sns_https_url(subscribe_url)
+    except SecurityValidationError:
+        logger.warning("Skipping SNS subscription confirmation with invalid URL")
+        return
+
     parsed = urlparse(subscribe_url)
-    host = parsed.hostname or ""
-    if parsed.scheme != "https" or not host.endswith(".amazonaws.com"):
-        logger.warning("Skipping SubscribeURL — unexpected host: %s", subscribe_url)
+    action = (parse_qs(parsed.query).get("Action") or [""])[0]
+    if action != "ConfirmSubscription":
+        logger.warning("Skipping SNS subscription confirmation with unexpected action")
         return
 
     try:
         with urllib.request.urlopen(subscribe_url, timeout=5) as resp:  # noqa: S310  # https + allowlist
             resp.read()
-        logger.info("SNS subscription confirmed for topic %s", envelope.get("TopicArn"))
+        logger.info("SNS subscription confirmed")
     except Exception:
-        logger.exception("Failed to auto-confirm SNS subscription")
+        logger.warning("Failed to auto-confirm SNS subscription")
 
 
 def _handle_notification(envelope: dict[str, Any]) -> None:
@@ -67,13 +74,13 @@ def _handle_notification(envelope: dict[str, Any]) -> None:
     try:
         ses_event = json.loads(envelope.get("Message", ""))
     except json.JSONDecodeError as exc:
-        raise SesEventError(f"SNS Message is not JSON: {exc}") from exc
+        raise SesEventError("SNS Message is not JSON") from exc
 
     event_type = ses_event.get("eventType") or ses_event.get("notificationType") or ""
     mail_block = ses_event.get("mail", {})
     ses_message_id = mail_block.get("messageId", "")
     if not ses_message_id:
-        logger.info("SES event without messageId; skipping (type=%s)", event_type)
+        logger.info("SES event without messageId; skipping")
         return
 
     handler = _EVENT_HANDLERS.get(event_type, _unknown)
@@ -202,11 +209,7 @@ def _noop_with_idempotency(log: RecipientLog, ses_event: dict, sns_message_id: s
 
 
 def _unknown(log: RecipientLog, ses_event: dict, sns_message_id: str) -> None:
-    logger.info(
-        "Unknown SES event type for %s: %s",
-        log.ses_message_id,
-        ses_event.get("eventType") or ses_event.get("notificationType"),
-    )
+    logger.info("Unknown SES event type; skipping")
 
 
 _EVENT_HANDLERS = {

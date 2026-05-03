@@ -104,6 +104,8 @@ class ResendTicketEmailViewTest(TestCase):
     def test_resend_email_failure_returns_503(self, mock_send):
         self.client.force_authenticate(self.member)
         url = f"/event/my-tickets/{self.registration.pk}/resend-email/"
-        response = self.client.post(url)
+        with patch("event.views.registration.logger.warning") as warning:
+            response = self.client.post(url)
         self.assertEqual(response.status_code, 503)
         self.assertIn("Failed to send", response.data["detail"])
+        warning.assert_called_once_with("Failed to send ticket email for registration", exc_info=True)

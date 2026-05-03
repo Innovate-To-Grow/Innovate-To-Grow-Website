@@ -50,18 +50,18 @@
   </script>
 
   {# CodeMirror for HTML body editing (only activated when Email format = HTML). #}
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/theme/material-darker.min.css' %}">
+  <script src="{% static 'vendor/codemirror/5.65.16/codemirror.min.js' %}"></script>
+  <script src="{% static 'vendor/codemirror/5.65.16/mode/xml/xml.min.js' %}"></script>
+  <script src="{% static 'vendor/codemirror/5.65.16/mode/javascript/javascript.min.js' %}"></script>
+  <script src="{% static 'vendor/codemirror/5.65.16/mode/css/css.min.js' %}"></script>
+  <script src="{% static 'vendor/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js' %}"></script>
 
   {# js-beautify (HTML + embedded JS/CSS) — used by body_html_editor.js “Format code”. #}
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"></script>
+  <script src="{% static 'vendor/js-beautify/1.15.1/beautify.min.js' %}"></script>
+  <script src="{% static 'vendor/js-beautify/1.15.1/beautify-css.min.js' %}"></script>
+  <script src="{% static 'vendor/js-beautify/1.15.1/beautify-html.min.js' %}"></script>
 
   <style>
     /* Keep CodeMirror visually consistent with Unfold fields */
@@ -155,4 +155,3 @@
     }
   </style>
 {% endblock %}
-

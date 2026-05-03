@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from core.services.system_intelligence_adk.constants import WRITE_TOOL_NAMES
+from core.services.system_intelligence_adk.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
 from core.services.system_intelligence_tools.registry import get_adk_tools
 
 READ_TOOL_NAMES = frozenset(
@@ -51,16 +51,6 @@ READ_TOOL_NAMES = frozenset(
     }
 )
 
-EXPORT_TOOL_NAMES = frozenset(
-    {
-        "export_records_to_excel",
-        "export_members_to_excel",
-        "export_events_to_excel",
-        "export_projects_to_excel",
-        "export_news_to_excel",
-    }
-)
-
 
 class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
     def test_every_registered_tool_is_classified(self):
@@ -87,3 +77,8 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
     def test_plan_mode_strips_all_write_tools(self):
         plan_tools = {tool.__name__ for tool in get_adk_tools(include_writes=False)}
         self.assertFalse(plan_tools & WRITE_TOOL_NAMES)
+
+    def test_adk_web_read_only_mode_strips_export_tools(self):
+        read_only_tools = {tool.__name__ for tool in get_adk_tools(include_writes=False, include_exports=False)}
+        self.assertFalse(read_only_tools & WRITE_TOOL_NAMES)
+        self.assertFalse(read_only_tools & EXPORT_TOOL_NAMES)

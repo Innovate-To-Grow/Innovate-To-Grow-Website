@@ -100,6 +100,35 @@ class EmailCodeAuthRegisterTests(APITestCase):
             ContactEmail.objects.get(email_address="pending@example.com").subscribe,
         )
 
+    def test_register_claims_unowned_subscriber_contact(self, _mock_code, _mock_send):
+        ContactEmail.objects.create(
+            email_address="subscriber@example.com",
+            email_type="other",
+            subscribe=True,
+        )
+
+        response = self.client.post(
+            "/authn/register/",
+            {
+                "email": "subscriber@example.com",
+                "password": self.password,
+                "password_confirm": self.password,
+                "first_name": "Sub",
+                "last_name": "Scriber",
+                "organization": "Individual",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(ContactEmail.objects.filter(email_address="subscriber@example.com").count(), 1)
+        contact = ContactEmail.objects.get(email_address="subscriber@example.com")
+        self.assertIsNotNone(contact.member)
+        self.assertEqual(contact.email_type, "primary")
+        self.assertFalse(contact.verified)
+        self.assertTrue(contact.subscribe)
+        self.assertEqual(contact.member.first_name, "Sub")
+
     def test_register_rejects_existing_contact_email(self, _mock_code, _mock_send):
         response = self.client.post(
             "/authn/register/",

@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from authn.security_messages import VERIFICATION_THROTTLED
 from authn.services import AuthChallengeDeliveryError, AuthChallengeThrottled
 
 
@@ -40,7 +41,7 @@ def build_auth_success_payload(
 
 def challenge_error_response(exc: Exception) -> Response:
     if isinstance(exc, AuthChallengeThrottled):
-        return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, AuthChallengeDeliveryError):
         return Response({"detail": "Failed to send verification email."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     raise exc

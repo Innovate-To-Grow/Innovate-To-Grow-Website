@@ -53,6 +53,14 @@ class EventRegistrationCreateViewTest(TestCase):
         response = self._post()
         self.assertEqual(response.status_code, 201)
 
+    @patch("event.services.ticket_mail.send_ticket_email", side_effect=Exception("SMTP error"))
+    def test_ticket_email_failure_logs_stack_trace_and_still_registers(self, _mock_send):
+        with patch("event.views.registration.logger.warning") as warning:
+            response = self._post()
+
+        self.assertEqual(response.status_code, 201)
+        warning.assert_called_once_with("Failed to send initial ticket email", exc_info=True)
+
     def test_response_contains_registration_payload(self):
         response = self._post()
         self.assertIn("id", response.data)

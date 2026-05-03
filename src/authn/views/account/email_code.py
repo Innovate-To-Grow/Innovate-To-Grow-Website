@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from authn.security_messages import VERIFICATION_LINK_INVALID
 from authn.serializers import (
     AccountEmailsSerializer,
     ChangePasswordCodeConfirmSerializer,
@@ -74,8 +75,8 @@ class ChangePasswordCodeConfirmView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             payload = serializer.save()
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except AuthChallengeInvalid:
+            return Response({"detail": VERIFICATION_LINK_INVALID}, status=status.HTTP_400_BAD_REQUEST)
         return Response(payload, status=status.HTTP_200_OK)
 
 
@@ -121,6 +122,6 @@ class DeleteAccountCodeConfirmView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             payload = serializer.save()
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except AuthChallengeInvalid:
+            return Response({"detail": VERIFICATION_LINK_INVALID}, status=status.HTTP_400_BAD_REQUEST)
         return Response(payload, status=status.HTTP_200_OK)

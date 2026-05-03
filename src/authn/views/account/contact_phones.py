@@ -8,6 +8,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authn.models import ContactPhone
+from authn.security_messages import (
+    CONTACT_PHONE_ADD_FAILED,
+    CONTACT_PHONE_SEND_FAILED,
+    PHONE_VERIFICATION_DELIVERY_FAILED,
+    VERIFICATION_INVALID,
+    VERIFICATION_THROTTLED,
+)
 from authn.serializers import (
     ContactPhoneCreateSerializer,
     ContactPhoneSerializer,
@@ -49,8 +56,8 @@ class ContactPhoneListCreateView(APIView):
                 region=serializer.validated_data["region"],
                 subscribe=serializer.validated_data["subscribe"],
             )
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except AuthChallengeInvalid:
+            return Response({"detail": CONTACT_PHONE_ADD_FAILED}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(ContactPhoneSerializer(contact_phone).data, status=status.HTTP_201_CREATED)
 
@@ -93,12 +100,12 @@ class ContactPhoneRequestVerificationView(APIView):
     def post(self, request, pk):
         try:
             result = request_phone_verification(member=request.user, contact_phone_id=pk)
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except PhoneVerificationThrottled as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-        except PhoneVerificationDeliveryError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except AuthChallengeInvalid:
+            return Response({"detail": CONTACT_PHONE_SEND_FAILED}, status=status.HTTP_400_BAD_REQUEST)
+        except PhoneVerificationThrottled:
+            return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        except PhoneVerificationDeliveryError:
+            return Response({"detail": PHONE_VERIFICATION_DELIVERY_FAILED}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         return Response(result, status=status.HTTP_202_ACCEPTED)
 
@@ -121,11 +128,11 @@ class ContactPhoneVerifyCodeView(APIView):
                 contact_phone_id=pk,
                 code=serializer.validated_data["code"],
             )
-        except AuthChallengeInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except PhoneVerificationInvalid as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except PhoneVerificationThrottled as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        except AuthChallengeInvalid:
+            return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
+        except PhoneVerificationInvalid:
+            return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
+        except PhoneVerificationThrottled:
+            return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         return Response(ContactPhoneSerializer(updated).data, status=status.HTTP_200_OK)

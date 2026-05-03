@@ -7,6 +7,7 @@ __pycache__
 .env
 .env.example
 db.sqlite3
+data/
 media/
 staticfiles/
 *.log

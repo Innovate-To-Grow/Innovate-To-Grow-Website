@@ -4,7 +4,7 @@
 {% block extrastyle %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="{% static 'vendor/font-awesome/4.7.0/css/font-awesome.min.css' %}">
 {% endblock %}
 
 {% block after_field_sets %}
@@ -93,6 +93,7 @@
 
 {% block after_related_objects %}
     {{ block.super }}
+    {% static 'vendor/font-awesome/4.7.0/css/font-awesome.min.css' as font_awesome_css %}
 
     <!-- Preview -->
     <div class="preview-wrapper footer-preview-wrapper">
@@ -102,10 +103,11 @@
     </div>
 
     <script>
+        window.ITG_FONT_AWESOME_CSS = "{{ font_awesome_css|escapejs }}";
         window.APP_ROUTES = {{ app_routes_json|safe }};
         window.CMS_ROUTES = {{ cms_routes_json|safe }};
     </script>
-    <script src="{% static 'layout/js/footer/editor/sections.js' %}?v=1"></script>
+    <script src="{% static 'layout/js/footer/editor/sections.js' %}?v=2"></script>
     <script src="{% static 'layout/js/footer/editor/preview.js' %}?v=1"></script>
     <script src="{% static 'layout/js/footer/footer-editor.js' %}?v=3"></script>
 {% endblock %}

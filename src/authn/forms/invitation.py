@@ -2,14 +2,15 @@
 Form for accepting an admin invitation and creating a staff/superuser account.
 """
 
-import re
-
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 
 Member = get_user_model()
 
-HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+def _contains_markup_delimiter(value: str) -> bool:
+    # Intentionally stricter than tag matching: names should not contain markup delimiters.
+    return "<" in value or ">" in value
 
 
 class AcceptInvitationForm(forms.Form):
@@ -75,13 +76,13 @@ class AcceptInvitationForm(forms.Form):
 
     def clean_first_name(self):
         value = self.cleaned_data["first_name"]
-        if HTML_TAG_RE.search(value):
+        if _contains_markup_delimiter(value):
             raise forms.ValidationError("HTML tags are not allowed.")
         return value
 
     def clean_last_name(self):
         value = self.cleaned_data["last_name"]
-        if HTML_TAG_RE.search(value):
+        if _contains_markup_delimiter(value):
             raise forms.ValidationError("HTML tags are not allowed.")
         return value
 

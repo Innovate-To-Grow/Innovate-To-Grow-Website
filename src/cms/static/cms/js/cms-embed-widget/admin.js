@@ -6,6 +6,17 @@
     var cfg = ns.config;
     var fields = ns.fields;
 
+    function buildEmbedUrl(frontend, slug) {
+        try {
+            var base = new URL(String(frontend || ''), window.location.origin);
+            if (base.protocol !== 'http:' && base.protocol !== 'https:') return '';
+            if (base.username || base.password) return '';
+            return new URL('/_embed/' + encodeURIComponent(slug), base).toString();
+        } catch (err) {
+            return '';
+        }
+    }
+
     ns.renderSnippet = function () {
         var slug = String((fields.slug() || {}).value || '').trim().toLowerCase();
         var frontend = cfg.frontendUrl || '';
@@ -52,7 +63,16 @@
             return;
         }
 
-        var embedUrl = frontend + '/_embed/' + slug;
+        var embedUrl = buildEmbedUrl(frontend, slug);
+        if (!embedUrl) {
+            fields.url().textContent = '(invalid FRONTEND_URL)';
+            fields.link().style.display = 'none';
+            fields.snippet().value = '';
+            ns.hidePreview();
+            hint.textContent = 'FRONTEND_URL must be an http(s) URL.';
+            hint.style.display = '';
+            return;
+        }
         fields.url().textContent = embedUrl;
         var link = fields.link();
         link.href = embedUrl;

@@ -1,21 +1,21 @@
-from unittest.mock import patch
-
+from django.test import override_settings
 from django.urls import reverse
 
 from .base import SystemIntelligenceAdminBase
 
 
 class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
-    def test_chat_page_renders_context_usage_in_input_bar(self):
-        with patch(
-            "core.services.bedrock.get_available_models",
-            return_value=[("Anthropic", [(self.aws_config.default_model_id, "Claude")])],
-        ):
-            response = self.client.get(reverse("admin:core_system_intelligence"))
+    @override_settings(ROOT_URLCONF="core.urls")
+    def test_main_page_embeds_adk_web_shell(self):
+        response = self.client.get(reverse("admin:core_system_intelligence"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="si-context-usage"')
-        self.assertContains(response, 'id="si-context-usage-detail"')
-        self.assertContains(response, "0% full · 0 / 200k")
-        self.assertNotContains(response, 'id="si-context-tooltip"')
-        self.assertContains(response, 'data-context-window="200000"')
+        self.assertContains(response, 'title="System Intelligence ADK Web"')
+        self.assertContains(response, 'src="/admin/core/system-intelligence/adk/dev-ui/"')
+        self.assertNotContains(response, "Legacy approval chat")
+        self.assertNotContains(response, 'id="si-root"')
+
+    def test_legacy_page_is_removed(self):
+        response = self.client.get("/admin/core/system-intelligence/legacy/")
+
+        self.assertEqual(response.status_code, 404)

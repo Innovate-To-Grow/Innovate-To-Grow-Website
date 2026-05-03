@@ -5,6 +5,7 @@ from django.core.cache import cache
 from rest_framework.test import APITestCase
 
 from authn.models import ContactEmail, EmailAuthChallenge
+from authn.services import claim_unclaimed_contact_email
 
 Member = get_user_model()
 
@@ -212,6 +213,61 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(verify_response.data["next_step"], "complete_profile")
         self.assertTrue(verify_response.data["requires_profile_completion"])
         self.assertIn("access", verify_response.data)
+
+    def test_unified_email_auth_claims_unowned_subscriber_contact(self, _mock_code, _mock_send):
+        ContactEmail.objects.create(
+            email_address="subscriber@example.com",
+            email_type="other",
+            subscribe=True,
+        )
+
+        request_response = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": "subscriber@example.com", "source": "event_registration"},
+            format="json",
+        )
+
+        self.assertEqual(request_response.status_code, 202)
+        self.assertEqual(ContactEmail.objects.filter(email_address="subscriber@example.com").count(), 1)
+        contact = ContactEmail.objects.get(email_address="subscriber@example.com")
+        pending = contact.member
+        self.assertIsNotNone(pending)
+        self.assertEqual(contact.email_type, "primary")
+        self.assertFalse(contact.verified)
+        self.assertTrue(contact.subscribe)
+        self.assertFalse(pending.is_active)
+
+        verify_response = self.client.post(
+            "/authn/email-auth/verify-code/",
+            {"email": "subscriber@example.com", "code": "654321"},
+            format="json",
+        )
+
+        pending.refresh_from_db()
+        contact.refresh_from_db()
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertTrue(pending.is_active)
+        self.assertTrue(contact.verified)
+        self.assertTrue(contact.subscribe)
+
+    def test_claim_unowned_subscriber_contact_does_not_overwrite_existing_claim(self, _mock_code, _mock_send):
+        first_member = Member.objects.create_user(password="FirstPass123!", is_active=False)
+        second_member = Member.objects.create_user(password="SecondPass123!", is_active=False)
+        contact = ContactEmail.objects.create(
+            email_address="claim-race@example.com",
+            email_type="other",
+            subscribe=True,
+        )
+
+        first_claim = claim_unclaimed_contact_email(contact.email_address, member=first_member)
+        second_claim = claim_unclaimed_contact_email(contact.email_address, member=second_member)
+
+        contact.refresh_from_db()
+        self.assertIsNotNone(first_claim)
+        self.assertIsNone(second_claim)
+        self.assertEqual(contact.member_id, first_member.pk)
+        self.assertEqual(contact.email_type, "primary")
+        self.assertFalse(contact.verified)
 
     def test_unified_email_auth_reuses_pending_member(self, _mock_code, _mock_send):
         pending = Member.objects.create_user(

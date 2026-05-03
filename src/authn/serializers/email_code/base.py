@@ -7,6 +7,7 @@ import re
 from rest_framework import serializers
 
 from authn.models.security import EmailAuthChallenge
+from authn.security_messages import VERIFICATION_INVALID
 from authn.services import AuthChallengeInvalid, normalize_email, verify_email_code
 
 _CODE_RE = re.compile(r"^\d{6}$")
@@ -39,7 +40,7 @@ class BaseCodeVerifySerializer(BaseEmailSerializer):
                 code=attrs["code"],
             )
         except AuthChallengeInvalid as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from exc
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
         attrs["challenge"] = challenge
         attrs["member"] = challenge.member

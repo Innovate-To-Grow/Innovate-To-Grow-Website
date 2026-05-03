@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>System Intelligence</h1>{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  #page { height: 100vh; overflow: hidden; }
+  #main { min-height: 0; overflow: hidden; }
+  #main > .grow { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
+  #content { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; padding-bottom: 0; }
+  .si-adk-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 720px;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 12px;
+    background: #111;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+  }
+  .si-adk-frame {
+    display: block;
+    flex: 1 1 0;
+    width: 100%;
+    min-height: 0;
+    border: 0;
+    background: #111;
+  }
+  @media (max-width: 767px) {
+    #content { padding-left: 12px; padding-right: 12px; }
+    .si-adk-shell { min-height: 680px; border-radius: 8px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="si-adk-shell">
+  <iframe
+    class="si-adk-frame"
+    title="System Intelligence ADK Web"
+    src="{{ adk_web_url }}"
+    allow="clipboard-read; clipboard-write; microphone; camera"
+  ></iframe>
+</div>
+{% endblock %}
