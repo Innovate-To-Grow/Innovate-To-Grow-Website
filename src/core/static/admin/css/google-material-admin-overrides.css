@@ -1,0 +1,51 @@
+/*
+   Loaded from admin/base_site.html after Unfold's compiled stylesheet.
+   Keep override-only rules here when UNFOLD["STYLES"] loses cascade order.
+*/
+
+#changelist input.action-select,
+#changelist input.action-toggle {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-color: var(--md-sys-color-surface-container-lowest) !important;
+    background-image: none !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: 0.75rem 0.75rem !important;
+    border: 1px solid var(--md-sys-color-outline-variant) !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    display: inline-block !important;
+    height: 1rem !important;
+    margin: 0 !important;
+    min-width: 1rem !important;
+    position: relative !important;
+    vertical-align: middle;
+    width: 1rem !important;
+}
+
+#changelist input.action-select::after,
+#changelist input.action-toggle::after {
+    content: "" !important;
+    display: none !important;
+}
+
+#changelist input.action-select:checked,
+#changelist input.action-toggle:checked {
+    background-color: var(--md-sys-color-primary) !important;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12l4 4L19 6'/%3E%3C/svg%3E") !important;
+    border-color: var(--md-sys-color-primary) !important;
+}
+
+#changelist input.action-select:focus,
+#changelist input.action-toggle:focus {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent) !important;
+    outline: none !important;
+}
+
+#changelist input.action-select:disabled,
+#changelist input.action-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}

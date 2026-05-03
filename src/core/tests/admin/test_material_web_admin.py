@@ -29,6 +29,23 @@ class MaterialWebAdminEnhancerTests(TestCase):
         self.assertContains(response, "admin/js/material-web-text-field.js")
         self.assertContains(response, "md-outlined-text-field")
 
+    def test_admin_base_loads_post_core_checkbox_overrides(self):
+        config = SiteMaintenanceControl.objects.create(is_maintenance=False)
+
+        response = self.client.get(reverse("admin:core_sitemaintenancecontrol_change", args=[config.pk]))
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "admin/css/google-material-admin-overrides.css")
+        self.assertLess(
+            html.index("/static/unfold/css/styles.css"),
+            html.index("/static/admin/css/google-material-admin-overrides.css"),
+        )
+        path = finders.find("admin/css/google-material-admin-overrides.css")
+        self.assertIsNotNone(path)
+        source = Path(path).read_text()
+        self.assertIn("#changelist input.action-select:checked", source)
+
     def test_enhancer_skips_specialized_admin_widgets(self):
         source = self._enhancer_source()
 
