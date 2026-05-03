@@ -11,7 +11,7 @@ Browser (localhost:5173)
   │
   └─ /api/*, /media/*, /static/* ──→ Vite proxy ──→ Django (localhost:8000)
                                                         │
-                                                        ├─ /health/ → HealthCheckMiddleware (short-circuit)
+                                                        ├─ /livez/, /readyz/, /health/ → HealthCheckMiddleware (short-circuit)
                                                         ├─ /admin/* → Unfold admin
                                                         └─ /authn/*, /cms/*, /event/*, etc. → DRF views
                                                                                                 │
@@ -32,15 +32,16 @@ Browser
   │
   ├─ Static assets ──→ AWS Amplify (CDN) ──→ S3 (built frontend)
   │
-  └─ /api/* ──→ ALB ──→ ECS Fargate (Gunicorn)
+  └─ /api/* ──→ ALB ──→ ECS Fargate (Uvicorn)
                   │              │
-                  │              ├─ /health/ → HealthCheckMiddleware → 200 JSON
+                  │              ├─ /livez/ → HealthCheckMiddleware → 200 JSON, no DB
+                  │              ├─ /readyz/ → HealthCheckMiddleware → 200/503 JSON, checks DB
                   │              └─ DRF views → Services → PostgreSQL + Redis
                   │
                   └─ Health probes every 30s
 ```
 
-In production, the frontend is a pre-built static bundle served by Amplify/S3. API calls go through an Application Load Balancer to ECS Fargate containers running Gunicorn (4 workers, 2 threads, 120s timeout).
+In production, the frontend is a pre-built static bundle served by Amplify/S3. API calls go through an Application Load Balancer to ECS Fargate containers running Uvicorn with bounded worker and concurrency defaults.
 
 ## API request lifecycle
 
@@ -104,7 +105,7 @@ The `HealthCheckProvider` on the frontend:
 4. Polls every 10 seconds while unhealthy
 5. Reloads the page on recovery (unhealthy → healthy transition)
 
-The backend's `HealthCheckMiddleware` intercepts `/health/` before all other middleware and always returns HTTP 200 with a JSON body — this keeps ALB probes from failing during maintenance.
+The backend's `HealthCheckMiddleware` intercepts `/livez/`, `/readyz/`, and `/health/` before security/session middleware. ECS and ALB probes use `/livez/` so database saturation does not restart otherwise healthy tasks. Deploy smoke tests and monitoring use `/readyz/` to verify database connectivity. The frontend keeps using `/health/` for maintenance status.
 
 ## Auto-login flows
 

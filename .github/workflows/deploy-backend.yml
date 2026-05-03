@@ -99,7 +99,11 @@ jobs:
           DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
           DB_HOST: ${{ vars.DB_HOST }}
           DB_PORT: ${{ vars.DB_PORT }}
+          DB_CONN_MAX_AGE: ${{ vars.DB_CONN_MAX_AGE || '0' }}
+          DB_CONN_HEALTH_CHECKS: ${{ vars.DB_CONN_HEALTH_CHECKS || 'true' }}
           REDIS_URL: ${{ vars.REDIS_URL || secrets.REDIS_URL }}
+          WEB_CONCURRENCY: ${{ vars.WEB_CONCURRENCY || '2' }}
+          UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_PASSWORD: ${{ vars.DJANGO_SUPERUSER_PASSWORD || secrets.DJANGO_SUPERUSER_PASSWORD }}
@@ -166,7 +170,11 @@ jobs:
               "__DB_PASSWORD__": env_value("DB_PASSWORD"),
               "__DB_HOST__": env_value("DB_HOST"),
               "__DB_PORT__": env_value("DB_PORT", "5432"),
+              "__DB_CONN_MAX_AGE__": env_value("DB_CONN_MAX_AGE", "0"),
+              "__DB_CONN_HEALTH_CHECKS__": env_value("DB_CONN_HEALTH_CHECKS", "true"),
               "__REDIS_URL__": env_value("REDIS_URL"),
+              "__WEB_CONCURRENCY__": env_value("WEB_CONCURRENCY", "2"),
+              "__UVICORN_LIMIT_CONCURRENCY__": env_value("UVICORN_LIMIT_CONCURRENCY", "20"),
               "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
               "__CORS_ALLOWED_ORIGINS__": cors_origins,
               "__FRONTEND_URL__": frontend_url,
@@ -269,7 +277,7 @@ jobs:
             exit 1
           fi
 
-          health_url="${API_BASE_URL%/}/health/"
+          health_url="${API_BASE_URL%/}/readyz/"
           headers_file="$(mktemp)"
           headers_clean="$(mktemp)"
           body_file="$(mktemp)"
@@ -282,7 +290,7 @@ jobs:
           tr -d '\r' < "$headers_file" > "$headers_clean"
 
           if [ "$status_code" != "200" ]; then
-            echo "Health check failed with status $status_code"
+            echo "Readiness check failed with status $status_code"
             echo "Response headers:"
             cat "$headers_clean"
             echo "Response body:"
@@ -311,4 +319,4 @@ jobs:
               raise SystemExit(f"Unexpected health payload: {payload}")
           PY
 
-          echo "Health/CORS smoke check passed for $health_url"
+          echo "Readiness/CORS smoke check passed for $health_url"

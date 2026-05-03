@@ -6,7 +6,7 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 
 - [Local Development](local-development.md) — Setting up and running the project locally
 - [Environments](environments.md) — Configuration differences across dev, CI, and production
-- [Backend Deployment](backend.md) — Docker, ECS Fargate, and Gunicorn
+- [Backend Deployment](backend.md) — Docker, ECS Fargate, and Uvicorn
 - [Frontend Deployment](frontend.md) — Vite build and AWS Amplify
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
 
@@ -18,7 +18,7 @@ Engineers setting up a local development environment, deploying changes, or debu
 
 | Component | Local | CI | Production |
 |-----------|-------|-----|------------|
-| Backend | Django dev server (port 8000) | Docker build + PostgreSQL service | ECS Fargate (Gunicorn, port 8000) |
+| Backend | Django dev server (port 8000) | Docker build + PostgreSQL service | ECS Fargate (Uvicorn, port 8000) |
 | Frontend | Vite dev server (port 5173) | npm build validation | AWS Amplify (S3 + CDN) |
 | Database | SQLite | PostgreSQL 16 (GH Actions service) | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis (file fallback) |

@@ -10,7 +10,9 @@ URL organization for the Django backend, defined in `src/core/urls.py` with dele
 | `/robots.txt` | `robots_txt` | Search engine directives |
 | `/admin/login/` | `AdminLoginView` | Custom admin login (overrides default) |
 | `/admin/` | Django admin | Unfold-themed admin interface |
-| `/health/` | `HealthCheckMiddleware` | ALB health probe (intercepted before URL routing) |
+| `/livez/` | `HealthCheckMiddleware` | Liveness probe without DB access (intercepted before URL routing) |
+| `/readyz/` | `HealthCheckMiddleware` | Readiness probe with DB access (intercepted before URL routing) |
+| `/health/` | `HealthCheckMiddleware` | Frontend-compatible health and maintenance status |
 | `/maintenance/bypass/` | `MaintenanceBypassView` | Maintenance mode bypass with password |
 | `/layout/` | `LayoutAPIView` | Combined menu + footer data for frontend |
 | `/authn/` | `authn.urls` | Authentication and member endpoints |

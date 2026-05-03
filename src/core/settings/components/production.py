@@ -19,6 +19,30 @@ def _get_required_env(name: str) -> str:
     return value
 
 
+def _get_int_env(name: str, default: int) -> int:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} must be an integer.") from exc
+    if parsed < 0:
+        raise ImproperlyConfigured(f"{name} must be greater than or equal to 0.")
+    return parsed
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    value = os.environ.get(name, "").strip().lower()
+    if not value:
+        return default
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ImproperlyConfigured(f"{name} must be a boolean value.")
+
+
 # ---------------------------------------------------------------------------
 # Core
 # ---------------------------------------------------------------------------
@@ -38,7 +62,8 @@ DATABASES = {
         "PASSWORD": _get_required_env("DB_PASSWORD"),
         "HOST": _get_required_env("DB_HOST"),
         "PORT": os.environ.get("DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,  # Persistent connections (seconds)
+        "CONN_MAX_AGE": _get_int_env("DB_CONN_MAX_AGE", 0),
+        "CONN_HEALTH_CHECKS": _get_bool_env("DB_CONN_HEALTH_CHECKS", True),
         "OPTIONS": {"sslmode": "require"},
     }
 }

@@ -9,56 +9,59 @@ logger = logging.getLogger(__name__)
 
 
 class HealthCheckMiddleware:
-    """Health check endpoint that bypasses ALLOWED_HOSTS for ALB probes.
+    """Health endpoints that bypass ALLOWED_HOSTS for ALB probes.
 
-    This middleware intercepts `/health/` before Django's SecurityMiddleware
-    runs, which means the request's Host header is not validated against
-    ALLOWED_HOSTS. This is intentional so AWS ALB/ELB probes (which use the
-    instance's private IP as the Host header) succeed. The response only
-    exposes DB connectivity and the `maintenance_message` string from
-    SiteMaintenanceControl — both of which are non-sensitive.
+    `/livez/` checks only that the app process can respond. `/readyz/` and
+    `/health/` check database readiness. `/health/` keeps the frontend-facing
+    maintenance payload for backward compatibility.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path == "/health/":
-            # Import here to avoid circular imports
-            from django.db import DatabaseError, connection
-
-            from .models import SiteMaintenanceControl
-
-            health_status = {
-                "status": "ok",
-                "database": "ok",
-                "maintenance": False,
-                "maintenance_message": "",
-            }
-
-            # Check database connectivity
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT 1")
-                    cursor.fetchone()
-            except (DatabaseError, OSError) as e:
-                health_status["status"] = "error"
-                health_status["database"] = str(e)
-                return HttpResponse(json.dumps(health_status), content_type="application/json", status=503)
-
-            # Check maintenance mode (return 200 so ALB health checks still pass)
-            try:
-                config = SiteMaintenanceControl.load()
-                if config.is_maintenance:
-                    health_status["status"] = "maintenance"
-                    health_status["maintenance"] = True
-                    health_status["maintenance_message"] = config.message
-            except (DatabaseError, OSError):
-                # Log maintenance configuration lookup errors but do not fail the health check.
-                logger.exception("Failed to load SiteMaintenanceControl configuration during health check")
-
-            return HttpResponse(json.dumps(health_status), content_type="application/json")
+        if request.path == "/livez/":
+            return self._json_response({"status": "ok"})
+        if request.path in {"/readyz/", "/health/"}:
+            return self._readiness_response()
         return self.get_response(request)
+
+    def _readiness_response(self):
+        # Import here to avoid circular imports.
+        from django.db import DatabaseError, connection
+
+        from .models import SiteMaintenanceControl
+
+        health_status = {
+            "status": "ok",
+            "database": "ok",
+            "maintenance": False,
+            "maintenance_message": "",
+        }
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except (DatabaseError, OSError) as e:
+            health_status["status"] = "error"
+            health_status["database"] = str(e)
+            return self._json_response(health_status, status=503)
+
+        try:
+            config = SiteMaintenanceControl.load()
+            if config.is_maintenance:
+                health_status["status"] = "maintenance"
+                health_status["maintenance"] = True
+                health_status["maintenance_message"] = config.message
+        except (DatabaseError, OSError):
+            logger.exception("Failed to load SiteMaintenanceControl configuration during health check")
+
+        return self._json_response(health_status)
+
+    @staticmethod
+    def _json_response(payload, *, status=200):
+        return HttpResponse(json.dumps(payload), content_type="application/json", status=status)
 
 
 class ContentSecurityPolicyMiddleware:

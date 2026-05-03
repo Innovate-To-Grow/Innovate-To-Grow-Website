@@ -22,6 +22,6 @@ echo "Starting Uvicorn..."
 exec uvicorn core.asgi:application \
   --host 0.0.0.0 \
   --port 8000 \
-  --workers "${WEB_CONCURRENCY:-4}" \
+  --workers "${WEB_CONCURRENCY:-2}" \
   --timeout-graceful-shutdown "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}" \
-  --limit-concurrency "${UVICORN_LIMIT_CONCURRENCY:-100}"
+  --limit-concurrency "${UVICORN_LIMIT_CONCURRENCY:-20}"

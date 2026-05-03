@@ -50,8 +50,24 @@
           "value": "__DB_PORT__"
         },
         {
+          "name": "DB_CONN_MAX_AGE",
+          "value": "__DB_CONN_MAX_AGE__"
+        },
+        {
+          "name": "DB_CONN_HEALTH_CHECKS",
+          "value": "__DB_CONN_HEALTH_CHECKS__"
+        },
+        {
           "name": "REDIS_URL",
           "value": "__REDIS_URL__"
+        },
+        {
+          "name": "WEB_CONCURRENCY",
+          "value": "__WEB_CONCURRENCY__"
+        },
+        {
+          "name": "UVICORN_LIMIT_CONCURRENCY",
+          "value": "__UVICORN_LIMIT_CONCURRENCY__"
         },
         {
           "name": "CSRF_TRUSTED_ORIGINS",
@@ -128,7 +144,7 @@
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')\""],
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/livez/')\""],
         "interval": 30,
         "timeout": 5,
         "retries": 3,

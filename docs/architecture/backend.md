@@ -88,7 +88,7 @@ Defined in `src/core/settings/components/framework/django.py`:
 
 1. `GZipMiddleware` — Response compression
 2. `CorsMiddleware` — Cross-origin headers (django-cors-headers)
-3. `HealthCheckMiddleware` — Intercepts `/health/` before all other processing
+3. `HealthCheckMiddleware` — Intercepts `/livez/`, `/readyz/`, and `/health/` before all other processing
 4. `SecurityMiddleware` — HSTS, SSL redirect (prod only)
 5. `SessionMiddleware` — Session handling
 6. `CommonMiddleware` — URL normalization
@@ -99,13 +99,15 @@ Defined in `src/core/settings/components/framework/django.py`:
 
 ### HealthCheckMiddleware
 
-`src/core/middleware.py` — intercepts `GET /health/` and returns JSON:
+`src/core/middleware.py` provides three health endpoints:
 
-```json
-{"status": "ok", "database": true, "maintenance": false}
-```
+| Path | Purpose | Database check |
+|------|---------|----------------|
+| `/livez/` | Container and ALB liveness | No |
+| `/readyz/` | Deployment and monitoring readiness | Yes |
+| `/health/` | Frontend-compatible health and maintenance status | Yes |
 
-Always returns HTTP 200 (for ALB health probes). The `database` and `maintenance` fields reflect actual state.
+`/readyz/` and `/health/` return HTTP 503 when database connectivity fails. `/livez/` avoids DB access so database saturation does not trigger ECS task replacement loops.
 
 ## Singleton configuration models
 

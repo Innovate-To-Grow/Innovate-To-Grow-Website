@@ -15,7 +15,7 @@ The `SiteMaintenanceControl` model (`src/core/models/web.py`) controls maintenan
 
 ### Behavior
 
-- The `/health/` endpoint returns `{"maintenance": true}` in its response (still HTTP 200 for ALB)
+- The `/health/` endpoint returns `{"maintenance": true}` in its response
 - The frontend `HealthCheckProvider` detects this and shows the maintenance overlay
 - The bypass password allows specific users to access the site during maintenance via `/maintenance/bypass/`
 
@@ -123,10 +123,10 @@ Available through the Member admin:
 
 `GET /health/` returns:
 ```json
-{"status": "ok", "database": true, "maintenance": false}
+{"status": "ok", "database": "ok", "maintenance": false, "maintenance_message": ""}
 ```
 
-Monitor the `database` field to detect connectivity issues.
+Use `/livez/` for container liveness and `/readyz/` for database-backed readiness monitoring.
 
 ### Sync logs
 

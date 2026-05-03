@@ -1,17 +1,21 @@
 """Tests for HealthCheckMiddleware responses and maintenance status."""
 
 import json
+from unittest.mock import patch
 
+from django.db import DatabaseError
 from django.test import TestCase
 
 from core.models import SiteMaintenanceControl
 
 
 class HealthCheckMiddlewareTest(TestCase):
-    URL = "/health/"
+    HEALTH_URL = "/health/"
+    LIVEZ_URL = "/livez/"
+    READYZ_URL = "/readyz/"
 
     def test_returns_200_and_ok_status(self):
-        response = self.client.get(self.URL)
+        response = self.client.get(self.HEALTH_URL)
         self.assertEqual(response.status_code, 200)
 
         data = json.loads(response.content)
@@ -20,7 +24,7 @@ class HealthCheckMiddlewareTest(TestCase):
         self.assertFalse(data["maintenance"])
 
     def test_returns_json_content_type(self):
-        response = self.client.get(self.URL)
+        response = self.client.get(self.HEALTH_URL)
         self.assertEqual(response["Content-Type"], "application/json")
 
     def test_maintenance_mode_returns_200_with_maintenance_status(self):
@@ -29,7 +33,7 @@ class HealthCheckMiddlewareTest(TestCase):
             is_maintenance=True,
             message="Scheduled downtime",
         )
-        response = self.client.get(self.URL)
+        response = self.client.get(self.HEALTH_URL)
 
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
@@ -39,11 +43,45 @@ class HealthCheckMiddlewareTest(TestCase):
 
     def test_maintenance_off_returns_ok_status(self):
         SiteMaintenanceControl.objects.create(pk=1, is_maintenance=False)
-        response = self.client.get(self.URL)
+        response = self.client.get(self.HEALTH_URL)
 
         data = json.loads(response.content)
         self.assertEqual(data["status"], "ok")
         self.assertFalse(data["maintenance"])
+
+    def test_livez_does_not_require_database(self):
+        with patch("django.db.connection.cursor", side_effect=DatabaseError("db down")):
+            response = self.client.get(self.LIVEZ_URL)
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data, {"status": "ok"})
+
+    def test_readyz_returns_200_and_ok_status(self):
+        response = self.client.get(self.READYZ_URL)
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["database"], "ok")
+
+    def test_readyz_returns_503_when_database_unavailable(self):
+        with patch("django.db.connection.cursor", side_effect=DatabaseError("db down")):
+            response = self.client.get(self.READYZ_URL)
+
+        self.assertEqual(response.status_code, 503)
+        data = json.loads(response.content)
+        self.assertEqual(data["status"], "error")
+        self.assertIn("db down", data["database"])
+
+    def test_health_returns_503_when_database_unavailable(self):
+        with patch("django.db.connection.cursor", side_effect=DatabaseError("db down")):
+            response = self.client.get(self.HEALTH_URL)
+
+        self.assertEqual(response.status_code, 503)
+        data = json.loads(response.content)
+        self.assertEqual(data["status"], "error")
+        self.assertIn("db down", data["database"])
 
     def test_non_health_path_passes_through(self):
         response = self.client.get("/")

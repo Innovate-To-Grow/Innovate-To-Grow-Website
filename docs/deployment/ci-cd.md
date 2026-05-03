@@ -68,7 +68,7 @@ Uses SQLite (dev settings) for fast test execution.
 3. Render ECS task definition from `aws/task-definition.json` template
 4. Deploy to ECS via `aws-actions/amazon-ecs-deploy-task-definition@v2`
 5. Run smoke tests:
-   - Health endpoint check (`/health/`)
+   - Readiness endpoint check (`/readyz/`)
    - CORS header validation
    - JSON response validation
 
@@ -90,7 +90,7 @@ Both deploy workflows use AWS credentials stored in GitHub Secrets.
 ## Monitoring CI
 
 - All workflow runs visible at the repository's Actions tab
-- Deploy smoke tests catch basic runtime issues (health check, CORS)
+- Deploy smoke tests catch basic runtime issues (readiness, CORS)
 - CloudWatch logs capture runtime errors after deployment
 
 ## Adding to the pipeline

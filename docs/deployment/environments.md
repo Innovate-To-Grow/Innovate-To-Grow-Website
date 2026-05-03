@@ -35,6 +35,15 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | `DB_PASSWORD` | Database password | Yes |
 | `DB_HOST` | Database host | Yes |
 | `DB_PORT` | Database port | No (defaults to 5432) |
+| `DB_CONN_MAX_AGE` | Django persistent DB connection lifetime in seconds | No (defaults to 0) |
+| `DB_CONN_HEALTH_CHECKS` | Enable Django persistent connection health checks | No (defaults to true) |
+
+### Backend runtime
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
+| `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
 
 ### AWS / Storage
 

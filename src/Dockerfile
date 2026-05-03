@@ -71,9 +71,9 @@ USER app
 
 EXPOSE 8000
 
-# Matches the ECS task-definition health probe so local `docker run` shows
-# the same readiness signal.
+# Matches the ECS task-definition liveness probe so local `docker run` shows
+# the same container health signal.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/livez/')" || exit 1
 
 ENTRYPOINT ["./entrypoint.sh"]
