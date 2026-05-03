@@ -11,6 +11,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 
 from mail.models import EmailCampaign, RecipientLog
+from mail.services.ses_events import SesEventError
 from mail.services.sns_signature import SnsVerificationError
 
 SES_MSG_ID = "ses-msg-webhook-test"
@@ -60,14 +61,29 @@ class SesEventWebhookViewTests(TestCase):
 
     @patch("mail.views.verify_sns_message", side_effect=SnsVerificationError("bad sig"))
     def test_bad_signature_returns_403(self, mock_verify):
-        response = self.client.post(
-            "/mail/ses/events/",
-            data=json.dumps(_bounce_envelope()),
-            content_type="application/json",
-        )
+        with patch("mail.views.logger.warning") as warning:
+            response = self.client.post(
+                "/mail/ses/events/",
+                data=json.dumps(_bounce_envelope()),
+                content_type="application/json",
+            )
         self.assertEqual(response.status_code, 403)
+        warning.assert_called_once_with("SNS signature rejected", exc_info=True)
         self.log.refresh_from_db()
         self.assertEqual(self.log.status, "sent")
+
+    @patch("mail.views.process_sns_envelope", side_effect=SesEventError("bad event"))
+    @patch("mail.views.verify_sns_message")
+    def test_processing_error_logs_stack_trace_and_returns_200(self, _mock_verify, _mock_process):
+        with patch("mail.views.logger.warning") as warning:
+            response = self.client.post(
+                "/mail/ses/events/",
+                data=json.dumps(_bounce_envelope()),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        warning.assert_called_once_with("SES event processing failed", exc_info=True)
 
     @patch("mail.views.verify_sns_message")
     def test_non_dict_body_returns_400(self, mock_verify):

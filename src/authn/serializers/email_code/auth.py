@@ -62,6 +62,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
         if claim_unclaimed_contact_email(email, member=member) is None:
             pending_member = get_pending_registration_member(email)
             if pending_member is not None:
+                # Member.delete() is a soft delete; these race-lost pending rows are intentionally retained.
                 member.delete()
                 return pending_member
             try:
@@ -74,6 +75,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
                 )
             except IntegrityError as exc:
                 pending_member = get_pending_registration_member(email)
+                # Member.delete() is a soft delete; these race-lost pending rows are intentionally retained.
                 member.delete()
                 if pending_member is not None:
                     return pending_member

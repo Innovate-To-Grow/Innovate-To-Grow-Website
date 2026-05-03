@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from authn.forms.invitation import AcceptInvitationForm
 from authn.models import ContactEmail
 from authn.models.members.admin_invitation import AdminInvitation
 
@@ -118,3 +119,18 @@ class AcceptInvitationViewTests(TestCase):
         # Should re-render form, not create member
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Member.objects.count(), member_count_before)
+
+    def test_name_fields_reject_lone_markup_delimiters(self):
+        form = AcceptInvitationForm(
+            data={
+                "email": "invite@example.com",
+                "first_name": "Less < Than",
+                "last_name": "Greater > Than",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("HTML tags are not allowed.", form.errors["first_name"])
+        self.assertIn("HTML tags are not allowed.", form.errors["last_name"])

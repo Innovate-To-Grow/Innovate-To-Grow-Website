@@ -4,6 +4,7 @@ import json
 from django.test import SimpleTestCase
 
 from core.admin.system_intelligence.adk_web import AdminADKWebAuthMiddleware
+from core.admin.system_intelligence.adk_web.auth import _rewrite_user_path
 from core.services.system_intelligence_adk.constants import APP_NAME
 
 from .adk_web_helpers import RecorderApp, invoke_http, invoke_websocket
@@ -33,6 +34,13 @@ class AdminADKWebAuthMiddlewareTests(SimpleTestCase):
 
         self.assertEqual(messages[0]["status"], 204)
         self.assertEqual(recorder.scope["path"], f"/apps/{APP_NAME}/users/admin-42/sessions")
+
+    def test_user_path_rewrite_treats_replacement_backslashes_literally(self):
+        path = f"/apps/{APP_NAME}/users/original/sessions"
+
+        rewritten = _rewrite_user_path(path, r"admin-\1")
+
+        self.assertEqual(rewritten, f"/apps/{APP_NAME}/users/admin-\\1/sessions")
 
     def test_staff_user_rewrites_run_sse_body_user_id(self):
         recorder = RecorderApp()

@@ -15,23 +15,27 @@ class PhoneVerificationViewsTest(TestCase):
 
     @patch("authn.services.sms.start_phone_verification", side_effect=RuntimeError("provider down"))
     def test_send_phone_code_returns_generic_service_error(self, _mock_start):
-        response = self.client.post(
-            "/event/send-phone-code/",
-            {"phone": "5551234567", "region": "1-US"},
-            format="json",
-        )
+        with patch("event.views.registration.logger.warning") as warning:
+            response = self.client.post(
+                "/event/send-phone-code/",
+                {"phone": "5551234567", "region": "1-US"},
+                format="json",
+            )
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.data["detail"], "Failed to send verification code. Please try again later.")
+        warning.assert_called_once_with("Failed to send phone verification SMS", exc_info=True)
 
     @patch("authn.services.sms.check_phone_verification", side_effect=RuntimeError("provider down"))
     def test_verify_phone_code_returns_generic_service_error(self, _mock_check):
-        response = self.client.post(
-            "/event/verify-phone-code/",
-            {"phone": "+15551234567", "code": "123456"},
-            format="json",
-        )
+        with patch("event.views.registration.logger.warning") as warning:
+            response = self.client.post(
+                "/event/verify-phone-code/",
+                {"phone": "+15551234567", "code": "123456"},
+                format="json",
+            )
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.data["detail"], "Verification service is unavailable. Please try again later.")
+        warning.assert_called_once_with("Phone verification failed", exc_info=True)
 
     @patch("event.services.ticket_mail.send_ticket_email")
     @patch("authn.services.sms.check_phone_verification", return_value="approved")

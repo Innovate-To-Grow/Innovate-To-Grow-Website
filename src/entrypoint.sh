@@ -17,4 +17,11 @@ if [ ! -d "staticfiles" ] || [ -z "$(ls -A staticfiles 2>/dev/null)" ]; then
 fi
 
 echo "Starting Uvicorn..."
-exec uvicorn core.asgi:application --host 0.0.0.0 --port 8000 --workers "${WEB_CONCURRENCY:-4}" --timeout-graceful-shutdown "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}"
+# Uvicorn's concurrency cap provides backpressure; hard per-request termination
+# remains an ALB/deployment timeout concern.
+exec uvicorn core.asgi:application \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --workers "${WEB_CONCURRENCY:-4}" \
+  --timeout-graceful-shutdown "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}" \
+  --limit-concurrency "${UVICORN_LIMIT_CONCURRENCY:-100}"

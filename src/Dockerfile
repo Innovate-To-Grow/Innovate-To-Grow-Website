@@ -63,6 +63,8 @@ COPY --chown=app:app . .
 # is made executable in the same layer so there's one RUN for app setup.
 ENV DJANGO_SETTINGS_MODULE=core.settings.dev
 RUN chmod +x entrypoint.sh \
+ && mkdir -p data \
+ && chown app:app data \
  && python manage.py collectstatic --noinput
 
 USER app

@@ -257,7 +257,7 @@ class EventRegistrationCreateView(APIView):
 
             send_ticket_email(registration)
         except Exception:
-            logger.warning("Failed to send initial ticket email")
+            logger.warning("Failed to send initial ticket email", exc_info=True)
 
         registration.refresh_from_db()
         return Response(build_registration_payload(registration, request=request), status=status.HTTP_201_CREATED)
@@ -299,13 +299,13 @@ class SendPhoneCodeView(APIView):
         except PhoneVerificationInvalid:
             return Response({"detail": "Invalid phone number."}, status=status.HTTP_400_BAD_REQUEST)
         except PhoneVerificationDeliveryError:
-            logger.warning("Failed to send phone verification SMS")
+            logger.warning("Failed to send phone verification SMS", exc_info=True)
             return Response(
                 {"detail": "Failed to send verification code. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception:
-            logger.warning("Failed to send phone verification SMS")
+            logger.warning("Failed to send phone verification SMS", exc_info=True)
             return Response(
                 {"detail": "Failed to send verification code. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -342,7 +342,7 @@ class VerifyPhoneCodeView(APIView):
         except PhoneVerificationInvalid:
             return Response({"detail": "Invalid or expired verification code."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
-            logger.warning("Phone verification failed")
+            logger.warning("Phone verification failed", exc_info=True)
             return Response(
                 {"detail": "Verification service is unavailable. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -370,7 +370,7 @@ class ResendTicketEmailView(APIView):
 
             send_ticket_email(registration)
         except Exception:
-            logger.warning("Failed to send ticket email for registration")
+            logger.warning("Failed to send ticket email for registration", exc_info=True)
             return Response(
                 {"detail": "Failed to send email. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,

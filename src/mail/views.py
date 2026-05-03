@@ -178,7 +178,7 @@ class SesEventWebhookView(APIView):
         try:
             verify_sns_message(envelope, allowed_topic_arns=allowed)
         except SnsVerificationError:
-            logger.warning("SNS signature rejected")
+            logger.warning("SNS signature rejected", exc_info=True)
             return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -187,7 +187,7 @@ class SesEventWebhookView(APIView):
             # Return 200 anyway — AWS retries repeatedly on 5xx and will
             # saturate this endpoint on a permanent decoding bug. The
             # failure is logged; operators can replay from the SNS DLQ.
-            logger.warning("SES event processing failed")
+            logger.warning("SES event processing failed", exc_info=True)
             return Response({"detail": "ok, but logged"}, status=status.HTTP_200_OK)
 
         return Response({"detail": "ok"}, status=status.HTTP_200_OK)

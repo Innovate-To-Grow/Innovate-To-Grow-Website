@@ -111,7 +111,7 @@ def _rewrite_scope_user_id(scope, adk_user_id: str):
 
 
 def _rewrite_user_path(path: str, adk_user_id: str) -> str:
-    return _USER_PATH_RE.sub(rf"\1{adk_user_id}\3", path)
+    return _USER_PATH_RE.sub(lambda match: match.group(1) + adk_user_id + match.group(3), path)
 
 
 def _rewrite_query_user_id(query_string: bytes, adk_user_id: str) -> bytes:

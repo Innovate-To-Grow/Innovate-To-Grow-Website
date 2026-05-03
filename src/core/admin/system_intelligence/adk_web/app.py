@@ -1,7 +1,9 @@
+import fcntl
 import json
 import mimetypes
 import os
 import shutil
+from contextlib import contextmanager
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -19,6 +21,7 @@ from .constants import (
 from .loader import SystemIntelligenceAgentLoader
 
 _BROWSER_ASSETS_STAMP_FILENAME = ".browser-assets.stamp.json"
+_BROWSER_ASSETS_LOCK_FILENAME = ".browser-assets.lock"
 
 
 def get_system_intelligence_adk_asgi_application():
@@ -27,7 +30,7 @@ def get_system_intelligence_adk_asgi_application():
     from google.adk.cli import fast_api as adk_fast_api
     from google.adk.cli.fast_api import get_fast_api_app
 
-    runtime_dir = Path(settings.MEDIA_ROOT) / SYSTEM_INTELLIGENCE_ADK_RUNTIME_DIRNAME
+    runtime_dir = _get_runtime_dir()
     runtime_dir.mkdir(parents=True, exist_ok=True)
     browser_assets_dir = _prepare_browser_assets(runtime_dir, adk_fast_api.__file__)
 
@@ -41,7 +44,7 @@ def get_system_intelligence_adk_asgi_application():
         use_local_storage=True,
         web=False,
         url_prefix=SYSTEM_INTELLIGENCE_ADK_PREFIX,
-        allow_origins=None,
+        allow_origins=_adk_allow_origins(),
         auto_create_session=False,
     )
 
@@ -100,6 +103,15 @@ def get_protected_system_intelligence_adk_asgi_application():
     return AdminADKWebAuthMiddleware(get_system_intelligence_adk_asgi_application())
 
 
+def _get_runtime_dir() -> Path:
+    return Path(settings.BASE_DIR) / "data" / SYSTEM_INTELLIGENCE_ADK_RUNTIME_DIRNAME
+
+
+def _adk_allow_origins() -> list[str]:
+    # Empty means ADK emits no CORS headers while keeping its same-origin OriginCheck middleware.
+    return []
+
+
 def _prepare_browser_assets(runtime_dir: Path, fast_api_file: str) -> Path:
     source_dir = Path(fast_api_file).resolve().parent / "browser"
     target_dir = runtime_dir / "browser"
@@ -107,17 +119,30 @@ def _prepare_browser_assets(runtime_dir: Path, fast_api_file: str) -> Path:
     stamp_file = target_dir / _BROWSER_ASSETS_STAMP_FILENAME
     runtime_config = _browser_runtime_config()
     stamp = _browser_assets_stamp(source_dir, runtime_config)
-    if (
-        target_dir.exists()
-        and _json_file_matches(runtime_config_path, runtime_config)
-        and _json_file_matches(stamp_file, stamp)
-    ):
-        return target_dir
+    with _browser_assets_lock(runtime_dir):
+        if (
+            target_dir.exists()
+            and _json_file_matches(runtime_config_path, runtime_config)
+            and _json_file_matches(stamp_file, stamp)
+        ):
+            return target_dir
 
-    shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
-    _write_json_file(runtime_config_path, runtime_config)
-    _write_json_file(stamp_file, stamp)
+        shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+        _write_json_file(runtime_config_path, runtime_config)
+        _write_json_file(stamp_file, stamp)
     return target_dir
+
+
+@contextmanager
+def _browser_assets_lock(runtime_dir: Path):
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    lock_file = runtime_dir / _BROWSER_ASSETS_LOCK_FILENAME
+    with lock_file.open("w", encoding="utf-8") as file:
+        fcntl.flock(file, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(file, fcntl.LOCK_UN)
 
 
 def _browser_runtime_config_path(browser_assets_dir: Path) -> Path:

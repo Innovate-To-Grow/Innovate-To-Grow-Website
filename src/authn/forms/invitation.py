@@ -9,6 +9,7 @@ Member = get_user_model()
 
 
 def _contains_markup_delimiter(value: str) -> bool:
+    # Intentionally stricter than tag matching: names should not contain markup delimiters.
     return "<" in value or ">" in value
 
 
