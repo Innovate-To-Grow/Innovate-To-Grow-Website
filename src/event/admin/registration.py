@@ -3,7 +3,9 @@ import logging
 from django import forms
 from django.contrib import admin, messages
 from django.http import JsonResponse
-from django.urls import path
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 
 from core.admin import BaseModelAdmin
 
@@ -156,6 +158,7 @@ class EventRegistrationAdminForm(forms.ModelForm):
 @admin.register(EventRegistration)
 class EventRegistrationAdmin(BaseModelAdmin):
     form = EventRegistrationAdminForm
+    change_list_template = "admin/event/eventregistration/change_list.html"
 
     class Media:
         js = ("event/js/registration_detail_panels.js",)
@@ -188,6 +191,9 @@ class EventRegistrationAdmin(BaseModelAdmin):
 
     @admin.action(description="Resend ticket email")
     def resend_ticket_email(self, request, queryset):
+        self._send_ticket_email_batch(request, queryset)
+
+    def _send_ticket_email_batch(self, request, queryset):
         from event.services.ticket_mail import send_ticket_email
 
         sent = 0
@@ -203,13 +209,49 @@ class EventRegistrationAdmin(BaseModelAdmin):
                 )
         if sent:
             messages.success(request, f"Sent ticket email to {sent} registration(s).")
+        return sent
 
     def get_urls(self):
         custom = [
+            path(
+                "send-all-ticket-emails/",
+                self.admin_site.admin_view(self.send_all_ticket_emails_view),
+                name="event_eventregistration_send_all_ticket_emails",
+            ),
             path("member-info/<uuid:pk>/", self.admin_site.admin_view(self._member_info_view), name="reg-member-info"),
             path("event-info/<uuid:pk>/", self.admin_site.admin_view(self._event_info_view), name="reg-event-info"),
         ]
         return custom + super().get_urls()
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = {
+            **(extra_context or {}),
+            "send_all_ticket_emails_url": reverse("admin:event_eventregistration_send_all_ticket_emails"),
+        }
+        return super().changelist_view(request, extra_context)
+
+    def send_all_ticket_emails_view(self, request):
+        changelist_url = reverse("admin:event_eventregistration_changelist")
+        queryset = EventRegistration.objects.select_related("event", "ticket", "member").order_by("created_at")
+        registration_count = queryset.count()
+
+        if request.method == "POST":
+            if registration_count == 0:
+                messages.warning(request, "No event registrations found.")
+                return redirect(changelist_url)
+
+            self._send_ticket_email_batch(request, queryset)
+            return redirect(changelist_url)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Send Ticket Emails to All Registrants",
+            "changelist_url": changelist_url,
+            "registration_count": registration_count,
+            "already_sent_count": queryset.exclude(ticket_email_sent_at__isnull=True).count(),
+            "error_count": queryset.exclude(ticket_email_error="").count(),
+        }
+        return TemplateResponse(request, "admin/event/eventregistration/send_all_ticket_emails.html", context)
 
     # noinspection PyMethodMayBeStatic
     def _member_info_view(self, request, pk):

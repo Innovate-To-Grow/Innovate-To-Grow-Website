@@ -3,12 +3,13 @@ from unittest.mock import patch
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from django.urls import reverse
 
 from authn.models import ContactEmail, Member
 from event.admin.registration import EventRegistrationAdmin
 from event.models import Event, EventRegistration, Ticket
 from event.services import ScheduleSyncStats
-from event.tests.helpers import make_event, make_superuser
+from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 
 
 class EventAdminTest(TestCase):
@@ -72,6 +73,48 @@ class EventRegistrationAdminTest(TestCase):
     def test_changelist_accessible(self):
         response = self.client.get("/admin/event/eventregistration/")
         self.assertEqual(response.status_code, 200)
+
+    def test_changelist_shows_send_all_ticket_emails_button(self):
+        response = self.client.get("/admin/event/eventregistration/")
+        self.assertContains(response, "Send All Tickets")
+        self.assertContains(response, reverse("admin:event_eventregistration_send_all_ticket_emails"))
+
+    def test_send_all_ticket_emails_confirmation_page(self):
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="ticket-confirm@example.com")
+        make_registration(member, event, ticket)
+
+        response = self.client.get(reverse("admin:event_eventregistration_send_all_ticket_emails"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Send Ticket Emails to All Registrants")
+        self.assertContains(response, "You are about to send ticket emails to 1 registrant")
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    def test_send_all_ticket_emails_posts_all_registrations(self, mock_send):
+        event = make_event()
+        ticket = make_ticket(event)
+        member_one = make_member(email="ticket-one@example.com")
+        member_two = make_member(email="ticket-two@example.com")
+        registration_one = make_registration(member_one, event, ticket)
+        registration_two = make_registration(member_two, event, ticket)
+
+        response = self.client.post(reverse("admin:event_eventregistration_send_all_ticket_emails"))
+
+        self.assertRedirects(response, reverse("admin:event_eventregistration_changelist"))
+        self.assertEqual(mock_send.call_count, 2)
+        self.assertEqual(
+            {call.args[0].pk for call in mock_send.call_args_list},
+            {registration_one.pk, registration_two.pk},
+        )
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    def test_send_all_ticket_emails_empty_queryset_does_not_send(self, mock_send):
+        response = self.client.post(reverse("admin:event_eventregistration_send_all_ticket_emails"))
+
+        self.assertRedirects(response, reverse("admin:event_eventregistration_changelist"))
+        mock_send.assert_not_called()
 
     def test_has_add_permission(self):
         from django.test import RequestFactory

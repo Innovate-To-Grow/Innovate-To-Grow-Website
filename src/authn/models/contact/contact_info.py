@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -65,6 +67,14 @@ class ContactEmail(ProjectControlModel):
 
     def clean(self):
         super().clean()
+        if self.email_address:
+            self.email_address = self.email_address.strip()
+            existing = ContactEmail.objects.filter(email_address__iexact=self.email_address).exclude(pk=self.pk).first()
+            if existing:
+                if self.member_id and existing.member_id == self.member_id:
+                    raise ValidationError({"email_address": "This member already has this email address."})
+                raise ValidationError({"email_address": "This email address is already assigned to another member."})
+
         if self.email_type == "primary" and self.member_id:
             qs = ContactEmail.objects.filter(member=self.member, email_type="primary")
             if self.pk:
@@ -126,6 +136,16 @@ class ContactPhone(ProjectControlModel):
             models.Index(fields=["verified"]),
         ]
 
+    def clean(self):
+        super().clean()
+        if self.phone_number and self.region:
+            self.phone_number = self._to_national_digits(self.phone_number, self.region)
+            existing = ContactPhone.objects.filter(phone_number=self.phone_number).exclude(pk=self.pk).first()
+            if existing:
+                if self.member_id and existing.member_id == self.member_id:
+                    raise ValidationError({"phone_number": "This member already has this phone number."})
+                raise ValidationError({"phone_number": "This phone number is already assigned to another member."})
+
     def __str__(self):
         region_display = self.get_region_display_name()
         str_contact_phone = f"{self.phone_number} ({region_display})"
@@ -159,3 +179,13 @@ class ContactPhone(ProjectControlModel):
         """
         region_dict = dict(PHONE_REGION_CHOICES)
         return region_dict.get(self.region, self.region)
+
+    @staticmethod
+    def _to_national_digits(phone_number: str, region: str) -> str:
+        cleaned = re.sub(r"[\s()\-.]", "", phone_number.strip())
+        if cleaned.startswith("+"):
+            cleaned = cleaned[1:]
+        country_code = region.split("-")[0] if "-" in region else region
+        if cleaned.startswith(country_code) and len(cleaned) > len(country_code):
+            cleaned = cleaned[len(country_code) :]
+        return re.sub(r"\D", "", cleaned)

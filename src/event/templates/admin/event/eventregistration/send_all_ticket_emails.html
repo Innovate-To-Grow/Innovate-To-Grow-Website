@@ -1,0 +1,63 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:app_list' app_label='event' %}">Event</a>
+        &rsaquo; <a href="{% url 'admin:event_eventregistration_changelist' %}">Event Registrations</a>
+        &rsaquo; Send Ticket Emails
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div style="max-width: 640px">
+        <div class="mb-6 rounded-default border border-yellow-300 bg-yellow-50 p-4 dark:border-yellow-700 dark:bg-yellow-900/20">
+            <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400 !text-[22px] mt-0.5">warning</span>
+                <div>
+                    <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                        You are about to send ticket emails to {{ registration_count }} registrant{{ registration_count|pluralize }}.
+                    </p>
+                    <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+                        Emails will be delivered immediately. Registrants who already received ticket emails will receive them again.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-6 text-sm space-y-1">
+            <p><span class="text-base-400">Total registrations:</span> <strong>{{ registration_count }}</strong></p>
+            <p><span class="text-base-400">Already sent:</span> {{ already_sent_count }}</p>
+            <p><span class="text-base-400">Current send errors:</span> {{ error_count }}</p>
+        </div>
+
+        {% if registration_count > 0 %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="flex gap-3">
+                    <button type="submit"
+                            class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined !text-[18px]">send</span>
+                        Confirm &amp; Send
+                    </button>
+                    <a href="{{ changelist_url }}"
+                       class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+                        Back to Registrations
+                    </a>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-sm text-base-400 mb-4">No registrations found. Cannot send ticket emails.</p>
+            <a href="{{ changelist_url }}"
+               class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+                Back to Registrations
+            </a>
+        {% endif %}
+    </div>
+{% endblock %}

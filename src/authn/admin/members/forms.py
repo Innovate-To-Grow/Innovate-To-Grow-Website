@@ -124,7 +124,10 @@ class MemberChangeForm(UserChangeForm):
 
     def clean_profile_image(self):
         value = self.cleaned_data.get("profile_image")
-        if value is None and self.instance.pk:
+        clear_name = self.fields["profile_image"].widget.clear_checkbox_name(self.add_prefix("profile_image"))
+        if clear_name in self.data:
+            return ""
+        if value in (None, "") and self.instance.pk:
             return self.instance.profile_image
         return value
 

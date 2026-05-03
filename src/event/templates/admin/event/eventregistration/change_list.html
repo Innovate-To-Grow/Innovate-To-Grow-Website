@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    <div class="i2g-admin-object-tools">
+        <a href="{{ send_all_ticket_emails_url }}"
+           class="i2g-admin-action i2g-admin-action--primary"
+           title="Send ticket emails to all event registrations">
+            <span class="material-symbols-outlined">mail</span>
+            Send All Tickets
+        </a>
+        {{ block.super }}
+    </div>
+{% endblock %}
