@@ -158,6 +158,32 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         extra_context["show_impersonate"] = True
         return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        self._normalize_inline_uuid_none_values(request)
+        return super().changeform_view(request, object_id=object_id, form_url=form_url, extra_context=extra_context)
+
+    @staticmethod
+    def _normalize_inline_uuid_none_values(request):
+        if request.method != "POST":
+            return
+
+        inline_prefixes = ("contact_emails-", "contact_phones-")
+        uuid_suffixes = ("-id", "-member")
+        post_data = request.POST
+        original_mutable = getattr(post_data, "_mutable", None)
+        if original_mutable is not None:
+            post_data._mutable = True
+        try:
+            for key, values in list(post_data.lists()):
+                if not key.startswith(inline_prefixes) or not key.endswith(uuid_suffixes):
+                    continue
+                normalized_values = ["" if value == "None" else value for value in values]
+                if normalized_values != values:
+                    post_data.setlist(key, normalized_values)
+        finally:
+            if original_mutable is not None:
+                post_data._mutable = original_mutable
+
     def import_excel_view(self, request):
         return import_excel_view(self, request)
 
