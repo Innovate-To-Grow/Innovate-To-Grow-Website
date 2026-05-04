@@ -2,10 +2,9 @@ import { cpSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { transform } from 'esbuild'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import type { PluginOption } from 'vite'
+import type { ESBuildOptions, PluginOption } from 'vite'
 
 const configDir = dirname(fileURLToPath(import.meta.url))
 const djangoVendorStaticDir = resolve(configDir, '../src/core/static/vendor')
@@ -37,32 +36,16 @@ export default defineConfig(({ mode }) => {
 
   // Backend API URL - defaults to localhost:8000 for development
   const backendUrl = env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
-  const stripProductionDebugStatements = {
-    name: 'strip-production-debug-statements',
-    async renderChunk(code: string) {
-      const result = await transform(code, {
+  const productionEsbuildOptions: ESBuildOptions | undefined = isProduction
+    ? {
         drop: ['console', 'debugger'],
         legalComments: 'none',
-        minify: true,
-        sourcemap: false,
-        target: 'es2020',
-      })
-
-      return {
-        code: result.code,
-        map: null,
       }
-    },
-  }
+    : undefined
 
   return {
-    plugins: [react(), copyDjangoVendorStaticPlugin(), ...(isProduction ? [stripProductionDebugStatements] : [])],
-    esbuild: isProduction
-      ? {
-          drop: ['console', 'debugger'],
-          legalComments: 'none',
-        }
-      : undefined,
+    plugins: [react(), copyDjangoVendorStaticPlugin()],
+    esbuild: productionEsbuildOptions,
     build: {
       sourcemap: false,
       minify: 'esbuild',
