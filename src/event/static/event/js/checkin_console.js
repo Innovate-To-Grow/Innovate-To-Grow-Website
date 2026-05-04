@@ -1,10 +1,30 @@
+/**
+ * Check-in console orchestrator.
+ * Wires together shared utilities, ticket-input logic, and camera scanning.
+ * Depends on: checkin_shared.js, checkin_ticket_input.js, checkin_camera.js.
+ */
 (function () {
-    const configElement = document.getElementById("checkin-console-config");
+    "use strict";
+
+    var ns = window.__checkinConsole;
+    if (!ns) return;
+
+    var utils = ns.utils;
+    var ticketInput = ns.ticketInput;
+    var cam = ns.camera;
+
+    var node = utils.node;
+    var clear = utils.clear;
+    var formatTime = utils.formatTime;
+    var formatClock = utils.formatClock;
+
+    var configElement = document.getElementById("checkin-console-config");
     if (!configElement) return;
 
-    const config = JSON.parse(configElement.textContent || "{}");
-    const statusPollIntervalMs = Number(config.statusPollIntervalMs) || 2000;
-    const state = {
+    var config = JSON.parse(configElement.textContent || "{}");
+    var statusPollIntervalMs = Number(config.statusPollIntervalMs) || 2000;
+
+    var state = {
         camera: null,
         cameraRunning: false,
         cameraCooling: false,
@@ -16,19 +36,19 @@
         roster: [],
         recent: [],
         filter: "",
+        suggestionActiveIndex: -1,
     };
 
-    const root = document.querySelector("[data-checkin-console]");
+    var root = document.querySelector("[data-checkin-console]");
     if (!root) return;
 
-    const elements = {
+    var elements = {
         form: root.querySelector("[data-scan-form]"),
         input: root.querySelector("[data-scan-input]"),
         scanButton: root.querySelector("[data-scan-button]"),
         result: root.querySelector("[data-scan-result]"),
         total: root.querySelector("[data-stat-total]"),
         scanned: root.querySelector("[data-stat-scanned]"),
-        stationScanned: root.querySelector("[data-stat-station]"),
         remaining: root.querySelector("[data-stat-remaining]"),
         syncStatus: root.querySelector("[data-sync-status]"),
         syncLabel: root.querySelector("[data-sync-label]"),
@@ -41,67 +61,86 @@
         cameraStop: root.querySelector("[data-camera-stop]"),
         cameraStatus: root.querySelector("[data-camera-status]"),
         cameraMessage: root.querySelector("[data-camera-message]"),
+        codeField: root.querySelector(".i2g-checkin-code-field"),
     };
 
-    function getCookie(name) {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(";").shift();
-        return "";
-    }
+    /**
+     * Show an inline attendee preview card in the result area.
+     * Used by both manual input matching and camera scanning.
+     */
+    function showAttendeePreview(attendee, code) {
+        elements.result.className = "i2g-checkin-result is-visible is-preview";
+        clear(elements.result);
 
-    function csrfToken() {
-        return getCookie("csrftoken") || config.csrfToken || "";
-    }
+        var card = document.createElement("div");
+        card.className = "i2g-checkin-preview-card";
 
-    function node(tag, className, text) {
-        const element = document.createElement(tag);
-        if (className) element.className = className;
-        if (text !== undefined) element.textContent = String(text);
-        return element;
-    }
+        var info = document.createElement("div");
+        info.className = "i2g-checkin-preview-info";
+        info.appendChild(node("strong", "", attendee.name || "Unnamed attendee"));
+        var meta = [attendee.organization, attendee.ticket_type].filter(Boolean).join(" \u00b7 ");
+        if (meta) info.appendChild(node("span", "", meta));
+        if (attendee.email) info.appendChild(node("span", "", attendee.email));
+        var codeEl = document.createElement("code");
+        codeEl.textContent = attendee.ticket_code || code;
+        info.appendChild(codeEl);
 
-    function clear(element) {
-        element.replaceChildren();
-    }
-
-    function formatTime(value) {
-        if (!value) return "";
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "";
-        return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
-    }
-
-    function formatClock(date) {
-        return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
-    }
-
-    async function requestJson(url, options) {
-        const response = await fetch(url, {
-            credentials: "same-origin",
-            ...options,
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrfToken(),
-                ...(options && options.headers ? options.headers : {}),
-            },
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "i2g-checkin-preview-action";
+        var icon = document.createElement("span");
+        icon.className = "material-symbols-outlined";
+        icon.textContent = "login";
+        btn.appendChild(icon);
+        btn.appendChild(document.createTextNode("Check In"));
+        btn.addEventListener("click", function () {
+            submitScan(attendee.ticket_code || code, "manual");
         });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok && !data.detail) {
-            data.detail = `HTTP ${response.status}`;
+
+        card.appendChild(info);
+        card.appendChild(btn);
+        elements.result.appendChild(card);
+    }
+
+    function showInputMatchPreview() {
+        var value = elements.input.value.trim();
+        if (!value || value.length < 2) {
+            hidePreview();
+            return;
         }
-        data._ok = response.ok;
-        data._statusCode = response.status;
-        return data;
+        var matches = ticketInput.getSuggestionMatches(value, state.roster);
+        if (!matches.length) {
+            hidePreview();
+            return;
+        }
+        showAttendeePreview(matches[0], value);
+    }
+
+    var cameraCtx = {
+        state: state,
+        elements: elements,
+        submitScan: submitScan,
+        showAttendeePreview: showAttendeePreview,
+    };
+
+    function requestJson(url, options) {
+        return utils.requestJson(url, options, config.csrfToken);
     }
 
     function setResult(kind, title, lines) {
-        elements.result.className = `i2g-checkin-result is-visible is-${kind}`;
+        elements.result.className = "i2g-checkin-result is-visible is-" + kind;
         clear(elements.result);
         elements.result.appendChild(node("strong", "", title));
-        (lines || []).filter(Boolean).forEach((line) => {
+        (lines || []).filter(Boolean).forEach(function (line) {
             elements.result.appendChild(node("span", "", line));
         });
+    }
+
+    function hidePreview() {
+        if (elements.result.classList.contains("is-preview")) {
+            elements.result.className = "i2g-checkin-result";
+            clear(elements.result);
+        }
     }
 
     function attendeeLine(attendee) {
@@ -110,35 +149,38 @@
     }
 
     function setSyncStatus(kind, label) {
-        elements.syncStatus.className = `i2g-checkin-sync is-${kind}`;
+        elements.syncStatus.className = "i2g-checkin-sync is-" + kind;
         elements.syncLabel.textContent = label;
     }
 
+    /* ---------- Scan submission ---------- */
+
     async function submitScan(value, source) {
-        const barcode = String(value || "").trim();
+        var barcode = String(value || "").trim();
         if (!barcode) return;
 
         elements.scanButton.disabled = true;
         try {
-            const data = await requestJson(config.scanUrl, {
+            var data = await requestJson(config.scanUrl, {
                 method: "POST",
-                body: JSON.stringify({ barcode }),
+                body: JSON.stringify({ barcode: barcode }),
             });
 
             if (data.status === "success") {
                 setResult("success", "Checked in", [
                     data.attendee && data.attendee.name,
                     attendeeLine(data.attendee),
-                    data.attendee ? `Code: ${data.attendee.ticket_code}` : "",
+                    data.attendee ? "Code: " + data.attendee.ticket_code : "",
                 ]);
                 elements.input.value = "";
+                ticketInput.hideSuggestions(elements.ticketSuggestions, elements.input, state);
                 await loadStatus({ force: true });
             } else if (data.status === "duplicate") {
-                const station = data.existing_check_in && data.existing_check_in.name;
+                var station = data.existing_check_in && data.existing_check_in.name;
                 setResult("duplicate", "Already checked in", [
                     data.attendee && data.attendee.name,
-                    station ? `Station: ${station}` : "",
-                    data.scanned_at ? `Time: ${formatTime(data.scanned_at)}` : data.detail,
+                    station ? "Station: " + station : "",
+                    data.scanned_at ? "Time: " + formatTime(data.scanned_at) : data.detail,
                 ]);
                 await loadStatus({ force: true });
             } else {
@@ -154,24 +196,25 @@
         }
     }
 
+    /* ---------- Status polling and rendering ---------- */
+
     function updateStats(data) {
         elements.total.textContent = data.total ?? "-";
         elements.scanned.textContent = data.scanned ?? "-";
-        elements.stationScanned.textContent = data.station_scanned ?? "-";
-        const remaining = Array.isArray(data.not_checked_in) ? data.not_checked_in.length : "-";
+        var remaining = Array.isArray(data.not_checked_in) ? data.not_checked_in.length : "-";
         elements.remaining.textContent = remaining;
     }
 
     function renderRoster() {
-        const term = state.filter.trim().toLowerCase();
-        const rows = term
-            ? state.roster.filter((attendee) =>
-                  [attendee.name, attendee.email, attendee.ticket_type, attendee.ticket_code]
+        var term = state.filter.trim().toLowerCase();
+        var rows = term
+            ? state.roster.filter(function (attendee) {
+                  return [attendee.name, attendee.email, attendee.ticket_type, attendee.ticket_code]
                       .filter(Boolean)
                       .join(" ")
                       .toLowerCase()
-                      .includes(term)
-              )
+                      .includes(term);
+              })
             : state.roster;
 
         clear(elements.rosterList);
@@ -180,15 +223,15 @@
             return;
         }
 
-        rows.forEach((attendee) => {
-            const row = node("div", "i2g-checkin-row");
-            const text = document.createElement("div");
+        rows.forEach(function (attendee) {
+            var row = node("div", "i2g-checkin-row");
+            var text = document.createElement("div");
             text.append(
                 node("strong", "", attendee.name || "Unnamed attendee"),
                 node("span", "", attendeeLine(attendee)),
                 node("code", "", attendee.ticket_code || "")
             );
-            const button = node("button", "", "Check In");
+            var button = node("button", "", "Check In");
             button.type = "button";
             button.dataset.ticketCode = attendee.ticket_code || "";
             row.append(text, button);
@@ -203,15 +246,15 @@
             return;
         }
 
-        state.recent.forEach((record) => {
-            const row = node("div", "i2g-checkin-row");
-            const text = document.createElement("div");
+        state.recent.forEach(function (record) {
+            var row = node("div", "i2g-checkin-row");
+            var text = document.createElement("div");
             text.append(
                 node("strong", "", record.attendee && record.attendee.name ? record.attendee.name : "Unnamed attendee"),
-                node("span", "", `${formatTime(record.scanned_at)} - ${record.attendee.ticket_type || ""}`),
+                node("span", "", formatTime(record.scanned_at) + " - " + (record.attendee.ticket_type || "")),
                 node("code", "", record.attendee.ticket_code || "")
             );
-            const button = node("button", "", "Undo");
+            var button = node("button", "", "Undo");
             button.type = "button";
             button.dataset.undoRecord = record.id || "";
             row.append(text, button);
@@ -220,7 +263,7 @@
     }
 
     async function loadStatus(options) {
-        const force = Boolean(options && options.force);
+        var force = Boolean(options && options.force);
         if (document.hidden && !force) {
             setSyncStatus("paused", "Paused");
             return null;
@@ -232,11 +275,11 @@
 
         state.statusLoading = true;
         setSyncStatus("syncing", "Syncing...");
-        state.statusPromise = (async () => {
+        state.statusPromise = (async function () {
             try {
-                const data = await requestJson(config.statusUrl, { method: "GET" });
+                var data = await requestJson(config.statusUrl, { method: "GET" });
                 if (data._ok === false) {
-                    throw new Error(data.detail || `HTTP ${data._statusCode}`);
+                    throw new Error(data.detail || "HTTP " + data._statusCode);
                 }
                 state.roster = Array.isArray(data.not_checked_in) ? data.not_checked_in : [];
                 state.recent = Array.isArray(data.recent_scans) ? data.recent_scans : [];
@@ -247,7 +290,7 @@
                 if (document.hidden) {
                     setSyncStatus("paused", "Paused");
                 } else {
-                    setSyncStatus("live", `Live sync \u00b7 updated ${formatClock(new Date())}`);
+                    setSyncStatus("live", "Live sync \u00b7 updated " + formatClock(new Date()));
                 }
                 return data;
             } catch (error) {
@@ -257,7 +300,7 @@
                 );
                 if (!state.hasLoadedStatus) {
                     elements.rosterList.replaceChildren(
-                        node("div", "i2g-checkin-empty", `Failed to load attendees: ${error.message}`)
+                        node("div", "i2g-checkin-empty", "Failed to load attendees: " + error.message)
                     );
                 }
                 return null;
@@ -276,11 +319,11 @@
     async function undoRecord(recordId) {
         if (!recordId) return;
         if (!window.confirm("Undo this check-in record?")) return;
-        const url = config.undoUrlTemplate.replace("__record_id__", recordId);
+        var url = config.undoUrlTemplate.replace("__record_id__", recordId);
         try {
-            const data = await requestJson(url, { method: "POST", body: JSON.stringify({}) });
+            var data = await requestJson(url, { method: "POST", body: JSON.stringify({}) });
             if (data.status === "removed") {
-                setResult("success", "Check-in undone", [`Record: ${recordId}`]);
+                setResult("success", "Check-in undone", ["Record: " + recordId]);
                 await loadStatus({ force: true });
             } else {
                 setResult("error", "Unable to undo", [data.detail || "Unknown error"]);
@@ -290,97 +333,7 @@
         }
     }
 
-    function setCameraStatus(text) {
-        elements.cameraStatus.textContent = text;
-    }
-
-    function setCameraMessage(kind, text) {
-        elements.cameraMessage.textContent = text || "";
-        elements.cameraMessage.className = text
-            ? `i2g-checkin-camera-message is-visible is-${kind}`
-            : "i2g-checkin-camera-message";
-    }
-
-    function cameraErrorMessage(error) {
-        const message = error && error.message ? error.message : String(error || "");
-        if (/permission|notallowed|denied/i.test(message)) return "Permission denied";
-        if (/notfound|device not found|no camera/i.test(message)) return "No camera found";
-        return message || "Camera unavailable";
-    }
-
-    async function startCamera() {
-        if (state.cameraRunning) return;
-        if (typeof Html5Qrcode !== "function" || typeof Html5QrcodeSupportedFormats === "undefined") {
-            setCameraStatus("Unavailable");
-            setCameraMessage("error", "Camera scanner unavailable");
-            elements.cameraStart.disabled = true;
-            return;
-        }
-        if (!state.camera) {
-            state.camera = new Html5Qrcode(elements.cameraReader.id || "checkin-camera-reader");
-        }
-
-        elements.cameraStart.disabled = true;
-        setCameraStatus("Starting");
-        setCameraMessage("", "");
-        try {
-            await state.camera.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 320, height: 180 },
-                    formatsToSupport: [
-                        Html5QrcodeSupportedFormats.PDF_417,
-                        Html5QrcodeSupportedFormats.QR_CODE,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                        Html5QrcodeSupportedFormats.CODE_39,
-                    ],
-                },
-                (decodedText) => {
-                    if (state.cameraCooling) return;
-                    state.cameraCooling = true;
-                    submitScan(decodedText, "camera").finally(() => {
-                        setTimeout(() => {
-                            state.cameraCooling = false;
-                        }, 1800);
-                    });
-                },
-                () => {}
-            );
-            state.cameraRunning = true;
-            elements.cameraReader.classList.add("is-running");
-            elements.cameraStop.disabled = false;
-            setCameraStatus("Running");
-        } catch (error) {
-            elements.cameraStart.disabled = false;
-            elements.cameraStop.disabled = true;
-            elements.cameraReader.classList.remove("is-running");
-            setCameraStatus("Blocked");
-            setCameraMessage("error", cameraErrorMessage(error));
-            elements.input.focus();
-        }
-    }
-
-    async function stopCamera() {
-        if (!state.camera || !state.cameraRunning) return;
-        elements.cameraStop.disabled = true;
-        let stopError = null;
-        try {
-            await state.camera.stop();
-        } catch (error) {
-            stopError = error;
-        } finally {
-            state.cameraRunning = false;
-            elements.cameraReader.classList.remove("is-running");
-            elements.cameraStart.disabled = false;
-            setCameraStatus("Idle");
-            if (stopError) {
-                setCameraMessage("error", stopError.message || "Camera stop failed");
-            } else {
-                setCameraMessage("", "");
-            }
-        }
-    }
+    /* ---------- Polling ---------- */
 
     function stopStatusPolling() {
         if (state.statusTimer) {
@@ -395,7 +348,7 @@
             setSyncStatus("paused", "Paused");
             return;
         }
-        state.statusTimer = window.setInterval(() => {
+        state.statusTimer = window.setInterval(function () {
             loadStatus();
         }, statusPollIntervalMs);
     }
@@ -410,33 +363,61 @@
         startStatusPolling();
     }
 
+    /* ---------- Event binding ---------- */
+
     function bindEvents() {
-        elements.form.addEventListener("submit", (event) => {
+        elements.form.addEventListener("submit", function (event) {
             event.preventDefault();
-            submitScan(elements.input.value, "manual");
+            var raw = elements.input.value;
+            var normalized = raw.includes("|") ? raw : ticketInput.normalizeManualTicketInput(raw);
+            if (!raw.includes("|") && normalized !== raw) {
+                elements.input.value = normalized;
+            }
+            submitScan(normalized, "manual");
         });
-        elements.rosterSearch.addEventListener("input", () => {
+        elements.rosterSearch.addEventListener("input", function () {
             state.filter = elements.rosterSearch.value || "";
             renderRoster();
         });
-        elements.rosterList.addEventListener("click", (event) => {
-            const button = event.target.closest("[data-ticket-code]");
+        elements.rosterList.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-ticket-code]");
             if (!button) return;
             submitScan(button.dataset.ticketCode || "", "manual");
         });
-        elements.recentList.addEventListener("click", (event) => {
-            const button = event.target.closest("[data-undo-record]");
+        elements.recentList.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-undo-record]");
             if (!button) return;
             undoRecord(button.dataset.undoRecord || "");
         });
-        elements.refreshButton.addEventListener("click", () => loadStatus({ force: true }));
-        elements.cameraStart.addEventListener("click", startCamera);
-        elements.cameraStop.addEventListener("click", stopCamera);
+        elements.refreshButton.addEventListener("click", function () {
+            loadStatus({ force: true });
+        });
+        elements.cameraStart.addEventListener("click", function () {
+            cam.startCamera(cameraCtx);
+        });
+        elements.cameraStop.addEventListener("click", function () {
+            cam.stopCamera(cameraCtx);
+        });
+        elements.input.addEventListener("input", function () {
+            var before = elements.input.value;
+            if (!before.includes("|")) {
+                var after = ticketInput.normalizeManualTicketInput(before);
+                if (after !== before) {
+                    elements.input.value = after;
+                }
+            }
+            showInputMatchPreview();
+        });
+        elements.input.addEventListener("focus", function () {
+            showInputMatchPreview();
+        });
         document.addEventListener("visibilitychange", handleVisibilityChange);
         window.addEventListener("pagehide", stopStatusPolling);
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    /* ---------- Init ---------- */
+
+    document.addEventListener("DOMContentLoaded", function () {
         if (!elements.cameraReader.id) {
             elements.cameraReader.id = "checkin-camera-reader";
         }

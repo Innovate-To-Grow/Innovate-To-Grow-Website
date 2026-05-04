@@ -22,9 +22,14 @@
 
 .i2g-checkin-header {
     align-items: center;
+    background: transparent;
+    background-color: transparent !important;
+    border: 0;
+    box-shadow: none;
     display: flex;
     gap: 16px;
     justify-content: space-between;
+    padding: 0;
 }
 
 .i2g-checkin-header h1 {
@@ -59,31 +64,6 @@
 
 .i2g-checkin-back .material-symbols-outlined {
     font-size: 18px;
-}
-
-.i2g-checkin-state {
-    align-items: center;
-    border-radius: 999px;
-    display: inline-flex;
-    font-size: 13px;
-    font-weight: 800;
-    gap: 6px;
-    padding: 8px 12px;
-    text-transform: uppercase;
-}
-
-.i2g-checkin-state .material-symbols-outlined {
-    font-size: 16px;
-}
-
-.i2g-checkin-state.is-active {
-    background: var(--checkin-success-bg);
-    color: var(--checkin-success);
-}
-
-.i2g-checkin-state.is-closed {
-    background: var(--checkin-error-bg);
-    color: var(--checkin-error);
 }
 
 .i2g-checkin-sync {
@@ -128,7 +108,7 @@
 .i2g-checkin-stats {
     display: grid;
     gap: 10px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .i2g-checkin-stats div,
@@ -161,34 +141,40 @@
 
 .i2g-checkin-primary {
     display: grid;
-    gap: 14px;
-    padding: 18px;
+    gap: 10px;
+    padding: 12px;
 }
 
 .i2g-checkin-scan-form label {
     color: #344054;
     display: block;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     text-transform: uppercase;
 }
 
 .i2g-checkin-input-row {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.i2g-checkin-code-field {
+    min-width: 0;
 }
 
 .i2g-checkin-input-row input {
     border: 2px solid #98a2b3;
     border-radius: 8px;
+    box-sizing: border-box;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 30px;
+    font-size: 18px;
     font-weight: 800;
     letter-spacing: 0;
     min-width: 0;
-    padding: 18px 20px;
+    padding: 8px 12px;
+    width: 100%;
 }
 
 .i2g-checkin-input-row input:focus {
@@ -197,7 +183,7 @@
     outline: none;
 }
 
-.i2g-checkin-input-row button,
+.i2g-checkin-input-row > button,
 .i2g-checkin-camera-actions button {
     align-items: center;
     background: var(--checkin-blue);
@@ -210,15 +196,22 @@
     font-weight: 800;
     gap: 8px;
     justify-content: center;
-    padding: 0 24px;
+    padding: 0 20px;
 }
 
-.i2g-checkin-input-row button:hover,
+.i2g-checkin-input-row > button {
+    font-size: 14px;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+}
+
+.i2g-checkin-input-row > button:hover,
 .i2g-checkin-camera-actions button:hover {
     background: var(--checkin-blue-strong);
 }
 
-.i2g-checkin-input-row button:disabled,
+.i2g-checkin-input-row > button:disabled,
 .i2g-checkin-camera-actions button:disabled {
     cursor: not-allowed;
     opacity: 0.45;
@@ -247,6 +240,66 @@
 .i2g-checkin-result.is-error {
     background: var(--checkin-error-bg);
     border: 1px solid #fecdca;
+}
+
+.i2g-checkin-result.is-preview {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+}
+
+.i2g-checkin-preview-card {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+}
+
+.i2g-checkin-preview-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.i2g-checkin-preview-info strong {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 2px;
+}
+
+.i2g-checkin-preview-info span {
+    color: #344054;
+    display: block;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.i2g-checkin-preview-info code {
+    color: var(--checkin-blue);
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+}
+
+.i2g-checkin-preview-action {
+    align-items: center;
+    background: var(--checkin-blue);
+    border: 0;
+    border-radius: 8px;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 800;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 20px;
+}
+
+.i2g-checkin-preview-action:hover {
+    background: var(--checkin-blue-strong);
 }
 
 .i2g-checkin-result strong {
@@ -310,16 +363,18 @@
 }
 
 .i2g-checkin-search {
-    border: 0;
-    border-bottom: 1px solid var(--checkin-border);
+    border: 1px solid var(--checkin-border);
+    border-radius: 8px;
     display: block;
     font-size: 15px;
-    padding: 14px 16px;
-    width: 100%;
+    margin: 12px 16px;
+    padding: 12px 14px;
+    width: calc(100% - 32px);
 }
 
 .i2g-checkin-search:focus {
-    box-shadow: inset 0 -2px 0 var(--checkin-blue);
+    border-color: var(--checkin-blue);
+    box-shadow: 0 0 0 3px rgb(18 58 95 / 12%);
     outline: none;
 }
 
@@ -429,6 +484,10 @@
     color: var(--checkin-error);
 }
 
+.i2g-checkin-camera-message.is-info {
+    color: var(--checkin-blue);
+}
+
 .i2g-checkin-camera-actions {
     display: grid;
     gap: 10px;
@@ -469,8 +528,8 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .i2g-checkin-input-row button {
-        min-height: 56px;
+    .i2g-checkin-input-row > button {
+        min-height: 48px;
     }
 }
 
@@ -480,7 +539,7 @@
     }
 
     .i2g-checkin-input-row input {
-        font-size: 22px;
-        padding: 16px;
+        font-size: 17px;
+        padding: 12px 14px;
     }
 }

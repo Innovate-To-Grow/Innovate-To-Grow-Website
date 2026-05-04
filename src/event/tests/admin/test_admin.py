@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from authn.models import ContactEmail, Member
 from event.admin.registration import EventRegistrationAdmin
-from event.models import CheckIn, Event, EventRegistration, Ticket
+from event.models import CheckIn, CheckInRecord, Event, EventRegistration, Ticket
 from event.services import ScheduleSyncStats
 from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 
@@ -72,13 +72,51 @@ class CheckInAdminTest(TestCase):
         self.event = make_event(name="Admin Check-in Event")
         self.check_in = CheckIn.objects.create(event=self.event, name="Main Entrance")
 
-    def test_change_page_shows_console_link(self):
+    def test_change_page_shows_live_summary_panel(self):
         response = self.client.get(f"/admin/event/checkin/{self.check_in.pk}/change/")
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "checkin-summary-config")
+        self.assertContains(response, "event/css/checkin_change_summary.css")
+        self.assertContains(response, "event/js/checkin_change_summary.js")
+        self.assertContains(response, "data-checkin-summary")
+        self.assertContains(response, "data-summary-total")
+        self.assertContains(response, "data-summary-recent-list")
+        self.assertContains(response, "Loading recent scans")
+        self.assertContains(response, "pollIntervalMs")
+        self.assertContains(response, f"/event/check-in/{self.check_in.pk}/status/")
         self.assertContains(response, "Open Check-in Console")
         self.assertContains(response, reverse("admin:event_checkin_scanner", args=[self.check_in.pk]))
+        self.assertNotContains(response, "This station")
+        self.assertNotContains(response, "data-summary-station")
+        self.assertNotContains(response, "Last 5 at this station")
+        self.assertNotContains(response, "VIP Gate")
         self.assertNotContains(response, "Check in records")
+
+    def test_changelist_hides_station_scan_count_column(self):
+        ticket = make_ticket(self.event, name="General")
+        attendee = make_member(email="list-checked-in@example.com", first_name="Ada", last_name="Lovelace")
+        registration = make_registration(attendee, self.event, ticket)
+        CheckInRecord.objects.create(check_in=self.check_in, registration=registration)
+
+        response = self.client.get("/admin/event/checkin/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Open Console")
+        self.assertNotContains(response, "Scans")
+
+    def test_change_page_live_summary_hides_station_count_when_scans_exist(self):
+        ticket = make_ticket(self.event, name="General")
+        attendee = make_member(email="checked-in@example.com", first_name="Ada", last_name="Lovelace")
+        registration = make_registration(attendee, self.event, ticket)
+        CheckInRecord.objects.create(check_in=self.check_in, registration=registration)
+
+        response = self.client.get(f"/admin/event/checkin/{self.check_in.pk}/change/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-summary-scanned")
+        self.assertNotContains(response, "This station")
+        self.assertNotContains(response, "data-summary-station")
 
     def test_scanner_page_is_available_to_staff(self):
         response = self.client.get(reverse("admin:event_checkin_scanner", args=[self.check_in.pk]))
@@ -90,9 +128,13 @@ class CheckInAdminTest(TestCase):
         self.assertContains(response, "data-sync-status")
         self.assertContains(response, "statusPollIntervalMs")
         self.assertContains(response, "data-camera-message")
+        self.assertContains(response, "Request camera access")
+        self.assertNotContains(response, "This station")
+        self.assertNotContains(response, "data-stat-station")
         self.assertContains(response, f"/event/check-in/{self.check_in.pk}/scan/")
         self.assertContains(response, f"/event/check-in/{self.check_in.pk}/status/")
         self.assertContains(response, f"/event/check-in/{self.check_in.pk}/records/__record_id__/undo/")
+        self.assertNotContains(response, "i2g-checkin-state")
         self.assertNotContains(response, "function startCamera")
 
     def test_scanner_page_rejects_non_staff_user(self):

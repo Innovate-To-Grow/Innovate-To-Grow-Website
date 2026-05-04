@@ -7,6 +7,9 @@
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'event/css/checkin_console.css' %}">
     <script src="{% static 'vendor/html5-qrcode/2.3.8/html5-qrcode.min.js' %}" defer></script>
+    <script src="{% static 'event/js/checkin_shared.js' %}" defer></script>
+    <script src="{% static 'event/js/checkin_ticket_input.js' %}" defer></script>
+    <script src="{% static 'event/js/checkin_camera.js' %}" defer></script>
     <script src="{% static 'event/js/checkin_console.js' %}" defer></script>
 {% endblock %}
 
@@ -28,10 +31,6 @@
                     <span class="i2g-checkin-sync-dot" aria-hidden="true"></span>
                     <span data-sync-label>Syncing...</span>
                 </div>
-                <div class="i2g-checkin-state {% if check_in.is_active %}is-active{% else %}is-closed{% endif %}">
-                    <span class="material-symbols-outlined">{% if check_in.is_active %}radio_button_checked{% else %}lock{% endif %}</span>
-                    {% if check_in.is_active %}Active{% else %}Closed{% endif %}
-                </div>
             </div>
         </header>
 
@@ -45,10 +44,6 @@
                 <strong data-stat-scanned>-</strong>
             </div>
             <div>
-                <span>This station</span>
-                <strong data-stat-station>{{ scan_count }}</strong>
-            </div>
-            <div>
                 <span>Remaining</span>
                 <strong data-stat-remaining>-</strong>
             </div>
@@ -58,14 +53,17 @@
             <form data-scan-form class="i2g-checkin-scan-form">
                 <label for="checkin-code">Ticket code</label>
                 <div class="i2g-checkin-input-row">
-                    <input
-                        id="checkin-code"
-                        data-scan-input
-                        type="text"
-                        autocomplete="off"
-                        spellcheck="false"
-                        placeholder="I2G ticket code"
-                    >
+                    <div class="i2g-checkin-code-field">
+                        <input
+                            id="checkin-code"
+                            data-scan-input
+                            type="text"
+                            autocomplete="off"
+                            spellcheck="false"
+                            placeholder="I2G-0123456789AB"
+                            title="Ticket code format: I2G- followed by 12 hexadecimal characters (0-9, A-F)."
+                        >
+                    </div>
                     <button data-scan-button type="submit">
                         <span class="material-symbols-outlined">login</span>
                         Check In
@@ -99,15 +97,6 @@
             <div class="i2g-checkin-side">
                 <div class="i2g-checkin-panel">
                     <div class="i2g-checkin-panel-header">
-                        <h2>Recent scans</h2>
-                    </div>
-                    <div data-recent-list class="i2g-checkin-list i2g-checkin-list--compact">
-                        <div class="i2g-checkin-empty">No scans yet.</div>
-                    </div>
-                </div>
-
-                <div class="i2g-checkin-panel">
-                    <div class="i2g-checkin-panel-header">
                         <h2>Camera</h2>
                         <span data-camera-status class="i2g-checkin-camera-status">Idle</span>
                     </div>
@@ -116,12 +105,21 @@
                     <div class="i2g-checkin-camera-actions">
                         <button data-camera-start type="button">
                             <span class="material-symbols-outlined">photo_camera</span>
-                            Start camera
+                            Request camera access
                         </button>
                         <button data-camera-stop type="button" disabled>
                             <span class="material-symbols-outlined">stop_circle</span>
                             Stop
                         </button>
+                    </div>
+                </div>
+
+                <div class="i2g-checkin-panel">
+                    <div class="i2g-checkin-panel-header">
+                        <h2>Recent scans</h2>
+                    </div>
+                    <div data-recent-list class="i2g-checkin-list i2g-checkin-list--compact">
+                        <div class="i2g-checkin-empty">No scans yet.</div>
                     </div>
                 </div>
             </div>

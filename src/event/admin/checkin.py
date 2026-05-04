@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.db.models import Count
 from django.http import Http404
 from django.middleware.csrf import get_token
 from django.template.response import TemplateResponse
@@ -15,7 +14,7 @@ from ..models import CheckIn, CheckInRecord
 @admin.register(CheckIn)
 class CheckInAdmin(BaseModelAdmin):
     change_form_template = "admin/event/checkin/change_form.html"
-    list_display = ("name", "event", "is_active_badge", "scan_count_display", "scanner_link", "created_at")
+    list_display = ("name", "event", "is_active_badge", "scanner_link", "created_at")
     list_filter = ("event", "is_active")
     search_fields = ("name", "event__name")
     readonly_fields = ("created_at", "updated_at")
@@ -40,13 +39,11 @@ class CheckInAdmin(BaseModelAdmin):
             return "Active", "success"
         return "Closed", "info"
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.annotate(_scan_count=Count("records"))
-
-    @admin.display(description="Scans", ordering="_scan_count")
-    def scan_count_display(self, obj):
-        return getattr(obj, "_scan_count", obj.scan_count)
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "name":
+            formfield.help_text = ""
+        return formfield
 
     @admin.display(description="Scanner")
     def scanner_link(self, obj):
@@ -54,6 +51,17 @@ class CheckInAdmin(BaseModelAdmin):
             return "-"
         url = reverse("admin:event_checkin_scanner", args=[obj.pk])
         return format_html('<a href="{}" target="_blank">Open Console</a>', url)
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        if object_id:
+            console_url = reverse("admin:event_checkin_scanner", args=[object_id])
+            extra_context["checkin_summary_config"] = {
+                "statusUrl": f"/event/check-in/{object_id}/status/",
+                "consoleUrl": console_url,
+                "pollIntervalMs": 2000,
+            }
+        return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -79,7 +87,6 @@ class CheckInAdmin(BaseModelAdmin):
             "scan_url": f"/event/check-in/{check_in.pk}/scan/",
             "status_url": f"/event/check-in/{check_in.pk}/status/",
             "undo_url_template": f"/event/check-in/{check_in.pk}/records/__record_id__/undo/",
-            "scan_count": check_in.scan_count,
             "scanner_config": {
                 "scanUrl": f"/event/check-in/{check_in.pk}/scan/",
                 "statusUrl": f"/event/check-in/{check_in.pk}/status/",

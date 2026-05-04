@@ -1,23 +1,59 @@
 {% extends "admin/change_form.html" %}
-{% load i18n %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+{% if original and checkin_summary_config %}
+<link rel="stylesheet" href="{% static 'event/css/checkin_change_summary.css' %}">
+<script src="{% static 'event/js/checkin_change_summary.js' %}" defer></script>
+{% endif %}
+{% endblock %}
 
 {% block field_sets %}
-{% if original %}
-<div style="margin-bottom:1.5rem;padding:1rem 1.25rem;background:#f0f4f8;border:1px solid #dbe3ef;border-radius:10px;display:flex;align-items:center;justify-content:space-between;">
-  <div>
-    <strong style="font-size:1rem;color:#003366;">Check-in Console</strong>
-    <p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6b7280;">
-      Use the dedicated console for live check-in.
-      <strong>{{ original.scan_count }}</strong> scanned at this station.
-    </p>
+{% if original and checkin_summary_config %}
+{{ checkin_summary_config|json_script:"checkin-summary-config" }}
+<div class="i2g-checkin-summary" data-checkin-summary>
+  <div class="i2g-checkin-summary__header">
+    <div>
+      <strong class="i2g-checkin-summary__title">Check-in Console</strong>
+      <p class="i2g-checkin-summary__description">
+        Use the dedicated console for live check-in. Current status updates automatically.
+      </p>
+    </div>
+    <div class="i2g-checkin-summary__actions">
+      <div data-summary-sync class="i2g-checkin-summary__sync is-syncing" role="status" aria-live="polite">
+        <span class="i2g-checkin-summary__sync-dot" aria-hidden="true"></span>
+        <span data-summary-sync-label>Loading...</span>
+      </div>
+      <a class="i2g-checkin-summary__console-link" href="{{ checkin_summary_config.consoleUrl }}" target="_blank">
+        Open Check-in Console
+      </a>
+    </div>
   </div>
-  <a
-    href="{% url 'admin:event_checkin_scanner' original.pk %}"
-    target="_blank"
-    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.625rem 1.25rem;background:#003366;color:#fff;font-weight:600;font-size:0.9rem;border-radius:8px;text-decoration:none;white-space:nowrap;"
-  >
-    Open Check-in Console
-  </a>
+
+  <div class="i2g-checkin-summary__stats" aria-label="Current check-in status">
+    <div class="i2g-checkin-summary__stat">
+      <span>Total registrations</span>
+      <strong data-summary-total>-</strong>
+    </div>
+    <div class="i2g-checkin-summary__stat">
+      <span>Checked in</span>
+      <strong data-summary-scanned>-</strong>
+    </div>
+    <div class="i2g-checkin-summary__stat">
+      <span>Remaining</span>
+      <strong data-summary-remaining>-</strong>
+    </div>
+  </div>
+
+  <div class="i2g-checkin-summary__recent">
+    <div class="i2g-checkin-summary__recent-header">
+      <strong>Recent scans</strong>
+    </div>
+    <div data-summary-recent-list class="i2g-checkin-summary__recent-list">
+      <div class="i2g-checkin-summary__empty">Loading recent scans...</div>
+    </div>
+  </div>
 </div>
 {% endif %}
 {{ block.super }}

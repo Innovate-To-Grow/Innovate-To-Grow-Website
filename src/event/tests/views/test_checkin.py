@@ -48,6 +48,15 @@ class CheckInApiTest(TestCase):
         self.assertEqual(response.data["status"], "success")
         self.assertEqual(response.data["record_id"], str(CheckInRecord.objects.get().pk))
 
+    def test_scan_pdf417_payload_with_decoder_spacing_checks_in(self):
+        spaced_payload = self.registration.barcode_payload.replace("|", " |\n ")
+
+        response = self.client.post(self.scan_url(), {"barcode": spaced_payload.lower()}, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["status"], "success")
+        self.assertEqual(response.data["attendee"]["ticket_code"], self.registration.ticket_code)
+
     def test_second_station_scan_is_event_wide_duplicate(self):
         record = CheckInRecord.objects.create(check_in=self.other_check_in, registration=self.registration)
 

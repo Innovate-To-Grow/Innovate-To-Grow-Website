@@ -1,4 +1,5 @@
 import logging
+import re
 
 from django.db import IntegrityError
 from rest_framework import status
@@ -10,6 +11,7 @@ from rest_framework.views import APIView
 from event.models import CheckIn, CheckInRecord, EventRegistration
 
 logger = logging.getLogger(__name__)
+TICKET_CODE_RE = re.compile(r"\bI2G-[A-F0-9]{12}\b", re.IGNORECASE)
 
 
 def _ticket_type_name(registration: EventRegistration) -> str:
@@ -20,9 +22,13 @@ def _ticket_type_name(registration: EventRegistration) -> str:
 
 def _parse_ticket_code(value: str) -> str:
     """Extract ticket_code from a barcode payload or raw ticket code."""
-    value = value.strip()
-    if "|" in value:
-        parts = value.split("|")
+    value = str(value or "").strip()
+    compact_value = re.sub(r"\s+", "", value)
+    match = TICKET_CODE_RE.search(compact_value)
+    if match:
+        return match.group(0).upper()
+    if "|" in compact_value:
+        parts = compact_value.split("|")
         if len(parts) >= 4 and parts[0] == "I2G" and parts[1] == "EVENT":
             return parts[3]
     return value
@@ -33,6 +39,7 @@ def _attendee_payload(registration: EventRegistration) -> dict:
         "id": str(registration.pk),
         "name": registration.attendee_name,
         "email": registration.attendee_email,
+        "organization": registration.attendee_organization or "",
         "ticket_type": _ticket_type_name(registration),
         "ticket_code": registration.ticket_code,
     }

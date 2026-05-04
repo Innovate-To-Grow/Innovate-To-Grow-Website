@@ -105,7 +105,7 @@
 
             <div class="login-links">
                 <a href="{{ different_email_url }}">{% translate "Use a different email" %}</a>
-                <form action="{{ request.get_full_path }}" method="post" style="display:inline;">
+                <form action="{{ request.get_full_path }}" method="post" class="login-links__form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="resend">
                     <button type="submit">{% translate "Resend code" %}</button>
