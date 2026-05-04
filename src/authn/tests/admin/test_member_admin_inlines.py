@@ -4,6 +4,7 @@ change page: visibility for staff users and correct handling of UUID
 primary keys during form submission.
 """
 
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -289,6 +290,18 @@ class MemberAdminInlineUUIDSubmitTest(TestCase):
         self.assertTrue(contact.verified)
         self.assertEqual(contact.member.first_name, "Monique")
         self.assertEqual(contact.member.last_name, "Hampton")
+
+    def test_save_new_member_with_none_string_id_generates_uuid(self):
+        """Admin save must tolerate third-party widgets assigning id='None'."""
+        member_admin = admin.site._registry[Member]
+        member = Member(first_name="None", last_name="Id", is_active=True)
+        member.id = "None"
+
+        member_admin.save_model(request=None, obj=member, form=None, change=False)
+
+        saved = Member.objects.get(pk=member.pk)
+        self.assertEqual(saved.first_name, "None")
+        self.assertNotEqual(str(saved.pk), "None")
 
     def test_change_member_rejects_contact_email_owned_by_other_member(self):
         """Admin inline must not move another member's email onto this member."""

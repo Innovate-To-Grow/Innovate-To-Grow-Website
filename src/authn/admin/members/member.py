@@ -3,6 +3,7 @@ Member admin configuration.
 """
 
 import logging
+import uuid
 
 from django.conf import settings
 from django.contrib import admin
@@ -161,6 +162,11 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         self._normalize_inline_uuid_none_values(request)
         return super().changeform_view(request, object_id=object_id, form_url=form_url, extra_context=extra_context)
+
+    def save_model(self, request, obj, form, change):
+        if not change and getattr(obj, "id", None) in (None, "", "None"):
+            obj.id = uuid.uuid4()
+        super().save_model(request, obj, form, change)
 
     @staticmethod
     def _normalize_inline_uuid_none_values(request):
