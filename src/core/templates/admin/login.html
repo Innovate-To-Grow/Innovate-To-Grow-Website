@@ -53,6 +53,22 @@
             </div>
         {% endif %}
 
+        {% if last_admin_user %}
+            <div class="login-last-admin" aria-label="{% translate 'Last signed in admin' %}">
+                <div class="login-last-admin__label">{% translate "Last signed in" %}</div>
+                <div class="login-last-admin__name">{{ last_admin_user.name }}</div>
+                <div class="login-last-admin__meta">
+                    {% if last_admin_user.email %}
+                        <span>{{ last_admin_user.email }}</span>
+                    {% endif %}
+                    {% if last_admin_user.organization %}
+                        {% if last_admin_user.email %}<span aria-hidden="true">&middot;</span>{% endif %}
+                        <span>{{ last_admin_user.organization }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
         {% if step == "code" %}
             {# ── Step 2: Verification code ── #}
             <p class="login-email-hint">

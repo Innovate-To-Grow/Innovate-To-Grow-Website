@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from authn.models import ContactEmail
 from authn.models.security import EmailAuthChallenge
+from authn.views.admin.login_helpers import LAST_ADMIN_LOGIN_COOKIE_NAME
 
 Member = get_user_model()
 LOGIN_URL = "/admin/login/"
@@ -72,6 +73,36 @@ class AdminPasswordLoginTest(TestCase):
         # User should be authenticated
         resp2 = self.client.get("/admin/")
         self.assertEqual(resp2.status_code, 200)
+
+    def test_post_password_valid_credentials_sets_last_admin_cookie(self):
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "testpass123"}
+        )
+
+        self.assertIn(LAST_ADMIN_LOGIN_COOKIE_NAME, resp.cookies)
+        cookie = resp.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME]
+        self.assertEqual(cookie["path"], "/admin/")
+        self.assertTrue(cookie["httponly"])
+
+    def test_password_login_cookie_can_render_next_login_summary(self):
+        self.staff.first_name = "Ada"
+        self.staff.last_name = "Lovelace"
+        self.staff.organization = "Analytical Engines"
+        self.staff.save(update_fields=["first_name", "last_name", "organization"])
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "testpass123"}
+        )
+        cookie_value = resp.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME].value
+        self.client.logout()
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = cookie_value
+
+        resp = self.client.get(LOGIN_URL + "?mode=password")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Last signed in")
+        self.assertContains(resp, "Ada Lovelace")
+        self.assertContains(resp, "admin@example.com")
+        self.assertContains(resp, "Analytical Engines")
 
     def test_post_password_wrong_password_shows_error(self):
         resp = self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})

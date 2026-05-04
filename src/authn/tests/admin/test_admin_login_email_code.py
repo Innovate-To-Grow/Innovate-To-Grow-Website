@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.http import HttpResponse
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -17,6 +18,7 @@ from authn.services.email_challenges import (
     AuthChallengeInvalid,
     AuthChallengeThrottled,
 )
+from authn.views.admin.login_helpers import LAST_ADMIN_LOGIN_COOKIE_NAME, set_last_admin_login_cookie
 
 Member = get_user_model()
 LOGIN_URL = "/admin/login/"
@@ -48,6 +50,12 @@ def _create_expired_challenge(member, email, code="123456"):
     )
 
 
+def _last_admin_cookie_value(member):
+    response = HttpResponse()
+    set_last_admin_login_cookie(response, member)
+    return response.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME].value
+
+
 @override_settings(ROOT_URLCONF="core.urls")
 class AdminLoginViewTest(TestCase):
     # noinspection PyPep8Naming
@@ -76,6 +84,52 @@ class AdminLoginViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'name="email"')
         self.assertContains(resp, "Send verification code")
+
+    def test_get_without_last_admin_cookie_hides_last_signed_in_summary(self):
+        resp = self.client.get(LOGIN_URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Last signed in")
+
+    def test_get_with_last_admin_cookie_shows_member_summary(self):
+        self.staff.first_name = "Ada"
+        self.staff.last_name = "Lovelace"
+        self.staff.organization = "Analytical Engines"
+        self.staff.save(update_fields=["first_name", "last_name", "organization"])
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _last_admin_cookie_value(self.staff)
+
+        resp = self.client.get(LOGIN_URL)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Last signed in")
+        self.assertContains(resp, "Ada Lovelace")
+        self.assertContains(resp, "admin@example.com")
+        self.assertContains(resp, "Analytical Engines")
+
+    def test_get_with_tampered_last_admin_cookie_ignores_summary(self):
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = "tampered-cookie"
+
+        resp = self.client.get(LOGIN_URL)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Last signed in")
+
+    def test_get_with_ineligible_last_admin_cookie_ignores_summary(self):
+        inactive_staff = Member.objects.create_user(
+            password="testpass123",
+            first_name="Inactive",
+            last_name="Admin",
+            organization="Inactive Org",
+            is_staff=True,
+            is_active=False,
+        )
+        for member in (inactive_staff, self.non_staff):
+            with self.subTest(member=member.pk):
+                self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _last_admin_cookie_value(member)
+
+                resp = self.client.get(LOGIN_URL)
+
+                self.assertEqual(resp.status_code, 200)
+                self.assertNotContains(resp, "Last signed in")
 
     def test_authenticated_staff_redirects(self):
         self.client.force_login(self.staff)
@@ -217,6 +271,20 @@ class AdminLoginViewTest(TestCase):
 
     @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal
+    def test_post_valid_code_sets_last_admin_cookie(self, mock_issue):
+        self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+        challenge = _create_pending_challenge(self.staff, "admin@example.com", code="654321")
+
+        with patch("authn.views.admin.login.verify_email_code", return_value=challenge):
+            resp = self.client.post(LOGIN_URL, {"code": "654321"})
+
+        self.assertIn(LAST_ADMIN_LOGIN_COOKIE_NAME, resp.cookies)
+        cookie = resp.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME]
+        self.assertEqual(cookie["path"], "/admin/")
+        self.assertTrue(cookie["httponly"])
+
+    @patch("authn.views.admin.login.issue_email_challenge")
+    # noinspection PyUnusedLocal
     def test_post_valid_code_clears_session(self, mock_issue):
         """Session login state should be cleaned up after successful code verification."""
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})
@@ -308,6 +376,17 @@ class AdminLoginViewTest(TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "You do not have access to the admin panel")
+
+    @patch("authn.views.admin.login.issue_email_challenge")
+    # noinspection PyUnusedLocal
+    def test_code_step_hides_last_admin_summary(self, mock_issue):
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _last_admin_cookie_value(self.staff)
+
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="code"')
+        self.assertNotContains(resp, "Last signed in")
 
     # ── resend ──────────────────────────────────────────────────────
 

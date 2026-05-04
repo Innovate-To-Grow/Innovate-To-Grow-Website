@@ -30,6 +30,7 @@ from authn.views.admin.login_helpers import (
     render_admin_login,
     safe_admin_next,
     set_admin_login_state,
+    set_last_admin_login_cookie,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,7 +99,8 @@ class AdminLoginView(View):
         auth.login(request, member, backend="authn.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via password: %s", member.get_primary_email())
-        return redirect(safe_admin_next(request))
+        response = redirect(safe_admin_next(request))
+        return set_last_admin_login_cookie(response, member)
 
     # ── step 1: email ───────────────────────────────────────────────
 
@@ -168,7 +170,8 @@ class AdminLoginView(View):
         auth.login(request, member, backend="authn.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via email code: %s", member.get_primary_email())
-        return redirect(safe_admin_next(request))
+        response = redirect(safe_admin_next(request))
+        return set_last_admin_login_cookie(response, member)
 
     # noinspection PyMethodMayBeStatic
     def _handle_resend(self, request, email, member_id):

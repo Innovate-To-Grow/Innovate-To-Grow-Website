@@ -1,6 +1,10 @@
 """Helpers for the admin login view."""
 
+import uuid
+
+from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.shortcuts import render
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -11,6 +15,9 @@ _SESSION_MEMBER_ID = "admin_login_member_id"
 _RATE_LIMIT_PREFIX = "admin_pwd_login:"
 _MAX_PASSWORD_ATTEMPTS = 10
 _RATE_LIMIT_WINDOW = 120
+LAST_ADMIN_LOGIN_COOKIE_NAME = "i2g_last_admin_member"
+LAST_ADMIN_LOGIN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
+_LAST_ADMIN_LOGIN_COOKIE_PATH = "/admin/"
 
 
 def clear_admin_login_session(request):
@@ -56,6 +63,50 @@ def clear_password_rate_limit(request):
     cache.delete(_password_rate_key(request))
 
 
+def get_last_admin_login_summary(request):
+    member_id = request.get_signed_cookie(
+        LAST_ADMIN_LOGIN_COOKIE_NAME,
+        default=None,
+        max_age=LAST_ADMIN_LOGIN_COOKIE_MAX_AGE,
+    )
+    if not member_id:
+        return None
+
+    try:
+        uuid.UUID(str(member_id))
+    except (TypeError, ValueError):
+        return None
+
+    member = (
+        get_user_model()
+        .objects.prefetch_related("contact_emails")
+        .filter(pk=member_id, is_staff=True, is_active=True)
+        .first()
+    )
+    if member is None:
+        return None
+
+    email = member.get_primary_email()
+    return {
+        "name": member.get_full_name() or email or "Admin user",
+        "email": email,
+        "organization": member.organization or "",
+    }
+
+
+def set_last_admin_login_cookie(response, member):
+    response.set_signed_cookie(
+        LAST_ADMIN_LOGIN_COOKIE_NAME,
+        str(member.pk),
+        max_age=LAST_ADMIN_LOGIN_COOKIE_MAX_AGE,
+        path=_LAST_ADMIN_LOGIN_COOKIE_PATH,
+        secure=getattr(settings, "SESSION_COOKIE_SECURE", False),
+        httponly=True,
+        samesite=getattr(settings, "SESSION_COOKIE_SAMESITE", "Lax"),
+    )
+    return response
+
+
 def render_admin_login(request, *, form, step: str, email: str = "", **extra):
     next_param = request.GET.get("next", "")
     next_qs = f"&next={next_param}" if next_param else ""
@@ -70,6 +121,7 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
             "step": step,
             "form": form,
             "email": email,
+            "last_admin_user": get_last_admin_login_summary(request) if step != "code" else None,
         }
     )
     context.update(extra)
