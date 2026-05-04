@@ -163,10 +163,19 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         self._normalize_inline_uuid_none_values(request)
         return super().changeform_view(request, object_id=object_id, form_url=form_url, extra_context=extra_context)
 
+    def save_form(self, request, form, change):
+        obj = super().save_form(request, form, change)
+        self._ensure_new_member_uuid(obj, change)
+        return obj
+
     def save_model(self, request, obj, form, change):
+        self._ensure_new_member_uuid(obj, change)
+        super().save_model(request, obj, form, change)
+
+    @staticmethod
+    def _ensure_new_member_uuid(obj, change):
         if not change and getattr(obj, "id", None) in (None, "", "None"):
             obj.id = uuid.uuid4()
-        super().save_model(request, obj, form, change)
 
     @staticmethod
     def _normalize_inline_uuid_none_values(request):

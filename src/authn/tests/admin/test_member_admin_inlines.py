@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 
+from authn.admin.members.forms import MemberCreationForm
 from authn.models import ContactEmail, ContactPhone
 
 Member = get_user_model()
@@ -302,6 +303,17 @@ class MemberAdminInlineUUIDSubmitTest(TestCase):
         saved = Member.objects.get(pk=member.pk)
         self.assertEqual(saved.first_name, "None")
         self.assertNotEqual(str(saved.pk), "None")
+
+    def test_save_form_assigns_uuid_before_inline_formsets(self):
+        """Admin add must assign a UUID before Django validates inline rows."""
+        member_admin = admin.site._registry[Member]
+        form = MemberCreationForm(data={"password1": "", "password2": ""})
+        self.assertTrue(form.is_valid(), form.errors)
+
+        member = member_admin.save_form(request=None, form=form, change=False)
+
+        self.assertIsNotNone(member.pk)
+        self.assertNotEqual(str(member.pk), "None")
 
     def test_change_member_rejects_contact_email_owned_by_other_member(self):
         """Admin inline must not move another member's email onto this member."""
