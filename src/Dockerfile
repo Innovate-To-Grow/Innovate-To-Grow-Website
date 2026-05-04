@@ -2,7 +2,7 @@
 # Pin the base image by major-minor and (ideally) digest. Production images
 # should use a specific @sha256 digest once CI pins are in place; until then
 # the tag is updated through Dependabot/Renovate for visibility.
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -29,7 +29,7 @@ RUN pip install "pip==26.0.1" \
  && pip install --prefix=/install -r requirements.txt
 
 
-FROM python:3.11-slim AS production
+FROM python:3.14-slim AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
