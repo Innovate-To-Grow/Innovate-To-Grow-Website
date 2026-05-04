@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import type { ESBuildOptions, PluginOption } from 'vite'
+import type { PluginOption } from 'vite'
 
 const configDir = dirname(fileURLToPath(import.meta.url))
 const djangoVendorStaticDir = resolve(configDir, '../src/core/static/vendor')
@@ -32,23 +32,13 @@ function copyDjangoVendorStaticPlugin(): PluginOption {
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
-  const isProduction = mode === 'production'
 
   // Backend API URL - defaults to localhost:8000 for development
   const backendUrl = env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
-  const productionEsbuildOptions: ESBuildOptions | undefined = isProduction
-    ? {
-        drop: ['console', 'debugger'],
-        legalComments: 'none',
-      }
-    : undefined
 
   return {
     plugins: [react(), copyDjangoVendorStaticPlugin()],
-    esbuild: productionEsbuildOptions,
     build: {
-      sourcemap: false,
-      minify: 'esbuild',
       rollupOptions: {
         output: {
           manualChunks(id) {
