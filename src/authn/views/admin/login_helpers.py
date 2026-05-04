@@ -12,6 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 _SESSION_STEP = "admin_login_step"
 _SESSION_EMAIL = "admin_login_email"
 _SESSION_MEMBER_ID = "admin_login_member_id"
+_SESSION_HIDE_EMAIL = "admin_login_hide_email"
 _RATE_LIMIT_PREFIX = "admin_pwd_login:"
 _MAX_PASSWORD_ATTEMPTS = 10
 _RATE_LIMIT_WINDOW = 120
@@ -21,7 +22,7 @@ _LAST_ADMIN_LOGIN_COOKIE_PATH = "/admin/"
 
 
 def clear_admin_login_session(request):
-    for key in (_SESSION_STEP, _SESSION_EMAIL, _SESSION_MEMBER_ID):
+    for key in (_SESSION_STEP, _SESSION_EMAIL, _SESSION_MEMBER_ID, _SESSION_HIDE_EMAIL):
         request.session.pop(key, None)
 
 
@@ -33,9 +34,17 @@ def get_admin_login_state(request):
     )
 
 
-def set_admin_login_state(request, *, step: str, email: str, member_id: str | None = None) -> None:
+def set_admin_login_state(
+    request,
+    *,
+    step: str,
+    email: str,
+    member_id: str | None = None,
+    hide_email: bool = False,
+) -> None:
     request.session[_SESSION_STEP] = step
     request.session[_SESSION_EMAIL] = email
+    request.session[_SESSION_HIDE_EMAIL] = hide_email
     if member_id is not None:
         request.session[_SESSION_MEMBER_ID] = member_id
 
@@ -63,7 +72,7 @@ def clear_password_rate_limit(request):
     cache.delete(_password_rate_key(request))
 
 
-def get_last_admin_login_summary(request):
+def get_last_admin_login_member(request):
     member_id = request.get_signed_cookie(
         LAST_ADMIN_LOGIN_COOKIE_NAME,
         default=None,
@@ -85,11 +94,16 @@ def get_last_admin_login_summary(request):
     )
     if member is None:
         return None
+    return member
 
-    email = member.get_primary_email()
+
+def get_last_admin_login_summary(request):
+    member = get_last_admin_login_member(request)
+    if member is None:
+        return None
+
     return {
-        "name": member.get_full_name() or email or "Admin user",
-        "email": email,
+        "name": member.get_full_name() or "Admin user",
         "organization": member.organization or "",
     }
 
@@ -110,6 +124,7 @@ def set_last_admin_login_cookie(response, member):
 def render_admin_login(request, *, form, step: str, email: str = "", **extra):
     next_param = request.GET.get("next", "")
     next_qs = f"&next={next_param}" if next_param else ""
+    use_different_account = request.GET.get("different") == "1"
     context = admin.site.each_context(request)
     context.update(
         {
@@ -118,10 +133,14 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
             "title": "Log in",
             "password_mode_url": f"?mode=password{next_qs}",
             "email_code_mode_url": f"?step=email{next_qs}",
+            "different_email_url": f"?step=email&different=1{next_qs}",
             "step": step,
             "form": form,
             "email": email,
-            "last_admin_user": get_last_admin_login_summary(request) if step != "code" else None,
+            "hide_email": request.session.get(_SESSION_HIDE_EMAIL, False),
+            "last_admin_user": (
+                get_last_admin_login_summary(request) if step != "code" and not use_different_account else None
+            ),
         }
     )
     context.update(extra)

@@ -101,8 +101,38 @@ class AdminPasswordLoginTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Last signed in")
         self.assertContains(resp, "Ada Lovelace")
-        self.assertContains(resp, "admin@example.com")
         self.assertContains(resp, "Analytical Engines")
+        self.assertContains(resp, 'name="password"')
+        self.assertContains(resp, "Send verification code instead")
+        self.assertNotContains(resp, "admin@example.com")
+        self.assertNotContains(resp, 'name="email"')
+
+    def test_remembered_admin_password_login_without_email(self):
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "testpass123"}
+        )
+        cookie_value = resp.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME].value
+        self.client.logout()
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = cookie_value
+
+        resp = self.client.post(LOGIN_URL, {"mode": "password", "remembered_admin": "1", "password": "testpass123"})
+
+        self.assertRedirects(resp, "/admin/", fetch_redirect_response=False)
+
+    def test_remembered_admin_wrong_password_keeps_email_hidden(self):
+        resp = self.client.post(
+            LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "testpass123"}
+        )
+        cookie_value = resp.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME].value
+        self.client.logout()
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = cookie_value
+
+        resp = self.client.post(LOGIN_URL, {"mode": "password", "remembered_admin": "1", "password": "wrongpass"})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Invalid password")
+        self.assertNotContains(resp, "admin@example.com")
+        self.assertNotContains(resp, 'name="email"')
 
     def test_post_password_wrong_password_shows_error(self):
         resp = self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})

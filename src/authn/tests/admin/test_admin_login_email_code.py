@@ -102,8 +102,11 @@ class AdminLoginViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Last signed in")
         self.assertContains(resp, "Ada Lovelace")
-        self.assertContains(resp, "admin@example.com")
         self.assertContains(resp, "Analytical Engines")
+        self.assertContains(resp, 'name="password"')
+        self.assertContains(resp, "Send verification code instead")
+        self.assertNotContains(resp, "admin@example.com")
+        self.assertNotContains(resp, 'name="email"')
 
     def test_get_with_tampered_last_admin_cookie_ignores_summary(self):
         self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = "tampered-cookie"
@@ -112,6 +115,16 @@ class AdminLoginViewTest(TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "Last signed in")
+
+    def test_get_different_account_with_last_admin_cookie_shows_email_form(self):
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _last_admin_cookie_value(self.staff)
+
+        resp = self.client.get(LOGIN_URL + "?step=email&different=1")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="email"')
+        self.assertNotContains(resp, "Last signed in")
+        self.assertNotContains(resp, "admin@example.com")
 
     def test_get_with_ineligible_last_admin_cookie_ignores_summary(self):
         inactive_staff = Member.objects.create_user(
@@ -387,6 +400,24 @@ class AdminLoginViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'name="code"')
         self.assertNotContains(resp, "Last signed in")
+
+    @patch("authn.views.admin.login.issue_email_challenge")
+    def test_remembered_admin_can_request_code_without_email_display(self, mock_issue):
+        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _last_admin_cookie_value(self.staff)
+
+        resp = self.client.post(LOGIN_URL, {"action": "remembered_code"})
+
+        self.assertEqual(resp.status_code, 200)
+        mock_issue.assert_called_once()
+        call_kwargs = mock_issue.call_args.kwargs
+        self.assertEqual(call_kwargs["member"], self.staff)
+        self.assertEqual(call_kwargs["purpose"], PURPOSE)
+        self.assertEqual(call_kwargs["target_email"], "admin@example.com")
+        self.assertContains(resp, 'name="code"')
+        self.assertContains(resp, "saved admin email")
+        self.assertNotContains(resp, "admin@example.com")
+        self.assertEqual(self.client.session.get("admin_login_step"), "code")
+        self.assertTrue(self.client.session.get("admin_login_hide_email"))
 
     # ── resend ──────────────────────────────────────────────────────
 
