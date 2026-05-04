@@ -10,6 +10,7 @@ from event.services.ticket_assets import (
     build_ticket_access_token,
     build_ticket_login_token,
     generate_ticket_barcode_data_url,
+    generate_ticket_barcode_png_bytes,
     get_event_datetime,
     get_member_from_login_token,
     get_registration_from_access_token,
@@ -93,9 +94,6 @@ class BuildTicketLoginTokenTest(TestCase):
 
 class GetMemberFromLoginTokenTest(TestCase):
     def setUp(self):
-        from django.core.cache import cache
-
-        cache.clear()
         self.member = make_member()
 
     def test_valid_token_returns_member(self):
@@ -120,13 +118,12 @@ class GetMemberFromLoginTokenTest(TestCase):
         with self.assertRaises(ValueError):
             get_member_from_login_token(token)
 
-    def test_token_can_only_be_used_once(self):
+    def test_token_is_reusable(self):
         token = build_ticket_login_token(self.member)
-        result = get_member_from_login_token(token)
-
-        self.assertEqual(result.pk, self.member.pk)
-        with self.assertRaisesMessage(ValueError, "This login link has already been used."):
-            get_member_from_login_token(token)
+        first = get_member_from_login_token(token)
+        second = get_member_from_login_token(token)
+        self.assertEqual(first.pk, self.member.pk)
+        self.assertEqual(second.pk, self.member.pk)
 
 
 # ---------- URL Builders ----------
@@ -198,6 +195,16 @@ class GenerateTicketBarcodeDataUrlTest(TestCase):
         b64_data = result.split(",", 1)[1]
         decoded = base64.b64decode(b64_data)
         self.assertTrue(len(decoded) > 0)
+
+    def test_barcode_is_tall_enough_for_camera_scanning(self):
+        from io import BytesIO
+
+        from PIL import Image
+
+        image = Image.open(BytesIO(generate_ticket_barcode_png_bytes(self.registration)))
+
+        self.assertGreaterEqual(image.width, 500)
+        self.assertGreaterEqual(image.height, 120)
 
 
 # ---------- get_event_datetime ----------

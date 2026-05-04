@@ -1,12 +1,10 @@
 import base64
 from datetime import datetime
-from hashlib import sha256
 from io import BytesIO
 from urllib.parse import urljoin
 
 from django.conf import settings
 from django.core import signing
-from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from pdf417gen import encode, render_image
@@ -21,16 +19,6 @@ _TICKET_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 class TicketLoginTokenError(ValueError):
     """Base error for invalid ticket login tokens."""
-
-
-class TicketLoginTokenAlreadyUsed(TicketLoginTokenError):
-    """Raised when a one-time ticket login token has already been consumed."""
-
-
-def _consume_one_time_token(prefix: str, token: str, ttl: int) -> bool:
-    token_digest = sha256(token.encode("utf-8")).hexdigest()
-    # Replay protection depends on cache retention; a cache flush or eviction resets this used-token marker.
-    return cache.add(f"{prefix}:{token_digest}", True, timeout=ttl)
 
 
 def build_ticket_access_token(registration: EventRegistration) -> str:
@@ -56,7 +44,12 @@ def build_ticket_login_token(member) -> str:
 
 
 def get_member_from_login_token(token: str):
-    """Validate a ticket login token and return the associated Member."""
+    """Validate a ticket login token and return the associated Member.
+
+    The token is reusable for its full lifetime (30 days) so that users can
+    click the email link repeatedly without being locked out. Security relies
+    on the signed, time-limited token itself rather than one-time consumption.
+    """
     from authn.models import Member
 
     try:
@@ -69,9 +62,6 @@ def get_member_from_login_token(token: str):
         member = Member.objects.get(pk=member_id, is_active=True)
     except Member.DoesNotExist as exc:
         raise TicketLoginTokenError("Account not found.") from exc
-
-    if not _consume_one_time_token("event:ticket-login-used", token, _TICKET_LOGIN_MAX_AGE):
-        raise TicketLoginTokenAlreadyUsed("This login link has already been used.")
 
     return member
 
@@ -98,8 +88,8 @@ def build_frontend_absolute_url(path: str, request=None) -> str:
 
 
 def generate_ticket_barcode_png_bytes(registration: EventRegistration) -> bytes:
-    codes = encode(registration.barcode_payload, columns=6)
-    image = render_image(codes, scale=3, ratio=3, padding=10)
+    codes = encode(registration.barcode_payload, columns=4)
+    image = render_image(codes, scale=4, ratio=3, padding=10)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()

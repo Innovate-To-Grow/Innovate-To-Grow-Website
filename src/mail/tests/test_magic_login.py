@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -52,7 +53,7 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(response.data["next_step"], "complete_profile")
         self.assertTrue(response.data["requires_profile_completion"])
 
-    def test_reused_token_rejected(self):
+    def test_token_can_be_reused(self):
         token = MagicLoginToken.generate_token()
         MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
 
@@ -60,8 +61,8 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(first_response.status_code, 200)
 
         second_response = self.client.post("/mail/magic-login/", {"token": token}, format="json")
-        self.assertEqual(second_response.status_code, 400)
-        self.assertEqual(second_response.data["detail"], "This login link has already been used.")
+        self.assertEqual(second_response.status_code, 200)
+        self.assertIn("access", second_response.data)
 
     def test_used_token_records_used_at(self):
         token = MagicLoginToken.generate_token()
@@ -73,6 +74,18 @@ class MagicLoginViewTests(APITestCase):
         magic.refresh_from_db()
         self.assertTrue(magic.is_used)
         self.assertIsNotNone(magic.used_at)
+
+    def test_reuse_updates_used_at(self):
+        token = MagicLoginToken.generate_token()
+        magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
+
+        self.client.post("/mail/magic-login/", {"token": token}, format="json")
+        magic.refresh_from_db()
+        first_used_at = magic.used_at
+
+        self.client.post("/mail/magic-login/", {"token": token}, format="json")
+        magic.refresh_from_db()
+        self.assertGreaterEqual(magic.used_at, first_used_at)
 
     def test_expired_token_still_returns_existing_error(self):
         token = MagicLoginToken.generate_token()
@@ -89,39 +102,36 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(response.data["detail"], "This login link has expired.")
 
 
-class MagicLoginTokenAtomicConsumptionTests(APITestCase):
-    """The token must be consumed atomically so two concurrent login requests
-    with the same token can't both succeed. The view relies on
-    ``MagicLoginToken.try_mark_used()`` returning False when the row is
-    already marked used — so a conditional UPDATE in one transaction doesn't
-    see the other's unsaved read.
-    """
+class MagicLoginTokenRecordUseTests(APITestCase):
+    """The ``record_use`` method should update ``is_used`` and ``used_at``
+    on every call, allowing the same token to be used multiple times."""
 
     def setUp(self):
         self.member = make_member(email="race@example.com")
         self.campaign = EmailCampaign.objects.create(subject="s", body="b")
 
-    def test_try_mark_used_returns_false_when_already_used(self):
+    def test_record_use_sets_is_used_and_used_at(self):
         token = MagicLoginToken.generate_token()
         magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
 
-        self.assertTrue(magic.try_mark_used())
-        # A second call must fail — the UPDATE ... WHERE is_used=False matches
-        # zero rows once the first call won.
-        self.assertFalse(magic.try_mark_used())
+        self.assertFalse(magic.is_used)
+        magic.record_use()
+        magic.refresh_from_db()
+        self.assertTrue(magic.is_used)
+        self.assertIsNotNone(magic.used_at)
 
-    def test_try_mark_used_loses_race_when_another_request_marked_first(self):
-        # Simulate another concurrent request having already flipped is_used
-        # between our SELECT and our UPDATE.
+    def test_record_use_updates_used_at_on_repeated_calls(self):
         token = MagicLoginToken.generate_token()
         magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
-        MagicLoginToken.objects.filter(pk=magic.pk).update(is_used=True, used_at=timezone.now())
 
-        self.assertFalse(magic.try_mark_used())
+        magic.record_use()
+        first_used_at = magic.used_at
 
-    def test_second_login_attempt_rejected_when_first_already_consumed_atomically(self):
-        # End-to-end: first request wins, second gets the 400 even though
-        # both loaded the same row state before either saved.
+        magic.record_use()
+        self.assertGreaterEqual(magic.used_at, first_used_at)
+
+    @patch("mail.views.MagicLoginView.throttle_classes", [])
+    def test_multiple_login_requests_all_succeed(self):
         token = MagicLoginToken.generate_token()
         MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
 
@@ -129,5 +139,4 @@ class MagicLoginTokenAtomicConsumptionTests(APITestCase):
         second = self.client.post("/mail/magic-login/", {"token": token}, format="json")
 
         self.assertEqual(first.status_code, 200)
-        self.assertEqual(second.status_code, 400)
-        self.assertEqual(second.data["detail"], "This login link has already been used.")
+        self.assertEqual(second.status_code, 200)

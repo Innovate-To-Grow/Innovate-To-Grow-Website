@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 
 from authn.views.helpers import build_auth_success_payload
 from event.services.ticket_assets import (
-    TicketLoginTokenAlreadyUsed,
     TicketLoginTokenError,
     get_member_from_login_token,
 )
@@ -28,8 +27,6 @@ class TicketAutoLoginView(APIView):
 
         try:
             member = get_member_from_login_token(token)
-        except TicketLoginTokenAlreadyUsed:
-            return Response({"detail": "This login link has already been used."}, status=status.HTTP_400_BAD_REQUEST)
         except TicketLoginTokenError:
             return Response({"detail": "Invalid or expired ticket login link."}, status=status.HTTP_400_BAD_REQUEST)
 
