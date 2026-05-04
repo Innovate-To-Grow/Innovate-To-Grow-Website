@@ -140,7 +140,9 @@
             <form action="{{ request.get_full_path }}" method="post" class="login-remembered-code-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="remembered_code">
-                <button type="submit">{% translate "Send verification code instead" %}</button>
+                {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                    {% translate "Send verification code instead" %}
+                {% endcomponent %}
             </form>
 
             <div class="login-links" style="justify-content: center;">
