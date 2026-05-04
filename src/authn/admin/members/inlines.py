@@ -1,6 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from django.forms.models import InlineForeignKeyField
+from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
 from unfold.admin import TabularInline
 
 from ...models import ContactEmail, ContactPhone
@@ -33,6 +33,36 @@ class NoneSafeInlineForeignKeyField(InlineForeignKeyField):
         return super().clean(value)
 
 
+class NoneSafeUUIDInlineFormSet(BaseInlineFormSet):
+    """Normalize literal 'None' values before inline UUID fields are bound."""
+
+    def __init__(self, data=None, *args, **kwargs):
+        prefix = kwargs.get("prefix")
+        if data is not None and prefix:
+            data = self._normalize_none_uuid_values(data, prefix)
+        super().__init__(data, *args, **kwargs)
+
+    @staticmethod
+    def _normalize_none_uuid_values(data, prefix):
+        normalized_data = data.copy()
+        for key, values in list(normalized_data.lists()):
+            if not key.startswith(f"{prefix}-") or not key.endswith(("-id", "-member")):
+                continue
+            normalized_values = ["" if value == "None" else value for value in values]
+            if normalized_values != values:
+                normalized_data.setlist(key, normalized_values)
+        return normalized_data
+
+    def add_fields(self, form, index):
+        super().add_fields(form, index)
+        field = form.fields.get("id")
+        if field and isinstance(field, forms.ModelChoiceField):
+            field.__class__ = NoneSafeModelChoiceField
+        parent_field = form.fields.get(self.fk.name)
+        if parent_field and isinstance(parent_field, InlineForeignKeyField):
+            parent_field.__class__ = NoneSafeInlineForeignKeyField
+
+
 class StaffPermissionInlineMixin:
     """Grant full inline permissions to any staff user, matching BaseModelAdmin."""
 
@@ -52,27 +82,13 @@ class StaffPermissionInlineMixin:
 class UUIDInlineMixin:
     """Mixin that prevents 'None' string from being sent to UUID-backed inline fields."""
 
+    formset = NoneSafeUUIDInlineFormSet
+
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
         if formfield and isinstance(formfield, forms.UUIDField):
             formfield.__class__ = NoneSafeUUIDField
         return formfield
-
-    def get_formset(self, request, obj=None, **kwargs):
-        formset_class = super().get_formset(request, obj, **kwargs)
-        original_add_fields = formset_class.add_fields
-
-        def add_fields(self_fs, form, index):
-            original_add_fields(self_fs, form, index)
-            field = form.fields.get("id")
-            if field and isinstance(field, forms.ModelChoiceField):
-                field.__class__ = NoneSafeModelChoiceField
-            parent_field = form.fields.get(self_fs.fk.name)
-            if parent_field and isinstance(parent_field, InlineForeignKeyField):
-                parent_field.__class__ = NoneSafeInlineForeignKeyField
-
-        formset_class.add_fields = add_fields
-        return formset_class
 
 
 class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
