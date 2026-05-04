@@ -53,10 +53,26 @@
             </div>
         {% endif %}
 
+        {% if last_admin_user %}
+            <div class="login-last-admin" aria-label="{% translate 'Last signed in admin' %}">
+                <div class="login-last-admin__label">{% translate "Last signed in" %}</div>
+                <div class="login-last-admin__name">{{ last_admin_user.name }}</div>
+                {% if last_admin_user.organization %}
+                    <div class="login-last-admin__meta">{{ last_admin_user.organization }}</div>
+                {% endif %}
+            </div>
+        {% endif %}
+
         {% if step == "code" %}
             {# ── Step 2: Verification code ── #}
             <p class="login-email-hint">
-                {% translate "We sent a 6-digit code to" %} <strong>{{ email }}</strong>
+                {% if hide_email %}
+                    {% blocktranslate trimmed with name=code_recipient_name %}
+                        We sent a 6-digit code to {{ name }}.
+                    {% endblocktranslate %}
+                {% else %}
+                    {% translate "We sent a 6-digit code to" %} <strong>{{ email }}</strong>
+                {% endif %}
             </p>
 
             <form action="{{ request.get_full_path }}" method="post" id="login-form">
@@ -88,12 +104,51 @@
             </form>
 
             <div class="login-links">
-                <a href="?step=email">{% translate "Use a different email" %}</a>
+                <a href="{{ different_email_url }}">{% translate "Use a different email" %}</a>
                 <form action="{{ request.get_full_path }}" method="post" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="resend">
                     <button type="submit">{% translate "Resend code" %}</button>
                 </form>
+            </div>
+
+        {% elif last_admin_user %}
+            {# ── Remembered admin: password or email-code login without showing email ── #}
+            <form action="{{ request.get_full_path }}" method="post" id="login-form">
+                {% csrf_token %}
+                <input type="hidden" name="mode" value="password">
+                <input type="hidden" name="remembered_admin" value="1">
+
+                <div class="mb-4">
+                    <label for="id_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {% translate "Password" %}
+                    </label>
+                    <input type="password"
+                           name="password"
+                           id="id_password"
+                           placeholder="{% translate 'Password' %}"
+                           required
+                           autofocus
+                           autocomplete="current-password">
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                        {% translate 'Sign In' %}
+                    {% endcomponent %}
+                </div>
+            </form>
+
+            <form action="{{ request.get_full_path }}" method="post" class="login-remembered-code-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remembered_code">
+                {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row w-full" %}
+                    {% translate "Send verification code instead" %}
+                {% endcomponent %}
+            </form>
+
+            <div class="login-links" style="justify-content: center;">
+                <a href="{{ different_email_url }}">{% translate "Use a different email" %}</a>
             </div>
 
         {% elif step == "password" %}

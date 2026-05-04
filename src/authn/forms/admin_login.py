@@ -64,3 +64,12 @@ class AdminPasswordForm(forms.Form):
         label=_("Password"),
         widget=forms.PasswordInput(attrs={"placeholder": _("Password"), "autocomplete": "current-password"}),
     )
+
+
+class AdminRememberedPasswordForm(forms.Form):
+    """Password-based admin login for the signed last-admin cookie."""
+
+    password = forms.CharField(
+        label=_("Password"),
+        widget=forms.PasswordInput(attrs={"placeholder": _("Password"), "autocomplete": "current-password"}),
+    )

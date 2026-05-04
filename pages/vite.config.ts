@@ -1,5 +1,32 @@
+import { cpSync, existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import type { PluginOption } from 'vite'
+
+const configDir = dirname(fileURLToPath(import.meta.url))
+const djangoVendorStaticDir = resolve(configDir, '../src/core/static/vendor')
+
+function copyDjangoVendorStaticPlugin(): PluginOption {
+  return {
+    name: 'copy-django-vendor-static',
+    apply: 'build',
+    writeBundle(options) {
+      if (!existsSync(djangoVendorStaticDir)) {
+        this.warn(`Django vendor static directory not found: ${djangoVendorStaticDir}`)
+        return
+      }
+
+      const outputDir = typeof options.dir === 'string' ? options.dir : resolve(configDir, 'dist')
+      cpSync(djangoVendorStaticDir, resolve(outputDir, 'static/vendor'), {
+        recursive: true,
+        force: true,
+      })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,7 +37,7 @@ export default defineConfig(({ mode }) => {
   const backendUrl = env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
 
   return {
-    plugins: [react()],
+    plugins: [react(), copyDjangoVendorStaticPlugin()],
     build: {
       rollupOptions: {
         output: {

@@ -11,7 +11,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import never_cache
 
-from authn.forms.admin_login import AdminCodeForm, AdminEmailForm, AdminPasswordForm
+from authn.forms.admin_login import AdminCodeForm, AdminEmailForm, AdminPasswordForm, AdminRememberedPasswordForm
 from authn.models.security import EmailAuthChallenge
 from authn.services.email_challenges import (
     AuthChallengeDeliveryError,
@@ -25,11 +25,14 @@ from authn.views.admin.login_helpers import (
     clear_admin_login_session,
     clear_password_rate_limit,
     get_admin_login_state,
+    get_admin_member_display_name,
+    get_last_admin_login_member,
     is_password_throttled,
     record_password_failure,
     render_admin_login,
     safe_admin_next,
     set_admin_login_state,
+    set_last_admin_login_cookie,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +67,9 @@ class AdminLoginView(View):
         if request.user.is_authenticated and request.user.is_staff:
             return redirect(safe_admin_next(request))
 
+        if request.POST.get("action") == "remembered_code":
+            return self._handle_remembered_code_step(request)
+
         if request.POST.get("mode") == "password":
             return self._handle_password_step(request)
 
@@ -76,6 +82,9 @@ class AdminLoginView(View):
 
     # noinspection PyMethodMayBeStatic
     def _handle_password_step(self, request):
+        if request.POST.get("remembered_admin") == "1":
+            return self._handle_remembered_password_step(request)
+
         if is_password_throttled(request):
             form = AdminPasswordForm(request.POST)
             form.add_error(None, "Too many login attempts. Please try again later.")
@@ -98,7 +107,39 @@ class AdminLoginView(View):
         auth.login(request, member, backend="authn.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via password: %s", member.get_primary_email())
-        return redirect(safe_admin_next(request))
+        response = redirect(safe_admin_next(request))
+        return set_last_admin_login_cookie(response, member)
+
+    def _handle_remembered_password_step(self, request):
+        if is_password_throttled(request):
+            form = AdminRememberedPasswordForm(request.POST)
+            form.add_error(None, "Too many login attempts. Please try again later.")
+            return render_admin_login(request, step="password", form=form)
+
+        form = AdminRememberedPasswordForm(request.POST)
+        if not form.is_valid():
+            return render_admin_login(request, step="password", form=form)
+
+        member = get_last_admin_login_member(request)
+        if member is None:
+            return render_admin_login(
+                request,
+                step="password",
+                form=AdminPasswordForm(),
+                error="Please enter your email to continue.",
+            )
+
+        if not member.check_password(form.cleaned_data["password"]):
+            record_password_failure(request)
+            form.add_error(None, "Invalid password.")
+            return render_admin_login(request, step="password", form=form)
+
+        clear_password_rate_limit(request)
+        auth.login(request, member, backend="authn.backends.EmailAuthBackend")
+        clear_admin_login_session(request)
+        logger.info("Admin login via remembered password: %s", member.get_primary_email())
+        response = redirect(safe_admin_next(request))
+        return set_last_admin_login_cookie(response, member)
 
     # ── step 1: email ───────────────────────────────────────────────
 
@@ -127,6 +168,44 @@ class AdminLoginView(View):
             email=email,
             form=AdminCodeForm(),
             message="A verification code has been sent to your email.",
+        )
+
+    def _handle_remembered_code_step(self, request):
+        member = get_last_admin_login_member(request)
+        contact = member.get_primary_contact_email() if member else None
+        if member is None or contact is None or not contact.verified:
+            return render_admin_login(
+                request,
+                step="email",
+                form=AdminEmailForm(),
+                error="Unable to send verification code.",
+            )
+
+        try:
+            issue_email_challenge(member=member, purpose=PURPOSE, target_email=contact.email_address)
+        except AuthChallengeThrottled as exc:
+            return render_admin_login(request, step="email", form=AdminEmailForm(), error=str(exc))
+        except AuthChallengeDeliveryError:
+            return render_admin_login(
+                request,
+                step="email",
+                form=AdminEmailForm(),
+                error="Failed to send verification code. Please try again later.",
+            )
+
+        set_admin_login_state(
+            request,
+            step="code",
+            email=contact.email_address,
+            member_id=str(member.pk),
+            hide_email=True,
+        )
+        return render_admin_login(
+            request,
+            step="code",
+            email=contact.email_address,
+            form=AdminCodeForm(),
+            message=f"A verification code has been sent to {get_admin_member_display_name(member)}.",
         )
 
     # ── step 2: code ────────────────────────────────────────────────
@@ -168,7 +247,8 @@ class AdminLoginView(View):
         auth.login(request, member, backend="authn.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via email code: %s", member.get_primary_email())
-        return redirect(safe_admin_next(request))
+        response = redirect(safe_admin_next(request))
+        return set_last_admin_login_cookie(response, member)
 
     # noinspection PyMethodMayBeStatic
     def _handle_resend(self, request, email, member_id):
