@@ -63,14 +63,21 @@
       html[data-block-preview] #content-wrapper { padding: 0; margin: 0; max-width: none; width: auto; }
       html[data-block-preview] #root:empty::before { display: none; }
     </style>
-    <!-- Open parallel connections to third-party CDNs early. -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <!-- Font Awesome: load asynchronously so icons don't block first paint. -->
-    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-          onload="this.onload=null;this.rel='stylesheet'">
-    <noscript>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    </noscript>
+    <!-- Font Awesome: load the local vendored copy asynchronously so icons don't block first paint. -->
+    <script>
+      (function () {
+        var href = '/static/vendor/font-awesome/4.7.0/css/font-awesome.min.css';
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'style';
+        link.href = href;
+        link.onload = function () {
+          link.onload = null;
+          link.rel = 'stylesheet';
+        };
+        document.head.appendChild(link);
+      })();
+    </script>
     <!-- Server-managed design tokens + stylesheets. Render-blocking so tokens
          resolve before first paint of the styled page; the inline spinner above
          already covers the pre-stylesheet paint window. -->

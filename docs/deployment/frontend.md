@@ -15,6 +15,7 @@ This produces a `pages/dist/` directory containing:
 - Hashed JS bundles (main app, react-vendor chunk, router chunk)
 - CSS assets
 - Static assets (images, fonts)
+- Local vendor assets copied from `src/core/static/vendor/` into `dist/static/vendor/`
 
 ### Code splitting
 

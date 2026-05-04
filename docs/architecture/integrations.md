@@ -88,7 +88,7 @@ Loaded via `<script>` tags in `pages/index.html`:
 |---------|---------|
 | UserWay | Accessibility widget |
 | Site Improve Analytics | Usage analytics |
-| Font Awesome 4.7 (CDN) | Icon library |
+| Font Awesome 4.7 (local vendor static) | Icon library |
 
 ## Related pages
 
