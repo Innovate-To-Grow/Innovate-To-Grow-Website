@@ -403,6 +403,9 @@ class AdminLoginViewTest(TestCase):
 
     @patch("authn.views.admin.login.issue_email_challenge")
     def test_remembered_admin_can_request_code_without_email_display(self, mock_issue):
+        self.staff.first_name = "Ada"
+        self.staff.last_name = "Lovelace"
+        self.staff.save(update_fields=["first_name", "last_name"])
         self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _last_admin_cookie_value(self.staff)
 
         resp = self.client.post(LOGIN_URL, {"action": "remembered_code"})
@@ -414,7 +417,8 @@ class AdminLoginViewTest(TestCase):
         self.assertEqual(call_kwargs["purpose"], PURPOSE)
         self.assertEqual(call_kwargs["target_email"], "admin@example.com")
         self.assertContains(resp, 'name="code"')
-        self.assertContains(resp, "saved admin email")
+        self.assertContains(resp, "A verification code has been sent to Ada Lovelace.")
+        self.assertContains(resp, "We sent a 6-digit code to Ada Lovelace.")
         self.assertNotContains(resp, "admin@example.com")
         self.assertEqual(self.client.session.get("admin_login_step"), "code")
         self.assertTrue(self.client.session.get("admin_login_hide_email"))

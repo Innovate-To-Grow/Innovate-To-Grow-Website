@@ -34,6 +34,19 @@ def get_admin_login_state(request):
     )
 
 
+def get_admin_login_member(request):
+    member_id = request.session.get(_SESSION_MEMBER_ID)
+    if not member_id:
+        return None
+
+    try:
+        uuid.UUID(str(member_id))
+    except (TypeError, ValueError):
+        return None
+
+    return get_user_model().objects.filter(pk=member_id, is_staff=True, is_active=True).first()
+
+
 def set_admin_login_state(
     request,
     *,
@@ -103,9 +116,13 @@ def get_last_admin_login_summary(request):
         return None
 
     return {
-        "name": member.get_full_name() or "Admin user",
+        "name": get_admin_member_display_name(member),
         "organization": member.organization or "",
     }
+
+
+def get_admin_member_display_name(member):
+    return member.get_full_name() or "Admin user"
 
 
 def set_last_admin_login_cookie(response, member):
@@ -125,6 +142,13 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
     next_param = request.GET.get("next", "")
     next_qs = f"&next={next_param}" if next_param else ""
     use_different_account = request.GET.get("different") == "1"
+    hide_email = request.session.get(_SESSION_HIDE_EMAIL, False)
+    code_recipient_name = ""
+    if step == "code" and hide_email:
+        member = get_admin_login_member(request)
+        if member is not None:
+            code_recipient_name = get_admin_member_display_name(member)
+
     context = admin.site.each_context(request)
     context.update(
         {
@@ -137,7 +161,8 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
             "step": step,
             "form": form,
             "email": email,
-            "hide_email": request.session.get(_SESSION_HIDE_EMAIL, False),
+            "hide_email": hide_email,
+            "code_recipient_name": code_recipient_name,
             "last_admin_user": (
                 get_last_admin_login_summary(request) if step != "code" and not use_different_account else None
             ),

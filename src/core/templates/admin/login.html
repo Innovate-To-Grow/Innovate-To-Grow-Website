@@ -67,7 +67,9 @@
             {# ── Step 2: Verification code ── #}
             <p class="login-email-hint">
                 {% if hide_email %}
-                    {% translate "We sent a 6-digit code to your saved admin email." %}
+                    {% blocktranslate trimmed with name=code_recipient_name %}
+                        We sent a 6-digit code to {{ name }}.
+                    {% endblocktranslate %}
                 {% else %}
                     {% translate "We sent a 6-digit code to" %} <strong>{{ email }}</strong>
                 {% endif %}

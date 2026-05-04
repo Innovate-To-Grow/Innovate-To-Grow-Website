@@ -25,6 +25,7 @@ from authn.views.admin.login_helpers import (
     clear_admin_login_session,
     clear_password_rate_limit,
     get_admin_login_state,
+    get_admin_member_display_name,
     get_last_admin_login_member,
     is_password_throttled,
     record_password_failure,
@@ -204,7 +205,7 @@ class AdminLoginView(View):
             step="code",
             email=contact.email_address,
             form=AdminCodeForm(),
-            message="A verification code has been sent to your saved admin email.",
+            message=f"A verification code has been sent to {get_admin_member_display_name(member)}.",
         )
 
     # ── step 2: code ────────────────────────────────────────────────
