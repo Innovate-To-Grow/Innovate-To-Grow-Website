@@ -102,7 +102,7 @@ class DataExportMixin:
             return "Yes" if value else "No"
         if isinstance(value, uuid.UUID):
             return str(value)
-        if isinstance(value, (list, dict)):
+        if isinstance(value, list | dict):
             return json.dumps(value, ensure_ascii=False, default=str)
         if hasattr(value, "pk"):
             return str(value)
