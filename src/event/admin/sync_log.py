@@ -11,6 +11,7 @@ class RegistrationSheetSyncLogAdmin(ReadOnlyModelAdmin):
     list_display = ("event", "sync_type_badge", "status_badge", "rows_written", "error_short", "created_at")
     list_filter = ("event", "sync_type", "status")
     search_fields = ("event__name", "error_message")
+    list_select_related = ("event",)
     ordering = ("-created_at",)
 
     def has_delete_permission(self, request, obj=None):

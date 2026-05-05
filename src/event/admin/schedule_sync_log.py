@@ -19,6 +19,7 @@ class ScheduleSyncLogAdmin(ReadOnlyModelAdmin):
         "created_at",
     )
     list_filter = ("sync_type", "status")
+    list_select_related = ("config",)
     ordering = ("-created_at",)
 
     @display(description="Type", label=True)

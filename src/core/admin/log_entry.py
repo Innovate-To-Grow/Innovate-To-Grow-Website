@@ -33,6 +33,8 @@ class LogEntryAdmin(ReadOnlyModelAdmin):
         return False
 
 
-if LogEntry in admin.site._registry:
+try:
     admin.site.unregister(LogEntry)
+except admin.sites.NotRegistered:
+    pass
 admin.site.register(LogEntry, LogEntryAdmin)

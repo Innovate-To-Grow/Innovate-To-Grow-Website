@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from io import BytesIO
 
 from django.contrib import admin
@@ -96,10 +96,14 @@ class DataExportMixin:
             return ""
         if isinstance(value, datetime):
             return value.strftime("%Y-%m-%d %H:%M:%S")
+        if isinstance(value, date):
+            return value.strftime("%Y-%m-%d")
         if isinstance(value, bool):
             return "Yes" if value else "No"
         if isinstance(value, uuid.UUID):
             return str(value)
+        if isinstance(value, (list, dict)):
+            return json.dumps(value, ensure_ascii=False, default=str)
         if hasattr(value, "pk"):
             return str(value)
         return value
@@ -218,8 +222,8 @@ class DataExportMixin:
         return response
 
     def _generate_json(self, request, queryset):
-        """Build a JSON file exporting all fields."""
-        columns = list(self.get_export_fields())
+        """Build a JSON file exporting selected columns."""
+        columns = self._resolve_columns(request)
 
         data = []
         for obj in queryset:
@@ -229,7 +233,7 @@ class DataExportMixin:
                 item[name] = value
             data.append(item)
 
-        body = json.dumps(data, indent=2, ensure_ascii=False)
+        body = json.dumps(data, indent=2, ensure_ascii=False, default=str)
         base_name = self._get_base_filename(request)
         filename = f"{base_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 

@@ -1,6 +1,7 @@
 import time
 
 from django.contrib import admin, messages
+from django.db.models import Count, OuterRef, Subquery
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
@@ -90,9 +91,20 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
             return "-"
         return f"{timesince(obj.last_synced_at)} ago"
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        article_count_sq = (
+            NewsArticle.objects.filter(source=OuterRef("source_key"))
+            .order_by()
+            .values("source")
+            .annotate(cnt=Count("id"))
+            .values("cnt")
+        )
+        return qs.annotate(_article_count=Subquery(article_count_sq))
+
     @display(description="Articles")
     def article_count_display(self, obj):
-        count = NewsArticle.objects.filter(source=obj.source_key).count()
+        count = getattr(obj, "_article_count", None) or 0
         url = reverse("admin:cms_newsarticle_changelist") + f"?source={obj.source_key}"
         return format_html('<a href="{}">{}</a>', url, count)
 

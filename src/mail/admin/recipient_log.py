@@ -21,6 +21,7 @@ class RecipientLogAdmin(ReadOnlyModelAdmin):
     )
     list_filter = ("status", "bounce_type", "provider", "campaign")
     search_fields = ("email_address", "recipient_name", "ses_message_id")
+    list_select_related = ("campaign",)
     ordering = ("-updated_at",)
 
     fieldsets = (

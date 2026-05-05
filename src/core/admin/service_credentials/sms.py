@@ -8,9 +8,10 @@ from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from core.admin.base import BaseModelAdmin
-from core.models import EmailServiceConfig, SMSServiceConfig
+from core.models import SMSServiceConfig
 
-from .helpers import _normalize_phone_number, _send_test_email, _send_test_sms
+from .helpers import _normalize_phone_number, _send_test_sms
+from .test_send_mixin import TestSendViewsMixin
 
 
 class SMSServiceConfigForm(forms.ModelForm):
@@ -23,7 +24,7 @@ class SMSServiceConfigForm(forms.ModelForm):
 
 
 @admin.register(SMSServiceConfig)
-class SMSServiceConfigAdmin(BaseModelAdmin):
+class SMSServiceConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
     form = SMSServiceConfigForm
     list_display = ("name", "status_badge", "account_sid", "updated_at")
     list_filter = ("is_active",)
@@ -80,17 +81,8 @@ class SMSServiceConfigAdmin(BaseModelAdmin):
                 self.admin_site.admin_view(self.test_send_view),
                 name="core_smsserviceconfig_test_send",
             ),
-            path(
-                "test-email/",
-                self.admin_site.admin_view(self.test_email_list_view),
-                name="core_smsserviceconfig_test_email",
-            ),
-            path(
-                "test-sms/",
-                self.admin_site.admin_view(self.test_sms_list_view),
-                name="core_smsserviceconfig_test_sms",
-            ),
         ]
+        custom_urls += self._get_test_send_urls("core_smsserviceconfig")
         return custom_urls + super().get_urls()
 
     @action(description="Send test SMS", url_path="test-send", icon="send")
@@ -124,71 +116,5 @@ class SMSServiceConfigAdmin(BaseModelAdmin):
             "input_help": "Select country code and enter the phone number.",
             "submit_label": "Send Test SMS",
             "cancel_url": change_url,
-        }
-        return TemplateResponse(request, "admin/core/test_send_form.html", context)
-
-    @action(description="Test Email", url_path="test-email-action", icon="mail")
-    def test_email_list(self, request):
-        return HttpResponseRedirect(reverse("admin:core_smsserviceconfig_test_email"))
-
-    @action(description="Test SMS", url_path="test-sms-action", icon="sms")
-    def test_sms_list(self, request):
-        return HttpResponseRedirect(reverse("admin:core_smsserviceconfig_test_sms"))
-
-    def test_email_list_view(self, request):
-        config = EmailServiceConfig.load()
-        changelist_url = reverse("admin:core_smsserviceconfig_changelist")
-
-        if request.method == "POST":
-            recipient = request.POST.get("recipient", "").strip()
-            if not recipient:
-                messages.error(request, "Please provide a recipient email address.")
-                return HttpResponseRedirect(request.path)
-            try:
-                provider = _send_test_email(config=config, recipient=recipient)
-                messages.success(request, f"Test email sent to {recipient} via {provider} (config: {config.name}).")
-            except Exception as exc:
-                messages.error(request, f"Failed to send test email: {exc}")
-            return HttpResponseRedirect(changelist_url)
-
-        context = {
-            **self.admin_site.each_context(request),
-            "title": f"Send Test Email — {config.name}",
-            "input_label": "Recipient email address",
-            "input_type": "email",
-            "input_placeholder": "admin@example.com",
-            "input_help": f"A test email will be sent from {config.source_address} using the active config.",
-            "submit_label": "Send Test Email",
-            "cancel_url": changelist_url,
-        }
-        return TemplateResponse(request, "admin/core/test_send_form.html", context)
-
-    def test_sms_list_view(self, request):
-        config = SMSServiceConfig.load()
-        changelist_url = reverse("admin:core_smsserviceconfig_changelist")
-
-        if request.method == "POST":
-            country_code = request.POST.get("country_code", "+1")
-            recipient = request.POST.get("recipient", "").strip()
-            if not recipient:
-                messages.error(request, "Please provide a phone number.")
-                return HttpResponseRedirect(request.path)
-            full_number = _normalize_phone_number(country_code, recipient)
-            try:
-                result = _send_test_sms(config=config, phone_number=full_number)
-                messages.success(request, f"Test SMS sent to {full_number}: {result} (config: {config.name}).")
-            except Exception as exc:
-                messages.error(request, f"Failed to send test SMS: {exc}")
-            return HttpResponseRedirect(changelist_url)
-
-        context = {
-            **self.admin_site.each_context(request),
-            "title": f"Send Test SMS — {config.name}",
-            "input_label": "Recipient phone number",
-            "input_type": "tel",
-            "input_placeholder": "2345678901",
-            "input_help": "Select country code and enter the phone number.",
-            "submit_label": "Send Test SMS",
-            "cancel_url": changelist_url,
         }
         return TemplateResponse(request, "admin/core/test_send_form.html", context)

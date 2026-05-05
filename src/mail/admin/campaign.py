@@ -637,7 +637,7 @@ class EmailCampaignAdmin(BaseModelAdmin):
 
         if request.method == "POST":
             sent_by = request.user
-            thread = threading.Thread(target=self._background_send, args=(obj.pk, sent_by.pk), daemon=True)
+            thread = threading.Thread(target=self._background_send, args=(obj.pk, sent_by.pk), daemon=False)
             thread.start()
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_status", args=[object_id]))
 
@@ -784,3 +784,5 @@ class EmailCampaignAdmin(BaseModelAdmin):
                 campaign.status = "failed"
             campaign.error_message = "Campaign send failed. Check server logs for details."
             campaign.save(update_fields=["status", "error_message"])
+        finally:
+            django.db.connections.close_all()

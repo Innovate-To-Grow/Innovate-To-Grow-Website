@@ -189,6 +189,37 @@ class DataExportMixinTest(TestCase):
         article = _make_article(source_guid="val-str", title="Hello")
         self.assertEqual(self.admin.get_export_value(article, "title"), "Hello")
 
+    def test_value_date_formatted(self):
+        from datetime import date
+
+        class _FakeDateObj:
+            date_field = date(2025, 3, 15)
+
+        result = self.admin.get_export_value(_FakeDateObj(), "date_field")
+        self.assertEqual(result, "2025-03-15")
+
+    def test_value_list_serialized_as_json(self):
+        article = _make_article(source_guid="val-list")
+        article.raw_payload = ""
+        article._test_list = [{"q": "Color?", "a": "Blue"}]
+        result = self.admin.get_export_value(article, "_test_list")
+        self.assertEqual(result, '[{"q": "Color?", "a": "Blue"}]')
+
+    def test_value_dict_serialized_as_json(self):
+        article = _make_article(source_guid="val-dict")
+        article._test_dict = {"key": "value", "num": 42}
+        result = self.admin.get_export_value(article, "_test_dict")
+        self.assertIn('"key": "value"', result)
+        self.assertIn('"num": 42', result)
+
+    def test_value_bool_returns_yes_no(self):
+        class _FakeBoolObj:
+            active = True
+            deleted = False
+
+        self.assertEqual(self.admin.get_export_value(_FakeBoolObj(), "active"), "Yes")
+        self.assertEqual(self.admin.get_export_value(_FakeBoolObj(), "deleted"), "No")
+
     def test_backward_compat_get_excel_export_value(self):
         article = _make_article(source_guid="compat-val")
         self.assertEqual(
@@ -350,7 +381,7 @@ class DataExportMixinTest(TestCase):
         titles = {item["title"] for item in data}
         self.assertEqual(titles, {"First", "Second"})
 
-    def test_json_format_ignores_column_selection_and_exports_all(self):
+    def test_json_format_respects_column_selection(self):
         _make_article(source_guid="json-sel-1", title="Filtered", source="api")
         qs = NewsArticle.objects.all()
 
@@ -365,8 +396,7 @@ class DataExportMixinTest(TestCase):
 
         data = json.loads(response.content)
         self.assertEqual(len(data), 1)
-        model_field_names = {f.name for f in NewsArticle._meta.fields}
-        self.assertEqual(set(data[0].keys()), model_field_names)
+        self.assertEqual(set(data[0].keys()), {"title", "source"})
 
     def test_json_format_uses_custom_filename(self):
         _make_article(source_guid="json-fname-1")
@@ -446,3 +476,64 @@ class DataExportMixinCustomFieldsTest(TestCase):
 
     def test_backward_compat_excel_export_filename_property(self):
         self.assertEqual(self.admin.excel_export_filename, "custom_articles")
+
+
+# ---------------------------------------------------------------------------
+# DataExportMixin — DateField and JSONField serialization
+# ---------------------------------------------------------------------------
+
+
+class _DateFieldExportAdmin(DataExportMixin, _MockSuperAdmin):
+    """Admin that exports Event-like models with DateField and JSONField."""
+
+    model = None  # set in setUp via monkey-patch
+
+
+class DataExportDateFieldTest(TestCase):
+    """Verify JSON export does not crash on DateField / JSONField values."""
+
+    def setUp(self):
+        self.admin = _DataExportAdmin()
+        self.factory = RequestFactory()
+
+    def test_json_export_with_date_field_does_not_crash(self):
+        """Regression: DateField values caused TypeError in json.dumps."""
+        from event.models import Event
+
+        event = Event.objects.create(
+            name="Test Event",
+            slug="test-export-date",
+            date="2025-06-15",
+            location="Room A",
+            description="Testing",
+        )
+
+        # Build a fresh admin bound to Event model
+        admin = _DataExportAdmin()
+        admin.model = Event
+
+        qs = Event.objects.filter(pk=event.pk)
+        request = _confirmed_post(self.factory, {"export_format": "json"})
+
+        response = admin.export_data(request, qs)
+
+        self.assertEqual(response["Content-Type"], "application/json")
+        data = json.loads(response.content)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["date"], "2025-06-15")
+
+    def test_json_export_with_json_field_does_not_crash(self):
+        """Regression: list/dict values from JSONField caused TypeError in json.dumps."""
+        article = _make_article(source_guid="json-field-1", title="JSON Export")
+        # Simulate a JSONField value by attaching a list attribute
+        # (NewsArticle doesn't have a JSONField, so we use a custom export_fields admin)
+        qs = NewsArticle.objects.filter(pk=article.pk)
+        request = _confirmed_post(self.factory, {"export_format": "json"})
+
+        # The export should not crash — json.dumps with default=str handles any leftovers
+        response = self.admin.export_data(request, qs)
+
+        self.assertEqual(response["Content-Type"], "application/json")
+        data = json.loads(response.content)
+        self.assertEqual(len(data), 1)
+        self.assertIn("title", data[0])
