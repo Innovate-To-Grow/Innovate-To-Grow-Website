@@ -20,7 +20,7 @@ pdf417gen>=0.7.0
 openpyxl>=3.1.0
 
 # Google APIs
-google-api-python-client>=2.194.0
+google-api-python-client>=2.195.0
 google-auth>=2.35.0
 google-adk>=1.31.1,<2.0
 litellm>=1.83.13,<2.0
