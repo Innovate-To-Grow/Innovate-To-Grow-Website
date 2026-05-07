@@ -2,12 +2,18 @@ import json
 
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.widgets import UnfoldAdminSelectWidget
 
 from cms.app_routes import APP_ROUTES
+from cms.embed_sections import (
+    hidden_section_choices,
+    hidden_section_presets_payload,
+    normalize_hidden_sections,
+)
 from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 from core.admin import BaseModelAdmin
 
@@ -20,6 +26,13 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
         help_text="The interactive app page to embed.",
         widget=UnfoldAdminSelectWidget,
     )
+    hidden_sections = forms.MultipleChoiceField(
+        required=False,
+        choices=hidden_section_choices(),
+        label="Sections to hide",
+        help_text="Choose safe sections to hide when this widget renders inside the embed iframe.",
+        widget=forms.CheckboxSelectMultiple,
+    )
 
     class Meta:
         model = CMSEmbedWidget
@@ -29,7 +42,7 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
             "app_route",
             "slug",
             "admin_label",
-            "hide_section_titles",
+            "hidden_sections",
             "block_sort_orders",
         )
         widgets = {
@@ -42,6 +55,18 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
         self.fields["slug"].widget.attrs["placeholder"] = "e.g. homepage-hero-banner"
         if self.instance and self.instance.app_route:
             self.fields["app_route"].initial = self.instance.app_route
+        if self.instance and self.instance.pk:
+            self.fields["hidden_sections"].initial = self.instance.get_effective_hidden_sections()
+
+    def clean_hidden_sections(self):
+        try:
+            return normalize_hidden_sections(
+                self.cleaned_data.get("hidden_sections") or [],
+                self.cleaned_data.get("widget_type") or "blocks",
+                self.cleaned_data.get("app_route") or "",
+            )
+        except ValidationError as exc:
+            raise forms.ValidationError(exc.messages) from exc
 
 
 @admin.register(CMSEmbedWidget)
@@ -125,6 +150,7 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
             "page_blocks_url": reverse("admin:cms_cmsembedwidget_page_blocks"),
             "page_info_url": reverse("admin:cms_cmsembedwidget_page_info"),
             "app_routes_url": reverse("admin:cms_cmsembedwidget_app_routes"),
+            "hidden_section_presets_json": json.dumps(hidden_section_presets_payload()),
             "initial_block_sort_orders_json": json.dumps(obj.block_sort_orders if obj else []),
             "initial_slug": obj.slug if obj else "",
             "initial_page_id": str(obj.page_id) if obj and obj.page_id else "",

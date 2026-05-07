@@ -22,6 +22,16 @@ describe('EmbedWidgetBlock', () => {
     expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed?hide-titles=1');
   });
 
+  it('appends ?hide-sections=<keys> when hidden_sections is set', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hidden_sections: ['schedule_header', 'schedule_projects']}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?hide-sections=schedule_header%2Cschedule_projects',
+    );
+  });
+
   it('renders a placeholder when slug is missing or invalid', () => {
     const {container: empty} = render(<EmbedWidgetBlock data={{slug: ''}} />);
     expect(empty.querySelector('iframe')).toBeNull();

@@ -3,8 +3,13 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { BlockRenderer } from './BlockRenderer';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '../../features/cms/api';
 import { resolveEmbedAppRoute } from './embedAppRoutes';
-
-const TRUE_VALUES = new Set(['1', 'true', 'yes', 'on']);
+import {
+  SECTION_TITLES_KEY,
+  buildHiddenSectionsCss,
+  isTruthyParam,
+  normalizeHiddenSections,
+  parseHiddenSectionsParam,
+} from './hiddenSections';
 
 /**
  * Public embed page rendered inside a third-party iframe.
@@ -31,8 +36,21 @@ export const EmbedBlockPage = () => {
   const [data, setData] = useState<CMSEmbedResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  const hideTitlesFromQuery = TRUE_VALUES.has((searchParams.get('hide-titles') || '').toLowerCase());
-  const hideSectionTitles = hideTitlesFromQuery || Boolean(data?.hide_section_titles);
+  const hideTitlesFromQuery = isTruthyParam(searchParams.get('hide-titles'));
+  const hideSectionsParam = searchParams.get('hide-sections');
+  const hiddenSections = useMemo(
+    () =>
+      normalizeHiddenSections([
+        ...(data?.hidden_sections ?? []),
+        ...parseHiddenSectionsParam(hideSectionsParam),
+        ...(hideTitlesFromQuery || data?.hide_section_titles ? [SECTION_TITLES_KEY] : []),
+      ]),
+    [data?.hidden_sections, data?.hide_section_titles, hideSectionsParam, hideTitlesFromQuery],
+  );
+  const hiddenSectionsCss = useMemo(
+    () => buildHiddenSectionsCss(hiddenSections),
+    [hiddenSections],
+  );
 
   // Fetch block data
   useEffect(() => {
@@ -94,17 +112,17 @@ export const EmbedBlockPage = () => {
     };
   }, [data?.page_css]);
 
-  // Hide .section-title headings when requested (widget setting or ?hide-titles=1).
+  // Hide safe preset sections when requested by widget config or preview query params.
   useEffect(() => {
-    if (!hideSectionTitles) return;
+    if (!hiddenSectionsCss) return;
     const style = document.createElement('style');
-    style.id = 'itg-embed-hide-titles';
-    style.textContent = '.section-title { display: none !important; }';
+    style.id = 'itg-embed-hide-sections';
+    style.textContent = hiddenSectionsCss;
     document.head.appendChild(style);
     return () => {
       style.remove();
     };
-  }, [hideSectionTitles]);
+  }, [hiddenSectionsCss]);
 
   // Report height to parent (once data is rendered, and on any size change)
   useEffect(() => {

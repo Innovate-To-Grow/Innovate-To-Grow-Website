@@ -140,15 +140,18 @@ class EmbedBlockView(APIView):
             return response
 
         if widget.widget_type == "app_route":
+            hidden_sections = widget.get_effective_hidden_sections()
             data = {
                 "widget_type": "app_route",
                 "app_route": widget.app_route,
                 "blocks": [],
                 "page_css_class": "",
                 "page_css": "",
-                "hide_section_titles": widget.hide_section_titles,
+                "hidden_sections": hidden_sections,
+                "hide_section_titles": "section_titles" in hidden_sections,
             }
         else:
+            hidden_sections = widget.get_effective_hidden_sections()
             sort_orders = [o for o in (widget.block_sort_orders or []) if isinstance(o, int)]
             blocks_qs = CMSBlock.objects.filter(page_id=widget.page_id, sort_order__in=sort_orders)
             blocks_by_order = {b.sort_order: b for b in blocks_qs}
@@ -159,7 +162,8 @@ class EmbedBlockView(APIView):
                 "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
                 "page_css_class": widget.page.page_css_class or "",
                 "page_css": widget.page.page_css or "",
-                "hide_section_titles": widget.hide_section_titles,
+                "hidden_sections": hidden_sections,
+                "hide_section_titles": "section_titles" in hidden_sections,
             }
         response = Response(data)
         response["Access-Control-Allow-Origin"] = "*"

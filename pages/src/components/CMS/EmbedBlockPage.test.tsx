@@ -63,7 +63,7 @@ describe('EmbedBlockPage', () => {
     cleanup();
     // Strip any <base> / <style id="itg-embed-*"> tags the component left on <head>
     document
-      .querySelectorAll('base, style#itg-embed-body, style#itg-embed-page-css, style#itg-embed-hide-titles')
+      .querySelectorAll('base, style#itg-embed-body, style#itg-embed-page-css, style#itg-embed-hide-sections')
       .forEach((n) => n.remove());
     vi.restoreAllMocks();
   });
@@ -210,7 +210,7 @@ describe('EmbedBlockPage', () => {
 
     renderAtSlug('widget');
     await waitFor(() => {
-      const tag = document.getElementById('itg-embed-hide-titles');
+      const tag = document.getElementById('itg-embed-hide-sections');
       expect(tag).not.toBeNull();
       expect(tag?.textContent).toContain('.section-title');
       expect(tag?.textContent).toContain('display: none');
@@ -234,9 +234,74 @@ describe('EmbedBlockPage', () => {
     );
 
     await waitFor(() => {
-      const tag = document.getElementById('itg-embed-hide-titles');
+      const tag = document.getElementById('itg-embed-hide-sections');
       expect(tag).not.toBeNull();
     });
+  });
+
+  it('injects selected hidden section selectors from the API response', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hidden_sections: ['schedule_projects', 'section_titles'],
+      hide_section_titles: false,
+    });
+
+    renderAtSlug('widget');
+
+    await waitFor(() => {
+      const tag = document.getElementById('itg-embed-hide-sections');
+      expect(tag).not.toBeNull();
+      expect(tag?.textContent).toContain('[data-embed-section="schedule-projects"]');
+      expect(tag?.textContent).toContain('.section-title');
+    });
+  });
+
+  it('injects selected hidden section selectors from ?hide-sections', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hidden_sections: [],
+      hide_section_titles: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/widget?hide-sections=schedule_header,schedule_awards']}>
+        <Routes>
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const tag = document.getElementById('itg-embed-hide-sections');
+      expect(tag).not.toBeNull();
+      expect(tag?.textContent).toContain('[data-embed-section="schedule-header"]');
+      expect(tag?.textContent).toContain('[data-embed-section="schedule-awards"]');
+    });
+  });
+
+  it('ignores invalid hidden section keys', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
+      page_css_class: '',
+      page_css: '',
+      hidden_sections: ['not-a-preset'],
+      hide_section_titles: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/widget?hide-sections=also-bad']}>
+        <Routes>
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
+    expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
   });
 
   it.each(['true', 'yes', 'on', 'TRUE', 'YES'])(
@@ -258,7 +323,7 @@ describe('EmbedBlockPage', () => {
       );
 
       await waitFor(() => {
-        expect(document.getElementById('itg-embed-hide-titles')).not.toBeNull();
+        expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull();
       });
     },
   );
@@ -282,7 +347,7 @@ describe('EmbedBlockPage', () => {
       );
 
       await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
-      expect(document.getElementById('itg-embed-hide-titles')).toBeNull();
+      expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
     },
   );
 
@@ -303,11 +368,11 @@ describe('EmbedBlockPage', () => {
     );
 
     await waitFor(() => {
-      expect(document.getElementById('itg-embed-hide-titles')).not.toBeNull();
+      expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull();
     });
   });
 
-  it('removes #itg-embed-hide-titles on unmount', async () => {
+  it('removes #itg-embed-hide-sections on unmount', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
@@ -317,10 +382,10 @@ describe('EmbedBlockPage', () => {
 
     const {unmount} = renderAtSlug('widget');
     await waitFor(() =>
-      expect(document.getElementById('itg-embed-hide-titles')).not.toBeNull(),
+      expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull(),
     );
     unmount();
-    expect(document.getElementById('itg-embed-hide-titles')).toBeNull();
+    expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
   });
 
   it('does not inject hide-titles stylesheet when both flag and query are off', async () => {
@@ -333,7 +398,7 @@ describe('EmbedBlockPage', () => {
 
     renderAtSlug('widget');
     await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
-    expect(document.getElementById('itg-embed-hide-titles')).toBeNull();
+    expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
   });
 
   it('removes its injected <style> and <base> tags on unmount', async () => {

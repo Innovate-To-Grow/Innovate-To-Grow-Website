@@ -74,6 +74,10 @@ function columnStyle(sectionCode: string, columnIndex: number): CSSProperties {
   } as CSSProperties;
 }
 
+function isImplicitBreakOrder(tracks: Array<{slots: Array<{order: number}>}>, order: number): boolean {
+  return tracks.length > 0 && tracks.every((track) => !track.slots.some((slot) => slot.order === order));
+}
+
 export const SchedulePage = () => {
   const {data, loading, error} = useCurrentEventSchedule();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -194,14 +198,14 @@ export const SchedulePage = () => {
 
   return (
     <div className="schedule-page">
-      <header className="schedule-page-header">
+      <header className="schedule-page-header" data-embed-section="schedule-header">
         <h1 className="schedule-page-title">{data.event.name}</h1>
         {schedulePageMeta ? <p className="schedule-page-meta">{schedulePageMeta}</p> : null}
         <p className="schedule-page-text">{data.event.description}</p>
       </header>
 
       {data.show_winners && orderedSections.some((s) => s.tracks.some((t) => t.winner)) && (
-        <section className="schedule-page-section schedule-page-section-winners">
+        <section className="schedule-page-section schedule-page-section-winners" data-embed-section="schedule-winners">
           <div className="schedule-winners-hero">
             <h2 className="schedule-page-section-title schedule-winners-title">
               <span className="schedule-winners-title-emphasis">Winners!</span>{' '}
@@ -253,7 +257,7 @@ export const SchedulePage = () => {
       )}
 
       {data.expo.items.length > 0 && (
-        <section className="schedule-page-section">
+        <section className="schedule-page-section" data-embed-section="schedule-expo">
           <h2 className="schedule-page-section-title">{data.expo.title}</h2>
           <div className="schedule-page-agenda-wrap">
             <table className="schedule-page-agenda-table">
@@ -276,7 +280,7 @@ export const SchedulePage = () => {
         </section>
       )}
 
-      <section className="schedule-page-section">
+      <section className="schedule-page-section" data-embed-section="schedule-presentations">
         <h2 className="schedule-page-section-title schedule-page-section-title-main">{data.presentations_title}</h2>
         <div className="schedule-page-section-stack">
           {orderedSections.map((section) => {
@@ -313,6 +317,7 @@ export const SchedulePage = () => {
                           {times.map((time, rowIndex) => {
                             const order = rowIndex + 1;
                             const slot = track.slots.find((entry) => entry.order === order);
+                            const implicitBreak = isImplicitBreakOrder(orderedTracks, order);
 
                             return (
                               <div key={`${track.id}-${order}-mobile`} className="schedule-mobile-slot">
@@ -336,7 +341,9 @@ export const SchedulePage = () => {
                                       </>
                                     )
                                   ) : (
-                                    <span className="schedule-mobile-empty">TBD</span>
+                                    <span className={implicitBreak ? 'schedule-mobile-break' : 'schedule-mobile-empty'}>
+                                      {implicitBreak ? 'Break' : 'TBD'}
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -396,6 +403,7 @@ export const SchedulePage = () => {
                               <th className="schedule-presentation-time">{time}</th>
                               {orderedTracks.map((track, columnIndex) => {
                                 const slot = track.slots.find((entry) => entry.order === order);
+                                const implicitBreak = isImplicitBreakOrder(orderedTracks, order);
 
                                 return (
                                   <td
@@ -422,7 +430,9 @@ export const SchedulePage = () => {
                                         </>
                                       )
                                     ) : (
-                                      <span className="schedule-presentation-empty">TBD</span>
+                                      <span className={implicitBreak ? 'schedule-presentation-break' : 'schedule-presentation-empty'}>
+                                        {implicitBreak ? 'Break' : 'TBD'}
+                                      </span>
                                     )}
                                   </td>
                                 );
@@ -441,7 +451,7 @@ export const SchedulePage = () => {
       </section>
 
       {data.awards.items.length > 0 && (
-        <section className="schedule-page-section">
+        <section className="schedule-page-section" data-embed-section="schedule-awards">
           <h2 className="schedule-page-section-title">{data.awards.title}</h2>
           <div className="schedule-page-agenda-wrap">
             <table className="schedule-page-agenda-table">
@@ -464,7 +474,7 @@ export const SchedulePage = () => {
         </section>
       )}
 
-      <section id="projects" className="schedule-page-section">
+      <section id="projects" className="schedule-page-section" data-embed-section="schedule-projects">
         <h2 className="schedule-page-section-title">Projects &amp; Teams</h2>
         <p className="schedule-page-section-text">
           Click a team number above or search by title, organization, class, or track below.

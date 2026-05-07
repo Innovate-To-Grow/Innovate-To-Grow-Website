@@ -45,7 +45,7 @@ BLOCK_SCHEMAS = {
     },
     "embed_widget": {
         "required": ["slug"],
-        "optional": ["heading", "height", "aspect_ratio", "hide_section_titles"],
+        "optional": ["heading", "height", "aspect_ratio", "hide_section_titles", "hidden_sections"],
     },
 }
 

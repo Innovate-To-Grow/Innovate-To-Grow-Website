@@ -5,6 +5,7 @@ interface EmbedWidgetData {
   heading?: string;
   height?: number | string;
   aspect_ratio?: string;
+  hidden_sections?: string[];
   hide_section_titles?: boolean;
 }
 
@@ -61,7 +62,12 @@ export const EmbedWidgetBlock: React.FC<{ data: EmbedWidgetData }> = ({ data }) 
     );
   }
 
-  const query = data.hide_section_titles ? '?hide-titles=1' : '';
+  const queryParams = new URLSearchParams();
+  if (data.hide_section_titles) queryParams.set('hide-titles', '1');
+  if (Array.isArray(data.hidden_sections) && data.hidden_sections.length) {
+    queryParams.set('hide-sections', data.hidden_sections.join(','));
+  }
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
   const src = `/_embed/${encodeURIComponent(slug)}${query}`;
 
   let frameStyle: React.CSSProperties = {
