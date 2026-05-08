@@ -77,11 +77,14 @@ class CMSEmbedWidget(ProjectControlModel):
 
     def is_visible(self):
         # Kept in sync with EmbedBlockView's 404 gate: a widget is renderable
-        # only when its source page is published (blocks) or its route is set
-        # (app_route). Block-level validation calls this to reject references
-        # that would resolve to a runtime 404 ("Embed not found").
+        # only when its source page is published (blocks) or its app route is
+        # still embeddable. Block-level validation calls this to reject
+        # references that would resolve to a runtime 404 ("Embed not found").
         if self.widget_type == WIDGET_TYPE_APP_ROUTE:
-            return bool(self.app_route)
+            from cms.app_routes import EMBEDDABLE_APP_ROUTES
+
+            allowed = {entry["url"] for entry in EMBEDDABLE_APP_ROUTES}
+            return (self.app_route or "").strip() in allowed
         return self.page is not None and self.page.status == "published"
 
     def clean(self):

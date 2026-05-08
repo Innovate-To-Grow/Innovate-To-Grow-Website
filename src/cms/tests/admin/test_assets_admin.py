@@ -1,10 +1,12 @@
 import shutil
 import tempfile
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from authn.models import ContactEmail
 from cms.models import CMSAsset
@@ -83,6 +85,34 @@ class CMSAssetAdminTests(TestCase):
         self.assertEqual(payload["total"], 0)
         self.assertEqual(payload["assets"], [])
 
+    def test_asset_picker_image_filter_applies_before_limit(self):
+        image = CMSAsset.objects.create(
+            name="Older Image",
+            file=SimpleUploadedFile(
+                "older-image.png",
+                b"\x89PNG\r\n\x1a\n",
+                content_type="image/png",
+            ),
+        )
+        CMSAsset.objects.filter(pk=image.pk).update(updated_at=timezone.now() - timedelta(days=1))
+        for index in range(60):
+            CMSAsset.objects.create(
+                name=f"Recent Document {index:02d}",
+                file=SimpleUploadedFile(
+                    f"recent-document-{index:02d}.pdf",
+                    b"%PDF-1.7\n",
+                    content_type="application/pdf",
+                ),
+            )
+
+        response = self.client.get(reverse("admin:cms_cmspage_assets"), {"type": "image", "limit": "50"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["assets"][0]["id"], str(image.pk))
+        self.assertTrue(payload["assets"][0]["is_image"])
+
     def test_asset_picker_upload_endpoint_creates_image_asset(self):
         response = self.client.post(
             reverse("admin:cms_cmspage_asset_upload"),
@@ -102,6 +132,19 @@ class CMSAssetAdminTests(TestCase):
         self.assertEqual(payload["extension"], "png")
         self.assertTrue(payload["is_image"])
         self.assertTrue(CMSAsset.objects.filter(pk=payload["id"]).exists())
+
+    def test_asset_picker_image_upload_rejects_document_asset(self):
+        response = self.client.post(
+            reverse("admin:cms_cmspage_asset_upload") + "?type=image",
+            {
+                "name": "Uploaded PDF",
+                "file": SimpleUploadedFile("uploaded.pdf", b"%PDF-1.7\n", content_type="application/pdf"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Select an image asset for this field.")
+        self.assertFalse(CMSAsset.objects.filter(name="Uploaded PDF").exists())
 
     def test_asset_picker_upload_rejects_invalid_extension(self):
         response = self.client.post(

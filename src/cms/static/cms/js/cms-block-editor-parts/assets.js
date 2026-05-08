@@ -9,7 +9,7 @@
     const escapeAttr = P.escapeAttr || function (value) {
         return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
-    const imageExtensions = new Set(config.imageExtensions || []);
+    const imageExtensions = new Set((config.imageExtensions || []).map(ext => String(ext).toLowerCase()));
     const state = { target: null, assets: [], query: '', loading: false };
     let modal = null;
 
@@ -36,7 +36,16 @@
     }
 
     function isImage(asset) {
-        return Boolean(asset && (asset.is_image || imageExtensions.has(asset.extension)));
+        return Boolean(asset && (asset.is_image || imageExtensions.has(String(asset.extension || '').toLowerCase())));
+    }
+
+    function fileExtension(filename) {
+        const parts = String(filename || '').toLowerCase().split('.');
+        return parts.length > 1 ? parts.pop() : '';
+    }
+
+    function targetAssetType() {
+        return state.target && state.target.filter === 'image' ? 'image' : '';
     }
 
     function fileSize(size) {
@@ -136,6 +145,8 @@
         renderAssets();
         const url = new URL(config.listUrl, window.location.origin);
         if (state.query) url.searchParams.set('q', state.query);
+        const assetType = targetAssetType();
+        if (assetType) url.searchParams.set('type', assetType);
         fetch(url.toString(), { credentials: 'same-origin' })
             .then(response => response.ok ? response.json() : Promise.reject(new Error('Unable to load assets.')))
             .then(data => {
@@ -192,11 +203,18 @@
             showError('CMS asset uploads must be 20 MB or smaller.');
             return;
         }
+        if (targetAssetType() === 'image' && !imageExtensions.has(fileExtension(file.name))) {
+            showError('Select an image asset for this field.');
+            return;
+        }
         showError('');
         const formData = new FormData();
         formData.append('file', file);
         formData.append('name', nameInput.value || file.name);
-        fetch(config.uploadUrl, {
+        const uploadUrl = new URL(config.uploadUrl, window.location.origin);
+        const assetType = targetAssetType();
+        if (assetType) uploadUrl.searchParams.set('type', assetType);
+        fetch(uploadUrl.toString(), {
             method: 'POST',
             body: formData,
             credentials: 'same-origin',

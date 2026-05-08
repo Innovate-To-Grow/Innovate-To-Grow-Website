@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -59,6 +60,30 @@ def _format_widget_label(widget):
 def _asset_extension(asset):
     _, ext = os.path.splitext(asset.file.name if asset.file else "")
     return ext.lstrip(".").lower()
+
+
+def _requested_asset_type(request):
+    asset_type = (request.GET.get("type") or request.POST.get("type") or "").strip().lower()
+    return asset_type if asset_type == "image" else ""
+
+
+def _image_asset_query():
+    query = Q(file__iendswith=f".{IMAGE_ASSET_EXTENSIONS[0]}")
+    for extension in IMAGE_ASSET_EXTENSIONS[1:]:
+        query |= Q(file__iendswith=f".{extension}")
+    return query
+
+
+def _filter_assets_for_type(queryset, asset_type):
+    if asset_type == "image":
+        return queryset.filter(_image_asset_query())
+    return queryset
+
+
+def _asset_matches_type(asset, asset_type):
+    if asset_type == "image":
+        return _asset_extension(asset) in IMAGE_ASSET_EXTENSIONS
+    return True
 
 
 def _validation_error_payload(exc):
@@ -206,6 +231,7 @@ def assets_list_response(request):
         return JsonResponse({"detail": "Method not allowed."}, status=405)
 
     query = request.GET.get("q", "").strip()
+    asset_type = _requested_asset_type(request)
     try:
         limit = int(request.GET.get("limit", "50"))
     except ValueError:
@@ -213,6 +239,7 @@ def assets_list_response(request):
     limit = max(1, min(limit, 100))
 
     queryset = CMSAsset.objects.all().order_by("-updated_at", "name")
+    queryset = _filter_assets_for_type(queryset, asset_type)
     if query:
         queryset = queryset.filter(name__icontains=query)
 
@@ -225,6 +252,7 @@ def assets_upload_response(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed."}, status=405)
 
+    asset_type = _requested_asset_type(request)
     uploaded = request.FILES.get("file")
     if uploaded is None:
         return JsonResponse({"detail": "Select a file to upload."}, status=400)
@@ -236,6 +264,8 @@ def assets_upload_response(request):
         asset.full_clean()
     except ValidationError as exc:
         return JsonResponse(_validation_error_payload(exc), status=400)
+    if not _asset_matches_type(asset, asset_type):
+        return JsonResponse({"detail": "Select an image asset for this field."}, status=400)
 
     asset.save()
     return JsonResponse({"asset": serialize_asset(asset)}, status=201)

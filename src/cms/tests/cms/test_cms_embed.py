@@ -252,6 +252,12 @@ class EmbedAppRouteWidgetViewTest(TestCase):
         response = self.client.get("/cms/embed/schedule-embed/")
         self.assertEqual(response.status_code, 404)
 
+    def test_non_embeddable_app_route_returns_404(self):
+        self.widget.app_route = "/event"
+        self.widget.save(update_fields=["app_route"])
+        response = self.client.get("/cms/embed/schedule-embed/")
+        self.assertEqual(response.status_code, 404)
+
     def test_hide_section_titles_reflects_widget_setting(self):
         self.widget.hide_section_titles = True
         self.widget.save(update_fields=["hide_section_titles"])
