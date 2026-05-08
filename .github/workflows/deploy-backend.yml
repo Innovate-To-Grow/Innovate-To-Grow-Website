@@ -100,55 +100,23 @@ jobs:
       - name: Upload Django static assets to S3
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image }}
-          DJANGO_SECRET_KEY: ${{ vars.DJANGO_SECRET_KEY || secrets.DJANGO_SECRET_KEY }}
-          DB_ENGINE: ${{ vars.DB_ENGINE }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
-          DB_HOST: ${{ vars.DB_HOST }}
-          DB_PORT: ${{ vars.DB_PORT }}
-          DB_CONN_MAX_AGE: ${{ vars.DB_CONN_MAX_AGE || '0' }}
-          DB_CONN_HEALTH_CHECKS: ${{ vars.DB_CONN_HEALTH_CHECKS || 'true' }}
-          REDIS_URL: ${{ vars.REDIS_URL || secrets.REDIS_URL }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
-          DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
-          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
-          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
           AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
         run: |
           set -euo pipefail
 
-          export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS:-api.i2g.ucmerced.edu,.cloudfront.net,.elb.amazonaws.com}"
-          export DB_PORT="${DB_PORT:-5432}"
-          export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
+          # Extract baked static files from the image and sync to S3.
+          # This avoids Django's collectstatic S3 backend which requires
+          # s3:DeleteObject permissions we intentionally withhold from the
+          # deploy user.
+          CONTAINER_ID=$(docker create "$IMAGE_URI")
+          docker cp "$CONTAINER_ID:/app/static" ./static-export
+          docker rm "$CONTAINER_ID"
 
-          docker run --rm \
-            --entrypoint python \
-            -e DJANGO_SETTINGS_MODULE=core.settings.prod \
-            -e DJANGO_SECRET_KEY \
-            -e DJANGO_ALLOWED_HOSTS \
-            -e DB_ENGINE \
-            -e DB_NAME \
-            -e DB_USER \
-            -e DB_PASSWORD \
-            -e DB_HOST \
-            -e DB_PORT \
-            -e DB_CONN_MAX_AGE \
-            -e DB_CONN_HEALTH_CHECKS \
-            -e REDIS_URL \
-            -e BACKEND_URL \
-            -e CSRF_TRUSTED_ORIGINS \
-            -e CORS_ALLOWED_ORIGINS \
-            -e AWS_STORAGE_BUCKET_NAME \
-            -e AWS_S3_REGION_NAME \
-            -e AWS_ACCESS_KEY_ID \
-            -e AWS_SECRET_ACCESS_KEY \
-            -e AWS_SESSION_TOKEN \
-            -e AWS_DEFAULT_REGION \
-            -e AWS_REGION \
-            "$IMAGE_URI" \
-            manage.py collectstatic --noinput --verbosity 1
+          aws s3 sync ./static-export "s3://${AWS_STORAGE_BUCKET_NAME}/static" \
+            --region "${AWS_S3_REGION_NAME}" \
+            --cache-control "max-age=86400" \
+            --size-only
 
       - name: Push Docker image to ECR
         env:
