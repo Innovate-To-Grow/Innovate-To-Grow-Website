@@ -9,15 +9,18 @@ without the others.
 import re
 from pathlib import Path
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from cms.app_routes import EMBEDDABLE_APP_ROUTES
 from cms.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
 
-EMBED_REGISTRY_PATH = Path(__file__).resolve().parents[4] / "pages" / "src" / "components" / "CMS" / "embedAppRoutes.ts"
+EMBED_REGISTRY_PATH = Path(settings.BASE_DIR).parent / "pages" / "src" / "components" / "CMS" / "embedAppRoutes.ts"
 
 # Matches lines like "  '/schedule': React.lazy(...)" inside the registry object.
-_ROUTE_KEY_RE = re.compile(r"^\s*'(/[\w-]+)':\s*React\.lazy", flags=re.MULTILINE)
+# Accepts both single and double quotes so the test stays stable across
+# Prettier configs and hand-edits.
+_ROUTE_KEY_RE = re.compile(r"""^\s*['"](/[\w-]+)['"]:\s*React\.lazy""", flags=re.MULTILINE)
 
 
 def _frontend_embed_routes() -> set[str]:
