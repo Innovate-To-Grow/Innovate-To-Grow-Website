@@ -59,6 +59,16 @@ describe('EmbedWidgetBlock', () => {
     expect(frame?.style.aspectRatio).toBe('');
   });
 
+  it('loads eagerly and starts taller in preview mode', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed'}} previewMode />,
+    );
+    const iframe = container.querySelector('iframe');
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+    expect(frame?.style.height).toBe('360px');
+  });
+
   it('uses aspect ratio when provided and no fixed height', () => {
     const {container} = render(
       <EmbedWidgetBlock data={{slug: 'schedule-embed', aspect_ratio: '16:9'}} />,

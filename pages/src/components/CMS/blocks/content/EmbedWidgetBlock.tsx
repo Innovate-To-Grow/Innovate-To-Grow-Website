@@ -21,7 +21,10 @@ function parseAspectRatio(value?: string): string | null {
   return `${w} / ${h}`;
 }
 
-export const EmbedWidgetBlock: React.FC<{ data: EmbedWidgetData }> = ({ data }) => {
+export const EmbedWidgetBlock: React.FC<{
+  data: EmbedWidgetData;
+  previewMode?: boolean;
+}> = ({ data, previewMode = false }) => {
   const slug = useMemo(() => (data.slug || '').trim().toLowerCase(), [data.slug]);
   const validSlug = SLUG_RE.test(slug);
 
@@ -81,7 +84,10 @@ export const EmbedWidgetBlock: React.FC<{ data: EmbedWidgetData }> = ({ data }) 
   } else if (aspect) {
     frameStyle = { ...frameStyle, aspectRatio: aspect };
   } else {
-    frameStyle = { ...frameStyle, height: autoHeight ? `${autoHeight}px` : '120px' };
+    frameStyle = {
+      ...frameStyle,
+      height: autoHeight ? `${autoHeight}px` : previewMode ? '360px' : '120px',
+    };
   }
 
   const iframeStyle: React.CSSProperties = {
@@ -101,7 +107,7 @@ export const EmbedWidgetBlock: React.FC<{ data: EmbedWidgetData }> = ({ data }) 
           src={src}
           title={data.heading || `Embedded widget: ${slug}`}
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-          loading="lazy"
+          loading={previewMode ? 'eager' : 'lazy'}
           referrerPolicy="no-referrer-when-downgrade"
           style={iframeStyle}
         />

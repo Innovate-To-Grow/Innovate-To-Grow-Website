@@ -99,6 +99,41 @@ export const BlockPreviewPage = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
 
+  useEffect(() => {
+    if (!block || window.parent === window) return;
+
+    const reportHeight = () => {
+      const height = Math.max(
+        document.documentElement.scrollHeight,
+        document.body ? document.body.scrollHeight : 0,
+        document.documentElement.offsetHeight,
+        document.body ? document.body.offsetHeight : 0,
+      );
+      if (height > 0) {
+        window.parent.postMessage({ type: 'cms-block-preview-resize', height }, '*');
+      }
+    };
+
+    reportHeight();
+    const timers = [
+      window.setTimeout(reportHeight, 100),
+      window.setTimeout(reportHeight, 500),
+      window.setTimeout(reportHeight, 1500),
+    ];
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(reportHeight) : null;
+    if (resizeObserver) {
+      resizeObserver.observe(document.documentElement);
+      if (document.body) resizeObserver.observe(document.body);
+    }
+    window.addEventListener('load', reportHeight);
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      resizeObserver?.disconnect();
+      window.removeEventListener('load', reportHeight);
+    };
+  }, [block, pageCssClass]);
+
   if (!block) {
     return (
       <div style={{ padding: '24px', color: '#999', fontStyle: 'italic', textAlign: 'center' }}>
@@ -109,7 +144,7 @@ export const BlockPreviewPage = () => {
 
   return (
     <div className={pageCssClass || 'cms-page'}>
-      <BlockRenderer blocks={[block]} />
+      <BlockRenderer blocks={[block]} previewMode />
     </div>
   );
 };

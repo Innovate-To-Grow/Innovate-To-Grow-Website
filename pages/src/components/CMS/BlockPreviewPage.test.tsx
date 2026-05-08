@@ -19,8 +19,14 @@ import {BlockPreviewPage} from './BlockPreviewPage';
 // rendered output without pulling in styling/API deps. We spy on
 // BlockRenderer's input.
 vi.mock('./BlockRenderer', () => ({
-  BlockRenderer: ({blocks}: {blocks: Array<{block_type: string; data: Record<string, unknown>}>}) => (
-    <div data-testid="br">
+  BlockRenderer: ({
+    blocks,
+    previewMode,
+  }: {
+    blocks: Array<{block_type: string; data: Record<string, unknown>}>;
+    previewMode?: boolean;
+  }) => (
+    <div data-testid="br" data-preview-mode={previewMode ? 'true' : 'false'}>
       {blocks.map((b, i) => (
         <span key={i} data-testid={`blk-${b.block_type}`}>
           {String((b.data as {heading?: string}).heading ?? '')}
@@ -83,6 +89,22 @@ describe('BlockPreviewPage', () => {
     });
     expect(screen.getByTestId('blk-rich_text')).toHaveTextContent('Hello');
     expect(screen.queryByText(/waiting for block data/i)).not.toBeInTheDocument();
+  });
+
+  it('renders blocks in preview mode', () => {
+    render(<BlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'embed_widget', sort_order: 0, data: {slug: 'schedule-embed'}},
+          },
+        }),
+      );
+    });
+    expect(screen.getByTestId('br')).toHaveAttribute('data-preview-mode', 'true');
   });
 
   it('applies pageCssClass when provided', () => {

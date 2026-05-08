@@ -61,6 +61,8 @@
                     sendData();
                     // Auto-resize once content renders
                     scheduleResize(iframe);
+                } else if (event.data && event.data.type === 'cms-block-preview-resize') {
+                    setIframeHeight(iframe, event.data.height);
                 }
             }
             window.addEventListener('message', onMessage);
@@ -122,13 +124,16 @@
         try {
             var body = iframe.contentDocument && iframe.contentDocument.body;
             if (!body) return;
-            var height = body.scrollHeight;
-            if (height > 20) {
-                iframe.style.height = Math.min(height + 16, 600) + 'px';
-            }
+            setIframeHeight(iframe, body.scrollHeight + 16);
         } catch (e) {
-            // Cross-origin — cannot access; iframe stays at CSS default height
+            // Cross-origin previews resize through cms-block-preview-resize messages.
         }
+    }
+
+    function setIframeHeight(iframe, rawHeight) {
+        var height = Number(rawHeight);
+        if (!Number.isFinite(height) || height <= 20) return;
+        iframe.style.height = Math.min(Math.ceil(height), 720) + 'px';
     }
 
     window.ITGCmsBlockPreview = {

@@ -45,6 +45,19 @@ describe('BlockRenderer', () => {
     expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
   });
 
+  it('passes previewMode through to blocks', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed_widget',
+        sort_order: 0,
+        data: {slug: 'schedule-embed'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} previewMode />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+  });
+
   it('logs a console.warn and renders nothing for an unknown block type', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const blocks: CMSBlock[] = [
