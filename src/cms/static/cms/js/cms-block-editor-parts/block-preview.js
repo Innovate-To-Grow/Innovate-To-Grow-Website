@@ -17,6 +17,19 @@
         return base + PREVIEW_PATH;
     }
 
+    function getIframeOrigin(iframe) {
+        try {
+            return new URL(iframe.getAttribute('src') || iframe.src || '', window.location.href).origin;
+        } catch (e) {
+            return window.location.origin;
+        }
+    }
+
+    function postToIframe(iframe, payload) {
+        if (!iframe || !iframe.contentWindow) return;
+        iframe.contentWindow.postMessage(payload, getIframeOrigin(iframe));
+    }
+
     /**
      * Build the preview pane HTML with an iframe for a given block.
      * Called by renderers.js during renderAll().
@@ -42,7 +55,7 @@
 
             function sendData() {
                 var pageCssClassEl = document.getElementById('id_page_css_class');
-                iframe.contentWindow.postMessage({
+                postToIframe(iframe, {
                     type: 'cms-block-preview',
                     block: {
                         block_type: blocks[idx].block_type,
@@ -50,17 +63,20 @@
                         data: blocks[idx].data,
                     },
                     pageCssClass: pageCssClassEl ? pageCssClassEl.value : '',
-                }, '*');
+                });
             }
 
             // Listen for the "ready" signal from the iframe
             function onMessage(event) {
                 if (event.source !== iframe.contentWindow) return;
+                if (event.origin !== getIframeOrigin(iframe)) return;
                 if (event.data && event.data.type === 'cms-block-preview-ready') {
                     iframeReadyMap[idx] = iframe;
                     sendData();
                     // Auto-resize once content renders
                     scheduleResize(iframe);
+                } else if (event.data && event.data.type === 'cms-block-preview-resize') {
+                    setIframeHeight(iframe, event.data.height);
                 }
             }
             window.addEventListener('message', onMessage);
@@ -87,7 +103,7 @@
         var iframe = iframeReadyMap[idx];
         if (!iframe || !iframe.contentWindow) return;
         var pageCssClassEl = document.getElementById('id_page_css_class');
-        iframe.contentWindow.postMessage({
+        postToIframe(iframe, {
             type: 'cms-block-preview',
             block: {
                 block_type: block.block_type,
@@ -95,7 +111,7 @@
                 data: block.data,
             },
             pageCssClass: pageCssClassEl ? pageCssClassEl.value : '',
-        }, '*');
+        });
         scheduleResize(iframe);
     }
 
@@ -122,13 +138,16 @@
         try {
             var body = iframe.contentDocument && iframe.contentDocument.body;
             if (!body) return;
-            var height = body.scrollHeight;
-            if (height > 20) {
-                iframe.style.height = Math.min(height + 16, 600) + 'px';
-            }
+            setIframeHeight(iframe, body.scrollHeight + 16);
         } catch (e) {
-            // Cross-origin — cannot access; iframe stays at CSS default height
+            // Cross-origin previews resize through cms-block-preview-resize messages.
         }
+    }
+
+    function setIframeHeight(iframe, rawHeight) {
+        var height = Number(rawHeight);
+        if (!Number.isFinite(height) || height <= 20) return;
+        iframe.style.height = Math.min(Math.ceil(height), 720) + 'px';
     }
 
     window.ITGCmsBlockPreview = {

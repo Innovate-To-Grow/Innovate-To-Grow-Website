@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from authn.models import Member
-from cms.models import CMSBlock, CMSPage
+from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 
 
 class CMSImportTest(TestCase):
@@ -137,6 +137,43 @@ class CMSImportTest(TestCase):
         self.assertEqual(response.status_code, 200)
         # Should have no page created
         self.assertFalse(CMSPage.objects.filter(slug="bad-type").exists())
+
+    def test_import_normalizes_embed_widget_hidden_sections_for_storage(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="schedule-embed",
+        )
+        bundle = self._make_bundle(
+            [
+                {
+                    "slug": "embed-import",
+                    "route": "/embed-import",
+                    "title": "Embed Import",
+                    "blocks": [
+                        {
+                            "block_type": "embed_widget",
+                            "sort_order": 0,
+                            "data": {"slug": "schedule-embed", "hide_section_titles": True},
+                        }
+                    ],
+                }
+            ]
+        )
+        f = SimpleUploadedFile("import.json", bundle, content_type="application/json")
+
+        response = self.client.post(
+            "/admin/cms/cmspage/import/",
+            {"json_file": f, "action": "execute"},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        block = CMSPage.objects.get(slug="embed-import").blocks.get()
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
+        self.assertTrue(block.data["hide_section_titles"])
 
     def test_import_dry_run_no_changes(self):
         """Dry run returns results but creates nothing."""

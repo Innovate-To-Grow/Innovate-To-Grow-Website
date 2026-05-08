@@ -3,7 +3,7 @@ from django.db import models
 
 from core.models import ProjectControlModel
 
-from .block_types import BLOCK_TYPE_CHOICES, validate_block_data
+from .block_types import BLOCK_TYPE_CHOICES, normalize_block_data_for_storage, validate_block_data
 from .cms_page import CMSPage
 
 
@@ -37,3 +37,4 @@ class CMSBlock(ProjectControlModel):
     def clean(self):
         super().clean()
         validate_block_data(self.block_type, self.data)
+        self.data = normalize_block_data_for_storage(self.block_type, self.data)

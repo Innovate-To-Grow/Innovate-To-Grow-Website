@@ -3,7 +3,7 @@
 
 {% block extrastyle %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'cms/css/cms-embed-widget.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-embed-widget.css' %}?v=4">
 {% endblock %}
 
 {% block after_field_sets %}
@@ -65,6 +65,11 @@
             <p id="cms-widget-app-route-placeholder" class="cms-widget-empty" style="padding:24px;text-align:center;">
                 Pick an app route above to preview it here.
             </p>
+            <p id="cms-widget-app-route-status"
+               class="cms-widget-preview-status"
+               role="status"
+               aria-live="polite"
+               hidden></p>
             <iframe id="cms-widget-app-route-preview-iframe"
                     class="cms-widget-preview-iframe cms-widget-page-preview-iframe"
                     sandbox="allow-scripts allow-same-origin allow-popups"
@@ -116,6 +121,7 @@
             pageInfoUrl: "{{ page_info_url|escapejs }}",
             appRoutesUrl: "{{ app_routes_url|escapejs }}",
             frontendUrl: "{{ frontend_url|escapejs }}",
+            hiddenSectionPresets: {{ hidden_section_presets_json|safe }},
             initialBlockSortOrders: {{ initial_block_sort_orders_json|safe }},
             initialSlug: "{{ initial_slug|escapejs }}",
             initialPageId: "{{ initial_page_id|escapejs }}",
@@ -124,9 +130,9 @@
         };
     </script>
     <script src="{% static 'cms/js/cms-embed-widget/snippet.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-embed-widget/core.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-embed-widget/previews.js' %}?v=1"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/core.js' %}?v=3"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/previews.js' %}?v=3"></script>
     <script src="{% static 'cms/js/cms-embed-widget/blocks.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-embed-widget/widget-type.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=12"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/widget-type.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/cms-embed-widget/admin.js' %}?v=13"></script>
 {% endblock %}

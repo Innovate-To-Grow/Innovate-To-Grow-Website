@@ -22,6 +22,24 @@ describe('EmbedWidgetBlock', () => {
     expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed?hide-titles=1');
   });
 
+  it('appends ?hide-sections=<keys> when hidden_sections is set', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hidden_sections: ['schedule_header', 'schedule_projects']}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?hide-sections=schedule_header%2Cschedule_projects',
+    );
+  });
+
+  it('treats hidden_sections as authoritative over legacy hide_section_titles', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hidden_sections: [], hide_section_titles: true}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
+  });
+
   it('renders a placeholder when slug is missing or invalid', () => {
     const {container: empty} = render(<EmbedWidgetBlock data={{slug: ''}} />);
     expect(empty.querySelector('iframe')).toBeNull();
@@ -39,6 +57,16 @@ describe('EmbedWidgetBlock', () => {
     const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
     expect(frame?.style.height).toBe('480px');
     expect(frame?.style.aspectRatio).toBe('');
+  });
+
+  it('loads eagerly and starts taller in preview mode', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed'}} previewMode />,
+    );
+    const iframe = container.querySelector('iframe');
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+    expect(frame?.style.height).toBe('360px');
   });
 
   it('uses aspect ratio when provided and no fixed height', () => {

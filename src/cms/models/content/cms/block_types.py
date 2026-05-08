@@ -2,6 +2,8 @@ import re
 
 from django.core.exceptions import ValidationError
 
+from cms.services.sanitize import validate_safe_url
+
 BLOCK_TYPE_CHOICES = [
     ("hero", "Hero Banner"),
     ("rich_text", "Rich Text"),
@@ -45,7 +47,7 @@ BLOCK_SCHEMAS = {
     },
     "embed_widget": {
         "required": ["slug"],
-        "optional": ["heading", "height", "aspect_ratio", "hide_section_titles"],
+        "optional": ["heading", "height", "aspect_ratio", "hide_section_titles", "hidden_sections"],
     },
 }
 
@@ -96,11 +98,73 @@ def validate_block_data(block_type, data):
             if not str(sponsor.get("name", "")).strip():
                 raise ValidationError(f"Sponsor #{index + 1} requires a non-empty 'name'.")
 
+    if block_type == "link_list":
+        _validate_link_list_urls(data)
+
+    if block_type == "navigation_grid":
+        _validate_navigation_grid_urls(data)
+
+    if block_type == "contact_info":
+        _validate_contact_info_urls(data)
+
     if block_type == "embed":
         _validate_embed_block(data)
 
     if block_type == "embed_widget":
         _validate_embed_widget_block(data)
+
+
+def normalize_block_data_for_storage(block_type, data):
+    """Return normalized block data for persistence after validation."""
+    if block_type == "embed_widget":
+        return _normalize_embed_widget_block_data(data)
+    return data
+
+
+def _validate_link_list_urls(data):
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url", "")
+        if url and not validate_safe_url(url):
+            raise ValidationError(
+                f"Link #{index + 1}: URL uses an unsafe scheme. Only http, https, mailto, and tel URLs are allowed."
+            )
+
+
+def _validate_navigation_grid_urls(data):
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url", "")
+        if url and not validate_safe_url(url):
+            raise ValidationError(
+                f"Navigation item #{index + 1}: URL uses an unsafe scheme. "
+                "Only http, https, mailto, and tel URLs are allowed."
+            )
+
+
+def _validate_contact_info_urls(data):
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "url":
+            continue
+        value = item.get("value", "")
+        if value and not validate_safe_url(value):
+            raise ValidationError(
+                f"Contact item #{index + 1}: URL uses an unsafe scheme. "
+                "Only http, https, mailto, and tel URLs are allowed."
+            )
 
 
 def _validate_embed_block(data):
@@ -143,6 +207,36 @@ def _validate_embed_block(data):
 
 
 def _validate_embed_widget_block(data):
+    widget = _resolve_embed_widget(data)
+
+    aspect_ratio = data.get("aspect_ratio")
+    if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):
+        raise ValidationError("'aspect_ratio' must look like '16:9' (digits:digits).")
+
+    height = data.get("height")
+    if height not in (None, ""):
+        try:
+            height_value = int(height)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("'height' must be a positive integer.") from exc
+        if height_value <= 0 or height_value > 5000:
+            raise ValidationError("'height' must be between 1 and 5000 pixels.")
+
+    _normalized_embed_widget_hidden_sections(data, widget)
+    return widget
+
+
+def _normalize_embed_widget_block_data(data):
+    normalized = dict(data)
+    widget = _validate_embed_widget_block(normalized)
+    hidden_sections = _normalized_embed_widget_hidden_sections(normalized, widget)
+    if hidden_sections or "hidden_sections" in normalized or normalized.get("hide_section_titles") is True:
+        normalized["hidden_sections"] = hidden_sections
+        normalized["hide_section_titles"] = "section_titles" in hidden_sections
+    return normalized
+
+
+def _resolve_embed_widget(data):
     from cms.models import CMSEmbedWidget
 
     slug = str(data.get("slug", "")).strip().lower()
@@ -161,16 +255,14 @@ def _validate_embed_widget_block(data):
                 "Publish the source page first, or pick a different widget."
             )
         raise ValidationError(f"CMS embed widget '{slug}' cannot be embedded: its app route is not configured.")
+    return widget
 
-    aspect_ratio = data.get("aspect_ratio")
-    if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):
-        raise ValidationError("'aspect_ratio' must look like '16:9' (digits:digits).")
 
-    height = data.get("height")
-    if height not in (None, ""):
-        try:
-            height_value = int(height)
-        except (TypeError, ValueError) as exc:
-            raise ValidationError("'height' must be a positive integer.") from exc
-        if height_value <= 0 or height_value > 5000:
-            raise ValidationError("'height' must be between 1 and 5000 pixels.")
+def _normalized_embed_widget_hidden_sections(data, widget):
+    from cms.embed_sections import normalize_hidden_sections
+
+    if "hidden_sections" in data:
+        return normalize_hidden_sections(data.get("hidden_sections"), widget.widget_type, widget.app_route)
+
+    hidden_sections = ["section_titles"] if data.get("hide_section_titles") is True else []
+    return normalize_hidden_sections(hidden_sections, widget.widget_type, widget.app_route)

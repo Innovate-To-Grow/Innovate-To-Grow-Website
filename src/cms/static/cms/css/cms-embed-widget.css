@@ -92,6 +92,25 @@
     font-size: 12px;
 }
 
+.field-hidden_sections ul,
+.form-row.field-hidden_sections ul {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.field-hidden_sections label,
+.form-row.field-hidden_sections label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-weight: 500;
+}
+
 .cms-widget-url-row {
     display: flex;
     gap: 10px;
@@ -201,6 +220,7 @@ textarea.cms-widget-snippet {
 }
 
 .cms-widget-preview-container {
+    position: relative;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     background: #fff;
@@ -231,4 +251,27 @@ textarea.cms-widget-snippet {
     padding: 3px 8px;
     border-radius: 3px;
     border: 1px solid #e2e8f0;
+}
+
+.cms-widget-preview-status {
+    margin: 0;
+    padding: 24px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.cms-widget-preview-status.is-error {
+    color: #991b1b;
+    background: #fef2f2;
+}
+
+.cms-widget-preview-status code {
+    padding: 1px 5px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #fecaca;
+    border-radius: 3px;
+    color: inherit;
+    font-size: 12px;
 }

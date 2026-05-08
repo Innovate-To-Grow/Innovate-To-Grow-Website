@@ -4,6 +4,7 @@
 // flags so user-customized values aren't overwritten).
 (function (ns) {
     var state = ns.state;
+    var cfg = ns.config;
     var fields = ns.fields;
     var toKebab = ns.toKebab;
     var BLOCKS = ns.WIDGET_TYPE_BLOCKS;
@@ -15,6 +16,46 @@
         var row = f.closest('.form-row, .field-box, .form-group') || f.parentElement;
         if (row) row.style.display = visible ? '' : 'none';
     }
+
+    function getPresetByKey(key) {
+        return (cfg.hiddenSectionPresets || []).find(function (preset) {
+            return preset.key === key;
+        });
+    }
+
+    function getHiddenSectionOption(input) {
+        return input.closest('label, li, .form-check, .checkbox') || input.parentElement;
+    }
+
+    function isHiddenSectionAvailable(preset, isAppRoute, route) {
+        var routes = preset && Array.isArray(preset.routes) ? preset.routes : [];
+        if (!routes.length) return true;
+        return isAppRoute && routes.indexOf(route) !== -1;
+    }
+
+    ns.applyHiddenSectionVisibility = function () {
+        var isAppRoute = state.currentWidgetType === APP_ROUTE;
+        var route = String((fields.appRoute() || {}).value || '').trim();
+        Array.prototype.forEach.call(fields.hiddenSections(), function (input) {
+            var preset = getPresetByKey(input.value);
+            var visible = !!preset && isHiddenSectionAvailable(preset, isAppRoute, route);
+            var option = getHiddenSectionOption(input);
+            if (option) option.style.display = visible ? '' : 'none';
+            input.disabled = !visible;
+            if (!visible) input.checked = false;
+        });
+    };
+
+    ns.bindHiddenSections = function () {
+        Array.prototype.forEach.call(fields.hiddenSections(), function (input) {
+            input.addEventListener('change', function () {
+                if (state.currentWidgetType === APP_ROUTE) {
+                    var route = String((fields.appRoute() || {}).value || '').trim();
+                    if (route) ns.showAppRoutePreview(route);
+                }
+            });
+        });
+    };
 
     ns.applyWidgetTypeVisibility = function () {
         var isAppRoute = state.currentWidgetType === APP_ROUTE;
@@ -36,6 +77,7 @@
         } else {
             ns.hideAppRoutePreview();
         }
+        ns.applyHiddenSectionVisibility();
         ns.renderSnippet();
     };
 
@@ -86,8 +128,10 @@
             var route = String(sel.value || '').trim();
             if (route) {
                 prefillFromAppRoute(route);
+                ns.applyHiddenSectionVisibility();
                 ns.showAppRoutePreview(route);
             } else {
+                ns.applyHiddenSectionVisibility();
                 ns.hideAppRoutePreview();
             }
             ns.renderSnippet();

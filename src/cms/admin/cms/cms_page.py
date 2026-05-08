@@ -5,6 +5,8 @@ from django.contrib import admin, messages
 from django.db.models import Count
 
 from cms.admin.cms.page_admin.editor import (
+    assets_list_response,
+    assets_upload_response,
     build_editor_context,
     preview_store_response,
     route_conflict_response,
@@ -96,6 +98,14 @@ class CMSPageAdmin(BaseModelAdmin):
                 self.admin_site.admin_view(self.route_conflict_view),
                 name="cms_cmspage_route_conflict",
             ),
+            # Staff CMS editors are trusted to list/upload reusable picker assets;
+            # admin_site.admin_view is the intentional access boundary here.
+            path("assets/", self.admin_site.admin_view(self.assets_list_view), name="cms_cmspage_assets"),
+            path(
+                "assets/upload/",
+                self.admin_site.admin_view(self.assets_upload_view),
+                name="cms_cmspage_asset_upload",
+            ),
             path("import/", self.admin_site.admin_view(self.import_view), name="cms_cmspage_import"),
             path("export/", self.admin_site.admin_view(self.export_all_view), name="cms_cmspage_export"),
         ]
@@ -123,6 +133,12 @@ class CMSPageAdmin(BaseModelAdmin):
 
     def route_conflict_view(self, request):
         return route_conflict_response(request)
+
+    def assets_list_view(self, request):
+        return assets_list_response(request)
+
+    def assets_upload_view(self, request):
+        return assets_upload_response(request)
 
     @admin.action(description="Export selected pages as JSON")
     def export_pages(self, request, queryset):

@@ -20,6 +20,7 @@
     function appRouteSection() { return document.getElementById('cms-widget-app-route-section'); }
     function appRoutePreviewIframe() { return document.getElementById('cms-widget-app-route-preview-iframe'); }
     function appRoutePreviewContainer() { return document.getElementById('cms-widget-app-route-preview-container'); }
+    function appRouteStatus() { return document.getElementById('cms-widget-app-route-status'); }
 
     // --- Live Preview (/_embed/<slug>/) ---
 
@@ -125,6 +126,81 @@
 
     // --- App Route Preview (standalone, app_route widgets only) ---
 
+    function setAppRouteStatus(message, kind) {
+        var status = appRouteStatus();
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = 'cms-widget-preview-status' + (kind ? ' is-' + kind : '');
+        status.hidden = !message;
+    }
+
+    function clearAppRouteStatus() {
+        setAppRouteStatus('', '');
+    }
+
+    function buildFrontendUrl(route, isolated) {
+        var frontend = cfg.frontendUrl || '';
+        if (!frontend || !route) return '';
+        try {
+            var url = new URL(route, frontend + '/');
+            if (isolated) {
+                url.searchParams.set('_isolated', '1');
+                var hiddenSections = ns.getSelectedHiddenSections ? ns.getSelectedHiddenSections() : [];
+                if (hiddenSections.length) {
+                    url.searchParams.set('hide-sections', hiddenSections.join(','));
+                }
+            }
+            return safeHttpUrl(url.toString());
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function appendInlineCode(parent, value) {
+        var code = document.createElement('code');
+        code.textContent = value;
+        parent.appendChild(code);
+    }
+
+    function setFrontendReachabilityError(frontend) {
+        var status = appRouteStatus();
+        if (!status) return;
+        status.textContent = '';
+        status.className = 'cms-widget-preview-status is-error';
+        status.hidden = false;
+        status.appendChild(document.createTextNode('Could not reach '));
+        appendInlineCode(status, String(frontend || 'FRONTEND_URL'));
+        status.appendChild(document.createTextNode('. In local dev, start the frontend with '));
+        appendInlineCode(status, 'cd pages');
+        status.appendChild(document.createTextNode(' and '));
+        appendInlineCode(status, 'npm run dev');
+        status.appendChild(document.createTextNode(', then refresh this preview.'));
+    }
+
+    function probePreviewUrl(url) {
+        if (!window.fetch) return Promise.resolve(true);
+        var controller = window.AbortController ? new AbortController() : null;
+        var timeout = null;
+        if (controller) {
+            timeout = setTimeout(function () { controller.abort(); }, 3500);
+        }
+        // no-cors returns an opaque response for HTTP statuses, including 404/500.
+        // Treat only network failures and aborts as "frontend unreachable."
+        return fetch(url, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-store',
+            credentials: 'omit',
+            signal: controller ? controller.signal : undefined,
+        })
+            .then(function () { return true; })
+            .catch(function () { return false; })
+            .then(function (ok) {
+                if (timeout) clearTimeout(timeout);
+                return ok;
+            });
+    }
+
     ns.showAppRoutePreview = function (route) {
         var frontend = cfg.frontendUrl || '';
         var sec = appRouteSection();
@@ -146,45 +222,63 @@
             iframe.removeAttribute('src');
             iframe.style.display = 'none';
             if (placeholder) placeholder.style.display = '';
+            clearAppRouteStatus();
             state.currentAppRoute = '';
             return;
         }
 
         if (label) label.textContent = route;
         if (placeholder) placeholder.style.display = 'none';
-        iframe.style.display = '';
+        iframe.style.display = 'none';
         if (openLink) openLink.style.display = '';
+        state.currentAppRoute = route;
 
         if (!frontend) {
             iframe.removeAttribute('src');
             if (openLink) openLink.removeAttribute('href');
+            setAppRouteStatus('FRONTEND_URL is not configured, so app-route preview is unavailable.', 'error');
             return;
         }
-        var isolatedUrl = safeHttpUrl(frontend + route + '?_isolated=1');
-        var openUrl = safeHttpUrl(frontend + route);
+        var isolatedUrl = buildFrontendUrl(route, true);
+        var openUrl = buildFrontendUrl(route, false);
         if (!isolatedUrl) {
             iframe.removeAttribute('src');
+            setAppRouteStatus('FRONTEND_URL must be an http(s) URL before this route can be previewed.', 'error');
             return;
         }
-        state.currentAppRoute = route;
         if (openLink && openUrl) openLink.href = openUrl;
-        iframe.src = isolatedUrl;
+        var requestId = (state.appRoutePreviewRequestId || 0) + 1;
+        state.appRoutePreviewRequestId = requestId;
+        setAppRouteStatus('Loading app route preview...');
+        probePreviewUrl(isolatedUrl).then(function (ok) {
+            if (state.appRoutePreviewRequestId !== requestId) return;
+            if (!ok) {
+                iframe.removeAttribute('src');
+                iframe.style.display = 'none';
+                setFrontendReachabilityError(frontend);
+                return;
+            }
+            clearAppRouteStatus();
+            iframe.style.display = '';
+            iframe.src = isolatedUrl;
+        });
     };
 
     ns.hideAppRoutePreview = function () {
         var sec = appRouteSection();
         if (sec) sec.style.display = 'none';
+        var iframe = appRoutePreviewIframe();
+        if (iframe) {
+            iframe.removeAttribute('src');
+            iframe.style.display = 'none';
+        }
+        clearAppRouteStatus();
         state.currentAppRoute = '';
     };
 
     ns.refreshAppRoutePreview = function () {
-        var iframe = appRoutePreviewIframe();
-        var frontend = cfg.frontendUrl || '';
-        if (!iframe || !state.currentAppRoute || !frontend) return;
-        var isolatedUrl = safeHttpUrl(frontend + state.currentAppRoute + '?_isolated=1');
-        if (!isolatedUrl) return;
-        iframe.src = '';
-        setTimeout(function () { iframe.src = isolatedUrl; }, 50);
+        if (!state.currentAppRoute) return;
+        ns.showAppRoutePreview(state.currentAppRoute);
     };
 
     // --- Shared bindings: refresh buttons, width selects, postMessage ---

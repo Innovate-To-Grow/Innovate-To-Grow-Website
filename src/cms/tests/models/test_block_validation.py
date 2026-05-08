@@ -1,5 +1,8 @@
 """Tests for CMS block type validation across all 13 block types."""
 
+from importlib import import_module
+
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
@@ -112,6 +115,61 @@ class ValidateBlockDataTests(TestCase):
             self.assertIn(key, BLOCK_SCHEMAS, f"Missing schema for block type '{key}'")
 
 
+class URLSchemeValidationTests(TestCase):
+    """Tests for javascript:/data: URL rejection in link_list, navigation_grid, contact_info blocks."""
+
+    def test_link_list_rejects_javascript_url(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("link_list", {"items": [{"label": "XSS", "url": "javascript:alert(1)"}]})
+        self.assertIn("unsafe scheme", str(ctx.exception))
+
+    def test_link_list_rejects_data_url(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data(
+                "link_list", {"items": [{"label": "XSS", "url": "data:text/html,<script>alert(1)</script>"}]}
+            )
+
+    def test_link_list_accepts_safe_urls(self):
+        safe_items = [
+            {"label": "HTTPS", "url": "https://example.com"},
+            {"label": "HTTP", "url": "http://example.com"},
+            {"label": "Relative", "url": "/about"},
+            {"label": "Fragment", "url": "#section"},
+            {"label": "Mailto", "url": "mailto:test@example.com"},
+            {"label": "Tel", "url": "tel:+1234567890"},
+            {"label": "DotRelative", "url": "./page"},
+        ]
+        validate_block_data("link_list", {"items": safe_items})
+
+    def test_navigation_grid_rejects_javascript_url(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("navigation_grid", {"items": [{"title": "XSS", "url": "javascript:alert(1)"}]})
+        self.assertIn("unsafe scheme", str(ctx.exception))
+
+    def test_navigation_grid_accepts_safe_urls(self):
+        validate_block_data("navigation_grid", {"items": [{"title": "Safe", "url": "https://example.com"}]})
+
+    def test_contact_info_url_type_rejects_javascript(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data(
+                "contact_info", {"items": [{"label": "Site", "type": "url", "value": "javascript:alert(1)"}]}
+            )
+        self.assertIn("unsafe scheme", str(ctx.exception))
+
+    def test_contact_info_url_type_accepts_safe_urls(self):
+        validate_block_data(
+            "contact_info", {"items": [{"label": "Site", "type": "url", "value": "https://example.com"}]}
+        )
+
+    def test_contact_info_email_type_skips_url_validation(self):
+        validate_block_data(
+            "contact_info", {"items": [{"label": "Email", "type": "email", "value": "test@example.com"}]}
+        )
+
+    def test_contact_info_phone_type_skips_url_validation(self):
+        validate_block_data("contact_info", {"items": [{"label": "Phone", "type": "phone", "value": "+1234567890"}]})
+
+
 class EmbedBlockValidationTests(TestCase):
     def setUp(self):
         CMSEmbedAllowedHost.objects.all().delete()
@@ -209,6 +267,12 @@ class EmbedBlockValidationTests(TestCase):
 class EmbedWidgetBlockValidationTests(TestCase):
     def setUp(self):
         CMSEmbedWidget.objects.all().delete()
+        self.page = CMSPage.objects.create(
+            slug="embed-widget-validation",
+            route="/embed-widget-validation",
+            title="Embed Widget Validation",
+            status="published",
+        )
         CMSEmbedWidget.objects.create(
             widget_type="app_route",
             app_route="/schedule",
@@ -277,16 +341,91 @@ class EmbedWidgetBlockValidationTests(TestCase):
             validate_block_data("embed_widget", {"slug": "schedule-embed"})
 
     def test_embed_widget_accepts_all_valid_optionals(self):
-        validate_block_data(
-            "embed_widget",
-            {
-                "slug": "schedule-embed",
-                "heading": "Event Schedule",
-                "aspect_ratio": "16:9",
-                "height": 480,
-                "hide_section_titles": True,
-            },
+        data = {
+            "slug": "schedule-embed",
+            "heading": "Event Schedule",
+            "aspect_ratio": "16:9",
+            "height": 480,
+            "hide_section_titles": True,
+        }
+        original = dict(data)
+        validate_block_data("embed_widget", data)
+        self.assertEqual(data, original)
+
+    def test_embed_widget_accepts_route_specific_hidden_sections(self):
+        data = {
+            "slug": "schedule-embed",
+            "hidden_sections": ["schedule_projects", "section_titles"],
+        }
+        original = {"slug": "schedule-embed", "hidden_sections": ["schedule_projects", "section_titles"]}
+        validate_block_data("embed_widget", data)
+        self.assertEqual(data, original)
+
+    def test_embed_widget_rejects_route_incompatible_hidden_sections(self):
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/news",
+            slug="news-embed",
         )
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "news-embed", "hidden_sections": ["schedule_projects"]})
+
+    def test_embed_widget_hidden_sections_are_authoritative_over_legacy_flag(self):
+        data = {"slug": "schedule-embed", "hidden_sections": [], "hide_section_titles": True}
+        original = dict(data)
+        validate_block_data("embed_widget", data)
+        self.assertEqual(data, original)
+
+    def test_embed_widget_clean_normalizes_legacy_hidden_section_flag_for_storage(self):
+        block = CMSBlock(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hide_section_titles": True},
+        )
+
+        block.full_clean()
+
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
+        self.assertTrue(block.data["hide_section_titles"])
+
+    def test_embed_widget_clean_normalizes_route_specific_hidden_sections_for_storage(self):
+        block = CMSBlock(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hidden_sections": ["schedule_projects", "section_titles"]},
+        )
+
+        block.full_clean()
+
+        self.assertEqual(block.data["hidden_sections"], ["section_titles", "schedule_projects"])
+        self.assertTrue(block.data["hide_section_titles"])
+
+    def test_embed_widget_clean_treats_explicit_hidden_sections_as_authoritative_for_storage(self):
+        block = CMSBlock(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hidden_sections": [], "hide_section_titles": True},
+        )
+
+        block.full_clean()
+
+        self.assertEqual(block.data["hidden_sections"], [])
+        self.assertFalse(block.data["hide_section_titles"])
+
+    def test_embed_widget_hidden_sections_migration_converts_legacy_block_json(self):
+        block = CMSBlock.objects.create(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hide_section_titles": True},
+        )
+        migration = import_module("cms.migrations.0013_cmspage_embed_widget_hidden_sections")
+        migration.migrate_embed_widget_hidden_sections(apps, None)
+        block.refresh_from_db()
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
 
     def test_embed_widget_accepts_aspect_ratio_without_height(self):
         validate_block_data(

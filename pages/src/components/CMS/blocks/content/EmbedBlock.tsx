@@ -35,7 +35,10 @@ function parseAspectRatio(value?: string): string | null {
   return `${w} / ${h}`;
 }
 
-export const EmbedBlock: React.FC<{ data: EmbedData }> = ({ data }) => {
+export const EmbedBlock: React.FC<{ data: EmbedData; previewMode?: boolean }> = ({
+  data,
+  previewMode = false,
+}) => {
   const safeSrc = useMemo(() => normalizeHttpsUrl(data.src), [data.src]);
 
   if (!safeSrc) {
@@ -77,7 +80,7 @@ export const EmbedBlock: React.FC<{ data: EmbedData }> = ({ data }) => {
           sandbox={data.sandbox || DEFAULT_SANDBOX}
           allow={data.allow || undefined}
           allowFullScreen={Boolean(data.allowfullscreen)}
-          loading="lazy"
+          loading={previewMode ? 'eager' : 'lazy'}
           referrerPolicy="no-referrer-when-downgrade"
           style={iframeStyle}
         />

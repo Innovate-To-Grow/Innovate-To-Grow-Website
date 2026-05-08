@@ -4,9 +4,29 @@ Server-side HTML sanitization for CMS content.
 Defense-in-depth: the frontend also sanitizes via DOMPurify (SafeHtml component).
 """
 
+from urllib.parse import urlparse
+
 import bleach
 
 from .embed_hosts import InvalidEmbedURL, is_host_allowed, parse_embed_url
+
+SAFE_URL_SCHEMES = {"http", "https", "mailto", "tel"}
+
+
+def validate_safe_url(url: str) -> bool:
+    """Return True if url has a safe scheme or is a relative/fragment URL."""
+    if not isinstance(url, str):
+        return False
+    trimmed = url.strip()
+    if not trimmed:
+        return False
+    if trimmed.startswith(("#", "/", "./", "../")):
+        return True
+    parsed = urlparse(trimmed)
+    if not parsed.scheme:
+        return True
+    return parsed.scheme.lower() in SAFE_URL_SCHEMES
+
 
 ALLOWED_TAGS = [
     "p",

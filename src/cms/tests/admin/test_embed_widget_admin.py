@@ -1,5 +1,8 @@
 """Tests for the standalone CMSEmbedWidget admin module."""
 
+from importlib import import_module
+
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -78,6 +81,14 @@ class CMSEmbedWidgetModelTests(TestCase):
             widget.full_clean()
         self.assertIn("app_route", ctx.exception.message_dict)
 
+    def test_app_route_widget_rejects_non_embeddable_route(self):
+        # /event is in APP_ROUTES (menu/login use it) but not in
+        # EMBED_APP_ROUTE_COMPONENTS, so it cannot render in an iframe.
+        widget = CMSEmbedWidget(widget_type="app_route", slug="app-embed", app_route="/event")
+        with self.assertRaises(ValidationError) as ctx:
+            widget.full_clean()
+        self.assertIn("app_route", ctx.exception.message_dict)
+
     def test_app_route_widget_clears_block_sort_orders(self):
         widget = CMSEmbedWidget(
             widget_type="app_route",
@@ -121,6 +132,44 @@ class CMSEmbedWidgetModelTests(TestCase):
         )
         widget.refresh_from_db()
         self.assertTrue(widget.hide_section_titles)
+
+    def test_hidden_sections_default_empty(self):
+        widget = CMSEmbedWidget.objects.create(page=self.page, slug="default-hidden-sections", block_sort_orders=[0])
+        widget.refresh_from_db()
+        self.assertEqual(widget.hidden_sections, [])
+
+    def test_clean_normalizes_hidden_sections_and_legacy_flag(self):
+        widget = self._full_clean(slug="hide-section-title", block_sort_orders=[0], hidden_sections=["section_titles"])
+        self.assertEqual(widget.hidden_sections, ["section_titles"])
+        self.assertTrue(widget.hide_section_titles)
+
+    def test_clean_rejects_route_incompatible_hidden_sections(self):
+        with self.assertRaises(ValidationError) as ctx:
+            self._full_clean(slug="bad-schedule-hide", block_sort_orders=[0], hidden_sections=["schedule_projects"])
+        self.assertIn("hidden_sections", ctx.exception.message_dict)
+
+    def test_app_route_widget_accepts_schedule_hidden_sections(self):
+        widget = CMSEmbedWidget(
+            widget_type="app_route",
+            slug="schedule-sections",
+            app_route="/schedule",
+            hidden_sections=["schedule_projects", "section_titles"],
+        )
+        widget.full_clean()
+        self.assertEqual(widget.hidden_sections, ["section_titles", "schedule_projects"])
+
+    def test_migration_copies_legacy_hide_title_flag(self):
+        widget = CMSEmbedWidget.objects.create(
+            page=self.page,
+            slug="legacy-title-hide",
+            block_sort_orders=[0],
+            hide_section_titles=True,
+            hidden_sections=[],
+        )
+        migration = import_module("cms.migrations.0012_cmsembedwidget_hidden_sections")
+        migration.migrate_hide_section_titles(apps, None)
+        widget.refresh_from_db()
+        self.assertEqual(widget.hidden_sections, ["section_titles"])
 
 
 class CMSEmbedWidgetAdminFormTests(TestCase):
@@ -193,38 +242,73 @@ class CMSEmbedWidgetAdminFormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("app_route", form.errors)
 
-    def test_form_persists_hide_section_titles_flag(self):
+    def test_form_persists_hidden_sections(self):
         form = CMSEmbedWidgetAdminForm(
             data={
                 "widget_type": "blocks",
                 "page": str(self.page.pk),
-                "slug": "hide-titles-on",
+                "slug": "hide-sections-on",
                 "admin_label": "",
                 "block_sort_orders": "[0]",
                 "app_route": "",
-                "hide_section_titles": "on",
+                "hidden_sections": ["section_titles"],
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
         widget = form.save()
         widget.refresh_from_db()
+        self.assertEqual(widget.hidden_sections, ["section_titles"])
         self.assertTrue(widget.hide_section_titles)
 
-    def test_form_defaults_hide_section_titles_off_when_omitted(self):
+    def test_form_persists_route_specific_hidden_sections(self):
         form = CMSEmbedWidgetAdminForm(
             data={
-                "widget_type": "blocks",
-                "page": str(self.page.pk),
-                "slug": "hide-titles-off",
+                "widget_type": "app_route",
+                "page": "",
+                "slug": "schedule-hidden-sections",
                 "admin_label": "",
-                "block_sort_orders": "[0]",
-                "app_route": "",
-                # hide_section_titles intentionally omitted — HTML checkbox absence
+                "block_sort_orders": "[]",
+                "app_route": "/schedule",
+                "hidden_sections": ["schedule_header", "schedule_projects"],
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
         widget = form.save()
         widget.refresh_from_db()
+        self.assertEqual(widget.hidden_sections, ["schedule_header", "schedule_projects"])
+        self.assertFalse(widget.hide_section_titles)
+
+    def test_form_rejects_route_incompatible_hidden_sections(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "app_route",
+                "page": "",
+                "slug": "news-hidden-sections",
+                "admin_label": "",
+                "block_sort_orders": "[]",
+                "app_route": "/news",
+                "hidden_sections": ["schedule_projects"],
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("hidden_sections", form.errors)
+
+    def test_form_defaults_hidden_sections_empty_when_omitted(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "blocks",
+                "page": str(self.page.pk),
+                "slug": "hide-sections-off",
+                "admin_label": "",
+                "block_sort_orders": "[0]",
+                "app_route": "",
+                # hidden_sections intentionally omitted — no checkbox selected
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        widget = form.save()
+        widget.refresh_from_db()
+        self.assertEqual(widget.hidden_sections, [])
         self.assertFalse(widget.hide_section_titles)
 
 
@@ -261,6 +345,19 @@ class CMSEmbedWidgetAdminViewTests(TestCase):
         response = self.client.get(reverse("admin:cms_cmsembedwidget_add"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Embed URL")
+        self.assertContains(response, 'id="cms-widget-app-route-status"')
+        self.assertContains(response, "Sections to hide")
+        self.assertContains(response, "schedule_projects")
+        self.assertContains(response, "cms/js/cms-embed-widget/previews.js")
+
+    def test_add_form_replaces_legacy_hide_toggle_with_hidden_section_presets(self):
+        response = self.client.get(reverse("admin:cms_cmsembedwidget_add"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="hidden_sections"')
+        self.assertContains(response, 'value="section_titles"')
+        self.assertContains(response, 'value="schedule_projects"')
+        self.assertContains(response, "hiddenSectionPresets")
+        self.assertNotContains(response, 'name="hide_section_titles"')
 
     def test_page_blocks_endpoint_returns_blocks(self):
         url = reverse("admin:cms_cmsembedwidget_page_blocks")

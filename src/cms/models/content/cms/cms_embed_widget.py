@@ -6,6 +6,7 @@ from django.db import models
 
 from core.models import ProjectControlModel
 
+from ....embed_sections import effective_hidden_sections, normalize_hidden_sections
 from .cms_page import CMSPage
 
 EMBED_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -51,6 +52,12 @@ class CMSEmbedWidget(ProjectControlModel):
         default=False,
         help_text="Hide `.section-title` headings when this widget renders inside the embed iframe.",
     )
+    hidden_sections = models.JSONField(
+        default=list,
+        blank=True,
+        encoder=DjangoJSONEncoder,
+        help_text="List of safe section preset keys to hide inside the embed iframe.",
+    )
     block_sort_orders = models.JSONField(
         default=list,
         blank=True,
@@ -70,11 +77,14 @@ class CMSEmbedWidget(ProjectControlModel):
 
     def is_visible(self):
         # Kept in sync with EmbedBlockView's 404 gate: a widget is renderable
-        # only when its source page is published (blocks) or its route is set
-        # (app_route). Block-level validation calls this to reject references
-        # that would resolve to a runtime 404 ("Embed not found").
+        # only when its source page is published (blocks) or its app route is
+        # still embeddable. Block-level validation calls this to reject
+        # references that would resolve to a runtime 404 ("Embed not found").
         if self.widget_type == WIDGET_TYPE_APP_ROUTE:
-            return bool(self.app_route)
+            from cms.app_routes import EMBEDDABLE_APP_ROUTES
+
+            allowed = {entry["url"] for entry in EMBEDDABLE_APP_ROUTES}
+            return (self.app_route or "").strip() in allowed
         return self.page is not None and self.page.status == "published"
 
     def clean(self):
@@ -86,18 +96,30 @@ class CMSEmbedWidget(ProjectControlModel):
 
         if self.widget_type == WIDGET_TYPE_APP_ROUTE:
             self._clean_app_route()
+            self._clean_hidden_sections()
             self.block_sort_orders = []
             return
 
         self._clean_blocks()
+        self._clean_hidden_sections()
+
+    def get_effective_hidden_sections(self):
+        return effective_hidden_sections(self)
+
+    def _clean_hidden_sections(self):
+        try:
+            self.hidden_sections = normalize_hidden_sections(self.hidden_sections, self.widget_type, self.app_route)
+        except ValidationError as exc:
+            raise ValidationError({"hidden_sections": exc.messages}) from exc
+        self.hide_section_titles = "section_titles" in self.hidden_sections
 
     def _clean_app_route(self):
-        from cms.app_routes import APP_ROUTES
+        from cms.app_routes import EMBEDDABLE_APP_ROUTES
 
         route = (self.app_route or "").strip()
         if not route:
             raise ValidationError({"app_route": "App route is required for app_route widgets."})
-        allowed = {entry["url"] for entry in APP_ROUTES}
+        allowed = {entry["url"] for entry in EMBEDDABLE_APP_ROUTES}
         if route not in allowed:
             raise ValidationError({"app_route": f"Unknown app route: {route}."})
         self.app_route = route

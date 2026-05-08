@@ -23,59 +23,15 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=15">
     <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
 {% endblock %}
 
 {% block after_field_sets %}
     {{ block.super }}
 
-    <!-- Visual Block Editor -->
-    <div class="visual-editor-wrapper">
-        <div class="visual-editor-header">
-            <h3>Content Blocks</h3>
-            {% if current_page_id %}
-                <button type="button" class="cms-inline-preview-toggle" onclick="toggleInlinePreview()" title="Toggle inline live preview">
-                    <span class="material-symbols-outlined">visibility</span>
-                    Preview
-                </button>
-            {% else %}
-                <button type="button" class="cms-inline-preview-toggle" disabled title="Save the page first to enable preview">
-                    <span class="material-symbols-outlined">visibility_off</span>
-                    Preview
-                </button>
-            {% endif %}
-        </div>
-
-        <div class="visual-editor-content">
-            <!-- Block List (JS-rendered) -->
-            <div id="cms-blocks-container" class="cms-blocks-container"></div>
-
-            <!-- Add Block -->
-            <div class="cms-add-block-wrapper">
-                <select id="cms-add-block-type">
-                    <option value="">-- Select block type --</option>
-                </select>
-                <button type="button" class="btn-add-block" onclick="addBlock()">+ Add Block</button>
-            </div>
-
-            <!-- JSON Toggle -->
-            <div class="json-toggle" style="margin-top: 20px;">
-                <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
-                <div id="json-raw-view" class="json-raw-view">
-                    <textarea id="json-editor" placeholder="Block data as JSON array..."></textarea>
-                    <div class="json-editor-actions">
-                        <button type="button" class="btn-apply-json" onclick="applyJson()">Apply JSON</button>
-                        <button type="button" class="btn-apply-json" onclick="copyJson()">Copy JSON</button>
-                        <span class="json-editor-hint">Edit the raw JSON and click Apply to update the visual editor</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Inline Live Preview Panel -->
-    <div id="cms-inline-preview" class="cms-preview-wrapper">
+    <div id="cms-inline-preview" class="cms-preview-wrapper cms-page-live-preview">
         <div class="cms-preview-header">
             <span class="cms-preview-title">Live Preview</span>
             <div class="cms-preview-actions">
@@ -102,6 +58,51 @@
         </div>
     </div>
 
+    <!-- Visual Block Editor -->
+    <div class="visual-editor-wrapper">
+        <div class="visual-editor-header">
+            <h3>Content Blocks</h3>
+            {% if current_page_id %}
+                <button type="button" class="cms-inline-preview-toggle" onclick="toggleInlinePreview()" title="Toggle inline live preview">
+                    <span class="material-symbols-outlined">visibility</span>
+                    Preview
+                </button>
+            {% else %}
+                <button type="button" class="cms-inline-preview-toggle" disabled title="Save the page first to enable preview">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                    Preview
+                </button>
+            {% endif %}
+        </div>
+
+        <div class="visual-editor-content">
+
+            <!-- Block List (JS-rendered) -->
+            <div id="cms-blocks-container" class="cms-blocks-container"></div>
+
+            <!-- Add Block -->
+            <div class="cms-add-block-wrapper">
+                <select id="cms-add-block-type">
+                    <option value="">-- Select block type --</option>
+                </select>
+                <button type="button" class="btn-add-block" onclick="addBlock()">+ Add Block</button>
+            </div>
+
+            <!-- JSON Toggle -->
+            <div class="json-toggle" style="margin-top: 20px;">
+                <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+                <div id="json-raw-view" class="json-raw-view">
+                    <textarea id="json-editor" placeholder="Block data as JSON array..."></textarea>
+                    <div class="json-editor-actions">
+                        <button type="button" class="btn-apply-json" onclick="applyJson()">Apply JSON</button>
+                        <button type="button" class="btn-apply-json" onclick="copyJson()">Copy JSON</button>
+                        <span class="json-editor-hint">Edit the raw JSON and click Apply to update the visual editor</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden fields for form submission -->
     <textarea id="id_blocks_json" name="blocks_json" style="display:none;"></textarea>
 {% endblock %}
@@ -117,6 +118,8 @@
         window.CMS_EMBED_ALLOWED_HOSTS = {{ embed_allowed_hosts_json|safe }};
         window.CMS_EMBED_DEFAULT_SANDBOX = "{{ embed_default_sandbox|escapejs }}";
         window.CMS_EMBED_WIDGETS = {{ embed_widgets_json|safe }};
+        window.CMS_HIDDEN_SECTION_PRESETS = {{ hidden_section_presets_json|safe }};
+        window.CMS_ASSET_MANAGER = {{ asset_manager_config_json|safe }};
         window.CMS_ROUTE_EDITOR = {
             checkUrl: "{{ route_check_url|escapejs }}",
             pageId: "{{ current_page_id|escapejs }}",
@@ -129,10 +132,11 @@
     <script src="{% static 'vendor/codemirror/5.65.16/mode/javascript/javascript.min.js' %}"></script>
     <script src="{% static 'vendor/codemirror/5.65.16/mode/css/css.min.js' %}"></script>
     <script src="{% static 'vendor/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js' %}"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=4"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=1"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=6"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=6"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/assets.js' %}?v=3"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=8"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=3"></script>
-    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=7"></script>
+    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=8"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}

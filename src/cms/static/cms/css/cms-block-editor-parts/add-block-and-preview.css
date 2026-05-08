@@ -64,6 +64,12 @@
     display: none;
 }
 
+.cms-page-live-preview.cms-preview-wrapper {
+    margin: 20px 0;
+    border-color: #e5e7eb;
+    border-radius: 6px;
+}
+
 .cms-preview-wrapper.is-active {
     display: block;
     animation: fadeIn 0.2s ease;
@@ -181,7 +187,7 @@
 }
 
 .cms-preview-iframe-wrap.cms-preview-device-desktop {
-    padding: 0;
+    padding: 16px;
 }
 
 .cms-preview-iframe-wrap.cms-preview-device-tablet {
@@ -195,20 +201,20 @@
 .cms-preview-iframe {
     width: 100%;
     min-height: 600px;
-    border: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
     background: #fff;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
     display: block;
 }
 
 .cms-preview-device-tablet .cms-preview-iframe {
     max-width: 768px;
-    border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
 
 .cms-preview-device-mobile .cms-preview-iframe {
     max-width: 375px;
-    border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
 }
 

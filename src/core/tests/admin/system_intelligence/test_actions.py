@@ -4,6 +4,7 @@ from django.urls import reverse
 from cms.models import CMSBlock, CMSPage, NewsFeedSource
 from core.models.base.system_intelligence import SystemIntelligenceActionRequest
 from core.services import system_intelligence_actions as actions
+from core.services.system_intelligence_actions.exceptions import ActionRequestError
 
 from .base import SystemIntelligenceAdminBase
 
@@ -132,43 +133,30 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
 
         tokens = actions.set_action_context(str(self.conversation.pk), str(self.admin_user.pk))
         try:
-            payload = actions.propose_cms_page_update(
-                page_id=str(page.pk),
-                blocks=[
-                    {
-                        "block_type": "link_list",
-                        "data": {
-                            "items": [
-                                {"url": "javascript:alert(document.cookie)", "title": "Unsafe JS"},
-                                {"url": "data:text/html,<script>alert(1)</script>", "title": "Unsafe Data"},
-                                {"url": "java\nscript:alert(1)"},
-                                {"url": "//attacker.example/path", "title": "Scheme Relative"},
-                                {"url": "https://example.com/page", "title": "HTTPS"},
-                                {"url": "/about", "title": "Root Relative"},
-                                {"url": "relative/path", "title": "Relative"},
-                                {"url": "#section", "title": "Fragment"},
-                            ]
-                        },
-                    }
-                ],
-            )
+            with self.assertRaises(ActionRequestError) as ctx:
+                actions.propose_cms_page_update(
+                    page_id=str(page.pk),
+                    blocks=[
+                        {
+                            "block_type": "link_list",
+                            "data": {
+                                "items": [
+                                    {"url": "javascript:alert(document.cookie)", "title": "Unsafe JS"},
+                                    {"url": "data:text/html,<script>alert(1)</script>", "title": "Unsafe Data"},
+                                    {"url": "java\nscript:alert(1)"},
+                                    {"url": "//attacker.example/path", "title": "Scheme Relative"},
+                                    {"url": "https://example.com/page", "title": "HTTPS"},
+                                    {"url": "/about", "title": "Root Relative"},
+                                    {"url": "relative/path", "title": "Relative"},
+                                    {"url": "#section", "title": "Fragment"},
+                                ]
+                            },
+                        }
+                    ],
+                )
+            self.assertIn("unsafe scheme", str(ctx.exception).lower())
         finally:
             actions.reset_action_context(tokens)
-
-        response = self.client.get(
-            reverse("admin:core_system_intelligence_action_preview", args=[payload["action_request"]["id"]])
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'href="#"')
-        self.assertContains(response, 'href="https://example.com/page"')
-        self.assertContains(response, 'href="/about"')
-        self.assertContains(response, 'href="relative/path"')
-        self.assertContains(response, 'href="#section"')
-        self.assertContains(response, ">Link</a>")
-        self.assertNotContains(response, "javascript:")
-        self.assertNotContains(response, "data:text/html")
-        self.assertNotContains(response, "attacker.example")
 
     def test_action_preview_does_not_render_ai_controlled_page_css(self):
         page = CMSPage.objects.create(slug="css", route="/css", title="CSS", status="draft")

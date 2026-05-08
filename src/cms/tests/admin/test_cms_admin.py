@@ -7,10 +7,22 @@ from django.urls import reverse
 
 from authn.models import ContactEmail
 from cms.admin.cms.cms_page import CMSPageAdminForm
-from cms.admin.cms.page_admin.editor import _format_widget_label, build_editor_context
+from cms.admin.cms.page_admin.editor import _format_widget_label, build_editor_context, save_blocks_from_json
 from cms.models import BLOCK_SCHEMAS, CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
 
 Member = get_user_model()
+
+
+class _MessageCollector:
+    def __init__(self):
+        self.errors = []
+        self.warnings = []
+
+    def error(self, request, message):
+        self.errors.append(message)
+
+    def warning(self, request, message):
+        self.warnings.append(message)
 
 
 class CMSPageAdminFormTests(TestCase):
@@ -128,6 +140,8 @@ class CMSPageChangeFormRenderTests(TestCase):
         response = self.client.get(url)
         content = response.content.decode()
         self.assertIn("cms-block-editor.js", content)
+        self.assertIn("cms-block-editor-parts/assets.js", content)
+        self.assertIn("CMS_ASSET_MANAGER", content)
 
     def test_change_form_has_preview_button(self):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
@@ -135,6 +149,18 @@ class CMSPageChangeFormRenderTests(TestCase):
         content = response.content.decode()
         self.assertIn("openLivePreview", content)
         self.assertIn("Preview", content)
+
+    def test_inline_preview_panel_renders_outside_content_blocks_editor(self):
+        url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
+        response = self.client.get(url)
+        content = response.content.decode()
+
+        preview_idx = content.index('id="cms-inline-preview"')
+        editor_idx = content.index('class="visual-editor-wrapper"')
+        blocks_idx = content.index('id="cms-blocks-container"')
+
+        self.assertLess(preview_idx, editor_idx)
+        self.assertLess(editor_idx, blocks_idx)
 
     def test_preview_store_endpoint_returns_token(self):
         url = reverse("admin:cms_cmspage_preview")
@@ -171,6 +197,39 @@ class CMSPageChangeFormRenderTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_save_blocks_from_json_normalizes_embed_widget_hidden_sections_for_storage(self):
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="schedule-embed",
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "POST": {
+                    "blocks_json": json.dumps(
+                        [
+                            {
+                                "block_type": "embed_widget",
+                                "admin_label": "Schedule Embed",
+                                "data": {"slug": "schedule-embed", "hide_section_titles": True},
+                            }
+                        ]
+                    )
+                }
+            },
+        )()
+        messages = _MessageCollector()
+
+        save_blocks_from_json(request, self.page, messages)
+
+        self.assertEqual(messages.errors, [])
+        self.assertEqual(messages.warnings, [])
+        block = self.page.blocks.get()
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
+        self.assertTrue(block.data["hide_section_titles"])
 
     def test_change_form_does_not_render_embed_widget_section(self):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
@@ -278,11 +337,23 @@ class BuildEditorContextTests(TestCase):
         by_slug = {w["slug"]: w for w in widgets}
         self.assertIn("ctx-blocks-widget", by_slug)
         self.assertIn("ctx-route-widget", by_slug)
+        self.assertEqual(by_slug["ctx-blocks-widget"]["widget_type"], "blocks")
+        self.assertEqual(by_slug["ctx-blocks-widget"]["app_route"], "")
+        self.assertEqual(by_slug["ctx-route-widget"]["widget_type"], "app_route")
+        self.assertEqual(by_slug["ctx-route-widget"]["app_route"], "/schedule")
         # Blocks-widget label carries admin_label + the source page title.
         self.assertIn("Ctx Blocks Widget", by_slug["ctx-blocks-widget"]["label"])
         self.assertIn("Widget Ctx Source", by_slug["ctx-blocks-widget"]["label"])
         # App-route widget label exposes the route even without an admin_label.
         self.assertIn("/schedule", by_slug["ctx-route-widget"]["label"])
+
+    def test_context_injects_hidden_section_presets(self):
+        context = build_editor_context()
+        self.assertIn("hidden_section_presets_json", context)
+        presets = json.loads(context["hidden_section_presets_json"])
+        by_key = {preset["key"]: preset for preset in presets}
+        self.assertEqual(by_key["section_titles"]["routes"], [])
+        self.assertEqual(by_key["schedule_projects"]["routes"], ["/schedule"])
 
     def test_context_exposes_embed_widget_block_schema(self):
         context = build_editor_context()
@@ -291,6 +362,16 @@ class BuildEditorContextTests(TestCase):
         self.assertEqual(schemas["embed_widget"]["required"], ["slug"])
         # Sanity: BLOCK_SCHEMAS itself still matches (guards against silent drift).
         self.assertEqual(schemas["embed_widget"], BLOCK_SCHEMAS["embed_widget"])
+
+    def test_context_injects_asset_manager_config(self):
+        context = build_editor_context()
+        self.assertIn("asset_manager_config_json", context)
+        config = json.loads(context["asset_manager_config_json"])
+        self.assertEqual(config["listUrl"], reverse("admin:cms_cmspage_assets"))
+        self.assertEqual(config["uploadUrl"], reverse("admin:cms_cmspage_asset_upload"))
+        self.assertIn("png", config["imageExtensions"])
+        self.assertIn("docx", config["allowedExtensions"])
+        self.assertEqual(config["maxBytes"], 20 * 1024 * 1024)
 
 
 class FormatWidgetLabelTests(TestCase):

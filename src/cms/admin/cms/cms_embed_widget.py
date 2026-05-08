@@ -1,13 +1,18 @@
-import json
-
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.widgets import UnfoldAdminSelectWidget
 
-from cms.app_routes import APP_ROUTES
+from cms.admin.cms.page_admin.editor import _safe_json
+from cms.app_routes import EMBEDDABLE_APP_ROUTES
+from cms.embed_sections import (
+    hidden_section_choices,
+    hidden_section_presets_payload,
+    normalize_hidden_sections,
+)
 from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 from core.admin import BaseModelAdmin
 
@@ -15,10 +20,18 @@ from core.admin import BaseModelAdmin
 class CMSEmbedWidgetAdminForm(forms.ModelForm):
     app_route = forms.ChoiceField(
         required=False,
-        choices=[("", "— select an app route —")] + [(r["url"], f"{r['title']} ({r['url']})") for r in APP_ROUTES],
+        choices=[("", "— select an app route —")]
+        + [(r["url"], f"{r['title']} ({r['url']})") for r in EMBEDDABLE_APP_ROUTES],
         label="App route",
         help_text="The interactive app page to embed.",
         widget=UnfoldAdminSelectWidget,
+    )
+    hidden_sections = forms.MultipleChoiceField(
+        required=False,
+        choices=hidden_section_choices(),
+        label="Sections to hide",
+        help_text="Choose safe sections to hide when this widget renders inside the embed iframe.",
+        widget=forms.CheckboxSelectMultiple,
     )
 
     class Meta:
@@ -29,7 +42,7 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
             "app_route",
             "slug",
             "admin_label",
-            "hide_section_titles",
+            "hidden_sections",
             "block_sort_orders",
         )
         widgets = {
@@ -42,6 +55,28 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
         self.fields["slug"].widget.attrs["placeholder"] = "e.g. homepage-hero-banner"
         if self.instance and self.instance.app_route:
             self.fields["app_route"].initial = self.instance.app_route
+        if self.instance and self.instance.pk:
+            self.fields["hidden_sections"].initial = self.instance.get_effective_hidden_sections()
+
+    def clean(self):
+        cleaned = super().clean()
+        widget_type = cleaned.get("widget_type")
+        app_route = cleaned.get("app_route")
+        hidden_sections = cleaned.get("hidden_sections")
+
+        if widget_type is None:
+            return cleaned
+
+        try:
+            cleaned["hidden_sections"] = normalize_hidden_sections(
+                hidden_sections or [],
+                widget_type,
+                app_route or "",
+            )
+        except ValidationError as exc:
+            self.add_error("hidden_sections", exc.messages)
+
+        return cleaned
 
 
 @admin.register(CMSEmbedWidget)
@@ -94,7 +129,7 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def app_routes_view(self, request):
-        return JsonResponse({"routes": list(APP_ROUTES)})
+        return JsonResponse({"routes": list(EMBEDDABLE_APP_ROUTES)})
 
     def page_blocks_view(self, request):
         page_id = request.GET.get("page_id") or ""
@@ -125,7 +160,8 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
             "page_blocks_url": reverse("admin:cms_cmsembedwidget_page_blocks"),
             "page_info_url": reverse("admin:cms_cmsembedwidget_page_info"),
             "app_routes_url": reverse("admin:cms_cmsembedwidget_app_routes"),
-            "initial_block_sort_orders_json": json.dumps(obj.block_sort_orders if obj else []),
+            "hidden_section_presets_json": _safe_json(hidden_section_presets_payload()),
+            "initial_block_sort_orders_json": _safe_json(obj.block_sort_orders if obj else []),
             "initial_slug": obj.slug if obj else "",
             "initial_page_id": str(obj.page_id) if obj and obj.page_id else "",
             "initial_widget_type": obj.widget_type if obj else "blocks",

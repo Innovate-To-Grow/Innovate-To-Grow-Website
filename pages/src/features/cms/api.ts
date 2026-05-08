@@ -79,6 +79,7 @@ export interface CMSEmbedResponse {
   blocks: CMSBlock[];
   page_css_class: string;
   page_css: string;
+  hidden_sections?: string[];
   hide_section_titles?: boolean;
 }
 

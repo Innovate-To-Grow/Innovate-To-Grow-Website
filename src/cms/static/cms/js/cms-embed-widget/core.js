@@ -20,6 +20,7 @@ window.CMSEmbedAdmin = window.CMSEmbedAdmin || {};
         slugAutofilled: false,
         labelAutofilled: false,
         currentAppRoute: '',
+        appRoutePreviewRequestId: 0,
         currentPreviewUrl: '',
         currentPageRoute: '',
         previewDebounce: null,
@@ -31,6 +32,7 @@ window.CMSEmbedAdmin = window.CMSEmbedAdmin || {};
         page: function () { return document.getElementById('id_page'); },
         widgetType: function () { return document.getElementById('id_widget_type'); },
         appRoute: function () { return document.getElementById('id_app_route'); },
+        hiddenSections: function () { return document.querySelectorAll('input[name="hidden_sections"]'); },
         label: function () { return document.getElementById('id_admin_label'); },
         snippet: function () { return document.getElementById('cms-widget-snippet'); },
         url: function () { return document.getElementById('cms-widget-embed-url'); },
@@ -69,5 +71,12 @@ window.CMSEmbedAdmin = window.CMSEmbedAdmin || {};
             .replace(/[\s_]+/g, '-')
             .replace(/-+/g, '-')
             .replace(/^-|-$/g, '');
+    };
+
+    ns.getSelectedHiddenSections = function () {
+        return Array.prototype.map.call(
+            document.querySelectorAll('input[name="hidden_sections"]:checked'),
+            function (input) { return String(input.value || '').trim(); },
+        ).filter(Boolean);
     };
 })(window.CMSEmbedAdmin);

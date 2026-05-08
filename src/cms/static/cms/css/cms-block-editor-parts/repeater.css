@@ -20,6 +20,41 @@
     letter-spacing: 0;
 }
 
+.cms-block-hidden-sections {
+    margin-bottom: 12px;
+}
+
+.cms-block-hidden-sections-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.dark .cms-block-hidden-sections-title {
+    color: #9ca3af;
+}
+
+.cms-block-hidden-sections-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+.cms-block-hidden-sections .cms-block-field-checkbox {
+    margin-bottom: 4px;
+}
+
+.cms-block-hidden-sections .field-hint {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+}
+
 /* ===== Repeater ===== */
 .cms-repeater {
     margin-bottom: 12px;
@@ -120,4 +155,3 @@
     border-color: #888;
     color: #333;
 }
-

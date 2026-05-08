@@ -130,6 +130,7 @@
         ns.bindPageChange();
         ns.bindWidgetType();
         ns.bindAppRoute();
+        ns.bindHiddenSections();
         bindCopy();
         ns.bindPreview();
         var sel = fields.widgetType();

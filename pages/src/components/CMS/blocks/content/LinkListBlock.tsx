@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { safeHref } from '../../../../shared/utils/safeHref';
 
 interface LinkItem {
   label: string;
@@ -21,7 +22,7 @@ export const LinkListBlock: React.FC<{ data: LinkListData }> = ({ data }) => {
         {data.items.map((item, i) => (
           <li key={i}>
             {item.is_external ? (
-              <a href={item.url} target="_blank" rel="noopener noreferrer">
+              <a href={safeHref(item.url)} target="_blank" rel="noopener noreferrer">
                 {item.label}
               </a>
             ) : (

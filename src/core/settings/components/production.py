@@ -151,6 +151,9 @@ STORAGES = {
             "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "region_name": AWS_S3_REGION_NAME,
             "location": "static",
+            # Static assets are release artifacts. They must replace older
+            # files with the same path so non-hashed admin JS/CSS updates go live.
+            "file_overwrite": True,
             "querystring_auth": False,
             "default_acl": None,
             "object_parameters": AWS_S3_OBJECT_PARAMETERS,

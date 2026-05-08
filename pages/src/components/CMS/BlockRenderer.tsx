@@ -14,7 +14,7 @@ import { ProposalCardsBlock } from './blocks/showcase/ProposalCardsBlock';
 import { SponsorYearBlock } from './blocks/showcase/SponsorYearBlock';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type BlockComponent = React.FC<{ data: any }>;
+type BlockComponent = React.FC<{ data: any; previewMode?: boolean }>;
 
 const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   rich_text: RichTextBlock,
@@ -33,17 +33,26 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
 
 interface BlockRendererProps {
   blocks: CMSBlock[];
+  previewMode?: boolean;
 }
 
-export const BlockRenderer: React.FC<BlockRendererProps> = memo(({ blocks }) => (
-  <>
-    {blocks.filter(Boolean).map((block) => {
-      const Component = BLOCK_COMPONENTS[block.block_type];
-      if (!Component) {
-        console.warn(`Unknown CMS block type: ${block.block_type}`);
-        return null;
-      }
-      return <Component key={`${block.block_type}-${block.sort_order}`} data={block.data} />;
-    })}
-  </>
-));
+export const BlockRenderer: React.FC<BlockRendererProps> = memo(
+  ({ blocks, previewMode = false }) => (
+    <>
+      {blocks.filter(Boolean).map((block) => {
+        const Component = BLOCK_COMPONENTS[block.block_type];
+        if (!Component) {
+          console.warn(`Unknown CMS block type: ${block.block_type}`);
+          return null;
+        }
+        return (
+          <Component
+            key={`${block.block_type}-${block.sort_order}`}
+            data={block.data}
+            previewMode={previewMode}
+          />
+        );
+      })}
+    </>
+  ),
+);

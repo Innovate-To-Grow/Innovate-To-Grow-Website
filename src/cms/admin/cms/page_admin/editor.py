@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 import uuid
 from datetime import timedelta
 
@@ -6,21 +8,31 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 
+from cms.embed_sections import hidden_section_presets_payload
 from cms.models import (
     BLOCK_SCHEMAS,
     BLOCK_TYPE_CHOICES,
+    CMSAsset,
     CMSBlock,
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
     CMSPage,
     validate_block_data,
 )
-from cms.models.content.cms.block_types import DEFAULT_SANDBOX
+from cms.models.content.cms.block_types import DEFAULT_SANDBOX, normalize_block_data_for_storage
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
+from cms.models.media import (
+    ALLOWED_ASSET_EXTENSIONS,
+    IMAGE_ASSET_EXTENSIONS,
+    MAX_ASSET_UPLOAD_BYTES,
+)
+
+logger = logging.getLogger(__name__)
 
 # Mirrors Django's django.utils.html.json_script escape table so json.dumps
 # output is safe to inline inside a <script> block (notably </script>).
@@ -48,6 +60,63 @@ def _format_widget_label(widget):
     return " — ".join(parts)
 
 
+def _asset_extension(asset):
+    _, ext = os.path.splitext(asset.file.name if asset.file else "")
+    return ext.lstrip(".").lower()
+
+
+def _requested_asset_type(request):
+    asset_type = (request.GET.get("type") or request.POST.get("type") or "").strip().lower()
+    return asset_type if asset_type == "image" else ""
+
+
+def _image_asset_query():
+    query = Q(file__iendswith=f".{IMAGE_ASSET_EXTENSIONS[0]}")
+    for extension in IMAGE_ASSET_EXTENSIONS[1:]:
+        query |= Q(file__iendswith=f".{extension}")
+    return query
+
+
+def _filter_assets_for_type(queryset, asset_type):
+    if asset_type == "image":
+        return queryset.filter(_image_asset_query())
+    return queryset
+
+
+def _asset_matches_type(asset, asset_type):
+    if asset_type == "image":
+        return _asset_extension(asset) in IMAGE_ASSET_EXTENSIONS
+    return True
+
+
+def _validation_error_payload(exc):
+    if hasattr(exc, "message_dict"):
+        errors = exc.message_dict
+        messages = [message for field_errors in errors.values() for message in field_errors]
+        return {"detail": messages[0] if messages else "Validation error.", "errors": errors}
+    messages = getattr(exc, "messages", None) or [str(exc)]
+    return {"detail": messages[0], "errors": messages}
+
+
+def serialize_asset(asset):
+    extension = _asset_extension(asset)
+    try:
+        size = asset.file.size if asset.file else None
+    except (OSError, ValueError):
+        size = None
+    return {
+        "id": str(asset.pk),
+        "name": asset.name,
+        "file": asset.file.name if asset.file else "",
+        "public_url": asset.public_url,
+        "url": asset.public_url,
+        "extension": extension,
+        "is_image": extension in IMAGE_ASSET_EXTENSIONS,
+        "size": size,
+        "updated_at": asset.updated_at.isoformat() if asset.updated_at else "",
+    }
+
+
 def build_editor_context(obj=None):
     from django.conf import settings as django_settings
 
@@ -58,6 +127,8 @@ def build_editor_context(obj=None):
         {
             "slug": widget.slug,
             "label": _format_widget_label(widget),
+            "widget_type": widget.widget_type,
+            "app_route": widget.app_route or "",
         }
         for widget in CMSEmbedWidget.objects.order_by("slug")
     ]
@@ -66,6 +137,16 @@ def build_editor_context(obj=None):
         "block_type_choices_json": _safe_json(BLOCK_TYPE_CHOICES),
         "embed_allowed_hosts_json": _safe_json(allowed_hosts),
         "embed_widgets_json": _safe_json(embed_widgets),
+        "hidden_section_presets_json": _safe_json(hidden_section_presets_payload()),
+        "asset_manager_config_json": _safe_json(
+            {
+                "listUrl": reverse("admin:cms_cmspage_assets"),
+                "uploadUrl": reverse("admin:cms_cmspage_asset_upload"),
+                "allowedExtensions": ALLOWED_ASSET_EXTENSIONS,
+                "imageExtensions": IMAGE_ASSET_EXTENSIONS,
+                "maxBytes": MAX_ASSET_UPLOAD_BYTES,
+            }
+        ),
         "embed_default_sandbox": DEFAULT_SANDBOX,
         "route_check_url": reverse("admin:cms_cmspage_route_conflict"),
         "current_page_id": str(obj.pk) if obj else "",
@@ -107,13 +188,21 @@ def save_blocks_from_json(request, page, messages):
 
     pending_blocks = []
     for index, block_data in enumerate(blocks_data):
+        if not isinstance(block_data, dict):
+            messages.warning(request, f"Block #{index + 1}: invalid format, skipped.")
+            continue
         block_type = block_data.get("block_type", "")
         data = block_data.get("data", {})
         try:
             validate_block_data(block_type, data)
-        except Exception as exc:  # noqa: BLE001
-            messages.warning(request, f"Block #{index + 1} ({block_type}): {exc}")
+        except ValidationError as exc:
+            detail = exc.messages[0] if exc.messages else "Validation error."
+            messages.warning(request, f"Block #{index + 1} ({block_type}): {detail}")
             continue
+        except (TypeError, AttributeError, KeyError):
+            messages.warning(request, f"Block #{index + 1} ({block_type}): Invalid block data format.")
+            continue
+        data = normalize_block_data_for_storage(block_type, data)
         pending_blocks.append(
             CMSBlock(
                 page=page,
@@ -142,6 +231,58 @@ def preview_store_response(request):
     data["expires_at"] = (timezone.now() + timedelta(seconds=600)).isoformat()
     cache.set(f"cms:preview:{token}", data, timeout=600)
     return JsonResponse({"token": token})
+
+
+def assets_list_response(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed."}, status=405)
+
+    query = request.GET.get("q", "").strip()
+    asset_type = _requested_asset_type(request)
+    try:
+        limit = int(request.GET.get("limit", "50"))
+    except ValueError:
+        limit = 50
+    limit = max(1, min(limit, 100))
+
+    queryset = CMSAsset.objects.all().order_by("-updated_at", "name")
+    queryset = _filter_assets_for_type(queryset, asset_type)
+    if query:
+        queryset = queryset.filter(name__icontains=query)
+
+    total = queryset.count()
+    assets = [serialize_asset(asset) for asset in queryset[:limit]]
+    return JsonResponse({"assets": assets, "total": total})
+
+
+def assets_upload_response(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed."}, status=405)
+
+    asset_type = _requested_asset_type(request)
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return JsonResponse({"detail": "Select a file to upload."}, status=400)
+
+    default_name = os.path.splitext(uploaded.name or "")[0] or uploaded.name or "CMS Asset"
+    name = (request.POST.get("name") or default_name).strip()[:200] or "CMS Asset"
+    asset = CMSAsset(name=name, file=uploaded)
+    try:
+        asset.full_clean()
+    except ValidationError as exc:
+        return JsonResponse(_validation_error_payload(exc), status=400)
+    except Exception:
+        logger.exception("Unexpected error during asset validation")
+        return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
+    if not _asset_matches_type(asset, asset_type):
+        return JsonResponse({"detail": "Select an image asset for this field."}, status=400)
+
+    try:
+        asset.save()
+    except Exception:
+        logger.exception("Unexpected error saving asset")
+        return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
+    return JsonResponse({"asset": serialize_asset(asset)}, status=201)
 
 
 def route_conflict_response(request):
