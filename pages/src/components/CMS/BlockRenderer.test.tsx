@@ -45,7 +45,20 @@ describe('BlockRenderer', () => {
     expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
   });
 
-  it('passes previewMode through to blocks', () => {
+  it('passes previewMode through to embed blocks', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed',
+        sort_order: 0,
+        data: {src: 'https://docs.google.com/forms/d/xyz/viewform'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} previewMode />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+  });
+
+  it('passes previewMode through to embed widget blocks', () => {
     const blocks: CMSBlock[] = [
       {
         block_type: 'embed_widget',
