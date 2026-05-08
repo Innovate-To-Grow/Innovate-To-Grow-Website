@@ -65,7 +65,7 @@
 }
 
 .visual-editor-content > .cms-preview-wrapper {
-    margin: 0 0 8px;
+    margin: 0;
     border-color: #e5e7eb;
     border-radius: 6px;
 }
