@@ -81,6 +81,14 @@ class CMSEmbedWidgetModelTests(TestCase):
             widget.full_clean()
         self.assertIn("app_route", ctx.exception.message_dict)
 
+    def test_app_route_widget_rejects_non_embeddable_route(self):
+        # /event is in APP_ROUTES (menu/login use it) but not in
+        # EMBED_APP_ROUTE_COMPONENTS, so it cannot render in an iframe.
+        widget = CMSEmbedWidget(widget_type="app_route", slug="app-embed", app_route="/event")
+        with self.assertRaises(ValidationError) as ctx:
+            widget.full_clean()
+        self.assertIn("app_route", ctx.exception.message_dict)
+
     def test_app_route_widget_clears_block_sort_orders(self):
         widget = CMSEmbedWidget(
             widget_type="app_route",

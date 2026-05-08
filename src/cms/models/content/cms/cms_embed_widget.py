@@ -111,12 +111,12 @@ class CMSEmbedWidget(ProjectControlModel):
         self.hide_section_titles = "section_titles" in self.hidden_sections
 
     def _clean_app_route(self):
-        from cms.app_routes import APP_ROUTES
+        from cms.app_routes import EMBEDDABLE_APP_ROUTES
 
         route = (self.app_route or "").strip()
         if not route:
             raise ValidationError({"app_route": "App route is required for app_route widgets."})
-        allowed = {entry["url"] for entry in APP_ROUTES}
+        allowed = {entry["url"] for entry in EMBEDDABLE_APP_ROUTES}
         if route not in allowed:
             raise ValidationError({"app_route": f"Unknown app route: {route}."})
         self.app_route = route

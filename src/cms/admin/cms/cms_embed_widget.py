@@ -8,7 +8,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.widgets import UnfoldAdminSelectWidget
 
-from cms.app_routes import APP_ROUTES
+from cms.app_routes import EMBEDDABLE_APP_ROUTES
 from cms.embed_sections import (
     hidden_section_choices,
     hidden_section_presets_payload,
@@ -21,7 +21,8 @@ from core.admin import BaseModelAdmin
 class CMSEmbedWidgetAdminForm(forms.ModelForm):
     app_route = forms.ChoiceField(
         required=False,
-        choices=[("", "— select an app route —")] + [(r["url"], f"{r['title']} ({r['url']})") for r in APP_ROUTES],
+        choices=[("", "— select an app route —")]
+        + [(r["url"], f"{r['title']} ({r['url']})") for r in EMBEDDABLE_APP_ROUTES],
         label="App route",
         help_text="The interactive app page to embed.",
         widget=UnfoldAdminSelectWidget,
@@ -119,7 +120,7 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def app_routes_view(self, request):
-        return JsonResponse({"routes": list(APP_ROUTES)})
+        return JsonResponse({"routes": list(EMBEDDABLE_APP_ROUTES)})
 
     def page_blocks_view(self, request):
         page_id = request.GET.get("page_id") or ""
