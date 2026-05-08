@@ -15,6 +15,7 @@ import logging
 import threading
 
 from django.db import close_old_connections
+from django.db.models import F
 from django.utils import timezone
 
 from core.models import GoogleCredentialConfig
@@ -157,14 +158,10 @@ def _flush_pending_sync(event_id: str) -> None:
             new_registrations = list(qs)
 
         if not new_registrations:
-            event.registration_sheet_synced_at = timezone.now()
-            event.registration_sheet_sync_error = ""
-            event.save(
-                update_fields=[
-                    "registration_sheet_synced_at",
-                    "registration_sheet_sync_error",
-                    "updated_at",
-                ]
+            Event.objects.filter(pk=event.pk).update(
+                registration_sheet_synced_at=timezone.now(),
+                registration_sheet_sync_error="",
+                updated_at=timezone.now(),
             )
             RegistrationSheetSyncLog.objects.create(
                 event=event,
@@ -175,6 +172,7 @@ def _flush_pending_sync(event_id: str) -> None:
             return
 
         question_texts = list(event.questions.order_by("order").values_list("text", flat=True))
+        event.refresh_from_db(fields=["registration_sheet_sync_count"])
         start_order = event.registration_sheet_sync_count + 1
 
         rows = [_build_row(reg, event, question_texts, start_order + idx) for idx, reg in enumerate(new_registrations)]
@@ -188,18 +186,13 @@ def _flush_pending_sync(event_id: str) -> None:
         else:
             worksheet.append_rows(rows, value_input_option="USER_ENTERED")
 
-        new_count = event.registration_sheet_sync_count + len(rows)
-        event.registration_sheet_synced_at = timezone.now()
-        event.registration_sheet_sync_count = new_count
-        event.registration_sheet_sync_error = ""
-        event.save(
-            update_fields=[
-                "registration_sheet_synced_at",
-                "registration_sheet_sync_count",
-                "registration_sheet_sync_error",
-                "updated_at",
-            ]
+        Event.objects.filter(pk=event.pk).update(
+            registration_sheet_sync_count=F("registration_sheet_sync_count") + len(rows),
+            registration_sheet_synced_at=timezone.now(),
+            registration_sheet_sync_error="",
+            updated_at=timezone.now(),
         )
+        event.refresh_from_db(fields=["registration_sheet_sync_count", "registration_sheet_synced_at"])
         RegistrationSheetSyncLog.objects.create(
             event=event,
             sync_type=RegistrationSheetSyncLog.SyncType.APPEND,
