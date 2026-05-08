@@ -23,7 +23,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=6">
     <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
 {% endblock %}
 
@@ -118,6 +118,7 @@
         window.CMS_EMBED_DEFAULT_SANDBOX = "{{ embed_default_sandbox|escapejs }}";
         window.CMS_EMBED_WIDGETS = {{ embed_widgets_json|safe }};
         window.CMS_HIDDEN_SECTION_PRESETS = {{ hidden_section_presets_json|safe }};
+        window.CMS_ASSET_MANAGER = {{ asset_manager_config_json|safe }};
         window.CMS_ROUTE_EDITOR = {
             checkUrl: "{{ route_check_url|escapejs }}",
             pageId: "{{ current_page_id|escapejs }}",
@@ -130,9 +131,10 @@
     <script src="{% static 'vendor/codemirror/5.65.16/mode/javascript/javascript.min.js' %}"></script>
     <script src="{% static 'vendor/codemirror/5.65.16/mode/css/css.min.js' %}"></script>
     <script src="{% static 'vendor/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js' %}"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=5"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=6"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/assets.js' %}?v=2"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=2"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=7"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=8"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=3"></script>
     <script src="{% static 'cms/js/cms-block-editor.js' %}?v=8"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>

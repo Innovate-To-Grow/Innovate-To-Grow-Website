@@ -128,6 +128,8 @@ class CMSPageChangeFormRenderTests(TestCase):
         response = self.client.get(url)
         content = response.content.decode()
         self.assertIn("cms-block-editor.js", content)
+        self.assertIn("cms-block-editor-parts/assets.js", content)
+        self.assertIn("CMS_ASSET_MANAGER", content)
 
     def test_change_form_has_preview_button(self):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
@@ -303,6 +305,16 @@ class BuildEditorContextTests(TestCase):
         self.assertEqual(schemas["embed_widget"]["required"], ["slug"])
         # Sanity: BLOCK_SCHEMAS itself still matches (guards against silent drift).
         self.assertEqual(schemas["embed_widget"], BLOCK_SCHEMAS["embed_widget"])
+
+    def test_context_injects_asset_manager_config(self):
+        context = build_editor_context()
+        self.assertIn("asset_manager_config_json", context)
+        config = json.loads(context["asset_manager_config_json"])
+        self.assertEqual(config["listUrl"], reverse("admin:cms_cmspage_assets"))
+        self.assertEqual(config["uploadUrl"], reverse("admin:cms_cmspage_asset_upload"))
+        self.assertIn("png", config["imageExtensions"])
+        self.assertIn("docx", config["allowedExtensions"])
+        self.assertEqual(config["maxBytes"], 20 * 1024 * 1024)
 
 
 class FormatWidgetLabelTests(TestCase):

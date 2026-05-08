@@ -1,0 +1,249 @@
+.cms-asset-field-control {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.cms-asset-field-control input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cms-asset-picker-trigger {
+    flex: 0 0 auto;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 10px;
+}
+
+.cms-asset-picker-trigger:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.cms-asset-html-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.cms-asset-html-label-row label {
+    margin-bottom: 0;
+}
+
+.cms-asset-html-label-row .cms-asset-picker-trigger {
+    min-height: 28px;
+}
+
+.cms-asset-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+}
+
+.cms-asset-modal.is-open {
+    display: block;
+}
+
+.cms-asset-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.cms-asset-modal-panel {
+    position: absolute;
+    top: 8vh;
+    left: 50%;
+    width: min(920px, calc(100vw - 32px));
+    max-height: 84vh;
+    overflow: hidden;
+    transform: translateX(-50%);
+    border: 1px solid #dbe3ef;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+    display: flex;
+    flex-direction: column;
+}
+
+.cms-asset-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.cms-asset-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.cms-asset-modal-close {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 28px;
+    line-height: 1;
+}
+
+.cms-asset-upload,
+.cms-asset-search-row {
+    padding: 14px 18px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.cms-asset-upload-fields,
+.cms-asset-search-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.cms-asset-upload-fields input[type="file"] {
+    flex: 1 1 18rem;
+}
+
+.cms-asset-upload-fields input[type="text"],
+.cms-asset-search-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.cms-asset-upload-fields button,
+.cms-asset-search-row button,
+.cms-asset-row button {
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 8px 12px;
+}
+
+.cms-asset-row button:disabled {
+    border-color: #cbd5e1;
+    background: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.cms-asset-upload-hint {
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.cms-asset-error {
+    display: none;
+    margin-top: 8px;
+    color: #b91c1c;
+    font-size: 13px;
+}
+
+.cms-asset-error.is-visible {
+    display: block;
+}
+
+.cms-asset-list {
+    overflow: auto;
+    padding: 8px 18px 18px;
+}
+
+.cms-asset-empty {
+    color: #64748b;
+    margin: 18px 0;
+}
+
+.cms-asset-row {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.cms-asset-row.is-disabled {
+    opacity: 0.62;
+}
+
+.cms-asset-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 56px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.cms-asset-thumb img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.cms-asset-file-icon {
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cms-asset-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.cms-asset-info strong,
+.cms-asset-info span,
+.cms-asset-info a {
+    overflow-wrap: anywhere;
+}
+
+.cms-asset-info strong {
+    color: #111827;
+    font-size: 14px;
+}
+
+.cms-asset-info span,
+.cms-asset-info a {
+    color: #64748b;
+    font-size: 12px;
+}
+
+@media (max-width: 680px) {
+    .cms-asset-field-control,
+    .cms-asset-upload-fields,
+    .cms-asset-search-row,
+    .cms-asset-row {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cms-asset-thumb {
+        width: 100%;
+    }
+}

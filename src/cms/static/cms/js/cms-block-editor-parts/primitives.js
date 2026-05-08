@@ -35,9 +35,26 @@
         return data;
     }
 
-    function textField(label, value, blockIdx, dataPath) { return `<div class="cms-block-field"><label>${escapeHtml(label)}</label><input type="text" value="${escapeAttr(value)}" oninput="updateBlockData(${blockIdx}, '${dataPath}', this.value)"></div>`; }
+    function fieldId(prefix, blockIdx, dataPath) {
+        return `${prefix}-${blockIdx}-${String(dataPath || '').replace(/[^A-Za-z0-9_-]+/g, '-')}`;
+    }
+
+    function assetButton(kind, blockIdx, dataPath, filter, fieldIdValue) {
+        const label = kind === 'html' ? 'Insert Asset' : 'Select Asset';
+        return `<button type="button" class="cms-asset-picker-trigger" data-asset-target-kind="${escapeAttr(kind)}" data-block-idx="${blockIdx}" data-data-path="${escapeAttr(dataPath)}" data-asset-filter="${escapeAttr(filter || 'any')}" data-field-id="${escapeAttr(fieldIdValue)}">${escapeHtml(label)}</button>`;
+    }
+
+    function textField(label, value, blockIdx, dataPath, options) {
+        const opts = options || {};
+        const id = fieldId('cms-field', blockIdx, dataPath);
+        const picker = opts.asset ? assetButton('url', blockIdx, dataPath, opts.asset, id) : '';
+        return `<div class="cms-block-field"><label for="${escapeAttr(id)}">${escapeHtml(label)}</label><div class="cms-asset-field-control"><input id="${escapeAttr(id)}" type="text" value="${escapeAttr(value)}" oninput="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${picker}</div></div>`;
+    }
     function textFieldDirect(label, value, blockIdx, dataPath) { return `<div class="cms-block-field"><label>${escapeHtml(label)}</label><input type="text" value="${escapeAttr(value)}" oninput="updateBlockDataDirect(${blockIdx}, '${dataPath}', this.value)"></div>`; }
-    function htmlField(label, value, blockIdx, dataPath) { return `<div class="cms-block-field"><label>${escapeHtml(label)}</label><textarea class="html-field" oninput="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${escapeHtml(value || '')}</textarea><span class="field-hint">Supports HTML markup</span></div>`; }
+    function htmlField(label, value, blockIdx, dataPath) {
+        const id = fieldId('cms-html-field', blockIdx, dataPath);
+        return `<div class="cms-block-field"><div class="cms-asset-html-label-row"><label for="${escapeAttr(id)}">${escapeHtml(label)}</label>${assetButton('html', blockIdx, dataPath, 'any', id)}</div><textarea id="${escapeAttr(id)}" class="html-field" oninput="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${escapeHtml(value || '')}</textarea><span class="field-hint">Supports HTML markup</span></div>`;
+    }
     function selectField(label, value, blockIdx, dataPath, options) { return `<div class="cms-block-field field-small"><label>${escapeHtml(label)}</label><select onchange="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${options.map(opt => `<option value="${escapeAttr(opt[0])}"${String(value) === String(opt[0]) ? ' selected' : ''}>${escapeHtml(opt[1])}</option>`).join('')}</select></div>`; }
     function checkboxField(label, value, blockIdx, dataPath) { const id = 'cb-' + blockIdx + '-' + dataPath.replace(/\./g, '-'); return `<div class="cms-block-field-checkbox"><input type="checkbox" id="${id}"${value ? ' checked' : ''} onchange="updateBlockData(${blockIdx}, '${dataPath}', this.checked)"><label for="${id}">${escapeHtml(label)}</label></div>`; }
     function renderJsonSubEditor(data, blockIdx, fieldName, label) { return `<div class="cms-json-subeditor"><div class="cms-block-field"><label>${escapeHtml(label || 'Data (JSON)')}</label><textarea oninput="updateBlockDataJson(${blockIdx}, '${fieldName || ''}', this.value)">${escapeHtml(JSON.stringify(fieldName ? data[fieldName] : data, null, 2))}</textarea></div></div>`; }

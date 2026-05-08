@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from datetime import timedelta
 
@@ -6,6 +7,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -14,6 +16,7 @@ from cms.embed_sections import hidden_section_presets_payload
 from cms.models import (
     BLOCK_SCHEMAS,
     BLOCK_TYPE_CHOICES,
+    CMSAsset,
     CMSBlock,
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
@@ -22,6 +25,11 @@ from cms.models import (
 )
 from cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
+from cms.models.media import (
+    ALLOWED_ASSET_EXTENSIONS,
+    IMAGE_ASSET_EXTENSIONS,
+    MAX_ASSET_UPLOAD_BYTES,
+)
 
 # Mirrors Django's django.utils.html.json_script escape table so json.dumps
 # output is safe to inline inside a <script> block (notably </script>).
@@ -49,6 +57,39 @@ def _format_widget_label(widget):
     return " — ".join(parts)
 
 
+def _asset_extension(asset):
+    _, ext = os.path.splitext(asset.file.name if asset.file else "")
+    return ext.lstrip(".").lower()
+
+
+def _validation_error_payload(exc):
+    if hasattr(exc, "message_dict"):
+        errors = exc.message_dict
+        messages = [message for field_errors in errors.values() for message in field_errors]
+        return {"detail": messages[0] if messages else "Validation error.", "errors": errors}
+    messages = getattr(exc, "messages", None) or [str(exc)]
+    return {"detail": messages[0], "errors": messages}
+
+
+def serialize_asset(asset):
+    extension = _asset_extension(asset)
+    try:
+        size = asset.file.size if asset.file else None
+    except (OSError, ValueError):
+        size = None
+    return {
+        "id": str(asset.pk),
+        "name": asset.name,
+        "file": asset.file.name if asset.file else "",
+        "public_url": asset.public_url,
+        "url": asset.public_url,
+        "extension": extension,
+        "is_image": extension in IMAGE_ASSET_EXTENSIONS,
+        "size": size,
+        "updated_at": asset.updated_at.isoformat() if asset.updated_at else "",
+    }
+
+
 def build_editor_context(obj=None):
     from django.conf import settings as django_settings
 
@@ -70,6 +111,15 @@ def build_editor_context(obj=None):
         "embed_allowed_hosts_json": _safe_json(allowed_hosts),
         "embed_widgets_json": _safe_json(embed_widgets),
         "hidden_section_presets_json": _safe_json(hidden_section_presets_payload()),
+        "asset_manager_config_json": _safe_json(
+            {
+                "listUrl": reverse("admin:cms_cmspage_assets"),
+                "uploadUrl": reverse("admin:cms_cmspage_asset_upload"),
+                "allowedExtensions": ALLOWED_ASSET_EXTENSIONS,
+                "imageExtensions": IMAGE_ASSET_EXTENSIONS,
+                "maxBytes": MAX_ASSET_UPLOAD_BYTES,
+            }
+        ),
         "embed_default_sandbox": DEFAULT_SANDBOX,
         "route_check_url": reverse("admin:cms_cmspage_route_conflict"),
         "current_page_id": str(obj.pk) if obj else "",
@@ -146,6 +196,46 @@ def preview_store_response(request):
     data["expires_at"] = (timezone.now() + timedelta(seconds=600)).isoformat()
     cache.set(f"cms:preview:{token}", data, timeout=600)
     return JsonResponse({"token": token})
+
+
+def assets_list_response(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed."}, status=405)
+
+    query = request.GET.get("q", "").strip()
+    try:
+        limit = int(request.GET.get("limit", "50"))
+    except ValueError:
+        limit = 50
+    limit = max(1, min(limit, 100))
+
+    queryset = CMSAsset.objects.all().order_by("-updated_at", "name")
+    if query:
+        queryset = queryset.filter(Q(name__icontains=query) | Q(file__icontains=query))
+
+    total = queryset.count()
+    assets = [serialize_asset(asset) for asset in queryset[:limit]]
+    return JsonResponse({"assets": assets, "total": total})
+
+
+def assets_upload_response(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed."}, status=405)
+
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return JsonResponse({"detail": "Select a file to upload."}, status=400)
+
+    default_name = os.path.splitext(uploaded.name or "")[0] or uploaded.name or "CMS Asset"
+    name = (request.POST.get("name") or default_name).strip()[:200] or "CMS Asset"
+    asset = CMSAsset(name=name, file=uploaded)
+    try:
+        asset.full_clean()
+    except ValidationError as exc:
+        return JsonResponse(_validation_error_payload(exc), status=400)
+
+    asset.save()
+    return JsonResponse({"asset": serialize_asset(asset)}, status=201)
 
 
 def route_conflict_response(request):
