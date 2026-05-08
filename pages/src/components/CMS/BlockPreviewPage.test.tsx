@@ -47,6 +47,7 @@ describe('BlockPreviewPage', () => {
     // in this vitest setup, and leftover components leave message listeners
     // on the shared `window`, causing cross-test interference.
     cleanup();
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     Object.defineProperty(window, 'parent', {
       configurable: true,
@@ -191,6 +192,51 @@ describe('BlockPreviewPage', () => {
     });
     expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
     expect(screen.queryByTestId('blk-rich_text')).not.toBeInTheDocument();
+  });
+
+  it('accepts messages from loopback admin origins in development', async () => {
+    vi.stubEnv('DEV', true);
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+
+    render(<ReloadedBlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'http://127.0.0.1:8000',
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'loopback-admin'}},
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId('blk-rich_text')).toHaveTextContent('loopback-admin');
+    vi.unstubAllEnvs();
+  });
+
+  it('does not trust loopback admin origins outside development', async () => {
+    vi.stubEnv('DEV', false);
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+
+    render(<ReloadedBlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'http://127.0.0.1:8000',
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'loopback-admin'}},
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('blk-rich_text')).not.toBeInTheDocument();
+    vi.unstubAllEnvs();
   });
 
   it('accepts messages from a trusted parent origin configured via VITE_ADMIN_ORIGIN', async () => {

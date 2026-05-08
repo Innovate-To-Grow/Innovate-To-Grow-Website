@@ -23,21 +23,59 @@ function parseAllowedOrigins(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw
     .split(',')
-    .map((o) => o.trim().replace(/\/+$/, ''))
+    .map((o) => normalizeOrigin(o))
     .filter(Boolean);
 }
 
+function normalizeOrigin(raw: string): string {
+  try {
+    const url = new URL(String(raw || '').trim());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    return url.origin.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+}
+
+function isTrustedDevLoopbackOrigin(origin: string): boolean {
+  if (!import.meta.env.DEV) return false;
+
+  try {
+    const iframeOrigin = new URL(window.location.origin);
+    const parentOrigin = new URL(origin);
+    return (
+      iframeOrigin.protocol === 'http:' &&
+      parentOrigin.protocol === 'http:' &&
+      isLoopbackHost(iframeOrigin.hostname) &&
+      isLoopbackHost(parentOrigin.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 const ALLOWED_PARENT_ORIGINS = new Set<string>([
-  window.location.origin,
+  normalizeOrigin(window.location.origin),
   ...parseAllowedOrigins(import.meta.env.VITE_ADMIN_ORIGIN),
 ]);
+
+function isTrustedParentOrigin(origin: string): boolean {
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin) return false;
+  return ALLOWED_PARENT_ORIGINS.has(normalizedOrigin) || isTrustedDevLoopbackOrigin(normalizedOrigin);
+}
 
 export const BlockPreviewPage = () => {
   const [block, setBlock] = useState<CMSBlock | null>(null);
   const [pageCssClass, setPageCssClass] = useState('');
 
   const handleMessage = useCallback((event: MessageEvent) => {
-    if (!ALLOWED_PARENT_ORIGINS.has(event.origin)) return;
+    if (!isTrustedParentOrigin(event.origin)) return;
     const msg = event.data;
     if (!msg || msg.type !== 'cms-block-preview') return;
     if (msg.block) {
