@@ -64,8 +64,8 @@
     display: none;
 }
 
-.visual-editor-wrapper > .cms-preview-wrapper {
-    margin: 16px 16px 0;
+.visual-editor-content > .cms-preview-wrapper {
+    margin: 0 0 16px;
     border-color: #e5e7eb;
     border-radius: 6px;
 }
