@@ -5,11 +5,7 @@ import type {User} from './types';
 const mockUser: User = {
   member_uuid: 'uuid-123',
   email: 'test@example.com',
-  first_name: 'Test',
-  last_name: 'User',
-  organization: 'Org',
-  title: '',
-  profile_image: null,
+  profile_image: 'img.png',
 };
 
 function createMockStorage(): Storage {
@@ -82,8 +78,8 @@ describe('storage', () => {
   it('updates user in storage', async () => {
     const {setTokens, updateStoredUser, getStoredUser} = await import('./storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
-    updateStoredUser((user) => ({...user, first_name: 'Updated'}));
-    expect(getStoredUser()?.first_name).toBe('Updated');
+    updateStoredUser((user) => ({...user, email: 'updated@test.com'}));
+    expect(getStoredUser()?.email).toBe('updated@test.com');
   });
 
   it('updateStoredUser does nothing when no user stored', async () => {
