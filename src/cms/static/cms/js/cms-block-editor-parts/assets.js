@@ -59,7 +59,11 @@
                 </div>
                 <div class="cms-asset-upload">
                     <div class="cms-asset-upload-fields">
-                        <input type="file" id="cms-asset-upload-file">
+                        <div class="cms-asset-file-control">
+                            <input type="file" id="cms-asset-upload-file" class="cms-asset-file-input">
+                            <label for="cms-asset-upload-file" class="cms-asset-file-button">Choose file</label>
+                            <span class="cms-asset-file-name" id="cms-asset-upload-filename">No file selected</span>
+                        </div>
                         <input type="text" id="cms-asset-upload-name" placeholder="Optional display name">
                         <button type="button" id="cms-asset-upload-submit">Upload and insert</button>
                     </div>
@@ -78,6 +82,7 @@
             state.query = event.target.value;
         });
         modal.querySelector('#cms-asset-search-submit').addEventListener('click', () => loadAssets());
+        modal.querySelector('#cms-asset-upload-file').addEventListener('change', updateSelectedFileName);
         modal.querySelector('#cms-asset-upload-submit').addEventListener('click', uploadAsset);
         return modal;
     }
@@ -102,6 +107,7 @@
         const hint = modal.querySelector('#cms-asset-upload-hint');
         const search = modal.querySelector('#cms-asset-search');
         fileInput.value = '';
+        updateSelectedFileName();
         fileInput.setAttribute('accept', extensionList(target.filter));
         modal.querySelector('#cms-asset-upload-name').value = '';
         hint.textContent = `Allowed: ${extensionList(target.filter) || 'configured CMS asset types'} · Max ${fileSize(config.maxBytes || 0)}`;
@@ -112,6 +118,16 @@
     function closePicker() {
         if (modal) modal.classList.remove('is-open');
         state.target = null;
+    }
+
+    function updateSelectedFileName() {
+        const fileInput = modal && modal.querySelector('#cms-asset-upload-file');
+        const fileName = modal && modal.querySelector('#cms-asset-upload-filename');
+        if (!fileInput || !fileName) return;
+        const file = fileInput.files && fileInput.files[0];
+        fileName.textContent = file ? file.name : 'No file selected';
+        fileName.classList.toggle('has-file', Boolean(file));
+        if (file) showError('');
     }
 
     function loadAssets() {

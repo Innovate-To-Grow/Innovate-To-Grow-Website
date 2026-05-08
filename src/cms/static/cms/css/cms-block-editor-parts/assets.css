@@ -113,8 +113,54 @@
     align-items: center;
 }
 
-.cms-asset-upload-fields input[type="file"] {
+.cms-asset-file-control {
+    display: flex;
     flex: 1 1 18rem;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.cms-asset-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.cms-asset-file-button {
+    flex: 0 0 auto;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 9px 12px;
+}
+
+.cms-asset-file-button:hover,
+.cms-asset-file-input:focus-visible + .cms-asset-file-button {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.cms-asset-file-name {
+    min-width: 0;
+    overflow: hidden;
+    color: #64748b;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cms-asset-file-name.has-file {
+    color: #111827;
 }
 
 .cms-asset-upload-fields input[type="text"],
@@ -245,5 +291,9 @@
 
     .cms-asset-thumb {
         width: 100%;
+    }
+
+    .cms-asset-file-control {
+        flex: 1 1 auto;
     }
 }
