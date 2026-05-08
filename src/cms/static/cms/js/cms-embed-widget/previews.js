@@ -184,6 +184,8 @@
         if (controller) {
             timeout = setTimeout(function () { controller.abort(); }, 3500);
         }
+        // no-cors returns an opaque response for HTTP statuses, including 404/500.
+        // Treat only network failures and aborts as "frontend unreachable."
         return fetch(url, {
             method: 'GET',
             mode: 'no-cors',

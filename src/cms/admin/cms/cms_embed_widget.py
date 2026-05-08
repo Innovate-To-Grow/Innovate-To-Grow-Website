@@ -1,5 +1,3 @@
-import json
-
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
@@ -8,6 +6,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.widgets import UnfoldAdminSelectWidget
 
+from cms.admin.cms.page_admin.editor import _safe_json
 from cms.app_routes import EMBEDDABLE_APP_ROUTES
 from cms.embed_sections import (
     hidden_section_choices,
@@ -151,8 +150,8 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
             "page_blocks_url": reverse("admin:cms_cmsembedwidget_page_blocks"),
             "page_info_url": reverse("admin:cms_cmsembedwidget_page_info"),
             "app_routes_url": reverse("admin:cms_cmsembedwidget_app_routes"),
-            "hidden_section_presets_json": json.dumps(hidden_section_presets_payload()),
-            "initial_block_sort_orders_json": json.dumps(obj.block_sort_orders if obj else []),
+            "hidden_section_presets_json": _safe_json(hidden_section_presets_payload()),
+            "initial_block_sort_orders_json": _safe_json(obj.block_sort_orders if obj else []),
             "initial_slug": obj.slug if obj else "",
             "initial_page_id": str(obj.page_id) if obj and obj.page_id else "",
             "initial_widget_type": obj.widget_type if obj else "blocks",

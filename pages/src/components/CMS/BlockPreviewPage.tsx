@@ -59,9 +59,11 @@ function isTrustedDevLoopbackOrigin(origin: string): boolean {
   }
 }
 
+const SAME_ORIGIN = normalizeOrigin(window.location.origin);
+const CONFIGURED_PARENT_ORIGINS = parseAllowedOrigins(import.meta.env.VITE_ADMIN_ORIGIN);
 const ALLOWED_PARENT_ORIGINS = new Set<string>([
-  normalizeOrigin(window.location.origin),
-  ...parseAllowedOrigins(import.meta.env.VITE_ADMIN_ORIGIN),
+  SAME_ORIGIN,
+  ...CONFIGURED_PARENT_ORIGINS,
 ]);
 
 function isTrustedParentOrigin(origin: string): boolean {
@@ -70,14 +72,29 @@ function isTrustedParentOrigin(origin: string): boolean {
   return ALLOWED_PARENT_ORIGINS.has(normalizedOrigin) || isTrustedDevLoopbackOrigin(normalizedOrigin);
 }
 
+function getTrustedReferrerOrigin(): string {
+  const referrerOrigin = normalizeOrigin(document.referrer);
+  return referrerOrigin && isTrustedParentOrigin(referrerOrigin) ? referrerOrigin : '';
+}
+
+function getInitialReadyTargetOrigin(): string {
+  const referrerOrigin = getTrustedReferrerOrigin();
+  if (referrerOrigin) return referrerOrigin;
+  if (CONFIGURED_PARENT_ORIGINS.length === 1) return CONFIGURED_PARENT_ORIGINS[0];
+  return SAME_ORIGIN || window.location.origin;
+}
+
 export const BlockPreviewPage = () => {
   const [block, setBlock] = useState<CMSBlock | null>(null);
   const [pageCssClass, setPageCssClass] = useState('');
+  const [trustedParentOrigin, setTrustedParentOrigin] = useState(getTrustedReferrerOrigin);
 
   const handleMessage = useCallback((event: MessageEvent) => {
-    if (!isTrustedParentOrigin(event.origin)) return;
+    const normalizedOrigin = normalizeOrigin(event.origin);
+    if (!normalizedOrigin || !isTrustedParentOrigin(normalizedOrigin)) return;
     const msg = event.data;
     if (!msg || msg.type !== 'cms-block-preview') return;
+    setTrustedParentOrigin(normalizedOrigin);
     if (msg.block) {
       setBlock({
         block_type: msg.block.block_type,
@@ -94,13 +111,13 @@ export const BlockPreviewPage = () => {
     window.addEventListener('message', handleMessage);
     // Signal parent that the iframe is ready to receive data
     if (window.parent !== window) {
-      window.parent.postMessage({ type: 'cms-block-preview-ready' }, '*');
+      window.parent.postMessage({ type: 'cms-block-preview-ready' }, getInitialReadyTargetOrigin());
     }
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
 
   useEffect(() => {
-    if (!block || window.parent === window) return;
+    if (!block || !trustedParentOrigin || window.parent === window) return;
 
     const reportHeight = () => {
       const height = Math.max(
@@ -110,7 +127,7 @@ export const BlockPreviewPage = () => {
         document.body ? document.body.offsetHeight : 0,
       );
       if (height > 0) {
-        window.parent.postMessage({ type: 'cms-block-preview-resize', height }, '*');
+        window.parent.postMessage({ type: 'cms-block-preview-resize', height }, trustedParentOrigin);
       }
     };
 
@@ -132,7 +149,7 @@ export const BlockPreviewPage = () => {
       resizeObserver?.disconnect();
       window.removeEventListener('load', reportHeight);
     };
-  }, [block, pageCssClass]);
+  }, [block, pageCssClass, trustedParentOrigin]);
 
   if (!block) {
     return (

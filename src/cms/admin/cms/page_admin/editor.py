@@ -7,7 +7,6 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
-from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -215,7 +214,7 @@ def assets_list_response(request):
 
     queryset = CMSAsset.objects.all().order_by("-updated_at", "name")
     if query:
-        queryset = queryset.filter(Q(name__icontains=query) | Q(file__icontains=query))
+        queryset = queryset.filter(name__icontains=query)
 
     total = queryset.count()
     assets = [serialize_asset(asset) for asset in queryset[:limit]]

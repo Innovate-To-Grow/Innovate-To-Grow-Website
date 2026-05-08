@@ -70,6 +70,19 @@ class CMSAssetAdminTests(TestCase):
         self.assertFalse(payload["assets"][0]["is_image"])
         self.assertEqual(payload["assets"][0]["public_url"], asset.public_url)
 
+    def test_asset_picker_list_search_does_not_match_storage_path(self):
+        asset = CMSAsset.objects.create(
+            name="Visible Name",
+            file=SimpleUploadedFile("map.pdf", b"%PDF-1.7\n", content_type="application/pdf"),
+        )
+
+        response = self.client.get(reverse("admin:cms_cmspage_assets"), {"q": str(asset.pk)})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total"], 0)
+        self.assertEqual(payload["assets"], [])
+
     def test_asset_picker_upload_endpoint_creates_image_asset(self):
         response = self.client.post(
             reverse("admin:cms_cmspage_asset_upload"),
@@ -123,4 +136,4 @@ class CMSAssetAdminTests(TestCase):
 
         response = self.client.post(reverse("admin:cms_cmspage_asset_upload"))
 
-        self.assertNotEqual(response.status_code, 201)
+        self.assertIn(response.status_code, (302, 403))

@@ -1,4 +1,4 @@
-import {act, cleanup, render, screen} from '@testing-library/react';
+import {act, cleanup, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {BlockPreviewPage} from './BlockPreviewPage';
@@ -36,6 +36,22 @@ vi.mock('./BlockRenderer', () => ({
   ),
 }));
 
+function stubLayoutDimension(
+  element: Element,
+  property: 'scrollHeight' | 'offsetHeight',
+  value: number,
+): () => void {
+  const original = Object.getOwnPropertyDescriptor(element, property);
+  Object.defineProperty(element, property, {configurable: true, value});
+  return () => {
+    if (original) {
+      Object.defineProperty(element, property, original);
+    } else {
+      delete (element as unknown as Record<string, unknown>)[property];
+    }
+  };
+}
+
 describe('BlockPreviewPage', () => {
   let postMessageSpy: ReturnType<typeof vi.fn>;
 
@@ -70,7 +86,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({type: 'cms-block-preview-ready'}),
-      '*',
+      window.location.origin,
     );
   });
 
@@ -283,6 +299,43 @@ describe('BlockPreviewPage', () => {
 
     expect(screen.getByTestId('blk-rich_text')).toHaveTextContent('admin-sent');
     vi.unstubAllEnvs();
+  });
+
+  it('targets resize messages to the trusted parent origin from the accepted message', async () => {
+    vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin.example.com');
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+    const restoreDimensions = [
+      stubLayoutDimension(document.documentElement, 'scrollHeight', 240),
+      stubLayoutDimension(document.documentElement, 'offsetHeight', 240),
+      stubLayoutDimension(document.body, 'scrollHeight', 240),
+      stubLayoutDimension(document.body, 'offsetHeight', 240),
+    ];
+
+    try {
+      render(<ReloadedBlockPreviewPage />);
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://admin.example.com',
+            data: {
+              type: 'cms-block-preview',
+              block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'admin-sent'}},
+            },
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(postMessageSpy).toHaveBeenCalledWith(
+          expect.objectContaining({type: 'cms-block-preview-resize', height: 240}),
+          'https://admin.example.com',
+        );
+      });
+    } finally {
+      restoreDimensions.forEach((restore) => restore());
+      vi.unstubAllEnvs();
+    }
   });
 
   it('accepts multiple comma-separated trusted origins', async () => {
