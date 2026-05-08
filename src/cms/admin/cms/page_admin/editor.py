@@ -161,12 +161,16 @@ def save_blocks_from_json(request, page, messages):
 
     pending_blocks = []
     for index, block_data in enumerate(blocks_data):
+        if not isinstance(block_data, dict):
+            messages.warning(request, f"Block #{index + 1}: invalid format, skipped.")
+            continue
         block_type = block_data.get("block_type", "")
         data = block_data.get("data", {})
         try:
             validate_block_data(block_type, data)
-        except Exception as exc:  # noqa: BLE001
-            messages.warning(request, f"Block #{index + 1} ({block_type}): {exc}")
+        except ValidationError as exc:
+            detail = exc.messages[0] if exc.messages else "Validation error."
+            messages.warning(request, f"Block #{index + 1} ({block_type}): {detail}")
             continue
         pending_blocks.append(
             CMSBlock(
