@@ -86,6 +86,17 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest src/
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+      # SECURITY: DJANGO_SECRET_KEY, DB_PASSWORD, and REDIS_URL MUST be stored
+      # in GitHub Secrets (not vars.*). Values from vars.* are NOT masked in
+      # workflow logs and will be exposed if printed. The vars.X || secrets.X
+      # fallback below is a migration convenience — remove vars.* references
+      # once secrets are confirmed configured.
+      - name: Mask sensitive env values
+        run: |
+          echo "::add-mask::${{ vars.DJANGO_SECRET_KEY }}"
+          echo "::add-mask::${{ vars.DB_PASSWORD }}"
+          echo "::add-mask::${{ vars.REDIS_URL }}"
+
       - name: Upload Django static assets to S3
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image }}

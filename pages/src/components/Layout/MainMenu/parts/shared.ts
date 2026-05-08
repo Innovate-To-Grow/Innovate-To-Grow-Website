@@ -1,6 +1,7 @@
 import {type MenuItem} from '../../../../features/layout/api';
+import {safeHref} from '../../../../shared/utils/safeHref';
 
-export const buildHref = (item: MenuItem) => item.url || '#';
+export const buildHref = (item: MenuItem) => safeHref(item.url);
 
 /** Placeholder widths (px) for loading skeleton — similar footprint to real nav labels */
 export const MENU_BAR_SKELETON_WIDTHS_PX = [56, 72, 64, 48, 80, 68, 52] as const;

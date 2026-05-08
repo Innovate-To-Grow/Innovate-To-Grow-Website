@@ -1,3 +1,5 @@
+import { safeHref } from '../../../../shared/utils/safeHref';
+
 interface ContactItem {
   label: string;
   value: string;
@@ -17,7 +19,7 @@ function renderValue(item: ContactItem) {
       return <a href={`tel:${item.value}`}>{item.value}</a>;
     case 'url':
       return (
-        <a href={item.value} target="_blank" rel="noopener noreferrer">
+        <a href={safeHref(item.value)} target="_blank" rel="noopener noreferrer">
           {item.value}
         </a>
       );

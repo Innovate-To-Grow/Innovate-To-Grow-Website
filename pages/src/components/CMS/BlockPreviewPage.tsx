@@ -77,11 +77,11 @@ function getTrustedReferrerOrigin(): string {
   return referrerOrigin && isTrustedParentOrigin(referrerOrigin) ? referrerOrigin : '';
 }
 
-function getInitialReadyTargetOrigin(): string {
+function getInitialReadyTargetOrigins(): string[] {
   const referrerOrigin = getTrustedReferrerOrigin();
-  if (referrerOrigin) return referrerOrigin;
-  if (CONFIGURED_PARENT_ORIGINS.length === 1) return CONFIGURED_PARENT_ORIGINS[0];
-  return SAME_ORIGIN || window.location.origin;
+  if (referrerOrigin) return [referrerOrigin];
+  if (CONFIGURED_PARENT_ORIGINS.length > 0) return [...CONFIGURED_PARENT_ORIGINS];
+  return [SAME_ORIGIN || window.location.origin];
 }
 
 export const BlockPreviewPage = () => {
@@ -109,9 +109,10 @@ export const BlockPreviewPage = () => {
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
-    // Signal parent that the iframe is ready to receive data
     if (window.parent !== window) {
-      window.parent.postMessage({ type: 'cms-block-preview-ready' }, getInitialReadyTargetOrigin());
+      for (const origin of getInitialReadyTargetOrigins()) {
+        window.parent.postMessage({ type: 'cms-block-preview-ready' }, origin);
+      }
     }
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);

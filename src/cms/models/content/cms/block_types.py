@@ -2,6 +2,8 @@ import re
 
 from django.core.exceptions import ValidationError
 
+from cms.services.sanitize import validate_safe_url
+
 BLOCK_TYPE_CHOICES = [
     ("hero", "Hero Banner"),
     ("rich_text", "Rich Text"),
@@ -96,6 +98,15 @@ def validate_block_data(block_type, data):
             if not str(sponsor.get("name", "")).strip():
                 raise ValidationError(f"Sponsor #{index + 1} requires a non-empty 'name'.")
 
+    if block_type == "link_list":
+        _validate_link_list_urls(data)
+
+    if block_type == "navigation_grid":
+        _validate_navigation_grid_urls(data)
+
+    if block_type == "contact_info":
+        _validate_contact_info_urls(data)
+
     if block_type == "embed":
         _validate_embed_block(data)
 
@@ -108,6 +119,52 @@ def normalize_block_data_for_storage(block_type, data):
     if block_type == "embed_widget":
         return _normalize_embed_widget_block_data(data)
     return data
+
+
+def _validate_link_list_urls(data):
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url", "")
+        if url and not validate_safe_url(url):
+            raise ValidationError(
+                f"Link #{index + 1}: URL uses an unsafe scheme. Only http, https, mailto, and tel URLs are allowed."
+            )
+
+
+def _validate_navigation_grid_urls(data):
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url", "")
+        if url and not validate_safe_url(url):
+            raise ValidationError(
+                f"Navigation item #{index + 1}: URL uses an unsafe scheme. "
+                "Only http, https, mailto, and tel URLs are allowed."
+            )
+
+
+def _validate_contact_info_urls(data):
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "url":
+            continue
+        value = item.get("value", "")
+        if value and not validate_safe_url(value):
+            raise ValidationError(
+                f"Contact item #{index + 1}: URL uses an unsafe scheme. "
+                "Only http, https, mailto, and tel URLs are allowed."
+            )
 
 
 def _validate_embed_block(data):

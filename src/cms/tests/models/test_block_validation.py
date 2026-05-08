@@ -115,6 +115,61 @@ class ValidateBlockDataTests(TestCase):
             self.assertIn(key, BLOCK_SCHEMAS, f"Missing schema for block type '{key}'")
 
 
+class URLSchemeValidationTests(TestCase):
+    """Tests for javascript:/data: URL rejection in link_list, navigation_grid, contact_info blocks."""
+
+    def test_link_list_rejects_javascript_url(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("link_list", {"items": [{"label": "XSS", "url": "javascript:alert(1)"}]})
+        self.assertIn("unsafe scheme", str(ctx.exception))
+
+    def test_link_list_rejects_data_url(self):
+        with self.assertRaises(ValidationError):
+            validate_block_data(
+                "link_list", {"items": [{"label": "XSS", "url": "data:text/html,<script>alert(1)</script>"}]}
+            )
+
+    def test_link_list_accepts_safe_urls(self):
+        safe_items = [
+            {"label": "HTTPS", "url": "https://example.com"},
+            {"label": "HTTP", "url": "http://example.com"},
+            {"label": "Relative", "url": "/about"},
+            {"label": "Fragment", "url": "#section"},
+            {"label": "Mailto", "url": "mailto:test@example.com"},
+            {"label": "Tel", "url": "tel:+1234567890"},
+            {"label": "DotRelative", "url": "./page"},
+        ]
+        validate_block_data("link_list", {"items": safe_items})
+
+    def test_navigation_grid_rejects_javascript_url(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("navigation_grid", {"items": [{"title": "XSS", "url": "javascript:alert(1)"}]})
+        self.assertIn("unsafe scheme", str(ctx.exception))
+
+    def test_navigation_grid_accepts_safe_urls(self):
+        validate_block_data("navigation_grid", {"items": [{"title": "Safe", "url": "https://example.com"}]})
+
+    def test_contact_info_url_type_rejects_javascript(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data(
+                "contact_info", {"items": [{"label": "Site", "type": "url", "value": "javascript:alert(1)"}]}
+            )
+        self.assertIn("unsafe scheme", str(ctx.exception))
+
+    def test_contact_info_url_type_accepts_safe_urls(self):
+        validate_block_data(
+            "contact_info", {"items": [{"label": "Site", "type": "url", "value": "https://example.com"}]}
+        )
+
+    def test_contact_info_email_type_skips_url_validation(self):
+        validate_block_data(
+            "contact_info", {"items": [{"label": "Email", "type": "email", "value": "test@example.com"}]}
+        )
+
+    def test_contact_info_phone_type_skips_url_validation(self):
+        validate_block_data("contact_info", {"items": [{"label": "Phone", "type": "phone", "value": "+1234567890"}]})
+
+
 class EmbedBlockValidationTests(TestCase):
     def setUp(self):
         CMSEmbedAllowedHost.objects.all().delete()

@@ -58,15 +58,25 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields["hidden_sections"].initial = self.instance.get_effective_hidden_sections()
 
-    def clean_hidden_sections(self):
+    def clean(self):
+        cleaned = super().clean()
+        widget_type = cleaned.get("widget_type")
+        app_route = cleaned.get("app_route")
+        hidden_sections = cleaned.get("hidden_sections")
+
+        if widget_type is None:
+            return cleaned
+
         try:
-            return normalize_hidden_sections(
-                self.cleaned_data.get("hidden_sections") or [],
-                self.cleaned_data.get("widget_type") or "blocks",
-                self.cleaned_data.get("app_route") or "",
+            cleaned["hidden_sections"] = normalize_hidden_sections(
+                hidden_sections or [],
+                widget_type,
+                app_route or "",
             )
         except ValidationError as exc:
-            raise forms.ValidationError(exc.messages) from exc
+            self.add_error("hidden_sections", exc.messages)
+
+        return cleaned
 
 
 @admin.register(CMSEmbedWidget)

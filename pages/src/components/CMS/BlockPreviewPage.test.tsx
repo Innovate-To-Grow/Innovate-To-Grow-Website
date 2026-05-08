@@ -376,4 +376,22 @@ describe('BlockPreviewPage', () => {
     });
     expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument();
   });
+
+  it('sends ready signal to all configured origins when multiple are set and no referrer', async () => {
+    vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin1.example.com,https://admin2.example.com');
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+
+    render(<ReloadedBlockPreviewPage />);
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({type: 'cms-block-preview-ready'}),
+      'https://admin1.example.com',
+    );
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({type: 'cms-block-preview-ready'}),
+      'https://admin2.example.com',
+    );
+    vi.unstubAllEnvs();
+  });
 });

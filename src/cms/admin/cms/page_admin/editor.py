@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import uuid
 from datetime import timedelta
@@ -30,6 +31,8 @@ from cms.models.media import (
     IMAGE_ASSET_EXTENSIONS,
     MAX_ASSET_UPLOAD_BYTES,
 )
+
+logger = logging.getLogger(__name__)
 
 # Mirrors Django's django.utils.html.json_script escape table so json.dumps
 # output is safe to inline inside a <script> block (notably </script>).
@@ -196,6 +199,9 @@ def save_blocks_from_json(request, page, messages):
             detail = exc.messages[0] if exc.messages else "Validation error."
             messages.warning(request, f"Block #{index + 1} ({block_type}): {detail}")
             continue
+        except (TypeError, AttributeError, KeyError):
+            messages.warning(request, f"Block #{index + 1} ({block_type}): Invalid block data format.")
+            continue
         data = normalize_block_data_for_storage(block_type, data)
         pending_blocks.append(
             CMSBlock(
@@ -265,10 +271,17 @@ def assets_upload_response(request):
         asset.full_clean()
     except ValidationError as exc:
         return JsonResponse(_validation_error_payload(exc), status=400)
+    except Exception:
+        logger.exception("Unexpected error during asset validation")
+        return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
     if not _asset_matches_type(asset, asset_type):
         return JsonResponse({"detail": "Select an image asset for this field."}, status=400)
 
-    asset.save()
+    try:
+        asset.save()
+    except Exception:
+        logger.exception("Unexpected error saving asset")
+        return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
     return JsonResponse({"asset": serialize_asset(asset)}, status=201)
 
 

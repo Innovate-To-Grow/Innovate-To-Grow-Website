@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { safeHref } from '../../../../shared/utils/safeHref';
 
 interface NavItem {
   title: string;
@@ -21,7 +22,7 @@ export const NavigationGridBlock: React.FC<{ data: NavigationGridData }> = ({ da
           item.is_external ? (
             <p key={i} className="projects-hub-item">
               <a
-                href={item.url}
+                href={safeHref(item.url)}
                 className="projects-hub-link"
                 target="_blank"
                 rel="noopener noreferrer"
