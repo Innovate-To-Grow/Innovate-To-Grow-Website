@@ -138,6 +138,18 @@ class CMSPageChangeFormRenderTests(TestCase):
         self.assertIn("openLivePreview", content)
         self.assertIn("Preview", content)
 
+    def test_inline_preview_panel_renders_outside_content_blocks_editor(self):
+        url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
+        response = self.client.get(url)
+        content = response.content.decode()
+
+        preview_idx = content.index('id="cms-inline-preview"')
+        editor_idx = content.index('class="visual-editor-wrapper"')
+        blocks_idx = content.index('id="cms-blocks-container"')
+
+        self.assertLess(preview_idx, editor_idx)
+        self.assertLess(editor_idx, blocks_idx)
+
     def test_preview_store_endpoint_returns_token(self):
         url = reverse("admin:cms_cmspage_preview")
         payload = {
