@@ -23,7 +23,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=8">
     <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}">
 {% endblock %}
 
@@ -45,6 +45,34 @@
                     Preview
                 </button>
             {% endif %}
+        </div>
+
+        <!-- Inline Live Preview Panel -->
+        <div id="cms-inline-preview" class="cms-preview-wrapper">
+            <div class="cms-preview-header">
+                <span class="cms-preview-title">Live Preview</span>
+                <div class="cms-preview-actions">
+                    <span id="cms-preview-sync-status" class="cms-preview-sync-status"></span>
+                    <button type="button" onclick="setPreviewDevice('mobile')" title="Mobile (375px)" class="cms-preview-device-btn" data-device="mobile">
+                        <span class="material-symbols-outlined">smartphone</span>
+                    </button>
+                    <button type="button" onclick="setPreviewDevice('tablet')" title="Tablet (768px)" class="cms-preview-device-btn" data-device="tablet">
+                        <span class="material-symbols-outlined">tablet_mac</span>
+                    </button>
+                    <button type="button" onclick="setPreviewDevice('desktop')" title="Desktop (100%)" class="cms-preview-device-btn is-active" data-device="desktop">
+                        <span class="material-symbols-outlined">monitor</span>
+                    </button>
+                    <button type="button" onclick="refreshInlinePreview()" title="Refresh preview">
+                        <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                    <button type="button" onclick="openLivePreview()" title="Open in new tab">
+                        <span class="material-symbols-outlined">open_in_new</span>
+                    </button>
+                </div>
+            </div>
+            <div id="cms-preview-iframe-wrap" class="cms-preview-iframe-wrap cms-preview-device-desktop">
+                <iframe id="cms-preview-iframe" class="cms-preview-iframe" src="about:blank"></iframe>
+            </div>
         </div>
 
         <div class="visual-editor-content">
@@ -71,34 +99,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Inline Live Preview Panel -->
-    <div id="cms-inline-preview" class="cms-preview-wrapper">
-        <div class="cms-preview-header">
-            <span class="cms-preview-title">Live Preview</span>
-            <div class="cms-preview-actions">
-                <span id="cms-preview-sync-status" class="cms-preview-sync-status"></span>
-                <button type="button" onclick="setPreviewDevice('mobile')" title="Mobile (375px)" class="cms-preview-device-btn" data-device="mobile">
-                    <span class="material-symbols-outlined">smartphone</span>
-                </button>
-                <button type="button" onclick="setPreviewDevice('tablet')" title="Tablet (768px)" class="cms-preview-device-btn" data-device="tablet">
-                    <span class="material-symbols-outlined">tablet_mac</span>
-                </button>
-                <button type="button" onclick="setPreviewDevice('desktop')" title="Desktop (100%)" class="cms-preview-device-btn is-active" data-device="desktop">
-                    <span class="material-symbols-outlined">monitor</span>
-                </button>
-                <button type="button" onclick="refreshInlinePreview()" title="Refresh preview">
-                    <span class="material-symbols-outlined">refresh</span>
-                </button>
-                <button type="button" onclick="openLivePreview()" title="Open in new tab">
-                    <span class="material-symbols-outlined">open_in_new</span>
-                </button>
-            </div>
-        </div>
-        <div id="cms-preview-iframe-wrap" class="cms-preview-iframe-wrap cms-preview-device-desktop">
-            <iframe id="cms-preview-iframe" class="cms-preview-iframe" src="about:blank"></iframe>
         </div>
     </div>
 
