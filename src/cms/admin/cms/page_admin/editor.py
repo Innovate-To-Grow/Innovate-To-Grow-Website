@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 
+from cms.embed_sections import hidden_section_presets_payload
 from cms.models import (
     BLOCK_SCHEMAS,
     BLOCK_TYPE_CHOICES,
@@ -58,6 +59,8 @@ def build_editor_context(obj=None):
         {
             "slug": widget.slug,
             "label": _format_widget_label(widget),
+            "widget_type": widget.widget_type,
+            "app_route": widget.app_route or "",
         }
         for widget in CMSEmbedWidget.objects.order_by("slug")
     ]
@@ -66,6 +69,7 @@ def build_editor_context(obj=None):
         "block_type_choices_json": _safe_json(BLOCK_TYPE_CHOICES),
         "embed_allowed_hosts_json": _safe_json(allowed_hosts),
         "embed_widgets_json": _safe_json(embed_widgets),
+        "hidden_section_presets_json": _safe_json(hidden_section_presets_payload()),
         "embed_default_sandbox": DEFAULT_SANDBOX,
         "route_check_url": reverse("admin:cms_cmspage_route_conflict"),
         "current_page_id": str(obj.pk) if obj else "",

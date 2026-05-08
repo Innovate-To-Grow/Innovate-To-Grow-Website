@@ -63,9 +63,10 @@ export const EmbedWidgetBlock: React.FC<{ data: EmbedWidgetData }> = ({ data }) 
   }
 
   const queryParams = new URLSearchParams();
-  if (data.hide_section_titles) queryParams.set('hide-titles', '1');
-  if (Array.isArray(data.hidden_sections) && data.hidden_sections.length) {
-    queryParams.set('hide-sections', data.hidden_sections.join(','));
+  const hiddenSections = Array.isArray(data.hidden_sections) ? data.hidden_sections : null;
+  if (!hiddenSections && data.hide_section_titles) queryParams.set('hide-titles', '1');
+  if (hiddenSections?.length) {
+    queryParams.set('hide-sections', hiddenSections.join(','));
   }
   const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
   const src = `/_embed/${encodeURIComponent(slug)}${query}`;

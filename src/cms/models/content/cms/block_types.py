@@ -143,6 +143,7 @@ def _validate_embed_block(data):
 
 
 def _validate_embed_widget_block(data):
+    from cms.embed_sections import normalize_hidden_sections
     from cms.models import CMSEmbedWidget
 
     slug = str(data.get("slug", "")).strip().lower()
@@ -174,3 +175,13 @@ def _validate_embed_widget_block(data):
             raise ValidationError("'height' must be a positive integer.") from exc
         if height_value <= 0 or height_value > 5000:
             raise ValidationError("'height' must be between 1 and 5000 pixels.")
+
+    if "hidden_sections" in data:
+        hidden_sections = normalize_hidden_sections(data.get("hidden_sections"), widget.widget_type, widget.app_route)
+    else:
+        hidden_sections = ["section_titles"] if data.get("hide_section_titles") is True else []
+        hidden_sections = normalize_hidden_sections(hidden_sections, widget.widget_type, widget.app_route)
+
+    if hidden_sections or "hidden_sections" in data or data.get("hide_section_titles") is True:
+        data["hidden_sections"] = hidden_sections
+        data["hide_section_titles"] = "section_titles" in hidden_sections

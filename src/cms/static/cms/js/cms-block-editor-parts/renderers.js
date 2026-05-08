@@ -87,6 +87,28 @@
             + P.checkboxField('Allow fullscreen', data.allowfullscreen, idx, 'allowfullscreen');
     }
 
+    function renderEmbedWidgetSelectField(label, value, idx, options) {
+        return `<div class="cms-block-field field-small"><label>${P.escapeHtml(label)}</label><select onchange="updateEmbedWidgetSlug(${idx}, this.value)">${options.map(opt => `<option value="${P.escapeAttr(opt[0])}"${String(value || '') === String(opt[0]) ? ' selected' : ''}>${P.escapeHtml(opt[1])}</option>`).join('')}</select></div>`;
+    }
+
+    function renderHiddenSectionFields(data, idx) {
+        const presets = window.getEmbedWidgetHiddenSectionPresets ? window.getEmbedWidgetHiddenSectionPresets(data.slug) : [];
+        const selected = new Set(window.getEmbedWidgetSelectedHiddenSections ? window.getEmbedWidgetSelectedHiddenSections(data) : []);
+        if (!presets.length) return '';
+        const checkboxes = presets.map(preset => {
+            const id = `hidden-section-${idx}-${P.escapeAttr(preset.key)}`;
+            return '<div class="cms-block-field-checkbox">'
+                + `<input type="checkbox" id="${id}"${selected.has(preset.key) ? ' checked' : ''} onchange="updateEmbedWidgetHiddenSection(${idx}, '${P.escapeAttr(preset.key)}', this.checked)">`
+                + `<label for="${id}">${P.escapeHtml(preset.label)}</label>`
+                + '</div>';
+        }).join('');
+        return '<div class="cms-block-hidden-sections">'
+            + '<span class="cms-block-hidden-sections-title">Sections to hide</span>'
+            + `<div class="cms-block-hidden-sections-options">${checkboxes}</div>`
+            + '<span class="field-hint">Safe presets only. Options are filtered by the selected widget route.</span>'
+            + '</div>';
+    }
+
     function renderEmbedWidgetFields(data, idx) {
         const widgets = Array.isArray(window.CMS_EMBED_WIDGETS) ? window.CMS_EMBED_WIDGETS : [];
         const options = [['', '— select a widget —']].concat(
@@ -96,7 +118,7 @@
             ? ''
             : '<div class="cms-block-field"><span class="field-hint">No embed widgets defined yet. Create one under CMS > CMS Embed Widgets.</span></div>';
         return P.textField('Heading (optional)', data.heading, idx, 'heading')
-            + P.selectField('Widget', data.slug, idx, 'slug', options)
+            + renderEmbedWidgetSelectField('Widget', data.slug, idx, options)
             + emptyHint
             + '<div class="cms-block-field-row">'
             + P.selectField('Aspect Ratio', data.aspect_ratio, idx, 'aspect_ratio', [
@@ -108,7 +130,7 @@
             ])
             + P.textField('Fixed Height (px, optional)', data.height, idx, 'height')
             + '</div>'
-            + P.checkboxField('Hide section titles inside widget', data.hide_section_titles, idx, 'hide_section_titles');
+            + renderHiddenSectionFields(data, idx);
     }
 
     function renderSponsorYearFields(data, idx) {

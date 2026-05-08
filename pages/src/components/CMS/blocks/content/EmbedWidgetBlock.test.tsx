@@ -32,6 +32,14 @@ describe('EmbedWidgetBlock', () => {
     );
   });
 
+  it('treats hidden_sections as authoritative over legacy hide_section_titles', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hidden_sections: [], hide_section_titles: true}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
+  });
+
   it('renders a placeholder when slug is missing or invalid', () => {
     const {container: empty} = render(<EmbedWidgetBlock data={{slug: ''}} />);
     expect(empty.querySelector('iframe')).toBeNull();

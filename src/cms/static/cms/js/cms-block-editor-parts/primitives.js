@@ -30,7 +30,7 @@
         }
         if (blockType === 'embed_widget') {
             data.aspect_ratio = '';
-            data.hide_section_titles = false;
+            data.hidden_sections = [];
         }
         return data;
     }

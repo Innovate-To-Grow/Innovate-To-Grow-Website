@@ -1,5 +1,8 @@
 """Tests for CMS block type validation across all 13 block types."""
 
+from importlib import import_module
+
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
@@ -209,6 +212,12 @@ class EmbedBlockValidationTests(TestCase):
 class EmbedWidgetBlockValidationTests(TestCase):
     def setUp(self):
         CMSEmbedWidget.objects.all().delete()
+        self.page = CMSPage.objects.create(
+            slug="embed-widget-validation",
+            route="/embed-widget-validation",
+            title="Embed Widget Validation",
+            status="published",
+        )
         CMSEmbedWidget.objects.create(
             widget_type="app_route",
             app_route="/schedule",
@@ -277,16 +286,52 @@ class EmbedWidgetBlockValidationTests(TestCase):
             validate_block_data("embed_widget", {"slug": "schedule-embed"})
 
     def test_embed_widget_accepts_all_valid_optionals(self):
-        validate_block_data(
-            "embed_widget",
-            {
-                "slug": "schedule-embed",
-                "heading": "Event Schedule",
-                "aspect_ratio": "16:9",
-                "height": 480,
-                "hide_section_titles": True,
-            },
+        data = {
+            "slug": "schedule-embed",
+            "heading": "Event Schedule",
+            "aspect_ratio": "16:9",
+            "height": 480,
+            "hide_section_titles": True,
+        }
+        validate_block_data("embed_widget", data)
+        self.assertEqual(data["hidden_sections"], ["section_titles"])
+        self.assertTrue(data["hide_section_titles"])
+
+    def test_embed_widget_accepts_route_specific_hidden_sections(self):
+        data = {
+            "slug": "schedule-embed",
+            "hidden_sections": ["schedule_projects", "section_titles"],
+        }
+        validate_block_data("embed_widget", data)
+        self.assertEqual(data["hidden_sections"], ["section_titles", "schedule_projects"])
+        self.assertTrue(data["hide_section_titles"])
+
+    def test_embed_widget_rejects_route_incompatible_hidden_sections(self):
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/news",
+            slug="news-embed",
         )
+        with self.assertRaises(ValidationError):
+            validate_block_data("embed_widget", {"slug": "news-embed", "hidden_sections": ["schedule_projects"]})
+
+    def test_embed_widget_hidden_sections_are_authoritative_over_legacy_flag(self):
+        data = {"slug": "schedule-embed", "hidden_sections": [], "hide_section_titles": True}
+        validate_block_data("embed_widget", data)
+        self.assertEqual(data["hidden_sections"], [])
+        self.assertFalse(data["hide_section_titles"])
+
+    def test_embed_widget_hidden_sections_migration_converts_legacy_block_json(self):
+        block = CMSBlock.objects.create(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hide_section_titles": True},
+        )
+        migration = import_module("cms.migrations.0013_cmspage_embed_widget_hidden_sections")
+        migration.migrate_embed_widget_hidden_sections(apps, None)
+        block.refresh_from_db()
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
 
     def test_embed_widget_accepts_aspect_ratio_without_height(self):
         validate_block_data(

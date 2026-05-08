@@ -278,11 +278,23 @@ class BuildEditorContextTests(TestCase):
         by_slug = {w["slug"]: w for w in widgets}
         self.assertIn("ctx-blocks-widget", by_slug)
         self.assertIn("ctx-route-widget", by_slug)
+        self.assertEqual(by_slug["ctx-blocks-widget"]["widget_type"], "blocks")
+        self.assertEqual(by_slug["ctx-blocks-widget"]["app_route"], "")
+        self.assertEqual(by_slug["ctx-route-widget"]["widget_type"], "app_route")
+        self.assertEqual(by_slug["ctx-route-widget"]["app_route"], "/schedule")
         # Blocks-widget label carries admin_label + the source page title.
         self.assertIn("Ctx Blocks Widget", by_slug["ctx-blocks-widget"]["label"])
         self.assertIn("Widget Ctx Source", by_slug["ctx-blocks-widget"]["label"])
         # App-route widget label exposes the route even without an admin_label.
         self.assertIn("/schedule", by_slug["ctx-route-widget"]["label"])
+
+    def test_context_injects_hidden_section_presets(self):
+        context = build_editor_context()
+        self.assertIn("hidden_section_presets_json", context)
+        presets = json.loads(context["hidden_section_presets_json"])
+        by_key = {preset["key"]: preset for preset in presets}
+        self.assertEqual(by_key["section_titles"]["routes"], [])
+        self.assertEqual(by_key["schedule_projects"]["routes"], ["/schedule"])
 
     def test_context_exposes_embed_widget_block_schema(self):
         context = build_editor_context()
