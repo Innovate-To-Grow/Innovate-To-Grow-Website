@@ -7,10 +7,22 @@ from django.urls import reverse
 
 from authn.models import ContactEmail
 from cms.admin.cms.cms_page import CMSPageAdminForm
-from cms.admin.cms.page_admin.editor import _format_widget_label, build_editor_context
+from cms.admin.cms.page_admin.editor import _format_widget_label, build_editor_context, save_blocks_from_json
 from cms.models import BLOCK_SCHEMAS, CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
 
 Member = get_user_model()
+
+
+class _MessageCollector:
+    def __init__(self):
+        self.errors = []
+        self.warnings = []
+
+    def error(self, request, message):
+        self.errors.append(message)
+
+    def warning(self, request, message):
+        self.warnings.append(message)
 
 
 class CMSPageAdminFormTests(TestCase):
@@ -185,6 +197,39 @@ class CMSPageChangeFormRenderTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_save_blocks_from_json_normalizes_embed_widget_hidden_sections_for_storage(self):
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="schedule-embed",
+        )
+        request = type(
+            "Request",
+            (),
+            {
+                "POST": {
+                    "blocks_json": json.dumps(
+                        [
+                            {
+                                "block_type": "embed_widget",
+                                "admin_label": "Schedule Embed",
+                                "data": {"slug": "schedule-embed", "hide_section_titles": True},
+                            }
+                        ]
+                    )
+                }
+            },
+        )()
+        messages = _MessageCollector()
+
+        save_blocks_from_json(request, self.page, messages)
+
+        self.assertEqual(messages.errors, [])
+        self.assertEqual(messages.warnings, [])
+        block = self.page.blocks.get()
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
+        self.assertTrue(block.data["hide_section_titles"])
 
     def test_change_form_does_not_render_embed_widget_section(self):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])

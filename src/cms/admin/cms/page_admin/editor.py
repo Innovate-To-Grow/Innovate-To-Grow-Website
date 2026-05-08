@@ -23,7 +23,7 @@ from cms.models import (
     CMSPage,
     validate_block_data,
 )
-from cms.models.content.cms.block_types import DEFAULT_SANDBOX
+from cms.models.content.cms.block_types import DEFAULT_SANDBOX, normalize_block_data_for_storage
 from cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
 from cms.models.media import (
     ALLOWED_ASSET_EXTENSIONS,
@@ -196,6 +196,7 @@ def save_blocks_from_json(request, page, messages):
             detail = exc.messages[0] if exc.messages else "Validation error."
             messages.warning(request, f"Block #{index + 1} ({block_type}): {detail}")
             continue
+        data = normalize_block_data_for_storage(block_type, data)
         pending_blocks.append(
             CMSBlock(
                 page=page,

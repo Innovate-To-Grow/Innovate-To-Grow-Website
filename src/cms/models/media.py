@@ -23,7 +23,7 @@ _OFFICE_OOXML_ROOTS = {
     "pptx": "ppt/",
 }
 _OLE_COMPOUND_SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
-_SVG_EVENT_HANDLER_RE = re.compile(rb"\son[a-z0-9_-]+\s*=", re.IGNORECASE)
+_SVG_EVENT_HANDLER_RE = re.compile(rb"(?<![a-zA-Z0-9_-])on[a-z0-9_-]+\s*=", re.IGNORECASE)
 
 
 def _asset_extension(file):

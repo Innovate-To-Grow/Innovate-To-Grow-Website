@@ -98,6 +98,8 @@ class CMSPageAdmin(BaseModelAdmin):
                 self.admin_site.admin_view(self.route_conflict_view),
                 name="cms_cmspage_route_conflict",
             ),
+            # Staff CMS editors are trusted to list/upload reusable picker assets;
+            # admin_site.admin_view is the intentional access boundary here.
             path("assets/", self.admin_site.admin_view(self.assets_list_view), name="cms_cmspage_assets"),
             path(
                 "assets/upload/",

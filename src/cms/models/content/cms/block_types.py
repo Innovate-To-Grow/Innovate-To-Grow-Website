@@ -103,6 +103,13 @@ def validate_block_data(block_type, data):
         _validate_embed_widget_block(data)
 
 
+def normalize_block_data_for_storage(block_type, data):
+    """Return normalized block data for persistence after validation."""
+    if block_type == "embed_widget":
+        return _normalize_embed_widget_block_data(data)
+    return data
+
+
 def _validate_embed_block(data):
     from cms.services.embed_hosts import InvalidEmbedURL, is_host_allowed, parse_embed_url
 
@@ -143,7 +150,36 @@ def _validate_embed_block(data):
 
 
 def _validate_embed_widget_block(data):
-    from cms.embed_sections import normalize_hidden_sections
+    widget = _resolve_embed_widget(data)
+
+    aspect_ratio = data.get("aspect_ratio")
+    if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):
+        raise ValidationError("'aspect_ratio' must look like '16:9' (digits:digits).")
+
+    height = data.get("height")
+    if height not in (None, ""):
+        try:
+            height_value = int(height)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("'height' must be a positive integer.") from exc
+        if height_value <= 0 or height_value > 5000:
+            raise ValidationError("'height' must be between 1 and 5000 pixels.")
+
+    _normalized_embed_widget_hidden_sections(data, widget)
+    return widget
+
+
+def _normalize_embed_widget_block_data(data):
+    normalized = dict(data)
+    widget = _validate_embed_widget_block(normalized)
+    hidden_sections = _normalized_embed_widget_hidden_sections(normalized, widget)
+    if hidden_sections or "hidden_sections" in normalized or normalized.get("hide_section_titles") is True:
+        normalized["hidden_sections"] = hidden_sections
+        normalized["hide_section_titles"] = "section_titles" in hidden_sections
+    return normalized
+
+
+def _resolve_embed_widget(data):
     from cms.models import CMSEmbedWidget
 
     slug = str(data.get("slug", "")).strip().lower()
@@ -162,26 +198,14 @@ def _validate_embed_widget_block(data):
                 "Publish the source page first, or pick a different widget."
             )
         raise ValidationError(f"CMS embed widget '{slug}' cannot be embedded: its app route is not configured.")
+    return widget
 
-    aspect_ratio = data.get("aspect_ratio")
-    if aspect_ratio and not ASPECT_RATIO_RE.match(str(aspect_ratio)):
-        raise ValidationError("'aspect_ratio' must look like '16:9' (digits:digits).")
 
-    height = data.get("height")
-    if height not in (None, ""):
-        try:
-            height_value = int(height)
-        except (TypeError, ValueError) as exc:
-            raise ValidationError("'height' must be a positive integer.") from exc
-        if height_value <= 0 or height_value > 5000:
-            raise ValidationError("'height' must be between 1 and 5000 pixels.")
+def _normalized_embed_widget_hidden_sections(data, widget):
+    from cms.embed_sections import normalize_hidden_sections
 
     if "hidden_sections" in data:
-        hidden_sections = normalize_hidden_sections(data.get("hidden_sections"), widget.widget_type, widget.app_route)
-    else:
-        hidden_sections = ["section_titles"] if data.get("hide_section_titles") is True else []
-        hidden_sections = normalize_hidden_sections(hidden_sections, widget.widget_type, widget.app_route)
+        return normalize_hidden_sections(data.get("hidden_sections"), widget.widget_type, widget.app_route)
 
-    if hidden_sections or "hidden_sections" in data or data.get("hide_section_titles") is True:
-        data["hidden_sections"] = hidden_sections
-        data["hide_section_titles"] = "section_titles" in hidden_sections
+    hidden_sections = ["section_titles"] if data.get("hide_section_titles") is True else []
+    return normalize_hidden_sections(hidden_sections, widget.widget_type, widget.app_route)

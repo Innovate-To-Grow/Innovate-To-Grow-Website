@@ -67,6 +67,16 @@ class CMSAssetValidationTests(TestCase):
             "handler.svg",
             b"<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'></svg>",
         )
+        self.assert_asset_invalid(
+            "tight-handler.svg",
+            b"<svg xmlns='http://www.w3.org/2000/svg' class='x'onload='alert(1)'></svg>",
+        )
+
+    def test_allows_svg_attribute_names_that_contain_on_prefix(self):
+        self.assert_asset_valid(
+            "safe-data-attribute.svg",
+            b"<svg xmlns='http://www.w3.org/2000/svg' data-onload='label'></svg>",
+        )
 
     def test_rejects_invalid_office_zip(self):
         self.assert_asset_invalid("bad.docx", b"not a zip file")

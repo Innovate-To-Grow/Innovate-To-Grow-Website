@@ -293,18 +293,18 @@ class EmbedWidgetBlockValidationTests(TestCase):
             "height": 480,
             "hide_section_titles": True,
         }
+        original = dict(data)
         validate_block_data("embed_widget", data)
-        self.assertEqual(data["hidden_sections"], ["section_titles"])
-        self.assertTrue(data["hide_section_titles"])
+        self.assertEqual(data, original)
 
     def test_embed_widget_accepts_route_specific_hidden_sections(self):
         data = {
             "slug": "schedule-embed",
             "hidden_sections": ["schedule_projects", "section_titles"],
         }
+        original = {"slug": "schedule-embed", "hidden_sections": ["schedule_projects", "section_titles"]}
         validate_block_data("embed_widget", data)
-        self.assertEqual(data["hidden_sections"], ["section_titles", "schedule_projects"])
-        self.assertTrue(data["hide_section_titles"])
+        self.assertEqual(data, original)
 
     def test_embed_widget_rejects_route_incompatible_hidden_sections(self):
         CMSEmbedWidget.objects.create(
@@ -317,9 +317,48 @@ class EmbedWidgetBlockValidationTests(TestCase):
 
     def test_embed_widget_hidden_sections_are_authoritative_over_legacy_flag(self):
         data = {"slug": "schedule-embed", "hidden_sections": [], "hide_section_titles": True}
+        original = dict(data)
         validate_block_data("embed_widget", data)
-        self.assertEqual(data["hidden_sections"], [])
-        self.assertFalse(data["hide_section_titles"])
+        self.assertEqual(data, original)
+
+    def test_embed_widget_clean_normalizes_legacy_hidden_section_flag_for_storage(self):
+        block = CMSBlock(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hide_section_titles": True},
+        )
+
+        block.full_clean()
+
+        self.assertEqual(block.data["hidden_sections"], ["section_titles"])
+        self.assertTrue(block.data["hide_section_titles"])
+
+    def test_embed_widget_clean_normalizes_route_specific_hidden_sections_for_storage(self):
+        block = CMSBlock(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hidden_sections": ["schedule_projects", "section_titles"]},
+        )
+
+        block.full_clean()
+
+        self.assertEqual(block.data["hidden_sections"], ["section_titles", "schedule_projects"])
+        self.assertTrue(block.data["hide_section_titles"])
+
+    def test_embed_widget_clean_treats_explicit_hidden_sections_as_authoritative_for_storage(self):
+        block = CMSBlock(
+            page=self.page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "hidden_sections": [], "hide_section_titles": True},
+        )
+
+        block.full_clean()
+
+        self.assertEqual(block.data["hidden_sections"], [])
+        self.assertFalse(block.data["hide_section_titles"])
 
     def test_embed_widget_hidden_sections_migration_converts_legacy_block_json(self):
         block = CMSBlock.objects.create(

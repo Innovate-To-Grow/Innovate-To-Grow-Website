@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from cms.models import BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
+from cms.models.content.cms.block_types import normalize_block_data_for_storage
 
 
 def export_pages_response(queryset):
@@ -147,12 +148,13 @@ def upsert_page(page_data, existing, default_status):
 
 def replace_page_blocks(page, blocks_data):
     for index, block_data in enumerate(blocks_data):
+        block_type = block_data.get("block_type")
         CMSBlock.objects.create(
             page=page,
-            block_type=block_data.get("block_type"),
+            block_type=block_type,
             sort_order=block_data.get("sort_order", index),
             admin_label=block_data.get("admin_label", ""),
-            data=block_data.get("data", {}),
+            data=normalize_block_data_for_storage(block_type, block_data.get("data", {})),
         )
     transaction.on_commit(lambda route=page.route: cache.delete(f"cms:page:{route}"))
 

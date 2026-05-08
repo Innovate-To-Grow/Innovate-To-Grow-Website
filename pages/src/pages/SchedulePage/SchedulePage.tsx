@@ -288,6 +288,11 @@ export const SchedulePage = () => {
               (left, right) => left.display_order - right.display_order || left.track_number - right.track_number,
             );
             const times = buildTimeSlots(section.start_time, section.slot_minutes, section.max_order);
+            const implicitBreakOrders = new Set(
+              times
+                .map((_, index) => index + 1)
+                .filter((order) => isImplicitBreakOrder(orderedTracks, order)),
+            );
             const showTopicRow = orderedTracks.some((track) => track.topic);
             const columnWidth = `${100 / (orderedTracks.length + 1)}%`;
 
@@ -317,7 +322,7 @@ export const SchedulePage = () => {
                           {times.map((time, rowIndex) => {
                             const order = rowIndex + 1;
                             const slot = track.slots.find((entry) => entry.order === order);
-                            const implicitBreak = isImplicitBreakOrder(orderedTracks, order);
+                            const implicitBreak = implicitBreakOrders.has(order);
 
                             return (
                               <div key={`${track.id}-${order}-mobile`} className="schedule-mobile-slot">
@@ -397,13 +402,13 @@ export const SchedulePage = () => {
                       <tbody>
                         {times.map((time, rowIndex) => {
                           const order = rowIndex + 1;
+                          const implicitBreak = implicitBreakOrders.has(order);
 
                           return (
                             <tr key={`${section.id}-${order}`}>
                               <th className="schedule-presentation-time">{time}</th>
                               {orderedTracks.map((track, columnIndex) => {
                                 const slot = track.slots.find((entry) => entry.order === order);
-                                const implicitBreak = isImplicitBreakOrder(orderedTracks, order);
 
                                 return (
                                   <td
