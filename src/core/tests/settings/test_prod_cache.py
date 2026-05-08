@@ -55,3 +55,10 @@ class ProductionCacheSettingsTests(SimpleTestCase):
         with patch.dict("os.environ", env, clear=True):
             with self.assertRaisesMessage(ImproperlyConfigured, "DJANGO_SECRET_KEY must be set in production."):
                 reload_prod_settings()
+
+    def test_prod_staticfiles_overwrite_release_assets(self):
+        with patch.dict("os.environ", PROD_ENV, clear=True):
+            prod_settings = reload_prod_settings()
+
+        self.assertFalse(prod_settings.STORAGES["default"]["OPTIONS"]["file_overwrite"])
+        self.assertTrue(prod_settings.STORAGES["staticfiles"]["OPTIONS"]["file_overwrite"])
