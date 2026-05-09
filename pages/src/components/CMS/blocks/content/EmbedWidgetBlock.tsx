@@ -21,10 +21,10 @@ function parseAspectRatio(value?: string): string | null {
   return `${w} / ${h}`;
 }
 
-export const EmbedWidgetBlock: React.FC<{
+export const EmbedWidgetBlock = ({ data, previewMode = false }: {
   data: EmbedWidgetData;
   previewMode?: boolean;
-}> = ({ data, previewMode = false }) => {
+}) => {
   const slug = useMemo(() => (data.slug || '').trim().toLowerCase(), [data.slug]);
   const validSlug = SLUG_RE.test(slug);
 

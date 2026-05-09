@@ -15,7 +15,7 @@ interface ProposalCardsData {
   proposals: Proposal[];
 }
 
-export const ProposalCardsBlock: React.FC<{ data: ProposalCardsData }> = ({ data }) => {
+export const ProposalCardsBlock = ({ data }: { data: ProposalCardsData }) => {
   return (
     <div className="cms-proposal-cards">
       {data.heading && <h1>{data.heading}</h1>}

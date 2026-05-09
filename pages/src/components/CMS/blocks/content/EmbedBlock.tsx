@@ -35,10 +35,10 @@ function parseAspectRatio(value?: string): string | null {
   return `${w} / ${h}`;
 }
 
-export const EmbedBlock: React.FC<{ data: EmbedData; previewMode?: boolean }> = ({
+export const EmbedBlock = ({
   data,
   previewMode = false,
-}) => {
+}: { data: EmbedData; previewMode?: boolean }) => {
   const safeSrc = useMemo(() => normalizeHttpsUrl(data.src), [data.src]);
 
   if (!safeSrc) {

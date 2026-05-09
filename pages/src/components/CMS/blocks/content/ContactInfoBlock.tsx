@@ -28,7 +28,7 @@ function renderValue(item: ContactItem) {
   }
 }
 
-export const ContactInfoBlock: React.FC<{ data: ContactInfoData }> = ({ data }) => {
+export const ContactInfoBlock = ({ data }: { data: ContactInfoData }) => {
   return (
     <section className="cms-contact-info">
       {data.heading && <h1>{data.heading}</h1>}

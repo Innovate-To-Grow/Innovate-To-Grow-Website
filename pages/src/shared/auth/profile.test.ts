@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('./client', () => ({
-  default: {
+  authApi: {
     get: mocks.get,
     patch: mocks.patch,
   },

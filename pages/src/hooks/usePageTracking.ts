@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { trackPageView } from '../features/analytics/api';
 
-export const usePageTracking = () => {
+export function usePageTracking() {
   const location = useLocation();
   const prevPath = useRef<string | null>(null);
 
@@ -18,4 +18,4 @@ export const usePageTracking = () => {
       referrer: document.referrer,
     });
   }, [location.pathname]);
-};
+}

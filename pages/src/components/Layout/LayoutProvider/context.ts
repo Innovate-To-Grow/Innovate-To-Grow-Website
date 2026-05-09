@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { FooterContentResponse, Menu } from '../../../services/api';
+import type { FooterContentResponse, Menu } from '../../../features/layout/api';
 
 export type LayoutLoadState = 'loading' | 'ready' | 'error';
 
