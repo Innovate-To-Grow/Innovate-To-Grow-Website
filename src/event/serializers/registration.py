@@ -3,6 +3,8 @@ from rest_framework import serializers
 from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
 from event.services import generate_ticket_barcode_data_url
 
+TICKET_EMAIL_FAILURE_MESSAGE = "Ticket email could not be sent. Please try again later."
+
 
 class RegistrationAnswerInputSerializer(serializers.Serializer):
     question_id = serializers.UUIDField()
@@ -57,7 +59,7 @@ def build_registration_payload(registration, request=None) -> dict:
         "ticket_email_sent_at": registration.ticket_email_sent_at.isoformat()
         if registration.ticket_email_sent_at
         else None,
-        "ticket_email_error": registration.ticket_email_error,
+        "ticket_email_error": TICKET_EMAIL_FAILURE_MESSAGE if registration.ticket_email_error else "",
         "barcode_format": "PDF417",
         "barcode_image": generate_ticket_barcode_data_url(registration),
         "event": {

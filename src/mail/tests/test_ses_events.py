@@ -152,54 +152,73 @@ class ProcessSnsEnvelopeTests(TestCase):
 
 
 class SubscriptionConfirmationTests(TestCase):
-    def test_auto_confirm_calls_subscribe_url(self):
+    @patch("mail.services.ses_events.boto3")
+    def test_auto_confirm_calls_sns_confirm_subscription(self, mock_boto3):
         envelope = {
             "Type": "SubscriptionConfirmation",
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription&Token=abc",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.return_value.__enter__.return_value.read.return_value = b"<ok/>"
-            process_sns_envelope(envelope)
-            mock_urlopen.assert_called_once()
-            self.assertIn("ConfirmSubscription", mock_urlopen.call_args.args[0])
+        process_sns_envelope(envelope)
 
-    def test_non_amazonaws_subscribe_url_is_skipped(self):
+        mock_boto3.client.assert_called_once_with("sns", region_name="us-west-2")
+        mock_boto3.client.return_value.confirm_subscription.assert_called_once_with(
+            TopicArn="arn:aws:sns:us-west-2:123:t",
+            Token="abc",
+            AuthenticateOnUnsubscribe="true",
+        )
+
+    @patch("mail.services.ses_events.boto3")
+    def test_non_amazonaws_subscribe_url_is_skipped(self, mock_boto3):
         envelope = {
             "Type": "SubscriptionConfirmation",
             "SubscribeURL": "https://evil.example.com/trick",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
-            process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+        process_sns_envelope(envelope)
 
-    def test_amazonaws_lookalike_subscribe_url_is_skipped(self):
+        mock_boto3.client.assert_not_called()
+
+    @patch("mail.services.ses_events.boto3")
+    def test_amazonaws_lookalike_subscribe_url_is_skipped(self, mock_boto3):
         envelope = {
             "Type": "SubscriptionConfirmation",
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com.evil.example/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
-            process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+        process_sns_envelope(envelope)
 
-    def test_http_subscribe_url_is_skipped(self):
+        mock_boto3.client.assert_not_called()
+
+    @patch("mail.services.ses_events.boto3")
+    def test_http_subscribe_url_is_skipped(self, mock_boto3):
         envelope = {
             "Type": "SubscriptionConfirmation",
             "SubscribeURL": "http://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
-            process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+        process_sns_envelope(envelope)
 
-    def test_non_confirm_subscribe_url_action_is_skipped(self):
+        mock_boto3.client.assert_not_called()
+
+    @patch("mail.services.ses_events.boto3")
+    def test_missing_token_is_skipped(self, mock_boto3):
+        envelope = {
+            "Type": "SubscriptionConfirmation",
+            "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription",
+            "TopicArn": "arn:aws:sns:us-west-2:123:t",
+        }
+        process_sns_envelope(envelope)
+
+        mock_boto3.client.assert_not_called()
+
+    @patch("mail.services.ses_events.boto3")
+    def test_non_confirm_subscribe_url_action_is_skipped(self, mock_boto3):
         envelope = {
             "Type": "SubscriptionConfirmation",
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=GetTopicAttributes",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
-            process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+        process_sns_envelope(envelope)
+
+        mock_boto3.client.assert_not_called()

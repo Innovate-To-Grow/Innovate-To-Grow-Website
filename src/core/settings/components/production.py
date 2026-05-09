@@ -43,17 +43,13 @@ def _get_bool_env(name: str, default: bool) -> bool:
     raise ImproperlyConfigured(f"{name} must be a boolean value.")
 
 
-# ---------------------------------------------------------------------------
 # Core
-# ---------------------------------------------------------------------------
 SECRET_KEY = _get_required_env("DJANGO_SECRET_KEY")
 DEBUG = False
 ALLOWED_HOSTS = [host.strip() for host in _get_required_env("DJANGO_ALLOWED_HOSTS").split(",") if host.strip()]
 BACKEND_URL = _get_required_env("BACKEND_URL")
 
-# ---------------------------------------------------------------------------
 # Database (PostgreSQL with SSL required)
-# ---------------------------------------------------------------------------
 DATABASES = {
     "default": {
         "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
@@ -68,9 +64,7 @@ DATABASES = {
     }
 }
 
-# ---------------------------------------------------------------------------
 # Security hardening
-# ---------------------------------------------------------------------------
 REQUIRE_ENCRYPTED_PASSWORDS = True
 
 # HTTP security headers
@@ -117,9 +111,7 @@ try:
 except NameError:
     pass  # MIDDLEWARE not yet defined when this module is imported standalone (e.g., in tests)
 
-# ---------------------------------------------------------------------------
 # AWS S3 storage (static files and media uploads)
-# ---------------------------------------------------------------------------
 AWS_STORAGE_BUCKET_NAME = _get_required_env("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
@@ -161,16 +153,12 @@ STORAGES = {
     },
 }
 
-# ---------------------------------------------------------------------------
 # Email
-# ---------------------------------------------------------------------------
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_PROVIDER = os.environ.get("EMAIL_PROVIDER", "gmail")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "i2g@g.ucmerced.edu")
 
-# ---------------------------------------------------------------------------
 # Logging (structured console output for container environments)
-# ---------------------------------------------------------------------------
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -185,9 +173,7 @@ LOGGING = {
     "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": False}},
 }
 
-# ---------------------------------------------------------------------------
 # Caching (Redis preferred; falls back to file-based cache)
-# ---------------------------------------------------------------------------
 REDIS_URL = os.environ.get("REDIS_URL", "").strip()
 CACHES = (
     {

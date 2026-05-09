@@ -1,15 +1,25 @@
+import json
+from io import BytesIO
 from unittest.mock import patch
 
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
 
-from authn.models import ContactEmail, Member
+from authn.models import ContactEmail, ContactPhone, Member
 from event.admin.registration import EventRegistrationAdmin
 from event.models import CheckIn, CheckInRecord, Event, EventRegistration, Ticket
 from event.services import ScheduleSyncStats
-from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
+from event.tests.helpers import (
+    make_event,
+    make_member,
+    make_registration,
+    make_superuser,
+    make_ticket,
+)
 
 
 class EventAdminTest(TestCase):
@@ -29,7 +39,10 @@ class EventAdminTest(TestCase):
         """Inlines must not depend on event.add_ticket; match Event admin access instead."""
         editor = Member.objects.create_user(password="testpass123", is_staff=True, is_superuser=False)
         ContactEmail.objects.create(
-            member=editor, email_address="editor@example.com", email_type="primary", verified=True
+            member=editor,
+            email_address="editor@example.com",
+            email_type="primary",
+            verified=True,
         )
         ct = ContentType.objects.get_for_model(Event)
         editor.user_permissions.add(Permission.objects.get(content_type=ct, codename="change_event"))
@@ -151,6 +164,25 @@ class EventRegistrationAdminTest(TestCase):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
 
+    def _change_url(self, registration):
+        return f"/admin/event/eventregistration/{registration.pk}/change/"
+
+    def _change_payload(self, registration, *, ticket=None, **overrides):
+        payload = {
+            "ticket": str((ticket or registration.ticket).pk),
+            "attendee_first_name": registration.attendee_first_name,
+            "attendee_last_name": registration.attendee_last_name,
+            "attendee_email": registration.attendee_email,
+            "attendee_secondary_email": registration.attendee_secondary_email,
+            "attendee_phone": registration.attendee_phone,
+            "attendee_organization": registration.attendee_organization,
+            "question_answers": json.dumps(registration.question_answers or []),
+        }
+        if registration.phone_verified:
+            payload["phone_verified"] = "on"
+        payload.update(overrides)
+        return payload
+
     def test_changelist_accessible(self):
         response = self.client.get("/admin/event/eventregistration/")
         self.assertEqual(response.status_code, 200)
@@ -159,6 +191,131 @@ class EventRegistrationAdminTest(TestCase):
         response = self.client.get("/admin/event/eventregistration/")
         self.assertContains(response, "Send All Tickets")
         self.assertContains(response, reverse("admin:event_eventregistration_send_all_ticket_emails"))
+
+    def test_export_column_picker_includes_member_information(self):
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="export-picker@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Member Title")
+        self.assertContains(response, "Member Organization")
+        self.assertContains(response, "Member Primary Email")
+        self.assertContains(response, "Member Phone Numbers")
+
+    def test_export_excel_includes_member_profile_and_contacts(self):
+        event = make_event(name="Export Event")
+        ticket = make_ticket(event, name="VIP")
+        member = make_member(
+            email="export-primary@example.com",
+            first_name="Ada",
+            middle_name="Byron",
+            last_name="Lovelace",
+            organization="Analytical Engines",
+            title="Chief Scientist",
+        )
+        ContactEmail.objects.create(
+            member=member,
+            email_address="export-secondary@example.com",
+            email_type="secondary",
+            verified=True,
+        )
+        ContactEmail.objects.create(
+            member=member,
+            email_address="export-other@example.com",
+            email_type="other",
+            verified=False,
+        )
+        ContactPhone.objects.create(
+            member=member,
+            phone_number="2095551212",
+            region="1-US",
+            verified=True,
+        )
+        registration = make_registration(
+            member,
+            event,
+            ticket,
+            attendee_first_name="Grace",
+            attendee_last_name="Hopper",
+            attendee_email="grace@example.com",
+            attendee_secondary_email="grace.secondary@example.com",
+            attendee_phone="2095552323",
+            attendee_organization="Navy",
+        )
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+                "export_confirm": "1",
+                "export_format": "xlsx",
+                "export_filename": "registration_export",
+                "export_fields": [
+                    "event_name",
+                    "ticket_name",
+                    "attendee_email",
+                    "attendee_organization",
+                    "member_full_name",
+                    "member_title",
+                    "member_organization",
+                    "member_primary_email",
+                    "member_secondary_emails",
+                    "member_other_emails",
+                    "member_phone_numbers",
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        workbook = load_workbook(BytesIO(response.content), read_only=True)
+        rows = list(workbook.active.iter_rows(values_only=True))
+        self.assertEqual(
+            rows[0],
+            (
+                "Event Name",
+                "Ticket",
+                "Attendee Email",
+                "Attendee Organization",
+                "Member Full Name",
+                "Member Title",
+                "Member Organization",
+                "Member Primary Email",
+                "Member Secondary Emails",
+                "Member Other Emails",
+                "Member Phone Numbers",
+            ),
+        )
+        self.assertEqual(
+            rows[1],
+            (
+                "Export Event",
+                "VIP",
+                "grace@example.com",
+                "Navy",
+                "Ada Byron Lovelace",
+                "Chief Scientist",
+                "Analytical Engines",
+                "export-primary@example.com",
+                "export-secondary@example.com",
+                "export-other@example.com",
+                "(209)555-1212",
+            ),
+        )
 
     def test_send_all_ticket_emails_confirmation_page(self):
         event = make_event()
@@ -213,7 +370,12 @@ class EventRegistrationAdminTest(TestCase):
     @patch("event.services.registration_sheet_sync.schedule_registration_sync")
     def test_admin_add_creates_registration(self, mock_sync):
         member = Member.objects.create_user(password="testpass123")
-        ContactEmail.objects.create(member=member, email_address="reg@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="reg@e.com",
+            email_type="primary",
+            verified=True,
+        )
         event = make_event()
         ticket = Ticket.objects.create(event=event, name="GA")
         response = self.client.post(
@@ -238,7 +400,12 @@ class EventRegistrationAdminTest(TestCase):
 
     def test_admin_add_rejects_duplicate(self):
         member = Member.objects.create_user(password="testpass123")
-        ContactEmail.objects.create(member=member, email_address="dup@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="dup@e.com",
+            email_type="primary",
+            verified=True,
+        )
         event = make_event()
         ticket = Ticket.objects.create(event=event, name="GA")
         EventRegistration.objects.create(member=member, event=event, ticket=ticket)
@@ -263,7 +430,12 @@ class EventRegistrationAdminTest(TestCase):
 
     def test_admin_add_rejects_mismatched_ticket(self):
         member = Member.objects.create_user(password="testpass123")
-        ContactEmail.objects.create(member=member, email_address="mis@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="mis@e.com",
+            email_type="primary",
+            verified=True,
+        )
         event1 = make_event(name="Event 1")
         event2 = make_event(name="Event 2")
         ticket_from_event2 = Ticket.objects.create(event=event2, name="VIP")
@@ -286,14 +458,145 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(EventRegistration.objects.filter(member=member, event=event1).exists())
 
-    def test_has_no_change_permission(self):
+    def test_has_change_permission(self):
         from django.test import RequestFactory
 
         factory = RequestFactory()
         request = factory.get("/admin/")
         request.user = self.admin_user
         admin_instance = EventRegistrationAdmin(EventRegistration, None)
+        self.assertTrue(admin_instance.has_change_permission(request))
+
+    def test_has_change_permission_requires_eventregistration_permission(self):
+        from django.test import RequestFactory
+
+        editor = Member.objects.create_user(password="testpass123", is_staff=True)
+        ContactEmail.objects.create(
+            member=editor,
+            email_address="registration-editor@example.com",
+            email_type="primary",
+            verified=True,
+        )
+        factory = RequestFactory()
+        request = factory.get("/admin/")
+        request.user = editor
+        admin_instance = EventRegistrationAdmin(EventRegistration, None)
+
         self.assertFalse(admin_instance.has_change_permission(request))
+
+        ct = ContentType.objects.get_for_model(EventRegistration)
+        editor.user_permissions.add(Permission.objects.get(content_type=ct, codename="change_eventregistration"))
+        for cache_name in ("_perm_cache", "_user_perm_cache", "_group_perm_cache"):
+            if hasattr(editor, cache_name):
+                delattr(editor, cache_name)
+        self.assertTrue(admin_instance.has_change_permission(request))
+
+    def test_change_form_accessible_for_existing_registration(self):
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="change-form@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.get(self._change_url(registration))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Send ticket email to attendee")
+        self.assertContains(response, "attendee_first_name")
+        self.assertContains(response, "Editable. Changes here only update this event registration")
+        self.assertContains(response, "Only the ticket can be changed")
+        self.assertContains(response, "Read-only ticket email delivery history")
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_change_updates_registration_info_and_ticket(self, mock_sync, mock_send):
+        event = make_event()
+        ticket = make_ticket(event, name="GA")
+        vip_ticket = make_ticket(event, name="VIP")
+        member = make_member(email="change-registration@example.com")
+        registration = make_registration(member, event, ticket)
+        answers = [{"question_id": "question-1", "question_text": "Role?", "answer": "Sponsor"}]
+
+        response = self.client.post(
+            self._change_url(registration),
+            self._change_payload(
+                registration,
+                ticket=vip_ticket,
+                attendee_first_name="Grace",
+                attendee_last_name="Hopper",
+                attendee_email="grace@example.com",
+                attendee_secondary_email="grace.secondary@example.com",
+                attendee_phone="2095551212",
+                phone_verified="on",
+                attendee_organization="Navy",
+                question_answers=json.dumps(answers),
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        registration.refresh_from_db()
+        self.assertEqual(registration.ticket, vip_ticket)
+        self.assertEqual(registration.attendee_first_name, "Grace")
+        self.assertEqual(registration.attendee_last_name, "Hopper")
+        self.assertEqual(registration.attendee_email, "grace@example.com")
+        self.assertEqual(registration.attendee_secondary_email, "grace.secondary@example.com")
+        self.assertEqual(registration.attendee_phone, "2095551212")
+        self.assertTrue(registration.phone_verified)
+        self.assertEqual(registration.attendee_organization, "Navy")
+        self.assertEqual(registration.question_answers, answers)
+        mock_sync.assert_called_once_with(event)
+        mock_send.assert_not_called()
+
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_change_rejects_ticket_from_other_event(self, mock_sync):
+        event = make_event(name="Editable Event")
+        ticket = make_ticket(event, name="GA")
+        other_event = make_event(name="Other Event")
+        other_ticket = make_ticket(other_event, name="Other GA")
+        member = make_member(email="wrong-ticket@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            self._change_url(registration),
+            self._change_payload(registration, ticket=other_ticket),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Select a valid choice")
+        registration.refresh_from_db()
+        self.assertEqual(registration.ticket, ticket)
+        mock_sync.assert_not_called()
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_change_can_resend_ticket_email(self, mock_sync, mock_send):
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="resend-change@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            self._change_url(registration),
+            self._change_payload(registration, send_ticket_email="on"),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        mock_sync.assert_called_once_with(event)
+        mock_send.assert_called_once()
+        self.assertEqual(mock_send.call_args.args[0].pk, registration.pk)
+
+    def test_admin_change_rejects_non_list_question_answers(self):
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="answers-shape@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            self._change_url(registration),
+            self._change_payload(registration, question_answers=json.dumps({"answer": "not a list"})),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Question answers must be a JSON list.")
 
     def test_has_delete_permission(self):
         from django.test import RequestFactory
@@ -321,10 +624,24 @@ class EventRegistrationAdminTest(TestCase):
 
     def test_member_info_endpoint(self):
         member = Member.objects.create_user(
-            password="testpass123", first_name="Ada", last_name="Lovelace", organization="UCM", title="Prof"
+            password="testpass123",
+            first_name="Ada",
+            last_name="Lovelace",
+            organization="UCM",
+            title="Prof",
         )
-        ContactEmail.objects.create(member=member, email_address="ada@e.com", email_type="primary", verified=True)
-        ContactEmail.objects.create(member=member, email_address="ada2@e.com", email_type="secondary", verified=False)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="ada@e.com",
+            email_type="primary",
+            verified=True,
+        )
+        ContactEmail.objects.create(
+            member=member,
+            email_address="ada2@e.com",
+            email_type="secondary",
+            verified=False,
+        )
         response = self.client.get(f"/admin/event/eventregistration/member-info/{member.pk}/")
         self.assertEqual(response.status_code, 200)
         data = response.json()
