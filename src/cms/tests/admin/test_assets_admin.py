@@ -172,7 +172,7 @@ class CMSAssetAdminTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["detail"], "The uploaded asset failed validation.")
+        self.assertEqual(response.json()["detail"], "CMS asset uploads must be 20 MB or smaller.")
 
     def test_asset_picker_upload_requires_staff(self):
         self.client.logout()

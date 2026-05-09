@@ -42,7 +42,12 @@ def _asset_matches_type(asset, asset_type):
 
 def _validation_error_payload(exc):
     editor_api.logger.info("Asset upload failed validation: %s", exc)
-    return {"detail": "The uploaded asset failed validation."}
+    if hasattr(exc, "message_dict"):
+        errors = exc.message_dict
+        messages = [message for field_errors in errors.values() for message in field_errors]
+        return {"detail": messages[0] if messages else "Validation error.", "errors": errors}
+    messages = getattr(exc, "messages", None) or [str(exc)]
+    return {"detail": messages[0], "errors": messages}
 
 
 def serialize_asset(asset):

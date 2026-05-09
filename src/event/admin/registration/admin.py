@@ -130,8 +130,7 @@ class EventRegistrationAdmin(
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_change_permission(self, request, obj=None):
-        opts = self.model._meta
-        return request.user.has_perm(f"{opts.app_label}.change_{opts.model_name}")
+        return False
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):

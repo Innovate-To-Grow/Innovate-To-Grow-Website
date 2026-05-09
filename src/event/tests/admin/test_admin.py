@@ -1,4 +1,3 @@
-import json
 from io import BytesIO
 from unittest.mock import patch
 
@@ -163,25 +162,6 @@ class EventRegistrationAdminTest(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
-
-    def _change_url(self, registration):
-        return f"/admin/event/eventregistration/{registration.pk}/change/"
-
-    def _change_payload(self, registration, *, ticket=None, **overrides):
-        payload = {
-            "ticket": str((ticket or registration.ticket).pk),
-            "attendee_first_name": registration.attendee_first_name,
-            "attendee_last_name": registration.attendee_last_name,
-            "attendee_email": registration.attendee_email,
-            "attendee_secondary_email": registration.attendee_secondary_email,
-            "attendee_phone": registration.attendee_phone,
-            "attendee_organization": registration.attendee_organization,
-            "question_answers": json.dumps(registration.question_answers or []),
-        }
-        if registration.phone_verified:
-            payload["phone_verified"] = "on"
-        payload.update(overrides)
-        return payload
 
     def test_changelist_accessible(self):
         response = self.client.get("/admin/event/eventregistration/")
@@ -458,145 +438,14 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(EventRegistration.objects.filter(member=member, event=event1).exists())
 
-    def test_has_change_permission(self):
+    def test_has_no_change_permission(self):
         from django.test import RequestFactory
 
         factory = RequestFactory()
         request = factory.get("/admin/")
         request.user = self.admin_user
         admin_instance = EventRegistrationAdmin(EventRegistration, None)
-        self.assertTrue(admin_instance.has_change_permission(request))
-
-    def test_has_change_permission_requires_eventregistration_permission(self):
-        from django.test import RequestFactory
-
-        editor = Member.objects.create_user(password="testpass123", is_staff=True)
-        ContactEmail.objects.create(
-            member=editor,
-            email_address="registration-editor@example.com",
-            email_type="primary",
-            verified=True,
-        )
-        factory = RequestFactory()
-        request = factory.get("/admin/")
-        request.user = editor
-        admin_instance = EventRegistrationAdmin(EventRegistration, None)
-
         self.assertFalse(admin_instance.has_change_permission(request))
-
-        ct = ContentType.objects.get_for_model(EventRegistration)
-        editor.user_permissions.add(Permission.objects.get(content_type=ct, codename="change_eventregistration"))
-        for cache_name in ("_perm_cache", "_user_perm_cache", "_group_perm_cache"):
-            if hasattr(editor, cache_name):
-                delattr(editor, cache_name)
-        self.assertTrue(admin_instance.has_change_permission(request))
-
-    def test_change_form_accessible_for_existing_registration(self):
-        event = make_event()
-        ticket = make_ticket(event)
-        member = make_member(email="change-form@example.com")
-        registration = make_registration(member, event, ticket)
-
-        response = self.client.get(self._change_url(registration))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Send ticket email to attendee")
-        self.assertContains(response, "attendee_first_name")
-        self.assertContains(response, "Editable. Changes here only update this event registration")
-        self.assertContains(response, "Only the ticket can be changed")
-        self.assertContains(response, "Read-only ticket email delivery history")
-
-    @patch("event.services.ticket_mail.send_ticket_email")
-    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
-    def test_admin_change_updates_registration_info_and_ticket(self, mock_sync, mock_send):
-        event = make_event()
-        ticket = make_ticket(event, name="GA")
-        vip_ticket = make_ticket(event, name="VIP")
-        member = make_member(email="change-registration@example.com")
-        registration = make_registration(member, event, ticket)
-        answers = [{"question_id": "question-1", "question_text": "Role?", "answer": "Sponsor"}]
-
-        response = self.client.post(
-            self._change_url(registration),
-            self._change_payload(
-                registration,
-                ticket=vip_ticket,
-                attendee_first_name="Grace",
-                attendee_last_name="Hopper",
-                attendee_email="grace@example.com",
-                attendee_secondary_email="grace.secondary@example.com",
-                attendee_phone="2095551212",
-                phone_verified="on",
-                attendee_organization="Navy",
-                question_answers=json.dumps(answers),
-            ),
-        )
-
-        self.assertEqual(response.status_code, 302)
-        registration.refresh_from_db()
-        self.assertEqual(registration.ticket, vip_ticket)
-        self.assertEqual(registration.attendee_first_name, "Grace")
-        self.assertEqual(registration.attendee_last_name, "Hopper")
-        self.assertEqual(registration.attendee_email, "grace@example.com")
-        self.assertEqual(registration.attendee_secondary_email, "grace.secondary@example.com")
-        self.assertEqual(registration.attendee_phone, "2095551212")
-        self.assertTrue(registration.phone_verified)
-        self.assertEqual(registration.attendee_organization, "Navy")
-        self.assertEqual(registration.question_answers, answers)
-        mock_sync.assert_called_once_with(event)
-        mock_send.assert_not_called()
-
-    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
-    def test_admin_change_rejects_ticket_from_other_event(self, mock_sync):
-        event = make_event(name="Editable Event")
-        ticket = make_ticket(event, name="GA")
-        other_event = make_event(name="Other Event")
-        other_ticket = make_ticket(other_event, name="Other GA")
-        member = make_member(email="wrong-ticket@example.com")
-        registration = make_registration(member, event, ticket)
-
-        response = self.client.post(
-            self._change_url(registration),
-            self._change_payload(registration, ticket=other_ticket),
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Select a valid choice")
-        registration.refresh_from_db()
-        self.assertEqual(registration.ticket, ticket)
-        mock_sync.assert_not_called()
-
-    @patch("event.services.ticket_mail.send_ticket_email")
-    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
-    def test_admin_change_can_resend_ticket_email(self, mock_sync, mock_send):
-        event = make_event()
-        ticket = make_ticket(event)
-        member = make_member(email="resend-change@example.com")
-        registration = make_registration(member, event, ticket)
-
-        response = self.client.post(
-            self._change_url(registration),
-            self._change_payload(registration, send_ticket_email="on"),
-        )
-
-        self.assertEqual(response.status_code, 302)
-        mock_sync.assert_called_once_with(event)
-        mock_send.assert_called_once()
-        self.assertEqual(mock_send.call_args.args[0].pk, registration.pk)
-
-    def test_admin_change_rejects_non_list_question_answers(self):
-        event = make_event()
-        ticket = make_ticket(event)
-        member = make_member(email="answers-shape@example.com")
-        registration = make_registration(member, event, ticket)
-
-        response = self.client.post(
-            self._change_url(registration),
-            self._change_payload(registration, question_answers=json.dumps({"answer": "not a list"})),
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Question answers must be a JSON list.")
 
     def test_has_delete_permission(self):
         from django.test import RequestFactory

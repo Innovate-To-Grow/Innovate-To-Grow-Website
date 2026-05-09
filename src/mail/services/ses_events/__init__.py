@@ -1,8 +1,6 @@
 import logging
 from typing import Any
 
-import boto3
-
 from .notification import handle_notification
 from .subscription import handle_subscription_confirmation
 
@@ -25,4 +23,4 @@ def process_sns_envelope(envelope: dict[str, Any]) -> None:
         raise SesEventError("Unknown SNS Type")
 
 
-__all__ = ["SesEventError", "boto3", "process_sns_envelope"]
+__all__ = ["SesEventError", "process_sns_envelope"]
