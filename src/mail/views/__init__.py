@@ -17,10 +17,6 @@ from .ses_webhook import SesEventThrottle, SesEventWebhookView, SnsEnvelopeParse
 from .subscriptions import (
     OneClickUnsubscribeView,
     ResubscribeView,
-    _render_resubscribe_page,
-    _render_unsubscribe_page,
-    _send_resubscribe_confirmation,
-    _send_unsubscribe_confirmation,
 )
 
 __all__ = [
