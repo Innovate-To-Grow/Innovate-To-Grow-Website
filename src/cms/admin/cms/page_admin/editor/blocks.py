@@ -19,8 +19,8 @@ def save_blocks_from_json(request, page, messages):
         if not isinstance(blocks_data, list):
             messages.error(request, "Invalid blocks data: expected a JSON array.")
             return
-    except json.JSONDecodeError as exc:
-        messages.error(request, f"Invalid blocks JSON: {exc}")
+    except json.JSONDecodeError:
+        messages.error(request, "Invalid blocks JSON: could not parse input.")
         return
 
     pending_blocks = []
