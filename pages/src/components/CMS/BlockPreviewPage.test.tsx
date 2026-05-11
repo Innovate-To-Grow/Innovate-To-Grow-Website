@@ -301,6 +301,28 @@ describe('BlockPreviewPage', () => {
     vi.unstubAllEnvs();
   });
 
+  it('accepts messages from the backend origin configured by VITE_API_BASE_URL', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/api');
+    vi.resetModules();
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('./BlockPreviewPage');
+
+    render(<ReloadedBlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://api.example.com',
+          data: {
+            type: 'cms-block-preview',
+            block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'api-origin'}},
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId('blk-rich_text')).toHaveTextContent('api-origin');
+    vi.unstubAllEnvs();
+  });
+
   it('targets resize messages to the trusted parent origin from the accepted message', async () => {
     vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin.example.com');
     vi.resetModules();

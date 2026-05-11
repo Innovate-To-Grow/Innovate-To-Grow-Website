@@ -14,11 +14,11 @@ import type { CMSBlock } from '../../features/cms/api';
 //
 // Same-origin is always trusted (covers dev via the Vite proxy and prod
 // deployments where admin and SPA share a host). Split frontend/backend
-// setups run the Django admin on a different origin — the admin embeds this
-// iframe using the configured FRONTEND_URL, so messages arrive with the
-// admin's origin as event.origin. `VITE_ADMIN_ORIGIN` lists those trusted
-// parent origins (comma-separated if there are multiple), e.g.
-// "https://admin.example.com".
+// setups run the Django admin on the backend origin while the iframe is hosted
+// by the frontend origin. `VITE_API_BASE_URL` is already required for frontend
+// production builds, so its origin is trusted as the default admin parent.
+// `VITE_ADMIN_ORIGIN` remains available for nonstandard admin origins
+// (comma-separated if there are multiple), e.g. "https://admin.example.com".
 function parseAllowedOrigins(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw
@@ -60,7 +60,10 @@ function isTrustedDevLoopbackOrigin(origin: string): boolean {
 }
 
 const SAME_ORIGIN = normalizeOrigin(window.location.origin);
-const CONFIGURED_PARENT_ORIGINS = parseAllowedOrigins(import.meta.env.VITE_ADMIN_ORIGIN);
+const CONFIGURED_PARENT_ORIGINS = [
+  ...parseAllowedOrigins(import.meta.env.VITE_ADMIN_ORIGIN),
+  normalizeOrigin(import.meta.env.VITE_API_BASE_URL),
+].filter(Boolean);
 const ALLOWED_PARENT_ORIGINS = new Set<string>([
   SAME_ORIGIN,
   ...CONFIGURED_PARENT_ORIGINS,
