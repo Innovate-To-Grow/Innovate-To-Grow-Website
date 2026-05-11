@@ -53,4 +53,4 @@ bleach>=6.0.0
 
 # Development Only
 # django-debug-toolbar>=4.0.0
-ruff>=0.8.0  # Python linter and formatter
+ruff>=0.15.12  # Python linter and formatter
