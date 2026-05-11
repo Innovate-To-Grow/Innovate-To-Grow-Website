@@ -11,7 +11,7 @@ def search_members(params):
         for term in params["name"].split():
             qs = qs.filter(Q(first_name__icontains=term) | Q(last_name__icontains=term))
     if params.get("email"):
-        qs = qs.filter(contactemail__email_address__icontains=params["email"])
+        qs = qs.filter(contact_emails__email_address__icontains=params["email"])
     if params.get("organization"):
         qs = qs.filter(organization__icontains=params["organization"])
     if params.get("is_staff") is not None:
