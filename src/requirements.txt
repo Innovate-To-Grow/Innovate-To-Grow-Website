@@ -33,7 +33,7 @@ cryptography>=47.0.0
 
 # Storage Backend (S3/R2/OSS compatible)
 django-storages[s3]>=1.14.6
-boto3>=1.43.2
+boto3>=1.43.6
 
 # Production Dependencies
 gunicorn>=25.3.0
