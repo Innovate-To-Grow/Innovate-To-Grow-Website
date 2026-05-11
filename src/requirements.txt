@@ -1,18 +1,18 @@
 # Django Backend Dependencies
 
 # Core Framework
-Django>=5.2,<7.0
+Django>=5.2.14,<7.0
 djangorestframework==3.17.1
-djangorestframework-simplejwt>=5.3.0
+djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
 python-dotenv>=1.0.0
 
 # Admin Theme
-django-unfold>=0.78.0
+django-unfold>=0.93.0
 
 # Rich Text Editor
-django-ckeditor-5>=0.2.13
+django-ckeditor-5>=0.2.20
 Pillow>=10.0.0
 pdf417gen>=0.7.0
 
@@ -39,8 +39,8 @@ boto3>=1.43.2
 gunicorn>=25.3.0
 uvicorn[standard]>=0.46.0,<1.0
 psycopg2-binary>=2.9.12  # PostgreSQL adapter
-django-redis>=5.4.0  # Redis cache backend
-django-cors-headers>=4.4.0
+django-redis>=6.0.0  # Redis cache backend
+django-cors-headers>=4.9.0
 
 # HTML Parsing
 beautifulsoup4>=4.12.0
