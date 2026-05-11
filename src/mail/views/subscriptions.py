@@ -1,18 +1,23 @@
 """One-click unsubscribe and resubscribe endpoints."""
 
+import logging
+
 from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
-import mail.views as views_api
 from authn.services import email as email_api
 from mail.services.unsubscribe_token import (
     build_resubscribe_token,
     get_member_from_oneclick_token,
     get_member_from_resubscribe_token,
 )
+
+from .constants import RESUBSCRIBE_LINK_INVALID_MESSAGE, UNSUBSCRIBE_LINK_INVALID_MESSAGE
+
+logger = logging.getLogger(__name__)
 
 
 class OneClickUnsubscribeView(APIView):
@@ -25,8 +30,8 @@ class OneClickUnsubscribeView(APIView):
         try:
             member = get_member_from_oneclick_token(token)
         except ValueError:
-            views_api.logger.info("One-click unsubscribe token rejected")
-            return views_api.UNSUBSCRIBE_LINK_INVALID_MESSAGE
+            logger.info("One-click unsubscribe token rejected")
+            return UNSUBSCRIBE_LINK_INVALID_MESSAGE
 
         primary = member.get_primary_contact_email()
         if primary and primary.subscribe:
@@ -67,9 +72,9 @@ class ResubscribeView(APIView):
         try:
             member = get_member_from_resubscribe_token(token)
         except ValueError:
-            views_api.logger.info("Resubscribe token rejected")
+            logger.info("Resubscribe token rejected")
             return HttpResponse(
-                _render_resubscribe_page(error=views_api.RESUBSCRIBE_LINK_INVALID_MESSAGE),
+                _render_resubscribe_page(error=RESUBSCRIBE_LINK_INVALID_MESSAGE),
                 status=400,
                 content_type="text/html",
             )

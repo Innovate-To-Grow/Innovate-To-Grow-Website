@@ -1,6 +1,7 @@
 """SES event webhook views."""
 
 import json
+import logging
 
 from django.conf import settings
 from django.utils.decorators import method_decorator
@@ -12,7 +13,10 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-import mail.views as views_api
+from mail.services.ses_events import SesEventError, process_sns_envelope
+from mail.services.sns_signature import SnsVerificationError, verify_sns_message
+
+logger = logging.getLogger(__name__)
 
 
 class SesEventThrottle(AnonRateThrottle):
@@ -53,15 +57,15 @@ class SesEventWebhookView(APIView):
         allowed = {topic_arn} if topic_arn else None
 
         try:
-            views_api.verify_sns_message(envelope, allowed_topic_arns=allowed)
-        except views_api.SnsVerificationError:
-            views_api.logger.warning("SNS signature rejected", exc_info=True)
+            verify_sns_message(envelope, allowed_topic_arns=allowed)
+        except SnsVerificationError:
+            logger.warning("SNS signature rejected", exc_info=True)
             return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            views_api.process_sns_envelope(envelope)
-        except views_api.SesEventError:
-            views_api.logger.warning("SES event processing failed", exc_info=True)
+            process_sns_envelope(envelope)
+        except SesEventError:
+            logger.warning("SES event processing failed", exc_info=True)
             return Response({"detail": "ok, but logged"}, status=status.HTTP_200_OK)
 
         return Response({"detail": "ok"}, status=status.HTTP_200_OK)
