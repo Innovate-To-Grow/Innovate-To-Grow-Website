@@ -77,4 +77,4 @@ authApi.interceptors.response.use(
   }
 );
 
-export default authApi;
+export { authApi };

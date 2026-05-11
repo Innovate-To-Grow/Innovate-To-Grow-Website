@@ -1,15 +1,24 @@
+from io import BytesIO
 from unittest.mock import patch
 
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
 
-from authn.models import ContactEmail, Member
+from authn.models import ContactEmail, ContactPhone, Member
 from event.admin.registration import EventRegistrationAdmin
 from event.models import CheckIn, CheckInRecord, Event, EventRegistration, Ticket
 from event.services import ScheduleSyncStats
-from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
+from event.tests.helpers import (
+    make_event,
+    make_member,
+    make_registration,
+    make_superuser,
+    make_ticket,
+)
 
 
 class EventAdminTest(TestCase):
@@ -29,7 +38,10 @@ class EventAdminTest(TestCase):
         """Inlines must not depend on event.add_ticket; match Event admin access instead."""
         editor = Member.objects.create_user(password="testpass123", is_staff=True, is_superuser=False)
         ContactEmail.objects.create(
-            member=editor, email_address="editor@example.com", email_type="primary", verified=True
+            member=editor,
+            email_address="editor@example.com",
+            email_type="primary",
+            verified=True,
         )
         ct = ContentType.objects.get_for_model(Event)
         editor.user_permissions.add(Permission.objects.get(content_type=ct, codename="change_event"))
@@ -160,6 +172,131 @@ class EventRegistrationAdminTest(TestCase):
         self.assertContains(response, "Send All Tickets")
         self.assertContains(response, reverse("admin:event_eventregistration_send_all_ticket_emails"))
 
+    def test_export_column_picker_includes_member_information(self):
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="export-picker@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Member Title")
+        self.assertContains(response, "Member Organization")
+        self.assertContains(response, "Member Primary Email")
+        self.assertContains(response, "Member Phone Numbers")
+
+    def test_export_excel_includes_member_profile_and_contacts(self):
+        event = make_event(name="Export Event")
+        ticket = make_ticket(event, name="VIP")
+        member = make_member(
+            email="export-primary@example.com",
+            first_name="Ada",
+            middle_name="Byron",
+            last_name="Lovelace",
+            organization="Analytical Engines",
+            title="Chief Scientist",
+        )
+        ContactEmail.objects.create(
+            member=member,
+            email_address="export-secondary@example.com",
+            email_type="secondary",
+            verified=True,
+        )
+        ContactEmail.objects.create(
+            member=member,
+            email_address="export-other@example.com",
+            email_type="other",
+            verified=False,
+        )
+        ContactPhone.objects.create(
+            member=member,
+            phone_number="2095551212",
+            region="1-US",
+            verified=True,
+        )
+        registration = make_registration(
+            member,
+            event,
+            ticket,
+            attendee_first_name="Grace",
+            attendee_last_name="Hopper",
+            attendee_email="grace@example.com",
+            attendee_secondary_email="grace.secondary@example.com",
+            attendee_phone="2095552323",
+            attendee_organization="Navy",
+        )
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+                "export_confirm": "1",
+                "export_format": "xlsx",
+                "export_filename": "registration_export",
+                "export_fields": [
+                    "event_name",
+                    "ticket_name",
+                    "attendee_email",
+                    "attendee_organization",
+                    "member_full_name",
+                    "member_title",
+                    "member_organization",
+                    "member_primary_email",
+                    "member_secondary_emails",
+                    "member_other_emails",
+                    "member_phone_numbers",
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        workbook = load_workbook(BytesIO(response.content), read_only=True)
+        rows = list(workbook.active.iter_rows(values_only=True))
+        self.assertEqual(
+            rows[0],
+            (
+                "Event Name",
+                "Ticket",
+                "Attendee Email",
+                "Attendee Organization",
+                "Member Full Name",
+                "Member Title",
+                "Member Organization",
+                "Member Primary Email",
+                "Member Secondary Emails",
+                "Member Other Emails",
+                "Member Phone Numbers",
+            ),
+        )
+        self.assertEqual(
+            rows[1],
+            (
+                "Export Event",
+                "VIP",
+                "grace@example.com",
+                "Navy",
+                "Ada Byron Lovelace",
+                "Chief Scientist",
+                "Analytical Engines",
+                "export-primary@example.com",
+                "export-secondary@example.com",
+                "export-other@example.com",
+                "(209)555-1212",
+            ),
+        )
+
     def test_send_all_ticket_emails_confirmation_page(self):
         event = make_event()
         ticket = make_ticket(event)
@@ -213,7 +350,12 @@ class EventRegistrationAdminTest(TestCase):
     @patch("event.services.registration_sheet_sync.schedule_registration_sync")
     def test_admin_add_creates_registration(self, mock_sync):
         member = Member.objects.create_user(password="testpass123")
-        ContactEmail.objects.create(member=member, email_address="reg@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="reg@e.com",
+            email_type="primary",
+            verified=True,
+        )
         event = make_event()
         ticket = Ticket.objects.create(event=event, name="GA")
         response = self.client.post(
@@ -238,7 +380,12 @@ class EventRegistrationAdminTest(TestCase):
 
     def test_admin_add_rejects_duplicate(self):
         member = Member.objects.create_user(password="testpass123")
-        ContactEmail.objects.create(member=member, email_address="dup@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="dup@e.com",
+            email_type="primary",
+            verified=True,
+        )
         event = make_event()
         ticket = Ticket.objects.create(event=event, name="GA")
         EventRegistration.objects.create(member=member, event=event, ticket=ticket)
@@ -263,7 +410,12 @@ class EventRegistrationAdminTest(TestCase):
 
     def test_admin_add_rejects_mismatched_ticket(self):
         member = Member.objects.create_user(password="testpass123")
-        ContactEmail.objects.create(member=member, email_address="mis@e.com", email_type="primary", verified=True)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="mis@e.com",
+            email_type="primary",
+            verified=True,
+        )
         event1 = make_event(name="Event 1")
         event2 = make_event(name="Event 2")
         ticket_from_event2 = Ticket.objects.create(event=event2, name="VIP")
@@ -321,10 +473,24 @@ class EventRegistrationAdminTest(TestCase):
 
     def test_member_info_endpoint(self):
         member = Member.objects.create_user(
-            password="testpass123", first_name="Ada", last_name="Lovelace", organization="UCM", title="Prof"
+            password="testpass123",
+            first_name="Ada",
+            last_name="Lovelace",
+            organization="UCM",
+            title="Prof",
         )
-        ContactEmail.objects.create(member=member, email_address="ada@e.com", email_type="primary", verified=True)
-        ContactEmail.objects.create(member=member, email_address="ada2@e.com", email_type="secondary", verified=False)
+        ContactEmail.objects.create(
+            member=member,
+            email_address="ada@e.com",
+            email_type="primary",
+            verified=True,
+        )
+        ContactEmail.objects.create(
+            member=member,
+            email_address="ada2@e.com",
+            email_type="secondary",
+            verified=False,
+        )
         response = self.client.get(f"/admin/event/eventregistration/member-info/{member.pk}/")
         self.assertEqual(response.status_code, 200)
         data = response.json()

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import type { CMSBlock } from '../../features/cms/api';
 import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
 import { EmbedBlock } from './blocks/content/EmbedBlock';
@@ -14,7 +14,7 @@ import { ProposalCardsBlock } from './blocks/showcase/ProposalCardsBlock';
 import { SponsorYearBlock } from './blocks/showcase/SponsorYearBlock';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type BlockComponent = React.FC<{ data: any; previewMode?: boolean }>;
+type BlockComponent = (props: { data: any; previewMode?: boolean }) => ReactNode;
 
 const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   rich_text: RichTextBlock,
@@ -31,13 +31,8 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   embed_widget: EmbedWidgetBlock,
 };
 
-interface BlockRendererProps {
-  blocks: CMSBlock[];
-  previewMode?: boolean;
-}
-
-export const BlockRenderer: React.FC<BlockRendererProps> = memo(
-  ({ blocks, previewMode = false }) => (
+export const BlockRenderer = memo(
+  ({ blocks, previewMode = false }: { blocks: CMSBlock[]; previewMode?: boolean }) => (
     <>
       {blocks.filter(Boolean).map((block) => {
         const Component = BLOCK_COMPONENTS[block.block_type];

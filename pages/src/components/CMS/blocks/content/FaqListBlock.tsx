@@ -10,7 +10,7 @@ interface FaqListData {
   items: FaqItem[];
 }
 
-export const FaqListBlock: React.FC<{ data: FaqListData }> = ({ data }) => {
+export const FaqListBlock = ({ data }: { data: FaqListData }) => {
   return (
     <section className="cms-faq-list">
       {data.heading && <h1>{data.heading}</h1>}

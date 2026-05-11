@@ -14,7 +14,7 @@ interface LinkListData {
   items: LinkItem[];
 }
 
-export const LinkListBlock: React.FC<{ data: LinkListData }> = ({ data }) => {
+export const LinkListBlock = ({ data }: { data: LinkListData }) => {
   return (
     <section className="cms-link-list">
       {data.heading && <h2 className="section-title">{data.heading}</h2>}

@@ -8,7 +8,7 @@ interface ImageTextData {
   body_html: string;
 }
 
-export const ImageTextBlock: React.FC<{ data: ImageTextData }> = ({ data }) => {
+export const ImageTextBlock = ({ data }: { data: ImageTextData }) => {
   return (
     <section className="cms-image-text">
       {data.heading && <h1 className="section-title">{data.heading}</h1>}

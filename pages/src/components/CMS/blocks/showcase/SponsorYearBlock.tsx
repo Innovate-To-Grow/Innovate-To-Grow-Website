@@ -31,7 +31,7 @@ function normalizeSponsors(sponsors: SponsorYearSponsor[] | unknown): SponsorYea
   return result;
 }
 
-export const SponsorYearBlock: React.FC<{ data: SponsorYearBlockData }> = ({ data }) => {
+export const SponsorYearBlock = ({ data }: { data: SponsorYearBlockData }) => {
   const year = typeof data?.year === 'string' ? data.year.trim() : '';
   const sponsors = normalizeSponsors(data?.sponsors);
 

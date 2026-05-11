@@ -1,4 +1,4 @@
-import authApi from './client';
+import { authApi } from './client';
 import type { ContactEmail, ContactPhone, MessageResponse } from './types';
 
 export const getContactPhones = async (): Promise<ContactPhone[]> => {

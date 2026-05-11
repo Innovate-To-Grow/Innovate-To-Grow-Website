@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-import { clearKeyCache, encryptPasswordWithCurrentKey } from '../../services/crypto';
-import authApi from './client';
+import { clearKeyCache, encryptPasswordWithCurrentKey } from '../crypto';
+import { authApi } from './client';
 import {
   clearProfileCompletionRequired,
   persistAuthSession,

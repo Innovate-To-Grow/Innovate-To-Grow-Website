@@ -1,4 +1,4 @@
-import api from '../../shared/api/client';
+import { api } from '../../shared/api/client';
 import type { PaginatedResponse } from '../../shared/api/types';
 
 export type { PaginatedResponse } from '../../shared/api/types';

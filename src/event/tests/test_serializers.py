@@ -202,6 +202,14 @@ class BuildRegistrationPayloadTest(TestCase):
         result = build_registration_payload(self.registration)
         self.assertEqual(result["ticket_email_sent_at"], now.isoformat())
 
+    def test_ticket_email_error_is_public_safe_message(self):
+        self.registration.ticket_email_error = "SMTPAuthenticationError: secret"
+        self.registration.save(update_fields=["ticket_email_error"])
+
+        result = build_registration_payload(self.registration)
+
+        self.assertEqual(result["ticket_email_error"], "Ticket email could not be sent. Please try again later.")
+
 
 # ---------- build_event_registration_option_payload ----------
 

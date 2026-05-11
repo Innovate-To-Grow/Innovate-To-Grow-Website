@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 
 class SecurityValidationError(ValueError):
@@ -38,4 +38,4 @@ def validate_aws_sns_https_url(url: str) -> str:
         raise SecurityValidationError("SNS URL must use the default HTTPS port")
     if not _is_allowed_sns_host(host):
         raise SecurityValidationError("SNS URL host is not allowed")
-    return url
+    return urlunparse(("https", parsed.netloc, parsed.path, parsed.params, parsed.query, ""))

@@ -158,7 +158,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription&Token=abc",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+        with patch("mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.return_value.__enter__.return_value.read.return_value = b"<ok/>"
             process_sns_envelope(envelope)
             mock_urlopen.assert_called_once()
@@ -170,7 +170,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://evil.example.com/trick",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+        with patch("mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
             process_sns_envelope(envelope)
             mock_urlopen.assert_not_called()
 
@@ -180,7 +180,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com.evil.example/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+        with patch("mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
             process_sns_envelope(envelope)
             mock_urlopen.assert_not_called()
 
@@ -190,7 +190,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "http://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+        with patch("mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
             process_sns_envelope(envelope)
             mock_urlopen.assert_not_called()
 
@@ -200,6 +200,6 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=GetTopicAttributes",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("mail.services.ses_events.urllib.request.urlopen") as mock_urlopen:
+        with patch("mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
             process_sns_envelope(envelope)
             mock_urlopen.assert_not_called()

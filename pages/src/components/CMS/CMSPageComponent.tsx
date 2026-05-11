@@ -14,7 +14,7 @@ interface CMSPageComponentProps {
   routeOverride?: string;
 }
 
-export const CMSPageComponent: React.FC<CMSPageComponentProps> = ({routeOverride}) => {
+export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const location = useLocation();
   const route = routeOverride || location.pathname;
   const preview = new URLSearchParams(location.search).has('cms_preview');

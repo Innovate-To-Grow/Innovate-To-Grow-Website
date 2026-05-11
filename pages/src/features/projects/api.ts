@@ -1,4 +1,4 @@
-import api from '../../shared/api/client';
+import { api } from '../../shared/api/client';
 import {formatSemesterLabel} from '../../shared/utils/semester';
 import type { PaginatedResponse } from '../../shared/api/types';
 import type { ScheduleProjectRow } from '../events/api';

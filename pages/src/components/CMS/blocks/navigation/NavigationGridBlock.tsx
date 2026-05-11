@@ -13,7 +13,7 @@ interface NavigationGridData {
   items: NavItem[];
 }
 
-export const NavigationGridBlock: React.FC<{ data: NavigationGridData }> = ({ data }) => {
+export const NavigationGridBlock = ({ data }: { data: NavigationGridData }) => {
   return (
     <section className="cms-navigation-grid">
       {data.heading && <h1>{data.heading}</h1>}

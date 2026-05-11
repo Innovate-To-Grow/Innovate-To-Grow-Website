@@ -9,10 +9,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('./client', () => ({
-  default: {post: mocks.post},
+  authApi: {post: mocks.post},
 }));
 
-vi.mock('../../services/crypto', () => ({
+vi.mock('../crypto', () => ({
   encryptPasswordWithCurrentKey: mocks.encrypt,
   clearKeyCache: mocks.clearKeyCache,
 }));

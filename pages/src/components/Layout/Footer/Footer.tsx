@@ -2,7 +2,7 @@ import {
   type FooterCTAButton,
   type FooterLink,
   type FooterSocialLink,
-} from '../../../services/api';
+} from '../../../features/layout/api';
 import { safeHref } from '../../../shared/utils/safeHref';
 import {SafeHtml} from '../../SafeHtml/SafeHtml';
 import { useFooter } from '../LayoutProvider/context';

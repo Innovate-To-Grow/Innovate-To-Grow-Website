@@ -6,7 +6,7 @@ const getRefreshToken = vi.fn<() => string | null>(() => 'refresh-token');
 const persistAuthSession = vi.fn();
 
 vi.mock('./client', () => ({
-  default: {post: authApiPost},
+  authApi: {post: authApiPost},
 }));
 
 vi.mock('./storage', () => ({
