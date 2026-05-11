@@ -438,14 +438,123 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(EventRegistration.objects.filter(member=member, event=event1).exists())
 
-    def test_has_no_change_permission(self):
+    def test_has_change_permission(self):
         from django.test import RequestFactory
 
         factory = RequestFactory()
         request = factory.get("/admin/")
         request.user = self.admin_user
         admin_instance = EventRegistrationAdmin(EventRegistration, None)
-        self.assertFalse(admin_instance.has_change_permission(request))
+        self.assertTrue(admin_instance.has_change_permission(request))
+
+    def test_change_page_keeps_only_ticket_editable_in_ticket_section(self):
+        from django.test import RequestFactory
+
+        event = make_event()
+        ticket = make_ticket(event)
+        member = make_member(email="readonly-ticket-section@example.com")
+        registration = make_registration(member, event, ticket)
+        factory = RequestFactory()
+        request = factory.get("/admin/")
+        request.user = self.admin_user
+        admin_instance = EventRegistrationAdmin(EventRegistration, None)
+
+        readonly_fields = admin_instance.get_readonly_fields(request, obj=registration)
+
+        self.assertNotIn("ticket", readonly_fields)
+        self.assertIn("event", readonly_fields)
+        self.assertIn("member", readonly_fields)
+        self.assertIn("ticket_code", readonly_fields)
+        self.assertIn("attendee_email", readonly_fields)
+        self.assertIn("send_ticket_email_action", readonly_fields)
+
+    def test_change_form_limits_ticket_choices_to_registration_event(self):
+        event = make_event(name="Ticket Choice Event")
+        current_ticket = make_ticket(event, name="Current Ticket")
+        new_ticket = make_ticket(event, name="Upgrade Ticket")
+        other_event = make_event(name="Other Ticket Event")
+        other_ticket = make_ticket(other_event, name="Other Event Ticket")
+        member = make_member(email="ticket-choice@example.com")
+        registration = make_registration(member, event, current_ticket)
+
+        response = self.client.get(f"/admin/event/eventregistration/{registration.pk}/change/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="ticket"')
+        self.assertContains(response, 'name="_send_ticket_email"')
+        self.assertContains(response, "Send ticket email now")
+        self.assertNotContains(response, 'name="send_ticket_email"')
+        self.assertNotContains(response, "If checked, a confirmation email")
+        self.assertContains(response, str(new_ticket))
+        self.assertNotContains(response, str(other_ticket))
+
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_change_updates_registration_ticket(self, mock_sync):
+        event = make_event()
+        current_ticket = make_ticket(event, name="General")
+        new_ticket = make_ticket(event, name="VIP")
+        member = make_member(email="ticket-change@example.com")
+        registration = make_registration(member, event, current_ticket)
+
+        response = self.client.post(
+            f"/admin/event/eventregistration/{registration.pk}/change/",
+            {
+                "ticket": str(new_ticket.pk),
+                "_save": "Save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        registration.refresh_from_db()
+        self.assertEqual(registration.ticket, new_ticket)
+        mock_sync.assert_called_once_with(event)
+
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_change_rejects_ticket_from_other_event(self, mock_sync):
+        event = make_event(name="Original Event")
+        current_ticket = make_ticket(event, name="General")
+        other_event = make_event(name="Other Event")
+        other_ticket = make_ticket(other_event, name="Other VIP")
+        member = make_member(email="ticket-mismatch-change@example.com")
+        registration = make_registration(member, event, current_ticket)
+
+        response = self.client.post(
+            f"/admin/event/eventregistration/{registration.pk}/change/",
+            {
+                "ticket": str(other_ticket.pk),
+                "_save": "Save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        registration.refresh_from_db()
+        self.assertEqual(registration.ticket, current_ticket)
+        mock_sync.assert_not_called()
+
+    @patch("event.services.ticket_mail.send_ticket_email")
+    @patch("event.services.registration_sheet_sync.schedule_registration_sync")
+    def test_admin_change_send_ticket_button_saves_ticket_and_sends_email(self, mock_sync, mock_send):
+        event = make_event()
+        current_ticket = make_ticket(event, name="General")
+        new_ticket = make_ticket(event, name="VIP")
+        member = make_member(email="ticket-send-button@example.com")
+        registration = make_registration(member, event, current_ticket)
+
+        response = self.client.post(
+            f"/admin/event/eventregistration/{registration.pk}/change/",
+            {
+                "ticket": str(new_ticket.pk),
+                "_send_ticket_email": "1",
+            },
+        )
+
+        self.assertRedirects(response, f"/admin/event/eventregistration/{registration.pk}/change/")
+        registration.refresh_from_db()
+        self.assertEqual(registration.ticket, new_ticket)
+        mock_sync.assert_called_once_with(event)
+        mock_send.assert_called_once()
+        self.assertEqual(mock_send.call_args.args[0].pk, registration.pk)
+        self.assertEqual(mock_send.call_args.args[0].ticket_id, new_ticket.pk)
 
     def test_has_delete_permission(self):
         from django.test import RequestFactory

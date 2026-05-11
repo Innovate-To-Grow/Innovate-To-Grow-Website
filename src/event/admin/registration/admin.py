@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib import admin
+from django.shortcuts import redirect
 from django.urls import path, reverse
 
 from core.admin import BaseModelAdmin
@@ -116,13 +117,13 @@ class EventRegistrationAdmin(
         except Exception:
             logger.exception("Sheet sync failed for registration %s", obj.pk)
 
-        if form.cleaned_data.get("send_ticket_email"):
-            try:
-                from event.services.ticket_mail import send_ticket_email
+        if form.cleaned_data.get("send_ticket_email") or "_send_ticket_email" in request.POST:
+            self._send_ticket_email_registration(request, obj)
 
-                send_ticket_email(obj)
-            except Exception:
-                logger.exception("Failed to send ticket email for registration %s", obj.pk)
+    def response_change(self, request, obj):
+        if "_send_ticket_email" in request.POST:
+            return redirect(request.path)
+        return super().response_change(request, obj)
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
@@ -130,7 +131,7 @@ class EventRegistrationAdmin(
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_change_permission(self, request, obj=None):
-        return False
+        return super().has_change_permission(request, obj)
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):

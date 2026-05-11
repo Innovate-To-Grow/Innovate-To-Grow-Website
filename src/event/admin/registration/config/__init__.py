@@ -1,7 +1,6 @@
 CHANGE_READONLY_FIELDS = (
     "member",
     "event",
-    "ticket",
     "ticket_code",
     "attendee_first_name",
     "attendee_last_name",
@@ -11,6 +10,7 @@ CHANGE_READONLY_FIELDS = (
     "phone_verified",
     "attendee_organization",
     "question_answers",
+    "send_ticket_email_action",
     "ticket_email_sent_at",
     "ticket_email_error",
     "created_at",
@@ -30,8 +30,8 @@ CHANGE_FIELDSETS = (
         "Attendee",
         {
             "description": (
-                "Editable. Changes here only update this event registration; "
-                "they do not update the member account profile or contact records."
+                "Read-only attendee snapshot for this event registration. "
+                "Changing the ticket below does not update the member account profile or contact records."
             ),
             "fields": (
                 "attendee_first_name",
@@ -58,15 +58,15 @@ CHANGE_FIELDSETS = (
         "Questions & Answers",
         {
             "classes": ("collapse",),
-            "description": "Editable JSON list of registration question answers.",
+            "description": "Read-only JSON list of registration question answers.",
             "fields": ("question_answers",),
         },
     ),
     (
         "Options",
         {
-            "description": ("Optional action. Check this only if you want to send a new ticket " "email after saving."),
-            "fields": ("send_ticket_email",),
+            "description": "Click to save the current ticket selection and send a new confirmation email immediately.",
+            "fields": ("send_ticket_email_action",),
         },
     ),
     (
