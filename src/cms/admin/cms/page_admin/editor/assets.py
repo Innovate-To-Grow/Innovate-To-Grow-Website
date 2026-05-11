@@ -40,14 +40,8 @@ def _asset_matches_type(asset, asset_type):
     return True
 
 
-def _validation_error_payload(exc):
-    editor_api.logger.info("Asset upload failed validation: %s", exc)
-    if hasattr(exc, "message_dict"):
-        errors = exc.message_dict
-        messages = [message for field_errors in errors.values() for message in field_errors]
-        return {"detail": messages[0] if messages else "Validation error.", "errors": errors}
-    messages = getattr(exc, "messages", None) or [str(exc)]
-    return {"detail": messages[0], "errors": messages}
+def _validation_error_payload(detail: str, errors: dict | list):
+    return {"detail": detail, "errors": errors}
 
 
 def serialize_asset(asset):
@@ -106,7 +100,15 @@ def assets_upload_response(request):
     try:
         asset.full_clean()
     except ValidationError as exc:
-        return JsonResponse(_validation_error_payload(exc), status=400)
+        if hasattr(exc, "message_dict"):
+            errors = exc.message_dict
+            msgs = [m for field_errors in errors.values() for m in field_errors]
+        else:
+            msgs = getattr(exc, "messages", None) or [str(exc)]
+            errors = msgs
+        detail = msgs[0] if msgs else "Validation error."
+        editor_api.logger.info("Asset upload failed validation: %s", detail)
+        return JsonResponse(_validation_error_payload(detail, errors), status=400)
     except Exception:
         editor_api.logger.exception("Unexpected error during asset validation")
         return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
