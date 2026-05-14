@@ -34,6 +34,22 @@ def attendee_payload(registration: EventRegistration) -> dict:
     }
 
 
+def registration_status_payload(registration: EventRegistration, record: CheckInRecord | None = None) -> dict:
+    member = getattr(registration, "member", None)
+    payload = attendee_payload(registration)
+    payload.update(
+        {
+            "member_organization": getattr(member, "organization", "") or "",
+            "member_title": getattr(member, "title", "") or "",
+            "checked_in": record is not None,
+            "checked_in_at": record.created_at.isoformat() if record else "",
+            "checked_in_station": record.check_in.name if record else "",
+            "check_in_record_id": str(record.pk) if record else "",
+        }
+    )
+    return payload
+
+
 def check_in_payload(check_in: CheckIn) -> dict:
     return {
         "id": str(check_in.pk),

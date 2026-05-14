@@ -4,8 +4,8 @@
 {% block extrahead %}
 {{ block.super }}
 {% if original and checkin_summary_config %}
-<link rel="stylesheet" href="{% static 'event/css/checkin_change_summary.css' %}">
-<script src="{% static 'event/js/checkin_change_summary.js' %}" defer></script>
+<link rel="stylesheet" href="{% static 'event/css/checkin_change_summary.css' %}?v=20260514-lookup-actions">
+<script src="{% static 'event/js/checkin_change_summary.js' %}?v=20260514-lookup-actions" defer></script>
 {% endif %}
 {% endblock %}
 
@@ -27,6 +27,9 @@
       </div>
       <a class="i2g-checkin-summary__console-link" href="{{ checkin_summary_config.consoleUrl }}" target="_blank">
         Open Check-in Console
+      </a>
+      <a class="i2g-checkin-summary__export-link" href="{{ checkin_summary_config.exportUrl }}">
+        Export Excel
       </a>
     </div>
   </div>
@@ -52,6 +55,34 @@
     </div>
     <div data-summary-recent-list class="i2g-checkin-summary__recent-list">
       <div class="i2g-checkin-summary__empty">Loading recent scans...</div>
+    </div>
+  </div>
+
+  <div class="i2g-checkin-summary__lookup">
+    <div class="i2g-checkin-summary__lookup-header">
+      <strong>Registration lookup</strong>
+      <span data-summary-lookup-count>Loading...</span>
+    </div>
+    <div class="i2g-checkin-summary__lookup-controls">
+      <label class="i2g-checkin-summary__lookup-search">
+        <span>Search</span>
+        <input
+          type="search"
+          data-summary-lookup-search
+          aria-label="Search registrations"
+          placeholder="Name, email, organization, title, code"
+          autocomplete="off"
+        >
+      </label>
+      <label class="i2g-checkin-summary__ticket-filter">
+        <span>Ticket Type</span>
+        <select data-summary-ticket-filter aria-label="Filter by ticket type">
+          <option value="">All ticket types</option>
+        </select>
+      </label>
+    </div>
+    <div data-summary-lookup-list class="i2g-checkin-summary__lookup-list">
+      <div class="i2g-checkin-summary__empty">Loading registrations...</div>
     </div>
   </div>
 </div>

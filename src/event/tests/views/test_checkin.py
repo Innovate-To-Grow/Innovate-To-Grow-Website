@@ -106,6 +106,9 @@ class CheckInApiTest(TestCase):
         self.assertEqual(response.data["existing_check_in"]["id"], str(self.other_check_in.pk))
 
     def test_status_returns_event_and_station_counts(self):
+        self.member.organization = "Member DB Org"
+        self.member.title = "Member DB Title"
+        self.member.save(update_fields=["organization", "title", "updated_at"])
         second_member = make_member(email="remaining@example.com", first_name="Grace", last_name="Hopper")
         make_registration(second_member, self.event, self.ticket)
         CheckInRecord.objects.create(check_in=self.other_check_in, registration=self.registration)
@@ -119,6 +122,13 @@ class CheckInApiTest(TestCase):
         self.assertEqual(response.data["check_in"]["id"], str(self.check_in.pk))
         self.assertEqual(len(response.data["not_checked_in"]), 1)
         self.assertEqual(response.data["not_checked_in"][0]["email"], "remaining@example.com")
+        registrations_by_email = {entry["email"]: entry for entry in response.data["registrations"]}
+        self.assertEqual(len(registrations_by_email), 2)
+        self.assertTrue(registrations_by_email["checkin-attendee@example.com"]["checked_in"])
+        self.assertEqual(registrations_by_email["checkin-attendee@example.com"]["checked_in_station"], "Side Entrance")
+        self.assertEqual(registrations_by_email["checkin-attendee@example.com"]["member_organization"], "Member DB Org")
+        self.assertEqual(registrations_by_email["checkin-attendee@example.com"]["member_title"], "Member DB Title")
+        self.assertFalse(registrations_by_email["remaining@example.com"]["checked_in"])
         self.assertEqual(response.data["recent_scans"], [])
 
     def test_status_includes_recent_station_scans(self):
@@ -130,6 +140,8 @@ class CheckInApiTest(TestCase):
         self.assertEqual(response.data["station_scanned"], 1)
         self.assertEqual(response.data["recent_scans"][0]["id"], str(record.pk))
         self.assertEqual(response.data["recent_scans"][0]["attendee"]["ticket_code"], self.registration.ticket_code)
+        self.assertTrue(response.data["registrations"][0]["checked_in"])
+        self.assertEqual(response.data["registrations"][0]["check_in_record_id"], str(record.pk))
 
     def test_undo_removes_current_station_record(self):
         record = CheckInRecord.objects.create(check_in=self.check_in, registration=self.registration)
