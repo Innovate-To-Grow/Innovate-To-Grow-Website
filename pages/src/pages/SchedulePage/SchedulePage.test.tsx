@@ -29,6 +29,24 @@ function slot(order: number, teamNumber: string): ScheduleSlot {
   };
 }
 
+function breakSlot(order: number, trackId: string): ScheduleSlot {
+  return {
+    id: `break-${trackId}-${order}`,
+    order,
+    is_break: true,
+    display_text: 'Break',
+    team_number: '',
+    team_name: '',
+    project_title: '',
+    organization: '',
+    industry: '',
+    abstract: '',
+    student_names: '',
+    tooltip: '',
+    project_id: null,
+  };
+}
+
 function schedulePayload(): EventSchedulePayload {
   return {
     event: {
@@ -56,7 +74,7 @@ function schedulePayload(): EventSchedulePayload {
         start_time: '1:00',
         slot_minutes: 30,
         accent_color: '#002856',
-        max_order: 3,
+        max_order: 4,
         tracks: [
           {
             id: 'track-1',
@@ -67,7 +85,7 @@ function schedulePayload(): EventSchedulePayload {
             topic: 'Software',
             winner: '',
             display_order: 1,
-            slots: [slot(1, 'CSE-101'), slot(3, 'CSE-103')],
+            slots: [slot(1, 'CSE-101'), breakSlot(2, 'track-1'), slot(3, 'CSE-103')],
           },
           {
             id: 'track-2',
@@ -78,7 +96,7 @@ function schedulePayload(): EventSchedulePayload {
             topic: 'Systems',
             winner: '',
             display_order: 2,
-            slots: [slot(1, 'CSE-201')],
+            slots: [slot(1, 'CSE-201'), breakSlot(2, 'track-2')],
           },
         ],
       },
@@ -95,9 +113,14 @@ function schedulePayload(): EventSchedulePayload {
 describe('SchedulePage', () => {
   beforeEach(() => {
     useCurrentEventScheduleMock.mockReset();
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1024,
+    });
   });
 
-  it('renders a full missing presentation row as Break while preserving partial missing cells as TBD', () => {
+  it('renders full missing presentation rows as TBD while leaving partial missing cells blank', () => {
     useCurrentEventScheduleMock.mockReturnValue({
       data: schedulePayload(),
       loading: false,
@@ -110,7 +133,41 @@ describe('SchedulePage', () => {
       </MemoryRouter>,
     );
 
+    const rows = container.querySelectorAll('tbody tr');
+
     expect(container.querySelectorAll('.schedule-presentation-break')).toHaveLength(2);
-    expect(container.querySelectorAll('.schedule-presentation-empty')).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('CSE-101');
+    expect(rows[0]).toHaveTextContent('CSE-201');
+    expect(rows[1]).toHaveTextContent('Break');
+    expect(rows[2]).toHaveTextContent('CSE-103');
+    expect(rows[2]).not.toHaveTextContent('TBD');
+    expect(rows[3]?.querySelectorAll('.schedule-presentation-empty')).toHaveLength(2);
+    expect(rows[3]).toHaveTextContent('TBD');
+  });
+
+  it('uses the same missing slot rendering rules in the mobile schedule cards', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 500,
+    });
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    const {container} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    const cards = container.querySelectorAll('.schedule-mobile-card');
+
+    expect(container.querySelectorAll('.schedule-mobile-break')).toHaveLength(2);
+    expect(cards[0]).toHaveTextContent('CSE-103');
+    expect(cards[1]).not.toHaveTextContent('2:00TBD');
+    expect(container.querySelectorAll('.schedule-mobile-empty')).toHaveLength(2);
   });
 });
