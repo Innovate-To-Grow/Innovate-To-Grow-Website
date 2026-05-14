@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from event.models import CheckIn, CheckInRecord, EventRegistration
 
-from .payloads import attendee_payload, check_in_payload, event_counts, record_payload
+from .payloads import attendee_payload, check_in_payload, event_counts, record_payload, registration_status_payload
 
 
 class CheckInStatusView(APIView):
@@ -25,14 +25,21 @@ class CheckInStatusView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        checked_in_ids = set(
-            CheckInRecord.objects.filter(registration__event=check_in.event).values_list("registration_id", flat=True)
+        check_in_records = (
+            CheckInRecord.objects.filter(registration__event=check_in.event)
+            .select_related("check_in")
+            .order_by("-created_at")
         )
+        record_by_registration = {record.registration_id: record for record in check_in_records}
         all_registrations = (
             EventRegistration.objects.filter(event=check_in.event)
-            .select_related("ticket")
+            .select_related("ticket", "member")
             .order_by("attendee_first_name", "attendee_last_name")
         )
+        registration_statuses = [
+            registration_status_payload(registration, record_by_registration.get(registration.pk))
+            for registration in all_registrations
+        ]
         recent_scans = (
             CheckInRecord.objects.filter(check_in=check_in)
             .select_related(
@@ -54,8 +61,9 @@ class CheckInStatusView(APIView):
                 "not_checked_in": [
                     attendee_payload(registration)
                     for registration in all_registrations
-                    if registration.pk not in checked_in_ids
+                    if registration.pk not in record_by_registration
                 ],
+                "registrations": registration_statuses,
                 "recent_scans": [record_payload(record) for record in recent_scans],
             }
         )

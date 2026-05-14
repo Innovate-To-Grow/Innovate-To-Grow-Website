@@ -18,6 +18,9 @@
         queued: false,
         timer: null,
         refreshEndTimer: null,
+        registrations: [],
+        lookupFilter: "",
+        ticketTypeFilter: "",
     };
 
     const elements = {
@@ -27,6 +30,10 @@
         sync: root.querySelector("[data-summary-sync]"),
         syncLabel: root.querySelector("[data-summary-sync-label]"),
         recentList: root.querySelector("[data-summary-recent-list]"),
+        lookupSearch: root.querySelector("[data-summary-lookup-search]"),
+        ticketFilter: root.querySelector("[data-summary-ticket-filter]"),
+        lookupList: root.querySelector("[data-summary-lookup-list]"),
+        lookupCount: root.querySelector("[data-summary-lookup-count]"),
     };
 
     function node(tag, className, text) {
@@ -58,6 +65,21 @@
 
     function formatClock(date) {
         return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    }
+
+    function checkedInLine(attendee) {
+        if (!attendee || !attendee.checked_in) return "";
+        return [attendee.checked_in_station, formatTime(attendee.checked_in_at)].filter(Boolean).join(" - ");
+    }
+
+    function memberProfileLine(attendee) {
+        if (!attendee) return "";
+        return [
+            attendee.member_organization ? `Org: ${attendee.member_organization}` : "",
+            attendee.member_title ? `Title: ${attendee.member_title}` : "",
+        ]
+            .filter(Boolean)
+            .join(" - ");
     }
 
     function setSyncStatus(kind, label) {
@@ -112,6 +134,105 @@
         });
     }
 
+    function lookupMatches(attendee, term) {
+        if (!term) return true;
+        return [
+            attendee.name,
+            attendee.email,
+            attendee.organization,
+            attendee.member_organization,
+            attendee.member_title,
+            attendee.ticket_type,
+            attendee.ticket_code,
+            attendee.checked_in_station,
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(term);
+    }
+
+    function ticketTypeMatches(attendee) {
+        return !state.ticketTypeFilter || attendee.ticket_type === state.ticketTypeFilter;
+    }
+
+    function ticketTypes(registrations) {
+        return Array.from(
+            new Set(
+                registrations
+                    .map((attendee) => attendee.ticket_type)
+                    .filter(Boolean)
+            )
+        ).sort((left, right) => left.localeCompare(right));
+    }
+
+    function renderTicketFilter() {
+        if (!elements.ticketFilter) return;
+        const types = ticketTypes(Array.isArray(state.registrations) ? state.registrations : []);
+        const selectedType = types.includes(state.ticketTypeFilter) ? state.ticketTypeFilter : "";
+        state.ticketTypeFilter = selectedType;
+        clear(elements.ticketFilter);
+        elements.ticketFilter.appendChild(node("option", "", "All ticket types"));
+        elements.ticketFilter.firstElementChild.value = "";
+        types.forEach((type) => {
+            const option = node("option", "", type);
+            option.value = type;
+            elements.ticketFilter.appendChild(option);
+        });
+        elements.ticketFilter.value = selectedType;
+    }
+
+    function renderLookup() {
+        const term = state.lookupFilter.trim().toLowerCase();
+        const registrations = Array.isArray(state.registrations) ? state.registrations : [];
+        const matches = registrations.filter((attendee) => lookupMatches(attendee, term) && ticketTypeMatches(attendee));
+        clear(elements.lookupList);
+
+        if (!registrations.length) {
+            elements.lookupCount.textContent = "No registrations";
+            elements.lookupList.appendChild(node("div", "i2g-checkin-summary__empty", "No registrations yet."));
+            return;
+        }
+
+        if (!matches.length) {
+            elements.lookupCount.textContent = "0 matches";
+            elements.lookupList.appendChild(node("div", "i2g-checkin-summary__empty", "No matching registrations."));
+            return;
+        }
+
+        elements.lookupCount.textContent =
+            matches.length === registrations.length
+                ? `${registrations.length} registrations`
+                : `${matches.length} of ${registrations.length} registrations`;
+
+        matches.forEach((attendee) => {
+            const row = node("div", "i2g-checkin-summary__lookup-row");
+            const details = document.createElement("div");
+            const profileLine = memberProfileLine(attendee);
+            details.append(
+                node("strong", "", attendee.name || "Unnamed attendee"),
+                node("span", "", attendeeLine(attendee))
+            );
+            if (profileLine) details.appendChild(node("span", "i2g-checkin-summary__member-profile", profileLine));
+            details.appendChild(node("code", "", attendee.ticket_code || ""));
+
+            const status = document.createElement("div");
+            status.className = "i2g-checkin-summary__lookup-status";
+            status.appendChild(
+                node(
+                    "span",
+                    `i2g-checkin-summary__badge ${attendee.checked_in ? "is-checked" : "is-missing"}`,
+                    attendee.checked_in ? "Checked in" : "Not checked in"
+                )
+            );
+            const statusLine = checkedInLine(attendee);
+            if (statusLine) status.appendChild(node("span", "", statusLine));
+
+            row.append(details, status);
+            elements.lookupList.appendChild(row);
+        });
+    }
+
     async function requestStatus() {
         const response = await fetch(config.statusUrl, {
             credentials: "same-origin",
@@ -147,8 +268,11 @@
         state.promise = (async () => {
             try {
                 const data = await requestStatus();
+                state.registrations = Array.isArray(data.registrations) ? data.registrations : [];
                 updateStats(data);
                 renderRecent(data.recent_scans);
+                renderTicketFilter();
+                renderLookup();
                 state.loaded = true;
                 if (document.hidden) {
                     setSyncStatus("paused", "Paused");
@@ -210,6 +334,18 @@
     }
 
     function init() {
+        if (elements.lookupSearch) {
+            elements.lookupSearch.addEventListener("input", () => {
+                state.lookupFilter = elements.lookupSearch.value || "";
+                renderLookup();
+            });
+        }
+        if (elements.ticketFilter) {
+            elements.ticketFilter.addEventListener("change", () => {
+                state.ticketTypeFilter = elements.ticketFilter.value || "";
+                renderLookup();
+            });
+        }
         loadStatus({ force: true });
         startPolling();
         document.addEventListener("visibilitychange", handleVisibilityChange);

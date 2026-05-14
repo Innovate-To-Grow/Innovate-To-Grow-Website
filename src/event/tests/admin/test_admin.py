@@ -94,11 +94,20 @@ class CheckInAdminTest(TestCase):
         self.assertContains(response, "data-checkin-summary")
         self.assertContains(response, "data-summary-total")
         self.assertContains(response, "data-summary-recent-list")
+        self.assertContains(response, "data-summary-lookup-search")
+        self.assertContains(response, "data-summary-ticket-filter")
+        self.assertContains(response, "data-summary-lookup-list")
+        self.assertContains(response, "Registration lookup")
+        self.assertContains(response, "All ticket types")
+        self.assertContains(response, "Ticket Type")
+        self.assertContains(response, "Name, email, organization, title, code")
         self.assertContains(response, "Loading recent scans")
         self.assertContains(response, "pollIntervalMs")
         self.assertContains(response, f"/event/check-in/{self.check_in.pk}/status/")
         self.assertContains(response, "Open Check-in Console")
+        self.assertContains(response, "Export Excel")
         self.assertContains(response, reverse("admin:event_checkin_scanner", args=[self.check_in.pk]))
+        self.assertContains(response, reverse("admin:event_checkin_export", args=[self.check_in.pk]))
         self.assertNotContains(response, "This station")
         self.assertNotContains(response, "data-summary-station")
         self.assertNotContains(response, "Last 5 at this station")
@@ -116,6 +125,68 @@ class CheckInAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Open Console")
         self.assertNotContains(response, "Scans")
+
+    def test_export_excel_includes_checkin_status_and_member_profile(self):
+        ticket = make_ticket(self.event, name="VIP")
+        member = make_member(
+            email="checkin-export@example.com",
+            first_name="Ada",
+            last_name="Lovelace",
+            organization="Analytical Engines",
+            title="Chief Scientist",
+        )
+        registration = make_registration(
+            member,
+            self.event,
+            ticket,
+            attendee_organization="Registration Org",
+        )
+        CheckInRecord.objects.create(check_in=self.check_in, registration=registration, scanned_by=self.admin_user)
+
+        response = self.client.get(reverse("admin:event_checkin_export", args=[self.check_in.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("checkin_admin-check-in-event_main-entrance_", response["Content-Disposition"])
+        workbook = load_workbook(BytesIO(response.content), read_only=True)
+        rows = list(workbook.active.iter_rows(values_only=True))
+        self.assertEqual(
+            rows[0],
+            (
+                "Event",
+                "Check-in",
+                "Ticket Type",
+                "Ticket Code",
+                "Attendee Name",
+                "Attendee Email",
+                "Attendee Organization",
+                "Member Title",
+                "Member Organization",
+                "Checked In",
+                "Check-in Station",
+                "Checked-in At",
+                "Scanned By",
+            ),
+        )
+        self.assertEqual(
+            rows[1][0:11],
+            (
+                "Admin Check-in Event",
+                "Main Entrance",
+                "VIP",
+                registration.ticket_code,
+                "Ada Lovelace",
+                "checkin-export@example.com",
+                "Registration Org",
+                "Chief Scientist",
+                "Analytical Engines",
+                "Yes",
+                "Main Entrance",
+            ),
+        )
 
     def test_change_page_live_summary_hides_station_count_when_scans_exist(self):
         ticket = make_ticket(self.event, name="General")

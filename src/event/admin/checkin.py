@@ -1,12 +1,15 @@
 from django.contrib import admin
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.middleware.csrf import get_token
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.text import slugify
 from unfold.decorators import display
 
 from core.admin import BaseModelAdmin, ReadOnlyModelAdmin
+from event.services.checkin_export import build_checkin_export
 
 from ..models import CheckIn, CheckInRecord
 
@@ -56,9 +59,11 @@ class CheckInAdmin(BaseModelAdmin):
         extra_context = extra_context or {}
         if object_id:
             console_url = reverse("admin:event_checkin_scanner", args=[object_id])
+            export_url = reverse("admin:event_checkin_export", args=[object_id])
             extra_context["checkin_summary_config"] = {
                 "statusUrl": f"/event/check-in/{object_id}/status/",
                 "consoleUrl": console_url,
+                "exportUrl": export_url,
                 "pollIntervalMs": 2000,
             }
         return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
@@ -70,6 +75,11 @@ class CheckInAdmin(BaseModelAdmin):
                 "<path:object_id>/scanner/",
                 self.admin_site.admin_view(self.scanner_view),
                 name="event_checkin_scanner",
+            ),
+            path(
+                "<path:object_id>/export/",
+                self.admin_site.admin_view(self.export_view),
+                name="event_checkin_export",
             ),
         ]
         return custom + urls
@@ -100,6 +110,21 @@ class CheckInAdmin(BaseModelAdmin):
         }
         return TemplateResponse(request, "admin/event/checkin_scanner.html", context)
 
+    def export_view(self, request, object_id):
+        try:
+            check_in = CheckIn.objects.select_related("event").get(pk=object_id)
+        except CheckIn.DoesNotExist:
+            raise Http404
+
+        content = build_checkin_export(check_in)
+        filename = _checkin_export_filename(check_in)
+        response = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
 
 @admin.register(CheckInRecord)
 class CheckInRecordAdmin(ReadOnlyModelAdmin):
@@ -114,3 +139,10 @@ class CheckInRecordAdmin(ReadOnlyModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_staff
+
+
+def _checkin_export_filename(check_in):
+    event_slug = slugify(check_in.event.name) or "event"
+    checkin_slug = slugify(check_in.name) or "checkin"
+    stamp = timezone.now().strftime("%Y%m%d_%H%M%S")
+    return f"checkin_{event_slug}_{checkin_slug}_{stamp}.xlsx"
