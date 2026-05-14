@@ -17,7 +17,7 @@ WORKDIR /build
 # release bumps.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential=12.12 \
-        libpq-dev=17.9-0+deb13u1 \
+        libpq-dev=17.10-0+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -39,7 +39,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Runtime libs only. libpq5 is the runtime sibling of libpq-dev used by
 # psycopg2. Version pinned (DL3008); refresh alongside libpq-dev above.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpq5=17.9-0+deb13u1 \
+        libpq5=17.10-0+deb13u1 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home /app --shell /usr/sbin/nologin app
