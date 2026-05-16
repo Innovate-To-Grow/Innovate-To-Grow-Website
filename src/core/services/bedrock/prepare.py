@@ -1,6 +1,6 @@
 from core.models import AWSCredentialConfig
-from core.models.base.system_intelligence import SystemIntelligenceConfig
 from core.services.db_tools import get_tool_definitions
+from system_intelligence.models import SystemIntelligenceConfig
 
 from .clients import get_client
 from .exceptions import BedrockError

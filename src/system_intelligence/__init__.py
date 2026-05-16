@@ -1,0 +1,1 @@
+"""System Intelligence Django app."""

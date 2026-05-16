@@ -15,7 +15,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 
 django_application = get_asgi_application()
 
-from core.admin.system_intelligence.adk_web import (  # noqa: E402
+from system_intelligence.admin.adk_web import (  # noqa: E402
     SystemIntelligenceADKRouter,
     get_protected_system_intelligence_adk_asgi_application,
 )
