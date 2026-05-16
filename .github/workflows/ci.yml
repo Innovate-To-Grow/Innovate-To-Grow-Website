@@ -228,7 +228,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [authn, core, cms, event, projects, mail]
+        app: [authn, core, system_intelligence, cms, event, projects, mail]
     services:
       postgres:
         image: postgres:16

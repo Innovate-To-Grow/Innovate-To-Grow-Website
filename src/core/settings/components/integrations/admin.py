@@ -42,7 +42,7 @@ UNFOLD = {
                 "core.smsserviceconfig",
                 "core.googlecredentialconfig",
                 "core.awscredentialconfig",
-                "core.systemintelligenceconfig",
+                "system_intelligence.systemintelligenceconfig",
             ],
             "items": [
                 {"title": "Email Config", "link": "/admin/core/emailserviceconfig/"},
@@ -50,7 +50,10 @@ UNFOLD = {
                 {"title": "SMS Config", "link": "/admin/core/smsserviceconfig/"},
                 {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
                 {"title": "AWS Credentials", "link": "/admin/core/awscredentialconfig/"},
-                {"title": "System Intelligence Config", "link": "/admin/core/systemintelligenceconfig/"},
+                {
+                    "title": "System Intelligence Config",
+                    "link": "/admin/system_intelligence/systemintelligenceconfig/",
+                },
             ],
         },
         {
@@ -135,7 +138,7 @@ UNFOLD = {
                 "title": "Site Settings",
                 "items": [
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
-                    {"title": "System Intelligence", "link": "/admin/core/system-intelligence/"},
+                    {"title": "System Intelligence", "link": "/admin/system-intelligence/"},
                     {"title": "Service Configs", "link": "/admin/core/emailserviceconfig/"},
                     {"title": "Admin Log", "link": "/admin/admin/logentry/"},
                 ],

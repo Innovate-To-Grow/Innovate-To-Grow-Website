@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Project apps
     "core.apps.CoreConfig",
+    "system_intelligence.apps.SystemIntelligenceConfig",
     "cms.apps.CmsConfig",
     "event.apps.EventConfig",
     "projects.apps.ProjectsConfig",
