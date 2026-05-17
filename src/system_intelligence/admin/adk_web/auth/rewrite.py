@@ -11,15 +11,26 @@ _RUN_BODY_PATHS = frozenset({"/run", "/run_sse"})
 def _rewrite_scope_user_id(scope, adk_user_id: str):
     rewritten = dict(scope)
     path = rewritten.get("path", "")
+    adk_path = _scope_adk_path(rewritten)
     rewritten["path"] = _rewrite_user_path(path, adk_user_id)
     if "raw_path" in rewritten:
         rewritten["raw_path"] = _rewrite_user_path(
             rewritten["raw_path"].decode("latin1"),
             quote(adk_user_id, safe=""),
         ).encode("latin1")
-    if rewritten.get("path") == "/run_live":
+    if adk_path == "/run_live":
         rewritten["query_string"] = _rewrite_query_user_id(rewritten.get("query_string", b""), adk_user_id)
     return rewritten
+
+
+def _scope_adk_path(scope) -> str:
+    path = scope.get("path", "")
+    root_path = scope.get("root_path") or ""
+    if root_path and path == root_path:
+        return "/"
+    if root_path and path.startswith(root_path + "/"):
+        return path[len(root_path) :]
+    return path
 
 
 def _rewrite_user_path(path: str, adk_user_id: str) -> str:

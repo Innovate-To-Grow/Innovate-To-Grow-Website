@@ -19,6 +19,22 @@ class AdminADKWebAuthMiddlewareTests(SimpleTestCase):
         self.assertEqual(messages[0]["headers"][0][0], b"location")
         self.assertIn(b"/admin/login/?next=/admin/system-intelligence/adk/dev-ui/", messages[0]["headers"][0][1])
 
+    def test_prefixed_browser_shell_redirects_anonymous_user_to_admin_login(self):
+        app = AdminADKWebAuthMiddleware(RecorderApp(), user_loader=_no_user)
+        messages = asyncio.run(
+            invoke_http(
+                app,
+                {
+                    "path": "/admin/system-intelligence/adk/dev-ui/",
+                    "root_path": "/admin/system-intelligence/adk",
+                    "adk_original_path": "/admin/system-intelligence/adk/dev-ui/",
+                },
+            )
+        )
+
+        self.assertEqual(messages[0]["status"], 302)
+        self.assertIn(b"/admin/login/?next=/admin/system-intelligence/adk/dev-ui/", messages[0]["headers"][0][1])
+
     def test_api_rejects_unauthorized_user(self):
         app = AdminADKWebAuthMiddleware(RecorderApp(), user_loader=_no_user)
         messages = asyncio.run(invoke_http(app, {"path": "/list-apps"}))
@@ -60,6 +76,27 @@ class AdminADKWebAuthMiddlewareTests(SimpleTestCase):
         self.assertEqual(rewritten_body["user_id"], "admin-42")
         self.assertEqual(rewritten_body["userId"], "admin-42")
         self.assertIn((b"content-length", str(len(recorder.body)).encode()), recorder.scope["headers"])
+
+    def test_staff_user_rewrites_prefixed_run_sse_body_user_id(self):
+        recorder = RecorderApp()
+        app = AdminADKWebAuthMiddleware(recorder, user_loader=_staff_user)
+        body = json.dumps({"userId": "user", "user_id": "user"}).encode()
+        messages = asyncio.run(
+            invoke_http(
+                app,
+                {
+                    "path": "/admin/system-intelligence/adk/run_sse",
+                    "root_path": "/admin/system-intelligence/adk",
+                    "method": "POST",
+                },
+                body=body,
+            )
+        )
+
+        self.assertEqual(messages[0]["status"], 204)
+        rewritten_body = json.loads(recorder.body.decode())
+        self.assertEqual(rewritten_body["user_id"], "admin-42")
+        self.assertEqual(rewritten_body["userId"], "admin-42")
 
     def test_staff_user_rewrites_run_live_query_user_id(self):
         recorder = RecorderApp()

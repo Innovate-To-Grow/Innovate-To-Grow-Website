@@ -8,7 +8,6 @@ class SystemIntelligenceADKRouter:
         self.django_app = django_app
         self.adk_app = adk_app
         self.prefix = prefix.rstrip("/")
-        self.prefix_bytes = self.prefix.encode()
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "lifespan":
@@ -18,10 +17,7 @@ class SystemIntelligenceADKRouter:
         path = scope.get("path", "")
         if scope["type"] in {"http", "websocket"} and _path_has_prefix(path, self.prefix):
             adk_scope = dict(scope)
-            adk_scope["root_path"] = scope.get("root_path") or ""
-            adk_scope["path"] = _strip_path_prefix(path, self.prefix)
-            if "raw_path" in scope:
-                adk_scope["raw_path"] = _strip_raw_path_prefix(scope["raw_path"], self.prefix_bytes)
+            adk_scope["root_path"] = self.prefix
             adk_scope["adk_original_path"] = path
             await self.adk_app(adk_scope, receive, send)
             return
@@ -35,19 +31,6 @@ class SystemIntelligenceADKRouter:
 
 def _path_has_prefix(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(prefix + "/")
-
-
-def _strip_path_prefix(path: str, prefix: str) -> str:
-    stripped = path.removeprefix(prefix)
-    return stripped or "/"
-
-
-def _strip_raw_path_prefix(raw_path: bytes, prefix: bytes) -> bytes:
-    if raw_path == prefix:
-        return b"/"
-    if raw_path.startswith(prefix + b"/"):
-        return raw_path[len(prefix) :]
-    return raw_path
 
 
 async def _complete_lifespan(receive, send) -> None:

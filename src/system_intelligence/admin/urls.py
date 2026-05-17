@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from .actions import action_approve_view, action_full_preview_view, action_preview_view, action_reject_view
+from .adk_web.bridge import adk_http_view
 from .commands import chat_command_view
 from .context import chat_list_view
 from .conversations import chat_delete_view, chat_rename_view, chat_view, conversations_fragment, new_conversation_view
@@ -13,6 +14,9 @@ def get_system_intelligence_urls():
     """Return URL patterns for the System Intelligence admin views."""
     return [
         path("system-intelligence/", admin.site.admin_view(chat_list_view), name="system_intelligence"),
+        path("system-intelligence/adk", adk_http_view, {"adk_path": ""}, name="system_intelligence_adk"),
+        path("system-intelligence/adk/", adk_http_view, {"adk_path": ""}, name="system_intelligence_adk_root"),
+        path("system-intelligence/adk/<path:adk_path>", adk_http_view, name="system_intelligence_adk_path"),
         path(
             "system-intelligence/conversations/",
             admin.site.admin_view(conversations_fragment),

@@ -327,7 +327,7 @@ export const SchedulePage = () => {
                             return (
                               <div key={`${track.id}-${order}-mobile`} className="schedule-mobile-slot">
                                 <div className="schedule-mobile-time">{time}</div>
-                                <div className={`schedule-mobile-slot-content ${slot?.is_break ? 'is-break' : ''}`}>
+                                <div className={`schedule-mobile-slot-content ${slot?.is_break || isFullyEmpty ? 'is-break' : ''}`}>
                                   {slot ? (
                                     slot.is_break ? (
                                       <span className="schedule-mobile-break">Break</span>
@@ -346,7 +346,7 @@ export const SchedulePage = () => {
                                       </>
                                     )
                                   ) : isFullyEmpty ? (
-                                    <span className="schedule-mobile-empty">TBD</span>
+                                    <span className="schedule-mobile-break">Break</span>
                                   ) : null}
                                 </div>
                               </div>
@@ -411,7 +411,9 @@ export const SchedulePage = () => {
                                 return (
                                   <td
                                     key={`${track.id}-${order}`}
-                                    className={`schedule-presentation-slot ${slot?.is_break ? 'schedule-presentation-slot-break' : ''}`}
+                                    className={`schedule-presentation-slot ${
+                                      slot?.is_break || isFullyEmpty ? 'schedule-presentation-slot-break' : ''
+                                    }`}
                                     style={columnStyle(section.code, columnIndex)}
                                     title={slot?.tooltip || ''}
                                   >
@@ -433,7 +435,7 @@ export const SchedulePage = () => {
                                         </>
                                       )
                                     ) : isFullyEmpty ? (
-                                      <span className="schedule-presentation-empty">TBD</span>
+                                      <span className="schedule-presentation-break">Break</span>
                                     ) : null}
                                   </td>
                                 );

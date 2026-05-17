@@ -120,7 +120,7 @@ describe('SchedulePage', () => {
     });
   });
 
-  it('renders full missing presentation rows as TBD while leaving partial missing cells blank', () => {
+  it('renders full missing presentation rows as Break while leaving partial missing cells blank', () => {
     useCurrentEventScheduleMock.mockReturnValue({
       data: schedulePayload(),
       loading: false,
@@ -135,14 +135,15 @@ describe('SchedulePage', () => {
 
     const rows = container.querySelectorAll('tbody tr');
 
-    expect(container.querySelectorAll('.schedule-presentation-break')).toHaveLength(2);
+    expect(container.querySelectorAll('.schedule-presentation-break')).toHaveLength(4);
     expect(rows[0]).toHaveTextContent('CSE-101');
     expect(rows[0]).toHaveTextContent('CSE-201');
     expect(rows[1]).toHaveTextContent('Break');
     expect(rows[2]).toHaveTextContent('CSE-103');
     expect(rows[2]).not.toHaveTextContent('TBD');
-    expect(rows[3]?.querySelectorAll('.schedule-presentation-empty')).toHaveLength(2);
-    expect(rows[3]).toHaveTextContent('TBD');
+    expect(rows[3]?.querySelectorAll('.schedule-presentation-break')).toHaveLength(2);
+    expect(rows[3]).toHaveTextContent('Break');
+    expect(rows[3]).not.toHaveTextContent('TBD');
   });
 
   it('uses the same missing slot rendering rules in the mobile schedule cards', () => {
@@ -165,9 +166,10 @@ describe('SchedulePage', () => {
 
     const cards = container.querySelectorAll('.schedule-mobile-card');
 
-    expect(container.querySelectorAll('.schedule-mobile-break')).toHaveLength(2);
+    expect(container.querySelectorAll('.schedule-mobile-break')).toHaveLength(4);
     expect(cards[0]).toHaveTextContent('CSE-103');
     expect(cards[1]).not.toHaveTextContent('2:00TBD');
-    expect(container.querySelectorAll('.schedule-mobile-empty')).toHaveLength(2);
+    expect(cards[0]).toHaveTextContent('2:30Break');
+    expect(cards[1]).toHaveTextContent('2:30Break');
   });
 });
