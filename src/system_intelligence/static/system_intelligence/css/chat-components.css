@@ -1,5 +1,6 @@
 .si-chat-debug-link,
 .si-chat-new,
+.si-sidebar-toggle,
 .si-chat-toolbar button,
 .si-chat-composer button,
 .si-action-buttons a,
@@ -14,6 +15,15 @@
   line-height: 1;
   padding: 9px 11px;
   text-decoration: none;
+}
+
+.si-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
 }
 
 .si-chat-new {

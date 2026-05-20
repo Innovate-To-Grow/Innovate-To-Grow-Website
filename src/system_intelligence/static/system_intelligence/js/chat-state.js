@@ -1,11 +1,26 @@
 (function () {
   const config = JSON.parse(document.getElementById("si-chat-config").textContent);
+  const sidebarStorageKey = "system_intelligence_sidebar_collapsed";
+  const getStoredSidebarState = function () {
+    try {
+      return window.localStorage.getItem(sidebarStorageKey) === "true";
+    } catch {
+      return false;
+    }
+  };
   const app = {
     config,
     urls: config.urls,
     placeholder: config.uuidPlaceholder,
-    state: { conversations: [], currentId: null, mode: "normal", streaming: false },
+    state: {
+      conversations: [],
+      currentId: null,
+      mode: "normal",
+      sidebarCollapsed: getStoredSidebarState(),
+      streaming: false,
+    },
     els: {
+      shell: document.querySelector("[data-si-root]") || document.getElementById("si-root"),
       list: document.querySelector("[data-si-conversations]"),
       messages: document.querySelector("[data-si-messages]"),
       title: document.querySelector("[data-si-title]"),
@@ -15,6 +30,8 @@
       input: document.querySelector("[data-si-input]"),
       plan: document.querySelector("[data-si-plan-toggle]"),
       send: document.querySelector("[data-si-send]"),
+      sidebarToggle: document.querySelector("[data-si-sidebar-toggle]"),
+      sidebarToggleIcon: document.querySelector("[data-si-sidebar-toggle-icon]"),
     },
   };
 
@@ -44,6 +61,25 @@
   app.showAlert = function (message) {
     app.els.alert.textContent = message;
     app.els.alert.hidden = !message;
+  };
+
+  app.setSidebarCollapsed = function (collapsed) {
+    const label = collapsed ? "Expand conversations" : "Collapse conversations";
+    app.state.sidebarCollapsed = collapsed;
+    app.els.shell.classList.toggle("is-sidebar-collapsed", collapsed);
+    app.els.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    app.els.sidebarToggle.setAttribute("aria-label", label);
+    app.els.sidebarToggle.title = label;
+    app.els.sidebarToggleIcon.textContent = collapsed ? ">" : "<";
+    try {
+      window.localStorage.setItem(sidebarStorageKey, String(collapsed));
+    } catch {
+      return;
+    }
+  };
+
+  app.toggleSidebar = function () {
+    app.setSidebarCollapsed(!app.state.sidebarCollapsed);
   };
 
   app.setMode = function (mode) {

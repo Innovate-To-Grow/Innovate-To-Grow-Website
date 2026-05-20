@@ -19,14 +19,29 @@
 <div id="si-root" class="si-chat-shell">
   <aside class="si-chat-sidebar" aria-label="System Intelligence conversations">
     <div class="si-chat-sidebar-header">
-      <div>
+      <div class="si-chat-sidebar-title">
         <h1>System Intelligence</h1>
         <p>Admin assistant</p>
       </div>
-      <a class="si-chat-debug-link" href="{{ chat_config.urls.debug }}">ADK Debug</a>
+      <div class="si-chat-sidebar-actions">
+        <button
+          type="button"
+          class="si-sidebar-toggle"
+          data-si-sidebar-toggle
+          aria-label="Collapse conversations"
+          aria-expanded="true"
+          aria-controls="si-chat-sidebar-body"
+          title="Collapse conversations"
+        >
+          <span data-si-sidebar-toggle-icon aria-hidden="true">&lt;</span>
+        </button>
+        <a class="si-chat-debug-link" href="{{ chat_config.urls.debug }}">ADK Debug</a>
+      </div>
     </div>
-    <button type="button" class="si-chat-new" data-si-new-chat>New Chat</button>
-    <div class="si-chat-list" data-si-conversations aria-live="polite"></div>
+    <div class="si-chat-sidebar-body" id="si-chat-sidebar-body">
+      <button type="button" class="si-chat-new" data-si-new-chat>New Chat</button>
+      <div class="si-chat-list" data-si-conversations aria-live="polite"></div>
+    </div>
   </aside>
 
   <main class="si-chat-main" aria-label="System Intelligence chat">

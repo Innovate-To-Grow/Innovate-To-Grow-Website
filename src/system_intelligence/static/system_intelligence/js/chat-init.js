@@ -18,6 +18,8 @@
   });
 
   app.els.input.addEventListener("input", app.resizeInput);
+  app.setSidebarCollapsed(app.state.sidebarCollapsed);
+  app.els.sidebarToggle.addEventListener("click", app.toggleSidebar);
   document.querySelector("[data-si-new-chat]").addEventListener("click", app.createConversation);
   document.querySelector("[data-si-rename]").addEventListener("click", () => {
     const conversation = app.state.conversations.find((item) => item.id === app.state.currentId);
