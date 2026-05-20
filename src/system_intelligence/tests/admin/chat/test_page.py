@@ -11,6 +11,7 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="si-root"')
+        self.assertContains(response, "Conversations")
         self.assertContains(response, "Message System Intelligence")
         self.assertContains(response, "ADK Debug")
         self.assertContains(response, "data-si-sidebar-toggle")
@@ -18,6 +19,7 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(response, 'id="si-chat-sidebar-body"')
         self.assertContains(response, reverse("admin:system_intelligence_debug"))
         self.assertContains(response, "system_intelligence/css/chat-layout.css")
+        self.assertContains(response, "system_intelligence/css/chat-sidebar.css")
         self.assertContains(response, "system_intelligence/js/chat-state.js")
         self.assertNotContains(response, 'title="System Intelligence ADK Web"')
         self.assertNotContains(response, 'src="/admin/system-intelligence/adk/dev-ui/"')

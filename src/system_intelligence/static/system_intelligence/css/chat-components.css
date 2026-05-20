@@ -1,6 +1,4 @@
 .si-chat-debug-link,
-.si-chat-new,
-.si-sidebar-toggle,
 .si-chat-toolbar button,
 .si-chat-composer button,
 .si-action-buttons a,
@@ -17,27 +15,14 @@
   text-decoration: none;
 }
 
-.si-sidebar-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-}
-
-.si-chat-new {
-  margin: 12px 16px;
-  width: calc(100% - 32px);
-}
-
 .si-conversation {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
   border-radius: 8px;
-  padding: 7px 8px;
+  min-height: 36px;
+  padding: 6px 8px;
 }
 
 .si-conversation.is-active {
@@ -56,14 +41,34 @@
   color: var(--md-sys-color-on-surface, #202124);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.25;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.si-conversation-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.si-conversation:focus-within .si-conversation-actions,
+.si-conversation:hover .si-conversation-actions,
+.si-conversation.is-active .si-conversation-actions {
+  opacity: 1;
+}
+
 .si-conversation-action {
+  border-radius: 6px;
   color: var(--md-sys-color-on-surface-variant, #5f6368);
   font-size: 11px;
+  padding: 4px 5px;
+}
+
+.si-conversation-action-danger {
+  color: var(--md-sys-color-error, #ba1a1a);
 }
 
 .si-plan-toggle {

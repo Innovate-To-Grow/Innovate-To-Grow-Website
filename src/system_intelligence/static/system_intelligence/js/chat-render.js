@@ -6,10 +6,20 @@
     app.state.conversations.forEach((conversation) => {
       const row = document.createElement("div");
       row.className = "si-conversation" + (conversation.id === app.state.currentId ? " is-active" : "");
+      const actions = document.createElement("div");
+      actions.className = "si-conversation-actions";
+      const rename = app.button("si-conversation-action", "Edit", () => app.renameConversation(conversation));
+      rename.setAttribute("aria-label", `Rename ${conversation.title}`);
+      rename.title = "Rename";
+      const remove = app.button("si-conversation-action si-conversation-action-danger", "Del", () =>
+        app.deleteConversation(conversation.id),
+      );
+      remove.setAttribute("aria-label", `Delete ${conversation.title}`);
+      remove.title = "Delete";
+      actions.append(rename, remove);
       row.append(
         app.button("si-conversation-title", conversation.title, () => app.selectConversation(conversation.id)),
-        app.button("si-conversation-action", "Rename", () => app.renameConversation(conversation)),
-        app.button("si-conversation-action", "Delete", () => app.deleteConversation(conversation.id)),
+        actions,
       );
       app.els.list.append(row);
     });
