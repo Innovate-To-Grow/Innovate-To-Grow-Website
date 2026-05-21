@@ -12,6 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("core", "0021_remove_chatconversation_context_summary_through_message_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
