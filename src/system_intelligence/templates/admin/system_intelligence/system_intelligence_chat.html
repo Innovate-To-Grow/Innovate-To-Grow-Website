@@ -1,0 +1,81 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-layout.css' %}">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-components.css' %}">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-sidebar.css' %}">
+{{ chat_config|json_script:"si-chat-config" }}
+<script defer src="{% static 'system_intelligence/js/chat-state.js' %}"></script>
+<script defer src="{% static 'system_intelligence/js/chat-render.js' %}"></script>
+<script defer src="{% static 'system_intelligence/js/chat-actions.js' %}"></script>
+<script defer src="{% static 'system_intelligence/js/chat-init.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div id="si-root" class="si-chat-shell" data-si-root>
+  <aside class="si-chat-sidebar" aria-label="System Intelligence conversations">
+    <div class="si-chat-sidebar-header">
+      <button
+        type="button"
+        class="si-sidebar-toggle"
+        data-si-sidebar-toggle
+        aria-label="Collapse conversations"
+        aria-expanded="true"
+        aria-controls="si-chat-sidebar-body"
+        title="Collapse conversations"
+      >
+        <span data-si-sidebar-toggle-icon aria-hidden="true">&lt;</span>
+      </button>
+      <div class="si-chat-sidebar-title">
+        <h2>Conversations</h2>
+      </div>
+      <button type="button" class="si-chat-new" data-si-new-chat aria-label="New chat" title="New chat">
+        <span class="si-chat-new-symbol" aria-hidden="true">+</span>
+        <span class="si-chat-new-label">New Chat</span>
+      </button>
+    </div>
+    <div class="si-chat-sidebar-body" id="si-chat-sidebar-body">
+      <div class="si-chat-list" data-si-conversations aria-live="polite"></div>
+    </div>
+  </aside>
+
+  <main class="si-chat-main" aria-label="System Intelligence chat">
+    <header class="si-chat-toolbar">
+      <div>
+        <p class="si-chat-eyebrow">System Intelligence</p>
+        <h2 data-si-title>New Chat</h2>
+        <p data-si-status>Ready</p>
+      </div>
+      <div class="si-chat-toolbar-actions">
+        <label class="si-plan-toggle">
+          <input type="checkbox" data-si-plan-toggle>
+          <span>Plan Mode</span>
+        </label>
+        <button type="button" data-si-command="retry">Retry</button>
+        <button type="button" data-si-command="compact">Compact</button>
+        <button type="button" data-si-rename>Rename</button>
+        <a class="si-chat-debug-link" href="{{ chat_config.urls.debug }}">ADK Debug</a>
+      </div>
+    </header>
+
+    <section class="si-chat-alert" data-si-alert hidden></section>
+    <section class="si-chat-messages" data-si-messages aria-live="polite">
+      <div class="si-chat-empty">
+        <h3>Ask about members, events, CMS, projects, email, or analytics.</h3>
+        <p>Responses can include tool results, approval requests, previews, and exports.</p>
+      </div>
+    </section>
+
+    <form class="si-chat-composer" data-si-form>
+      {% csrf_token %}
+      <textarea data-si-input rows="1" placeholder="Message System Intelligence"></textarea>
+      <button type="submit" data-si-send>Send</button>
+    </form>
+  </main>
+</div>
+{% endblock %}

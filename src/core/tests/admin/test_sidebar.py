@@ -48,5 +48,5 @@ class AdminIndexNavigationTest(TestCase):
         self.assertContains(response, "Site Maintenance Control")
         self.assertContains(response, "Content Management System")
         self.assertContains(response, "Page Analytics")
-        self.assertContains(response, 'href="/admin/core/system-intelligence/"')
+        self.assertContains(response, 'href="/admin/system-intelligence/"')
         self.assertNotContains(response, "Models in the Administration application")
