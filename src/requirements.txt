@@ -43,7 +43,7 @@ django-redis>=5.4.0  # Redis cache backend
 django-cors-headers>=4.4.0
 
 # HTML Parsing
-beautifulsoup4>=4.12.0
+beautifulsoup4>=4.14.3
 
 # SMS Verification
 twilio>=9.0.0
