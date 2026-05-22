@@ -1,4 +1,3 @@
-import json
 import logging
 
 from django.contrib import admin, messages
@@ -80,7 +79,7 @@ class TicketEmailAdminMixin:
 
             if getattr(django_settings, "ADMIN_REQUIRE_CONFIRMATION", True):
                 confirmation_text = request.POST.get("confirmation_text", "").strip()
-                if confirmation_text != event_name:
+                if not event_name or confirmation_text != event_name:
                     messages.error(request, "Confirmation text does not match event name. Please try again.")
                     return redirect(reverse("admin:event_eventregistration_send_all_ticket_emails"))
 
@@ -109,7 +108,6 @@ class TicketEmailAdminMixin:
             "already_sent_count": queryset.exclude(ticket_email_sent_at__isnull=True).count(),
             "error_count": queryset.exclude(ticket_email_error="").count(),
             "event_name": event_name,
-            "event_name_json": json.dumps(event_name),
         }
         return TemplateResponse(
             request,

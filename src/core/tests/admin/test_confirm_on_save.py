@@ -10,6 +10,7 @@ from authn.models import ContactEmail
 from cms.models import CMSEmbedAllowedHost
 
 User = get_user_model()
+CHANGE_SESSION_KEY = "_admin_pending_change_cms_cmsembedallowedhost"
 
 
 def _make_superuser(email="admin@example.com"):
@@ -22,6 +23,13 @@ def _make_staff(email="staff@example.com"):
     user = User.objects.create_user(password="testpass123", is_staff=True, first_name="Staff", last_name="Member")
     ContactEmail.objects.create(member=user, email_address=email, email_type="primary", verified=True)
     return user
+
+
+def _confirm_change_data(client, confirmation_word, *, token=None):
+    return {
+        "confirmation_word": confirmation_word,
+        "token": token or client.session[CHANGE_SESSION_KEY]["token"],
+    }
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -38,6 +46,14 @@ class ConfirmOnSaveAddTest(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("confirm-change", response.url)
+
+    def test_pending_change_uses_model_specific_session_key(self):
+        url = reverse("admin:cms_cmsembedallowedhost_add")
+        self.client.post(url, {"hostname": "session-key.com", "is_active": True})
+
+        session = self.client.session
+        self.assertIn(CHANGE_SESSION_KEY, session)
+        self.assertNotIn("_admin_pending_change", session)
 
     def test_confirmation_page_shows_new_values(self):
         url = reverse("admin:cms_cmsembedallowedhost_add")
@@ -65,10 +81,25 @@ class ConfirmOnSaveAddTest(TestCase):
         self.client.post(url, {"hostname": "wrong-word.com", "is_active": True})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        response = self.client.post(confirm_url, {"confirmation_word": "WRONG"}, follow=True)
+        response = self.client.post(confirm_url, _confirm_change_data(self.client, "WRONG"), follow=True)
 
         self.assertContains(response, "Please type")
         self.assertFalse(CMSEmbedAllowedHost.objects.filter(hostname="wrong-word.com").exists())
+
+    def test_invalid_token_clears_pending_change(self):
+        url = reverse("admin:cms_cmsembedallowedhost_add")
+        self.client.post(url, {"hostname": "bad-token.com", "is_active": True})
+
+        confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
+        response = self.client.post(
+            confirm_url,
+            _confirm_change_data(self.client, "cms embed allowed host", token="not-the-session-token"),
+            follow=True,
+        )
+
+        self.assertContains(response, "Invalid confirmation token")
+        self.assertFalse(CMSEmbedAllowedHost.objects.filter(hostname="bad-token.com").exists())
+        self.assertNotIn(CHANGE_SESSION_KEY, self.client.session)
 
     def test_correct_confirmation_word_saves_object(self):
         url = reverse("admin:cms_cmsembedallowedhost_add")
@@ -76,7 +107,7 @@ class ConfirmOnSaveAddTest(TestCase):
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
         confirmation_word = "cms embed allowed host"
-        response = self.client.post(confirm_url, {"confirmation_word": confirmation_word})
+        self.client.post(confirm_url, _confirm_change_data(self.client, confirmation_word))
 
         self.assertTrue(CMSEmbedAllowedHost.objects.filter(hostname="confirmed.com").exists())
 
@@ -85,7 +116,7 @@ class ConfirmOnSaveAddTest(TestCase):
         self.client.post(url, {"hostname": "case-test.com", "is_active": True})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        response = self.client.post(confirm_url, {"confirmation_word": "CMS Embed Allowed Host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "CMS Embed Allowed Host"))
 
         self.assertTrue(CMSEmbedAllowedHost.objects.filter(hostname="case-test.com").exists())
 
@@ -97,7 +128,7 @@ class ConfirmOnSaveAddTest(TestCase):
         self.client.post(url, {"hostname": "notify-add.com", "is_active": True})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "cms embed allowed host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
         mock_send.assert_called()
         call_kwargs = mock_send.call_args[1]
@@ -110,7 +141,7 @@ class ConfirmOnSaveAddTest(TestCase):
         self.client.post(url, {"hostname": "exclude-actor.com", "is_active": True})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "cms embed allowed host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
         for call in mock_send.call_args_list:
             self.assertNotEqual(call[1]["recipient"], "admin@example.com")
@@ -149,7 +180,7 @@ class ConfirmOnSaveChangeTest(TestCase):
         self.client.post(url, {"hostname": "updated.com", "is_active": True})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "cms embed allowed host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
         self.host.refresh_from_db()
         self.assertEqual(self.host.hostname, "updated.com")
@@ -168,7 +199,7 @@ class ConfirmOnSaveChangeTest(TestCase):
         self.client.post(url, {"hostname": "notify-changed.com", "is_active": True})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "cms embed allowed host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
         mock_send.assert_called()
         call_kwargs = mock_send.call_args[1]
@@ -207,7 +238,7 @@ class ConfirmOnSaveDeleteTest(TestCase):
         self.client.post(url, {"post": "yes"})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "cms embed allowed host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
         self.assertFalse(CMSEmbedAllowedHost.objects.filter(pk=self.host.pk).exists())
 
@@ -216,7 +247,7 @@ class ConfirmOnSaveDeleteTest(TestCase):
         self.client.post(url, {"post": "yes"})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "NOPE"}, follow=True)
+        self.client.post(confirm_url, _confirm_change_data(self.client, "NOPE"), follow=True)
 
         self.assertTrue(CMSEmbedAllowedHost.objects.filter(pk=self.host.pk).exists())
 
@@ -228,7 +259,7 @@ class ConfirmOnSaveDeleteTest(TestCase):
         self.client.post(url, {"post": "yes"})
 
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, {"confirmation_word": "cms embed allowed host"})
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
         mock_send.assert_called()
         call_kwargs = mock_send.call_args[1]

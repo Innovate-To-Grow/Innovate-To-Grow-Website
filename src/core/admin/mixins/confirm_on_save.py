@@ -1,4 +1,3 @@
-import json
 import logging
 import uuid
 
@@ -21,8 +20,8 @@ from .confirm_on_save_utils import (
 
 logger = logging.getLogger(__name__)
 
-SESSION_KEY = "_admin_pending_change"
-SESSION_ACTION_KEY = "_admin_pending_action"
+SESSION_KEY_PREFIX = "_admin_pending_change"
+SESSION_ACTION_KEY_PREFIX = "_admin_pending_action"
 CACHE_FILE_PREFIX = "admin_confirm_file_"
 CACHE_FILE_TTL = 600
 
@@ -30,6 +29,20 @@ CACHE_FILE_TTL = 600
 class ConfirmOnSaveMixin:
     require_confirmation = True
     actions_no_confirmation = []
+
+    def _session_key(self):
+        return f"{SESSION_KEY_PREFIX}_{self.opts.app_label}_{self.opts.model_name}"
+
+    def _session_action_key(self):
+        return f"{SESSION_ACTION_KEY_PREFIX}_{self.opts.app_label}_{self.opts.model_name}"
+
+    def _changelist_url(self):
+        return reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
+
+    def _invalid_confirmation_token_response(self, request, session_key):
+        messages.error(request, "Invalid confirmation token. Please start over.")
+        request.session.pop(session_key, None)
+        return HttpResponseRedirect(self._changelist_url())
 
     def get_confirmation_word(self, obj=None):
         return self.opts.verbose_name
@@ -111,7 +124,7 @@ class ConfirmOnSaveMixin:
             )
             file_keys[field_name] = cache_key
 
-        request.session[SESSION_KEY] = {
+        request.session[self._session_key()] = {
             "token": token,
             "action": action_type,
             "object_id": object_id,
@@ -139,7 +152,7 @@ class ConfirmOnSaveMixin:
         diff = compute_delete_diff(obj)
         token = str(uuid.uuid4())
 
-        request.session[SESSION_KEY] = {
+        request.session[self._session_key()] = {
             "token": token,
             "action": "delete",
             "object_id": object_id,
@@ -154,11 +167,14 @@ class ConfirmOnSaveMixin:
         return HttpResponseRedirect(confirm_url)
 
     def _confirm_change_view(self, request):
-        pending = request.session.get(SESSION_KEY)
+        session_key = self._session_key()
+        pending = request.session.get(session_key)
         if not pending:
             messages.error(request, "No pending change found. Please try again.")
-            changelist_url = reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
-            return HttpResponseRedirect(changelist_url)
+            return HttpResponseRedirect(self._changelist_url())
+
+        if request.method == "POST" and request.POST.get("token") != pending.get("token"):
+            return self._invalid_confirmation_token_response(request, session_key)
 
         confirmation_word = self.get_confirmation_word()
 
@@ -189,7 +205,6 @@ class ConfirmOnSaveMixin:
             "object_repr": pending["object_repr"],
             "diff": pending["diff"],
             "confirmation_word": confirmation_word,
-            "confirmation_word_json": json.dumps(confirmation_word),
             "token": pending["token"],
             "cancel_url": self._get_cancel_url(pending),
         }
@@ -202,7 +217,7 @@ class ConfirmOnSaveMixin:
                 f"admin:{self.opts.app_label}_{self.opts.model_name}_change",
                 args=[object_id],
             )
-        return reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
+        return self._changelist_url()
 
     def _do_confirmed_save(self, request, pending):
         from django.utils.datastructures import MultiValueDict
@@ -237,9 +252,9 @@ class ConfirmOnSaveMixin:
             request.POST = original_post
             request._files = original_files
 
-        del request.session[SESSION_KEY]
-
-        self._send_change_notification(request, pending)
+        if isinstance(response, HttpResponseRedirect):
+            request.session.pop(self._session_key(), None)
+            self._send_change_notification(request, pending)
         return response
 
     def _do_confirmed_delete(self, request, pending):
@@ -254,9 +269,9 @@ class ConfirmOnSaveMixin:
         finally:
             request.POST = original_post
 
-        del request.session[SESSION_KEY]
-
-        self._send_change_notification(request, pending)
+        if isinstance(response, HttpResponseRedirect):
+            request.session.pop(self._session_key(), None)
+            self._send_change_notification(request, pending)
         return response
 
     def _execute_confirmed_save(self, request, object_id, form_url, extra_context):
@@ -352,19 +367,30 @@ class ConfirmOnSaveMixin:
         if action_name not in actions:
             return super().response_action(request, queryset)
 
-        func, name, description = actions[action_name]
+        _func, _name, description = actions[action_name]
 
         try:
             description_str = str(description) % {"verbose_name_plural": self.opts.verbose_name_plural}
         except (KeyError, TypeError, ValueError):
             description_str = str(description)
 
-        request.session[SESSION_ACTION_KEY] = {
+        if select_across:
+            action_queryset = queryset
+        else:
+            action_queryset = queryset.filter(pk__in=selected)
+
+        action_pks = [str(pk) for pk in action_queryset.values_list("pk", flat=True)]
+        if not action_pks:
+            return super().response_action(request, queryset)
+
+        request.session[self._session_action_key()] = {
             "token": str(uuid.uuid4()),
             "action_name": action_name,
             "action_description": description_str,
             "selected_pks": selected,
             "select_across": select_across,
+            "queryset_pks": action_pks,
+            "item_count": len(action_pks),
             "post_data": serialize_post_data(request.POST),
         }
 
@@ -388,11 +414,14 @@ class ConfirmOnSaveMixin:
         return self.opts.verbose_name
 
     def _confirm_action_view(self, request):
-        pending = request.session.get(SESSION_ACTION_KEY)
+        session_key = self._session_action_key()
+        pending = request.session.get(session_key)
         if not pending:
             messages.error(request, "No pending action found. Please try again.")
-            changelist_url = reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
-            return HttpResponseRedirect(changelist_url)
+            return HttpResponseRedirect(self._changelist_url())
+
+        if request.method == "POST" and request.POST.get("token") != pending.get("token"):
+            return self._invalid_confirmation_token_response(request, session_key)
 
         confirmation_word = self.get_action_confirmation_word(pending["action_name"])
 
@@ -403,9 +432,7 @@ class ConfirmOnSaveMixin:
             else:
                 return self._execute_confirmed_action(request, pending)
 
-        selected_pks = pending["selected_pks"]
-        select_across = pending["select_across"]
-        item_count = self.model.objects.count() if select_across else len(selected_pks)
+        item_count = pending.get("item_count", len(pending["selected_pks"]))
 
         context = {
             **self.admin_site.each_context(request),
@@ -416,9 +443,8 @@ class ConfirmOnSaveMixin:
             "model_name_plural": self.opts.verbose_name_plural,
             "item_count": item_count,
             "confirmation_word": confirmation_word,
-            "confirmation_word_json": json.dumps(confirmation_word),
             "token": pending["token"],
-            "cancel_url": reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist"),
+            "cancel_url": self._changelist_url(),
         }
         return TemplateResponse(request, "admin/core/confirm_action.html", context)
 
@@ -427,16 +453,14 @@ class ConfirmOnSaveMixin:
         actions = self.get_actions(request)
         if action_name not in actions:
             messages.error(request, "Action no longer available.")
-            del request.session[SESSION_ACTION_KEY]
-            return HttpResponseRedirect(reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist"))
+            request.session.pop(self._session_action_key(), None)
+            return HttpResponseRedirect(self._changelist_url())
 
         func = actions[action_name][0]
-        selected_pks = pending["selected_pks"]
-        select_across = pending["select_across"]
-
-        queryset = self.model.objects.all()
-        if not select_across:
-            queryset = queryset.filter(pk__in=selected_pks)
+        queryset_pks = pending.get("queryset_pks")
+        if queryset_pks is None:
+            queryset_pks = pending["selected_pks"] if not pending["select_across"] else []
+        queryset = self.get_queryset(request).filter(pk__in=queryset_pks)
 
         original_post = request.POST
         if action_name == "delete_selected":
@@ -449,20 +473,19 @@ class ConfirmOnSaveMixin:
         finally:
             request.POST = original_post
 
-        del request.session[SESSION_ACTION_KEY]
+        request.session.pop(self._session_action_key(), None)
 
         self._send_action_notification(request, pending)
 
         if isinstance(response, HttpResponseBase):
             return response
 
-        changelist_url = reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
-        return HttpResponseRedirect(changelist_url)
+        return HttpResponseRedirect(self._changelist_url())
 
     def _send_action_notification(self, request, pending):
         from core.admin.notifications import notify_staff_of_action
 
-        item_count = "all" if pending["select_across"] else str(len(pending["selected_pks"]))
+        item_count = str(pending.get("item_count", len(pending["selected_pks"])))
         action_desc = f"{pending['action_description']} ({item_count} {self.opts.verbose_name_plural})"
 
         try:

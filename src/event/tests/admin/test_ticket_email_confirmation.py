@@ -56,6 +56,22 @@ class TicketEmailTypedConfirmationTest(TestCase):
         self.assertContains(response, "Confirmation text does not match event name")
 
     @patch("event.services.ticket_mail.send_ticket_email")
+    def test_empty_event_name_does_not_accept_empty_confirmation(self, mock_send):
+        event = make_event(name="")
+        ticket = make_ticket(event)
+        member = make_member(email="empty-event-name@example.com")
+        make_registration(member, event, ticket)
+
+        response = self.client.post(
+            reverse("admin:event_eventregistration_send_all_ticket_emails"),
+            {"confirmation_text": ""},
+            follow=True,
+        )
+
+        self.assertContains(response, "Confirmation text does not match event name")
+        mock_send.assert_not_called()
+
+    @patch("event.services.ticket_mail.send_ticket_email")
     def test_correct_confirmation_text_sends_emails(self, mock_send):
         event = make_event(name="Exact Match Event")
         ticket = make_ticket(event)

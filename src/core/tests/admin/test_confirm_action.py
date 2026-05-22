@@ -11,6 +11,7 @@ from authn.models import ContactEmail
 from projects.models import Semester
 
 User = get_user_model()
+ACTION_SESSION_KEY = "_admin_pending_action_projects_semester"
 
 
 def _make_superuser(email="admin@example.com"):
@@ -29,6 +30,13 @@ def _make_semester(**kwargs):
     defaults = {"year": 2025, "season": 1, "is_published": False}
     defaults.update(kwargs)
     return Semester.objects.create(**defaults)
+
+
+def _confirm_action_data(client, confirmation_word, *, token=None):
+    return {
+        "confirmation_word": confirmation_word,
+        "token": token or client.session[ACTION_SESSION_KEY]["token"],
+    }
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -54,6 +62,14 @@ class ConfirmActionTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("confirm-action", response.url)
 
+    def test_pending_action_uses_model_specific_session_key(self):
+        semester = _make_semester()
+        self._action_post("publish_selected", [semester.pk])
+
+        session = self.client.session
+        self.assertIn(ACTION_SESSION_KEY, session)
+        self.assertNotIn("_admin_pending_action", session)
+
     def test_confirmation_page_shows_action_description(self):
         semester = _make_semester()
         self._action_post("publish_selected", [semester.pk])
@@ -72,7 +88,7 @@ class ConfirmActionTest(TestCase):
         self._action_post("publish_selected", [semester.pk])
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
-        response = self.client.post(confirm_url, {"confirmation_word": "wrong word"}, follow=True)
+        response = self.client.post(confirm_url, _confirm_action_data(self.client, "wrong word"), follow=True)
 
         self.assertContains(response, "Please type")
         semester.refresh_from_db()
@@ -83,7 +99,7 @@ class ConfirmActionTest(TestCase):
         self._action_post("publish_selected", [semester.pk])
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
-        response = self.client.post(confirm_url, {"confirmation_word": "semester"})
+        response = self.client.post(confirm_url, _confirm_action_data(self.client, "semester"))
 
         self.assertEqual(response.status_code, 302)
         semester.refresh_from_db()
@@ -94,7 +110,7 @@ class ConfirmActionTest(TestCase):
         self._action_post("publish_selected", [semester.pk])
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
-        response = self.client.post(confirm_url, {"confirmation_word": "Semester"})
+        response = self.client.post(confirm_url, _confirm_action_data(self.client, "Semester"))
 
         self.assertEqual(response.status_code, 302)
         semester.refresh_from_db()
@@ -117,7 +133,7 @@ class ConfirmActionTest(TestCase):
         self._action_post("publish_selected", [semester.pk])
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
-        self.client.post(confirm_url, {"confirmation_word": "semester"})
+        self.client.post(confirm_url, _confirm_action_data(self.client, "semester"))
 
         mock_send.assert_called()
         call_kwargs = mock_send.call_args[1]
@@ -129,6 +145,22 @@ class ConfirmActionTest(TestCase):
         response = self.client.get(confirm_url, follow=True)
 
         self.assertContains(response, "No pending action found")
+
+    def test_invalid_token_clears_pending_action(self):
+        semester = _make_semester()
+        self._action_post("publish_selected", [semester.pk])
+
+        confirm_url = reverse("admin:projects_semester_confirm_action")
+        response = self.client.post(
+            confirm_url,
+            _confirm_action_data(self.client, "semester", token="not-the-session-token"),
+            follow=True,
+        )
+
+        self.assertContains(response, "Invalid confirmation token")
+        self.assertNotIn(ACTION_SESSION_KEY, self.client.session)
+        semester.refresh_from_db()
+        self.assertFalse(semester.is_published)
 
     def test_cancel_link_goes_to_changelist(self):
         semester = _make_semester()
@@ -236,7 +268,7 @@ class ConfirmActionDeleteSelectedTest(TestCase):
         self.client.post(url, data)
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
-        self.client.post(confirm_url, {"confirmation_word": "semester"})
+        self.client.post(confirm_url, _confirm_action_data(self.client, "semester"))
 
         self.assertFalse(Semester.objects.filter(pk=semester.pk).exists())
 
@@ -282,9 +314,32 @@ class ConfirmActionSelectAcrossTest(TestCase):
         self.client.post(url, data)
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
-        self.client.post(confirm_url, {"confirmation_word": "semester"})
+        self.client.post(confirm_url, _confirm_action_data(self.client, "semester"))
 
         s1.refresh_from_db()
         s2.refresh_from_db()
         self.assertTrue(s1.is_published)
         self.assertTrue(s2.is_published)
+
+    def test_select_across_preserves_changelist_filter(self):
+        included = _make_semester(year=2024, season=1)
+        excluded = _make_semester(year=2023, season=1)
+
+        url = f"{reverse('admin:projects_semester_changelist')}?year__exact=2024"
+        data = {
+            "action": "publish_selected",
+            "index": "0",
+            "select_across": "1",
+            helpers.ACTION_CHECKBOX_NAME: [""],
+        }
+        self.client.post(url, data)
+
+        confirm_url = reverse("admin:projects_semester_confirm_action")
+        response = self.client.get(confirm_url)
+        self.assertContains(response, "1")
+        self.client.post(confirm_url, _confirm_action_data(self.client, "semester"))
+
+        included.refresh_from_db()
+        excluded.refresh_from_db()
+        self.assertTrue(included.is_published)
+        self.assertFalse(excluded.is_published)

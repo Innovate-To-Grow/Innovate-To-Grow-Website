@@ -59,11 +59,12 @@
                     </a>
                 </div>
             </form>
+            {{ event_name|json_script:"event-name-data" }}
             <script>
             (function() {
                 const input = document.getElementById('confirm-input');
                 const btn = document.getElementById('confirm-send-btn');
-                const expected = {{ event_name_json|safe }};
+                const expected = JSON.parse(document.getElementById('event-name-data').textContent);
                 input.addEventListener('input', function() {
                     btn.disabled = input.value.trim() !== expected;
                 });

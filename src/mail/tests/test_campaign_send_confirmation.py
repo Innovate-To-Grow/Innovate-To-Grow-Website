@@ -82,6 +82,19 @@ class CampaignSendConfirmationTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("status", response.url)
 
+    @patch("mail.admin.campaign.views.send.campaign_api.threading.Thread")
+    def test_second_confirmation_post_does_not_start_duplicate_send(self, mock_thread):
+        campaign = _make_campaign(name="Race Campaign")
+
+        url = reverse("admin:mail_emailcampaign_send_confirm", args=[campaign.pk])
+        first_response = self.client.post(url, {"confirmation_text": "Race Campaign"})
+        second_response = self.client.post(url, {"confirmation_text": "Race Campaign"}, follow=True)
+
+        self.assertEqual(first_response.status_code, 302)
+        self.assertContains(second_response, "already been sent")
+        mock_thread.assert_called_once()
+        mock_thread.return_value.start.assert_called_once()
+
     @patch("mail.admin.campaign.views.send.CampaignSendMixin._background_send")
     @patch("authn.services.email.send_email.senders.send_notification_email")
     def test_notification_sent_after_campaign_send(self, mock_notify, mock_bg):

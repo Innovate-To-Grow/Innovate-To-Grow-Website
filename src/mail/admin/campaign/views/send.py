@@ -1,6 +1,5 @@
 """Campaign send confirmation and background execution."""
 
-import json
 import logging
 
 from django.contrib import messages
@@ -44,6 +43,11 @@ class CampaignSendMixin:
             recipients = campaign_api.get_recipients(obj)
             recipient_count = len(recipients)
 
+            updated = EmailCampaign.objects.filter(pk=obj.pk, status="draft").update(status="sending")
+            if not updated:
+                messages.warning(request, "This campaign has already been sent.")
+                return HttpResponseRedirect(change_url)
+
             thread = campaign_api.threading.Thread(
                 target=self._background_send,
                 args=(obj.pk, request.user.pk),
@@ -73,7 +77,6 @@ class CampaignSendMixin:
             "title": f"Confirm Send - {obj.name}",
             "campaign": obj,
             "recipient_count": len(recipients),
-            "campaign_name_json": json.dumps(obj.name),
             "preview_url": reverse("admin:mail_emailcampaign_send_preview", args=[object_id]),
         }
         return TemplateResponse(request, "admin/mail/confirm_send.html", context)

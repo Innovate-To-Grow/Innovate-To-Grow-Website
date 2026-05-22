@@ -90,11 +90,12 @@
     </form>
 </div>
 
+{{ confirmation_word|json_script:"confirmation-word-data" }}
 <script>
 (function() {
     const input = document.getElementById('confirm-input');
     const btn = document.getElementById('confirm-btn');
-    const expected = {{ confirmation_word_json|safe }};
+    const expected = JSON.parse(document.getElementById('confirmation-word-data').textContent);
     input.addEventListener('input', function() {
         btn.disabled = input.value.trim().toLowerCase() !== expected.toLowerCase();
     });
