@@ -3,8 +3,8 @@ Core views for system-level endpoints.
 """
 
 from datetime import UTC
+from html import escape
 from urllib.parse import quote
-from xml.sax.saxutils import escape
 
 from django.conf import settings
 from django.db.models import Max
