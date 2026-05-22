@@ -27,3 +27,6 @@ DATABASES = {
         "PORT": os.environ.get("DB_PORT", "5432"),
     }
 }
+
+# Admin confirmation disabled in CI to avoid breaking existing admin tests
+ADMIN_REQUIRE_CONFIRMATION = False

@@ -32,6 +32,7 @@ window.CMSEmbedAdmin = window.CMSEmbedAdmin || {};
         page: function () { return document.getElementById('id_page'); },
         widgetType: function () { return document.getElementById('id_widget_type'); },
         appRoute: function () { return document.getElementById('id_app_route'); },
+        schedule: function () { return document.getElementById('id_schedule'); },
         hiddenSections: function () { return document.querySelectorAll('input[name="hidden_sections"]'); },
         label: function () { return document.getElementById('id_admin_label'); },
         snippet: function () { return document.getElementById('cms-widget-snippet'); },

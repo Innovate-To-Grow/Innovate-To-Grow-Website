@@ -4,7 +4,7 @@ from unittest.mock import ANY, patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -13,6 +13,7 @@ from authn.models import AdminInvitation
 from authn.models.members.member import Member
 
 
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class AdminInvitationAdminTests(TestCase):
     def setUp(self):
         self.staff = Member.objects.create_superuser(

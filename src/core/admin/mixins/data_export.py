@@ -21,6 +21,7 @@ class DataExportMixin:
 
     export_fields = None
     export_filename = None
+    actions_no_confirmation = ["export_data"]
 
     @property
     def excel_export_fields(self):

@@ -31,7 +31,7 @@ class SystemIntelligenceAgentLoader(BaseAgentLoader):
             return build_agent(
                 chat_config=chat_config,
                 aws_config=aws_config,
-                model_id=aws_config.default_model_id,
+                model_id=chat_config.default_model_id,
                 include_temperature=False,
                 mode="normal",
                 include_writes=False,

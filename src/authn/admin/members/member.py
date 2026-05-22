@@ -95,6 +95,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "export_members_to_vcard",
         "sync_all_members_to_sheet",
     ]
+    actions_no_confirmation = ["export_members_to_excel", "export_members_to_vcard", "sync_all_members_to_sheet"]
 
     @admin.display(description="Primary Email")
     def get_primary_email_display(self, obj):

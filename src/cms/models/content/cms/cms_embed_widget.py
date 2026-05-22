@@ -42,6 +42,14 @@ class CMSEmbedWidget(ProjectControlModel):
         default="",
         help_text="App route path (e.g. /schedule) for 'app_route' widgets.",
     )
+    schedule = models.ForeignKey(
+        "event.CurrentProjectSchedule",
+        on_delete=models.SET_NULL,
+        related_name="cms_embed_widgets",
+        null=True,
+        blank=True,
+        help_text="Optional schedule to render when embedding the /schedule app route.",
+    )
     slug = models.SlugField(
         max_length=120,
         unique=True,
@@ -96,6 +104,7 @@ class CMSEmbedWidget(ProjectControlModel):
 
         if self.widget_type == WIDGET_TYPE_APP_ROUTE:
             self._clean_app_route()
+            self._clean_schedule()
             self._clean_hidden_sections()
             self.block_sort_orders = []
             return
@@ -124,8 +133,13 @@ class CMSEmbedWidget(ProjectControlModel):
             raise ValidationError({"app_route": f"Unknown app route: {route}."})
         self.app_route = route
 
+    def _clean_schedule(self):
+        if self.app_route != "/schedule":
+            self.schedule = None
+
     def _clean_blocks(self):
         self.app_route = ""
+        self.schedule = None
         if not self.page_id:
             raise ValidationError({"page": "A source page is required for blocks widgets."})
 

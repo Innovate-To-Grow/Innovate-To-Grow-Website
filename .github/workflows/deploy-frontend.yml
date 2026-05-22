@@ -64,6 +64,54 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
+      - name: Configure sitemap rewrite
+        env:
+          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          app_id = os.environ["AMPLIFY_APP_ID"].strip()
+          api_base_url = os.environ["VITE_API_BASE_URL"].strip().rstrip("/")
+          if not app_id:
+              raise SystemExit("AMPLIFY_APP_ID is required to configure sitemap rewrite.")
+          if not api_base_url:
+              raise SystemExit("VITE_API_BASE_URL is required to configure sitemap rewrite.")
+
+          app_payload = subprocess.check_output(
+              ["aws", "amplify", "get-app", "--app-id", app_id, "--output", "json"],
+              text=True,
+          )
+          app = json.loads(app_payload)["app"]
+          existing_rules = app.get("customRules") or []
+          sitemap_rule = {
+              "source": "/sitemap.xml",
+              "target": f"{api_base_url}/sitemap.xml",
+              "status": "200",
+          }
+          merged_rules = [sitemap_rule] + [
+              rule for rule in existing_rules if rule.get("source") != sitemap_rule["source"]
+          ]
+
+          with open("custom-rules.json", "w", encoding="utf-8") as f:
+              json.dump(merged_rules, f)
+
+          subprocess.check_call(
+              [
+                  "aws",
+                  "amplify",
+                  "update-app",
+                  "--app-id",
+                  app_id,
+                  "--custom-rules",
+                  "file://custom-rules.json",
+              ]
+          )
+          PY
+
       - name: Deploy to AWS Amplify
         env:
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}

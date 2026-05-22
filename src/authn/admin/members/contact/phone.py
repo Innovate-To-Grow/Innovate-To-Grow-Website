@@ -45,6 +45,7 @@ class ContactPhoneAdmin(BaseModelAdmin):
         ),
     )
     actions = ["mark_verified", "mark_unverified", "normalize_all_phones"]
+    actions_no_confirmation = ["normalize_all_phones"]
 
     @admin.display(description="Formatted Number")
     def get_formatted_number(self, obj):

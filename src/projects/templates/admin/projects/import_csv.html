@@ -27,6 +27,17 @@
                    class="rounded border-gray-300 dark:border-gray-600">
             <label for="dry_run" class="text-sm">Dry run (preview only, no changes)</label>
         </div>
+        <div>
+            <label for="confirmation_text" class="block text-sm font-medium mb-1">
+                Type <strong>"import"</strong> to confirm a real import
+            </label>
+            <input type="text" name="confirmation_text" id="confirmation_text" autocomplete="off"
+                   class="block w-full text-sm border border-gray-300 dark:border-gray-600 rounded-default p-2 bg-white dark:bg-gray-800"
+                   placeholder='Type "import" unless this is a dry run'>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Dry runs do not create records and do not require confirmation.
+            </p>
+        </div>
         <div class="flex gap-3 pt-2">
             <button type="submit"
                     class="bg-primary-600 hover:bg-primary-700 flex items-center gap-2 justify-center rounded-default px-4 py-2 text-white text-sm font-medium transition-colors">

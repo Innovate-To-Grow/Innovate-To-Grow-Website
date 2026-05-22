@@ -8,8 +8,15 @@
             <span class="material-symbols-outlined">upload_file</span>
             Import CSV
         </a>
-        <form method="post" action="{{ publish_all_url }}">
+        <form method="post" action="{{ publish_all_url }}" class="flex items-center gap-2">
             {% csrf_token %}
+            <label for="publish-all-confirmation" class="sr-only">Type publish all to confirm</label>
+            <input type="text"
+                   name="confirmation_text"
+                   id="publish-all-confirmation"
+                   autocomplete="off"
+                   placeholder='Type "publish all"'
+                   class="border border-base-300 dark:border-base-600 rounded-default px-3 py-2 text-sm bg-white dark:bg-base-800 text-base-900 dark:text-base-100">
             <button type="submit"
                     class="i2g-admin-action i2g-admin-action--primary"
                     title="Publish All Semesters">

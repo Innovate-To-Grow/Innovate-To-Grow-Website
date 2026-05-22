@@ -8,10 +8,12 @@ from .base import BaseModelAdmin, ReadOnlyModelAdmin
 from .log_entry import LogEntryAdmin  # noqa: F401 - register admin
 from .maintenance import SiteMaintenanceControlAdmin  # noqa: F401 - register admin
 from .mixins import (
+    ConfirmOnSaveMixin,
     DataExportMixin,
     ExcelExportMixin,
     TimestampedAdminMixin,
 )
+from .notifications import notify_staff_of_action
 from .service_credentials import (  # noqa: F401 - register admin
     EmailServiceConfigAdmin,
     GmailImportConfigAdmin,
@@ -25,9 +27,12 @@ __all__ = [
     "BaseModelAdmin",
     "ReadOnlyModelAdmin",
     # Mixins
+    "ConfirmOnSaveMixin",
     "TimestampedAdminMixin",
     "DataExportMixin",
     "ExcelExportMixin",
+    # Notifications
+    "notify_staff_of_action",
     # Utilities
     "admin_url",
     "truncate_text",

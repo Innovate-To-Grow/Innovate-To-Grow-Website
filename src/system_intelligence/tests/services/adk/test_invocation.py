@@ -24,11 +24,11 @@ class SystemIntelligenceADKInvocationTests(TestCase):
             access_key_id="test-key",
             secret_access_key="test-secret",
             default_region="us-west-2",
-            default_model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
         )
         self.chat_config = SystemIntelligenceConfig.objects.create(
             name="System Intelligence",
             is_active=True,
+            default_model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
             system_prompt="Use tools.",
         )
 
@@ -66,7 +66,7 @@ class SystemIntelligenceADKInvocationTests(TestCase):
                         ],
                         chat_config=self.chat_config,
                         aws_config=self.aws_config,
-                        model_id=self.aws_config.default_model_id,
+                        model_id=self.chat_config.default_model_id,
                         user_id="42",
                     )
                 ]
@@ -113,7 +113,7 @@ class SystemIntelligenceADKInvocationTests(TestCase):
                         ],
                         chat_config=self.chat_config,
                         aws_config=self.aws_config,
-                        model_id=self.aws_config.default_model_id,
+                        model_id=self.chat_config.default_model_id,
                         user_id="42",
                     )
                 ]
@@ -152,7 +152,7 @@ class SystemIntelligenceADKInvocationTests(TestCase):
                         [{"role": "user", "content": "Current"}],
                         chat_config=self.chat_config,
                         aws_config=self.aws_config,
-                        model_id=self.aws_config.default_model_id,
+                        model_id=self.chat_config.default_model_id,
                         user_id="42",
                     )
                 ]

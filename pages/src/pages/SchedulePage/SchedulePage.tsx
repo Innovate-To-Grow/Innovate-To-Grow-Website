@@ -78,9 +78,14 @@ function isFullyEmptyOrder(tracks: Array<{slots: Array<{order: number}>}>, order
   return tracks.length > 0 && tracks.every((track) => !track.slots.some((slot) => slot.order === order));
 }
 
-export const SchedulePage = () => {
-  const {data, loading, error} = useCurrentEventSchedule();
+interface SchedulePageProps {
+  scheduleId?: string | null;
+}
+
+export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const selectedScheduleId = scheduleId || searchParams.get('schedule_id');
+  const {data, loading, error} = useCurrentEventSchedule(selectedScheduleId);
   const teamSearch = searchParams.get('value') || '';
   const [isMobileLayout, setIsMobileLayout] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 720 : false,

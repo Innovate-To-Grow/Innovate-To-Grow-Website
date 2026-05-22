@@ -59,8 +59,10 @@
 
     ns.applyWidgetTypeVisibility = function () {
         var isAppRoute = state.currentWidgetType === APP_ROUTE;
+        var route = String((fields.appRoute() || {}).value || '').trim();
         setFormRowVisibility('id_page', !isAppRoute);
         setFormRowVisibility('id_app_route', isAppRoute);
+        setFormRowVisibility('id_schedule', isAppRoute && route === '/schedule');
 
         document.querySelectorAll('.cms-widget-blocks-only').forEach(function (el) {
             el.style.display = isAppRoute ? 'none' : '';
@@ -72,7 +74,6 @@
         if (isAppRoute) {
             ns.hidePreview();
             ns.hidePagePreview();
-            var route = String((fields.appRoute() || {}).value || '').trim();
             ns.showAppRoutePreview(route);
         } else {
             ns.hideAppRoutePreview();
@@ -126,6 +127,7 @@
         if (!sel) return;
         function handler() {
             var route = String(sel.value || '').trim();
+            setFormRowVisibility('id_schedule', state.currentWidgetType === APP_ROUTE && route === '/schedule');
             if (route) {
                 prefillFromAppRoute(route);
                 ns.applyHiddenSectionVisibility();
@@ -133,6 +135,23 @@
             } else {
                 ns.applyHiddenSectionVisibility();
                 ns.hideAppRoutePreview();
+            }
+            ns.renderSnippet();
+        }
+        if (window.django && window.django.jQuery) {
+            window.django.jQuery(sel).on('change', handler);
+        } else {
+            sel.addEventListener('change', handler);
+        }
+    };
+
+    ns.bindSchedule = function () {
+        var sel = fields.schedule();
+        if (!sel) return;
+        function handler() {
+            var route = String((fields.appRoute() || {}).value || '').trim();
+            if (state.currentWidgetType === APP_ROUTE && route === '/schedule') {
+                ns.showAppRoutePreview(route);
             }
             ns.renderSnippet();
         }

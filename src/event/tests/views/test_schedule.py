@@ -37,6 +37,20 @@ class CurrentEventScheduleViewTest(TestCase):
         self.assertEqual(response.data["sections"][0]["tracks"][0]["slots"][0]["team_number"], "CAP-101")
         self.assertEqual(response.data["projects"][0]["team_number"], "CAP-101")
 
+    def test_schedule_id_query_selects_non_active_schedule(self):
+        active = CurrentProjectSchedule.objects.create(name="Active Demo Day")
+        sync_schedule(active, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
+        archived = CurrentProjectSchedule.objects.create(name="Archived Demo Day", is_active=False)
+        sync_schedule(archived, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
+
+        default_response = self.client.get("/event/schedule/")
+        selected_response = self.client.get("/event/schedule/", {"schedule_id": str(archived.pk)})
+
+        self.assertEqual(default_response.status_code, 200)
+        self.assertEqual(default_response.data["event"]["name"], "Active Demo Day")
+        self.assertEqual(selected_response.status_code, 200)
+        self.assertEqual(selected_response.data["event"]["name"], "Archived Demo Day")
+
     def test_projects_include_non_presenting_teams(self):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
         tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}]

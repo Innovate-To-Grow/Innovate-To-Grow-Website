@@ -2,15 +2,17 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.test.client import RequestFactory
 from django.urls import reverse
 
 from core.admin.service_credentials.aws import AWSCredentialConfigAdmin
 from core.models import AWSCredentialConfig, GmailImportConfig
 from event.tests.helpers import make_superuser
+from system_intelligence.models import SystemIntelligenceConfig
 
 
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class GmailImportConfigAdminTests(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
@@ -53,12 +55,17 @@ class GmailImportConfigAdminTests(TestCase):
 class AWSCredentialConfigAdminTests(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
         self.config = AWSCredentialConfig.objects.create(
             name="AWS",
             is_active=True,
             access_key_id="test-key",
             secret_access_key="test-secret",
             default_region="us-west-2",
+        )
+        self.chat_config = SystemIntelligenceConfig.objects.create(
+            name="System Intelligence",
+            is_active=True,
             default_model_id="new.runtime-model-v1:0",
         )
 
@@ -82,3 +89,14 @@ class AWSCredentialConfigAdminTests(TestCase):
         self.assertEqual(response.status_code, 302)
         mock_runtime.converse.assert_called_once()
         self.assertEqual(mock_runtime.converse.call_args.kwargs["modelId"], "new.runtime-model-v1:0")
+
+    def test_default_model_is_managed_on_system_intelligence_config(self):
+        aws_response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
+        system_response = self.client.get(
+            reverse("admin:system_intelligence_systemintelligenceconfig_change", args=[self.chat_config.pk])
+        )
+
+        self.assertEqual(aws_response.status_code, 200)
+        self.assertNotContains(aws_response, "Default AI Model")
+        self.assertEqual(system_response.status_code, 200)
+        self.assertContains(system_response, "Default AI Model")

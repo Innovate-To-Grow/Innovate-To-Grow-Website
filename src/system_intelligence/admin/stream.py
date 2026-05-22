@@ -68,7 +68,7 @@ def build_stream_response(request, convo):
     messages = list(convo.messages.prefetch_related("action_requests").order_by("created_at"))
     chat_config = SystemIntelligenceConfig.load()
     aws_config = AWSCredentialConfig.load()
-    model_id = aws_config.default_model_id
+    model_id = chat_config.default_model_id
 
     response = StreamingHttpResponse(
         _event_stream(request, convo, messages, chat_config, aws_config, model_id, mode=convo.mode),

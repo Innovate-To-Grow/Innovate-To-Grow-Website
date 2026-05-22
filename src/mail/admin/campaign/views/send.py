@@ -32,12 +32,43 @@ class CampaignSendMixin:
             return HttpResponseRedirect(change_url)
 
         if request.method == "POST":
+            from django.conf import settings as django_settings
+
+            if getattr(django_settings, "ADMIN_REQUIRE_CONFIRMATION", True):
+                confirmation_text = request.POST.get("confirmation_text", "").strip()
+                if confirmation_text != obj.name:
+                    messages.error(request, "Confirmation text does not match campaign name. Please try again.")
+                    return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_confirm", args=[object_id]))
+
+            recipients = campaign_api.get_recipients(obj)
+            recipient_count = len(recipients)
+
+            updated = EmailCampaign.objects.filter(pk=obj.pk, status="draft").update(status="sending")
+            if not updated:
+                messages.warning(request, "This campaign has already been sent.")
+                return HttpResponseRedirect(change_url)
+
             thread = campaign_api.threading.Thread(
                 target=self._background_send,
                 args=(obj.pk, request.user.pk),
                 daemon=False,
             )
             thread.start()
+
+            from core.admin.notifications import notify_staff_of_action
+
+            notify_staff_of_action(
+                actor=request.user,
+                action=f"Sent Campaign: {obj.name}",
+                summary=[
+                    {"label": "Campaign", "value": obj.name},
+                    {"label": "Subject", "value": obj.subject},
+                    {"label": "Audience", "value": obj.get_audience_type_display()},
+                    {"label": "Recipients", "value": str(recipient_count)},
+                ],
+                admin_url=request.build_absolute_uri(change_url),
+            )
+
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_status", args=[object_id]))
 
         recipients = campaign_api.get_recipients(obj)

@@ -67,12 +67,37 @@ class TicketEmailAdminMixin:
         queryset = EventRegistration.objects.select_related("event", "ticket", "member").order_by("created_at")
         registration_count = queryset.count()
 
+        first_registration = queryset.first()
+        event_name = first_registration.event.name if first_registration and first_registration.event else ""
+
         if request.method == "POST":
             if registration_count == 0:
                 messages.warning(request, "No event registrations found.")
                 return redirect(changelist_url)
 
-            self._send_ticket_email_batch(request, queryset)
+            from django.conf import settings as django_settings
+
+            if getattr(django_settings, "ADMIN_REQUIRE_CONFIRMATION", True):
+                confirmation_text = request.POST.get("confirmation_text", "").strip()
+                if not event_name or confirmation_text != event_name:
+                    messages.error(request, "Confirmation text does not match event name. Please try again.")
+                    return redirect(reverse("admin:event_eventregistration_send_all_ticket_emails"))
+
+            sent = self._send_ticket_email_batch(request, queryset)
+
+            from core.admin.notifications import notify_staff_of_action
+
+            notify_staff_of_action(
+                actor=request.user,
+                action=f"Sent Ticket Emails: {event_name}",
+                summary=[
+                    {"label": "Event", "value": event_name},
+                    {"label": "Total registrations", "value": str(registration_count)},
+                    {"label": "Emails sent", "value": str(sent)},
+                ],
+                admin_url=request.build_absolute_uri(changelist_url),
+            )
+
             return redirect(changelist_url)
 
         context = {
@@ -82,6 +107,7 @@ class TicketEmailAdminMixin:
             "registration_count": registration_count,
             "already_sent_count": queryset.exclude(ticket_email_sent_at__isnull=True).count(),
             "error_count": queryset.exclude(ticket_email_error="").count(),
+            "event_name": event_name,
         }
         return TemplateResponse(
             request,

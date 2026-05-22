@@ -46,6 +46,15 @@ class MaterialWebAdminEnhancerTests(TestCase):
         source = Path(path).read_text()
         self.assertIn("#changelist input.action-select:checked", source)
 
+    def test_admin_app_list_renders_heading_outside_table_caption(self):
+        response = self.client.get(reverse("admin:app_list", kwargs={"app_label": "core"}))
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<h2", html)
+        self.assertIn("Core", html)
+        self.assertNotIn("<caption", html)
+
     def test_enhancer_skips_specialized_admin_widgets(self):
         source = self._enhancer_source()
 

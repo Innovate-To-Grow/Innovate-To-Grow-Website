@@ -1,4 +1,3 @@
-from core.models import AWSCredentialConfig
 from core.services.db_tools import get_tool_definitions
 from system_intelligence.models import SystemIntelligenceConfig
 
@@ -27,7 +26,7 @@ def prepare(conversation_messages, chat_config, aws_config, model_id=None):
     if not chat_config.is_configured:
         raise BedrockError("AI Chat is not configured. Add an active AI Chat Config first.")
     if not model_id:
-        model_id = AWSCredentialConfig.load().default_model_id
+        model_id = chat_config.default_model_id
     client = get_client(aws_config)
     messages = [{"role": m["role"], "content": [{"text": m["content"]}]} for m in conversation_messages]
     return client, messages, build_kwargs(chat_config, model_id)

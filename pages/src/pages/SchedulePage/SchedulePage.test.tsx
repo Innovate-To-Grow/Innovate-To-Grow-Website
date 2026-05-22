@@ -8,7 +8,7 @@ import {SchedulePage} from './SchedulePage';
 const useCurrentEventScheduleMock = vi.fn();
 
 vi.mock('../../features/events/useCurrentEventSchedule', () => ({
-  useCurrentEventSchedule: () => useCurrentEventScheduleMock(),
+  useCurrentEventSchedule: (scheduleId?: string | null) => useCurrentEventScheduleMock(scheduleId),
 }));
 
 function slot(order: number, teamNumber: string): ScheduleSlot {
@@ -171,5 +171,37 @@ describe('SchedulePage', () => {
     expect(cards[1]).not.toHaveTextContent('2:00TBD');
     expect(cards[0]).toHaveTextContent('2:30Break');
     expect(cards[1]).toHaveTextContent('2:30Break');
+  });
+
+  it('passes an explicit schedule id into the schedule hook', () => {
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <SchedulePage scheduleId="schedule-123" />
+      </MemoryRouter>,
+    );
+
+    expect(useCurrentEventScheduleMock).toHaveBeenCalledWith('schedule-123');
+  });
+
+  it('uses schedule_id from the URL when no prop is provided', () => {
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/schedule?schedule_id=schedule-query']}>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(useCurrentEventScheduleMock).toHaveBeenCalledWith('schedule-query');
   });
 });

@@ -1,5 +1,9 @@
 import React, {type LazyExoticComponent, type ComponentType} from 'react';
 
+export interface EmbedAppRouteProps {
+  scheduleId?: string | null;
+}
+
 /**
  * Registry of app routes that can be rendered inside a CMS Embed Widget iframe.
  *
@@ -7,7 +11,7 @@ import React, {type LazyExoticComponent, type ComponentType} from 'react';
  * Each component is rendered standalone inside `/_embed/:embedSlug` — it must
  * therefore not depend on the main site Layout (menu / footer / etc.).
  */
-export const EMBED_APP_ROUTE_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>> = {
+export const EMBED_APP_ROUTE_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<EmbedAppRouteProps>>> = {
   '/schedule': React.lazy(() => import('../../pages/SchedulePage').then((m) => ({default: m.SchedulePage}))),
   '/current-projects': React.lazy(() => import('../../pages/ProjectsPage').then((m) => ({default: m.ProjectsPage}))),
   '/presenting-teams': React.lazy(() => import('../../pages/PresentingTeamsPage').then((m) => ({default: m.PresentingTeamsPage}))),
@@ -18,7 +22,7 @@ export const EMBED_APP_ROUTE_COMPONENTS: Record<string, LazyExoticComponent<Comp
   '/subscribe': React.lazy(() => import('../../pages/SubscribePage').then((m) => ({default: m.SubscribePage}))),
 };
 
-export function resolveEmbedAppRoute(route: string | undefined | null): LazyExoticComponent<ComponentType> | null {
+export function resolveEmbedAppRoute(route: string | undefined | null): LazyExoticComponent<ComponentType<EmbedAppRouteProps>> | null {
   if (!route) return null;
   return EMBED_APP_ROUTE_COMPONENTS[route] ?? null;
 }

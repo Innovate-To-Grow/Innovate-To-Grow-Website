@@ -323,6 +323,10 @@ jobs:
           #
           # PYSEC-2025-183: disputed by PyJWT maintainers — the advisory
           # concerns application-chosen key lengths, not a library defect.
+          #
+          # PYSEC-2026-161: Starlette fix is 1.0.1, but google-adk 1.x/2.0.0
+          # currently requires starlette>=0.49.1,<1. Remove when google-adk
+          # allows Starlette 1.x.
           pip-audit \
             --requirement requirements.txt \
             --progress-spinner off \
@@ -339,6 +343,7 @@ jobs:
             --ignore-vuln GHSA-w2fm-2cpv-w7v5 \
             --ignore-vuln GHSA-2vrm-gr82-f7m5 \
             --ignore-vuln PYSEC-2025-183 \
+            --ignore-vuln PYSEC-2026-161 \
             | tee "$GITHUB_STEP_SUMMARY"
 
   # Frontend dependency audit — hard-fail only on CRITICAL per plan Q1.

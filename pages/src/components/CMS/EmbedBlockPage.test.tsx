@@ -35,6 +35,15 @@ vi.mock('./BlockRenderer', () => ({
   ),
 }));
 
+vi.mock('./embedAppRoutes', () => ({
+  resolveEmbedAppRoute: (route?: string | null) =>
+    route === '/schedule'
+      ? ({scheduleId}: {scheduleId?: string | null}) => (
+          <div data-testid="embedded-schedule-route">{scheduleId || 'active-schedule'}</div>
+        )
+      : null,
+}));
+
 const renderAtSlug = (slug: string) =>
   render(
     <MemoryRouter initialEntries={[`/_embed/${slug}`]}>
@@ -399,6 +408,23 @@ describe('EmbedBlockPage', () => {
     renderAtSlug('widget');
     await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
     expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
+  });
+
+  it('passes schedule_id to embedded schedule app routes', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      widget_type: 'app_route',
+      app_route: '/schedule',
+      schedule_id: 'schedule-123',
+      blocks: [],
+      page_css_class: '',
+      page_css: '',
+    });
+
+    renderAtSlug('schedule-widget');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent('schedule-123'),
+    );
   });
 
   it('removes its injected <style> and <base> tags on unmount', async () => {

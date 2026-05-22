@@ -17,11 +17,11 @@ class SystemIntelligenceAgentLoaderTests(TransactionTestCase):
             access_key_id="test-key",
             secret_access_key="test-secret",
             default_region="us-west-2",
-            default_model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
         )
         SystemIntelligenceConfig.objects.create(
             name="System Intelligence",
             is_active=True,
+            default_model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
             system_prompt="Use tools.",
         )
 

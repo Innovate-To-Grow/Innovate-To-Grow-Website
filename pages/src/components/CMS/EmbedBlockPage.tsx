@@ -187,9 +187,10 @@ const EmbedBody = ({ data, containerRef }: EmbedBodyProps) => {
         </div>
       );
     }
+    const appRouteProps = data.app_route === '/schedule' ? {scheduleId: data.schedule_id ?? null} : undefined;
     return (
       <div ref={containerRef} className="cms-embed-app-route">
-        <Suspense fallback={null}>{createElement(appRouteComponent)}</Suspense>
+        <Suspense fallback={null}>{createElement(appRouteComponent, appRouteProps)}</Suspense>
       </div>
     );
   }
