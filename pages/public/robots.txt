@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.innovatetogrow.org/sitemap.xml
+Sitemap: https://i2g.ucmerced.edu/sitemap.xml

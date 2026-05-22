@@ -25,7 +25,7 @@ from django.views.static import serve as static_serve
 from authn.views.admin.login import AdminLoginView
 from cms.views import LayoutAPIView, LayoutStylesheetView
 from core.middleware import csp_report
-from core.views import MaintenanceBypassView, robots_txt, root_index
+from core.views import MaintenanceBypassView, robots_txt, root_index, sitemap_xml
 
 # Customize Django Admin
 admin.site.site_header = "Innovate To Grow Admin"
@@ -37,6 +37,8 @@ urlpatterns = [
     path("", root_index, name="root-index"),
     # robots.txt
     path("robots.txt", robots_txt, name="robots-txt"),
+    # sitemap.xml
+    path("sitemap.xml", sitemap_xml, name="sitemap-xml"),
     # custom admin login (before admin.site.urls to override default)
     path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
     # admin site
