@@ -12,6 +12,7 @@ from django.urls import reverse
 from authn.models import ContactEmail
 from cms.admin.cms.cms_embed_widget import CMSEmbedWidgetAdminForm
 from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
+from event.models import CurrentProjectSchedule
 
 Member = get_user_model()
 
@@ -32,6 +33,7 @@ class CMSEmbedWidgetModelTests(TestCase):
                 sort_order=i,
                 data={"body_html": f"<p>Block {i}</p>"},
             )
+        self.schedule = CurrentProjectSchedule.objects.create(name="Demo Day")
 
     def _full_clean(self, **kwargs):
         widget = CMSEmbedWidget(page=self.page, **kwargs)
@@ -105,6 +107,26 @@ class CMSEmbedWidgetModelTests(TestCase):
         widget.full_clean()
         self.assertIsNone(widget.page_id)
 
+    def test_schedule_route_widget_keeps_selected_schedule(self):
+        widget = CMSEmbedWidget(
+            widget_type="app_route",
+            slug="schedule-embed",
+            app_route="/schedule",
+            schedule=self.schedule,
+        )
+        widget.full_clean()
+        self.assertEqual(widget.schedule, self.schedule)
+
+    def test_non_schedule_widget_clears_selected_schedule(self):
+        widget = CMSEmbedWidget(
+            widget_type="app_route",
+            slug="news-embed",
+            app_route="/news",
+            schedule=self.schedule,
+        )
+        widget.full_clean()
+        self.assertIsNone(widget.schedule)
+
     def test_blocks_widget_requires_page(self):
         widget = CMSEmbedWidget(widget_type="blocks", slug="bw", block_sort_orders=[0])
         with self.assertRaises(ValidationError) as ctx:
@@ -176,6 +198,7 @@ class CMSEmbedWidgetAdminFormTests(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         self.page = CMSPage.objects.create(slug="host", route="/host", title="Host", status="draft")
+        self.schedule = CurrentProjectSchedule.objects.create(name="Demo Day")
         for i in range(2):
             CMSBlock.objects.create(page=self.page, block_type="rich_text", sort_order=i, data={})
 
@@ -219,14 +242,50 @@ class CMSEmbedWidgetAdminFormTests(TestCase):
                 "admin_label": "Schedule",
                 "block_sort_orders": "[]",
                 "app_route": "/schedule",
+                "schedule": str(self.schedule.pk),
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
         widget = form.save()
         self.assertEqual(widget.widget_type, "app_route")
         self.assertEqual(widget.app_route, "/schedule")
+        self.assertEqual(widget.schedule, self.schedule)
         self.assertIsNone(widget.page_id)
         self.assertEqual(widget.block_sort_orders, [])
+
+    def test_form_clears_schedule_for_non_schedule_app_route(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "app_route",
+                "page": "",
+                "slug": "news-embed",
+                "admin_label": "News",
+                "block_sort_orders": "[]",
+                "app_route": "/news",
+                "schedule": str(self.schedule.pk),
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        widget = form.save()
+        self.assertEqual(widget.app_route, "/news")
+        self.assertIsNone(widget.schedule)
+
+    def test_form_clears_schedule_for_blocks_widget(self):
+        form = CMSEmbedWidgetAdminForm(
+            data={
+                "widget_type": "blocks",
+                "page": str(self.page.pk),
+                "slug": "blocks-embed",
+                "admin_label": "Blocks",
+                "block_sort_orders": "[0]",
+                "app_route": "",
+                "schedule": str(self.schedule.pk),
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        widget = form.save()
+        self.assertEqual(widget.widget_type, "blocks")
+        self.assertIsNone(widget.schedule)
 
     def test_form_rejects_app_route_widget_with_unknown_route(self):
         form = CMSEmbedWidgetAdminForm(
@@ -328,6 +387,7 @@ class CMSEmbedWidgetAdminViewTests(TestCase):
         )
         self.client.login(username="admin@example.com", password="testpass123")
         self.page = CMSPage.objects.create(slug="host", route="/host", title="Host", status="draft")
+        self.schedule = CurrentProjectSchedule.objects.create(name="Demo Day")
         for i in range(2):
             CMSBlock.objects.create(
                 page=self.page,
@@ -348,6 +408,7 @@ class CMSEmbedWidgetAdminViewTests(TestCase):
         self.assertContains(response, 'id="cms-widget-app-route-status"')
         self.assertContains(response, "Sections to hide")
         self.assertContains(response, "schedule_projects")
+        self.assertContains(response, 'id="id_schedule"')
         self.assertContains(response, "cms/js/cms-embed-widget/previews.js")
 
     def test_add_form_replaces_legacy_hide_toggle_with_hidden_section_presets(self):

@@ -1,57 +1,22 @@
-import logging
-
 from django import forms
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
-from unfold.widgets import UnfoldAdminPasswordToggleWidget, UnfoldAdminSelectWidget
+from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from core.admin.base import BaseModelAdmin
 from core.models import AWSCredentialConfig
 
-logger = logging.getLogger(__name__)
-
 
 class AWSCredentialConfigForm(forms.ModelForm):
-    default_model_id = forms.TypedChoiceField(
-        coerce=str,
-        required=False,
-        label="Default AI Model",
-        help_text="Site-wide default Bedrock model or inference profile ID.",
-        widget=UnfoldAdminSelectWidget,
-    )
-
     class Meta:
         model = AWSCredentialConfig
         fields = "__all__"
         widgets = {
             "secret_access_key": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        try:
-            from core.services.bedrock import get_available_models
-
-            grouped = get_available_models()
-            choices = [("", "---------")]
-            seen_model_ids = set()
-            for group, models in grouped:
-                seen_model_ids.update(model_id for model_id, _name in models)
-                choices.append((group, list(models)))
-            current = self.initial.get("default_model_id", "") or getattr(self.instance, "default_model_id", "") or ""
-            if current and current not in seen_model_ids:
-                choices.append(("Configured Model", [(current, current)]))
-            self.fields["default_model_id"].choices = choices
-        except Exception:
-            logger.debug("Could not fetch Bedrock models for form choices", exc_info=True)
-            current = self.initial.get("default_model_id", "") or ""
-            if current:
-                self.fields["default_model_id"].choices = [("", "---------"), (current, current)]
-            else:
-                self.fields["default_model_id"].choices = [("", "---------")]
 
 
 @admin.register(AWSCredentialConfig)
@@ -63,7 +28,6 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
         "configured_badge",
         "access_key_masked",
         "default_region",
-        "default_model_display",
         "updated_at",
     )
     list_filter = ("is_active",)
@@ -80,15 +44,7 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
             _("AWS Credentials"),
             {
                 "fields": ("access_key_id", "secret_access_key", "default_region"),
-                "description": "IAM access key used by AWS services (SES, S3, etc.).",
-            },
-        ),
-        (
-            _("Default AI Model"),
-            {
-                "fields": ("default_model_id",),
-                "description": "Default Bedrock model used site-wide. "
-                "Model list is fetched from AWS using the credentials above.",
+                "description": "IAM access key used by AWS Bedrock.",
             },
         ),
         (_("Info"), {"fields": ("updated_at",)}),
@@ -113,21 +69,6 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
             return f"...{obj.access_key_id[-4:]}"
         return "—"
 
-    @display(description="Default Model")
-    def default_model_display(self, obj):
-        if not obj.default_model_id:
-            return "—"
-        try:
-            from core.services.bedrock import get_available_models
-
-            for _group, models in get_available_models():
-                for mid, name in models:
-                    if mid == obj.default_model_id:
-                        return name
-        except Exception:
-            logger.exception("Failed to resolve default model display name for AWS credential config '%s'.", obj.pk)
-        return obj.default_model_id
-
     @action(description="Activate this config", url_path="activate", icon="check_circle")
     def activate_this_config(self, request, object_id):
         obj = AWSCredentialConfig.objects.get(pk=object_id)
@@ -149,9 +90,11 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
             messages.error(request, "Cannot test: AWS credentials are not configured.")
             return HttpResponseRedirect(change_url)
 
-        model_id = obj.default_model_id
+        from system_intelligence.models import SystemIntelligenceConfig
+
+        model_id = SystemIntelligenceConfig.load().default_model_id
         if not model_id:
-            messages.error(request, "Cannot test: no default AI model selected.")
+            messages.error(request, "Cannot test: no default AI model selected in System Intelligence Config.")
             return HttpResponseRedirect(change_url)
 
         try:

@@ -31,7 +31,7 @@ def invoke_system_intelligence_stream(
     """Synchronously yield existing System Intelligence event dicts from ADK."""
     chat_config = chat_config or SystemIntelligenceConfig.load()
     aws_config = get_aws_config(aws_config)
-    model_id = model_id or aws_config.default_model_id
+    model_id = model_id or chat_config.default_model_id
     event_queue: queue.Queue = queue.Queue()
 
     async def produce():
@@ -91,7 +91,7 @@ async def invoke_system_intelligence_stream_async(
     previous_messages, user_message = split_history_and_current_message(conversation_messages)
     chat_config = chat_config or SystemIntelligenceConfig.load()
     aws_config = get_aws_config(aws_config)
-    model_id = model_id or aws_config.default_model_id
+    model_id = model_id or chat_config.default_model_id
     if not model_id:
         raise SystemIntelligenceADKError("No Bedrock model is configured. Select a default model first.")
 

@@ -197,8 +197,10 @@ export async function fetchRegistrationOptions(): Promise<EventRegistrationOptio
   }
 }
 
-export async function fetchCurrentSchedule(): Promise<EventSchedulePayload> {
-  const response = await api.get<EventSchedulePayload>('/event/schedule/');
+export async function fetchCurrentSchedule(scheduleId?: string | null): Promise<EventSchedulePayload> {
+  const response = await api.get<EventSchedulePayload>('/event/schedule/', {
+    ...(scheduleId ? {params: {schedule_id: scheduleId}} : {}),
+  });
   return response.data;
 }
 

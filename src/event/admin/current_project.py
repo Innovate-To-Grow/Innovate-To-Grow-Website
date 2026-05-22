@@ -36,6 +36,7 @@ class CurrentProjectAdmin(BaseModelAdmin):
 class CurrentProjectScheduleAdmin(BaseModelAdmin):
     list_display = ("name", "is_active", "last_synced_at", "sync_error_short", "created_at")
     list_filter = ("is_active",)
+    search_fields = ("name", "sheet_id")
     readonly_fields = ("last_synced_at", "sync_error", "created_at", "updated_at")
     change_list_template = "admin/event/currentprojectschedule_changelist.html"
 

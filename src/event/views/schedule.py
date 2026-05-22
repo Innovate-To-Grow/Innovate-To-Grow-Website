@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -13,7 +14,7 @@ class CurrentEventScheduleView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):
-        config = CurrentProjectSchedule.load()
+        config = self._get_config(request.query_params.get("schedule_id"))
         if not config:
             return Response({"detail": "No schedule configured."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -37,3 +38,11 @@ class CurrentEventScheduleView(APIView):
             return Response({"detail": "No schedule available."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(build_schedule_payload(config))
+
+    def _get_config(self, schedule_id):
+        if not schedule_id:
+            return CurrentProjectSchedule.load()
+        try:
+            return CurrentProjectSchedule.objects.filter(pk=schedule_id).first()
+        except (TypeError, ValueError, ValidationError):
+            return None

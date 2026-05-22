@@ -81,6 +81,7 @@ export interface CMSEmbedResponse {
   page_css: string;
   hidden_sections?: string[];
   hide_section_titles?: boolean;
+  schedule_id?: string | null;
 }
 
 export async function fetchCMSEmbed(

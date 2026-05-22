@@ -84,7 +84,7 @@ def _handle_compact(request, convo, _args):
         candidates,
         chat_config=chat_config,
         aws_config=aws_config,
-        model_id=aws_config.default_model_id,
+        model_id=chat_config.default_model_id,
         user_id=str(request.user.pk),
         force=True,
     )

@@ -143,6 +143,13 @@
         if (!frontend || !route) return '';
         try {
             var url = new URL(route, frontend + '/');
+            if (route === '/schedule') {
+                var schedule = ns.fields && ns.fields.schedule ? ns.fields.schedule() : null;
+                var scheduleId = schedule ? String(schedule.value || '').trim() : '';
+                if (scheduleId) {
+                    url.searchParams.set('schedule_id', scheduleId);
+                }
+            }
             if (isolated) {
                 url.searchParams.set('_isolated', '1');
                 var hiddenSections = ns.getSelectedHiddenSections ? ns.getSelectedHiddenSections() : [];

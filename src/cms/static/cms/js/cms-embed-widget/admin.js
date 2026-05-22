@@ -130,6 +130,7 @@
         ns.bindPageChange();
         ns.bindWidgetType();
         ns.bindAppRoute();
+        ns.bindSchedule();
         ns.bindHiddenSections();
         bindCopy();
         ns.bindPreview();

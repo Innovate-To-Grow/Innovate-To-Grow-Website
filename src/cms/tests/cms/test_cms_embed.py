@@ -3,6 +3,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from cms.models import CMSBlock, CMSEmbedWidget, CMSPage
+from event.models import CurrentProjectSchedule
 
 
 class EmbedBlockViewTest(TestCase):
@@ -215,6 +216,7 @@ class EmbedAppRouteWidgetViewTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         self.client = APIClient()
+        self.schedule = CurrentProjectSchedule.objects.create(name="Demo Day")
         self.widget = CMSEmbedWidget.objects.create(
             widget_type="app_route",
             app_route="/schedule",
@@ -232,6 +234,27 @@ class EmbedAppRouteWidgetViewTest(TestCase):
         self.assertEqual(data["page_css_class"], "")
         self.assertEqual(data["page_css"], "")
         self.assertEqual(data["hidden_sections"], [])
+        self.assertIsNone(data["schedule_id"])
+
+    def test_returns_schedule_id_for_configured_schedule_widget(self):
+        self.widget.schedule = self.schedule
+        self.widget.save(update_fields=["schedule"])
+
+        response = self.client.get("/cms/embed/schedule-embed/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["schedule_id"], str(self.schedule.pk))
+
+    def test_non_schedule_app_route_does_not_expose_schedule_id(self):
+        self.widget.app_route = "/news"
+        self.widget.schedule = self.schedule
+        self.widget.save(update_fields=["app_route", "schedule"])
+
+        response = self.client.get("/cms/embed/schedule-embed/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["app_route"], "/news")
+        self.assertIsNone(response.json()["schedule_id"])
 
     def test_does_not_require_page(self):
         self.assertIsNone(self.widget.page_id)
@@ -289,5 +312,6 @@ class EmbedAppRouteWidgetViewTest(TestCase):
                 "page_css",
                 "hidden_sections",
                 "hide_section_titles",
+                "schedule_id",
             },
         )

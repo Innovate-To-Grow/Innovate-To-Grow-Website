@@ -133,7 +133,7 @@ class EmbedBlockView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, embed_slug, *args, **kwargs):
-        widget = CMSEmbedWidget.objects.select_related("page").filter(slug=embed_slug).first()
+        widget = CMSEmbedWidget.objects.select_related("page", "schedule").filter(slug=embed_slug).first()
         if widget is None or not widget.is_visible():
             response = Response({"detail": "Not found."}, status=404)
             response["Access-Control-Allow-Origin"] = "*"
@@ -149,6 +149,9 @@ class EmbedBlockView(APIView):
                 "page_css": "",
                 "hidden_sections": hidden_sections,
                 "hide_section_titles": "section_titles" in hidden_sections,
+                "schedule_id": str(widget.schedule_id)
+                if widget.app_route == "/schedule" and widget.schedule_id
+                else None,
             }
         else:
             hidden_sections = widget.get_effective_hidden_sections()

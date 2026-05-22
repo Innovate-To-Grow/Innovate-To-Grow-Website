@@ -19,7 +19,7 @@ function getErrorMessage(error: unknown): string {
   return 'Failed to load event schedule. Please try again later.';
 }
 
-export function useCurrentEventSchedule(): UseCurrentEventScheduleResult {
+export function useCurrentEventSchedule(scheduleId?: string | null): UseCurrentEventScheduleResult {
   const [data, setData] = useState<EventSchedulePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,10 +27,11 @@ export function useCurrentEventSchedule(): UseCurrentEventScheduleResult {
   useEffect(() => {
     let cancelled = false;
 
-    fetchCurrentSchedule()
+    fetchCurrentSchedule(scheduleId)
       .then((payload) => {
         if (cancelled) return;
         setData(payload);
+        setError(null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -43,7 +44,7 @@ export function useCurrentEventSchedule(): UseCurrentEventScheduleResult {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scheduleId]);
 
   return {data, loading, error};
 }

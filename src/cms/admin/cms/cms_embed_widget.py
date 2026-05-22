@@ -40,6 +40,7 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
             "widget_type",
             "page",
             "app_route",
+            "schedule",
             "slug",
             "admin_label",
             "hidden_sections",
@@ -84,9 +85,9 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
     form = CMSEmbedWidgetAdminForm
     change_form_template = "admin/cms/cmsembedwidget/change_form.html"
     list_display = ("slug", "widget_type", "target_label", "admin_label", "block_count", "updated_at")
-    list_filter = ("widget_type", "page")
+    list_filter = ("widget_type", "page", "schedule")
     search_fields = ("slug", "admin_label", "app_route", "page__title", "page__route")
-    autocomplete_fields = ("page",)
+    autocomplete_fields = ("page", "schedule")
     readonly_fields = ("created_at", "updated_at")
 
     def get_ordering(self, request):
@@ -95,6 +96,8 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
     @admin.display(description="Target")
     def target_label(self, obj):
         if obj.widget_type == "app_route":
+            if obj.app_route == "/schedule" and obj.schedule_id:
+                return format_html("<code>{}</code> — {}", obj.app_route or "—", obj.schedule)
             return format_html("<code>{}</code>", obj.app_route or "—")
         if obj.page_id:
             url = reverse("admin:cms_cmspage_change", args=[obj.page_id])
