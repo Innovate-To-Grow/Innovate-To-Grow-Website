@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import load_workbook
 
@@ -229,6 +229,7 @@ class CheckInAdminTest(TestCase):
         self.assertNotEqual(response.status_code, 200)
 
 
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class EventRegistrationAdminTest(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()

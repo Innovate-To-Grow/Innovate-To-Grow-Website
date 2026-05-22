@@ -58,6 +58,7 @@ class CMSPageAdmin(BaseModelAdmin):
     readonly_fields = ("created_at", "updated_at", "published_at")
     inlines = []
     actions = ["export_pages"]
+    actions_no_confirmation = ["export_pages"]
     fieldsets = (
         (
             "Page Info",

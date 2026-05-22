@@ -4,10 +4,10 @@ Base admin classes for consistent admin interface across the project.
 
 from unfold.admin import ModelAdmin
 
-from .mixins import DataExportMixin, TimestampedAdminMixin
+from .mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
 
 
-class BaseModelAdmin(DataExportMixin, TimestampedAdminMixin, ModelAdmin):
+class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin, ModelAdmin):
     """
     Base admin class with common configuration for all model admins.
 
@@ -59,6 +59,8 @@ class ReadOnlyModelAdmin(BaseModelAdmin):
     Useful for audit logs, system records, or any model that should
     not be edited through the admin interface.
     """
+
+    require_confirmation = False
 
     def has_add_permission(self, request):
         """Prevent adding new objects."""

@@ -2,7 +2,7 @@
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from authn.models import ContactEmail
@@ -45,6 +45,7 @@ class CMSEmbedAllowedHostModelTests(TestCase):
         self.assertEqual(str(host), "example.com")
 
 
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class CMSEmbedAllowedHostAdminTests(TestCase):
     def setUp(self):
         CMSEmbedAllowedHost.objects.all().delete()

@@ -1,3 +1,4 @@
+from django.conf import settings as django_settings
 from django.contrib import admin, messages
 from django.db import transaction
 from django.shortcuts import redirect
@@ -69,6 +70,11 @@ class SemesterAdmin(BaseModelAdmin):
 
     def publish_all_view(self, request):
         if request.method == "POST":
+            if getattr(django_settings, "ADMIN_REQUIRE_CONFIRMATION", True):
+                confirmation_text = request.POST.get("confirmation_text", "").strip()
+                if confirmation_text.lower() != "publish all":
+                    messages.error(request, 'Confirmation text does not match. Type "publish all" to confirm.')
+                    return redirect(reverse("admin:projects_semester_changelist"))
             updated = Semester.objects.filter(is_published=False).update(is_published=True)
             transaction.on_commit(_clear_project_caches)
             self.message_user(request, f"{updated} semester(s) published.", messages.SUCCESS)
@@ -83,6 +89,12 @@ class SemesterAdmin(BaseModelAdmin):
 
             dry_run = bool(request.POST.get("dry_run"))
             publish = bool(request.POST.get("publish"))
+
+            if not dry_run and getattr(django_settings, "ADMIN_REQUIRE_CONFIRMATION", True):
+                confirmation_text = request.POST.get("confirmation_text", "").strip()
+                if confirmation_text.lower() != "import":
+                    messages.error(request, 'Confirmation text does not match. Type "import" to confirm.')
+                    return redirect(reverse("admin:projects_import_csv"))
 
             result = import_projects_from_csv(csv_file, dry_run=dry_run, publish=publish)
 

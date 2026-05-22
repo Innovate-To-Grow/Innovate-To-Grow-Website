@@ -23,6 +23,9 @@ if extra:
 # Plain-text passwords are acceptable for local dev/test convenience
 REQUIRE_ENCRYPTED_PASSWORDS = False
 
+# Admin confirmation — require typed verification for all admin changes
+ADMIN_REQUIRE_CONFIRMATION = True
+
 # Print emails to console instead of sending
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

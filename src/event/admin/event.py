@@ -165,6 +165,7 @@ class EventAdmin(BaseModelAdmin):
                 messages.error(request, f'Sync failed for "{event.name}": {exc}')
 
     actions = ["sync_registrations_to_sheet"]
+    actions_no_confirmation = ["sync_registrations_to_sheet"]
 
     @display(description="2nd Email", label=True)
     def secondary_email_badge(self, obj):

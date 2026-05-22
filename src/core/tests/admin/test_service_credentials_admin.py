@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.test.client import RequestFactory
 from django.urls import reverse
 
@@ -11,6 +11,7 @@ from core.models import AWSCredentialConfig, GmailImportConfig
 from event.tests.helpers import make_superuser
 
 
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class GmailImportConfigAdminTests(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()

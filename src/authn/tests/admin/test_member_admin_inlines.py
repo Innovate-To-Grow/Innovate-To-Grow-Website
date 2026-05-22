@@ -88,7 +88,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
         self._assert_inlines_visible(resp)
 
 
-@override_settings(ROOT_URLCONF="core.urls")
+@override_settings(ROOT_URLCONF="core.urls", ADMIN_REQUIRE_CONFIRMATION=False)
 class MemberAdminInlineUUIDSubmitTest(TestCase):
     """Submitting inline forms with UUID PKs must not break on 'None' values.
 
