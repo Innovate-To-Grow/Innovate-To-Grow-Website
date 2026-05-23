@@ -219,11 +219,11 @@ Lists the authenticated user's contact phones.
 
 ### `POST /authn/contact-phones/`
 
-Creates a new contact phone. Triggers SMS verification via Twilio.
+Creates a new contact phone. SMS verification is requested separately via `request-verification/`.
 
 ### `POST /authn/contact-phones/{id}/verify/`
 
-Verifies phone with Twilio Verify code.
+Verifies phone with SMS OTP code (delivered via AWS SNS).
 
 ## Account deletion
 

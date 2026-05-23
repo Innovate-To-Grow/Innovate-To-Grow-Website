@@ -66,13 +66,13 @@
                     <div class="flex gap-2">
                         <span class="w-20 shrink-0 text-font-subtle-light dark:text-font-subtle-dark">Provider:</span>
                         <span class="font-medium text-font-default-light dark:text-font-default-dark">
-                            {% if sms_config.is_configured %}Twilio Verify{% else %}Not configured{% endif %}
+                            {% if sms_config.is_configured %}AWS SNS{% else %}Not configured{% endif %}
                         </span>
                     </div>
                     <div class="flex gap-2">
-                        <span class="w-20 shrink-0 text-font-subtle-light dark:text-font-subtle-dark">Verify SID:</span>
+                        <span class="w-20 shrink-0 text-font-subtle-light dark:text-font-subtle-dark">Region:</span>
                         <span class="font-medium text-font-default-light dark:text-font-default-dark">
-                            {% if sms_config.verify_sid %}...{{ sms_config.verify_sid|slice:'-6:' }}{% else %}-{% endif %}
+                            {{ sms_config.effective_region|default:"-" }}
                         </span>
                     </div>
                     <div class="flex gap-2">

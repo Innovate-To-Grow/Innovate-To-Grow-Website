@@ -1,11 +1,9 @@
-from django import forms
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
-from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from core.admin.base import BaseModelAdmin
 from core.models import SMSServiceConfig
@@ -14,21 +12,11 @@ from ..helpers import _normalize_phone_number, _send_test_sms
 from ..test_send_mixin import TestSendViewsMixin
 
 
-class SMSServiceConfigForm(forms.ModelForm):
-    class Meta:
-        model = SMSServiceConfig
-        fields = "__all__"
-        widgets = {
-            "auth_token": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
-        }
-
-
 @admin.register(SMSServiceConfig)
 class SMSServiceConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
-    form = SMSServiceConfigForm
-    list_display = ("name", "status_badge", "account_sid", "updated_at")
+    list_display = ("name", "status_badge", "from_number", "sns_region", "updated_at")
     list_filter = ("is_active",)
-    search_fields = ("name", "account_sid")
+    search_fields = ("name", "from_number", "sns_region")
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config", "test_send_action"]
     actions_list = ["test_email_list", "test_sms_list"]
@@ -39,10 +27,13 @@ class SMSServiceConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
             {"fields": ("name", "is_active")},
         ),
         (
-            _("Twilio Verify"),
+            _("AWS SNS"),
             {
-                "fields": ("account_sid", "auth_token", "verify_sid", "from_number"),
-                "description": "Twilio credentials for SMS phone verification (Verify API).",
+                "fields": ("sns_region", "from_number", "message_template"),
+                "description": (
+                    "SMS verification uses AWS SNS with shared AWS IAM credentials "
+                    "(AWSCredential Config or Email Service SES keys)."
+                ),
             },
         ),
         (_("Info"), {"fields": ("updated_at",)}),

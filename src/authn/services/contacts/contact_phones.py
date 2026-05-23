@@ -110,7 +110,7 @@ def delete_contact_phone(*, member, contact_phone_id):
 
 
 def request_phone_verification(*, member, contact_phone_id):
-    """Start Twilio OTP verification for a contact phone."""
+    """Start SMS OTP verification for a contact phone."""
     from authn.services.sms import start_phone_verification
 
     contact_phone = ContactPhone.objects.filter(pk=contact_phone_id, member=member).first()
@@ -125,7 +125,7 @@ def request_phone_verification(*, member, contact_phone_id):
 
 
 def verify_phone_code(*, member, contact_phone_id, code: str):
-    """Verify a Twilio OTP code and mark the phone as verified."""
+    """Verify an SMS OTP code and mark the phone as verified."""
     from authn.services.sms import check_phone_verification
 
     contact_phone = ContactPhone.objects.filter(pk=contact_phone_id, member=member).first()

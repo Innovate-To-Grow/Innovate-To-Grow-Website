@@ -65,35 +65,12 @@ def _send_test_email(*, config, recipient):
 
 
 def _send_test_sms(*, config, phone_number):
-    """Send a test SMS using the given SMSServiceConfig.
+    """Send a test SMS using AWS SNS via the given SMSServiceConfig."""
+    from authn.services.sms import publish_plain_sms
 
-    If ``from_number`` is set, sends a plain text message via the Messages API.
-    Otherwise falls back to a Twilio Verify code via the Verify API.
-    Returns a short string describing what was sent.
-    """
-    import secrets
-
-    if not config.account_sid or not config.auth_token:
-        raise ValueError("Twilio credentials are not fully configured.")
-
-    from twilio.rest import Client
-
-    client = Client(config.account_sid, config.auth_token)
-
-    if config.from_number:
-        message = client.messages.create(
-            to=phone_number,
-            from_=config.from_number,
-            body="This is a test message from the Innovate to Grow admin panel. Your SMS configuration is working correctly.",
-        )
-        warning = ""
-        if not config.verify_sid:
-            warning = " — Warning: Verify SID not set, login verification will not work"
-        return f"message (SID: {message.sid}){warning}"
-
-    if not config.verify_sid:
-        raise ValueError("Either 'From Phone Number' or 'Verify Service SID' must be configured.")
-
-    code = f"{secrets.randbelow(900000) + 100000}"
-    client.verify.v2.services(config.verify_sid).verifications.create(to=phone_number, channel="sms", custom_code=code)
-    return f"verification code [{code}]"
+    message_id = publish_plain_sms(
+        phone_number=phone_number,
+        message="This is a test message from the Innovate to Grow admin panel. Your SMS configuration is working correctly.",
+        config=config,
+    )
+    return f"message (ID: {message_id})"

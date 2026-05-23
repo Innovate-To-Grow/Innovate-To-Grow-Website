@@ -34,17 +34,18 @@ Primary email delivery service in production.
 
 In development, `EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'` prints emails to stdout.
 
-## Twilio (SMS)
+## AWS SNS (SMS)
 
 Used for phone number verification during event registration and contact management.
 
 | Concern | Implementation |
 |---------|---------------|
-| Configuration | `SMSServiceConfig` singleton in `src/core/models/service_credentials.py` |
-| Send verification | `src/authn/services/sms/` |
-| Event phone verify | `src/event/views/` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
+| Configuration | `SMSServiceConfig` in `src/core/models/base/service_credentials/sms.py` |
+| AWS credentials | Shared via `src/core/services/aws/credentials.py` (AWSCredentialConfig or EmailServiceConfig SES keys) |
+| Send verification | `src/authn/services/sms/sns_verify.py` |
+| Event phone verify | `src/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
-Uses the Twilio Verify API (not raw SMS). Credentials: `account_sid`, `auth_token`, `verify_sid`.
+OTP codes are generated locally, stored in cache, and delivered via `sns:Publish`. Requires a registered SNS origination phone number and IAM permission `sns:Publish`.
 
 ## AWS S3 / Cloudflare R2
 

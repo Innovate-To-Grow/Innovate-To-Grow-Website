@@ -45,9 +45,6 @@ django-cors-headers>=4.4.0
 # HTML Parsing
 beautifulsoup4>=4.14.3
 
-# SMS Verification
-twilio>=9.0.0
-
 # HTML Sanitization
 bleach>=6.0.0
 

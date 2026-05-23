@@ -1,11 +1,12 @@
 """SMS verification service modules."""
 
-from .twilio_verify import (
+from .sns_verify import (
     PhoneVerificationDeliveryError,
     PhoneVerificationError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
     check_phone_verification,
+    publish_plain_sms,
     start_phone_verification,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "PhoneVerificationInvalid",
     "PhoneVerificationThrottled",
     "check_phone_verification",
+    "publish_plain_sms",
     "start_phone_verification",
 ]

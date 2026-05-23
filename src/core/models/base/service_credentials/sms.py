@@ -1,13 +1,15 @@
 from django.db import models
 
+from core.services.aws.credentials import aws_credentials_available
+
 
 class SMSServiceConfig(models.Model):
     """
-    Twilio SMS verification configuration.
+    AWS SNS SMS verification configuration.
 
-    Stores Twilio Verify API credentials. Multiple configs can exist
-    but only one may be active at a time. Managed via Django admin
-    under Site Settings.
+    Uses shared AWS IAM credentials (AWSCredentialConfig or EmailServiceConfig SES keys)
+    for authentication. Multiple configs can exist but only one may be active at a time.
+    Managed via Django admin under Site Settings.
     """
 
     name = models.CharField(
@@ -22,32 +24,26 @@ class SMSServiceConfig(models.Model):
         help_text="Only one config can be active. Activating this will deactivate others.",
     )
 
-    account_sid = models.CharField(
-        max_length=64,
+    sns_region = models.CharField(
+        max_length=32,
         blank=True,
         default="",
-        verbose_name="Account SID",
-        help_text="Twilio Account SID (starts with AC).",
-    )
-    auth_token = models.CharField(
-        max_length=64,
-        blank=True,
-        default="",
-        verbose_name="Auth Token",
-    )
-    verify_sid = models.CharField(
-        max_length=64,
-        blank=True,
-        default="",
-        verbose_name="Verify Service SID",
-        help_text="Twilio Verify Service SID (starts with VA).",
+        verbose_name="SNS Region",
+        help_text="AWS region for SNS SMS. Leave blank to use the shared AWS credential region.",
     )
     from_number = models.CharField(
         max_length=20,
         blank=True,
         default="",
-        verbose_name="From Phone Number",
-        help_text="Twilio phone number for sending messages (e.g. +1234567890). Used for test SMS.",
+        verbose_name="Origination Phone Number",
+        help_text="SNS-registered origination number in E.164 format (e.g. +12065551234).",
+    )
+    message_template = models.CharField(
+        max_length=320,
+        blank=True,
+        default="",
+        verbose_name="OTP Message Template",
+        help_text="SMS body template. Must include {code}. Leave blank for the default message.",
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -58,8 +54,9 @@ class SMSServiceConfig(models.Model):
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
-        if self.account_sid:
-            return f"{self.name}: Twilio (SID: ...{self.account_sid[-4:]}){status}"
+        if self.is_configured:
+            region = self.effective_region or "unknown"
+            return f"{self.name}: AWS SNS ({region}){status}"
         return f"{self.name}: Not configured{status}"
 
     def save(self, *args, **kwargs):
@@ -81,5 +78,23 @@ class SMSServiceConfig(models.Model):
         return obj if obj is not None else cls()
 
     @property
+    def effective_region(self) -> str:
+        if self.sns_region:
+            return self.sns_region
+        if aws_credentials_available():
+            from core.services.aws.credentials import resolve_aws_credentials
+
+            return resolve_aws_credentials().region
+        return ""
+
+    @property
     def is_configured(self):
-        return bool(self.account_sid and self.auth_token and self.verify_sid)
+        return bool(self.from_number and aws_credentials_available())
+
+    def render_otp_message(self, code: str) -> str:
+        template = self.message_template.strip() or (
+            "Your Innovate to Grow verification code is {code}. It expires in 10 minutes."
+        )
+        if "{code}" not in template:
+            raise ValueError("OTP message template must include {code}.")
+        return template.format(code=code)

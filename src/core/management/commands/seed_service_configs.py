@@ -49,9 +49,8 @@ class Command(BaseCommand):
         SMSServiceConfig.objects.create(
             name="Production",
             is_active=True,
-            account_sid=os.environ.get("TWILIO_ACCOUNT_SID", ""),
-            auth_token=os.environ.get("TWILIO_AUTH_TOKEN", ""),
-            verify_sid=os.environ.get("TWILIO_VERIFY_SID", ""),
+            from_number=os.environ.get("SNS_FROM_NUMBER", ""),
+            sns_region=os.environ.get("SNS_REGION", ""),
         )
         self.stdout.write(self.style.SUCCESS("Created active SMSServiceConfig 'Production'."))
 
