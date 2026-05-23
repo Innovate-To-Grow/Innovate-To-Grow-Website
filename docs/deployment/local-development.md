@@ -30,8 +30,12 @@ python manage.py migrate
 # Create admin user (prompts for email, not username)
 python manage.py createsuperuser
 
-# Seed service configs from .env (optional)
+# Seed skeleton service configs (optional)
 python manage.py seed_service_configs
+
+# Enter SES, SMTP, SNS, or Google credentials via Django admin → Site Settings.
+# Verify configs before deploying to prod:
+# python manage.py verify_service_configs --strict
 
 # Start the server
 python manage.py runserver

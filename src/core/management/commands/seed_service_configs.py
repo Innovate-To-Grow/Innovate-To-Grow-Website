@@ -1,4 +1,10 @@
-"""Seed EmailServiceConfig, SMSServiceConfig, and staff ContactEmails from environment variables."""
+"""Seed skeleton service configs and ensure staff members have verified ContactEmails.
+
+Service credentials (SES, SMS, Sheets) are managed via Django admin → Site Settings.
+This command creates empty active rows so the admin UI has something to edit; it
+no longer reads provider-specific env vars. AWSCredentialConfig is still seeded
+from AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY when those are set locally.
+"""
 
 import os
 
@@ -12,7 +18,7 @@ Member = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Create initial service configs from .env and ensure staff members have verified ContactEmails"
+    help = "Create skeleton EmailServiceConfig/SMSServiceConfig rows and ensure staff ContactEmails."
 
     def handle(self, *args, **options):
         self._seed_email()
@@ -25,34 +31,26 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("EmailServiceConfig already exists — skipping."))
             return
 
-        EmailServiceConfig.objects.create(
-            name="Production",
-            is_active=True,
-            ses_access_key_id=os.environ.get("SES_AWS_ACCESS_KEY_ID", ""),
-            ses_secret_access_key=os.environ.get("SES_AWS_SECRET_ACCESS_KEY", ""),
-            ses_region=os.environ.get("SES_AWS_REGION", "us-west-2"),
-            ses_from_email=os.environ.get("SES_FROM_EMAIL", "i2g@g.ucmerced.edu"),
-            ses_from_name=os.environ.get("SES_FROM_NAME", "Innovate to Grow"),
-            smtp_host=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
-            smtp_port=587,
-            smtp_use_tls=True,
-            smtp_username=os.environ.get("MAIL_USERNAME", ""),
-            smtp_password=os.environ.get("MAIL_PASSWORD", ""),
+        EmailServiceConfig.objects.create(name="Production", is_active=True)
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Created skeleton active EmailServiceConfig 'Production'. "
+                "Fill in SES or SMTP credentials in Django admin."
+            )
         )
-        self.stdout.write(self.style.SUCCESS("Created active EmailServiceConfig 'Production'."))
 
     def _seed_sms(self):
         if SMSServiceConfig.objects.exists():
             self.stdout.write(self.style.WARNING("SMSServiceConfig already exists — skipping."))
             return
 
-        SMSServiceConfig.objects.create(
-            name="Production",
-            is_active=True,
-            from_number=os.environ.get("SNS_FROM_NUMBER", ""),
-            sns_region=os.environ.get("SNS_REGION", ""),
+        SMSServiceConfig.objects.create(name="Production", is_active=True)
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Created skeleton active SMSServiceConfig 'Production'. "
+                "Set the SNS origination number in Django admin."
+            )
         )
-        self.stdout.write(self.style.SUCCESS("Created active SMSServiceConfig 'Production'."))
 
     def _seed_aws(self):
         if AWSCredentialConfig.objects.exists():

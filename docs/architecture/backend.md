@@ -117,8 +117,9 @@ Several models in `src/core/models/` use a singleton pattern (only one active re
 |-------|---------|----------|
 | `SiteMaintenanceControl` | Maintenance mode toggle with bypass password | `core/models/web.py` |
 | `EmailServiceConfig` | AWS SES or SMTP credentials | `core/models/service_credentials.py` |
-| `SMSServiceConfig` | Twilio Verify API credentials | `core/models/service_credentials.py` |
-| `GoogleCredentialConfig` | Google service account JSON | `core/models/service_credentials.py` |
+| `SMSServiceConfig` | AWS SNS phone verification (origination number, region, OTP template) | `core/models/base/service_credentials/sms.py` |
+| `GoogleCredentialConfig` | Google service account JSON | `core/models/base/service_credentials/google.py` |
+| `AWSCredentialConfig` | Shared AWS IAM keys (SNS, Bedrock) | `core/models/base/service_credentials/aws.py` |
 
 Each provides a `load()` class method that returns the active configuration.
 
@@ -127,7 +128,8 @@ Each provides a `load()` class method that returns the active configuration.
 | Command | Location | Purpose |
 |---------|----------|---------|
 | `resetdb` | `core/management/commands/resetdb.py` | Dev-only: drops DB, regenerates migrations, seeds admin user |
-| `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates default EmailServiceConfig and SMSServiceConfig from `.env` |
+| `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig/SMSServiceConfig rows (admin fills credentials) |
+| `verify_service_configs` | `core/management/commands/verify_service_configs.py` | Verifies active service configs exist before removing env vars |
 | `createsuperuser` | `authn/management/commands/createsuperuser.py` | Custom: prompts for email, not username |
 | `sync_news` | `cms/management/commands/sync_news.py` | Fetches and parses RSS feeds into NewsArticle records |
 

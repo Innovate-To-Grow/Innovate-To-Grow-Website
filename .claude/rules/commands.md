@@ -55,7 +55,8 @@ cd src && python manage.py check --settings=core.settings.dev
 
 ```bash
 cd src && python manage.py resetdb --force                        # destructive dev-only DB reset + seed
-cd src && python manage.py seed_service_configs                   # create EmailServiceConfig/SMSServiceConfig from .env
+cd src && python manage.py seed_service_configs                   # create skeleton EmailServiceConfig/SMSServiceConfig rows
+cd src && python manage.py verify_service_configs --strict        # confirm active DB configs before prod deploy
 cd src && python manage.py createsuperuser                        # prompts for email (not username)
 cd src && python manage.py sync_news --settings=core.settings.dev # sync articles from UC Merced RSS feed
 cd src && python manage.py loaddata cms/fixtures/footer_content.json
