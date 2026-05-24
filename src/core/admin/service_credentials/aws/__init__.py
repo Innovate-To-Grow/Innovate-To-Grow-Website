@@ -9,6 +9,8 @@ from unfold.widgets import UnfoldAdminPasswordToggleWidget
 from core.admin.base import BaseModelAdmin
 from core.models import AWSCredentialConfig
 
+from ..test_send_mixin import TestSendViewsMixin
+
 
 class AWSCredentialConfigForm(forms.ModelForm):
     class Meta:
@@ -20,7 +22,7 @@ class AWSCredentialConfigForm(forms.ModelForm):
 
 
 @admin.register(AWSCredentialConfig)
-class AWSCredentialConfigAdmin(BaseModelAdmin):
+class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
     form = AWSCredentialConfigForm
     list_display = (
         "name",
@@ -34,6 +36,7 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
     search_fields = ("name", "access_key_id")
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config", "test_bedrock_api"]
+    actions_list = ["test_email_list", "test_sms_list"]
 
     fieldsets = (
         (
@@ -44,7 +47,14 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
             _("AWS Credentials"),
             {
                 "fields": ("access_key_id", "secret_access_key", "default_region"),
-                "description": "IAM access key used by AWS Bedrock.",
+                "description": "Shared IAM access key and AWS region used by SES email, SNS SMS, and Bedrock.",
+            },
+        ),
+        (
+            _("SNS SMS"),
+            {
+                "fields": ("sms_from_number", "sms_message_template"),
+                "description": "SNS origination number and OTP template used for phone verification.",
             },
         ),
         (_("Info"), {"fields": ("updated_at",)}),
@@ -127,3 +137,7 @@ class AWSCredentialConfigAdmin(BaseModelAdmin):
         actions = super().get_actions(request)
         actions.pop("delete_selected", None)
         return actions
+
+    def get_urls(self):
+        custom_urls = self._get_test_send_urls("core_awscredentialconfig")
+        return custom_urls + super().get_urls()

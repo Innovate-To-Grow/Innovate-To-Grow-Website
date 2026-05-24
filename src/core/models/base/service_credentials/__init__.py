@@ -1,14 +1,12 @@
 from .aws import AWSCredentialConfig
 from .email import EmailServiceConfig
-from .gmail import GmailImportConfig
+from .gmail import GmailAccessAccount
 from .google import GoogleCredentialConfig, validate_google_credentials_json
-from .sms import SMSServiceConfig
 
 __all__ = [
     "AWSCredentialConfig",
     "EmailServiceConfig",
-    "GmailImportConfig",
+    "GmailAccessAccount",
     "GoogleCredentialConfig",
-    "SMSServiceConfig",
     "validate_google_credentials_json",
 ]

@@ -23,12 +23,19 @@ def _make_campaign(name="Test Campaign", **kwargs):
 
 
 def _make_email_config():
+    from core.models import AWSCredentialConfig
+
+    AWSCredentialConfig.objects.all().delete()
+    AWSCredentialConfig.objects.create(
+        name="Test AWS",
+        is_active=True,
+        access_key_id="AKIATEST",
+        secret_access_key="secret",
+        default_region="us-west-2",
+    )
     return EmailServiceConfig.objects.create(
         name="Test SES",
         is_active=True,
-        ses_access_key_id="AKIATEST",
-        ses_secret_access_key="secret",
-        ses_region="us-west-2",
         ses_from_email="test@ucmerced.edu",
         ses_from_name="Test",
     )

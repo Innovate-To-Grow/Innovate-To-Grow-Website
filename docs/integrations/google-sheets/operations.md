@@ -31,18 +31,9 @@ In Django admin → Events → Event:
 1. Set `registration_sheet_id` to the Google Sheets document ID (from the URL: `docs.google.com/spreadsheets/d/{THIS_PART}/edit`)
 2. Set `registration_sheet_gid` to the worksheet GID (from the URL: `#gid={THIS_PART}`)
 
-## Environment variables
+## Configuring credentials
 
-Two authentication methods are supported:
-
-| Variable | Purpose |
-|----------|---------|
-| `GOOGLE_SHEETS_CREDENTIALS_JSON` | Full service account JSON (preferred, used in production ECS task) |
-| `GOOGLE_SHEETS_API_KEY` | Simple API key (read-only fallback) |
-
-In production, `GOOGLE_SHEETS_CREDENTIALS_JSON` is injected via the ECS task definition (`aws/task-definition.json`).
-
-For local development, configure credentials through the Django admin `GoogleCredentialConfig` model rather than environment variables.
+Google service-account credentials are stored in the database via [`GoogleCredentialConfig`](../../../src/core/models/base/service_credentials/google.py). Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs and mark the config as active. No process env vars are required, and the ECS task definition no longer carries `GOOGLE_SHEETS_*` keys.
 
 ## Troubleshooting
 

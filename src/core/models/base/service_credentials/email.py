@@ -5,9 +5,10 @@ class EmailServiceConfig(models.Model):
     """
     Email delivery configuration.
 
-    Stores AWS SES credentials (primary) and SMTP settings (fallback).
-    Multiple configs can exist but only one may be active at a time.
-    Managed via Django admin under Site Settings.
+    AWS SES credentials and region live on ``AWSCredentialConfig``; this model
+    stores email-specific settings like sender address, campaign throughput,
+    and the SMTP fallback. Multiple configs can exist but only one may be
+    active at a time. Managed via Django admin under Site Settings.
     """
 
     name = models.CharField(
@@ -22,26 +23,6 @@ class EmailServiceConfig(models.Model):
         help_text="Only one config can be active. Activating this will deactivate others.",
     )
 
-    # AWS SES
-    ses_access_key_id = models.CharField(
-        max_length=128,
-        blank=True,
-        default="",
-        verbose_name="SES Access Key ID",
-        help_text="AWS access key for SES. Leave blank to skip SES and use SMTP only.",
-    )
-    ses_secret_access_key = models.CharField(
-        max_length=256,
-        blank=True,
-        default="",
-        verbose_name="SES Secret Access Key",
-    )
-    ses_region = models.CharField(
-        max_length=32,
-        blank=True,
-        default="us-west-2",
-        verbose_name="SES Region",
-    )
     ses_from_email = models.CharField(
         max_length=254,
         blank=True,
@@ -62,7 +43,6 @@ class EmailServiceConfig(models.Model):
         help_text="Max emails per second for bulk campaigns. Keep below SES account limit to leave room for transactional mail.",
     )
 
-    # SMTP fallback
     smtp_host = models.CharField(
         max_length=254,
         blank=True,
@@ -98,8 +78,8 @@ class EmailServiceConfig(models.Model):
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
-        if self.ses_access_key_id:
-            return f"{self.name}: SES ({self.ses_region}) + SMTP fallback{status}"
+        if self.ses_configured:
+            return f"{self.name}: SES + SMTP fallback{status}"
         return f"{self.name}: SMTP ({self.smtp_host}){status}"
 
     def save(self, *args, **kwargs):
@@ -129,4 +109,11 @@ class EmailServiceConfig(models.Model):
 
     @property
     def ses_configured(self):
-        return bool(self.ses_access_key_id and self.ses_secret_access_key)
+        """SES is configured when the active AWSCredentialConfig has IAM keys."""
+        from core.models import AWSCredentialConfig
+
+        return AWSCredentialConfig.load().ses_configured
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_username and self.smtp_password)

@@ -33,23 +33,21 @@ UNFOLD = {
         lambda request: static("admin/css/google-material-admin.css"),
         lambda request: static("admin/css/tabs.css"),
         lambda request: static("admin/css/file-input.css"),
+        lambda request: static("admin/css/admin-surfaces.css"),
+        lambda request: static("admin/css/material-web-components.css"),
     ],
     "TABS": [
         {
             "models": [
-                "core.emailserviceconfig",
-                "core.gmailimportconfig",
-                "core.smsserviceconfig",
-                "core.googlecredentialconfig",
                 "core.awscredentialconfig",
+                "core.gmailaccessaccount",
+                "core.googlecredentialconfig",
                 "system_intelligence.systemintelligenceconfig",
             ],
             "items": [
-                {"title": "Email Config", "link": "/admin/core/emailserviceconfig/"},
-                {"title": "Gmail Import", "link": "/admin/core/gmailimportconfig/"},
-                {"title": "SMS Config", "link": "/admin/core/smsserviceconfig/"},
-                {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
                 {"title": "AWS Credentials", "link": "/admin/core/awscredentialconfig/"},
+                {"title": "Gmail Access Account", "link": "/admin/core/gmailaccessaccount/"},
+                {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
                 {
                     "title": "System Intelligence Config",
                     "link": "/admin/system_intelligence/systemintelligenceconfig/",
@@ -139,7 +137,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
                     {"title": "System Intelligence", "link": "/admin/system-intelligence/"},
-                    {"title": "Service Configs", "link": "/admin/core/emailserviceconfig/"},
+                    {"title": "Service Configs", "link": "/admin/core/awscredentialconfig/"},
                     {"title": "Admin Log", "link": "/admin/admin/logentry/"},
                 ],
             },

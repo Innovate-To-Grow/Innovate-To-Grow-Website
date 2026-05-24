@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import MailBox
 
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,9 @@ class InboxError(RuntimeError):
     """Raised when an inbox operation cannot be completed."""
 
 
-def get_gmail_config() -> GmailImportConfig:
+def get_gmail_config() -> GmailAccessAccount:
     try:
-        config = GmailImportConfig.load()
+        config = GmailAccessAccount.load()
     except (OperationalError, ProgrammingError) as exc:
         raise InboxError("Gmail configuration is unavailable. Run the latest migrations first.") from exc
     if not config.is_configured:

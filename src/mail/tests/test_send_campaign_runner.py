@@ -2,20 +2,29 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
-from core.models import EmailServiceConfig
+from core.models import AWSCredentialConfig, EmailServiceConfig
 from event.tests.helpers import make_member
 from mail.models import EmailCampaign, MagicLoginToken, RecipientLog
 from mail.services.send_campaign.runner import SendTiming, send_campaign
 from mail.services.send_campaign.transport import SesSendResult
 
 
+def _make_active_aws():
+    AWSCredentialConfig.objects.all().delete()
+    return AWSCredentialConfig.objects.create(
+        name="AWS",
+        is_active=True,
+        access_key_id="AKID",
+        secret_access_key="SECRET",
+        default_region="us-west-2",
+    )
+
+
 class SendCampaignFlowTests(TestCase):
     def setUp(self):
+        self.aws = _make_active_aws()
         self.config = EmailServiceConfig.objects.create(
             is_active=True,
-            ses_access_key_id="AKID",
-            ses_secret_access_key="SECRET",
-            ses_region="us-west-2",
             ses_from_email="noreply@example.com",
             ses_from_name="Test",
             ses_max_send_rate=0,
@@ -89,11 +98,9 @@ class SendCampaignFlowTests(TestCase):
 
 class SendCampaignMagicLoginTests(TestCase):
     def setUp(self):
+        self.aws = _make_active_aws()
         self.config = EmailServiceConfig.objects.create(
             is_active=True,
-            ses_access_key_id="AKID",
-            ses_secret_access_key="SECRET",
-            ses_region="us-west-2",
             ses_from_email="noreply@example.com",
             ses_from_name="Test",
             ses_max_send_rate=0,
@@ -151,10 +158,9 @@ class SendCampaignErrorTests(TestCase):
     @patch("mail.services.send_campaign.runner._send_via_ses")
     @patch("mail.services.send_campaign.runner._get_ses_client")
     def test_null_ses_client_fails_campaign(self, mock_client, mock_send):
+        _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_access_key_id="AKID",
-            ses_secret_access_key="SECRET",
             ses_max_send_rate=0,
         )
         mock_client.return_value = None
@@ -166,10 +172,9 @@ class SendCampaignErrorTests(TestCase):
     @patch("mail.services.send_campaign.runner._send_via_ses")
     @patch("mail.services.send_campaign.runner._get_ses_client")
     def test_all_failures_increments_failed_count(self, mock_client, mock_send):
+        _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_access_key_id="AKID",
-            ses_secret_access_key="SECRET",
             ses_max_send_rate=0,
         )
         mock_client.return_value = MagicMock()
@@ -182,10 +187,9 @@ class SendCampaignErrorTests(TestCase):
     @patch("mail.services.send_campaign.runner._send_via_ses")
     @patch("mail.services.send_campaign.runner._get_ses_client")
     def test_all_succeed_status_is_sent(self, mock_client, mock_send):
+        _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_access_key_id="AKID",
-            ses_secret_access_key="SECRET",
             ses_max_send_rate=0,
         )
         mock_client.return_value = MagicMock()

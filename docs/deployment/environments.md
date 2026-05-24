@@ -55,15 +55,14 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | `AWS_SECRET_ACCESS_KEY` | S3 secret key | Yes |
 | `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint (for R2 compatibility) | No |
 
-### Email (AWS SES)
+### AWS services (SES, SNS, Bedrock)
+
+A single IAM key in [`AWSCredentialConfig`](../../src/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/core/models/base/service_credentials/email.py).
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
-| `SES_AWS_ACCESS_KEY_ID` | SES-specific access key | Yes |
-| `SES_AWS_SECRET_ACCESS_KEY` | SES-specific secret key | Yes |
-| `SES_AWS_REGION` | SES region | Yes |
-| `SES_FROM_EMAIL` | Default sender email | Yes |
-| `SES_FROM_NAME` | Default sender name | No |
+| `SES_CONFIGURATION_SET_NAME` | Optional SES configuration set name for campaign tagging | No |
+| `SES_SNS_TOPIC_ARN` | SNS topic ARN used to validate SES bounce/complaint webhook | If using bounce webhook |
 
 ### Cache
 
@@ -82,10 +81,19 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 
 ### Google Sheets
 
-| Variable | Purpose | Required in prod |
-|----------|---------|-----------------|
-| `GOOGLE_SHEETS_CREDENTIALS_JSON` | Service account JSON (preferred) | If using Sheets |
-| `GOOGLE_SHEETS_API_KEY` | Simple API key (read-only fallback) | No |
+Google service-account credentials live in [`GoogleCredentialConfig`](../../src/core/models/base/service_credentials/google.py) in the database. Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs. No process env vars are required.
+
+### Database-managed credentials
+
+These integrations read credentials from Django admin → Site Settings at runtime, **not** from process env:
+
+| Model | Purpose |
+|-------|---------|
+| `AWSCredentialConfig` | Shared AWS IAM key + region + SMS origination number + OTP template |
+| `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback |
+| `GoogleCredentialConfig` | Google service-account JSON for Sheets |
+
+Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).
 
 ### Security
 

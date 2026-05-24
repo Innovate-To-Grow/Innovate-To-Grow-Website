@@ -27,8 +27,11 @@ class SendPhoneCodeView(APIView):
 
         phone = registration_api._normalize_phone(phone, region)
         try:
-            from authn.services.sms import start_phone_verification
-            from authn.services.sms.twilio_verify import PhoneVerificationDeliveryError, PhoneVerificationInvalid
+            from authn.services.sms import (
+                PhoneVerificationDeliveryError,
+                PhoneVerificationInvalid,
+                start_phone_verification,
+            )
 
             registration_api._clear_phone_verification(request.user, phone)
             start_phone_verification(phone)
@@ -69,8 +72,11 @@ class VerifyPhoneCodeView(APIView):
 
         phone = registration_api._normalize_phone(phone, region)
         try:
-            from authn.services.sms import check_phone_verification
-            from authn.services.sms.twilio_verify import PhoneVerificationInvalid, PhoneVerificationThrottled
+            from authn.services.sms import (
+                PhoneVerificationInvalid,
+                PhoneVerificationThrottled,
+                check_phone_verification,
+            )
 
             check_phone_verification(phone, code)
         except PhoneVerificationThrottled:

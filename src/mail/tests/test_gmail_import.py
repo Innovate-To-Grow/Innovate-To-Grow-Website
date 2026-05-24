@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from django.db.utils import OperationalError
 from django.test import TestCase
 
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 from mail.models import EmailCampaign
 from mail.services.gmail_import import (
     DEFAULT_GMAIL_FOLDER,
@@ -43,8 +43,8 @@ class GmailImportServiceTest(TestCase):
         from django.core.cache import cache
 
         cache.clear()
-        self.gmail_config = GmailImportConfig.objects.create(
-            name="Primary Gmail Import",
+        self.gmail_config = GmailAccessAccount.objects.create(
+            name="Primary Gmail Access Account",
             is_active=True,
             imap_host="imap.gmail.com",
             gmail_username="campaigns@ucmerced.edu",
@@ -140,7 +140,7 @@ class GmailImportServiceTest(TestCase):
 
     def test_open_mailbox_raises_when_gmail_import_config_missing(self):
         with patch(
-            "mail.services.gmail_import.GmailImportConfig.load",
+            "mail.services.gmail_import.GmailAccessAccount.load",
             return_value=SimpleNamespace(is_configured=False, mailbox="", imap_host="", gmail_username=""),
         ):
             with self.assertRaises(GmailImportError):
@@ -148,8 +148,8 @@ class GmailImportServiceTest(TestCase):
 
     def test_resolve_gmail_mailbox_raises_friendly_error_when_migration_missing(self):
         with patch(
-            "mail.services.gmail_import.GmailImportConfig.load",
-            side_effect=OperationalError("no such table: core_gmailimportconfig"),
+            "mail.services.gmail_import.GmailAccessAccount.load",
+            side_effect=OperationalError("no such table: core_gmailaccessaccount"),
         ):
             with self.assertRaisesMessage(
                 GmailImportError,
@@ -186,7 +186,7 @@ class GmailImportServiceTest(TestCase):
 
     def test_resolve_gmail_mailbox_falls_back_to_default_when_unconfigured(self):
         with patch(
-            "mail.services.gmail_import.GmailImportConfig.load",
+            "mail.services.gmail_import.GmailAccessAccount.load",
             return_value=SimpleNamespace(mailbox=""),
         ):
             mailbox = resolve_gmail_mailbox()
@@ -220,7 +220,7 @@ class GmailImportServiceTest(TestCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("mail.services.gmail_import.GmailImportConfig.load", return_value=config),
+            patch("mail.services.gmail_import.GmailAccessAccount.load", return_value=config),
             patch("mail.services.gmail_import.MailBox", return_value=mailbox_client) as mock_mailbox,
         ):
             from mail.services.gmail_import import _open_mailbox

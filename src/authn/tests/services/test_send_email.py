@@ -19,9 +19,6 @@ def _fake_config(**overrides):
     """Return a mock EmailServiceConfig with sensible defaults."""
     defaults = {
         "ses_configured": False,
-        "ses_access_key_id": "",
-        "ses_secret_access_key": "",
-        "ses_region": "us-west-2",
         "ses_from_email": "test@example.com",
         "ses_from_name": "Test",
         "source_address": "Test <test@example.com>",
@@ -44,21 +41,29 @@ class SendViaSesTests(TestCase):
         result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
         self.assertFalse(result)
 
+    @patch("authn.services.email.send_email.transport.resolve_aws_credentials")
     @patch("authn.services.email.send_email.boto3")
-    def test_returns_true_on_success(self, mock_boto3):
-        config = _fake_config(ses_configured=True, ses_access_key_id="key", ses_secret_access_key="secret")
+    def test_returns_true_on_success(self, mock_boto3, mock_resolve):
+        from core.services.aws.credentials import AwsCredentials
+
+        mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
+        config = _fake_config(ses_configured=True)
         result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
         self.assertTrue(result)
         mock_boto3.client.return_value.send_email.assert_called_once()
 
+    @patch("authn.services.email.send_email.transport.resolve_aws_credentials")
     @patch("authn.services.email.send_email.boto3")
-    def test_returns_false_on_client_error(self, mock_boto3):
+    def test_returns_false_on_client_error(self, mock_boto3, mock_resolve):
         from botocore.exceptions import ClientError
 
+        from core.services.aws.credentials import AwsCredentials
+
+        mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
         mock_boto3.client.return_value.send_email.side_effect = ClientError(
             {"Error": {"Code": "MessageRejected", "Message": "boom"}}, "SendEmail"
         )
-        config = _fake_config(ses_configured=True, ses_access_key_id="key", ses_secret_access_key="secret")
+        config = _fake_config(ses_configured=True)
         result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
         self.assertFalse(result)
 

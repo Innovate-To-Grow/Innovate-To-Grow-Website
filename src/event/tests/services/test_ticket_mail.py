@@ -10,9 +10,6 @@ from event.tests.helpers import make_event, make_member
 def _mock_config(ses_configured=True):
     config = MagicMock()
     config.ses_configured = ses_configured
-    config.ses_region = "us-west-2"
-    config.ses_access_key_id = "test-key"
-    config.ses_secret_access_key = "test-secret"
     config.source_address = "Innovate to Grow <i2g@test.com>"
     config.smtp_host = "smtp.test.com"
     config.smtp_port = 587
@@ -22,6 +19,12 @@ def _mock_config(ses_configured=True):
     return config
 
 
+def _aws_creds():
+    from core.services.aws.credentials import AwsCredentials
+
+    return AwsCredentials(access_key_id="test-key", secret_access_key="test-secret", region="us-west-2")
+
+
 class SendTicketEmailTest(TestCase):
     def setUp(self):
         self.member = make_member()
@@ -29,10 +32,12 @@ class SendTicketEmailTest(TestCase):
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 
+    @patch("event.services.ticket_mail.resolve_aws_credentials")
     @patch("event.services.ticket_mail.boto3")
     @patch("event.services.ticket_mail._load_config")
-    def test_sends_via_ses(self, mock_load_config, mock_boto3):
+    def test_sends_via_ses(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
+        mock_resolve.return_value = _aws_creds()
         mock_client = MagicMock()
         mock_boto3.client.return_value = mock_client
 
@@ -74,10 +79,12 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNone(self.registration.ticket_email_sent_at)
         self.assertIn("SMTP down", self.registration.ticket_email_error)
 
+    @patch("event.services.ticket_mail.resolve_aws_credentials")
     @patch("event.services.ticket_mail.boto3")
     @patch("event.services.ticket_mail._load_config")
-    def test_sends_to_secondary_email(self, mock_load_config, mock_boto3):
+    def test_sends_to_secondary_email(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
+        mock_resolve.return_value = _aws_creds()
         mock_client = MagicMock()
         mock_boto3.client.return_value = mock_client
 
@@ -89,10 +96,12 @@ class SendTicketEmailTest(TestCase):
         raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
         self.assertIn("secondary@example.com", raw_data)
 
+    @patch("event.services.ticket_mail.resolve_aws_credentials")
     @patch("event.services.ticket_mail.boto3")
     @patch("event.services.ticket_mail._load_config")
-    def test_clears_previous_error_on_success(self, mock_load_config, mock_boto3):
+    def test_clears_previous_error_on_success(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
+        mock_resolve.return_value = _aws_creds()
         mock_boto3.client.return_value = MagicMock()
 
         self.registration.ticket_email_error = "Previous failure"

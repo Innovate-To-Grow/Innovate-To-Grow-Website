@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from django.conf import settings
 
 from core.models import EmailServiceConfig
+from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,16 @@ def _get_ses_client(config):
     try:
         import boto3
 
+        creds = resolve_aws_credentials("ses")
         return boto3.client(
             "ses",
-            region_name=config.ses_region,
-            aws_access_key_id=config.ses_access_key_id,
-            aws_secret_access_key=config.ses_secret_access_key,
+            region_name=creds.region,
+            aws_access_key_id=creds.access_key_id,
+            aws_secret_access_key=creds.secret_access_key,
         )
+    except AwsCredentialsError:
+        logger.warning("SES client not built: AWS credentials are not configured")
+        return None
     except Exception:
         logger.exception("Failed to create SES client")
         return None

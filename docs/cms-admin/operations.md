@@ -44,13 +44,21 @@ cd src && python manage.py migrate           # Apply
 
 ## Service configuration
 
-### Seeding from .env
+### Seeding skeleton configs
 
 ```bash
 cd src && python manage.py seed_service_configs
 ```
 
-Creates `EmailServiceConfig` and `SMSServiceConfig` records from `.env` values. Useful for initial setup.
+Creates an empty active `EmailServiceConfig` row for backend defaults. AWS credentials, region, SNS origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
+
+### Verifying configs before deploy
+
+```bash
+cd src && python manage.py verify_service_configs --strict
+```
+
+Confirms an active `EmailServiceConfig` is configured (SES or SMTP). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
@@ -58,8 +66,8 @@ Singleton configuration models in Django admin → Site Settings:
 
 | Model | Purpose | Key action |
 |-------|---------|-----------|
-| `EmailServiceConfig` | AWS SES or SMTP email credentials | Set active config |
-| `SMSServiceConfig` | Twilio Verify API credentials | Set active config |
+| `AWSCredentialConfig` | Shared AWS IAM key, shared AWS region, SNS origination number, SMS OTP template — drives SES, SNS, Bedrock | Set active config |
+| `EmailServiceConfig` | Hidden backend defaults for sender identity, campaign send rate, SMTP fallback | Managed by seed/defaults |
 | `GoogleCredentialConfig` | Google service account JSON | Paste credentials JSON |
 | `SiteMaintenanceControl` | Maintenance mode toggle | Enable/disable |
 

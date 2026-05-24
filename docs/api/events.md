@@ -147,7 +147,7 @@ Used when the event requires phone collection with verification.
 
 #### `POST /event/send-phone-code/`
 
-Sends an SMS verification code via Twilio Verify.
+Sends an SMS verification code via AWS SNS.
 
 #### `POST /event/verify-phone-code/`
 

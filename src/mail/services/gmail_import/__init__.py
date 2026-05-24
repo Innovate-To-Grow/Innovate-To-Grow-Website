@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from imap_tools import MailBox
 
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 
 from .connection import (
     DEFAULT_GMAIL_FOLDER,
@@ -21,7 +21,7 @@ __all__ = [
     "DEFAULT_GMAIL_FOLDER",
     "DEFAULT_GMAIL_MAILBOX",
     "GMAIL_FOLDER_DISPLAY",
-    "GmailImportConfig",
+    "GmailAccessAccount",
     "GmailImportError",
     "MailBox",
     "_open_mailbox",

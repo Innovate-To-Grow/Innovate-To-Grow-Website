@@ -16,6 +16,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from event.models import EventRegistration
 from event.services.calendar import build_google_calendar_url, generate_ics
 from event.services.ticket_assets import (
@@ -64,14 +65,18 @@ def _send_via_ses(*, config, mime_message) -> bool:
     if not config.ses_configured:
         return False
     try:
+        creds = resolve_aws_credentials("ses")
         client = boto3.client(
             "ses",
-            region_name=config.ses_region,
-            aws_access_key_id=config.ses_access_key_id,
-            aws_secret_access_key=config.ses_secret_access_key,
+            region_name=creds.region,
+            aws_access_key_id=creds.access_key_id,
+            aws_secret_access_key=creds.secret_access_key,
         )
         client.send_raw_email(RawMessage={"Data": mime_message.as_string()})
         return True
+    except AwsCredentialsError:
+        logger.warning("SES send skipped: AWS credentials are not configured")
+        return False
     except (BotoCoreError, ClientError):
         logger.exception("SES send_raw_email failed")
         return False

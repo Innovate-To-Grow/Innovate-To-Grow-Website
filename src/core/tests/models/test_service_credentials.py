@@ -1,17 +1,17 @@
 from django.test import TestCase
 
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 
 
-class GmailImportConfigModelTests(TestCase):
+class GmailAccessAccountModelTests(TestCase):
     def test_load_prefers_active_config(self):
-        fallback = GmailImportConfig.objects.create(
+        fallback = GmailAccessAccount.objects.create(
             name="Fallback",
             imap_host="imap.gmail.com",
             gmail_username="fallback@example.com",
             gmail_password="fallback-pass",
         )
-        active = GmailImportConfig.objects.create(
+        active = GmailAccessAccount.objects.create(
             name="Active",
             is_active=True,
             imap_host="imap.gmail.com",
@@ -19,14 +19,14 @@ class GmailImportConfigModelTests(TestCase):
             gmail_password="active-pass",
         )
 
-        loaded = GmailImportConfig.load()
+        loaded = GmailAccessAccount.load()
 
         self.assertEqual(loaded.pk, active.pk)
         self.assertNotEqual(loaded.pk, fallback.pk)
         self.assertEqual(loaded.mailbox, "active@example.com")
 
     def test_is_configured_requires_host_username_and_password(self):
-        config = GmailImportConfig.objects.create(
+        config = GmailAccessAccount.objects.create(
             name="Incomplete",
             imap_host="imap.gmail.com",
             gmail_username="",
@@ -41,14 +41,14 @@ class GmailImportConfigModelTests(TestCase):
         self.assertTrue(config.is_configured)
 
     def test_save_deactivates_other_active_configs(self):
-        first = GmailImportConfig.objects.create(
+        first = GmailAccessAccount.objects.create(
             name="First",
             is_active=True,
             imap_host="imap.gmail.com",
             gmail_username="first@example.com",
             gmail_password="first-pass",
         )
-        second = GmailImportConfig.objects.create(
+        second = GmailAccessAccount.objects.create(
             name="Second",
             imap_host="imap.gmail.com",
             gmail_username="second@example.com",

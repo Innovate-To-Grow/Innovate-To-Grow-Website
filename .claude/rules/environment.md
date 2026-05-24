@@ -10,11 +10,11 @@ DB_NAME=
 DB_USER=
 DB_PASSWORD=
 REDIS_URL=
-GOOGLE_SHEETS_API_KEY=
 VITE_API_BASE_URL=
 ```
 
 ## Reminders
 
-- Production deploys should remain environment-driven.
+- Production deploys should remain environment-driven for infrastructure (Django, DB, Redis, S3 bucket, URLs).
+- Service credentials (SES, SNS, Google Sheets, shared AWS IAM keys) live in the database under Django admin → Site Settings, not in `.env`. Run `python manage.py verify_service_configs --strict` before removing legacy env vars from a deployed environment.
 - Do not hardcode secrets in code, fixtures, or docs.
