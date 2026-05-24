@@ -1,5 +1,7 @@
 import logging
 
+from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,11 +26,12 @@ def _send_test_email(*, config, recipient):
         try:
             import boto3
 
+            creds = resolve_aws_credentials("ses")
             client = boto3.client(
                 "ses",
-                region_name=config.ses_region,
-                aws_access_key_id=config.ses_access_key_id,
-                aws_secret_access_key=config.ses_secret_access_key,
+                region_name=creds.region,
+                aws_access_key_id=creds.access_key_id,
+                aws_secret_access_key=creds.secret_access_key,
             )
             client.send_email(
                 Destination={"ToAddresses": [recipient]},
@@ -39,6 +42,8 @@ def _send_test_email(*, config, recipient):
                 Source=config.source_address,
             )
             return "SES"
+        except AwsCredentialsError:
+            logger.warning("SES test send skipped: AWS credentials are not configured")
         except Exception:
             logger.exception("SES test send failed for %s", recipient)
 
@@ -64,13 +69,12 @@ def _send_test_email(*, config, recipient):
     return "SMTP"
 
 
-def _send_test_sms(*, config, phone_number):
-    """Send a test SMS using AWS SNS via the given SMSServiceConfig."""
+def _send_test_sms(*, phone_number):
+    """Send a test SMS using AWS SNS (origination number from active AWSCredentialConfig)."""
     from authn.services.sms import publish_plain_sms
 
     message_id = publish_plain_sms(
         phone_number=phone_number,
         message="This is a test message from the Innovate to Grow admin panel. Your SMS configuration is working correctly.",
-        config=config,
     )
     return f"message (ID: {message_id})"

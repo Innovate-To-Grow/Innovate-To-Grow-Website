@@ -2,6 +2,8 @@ import logging
 
 from botocore.exceptions import BotoCoreError, ClientError
 
+from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+
 from .config import SMTP_MAX_RETRIES, SMTP_TIMEOUT
 
 logger = logging.getLogger(__name__)
@@ -19,11 +21,12 @@ def _send_via_ses(*, config, recipient: str, subject: str, html_body: str) -> bo
     try:
         import authn.services.email.send_email as email_api
 
+        creds = resolve_aws_credentials("ses")
         client = email_api.boto3.client(
             "ses",
-            region_name=config.ses_region,
-            aws_access_key_id=config.ses_access_key_id,
-            aws_secret_access_key=config.ses_secret_access_key,
+            region_name=creds.region,
+            aws_access_key_id=creds.access_key_id,
+            aws_secret_access_key=creds.secret_access_key,
         )
         client.send_email(
             Destination={"ToAddresses": [recipient]},
@@ -34,6 +37,9 @@ def _send_via_ses(*, config, recipient: str, subject: str, html_body: str) -> bo
             Source=config.source_address,
         )
         return True
+    except AwsCredentialsError:
+        logger.warning("SES send skipped: AWS credentials are not configured")
+        return False
     except (BotoCoreError, ClientError):
         logger.exception("SES send failed while sending email")
         return False

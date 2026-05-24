@@ -1,9 +1,9 @@
 """Seed skeleton service configs and ensure staff members have verified ContactEmails.
 
-Service credentials (SES, SMS, Sheets) are managed via Django admin → Site Settings.
-This command creates empty active rows so the admin UI has something to edit; it
-no longer reads provider-specific env vars. AWSCredentialConfig is still seeded
-from AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY when those are set locally.
+Service credentials are managed via Django admin → Site Settings. This command
+creates an empty active EmailServiceConfig row for backend defaults; AWS settings
+are seeded into AWSCredentialConfig when AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY
+are set locally.
 """
 
 import os
@@ -12,17 +12,16 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from authn.models import ContactEmail
-from core.models import AWSCredentialConfig, EmailServiceConfig, SMSServiceConfig
+from core.models import AWSCredentialConfig, EmailServiceConfig
 
 Member = get_user_model()
 
 
 class Command(BaseCommand):
-    help = "Create skeleton EmailServiceConfig/SMSServiceConfig rows and ensure staff ContactEmails."
+    help = "Create skeleton service config rows and ensure staff ContactEmails."
 
     def handle(self, *args, **options):
         self._seed_email()
-        self._seed_sms()
         self._seed_aws()
         self._seed_staff_contact_emails()
 
@@ -36,19 +35,6 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 "Created skeleton active EmailServiceConfig 'Production'. "
                 "Fill in SES or SMTP credentials in Django admin."
-            )
-        )
-
-    def _seed_sms(self):
-        if SMSServiceConfig.objects.exists():
-            self.stdout.write(self.style.WARNING("SMSServiceConfig already exists — skipping."))
-            return
-
-        SMSServiceConfig.objects.create(name="Production", is_active=True)
-        self.stdout.write(
-            self.style.SUCCESS(
-                "Created skeleton active SMSServiceConfig 'Production'. "
-                "Set the SNS origination number in Django admin."
             )
         )
 

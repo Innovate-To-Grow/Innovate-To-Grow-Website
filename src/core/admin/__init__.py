@@ -15,10 +15,8 @@ from .mixins import (
 )
 from .notifications import notify_staff_of_action
 from .service_credentials import (  # noqa: F401 - register admin
-    EmailServiceConfigAdmin,
     GmailImportConfigAdmin,
     GoogleCredentialConfigAdmin,
-    SMSServiceConfigAdmin,
 )
 from .utils import admin_url, format_duration, format_file_size, format_json, get_field_value, truncate_text
 

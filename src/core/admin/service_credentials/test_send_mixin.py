@@ -1,11 +1,4 @@
-"""
-Mixin providing shared 'Test Email' and 'Test SMS' changelist actions
-for EmailServiceConfigAdmin and SMSServiceConfigAdmin.
-
-Both credential admin pages offer cross-credential testing (send a test email
-from the Email config page, or send a test SMS from the SMS config page and
-vice versa). The views are identical — this mixin avoids the duplication.
-"""
+"""Mixin providing shared 'Test Email' and 'Test SMS' changelist actions."""
 
 from django.contrib import messages
 from django.http import HttpResponseRedirect
@@ -13,7 +6,7 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.decorators import action
 
-from core.models import EmailServiceConfig, SMSServiceConfig
+from core.models import AWSCredentialConfig, EmailServiceConfig
 
 from .helpers import _normalize_phone_number, _send_test_email, _send_test_sms
 
@@ -25,7 +18,7 @@ class TestSendViewsMixin:
         """Return URL patterns for test-email and test-sms views.
 
         Args:
-            url_prefix: model name prefix for the URL name, e.g. 'core_emailserviceconfig'.
+            url_prefix: model name prefix for the URL name, e.g. 'core_awscredentialconfig'.
         """
         return [
             path(
@@ -80,7 +73,7 @@ class TestSendViewsMixin:
         return TemplateResponse(request, "admin/core/test_send_form.html", context)
 
     def test_sms_list_view(self, request):
-        config = SMSServiceConfig.load()
+        config = AWSCredentialConfig.load()
         opts = self.model._meta
         changelist_url = reverse(f"admin:{opts.app_label}_{opts.model_name}_changelist")
 
@@ -92,8 +85,8 @@ class TestSendViewsMixin:
                 return HttpResponseRedirect(request.path)
             full_number = _normalize_phone_number(country_code, recipient)
             try:
-                result = _send_test_sms(config=config, phone_number=full_number)
-                messages.success(request, f"Test SMS sent to {full_number}: {result} (config: {config.name}).")
+                result = _send_test_sms(phone_number=full_number)
+                messages.success(request, f"Test SMS sent to {full_number}: {result} (AWS config: {config.name}).")
             except Exception as exc:
                 messages.error(request, f"Failed to send test SMS: {exc}")
             return HttpResponseRedirect(changelist_url)

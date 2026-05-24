@@ -100,12 +100,16 @@ class CampaignDisplayMixin:
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         try:
+            from core.models import AWSCredentialConfig
+
             extra_context["email_config"] = EmailServiceConfig.load()
+            extra_context["aws_config"] = AWSCredentialConfig.load()
             extra_context["gmail_import_config"] = GmailImportConfig.load()
             extra_context["gmail_mailbox"] = campaign_api.resolve_gmail_mailbox()
             extra_context["gmail_folder"] = campaign_api.GMAIL_FOLDER_DISPLAY
         except Exception:
             extra_context.setdefault("email_config", None)
+            extra_context.setdefault("aws_config", None)
             extra_context.setdefault("gmail_import_config", None)
             extra_context.setdefault("gmail_mailbox", "")
             extra_context.setdefault("gmail_folder", campaign_api.GMAIL_FOLDER_DISPLAY)

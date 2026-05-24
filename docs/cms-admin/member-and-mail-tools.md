@@ -33,7 +33,7 @@ Members can have multiple contact emails and phones:
 - **ContactEmail**: Types (primary, secondary, other), verified flag, subscribe flag
 - **ContactPhone**: Region support, verified flag, subscribe flag
 
-Contact verification uses the email challenge system or Twilio SMS.
+Contact verification uses the email challenge system or AWS SNS SMS.
 
 ### Admin invitations
 
@@ -123,5 +123,5 @@ Viewable as inline records in the campaign admin.
 
 - [Django Admin](django-admin.md) — Admin interface and customization
 - [API: Auth & Mail](../api/auth-and-mail.md) — Auth and mail API endpoints
-- [Architecture: Integrations](../architecture/integrations.md) — AWS SES and Twilio configuration
+- [Architecture: Integrations](../architecture/integrations.md) — AWS SES and AWS SNS configuration
 - [Operations](operations.md) — Operational tasks

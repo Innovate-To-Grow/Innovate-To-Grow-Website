@@ -55,9 +55,9 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | `AWS_SECRET_ACCESS_KEY` | S3 secret key | Yes |
 | `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint (for R2 compatibility) | No |
 
-### Email (AWS SES)
+### AWS services (SES, SNS, Bedrock)
 
-SES credentials live in [`EmailServiceConfig`](../../src/core/models/base/service_credentials/email.py) in the database, not in process env. Configure via Django admin → Site Settings → Email Service Configs.
+A single IAM key in [`AWSCredentialConfig`](../../src/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/core/models/base/service_credentials/email.py).
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
@@ -89,10 +89,9 @@ These integrations read credentials from Django admin → Site Settings at runti
 
 | Model | Purpose |
 |-------|---------|
-| `EmailServiceConfig` | AWS SES + SMTP fallback |
-| `SMSServiceConfig` | AWS SNS phone verification |
+| `AWSCredentialConfig` | Shared AWS IAM key + region + SMS origination number + OTP template |
+| `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
-| `AWSCredentialConfig` | Shared AWS IAM keys (SNS, Bedrock) |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).
 

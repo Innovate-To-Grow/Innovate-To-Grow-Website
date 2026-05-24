@@ -7,7 +7,6 @@ from .base import (
     GoogleCredentialConfig,
     ProjectControlModel,
     SiteMaintenanceControl,
-    SMSServiceConfig,
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
 from .mixins import ActiveModel, AuthoredModel, OrderedModel
@@ -23,6 +22,5 @@ __all__ = [
     "ProjectControlManager",
     "ProjectControlModel",
     "ProjectControlQuerySet",
-    "SMSServiceConfig",
     "SiteMaintenanceControl",
 ]

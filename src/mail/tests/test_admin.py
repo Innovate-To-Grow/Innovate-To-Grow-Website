@@ -29,12 +29,19 @@ class EmailCampaignAdminImportTest(TestCase):
             gmail_username="campaigns@ucmerced.edu",
             gmail_password="app-password",
         )
+        from core.models import AWSCredentialConfig
+
+        AWSCredentialConfig.objects.all().delete()
+        self.aws_config = AWSCredentialConfig.objects.create(
+            name="Primary AWS",
+            is_active=True,
+            access_key_id="AKIAXXXXXXXX",
+            secret_access_key="secret",
+            default_region="us-west-2",
+        )
         self.email_config = EmailServiceConfig.objects.create(
             name="Primary SES",
             is_active=True,
-            ses_access_key_id="AKIAXXXXXXXX",
-            ses_secret_access_key="secret",
-            ses_region="us-west-2",
             ses_from_email="campaigns@ucmerced.edu",
             ses_from_name="Innovate to Grow",
         )

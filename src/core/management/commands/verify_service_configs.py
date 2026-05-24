@@ -1,7 +1,8 @@
 """Verify that database-managed service credentials are configured.
 
 Run before removing process env vars to confirm that runtime services
-(email, SMS, Sheets) have valid configs in the database.
+(email, SMS, Sheets) have valid configs in the database. All AWS-backed
+services share a single AWSCredentialConfig.
 """
 
 from django.core.management.base import BaseCommand, CommandError
@@ -10,7 +11,6 @@ from core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
-    SMSServiceConfig,
 )
 
 
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--require-sms",
             action="store_true",
-            help="Treat missing SMSServiceConfig as a failure under --strict.",
+            help="Treat missing AWS SNS settings as a failure under --strict.",
         )
         parser.add_argument(
             "--require-google",
@@ -36,7 +36,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--require-aws",
             action="store_true",
-            help="Treat missing AWSCredentialConfig (or SES fallback) as a failure under --strict.",
+            help="Treat missing AWSCredentialConfig as a failure under --strict.",
         )
 
     def handle(self, *args, **options):
@@ -44,18 +44,27 @@ class Command(BaseCommand):
         failures: list[str] = []
         warnings: list[str] = []
 
+        aws = AWSCredentialConfig.load()
+        aws_ok = bool(aws.pk) and aws.is_configured
+        self._report("AWSCredentialConfig", aws, aws_ok, required=options["require_aws"])
+        if not aws_ok:
+            (failures if options["require_aws"] else warnings).append(
+                "AWSCredentialConfig is not configured (SES, SNS, and Bedrock all depend on it)."
+            )
+
         email = EmailServiceConfig.load()
-        email_ok = bool(email.pk) and (email.ses_configured or self._smtp_configured(email))
+        email_ok = bool(email.pk) and (aws_ok or self._smtp_configured(email))
         self._report("EmailServiceConfig", email, email_ok, required=True)
         if not email_ok:
-            failures.append("EmailServiceConfig is not configured (SES or SMTP required).")
+            failures.append(
+                "EmailServiceConfig is not configured (needs AWS Credentials for SES or SMTP fallback fields)."
+            )
 
-        sms = SMSServiceConfig.load()
-        sms_ok = bool(sms.pk) and sms.is_configured
-        self._report("SMSServiceConfig", sms, sms_ok, required=options["require_sms"])
+        sms_ok = bool(aws.pk) and aws.sns_configured
+        self._report("AWS SNS SMS", aws, sms_ok, required=options["require_sms"])
         if not sms_ok:
             (failures if options["require_sms"] else warnings).append(
-                "SMSServiceConfig is not configured (needs origination number + AWS credentials)."
+                "AWS SNS SMS is not configured (needs an SMS origination number on AWS Credentials)."
             )
 
         google = GoogleCredentialConfig.load()
@@ -63,15 +72,6 @@ class Command(BaseCommand):
         self._report("GoogleCredentialConfig", google, google_ok, required=options["require_google"])
         if not google_ok:
             (failures if options["require_google"] else warnings).append("GoogleCredentialConfig is not configured.")
-
-        aws = AWSCredentialConfig.load()
-        aws_ok = bool(aws.pk) and aws.is_configured
-        aws_fallback_ok = aws_ok or (email_ok and email.ses_configured)
-        self._report("AWSCredentialConfig", aws, aws_ok, required=options["require_aws"])
-        if not aws_fallback_ok:
-            (failures if options["require_aws"] else warnings).append(
-                "No AWSCredentialConfig and no SES keys to fall back on (SMS/Bedrock will fail)."
-            )
 
         for warning in warnings:
             self.stdout.write(self.style.WARNING(f"WARN: {warning}"))

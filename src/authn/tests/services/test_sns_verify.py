@@ -16,7 +16,7 @@ from authn.services.sms.sns_verify import (
     check_phone_verification,
     start_phone_verification,
 )
-from core.models import AWSCredentialConfig, EmailServiceConfig, SMSServiceConfig
+from core.models import AWSCredentialConfig, EmailServiceConfig
 from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 
@@ -26,7 +26,7 @@ class ResolveAwsCredentialsTest(TestCase):
         AWSCredentialConfig.objects.all().delete()
         EmailServiceConfig.objects.all().delete()
 
-    def test_prefers_aws_credential_config(self):
+    def test_returns_active_aws_credential_config(self):
         AWSCredentialConfig.objects.create(
             name="AWS",
             is_active=True,
@@ -34,34 +34,28 @@ class ResolveAwsCredentialsTest(TestCase):
             secret_access_key="aws-secret",
             default_region="us-east-1",
         )
-        EmailServiceConfig.objects.create(
-            name="Email",
-            is_active=True,
-            ses_access_key_id="ses-key",
-            ses_secret_access_key="ses-secret",
-            ses_region="us-west-2",
-        )
 
-        creds = resolve_aws_credentials()
+        creds = resolve_aws_credentials("ses")
 
         self.assertEqual(creds.access_key_id, "aws-key")
         self.assertEqual(creds.region, "us-east-1")
 
-    def test_falls_back_to_ses_credentials(self):
-        EmailServiceConfig.objects.create(
-            name="Email",
+    def test_all_services_share_the_same_region(self):
+        AWSCredentialConfig.objects.create(
+            name="AWS",
             is_active=True,
-            ses_access_key_id="ses-key",
-            ses_secret_access_key="ses-secret",
-            ses_region="us-west-2",
+            access_key_id="aws-key",
+            secret_access_key="aws-secret",
+            default_region="us-east-1",
         )
 
-        creds = resolve_aws_credentials()
+        self.assertEqual(resolve_aws_credentials("ses").region, "us-east-1")
+        self.assertEqual(resolve_aws_credentials("sns").region, "us-east-1")
+        self.assertEqual(resolve_aws_credentials("bedrock").region, "us-east-1")
 
-        self.assertEqual(creds.access_key_id, "ses-key")
-        self.assertEqual(creds.region, "us-west-2")
+    def test_raises_when_no_aws_credentials_even_if_email_exists(self):
+        EmailServiceConfig.objects.create(name="Email", is_active=True)
 
-    def test_raises_when_no_credentials(self):
         with self.assertRaises(AwsCredentialsError):
             resolve_aws_credentials()
 
@@ -69,23 +63,18 @@ class ResolveAwsCredentialsTest(TestCase):
 @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
 class SnsVerifyServiceTest(TestCase):
     phone = "+12065551234"
+    origination_number = "+12065550000"
 
     def setUp(self):
         cache.clear()
-        SMSServiceConfig.objects.all().delete()
         AWSCredentialConfig.objects.all().delete()
-        self.sms_config = SMSServiceConfig.objects.create(
-            name="Production",
-            is_active=True,
-            from_number="+12065550000",
-            sns_region="us-west-2",
-        )
-        AWSCredentialConfig.objects.create(
+        self.aws_config = AWSCredentialConfig.objects.create(
             name="AWS",
             is_active=True,
             access_key_id="aws-key",
             secret_access_key="aws-secret",
             default_region="us-west-2",
+            sms_from_number=self.origination_number,
         )
 
     def _mock_publish(self, mock_boto_client):
@@ -108,7 +97,7 @@ class SnsVerifyServiceTest(TestCase):
         self.assertIn("123456", publish_kwargs["Message"])
         self.assertEqual(
             publish_kwargs["MessageAttributes"]["AWS.MM.SMS.OriginationNumber"]["StringValue"],
-            self.sms_config.from_number,
+            self.origination_number,
         )
 
     @patch("authn.services.sms.sns_verify.boto3.client")
@@ -153,9 +142,9 @@ class SnsVerifyServiceTest(TestCase):
         with self.assertRaises(PhoneVerificationThrottled):
             start_phone_verification(self.phone)
 
-    def test_start_phone_verification_requires_configuration(self):
-        self.sms_config.from_number = ""
-        self.sms_config.save(update_fields=["from_number"])
+    def test_start_phone_verification_requires_origination_number(self):
+        self.aws_config.sms_from_number = ""
+        self.aws_config.save(update_fields=["sms_from_number"])
 
         with self.assertRaises(PhoneVerificationDeliveryError):
             start_phone_verification(self.phone)
@@ -187,32 +176,39 @@ class SnsVerifyServiceTest(TestCase):
             start_phone_verification(self.phone)
 
 
-class SmsServiceConfigTest(TestCase):
+class AwsSmsConfigTest(TestCase):
     def setUp(self):
-        SMSServiceConfig.objects.all().delete()
         AWSCredentialConfig.objects.all().delete()
 
-    def test_is_configured_requires_from_number_and_aws_credentials(self):
+    def test_is_configured_requires_aws_sns_settings(self):
+        AWSCredentialConfig.objects.create(
+            name="AWS",
+            is_active=True,
+            access_key_id="aws-key",
+            secret_access_key="aws-secret",
+            sms_from_number="+12065550000",
+        )
+        config = AWSCredentialConfig.load()
+
+        self.assertTrue(config.is_configured)
+
+    def test_is_configured_false_without_origination_number(self):
         AWSCredentialConfig.objects.create(
             name="AWS",
             is_active=True,
             access_key_id="aws-key",
             secret_access_key="aws-secret",
         )
-        config = SMSServiceConfig.objects.create(
-            name="SMS",
-            is_active=True,
-            from_number="+12065550000",
-        )
+        config = AWSCredentialConfig.load()
 
-        self.assertTrue(config.is_configured)
+        self.assertFalse(config.sns_configured)
 
     def test_render_otp_message_uses_default_template(self):
-        config = SMSServiceConfig(from_number="+12065550000")
-        message = config.render_otp_message("654321")
+        config = AWSCredentialConfig()
+        message = config.render_sms_otp_message("654321")
         self.assertIn("654321", message)
 
     def test_render_otp_message_requires_code_placeholder(self):
-        config = SMSServiceConfig(from_number="+12065550000", message_template="Hello there")
+        config = AWSCredentialConfig(sms_message_template="Hello there")
         with self.assertRaises(ValueError):
-            config.render_otp_message("654321")
+            config.render_sms_otp_message("654321")

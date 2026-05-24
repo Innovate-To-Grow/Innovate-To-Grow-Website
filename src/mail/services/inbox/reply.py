@@ -3,6 +3,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from core.models import EmailServiceConfig
+from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for details."
@@ -58,11 +59,12 @@ def send_reply(
     try:
         import boto3
 
+        creds = resolve_aws_credentials("ses")
         client = boto3.client(
             "ses",
-            region_name=config.ses_region,
-            aws_access_key_id=config.ses_access_key_id,
-            aws_secret_access_key=config.ses_secret_access_key,
+            region_name=creds.region,
+            aws_access_key_id=creds.access_key_id,
+            aws_secret_access_key=creds.secret_access_key,
         )
         message = _build_reply_message(
             config=config,
@@ -79,6 +81,9 @@ def send_reply(
             RawMessage={"Data": message.as_string()},
         )
         return ""
+    except AwsCredentialsError:
+        logger.warning("Reply send skipped: AWS credentials are not configured")
+        return "SES is not configured. Cannot send reply."
     except Exception:
         logger.exception("Failed to send reply to %s.", to_email)
         return REPLY_SEND_FAILURE_MESSAGE

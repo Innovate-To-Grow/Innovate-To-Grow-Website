@@ -2,7 +2,7 @@
 AWS SNS SMS service for phone number verification.
 
 OTP codes are generated locally, stored in cache, and delivered via SNS publish.
-AWS credentials are resolved from AWSCredentialConfig or EmailServiceConfig SES keys.
+AWS credentials, region, and origination number all live on AWSCredentialConfig.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.cache import cache
 
-from core.services.aws.credentials import AwsCredentialsError, aws_credentials_available, resolve_aws_credentials
+from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +42,10 @@ class PhoneVerificationDeliveryError(PhoneVerificationError):
     """Failed to send SMS."""
 
 
-def _load_config():
-    from core.models import SMSServiceConfig
+def _load_aws_config():
+    from core.models import AWSCredentialConfig
 
-    return SMSServiceConfig.load()
+    return AWSCredentialConfig.load()
 
 
 def _phone_digest(phone_number: str) -> str:
@@ -65,39 +65,36 @@ def _random_code() -> str:
 
 
 def _assert_configured():
-    config = _load_config()
-    if not config.is_configured:
+    """Ensure AWS SNS settings are ready."""
+    aws = _load_aws_config()
+    if not aws.sns_configured:
         raise PhoneVerificationDeliveryError("SMS is not configured.")
-    return config
+    return aws
 
 
-def _get_sns_client(*, region: str):
+def _get_sns_client():
     try:
-        creds = resolve_aws_credentials()
+        creds = resolve_aws_credentials("sns")
     except AwsCredentialsError as exc:
         raise PhoneVerificationDeliveryError("AWS credentials are not configured.") from exc
 
     return boto3.client(
         "sns",
-        region_name=region,
+        region_name=creds.region,
         aws_access_key_id=creds.access_key_id,
         aws_secret_access_key=creds.secret_access_key,
     )
 
 
-def _publish_sms(*, phone_number: str, message: str, config) -> str:
-    region = config.effective_region
-    if not region:
-        raise PhoneVerificationDeliveryError("SNS region is not configured.")
-
-    client = _get_sns_client(region=region)
+def _publish_sms(*, phone_number: str, message: str, aws_config) -> str:
+    client = _get_sns_client()
     message_attributes = {
         "AWS.SNS.SMS.SMSType": {"DataType": "String", "StringValue": "Transactional"},
     }
-    if config.from_number:
+    if aws_config.sms_from_number:
         message_attributes["AWS.MM.SMS.OriginationNumber"] = {
             "DataType": "String",
-            "StringValue": config.from_number,
+            "StringValue": aws_config.sms_from_number,
         }
 
     try:
@@ -139,7 +136,7 @@ def start_phone_verification(phone_number: str) -> str:
     Generate an OTP, store it in cache, and send it via AWS SNS.
     Returns the verification status (``pending``).
     """
-    config = _assert_configured()
+    aws_config = _assert_configured()
     _assert_send_allowed(phone_number)
 
     code = _random_code()
@@ -150,12 +147,12 @@ def start_phone_verification(phone_number: str) -> str:
     )
 
     try:
-        message = config.render_otp_message(code)
+        message = aws_config.render_sms_otp_message(code)
     except ValueError as exc:
         cache.delete(_otp_cache_key(phone_number))
         raise PhoneVerificationDeliveryError("SMS message template is invalid.") from exc
 
-    message_id = _publish_sms(phone_number=phone_number, message=message, config=config)
+    message_id = _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config)
     _record_send(phone_number)
     logger.info("Phone verification started via SNS: message_id=%s", message_id)
     return DEFAULT_STATUS
@@ -191,11 +188,9 @@ def check_phone_verification(phone_number: str, code: str) -> str:
     return "approved"
 
 
-def publish_plain_sms(*, phone_number: str, message: str, config=None) -> str:
+def publish_plain_sms(*, phone_number: str, message: str) -> str:
     """Send a plain SMS message via SNS (used by admin test-send)."""
-    config = config or _assert_configured()
-    if not config.from_number:
-        raise PhoneVerificationDeliveryError("Origination phone number is not configured.")
-    if not aws_credentials_available():
-        raise PhoneVerificationDeliveryError("AWS credentials are not configured.")
-    return _publish_sms(phone_number=phone_number, message=message, config=config)
+    aws_config = _load_aws_config()
+    if not aws_config.sns_configured:
+        raise PhoneVerificationDeliveryError("SMS is not configured.")
+    return _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config)

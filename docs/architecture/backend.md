@@ -6,7 +6,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 
 | App | Purpose | Key models |
 |-----|---------|------------|
-| `core` | Base models, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMSServiceConfig`, `GoogleCredentialConfig` |
+| `core` | Base models, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `GoogleCredentialConfig`, `AWSCredentialConfig` |
 | `authn` | Authentication, member management, contacts, admin invitations | `Member`, `ContactEmail`, `ContactPhone`, `EmailAuthChallenge`, `RSAKeypair`, `AdminInvitation` |
 | `cms` | CMS pages and blocks, news, analytics, menus, footer, site settings | `CMSPage`, `CMSBlock`, `CMSAsset`, `NewsArticle`, `NewsFeedSource`, `PageView`, `Menu`, `FooterContent`, `SiteSettings` |
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
@@ -116,10 +116,9 @@ Several models in `src/core/models/` use a singleton pattern (only one active re
 | Model | Purpose | Location |
 |-------|---------|----------|
 | `SiteMaintenanceControl` | Maintenance mode toggle with bypass password | `core/models/web.py` |
-| `EmailServiceConfig` | AWS SES or SMTP credentials | `core/models/service_credentials.py` |
-| `SMSServiceConfig` | AWS SNS phone verification (origination number, region, OTP template) | `core/models/base/service_credentials/sms.py` |
+| `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback | `core/models/base/service_credentials/email.py` |
 | `GoogleCredentialConfig` | Google service account JSON | `core/models/base/service_credentials/google.py` |
-| `AWSCredentialConfig` | Shared AWS IAM keys (SNS, Bedrock) | `core/models/base/service_credentials/aws.py` |
+| `AWSCredentialConfig` | Shared AWS IAM key, shared region, SNS origination number, SMS OTP template — drives SES, SNS, Bedrock | `core/models/base/service_credentials/aws.py` |
 
 Each provides a `load()` class method that returns the active configuration.
 
@@ -128,7 +127,7 @@ Each provides a `load()` class method that returns the active configuration.
 | Command | Location | Purpose |
 |---------|----------|---------|
 | `resetdb` | `core/management/commands/resetdb.py` | Dev-only: drops DB, regenerates migrations, seeds admin user |
-| `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig/SMSServiceConfig rows (admin fills credentials) |
+| `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig row and optional AWSCredentialConfig from local env |
 | `verify_service_configs` | `core/management/commands/verify_service_configs.py` | Verifies active service configs exist before removing env vars |
 | `createsuperuser` | `authn/management/commands/createsuperuser.py` | Custom: prompts for email, not username |
 | `sync_news` | `cms/management/commands/sync_news.py` | Fetches and parses RSS feeds into NewsArticle records |

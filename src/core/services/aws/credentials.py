@@ -25,24 +25,20 @@ def aws_credentials_available() -> bool:
     return True
 
 
-def resolve_aws_credentials() -> AwsCredentials:
-    """Resolve AWS credentials from AWSCredentialConfig, falling back to SES keys."""
-    from core.models import AWSCredentialConfig, EmailServiceConfig
+def resolve_aws_credentials(service: str = "default") -> AwsCredentials:
+    """Resolve AWS credentials from the active AWSCredentialConfig.
+
+    The ``service`` argument is kept for call-site readability (SES, SNS,
+    Bedrock) but all services share the same region.
+    """
+    from core.models import AWSCredentialConfig
 
     aws = AWSCredentialConfig.load()
-    if aws.is_configured:
-        return AwsCredentials(
-            access_key_id=aws.access_key_id,
-            secret_access_key=aws.secret_access_key,
-            region=aws.default_region or "us-west-2",
-        )
+    if not aws.is_configured:
+        raise AwsCredentialsError("AWS credentials are not configured.")
 
-    email = EmailServiceConfig.load()
-    if email.ses_configured:
-        return AwsCredentials(
-            access_key_id=email.ses_access_key_id,
-            secret_access_key=email.ses_secret_access_key,
-            region=email.ses_region or "us-west-2",
-        )
-
-    raise AwsCredentialsError("AWS credentials are not configured.")
+    return AwsCredentials(
+        access_key_id=aws.access_key_id,
+        secret_access_key=aws.secret_access_key,
+        region=aws.region,
+    )

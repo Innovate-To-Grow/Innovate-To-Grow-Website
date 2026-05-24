@@ -8,7 +8,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Backend](backend.md) — Django apps, base models, settings, middleware, and auth system
 - [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
 - [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
-- [Integrations](integrations.md) — External services: Google Sheets, AWS SES, Twilio, S3
+- [Integrations](integrations.md) — External services: Google Sheets, AWS SES/SNS/Bedrock, S3
 
 ## Who this is for
 

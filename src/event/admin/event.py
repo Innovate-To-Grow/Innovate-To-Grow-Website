@@ -4,7 +4,7 @@ from unfold.admin import TabularInline
 from unfold.decorators import display
 
 from core.admin import BaseModelAdmin
-from core.models import EmailServiceConfig, GoogleCredentialConfig, SMSServiceConfig
+from core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ..models import Event, Question, Ticket
 
@@ -100,14 +100,22 @@ class EventAdmin(BaseModelAdmin):
         (
             "Event Details",
             {
-                "fields": ("name", "slug", "date", "location", "description", "is_live"),
+                "fields": (
+                    ("name", "slug"),
+                    ("date", "location"),
+                    "description",
+                    "is_live",
+                ),
             },
         ),
         (
             "Registration Form Options",
             {
                 "description": "Control which optional fields appear on the registration form.",
-                "fields": ("allow_secondary_email", "collect_phone", "verify_phone"),
+                "fields": (
+                    "allow_secondary_email",
+                    ("collect_phone", "verify_phone"),
+                ),
             },
         ),
         (
@@ -116,10 +124,8 @@ class EventAdmin(BaseModelAdmin):
                 "classes": ("collapse",),
                 "description": "Link a Google Sheet to sync registration data for this event.",
                 "fields": (
-                    "registration_sheet_id",
-                    "registration_sheet_gid",
-                    "registration_sheet_synced_at",
-                    "registration_sheet_sync_count",
+                    ("registration_sheet_id", "registration_sheet_gid"),
+                    ("registration_sheet_synced_at", "registration_sheet_sync_count"),
                     "registration_sheet_sync_error",
                 ),
             },
@@ -128,21 +134,23 @@ class EventAdmin(BaseModelAdmin):
             "System",
             {
                 "classes": ("collapse",),
-                "fields": ("created_at", "updated_at"),
+                "fields": (("created_at", "updated_at"),),
             },
         ),
     )
 
     @staticmethod
     def _get_site_settings_context():
+        from core.models import AWSCredentialConfig
+
         email_config = EmailServiceConfig.load()
-        sms_config = SMSServiceConfig.load()
         google_config = GoogleCredentialConfig.load()
+        aws_config = AWSCredentialConfig.load()
         return {
             "email_config": email_config if email_config.pk else None,
-            "sms_config": sms_config if sms_config.pk else None,
             "google_config": google_config if google_config.pk else None,
             "google_configured": google_config.is_configured,
+            "aws_config": aws_config if aws_config.pk else None,
         }
 
     def change_view(self, request, object_id, form_url="", extra_context=None):

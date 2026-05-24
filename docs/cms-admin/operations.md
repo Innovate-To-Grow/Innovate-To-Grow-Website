@@ -50,7 +50,7 @@ cd src && python manage.py migrate           # Apply
 cd src && python manage.py seed_service_configs
 ```
 
-Creates empty active `EmailServiceConfig` and `SMSServiceConfig` rows so the Django admin has something to edit. Credentials are entered through the admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
+Creates an empty active `EmailServiceConfig` row for backend defaults. AWS credentials, region, SNS origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
 
 ### Verifying configs before deploy
 
@@ -66,10 +66,9 @@ Singleton configuration models in Django admin → Site Settings:
 
 | Model | Purpose | Key action |
 |-------|---------|-----------|
-| `EmailServiceConfig` | AWS SES or SMTP email credentials | Set active config |
-| `SMSServiceConfig` | AWS SNS origination number + region | Set active config |
+| `AWSCredentialConfig` | Shared AWS IAM key, shared AWS region, SNS origination number, SMS OTP template — drives SES, SNS, Bedrock | Set active config |
+| `EmailServiceConfig` | Hidden backend defaults for sender identity, campaign send rate, SMTP fallback | Managed by seed/defaults |
 | `GoogleCredentialConfig` | Google service account JSON | Paste credentials JSON |
-| `AWSCredentialConfig` | Shared AWS IAM keys (SNS, Bedrock) | Set active config |
 | `SiteMaintenanceControl` | Maintenance mode toggle | Enable/disable |
 
 Only one of each can be active. Setting a new config as active deactivates the previous one.

@@ -4,7 +4,6 @@ from .service_credentials import (
     EmailServiceConfig,
     GmailImportConfig,
     GoogleCredentialConfig,
-    SMSServiceConfig,
 )
 from .web import SiteMaintenanceControl
 
@@ -14,6 +13,5 @@ __all__ = [
     "GmailImportConfig",
     "GoogleCredentialConfig",
     "ProjectControlModel",
-    "SMSServiceConfig",
     "SiteMaintenanceControl",
 ]
