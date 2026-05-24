@@ -2,7 +2,7 @@ from .control import ProjectControlModel
 from .service_credentials import (
     AWSCredentialConfig,
     EmailServiceConfig,
-    GmailImportConfig,
+    GmailAccessAccount,
     GoogleCredentialConfig,
 )
 from .web import SiteMaintenanceControl
@@ -10,7 +10,7 @@ from .web import SiteMaintenanceControl
 __all__ = [
     "AWSCredentialConfig",
     "EmailServiceConfig",
-    "GmailImportConfig",
+    "GmailAccessAccount",
     "GoogleCredentialConfig",
     "ProjectControlModel",
     "SiteMaintenanceControl",

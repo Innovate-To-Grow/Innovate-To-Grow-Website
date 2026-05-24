@@ -7,7 +7,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import mail.admin.inbox as inbox_api
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 
 from .helpers import parse_limit
 
@@ -24,7 +24,7 @@ def inbox_list_view(request):
 
 def inbox_fragment_view(request):
     """Return HTML partial for inbox list and config stats."""
-    gmail_config = GmailImportConfig.load()
+    gmail_config = GmailAccessAccount.load()
     error_message = ""
     inbox_messages = []
     limit = parse_limit(request)

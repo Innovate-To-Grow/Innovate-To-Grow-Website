@@ -1,9 +1,9 @@
 from django.db import models
 
 
-class GmailImportConfig(models.Model):
+class GmailAccessAccount(models.Model):
     """
-    Gmail IMAP configuration for importing HTML templates from sent mail.
+    Gmail IMAP access account for importing HTML templates from sent mail.
 
     Multiple configs can exist but only one may be active at a time.
     Managed via Django admin under Site Settings.
@@ -13,7 +13,7 @@ class GmailImportConfig(models.Model):
         max_length=128,
         default="Default",
         verbose_name="Config Name",
-        help_text="A label to identify this configuration (e.g. 'Production Gmail Import').",
+        help_text="A label to identify this account (e.g. 'Production Gmail Access').",
     )
     is_active = models.BooleanField(
         default=False,
@@ -43,8 +43,8 @@ class GmailImportConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Gmail Import Config"
-        verbose_name_plural = "Gmail Import Configs"
+        verbose_name = "Gmail Access Account"
+        verbose_name_plural = "Gmail Access Accounts"
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
@@ -53,7 +53,7 @@ class GmailImportConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_active:
-            GmailImportConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+            GmailAccessAccount.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
         super().save(*args, **kwargs)
 
     @classmethod

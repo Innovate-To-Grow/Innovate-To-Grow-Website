@@ -5,7 +5,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from cms.models import CMSPage
-from core.models import EmailServiceConfig, GmailImportConfig
+from core.models import EmailServiceConfig, GmailAccessAccount
 from event.tests.helpers import make_superuser
 from mail.admin.campaign import EmailCampaignAdmin
 from mail.models import EmailCampaign
@@ -22,8 +22,8 @@ class EmailCampaignAdminImportTest(TestCase):
             body="Draft body",
             login_redirect_path="/account",
         )
-        self.gmail_import_config = GmailImportConfig.objects.create(
-            name="Primary Gmail Import",
+        self.gmail_import_config = GmailAccessAccount.objects.create(
+            name="Primary Gmail Access Account",
             is_active=True,
             imap_host="imap.gmail.com",
             gmail_username="campaigns@ucmerced.edu",
@@ -50,7 +50,7 @@ class EmailCampaignAdminImportTest(TestCase):
         response = self.client.get(reverse("admin:mail_emailcampaign_changelist"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Gmail Import Account")
+        self.assertContains(response, "Gmail Access Account")
         self.assertContains(response, "imap.gmail.com")
         self.assertContains(response, "campaigns@ucmerced.edu")
         self.assertContains(response, GMAIL_FOLDER_DISPLAY)

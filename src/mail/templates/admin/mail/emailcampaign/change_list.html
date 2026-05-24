@@ -56,7 +56,7 @@
 
         <div class="rounded-default border border-base-200 p-4 dark:border-base-700">
             <h4 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark">
-                Gmail Import Account
+                Gmail Access Account
             </h4>
             {% if gmail_import_config.pk %}
             <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -90,16 +90,16 @@
                 </div>
             </div>
             <div class="mt-3">
-                <a href="{% url 'admin:core_gmailimportconfig_changelist' %}"
+                <a href="{% url 'admin:core_gmailaccessaccount_changelist' %}"
                    class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                     <span class="material-symbols-outlined !text-[14px]">edit</span>
-                    Edit Gmail Import Configuration
+                    Edit Gmail Access Account
                 </a>
             </div>
             {% else %}
             <p class="text-sm text-base-400">
                 No Gmail import configuration found.
-                <a href="{% url 'admin:core_gmailimportconfig_add' %}" class="text-primary-600 hover:text-primary-700 dark:text-primary-400">Create one</a>
+                <a href="{% url 'admin:core_gmailaccessaccount_add' %}" class="text-primary-600 hover:text-primary-700 dark:text-primary-400">Create one</a>
             </p>
             {% endif %}
         </div>

@@ -26,13 +26,13 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
     def test_service_config_tabs_include_aws_without_email_config(self):
         tabs = settings.UNFOLD["TABS"]
-        service_config_tab = next(tab for tab in tabs if "core.gmailimportconfig" in tab["models"])
+        service_config_tab = next(tab for tab in tabs if "core.gmailaccessaccount" in tab["models"])
         item_titles = {item["title"] for item in service_config_tab["items"]}
 
         self.assertNotIn("core.emailserviceconfig", service_config_tab["models"])
         self.assertNotIn("core.smsserviceconfig", service_config_tab["models"])
         self.assertNotIn("Email Config", item_titles)
-        self.assertIn("Gmail Import", item_titles)
+        self.assertIn("Gmail Access Account", item_titles)
         self.assertNotIn("SMS Config", item_titles)
         self.assertIn("Google Credentials", item_titles)
         self.assertIn("AWS Credentials", item_titles)

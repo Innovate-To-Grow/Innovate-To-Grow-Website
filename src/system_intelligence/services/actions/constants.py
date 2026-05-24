@@ -26,7 +26,7 @@ DENIED_MODEL_LABELS = {
     "auth.permission",
     "core.awscredentialconfig",
     "core.emailserviceconfig",
-    "core.gmailimportconfig",
+    "core.gmailaccessaccount",
     "core.googlecredentialconfig",
     "system_intelligence.chatconversation",
     "system_intelligence.chatmessage",

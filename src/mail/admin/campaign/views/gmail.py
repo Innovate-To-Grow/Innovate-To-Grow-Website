@@ -7,7 +7,7 @@ from django.urls import reverse
 from unfold.decorators import action
 
 import mail.admin.campaign as campaign_api
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 from mail.models import EmailCampaign
 
 
@@ -31,7 +31,7 @@ class CampaignGmailMixin:
                 mailbox=mailbox,
                 force_refresh=force_refresh,
             )
-            gmail_import_config = GmailImportConfig.load()
+            gmail_import_config = GmailAccessAccount.load()
         except campaign_api.GmailImportError as exc:
             messages.error(request, str(exc))
             return HttpResponseRedirect(change_url)

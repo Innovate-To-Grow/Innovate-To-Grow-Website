@@ -35,7 +35,7 @@ def get_gmail_config():
     import mail.services.gmail_import as gmail_api
 
     try:
-        config = gmail_api.GmailImportConfig.load()
+        config = gmail_api.GmailAccessAccount.load()
     except (OperationalError, ProgrammingError) as exc:
         raise GmailImportError("Gmail import configuration is unavailable. Run the latest migrations first.") from exc
     if not config.is_configured:
@@ -51,7 +51,7 @@ def resolve_gmail_mailbox(mailbox: str | None = None) -> str:
     import mail.services.gmail_import as gmail_api
 
     try:
-        config = gmail_api.GmailImportConfig.load()
+        config = gmail_api.GmailAccessAccount.load()
     except (OperationalError, ProgrammingError):
         raise GmailImportError("Gmail import configuration is unavailable. Run the latest migrations first.")
     return normalize_mailbox(config.mailbox) or DEFAULT_GMAIL_MAILBOX

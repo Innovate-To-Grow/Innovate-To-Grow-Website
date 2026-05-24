@@ -40,13 +40,13 @@ UNFOLD = {
         {
             "models": [
                 "core.awscredentialconfig",
-                "core.gmailimportconfig",
+                "core.gmailaccessaccount",
                 "core.googlecredentialconfig",
                 "system_intelligence.systemintelligenceconfig",
             ],
             "items": [
                 {"title": "AWS Credentials", "link": "/admin/core/awscredentialconfig/"},
-                {"title": "Gmail Import", "link": "/admin/core/gmailimportconfig/"},
+                {"title": "Gmail Access Account", "link": "/admin/core/gmailaccessaccount/"},
                 {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
                 {
                     "title": "System Intelligence Config",

@@ -7,21 +7,21 @@ from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from core.admin.base import BaseModelAdmin
-from core.models import GmailImportConfig
+from core.models import GmailAccessAccount
 
 
-class GmailImportConfigForm(forms.ModelForm):
+class GmailAccessAccountForm(forms.ModelForm):
     class Meta:
-        model = GmailImportConfig
+        model = GmailAccessAccount
         fields = "__all__"
         widgets = {
             "gmail_password": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
         }
 
 
-@admin.register(GmailImportConfig)
-class GmailImportConfigAdmin(BaseModelAdmin):
-    form = GmailImportConfigForm
+@admin.register(GmailAccessAccount)
+class GmailAccessAccountAdmin(BaseModelAdmin):
+    form = GmailAccessAccountForm
     list_display = ("name", "status_badge", "imap_host", "gmail_username", "updated_at")
     list_filter = ("is_active",)
     search_fields = ("name", "gmail_username", "imap_host")
@@ -31,12 +31,15 @@ class GmailImportConfigAdmin(BaseModelAdmin):
     fieldsets = (
         (
             None,
-            {"fields": ("name", "is_active")},
+            {"fields": (("name", "is_active"),)},
         ),
         (
             _("Gmail IMAP"),
             {
-                "fields": ("imap_host", "gmail_username", "gmail_password"),
+                "fields": (
+                    "imap_host",
+                    ("gmail_username", "gmail_password"),
+                ),
                 "description": "Credentials used to read recent sent Gmail templates over IMAP.",
             },
         ),
@@ -52,11 +55,11 @@ class GmailImportConfigAdmin(BaseModelAdmin):
 
     @action(description="Activate this config", url_path="activate", icon="check_circle")
     def activate_this_config(self, request, object_id):
-        obj = GmailImportConfig.objects.get(pk=object_id)
+        obj = GmailAccessAccount.objects.get(pk=object_id)
         obj.is_active = True
         obj.save()
-        messages.success(request, f'"{obj.name}" is now the active Gmail import config.')
-        return HttpResponseRedirect(reverse("admin:core_gmailimportconfig_change", args=[object_id]))
+        messages.success(request, f'"{obj.name}" is now the active Gmail access account.')
+        return HttpResponseRedirect(reverse("admin:core_gmailaccessaccount_change", args=[object_id]))
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):

@@ -6,7 +6,7 @@ from django.utils.html import escape, format_html
 from unfold.decorators import display
 
 import mail.admin.campaign as campaign_api
-from core.models import EmailServiceConfig, GmailImportConfig
+from core.models import EmailServiceConfig, GmailAccessAccount
 
 
 class CampaignDisplayMixin:
@@ -104,7 +104,7 @@ class CampaignDisplayMixin:
 
             extra_context["email_config"] = EmailServiceConfig.load()
             extra_context["aws_config"] = AWSCredentialConfig.load()
-            extra_context["gmail_import_config"] = GmailImportConfig.load()
+            extra_context["gmail_import_config"] = GmailAccessAccount.load()
             extra_context["gmail_mailbox"] = campaign_api.resolve_gmail_mailbox()
             extra_context["gmail_folder"] = campaign_api.GMAIL_FOLDER_DISPLAY
         except Exception:

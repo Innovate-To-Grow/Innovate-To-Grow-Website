@@ -7,18 +7,18 @@ from django.test.client import RequestFactory
 from django.urls import reverse
 
 from core.admin.service_credentials.aws import AWSCredentialConfigAdmin
-from core.models import AWSCredentialConfig, GmailImportConfig
+from core.models import AWSCredentialConfig, GmailAccessAccount
 from event.tests.helpers import make_superuser
 from system_intelligence.models import SystemIntelligenceConfig
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
-class GmailImportConfigAdminTests(TestCase):
+class GmailAccessAccountAdminTests(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
-        self.config = GmailImportConfig.objects.create(
-            name="Primary Gmail Import",
+        self.config = GmailAccessAccount.objects.create(
+            name="Primary Gmail Access Account",
             is_active=True,
             imap_host="imap.gmail.com",
             gmail_username="campaigns@ucmerced.edu",
@@ -26,17 +26,17 @@ class GmailImportConfigAdminTests(TestCase):
         )
 
     def test_changelist_shows_gmail_import_config(self):
-        response = self.client.get(reverse("admin:core_gmailimportconfig_changelist"))
+        response = self.client.get(reverse("admin:core_gmailaccessaccount_changelist"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Primary Gmail Import")
+        self.assertContains(response, "Primary Gmail Access Account")
         self.assertContains(response, "campaigns@ucmerced.edu")
 
     def test_change_view_updates_gmail_import_config(self):
         response = self.client.post(
-            reverse("admin:core_gmailimportconfig_change", args=[self.config.pk]),
+            reverse("admin:core_gmailaccessaccount_change", args=[self.config.pk]),
             {
-                "name": "Updated Gmail Import",
+                "name": "Updated Gmail Access Account",
                 "is_active": "on",
                 "imap_host": "imap.gmail.com",
                 "gmail_username": "updated@ucmerced.edu",
@@ -47,7 +47,7 @@ class GmailImportConfigAdminTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.config.refresh_from_db()
-        self.assertEqual(self.config.name, "Updated Gmail Import")
+        self.assertEqual(self.config.name, "Updated Gmail Access Account")
         self.assertEqual(self.config.gmail_username, "updated@ucmerced.edu")
         self.assertEqual(self.config.gmail_password, "new-app-password")
 
