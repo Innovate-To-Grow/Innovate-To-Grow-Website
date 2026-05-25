@@ -18,7 +18,7 @@
 
 {% block content %}
 <div id="si-root" class="si-chat-shell" data-si-root>
-  <aside class="si-chat-sidebar" aria-label="System Intelligence conversations">
+  <aside class="si-chat-sidebar" aria-label="AI Assistant conversations">
     <div class="si-chat-sidebar-header">
       <button
         type="button"
@@ -44,10 +44,10 @@
     </div>
   </aside>
 
-  <main class="si-chat-main" aria-label="System Intelligence chat">
+  <main class="si-chat-main" aria-label="AI Assistant chat">
     <header class="si-chat-toolbar">
       <div>
-        <p class="si-chat-eyebrow">System Intelligence</p>
+        <p class="si-chat-eyebrow">AI Assistant</p>
         <h2 data-si-title>New Chat</h2>
         <p data-si-status>Ready</p>
       </div>
@@ -73,7 +73,7 @@
 
     <form class="si-chat-composer" data-si-form>
       {% csrf_token %}
-      <textarea data-si-input rows="1" placeholder="Message System Intelligence"></textarea>
+      <textarea data-si-input rows="1" placeholder="Message AI Assistant"></textarea>
       <button type="submit" data-si-send>Send</button>
     </form>
   </main>

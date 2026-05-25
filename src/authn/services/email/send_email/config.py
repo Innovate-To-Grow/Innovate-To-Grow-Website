@@ -1,6 +1,3 @@
-SMTP_TIMEOUT = 15
-SMTP_MAX_RETRIES = 2
-
 PURPOSE_SUBJECTS = {
     "register": "Verify your email - Innovate to Grow",
     "login": "Your login code - Innovate to Grow",

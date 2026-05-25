@@ -22,51 +22,34 @@ def _send_test_email(*, config, recipient):
         "<p>Your email service configuration is working correctly.</p>"
     )
 
-    if config.ses_configured:
-        try:
-            import boto3
+    if not config.ses_configured:
+        raise RuntimeError("Email delivery is not configured. Configure AWS SES in Notification Delivery.")
 
-            creds = resolve_aws_credentials("ses")
-            client = boto3.client(
-                "ses",
-                region_name=creds.region,
-                aws_access_key_id=creds.access_key_id,
-                aws_secret_access_key=creds.secret_access_key,
-            )
-            client.send_email(
-                Destination={"ToAddresses": [recipient]},
-                Message={
-                    "Body": {"Html": {"Charset": "UTF-8", "Data": html_body}},
-                    "Subject": {"Charset": "UTF-8", "Data": subject},
-                },
-                Source=config.source_address,
-            )
-            return "SES"
-        except AwsCredentialsError:
-            logger.warning("SES test send skipped: AWS credentials are not configured")
-        except Exception:
-            logger.exception("SES test send failed for %s", recipient)
+    try:
+        import boto3
 
-    from django.core.mail import EmailMessage, get_connection
-
-    connection = get_connection(
-        host=config.smtp_host,
-        port=config.smtp_port,
-        username=config.smtp_username,
-        password=config.smtp_password,
-        use_tls=config.smtp_use_tls,
-        fail_silently=False,
-    )
-    msg = EmailMessage(
-        subject=subject,
-        body=html_body,
-        from_email=config.source_address,
-        to=[recipient],
-        connection=connection,
-    )
-    msg.content_subtype = "html"
-    msg.send()
-    return "SMTP"
+        creds = resolve_aws_credentials("ses")
+        client = boto3.client(
+            "ses",
+            region_name=creds.region,
+            aws_access_key_id=creds.access_key_id,
+            aws_secret_access_key=creds.secret_access_key,
+        )
+        client.send_email(
+            Destination={"ToAddresses": [recipient]},
+            Message={
+                "Body": {"Html": {"Charset": "UTF-8", "Data": html_body}},
+                "Subject": {"Charset": "UTF-8", "Data": subject},
+            },
+            Source=config.source_address,
+        )
+        return "AWS SES"
+    except AwsCredentialsError as exc:
+        logger.warning("SES test send skipped: AWS credentials are not configured")
+        raise RuntimeError("AWS credentials are not configured.") from exc
+    except Exception as exc:
+        logger.exception("SES test send failed for %s", recipient)
+        raise RuntimeError("AWS SES test send failed. Check server logs for details.") from exc
 
 
 def _send_test_sms(*, phone_number):

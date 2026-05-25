@@ -130,14 +130,14 @@ class AdminPasswordLoginTest(TestCase):
         resp = self.client.post(LOGIN_URL, {"mode": "password", "remembered_admin": "1", "password": "wrongpass"})
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Invalid password")
+        self.assertContains(resp, "Invalid password", count=1)
         self.assertNotContains(resp, "admin@example.com")
         self.assertNotContains(resp, 'name="email"')
 
     def test_post_password_wrong_password_shows_error(self):
         resp = self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Invalid email or password")
+        self.assertContains(resp, "Invalid email or password", count=1)
 
     def test_post_password_unknown_email_shows_error(self):
         resp = self.client.post(

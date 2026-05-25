@@ -5,12 +5,144 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from cms.models import CMSPage
-from core.models import EmailServiceConfig, GmailAccessAccount
+from core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount
 from event.tests.helpers import make_superuser
 from mail.admin.campaign import EmailCampaignAdmin
 from mail.models import EmailCampaign
 from mail.services import GMAIL_FOLDER_DISPLAY
 from mail.services.preview import HTML_MARKER
+
+
+class MailSettingsAdminTest(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+        self.config = EmailServiceConfig.objects.create(
+            name="Production Mail",
+            is_active=True,
+            ses_from_email="admin@example.com",
+            ses_from_name="I2G Admin",
+            ses_max_send_rate=12,
+        )
+        self.aws_config = AWSCredentialConfig.objects.create(
+            name="Primary AWS",
+            is_active=True,
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            default_region="us-west-2",
+            sms_from_number="+12065550000",
+            sms_message_template="Your I2G code is {code}.",
+        )
+
+    def test_settings_page_shows_notification_delivery_config(self):
+        response = self.client.get(reverse("admin:mail_settings"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Notification Delivery")
+        self.assertContains(response, "AWS Identity and Access Management (IAM)")
+        self.assertContains(response, "Primary AWS")
+        self.assertContains(response, "Production Mail")
+        self.assertContains(response, "Amazon Simple Email Service (us-west-2)")
+        self.assertContains(response, "Amazon Simple Notification Service (us-west-2)")
+        self.assertContains(response, "I2G Admin")
+        self.assertContains(response, "admin@example.com")
+        self.assertContains(response, "...-key")
+        self.assertContains(response, "Configured")
+        self.assertContains(response, "Your I2G code is {code}.")
+        self.assertContains(response, 'href="/admin/mail/settings/edit/"')
+        self.assertContains(response, 'href="/admin/mail/settings/test-email/"')
+        self.assertContains(response, 'href="/admin/mail/settings/test-sms/"')
+        self.assertNotContains(response, 'name="email-name"')
+        self.assertNotContains(response, "Save Notification Delivery")
+        self.assertNotContains(response, "Gmail Fallback")
+        self.assertNotContains(response, "smtp.gmail.com")
+
+    def test_settings_page_shows_not_configured_when_aws_is_missing(self):
+        AWSCredentialConfig.objects.all().delete()
+
+        response = self.client.get(reverse("admin:mail_settings"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Amazon Simple Email Service not configured")
+        self.assertContains(response, "Amazon Simple Notification Service not configured")
+
+    def test_settings_edit_view_renders_notification_delivery_form(self):
+        response = self.client.get(reverse("admin:mail_settings_edit"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="email-name"')
+        self.assertContains(response, 'name="aws-access_key_id"')
+        self.assertContains(response, "Save Notification Delivery")
+        self.assertContains(response, 'href="/admin/mail/settings/"')
+
+    def test_settings_edit_post_updates_notification_delivery_config(self):
+        response = self.client.post(
+            reverse("admin:mail_settings_edit"),
+            {
+                "email-name": "Updated Mail",
+                "email-is_active": "on",
+                "email-ses_from_name": "Updated Sender",
+                "email-ses_from_email": "updated@example.com",
+                "email-ses_max_send_rate": "8",
+                "aws-name": "Updated AWS",
+                "aws-is_active": "on",
+                "aws-access_key_id": "updated-key",
+                "aws-secret_access_key": "updated-secret",
+                "aws-default_region": "us-east-1",
+                "aws-sms_from_number": "+12065550123",
+                "aws-sms_message_template": "Code: {code}",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_settings"))
+        self.config.refresh_from_db()
+        self.aws_config.refresh_from_db()
+        self.assertEqual(self.config.name, "Updated Mail")
+        self.assertEqual(self.config.ses_from_email, "updated@example.com")
+        self.assertEqual(self.config.ses_max_send_rate, 8)
+        self.assertEqual(self.aws_config.name, "Updated AWS")
+        self.assertEqual(self.aws_config.default_region, "us-east-1")
+        self.assertEqual(self.aws_config.sms_from_number, "+12065550123")
+
+    def test_test_email_view_renders_form(self):
+        response = self.client.get(reverse("admin:mail_settings_test_email"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Send Test Email")
+        self.assertContains(response, "admin@example.com")
+
+    def test_test_sms_view_renders_form(self):
+        response = self.client.get(reverse("admin:mail_settings_test_sms"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Send Test SMS")
+        self.assertContains(response, "AWS SNS")
+
+    @patch("mail.admin.settings._send_test_email")
+    def test_test_email_post_uses_active_mail_config(self, mock_send_test_email):
+        mock_send_test_email.return_value = "AWS SES"
+
+        response = self.client.post(reverse("admin:mail_settings_test_email"), {"recipient": "ops@example.com"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_settings"))
+        mock_send_test_email.assert_called_once()
+        self.assertEqual(mock_send_test_email.call_args.kwargs["config"].pk, self.config.pk)
+        self.assertEqual(mock_send_test_email.call_args.kwargs["recipient"], "ops@example.com")
+
+    @patch("mail.admin.settings._send_test_sms")
+    def test_test_sms_post_uses_notification_delivery_config(self, mock_send_test_sms):
+        mock_send_test_sms.return_value = "message (ID: sns-1)"
+
+        response = self.client.post(
+            reverse("admin:mail_settings_test_sms"),
+            {"country_code": "+1", "recipient": "2065550123"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_settings"))
+        mock_send_test_sms.assert_called_once_with(phone_number="+12065550123")
 
 
 class EmailCampaignAdminImportTest(TestCase):
@@ -55,6 +187,8 @@ class EmailCampaignAdminImportTest(TestCase):
         self.assertContains(response, "campaigns@ucmerced.edu")
         self.assertContains(response, GMAIL_FOLDER_DISPLAY)
         self.assertContains(response, "Innovate to Grow &lt;campaigns@ucmerced.edu&gt;")
+        self.assertContains(response, 'href="/admin/mail/settings/"')
+        self.assertContains(response, "Edit Notification Delivery")
 
     def test_import_gmail_html_view_renders_recent_messages(self):
         with patch("mail.admin.campaign.list_recent_sent_messages") as mock_list:

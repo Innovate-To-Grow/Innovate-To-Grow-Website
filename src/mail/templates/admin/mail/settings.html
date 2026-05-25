@@ -1,0 +1,143 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div class="mb-6 rounded-default border border-base-200 bg-white px-5 py-5 shadow-sm dark:border-base-700 dark:bg-base-800">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+            <div class="mb-1 text-xs font-medium uppercase text-base-400">Amazon delivery status</div>
+            <h3 class="text-base font-semibold text-font-important-light dark:text-font-important-dark">Notification Delivery</h3>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+                {% if email_provider_color == "success" %}
+                    <span class="inline-flex max-w-full rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">{{ email_provider }}</span>
+                {% else %}
+                    <span class="inline-flex max-w-full rounded-md bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-500/30">{{ email_provider }}</span>
+                {% endif %}
+                {% if sms_provider_color == "success" %}
+                    <span class="inline-flex max-w-full rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">{{ sms_provider }}</span>
+                {% else %}
+                    <span class="inline-flex max-w-full rounded-md bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-500/30">{{ sms_provider }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-auto">
+            <a href="{{ test_email_url }}"
+               class="inline-flex w-full items-center justify-center rounded-md border border-base-300 px-4 py-2.5 text-sm font-medium text-primary-700 hover:border-primary-300 hover:bg-primary-50 lg:w-40 dark:border-base-600 dark:text-primary-300 dark:hover:border-primary-700 dark:hover:bg-primary-900/20">
+                Send Test Email
+            </a>
+            <a href="{{ test_sms_url }}"
+               class="inline-flex w-full items-center justify-center rounded-md border border-base-300 px-4 py-2.5 text-sm font-medium text-primary-700 hover:border-primary-300 hover:bg-primary-50 lg:w-40 dark:border-base-600 dark:text-primary-300 dark:hover:border-primary-700 dark:hover:bg-primary-900/20">
+                Send Test SMS
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <section class="rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        <h3 class="mb-4 text-sm font-semibold text-font-important-light dark:text-font-important-dark">AWS Identity and Access Management (IAM)</h3>
+        <dl class="space-y-4">
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Config Name</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ aws_config.name|default:"Default" }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Status</dt>
+                <dd class="mt-1">
+                    {% if aws_config.is_active %}
+                        <span class="inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">Active</span>
+                    {% else %}
+                        <span class="inline-flex rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-base-500 ring-1 ring-inset ring-base-300 dark:bg-base-700 dark:text-base-300 dark:ring-base-600">Inactive</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Access Key ID</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ masked_access_key }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Secret Access Key</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ secret_key_status }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">AWS Region</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ aws_config.region|default:"us-west-2" }}
+                </dd>
+            </div>
+        </dl>
+    </section>
+    <section class="rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        <h3 class="mb-4 text-sm font-semibold text-font-important-light dark:text-font-important-dark">Email Sender</h3>
+        <dl class="space-y-4">
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Config Name</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ config.name|default:"Default" }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Status</dt>
+                <dd class="mt-1">
+                    {% if config.is_active %}
+                        <span class="inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">Active</span>
+                    {% else %}
+                        <span class="inline-flex rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-base-500 ring-1 ring-inset ring-base-300 dark:bg-base-700 dark:text-base-300 dark:ring-base-600">Inactive</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">From Name</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ config.ses_from_name|default:"Not configured" }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">From Email</dt>
+                <dd class="mt-1 break-all text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ config.ses_from_email|default:"Not configured" }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Campaign Send Rate</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ config.ses_max_send_rate }} emails/sec
+                </dd>
+            </div>
+        </dl>
+    </section>
+    <section class="rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        <h3 class="mb-4 text-sm font-semibold text-font-important-light dark:text-font-important-dark">SMS Notifications</h3>
+        <dl class="space-y-4">
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">SMS Origination Number</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ aws_config.sms_from_number|default:"Not configured" }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">SMS OTP Message Template</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ sms_template_display }}
+                </dd>
+            </div>
+        </dl>
+    </section>
+</div>
+
+<div class="mt-6">
+    <a href="{{ edit_url }}"
+       class="inline-flex items-center justify-center rounded-md border border-base-300 px-4 py-2 text-sm font-medium text-primary-700 hover:border-primary-300 hover:bg-primary-50 dark:border-base-600 dark:text-primary-300 dark:hover:border-primary-700 dark:hover:bg-primary-900/20">
+        Edit Notification Delivery
+    </a>
+</div>
+{% endblock %}

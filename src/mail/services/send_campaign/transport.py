@@ -17,6 +17,7 @@ class SesSendResult:
 
     message_id: str = ""
     error: str = ""
+    provider: str = "ses"
 
 
 def _get_ses_client(config):

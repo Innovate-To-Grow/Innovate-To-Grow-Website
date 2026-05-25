@@ -322,7 +322,7 @@ class AdminLoginViewTest(TestCase):
             resp = self.client.post(LOGIN_URL, {"code": "000000"})
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Verification code is invalid or has expired")
+        self.assertContains(resp, "Verification code is invalid or has expired", count=1)
 
     @patch("authn.views.admin.login.issue_email_challenge")
     # noinspection PyUnusedLocal

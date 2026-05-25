@@ -34,9 +34,6 @@ class VerifyServiceConfigsCommandTest(TestCase):
         return EmailServiceConfig.objects.create(
             name="Production",
             is_active=True,
-            smtp_host="smtp.example.com",
-            smtp_username="user",
-            smtp_password="pw",
         )
 
     def _create_aws(self, *, sms_from_number: str = ""):
@@ -96,10 +93,10 @@ class VerifyServiceConfigsCommandTest(TestCase):
         out, _ = self._run("--strict", "--require-google")
         self.assertIn("passed", out)
 
-    def test_smtp_only_email_is_sufficient_without_aws(self):
+    def test_email_without_aws_fails_strict(self):
         self._create_email()
-        out, _ = self._run("--strict")
-        self.assertIn("passed", out)
+        with self.assertRaises(CommandError):
+            self._run("--strict")
 
     def test_require_aws_fails_when_no_aws_config(self):
         self._create_email()

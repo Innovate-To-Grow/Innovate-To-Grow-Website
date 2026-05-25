@@ -11,7 +11,7 @@ def chat_list_view(request):
     """Render the primary System Intelligence chat UI."""
     context = {
         **admin.site.each_context(request),
-        "title": "System Intelligence",
+        "title": "Chat",
         "chat_config": _chat_config(),
     }
     return TemplateResponse(request, "admin/system_intelligence/system_intelligence_chat.html", context)

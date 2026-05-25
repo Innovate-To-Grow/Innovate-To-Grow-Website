@@ -1,4 +1,4 @@
-"""Tests for the ConfirmOnSaveMixin and admin notifications."""
+"""Tests for the ConfirmOnSaveMixin."""
 
 from unittest.mock import patch
 
@@ -121,7 +121,7 @@ class ConfirmOnSaveAddTest(TestCase):
         self.assertTrue(CMSEmbedAllowedHost.objects.filter(hostname="case-test.com").exists())
 
     @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_email_sent_after_add(self, mock_send):
+    def test_confirmed_add_does_not_notify_staff(self, mock_send):
         _make_staff(email="other-staff@example.com")
 
         url = reverse("admin:cms_cmsembedallowedhost_add")
@@ -130,21 +130,8 @@ class ConfirmOnSaveAddTest(TestCase):
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
         self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
-        mock_send.assert_called()
-        call_kwargs = mock_send.call_args[1]
-        self.assertEqual(call_kwargs["recipient"], "other-staff@example.com")
-        self.assertIn("Added", call_kwargs["subject"])
-
-    @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_excludes_actor(self, mock_send):
-        url = reverse("admin:cms_cmsembedallowedhost_add")
-        self.client.post(url, {"hostname": "exclude-actor.com", "is_active": True})
-
-        confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
-
-        for call in mock_send.call_args_list:
-            self.assertNotEqual(call[1]["recipient"], "admin@example.com")
+        self.assertTrue(CMSEmbedAllowedHost.objects.filter(hostname="notify-add.com").exists())
+        mock_send.assert_not_called()
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -192,7 +179,7 @@ class ConfirmOnSaveChangeTest(TestCase):
         self.assertNotIn("confirm-change", response.url if response.status_code == 302 else "")
 
     @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_email_sent_after_change(self, mock_send):
+    def test_confirmed_change_does_not_notify_staff(self, mock_send):
         _make_staff(email="notify-change@example.com")
 
         url = reverse("admin:cms_cmsembedallowedhost_change", args=[self.host.pk])
@@ -201,9 +188,9 @@ class ConfirmOnSaveChangeTest(TestCase):
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
         self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
-        mock_send.assert_called()
-        call_kwargs = mock_send.call_args[1]
-        self.assertIn("Changed", call_kwargs["subject"])
+        self.host.refresh_from_db()
+        self.assertEqual(self.host.hostname, "notify-changed.com")
+        mock_send.assert_not_called()
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -252,7 +239,7 @@ class ConfirmOnSaveDeleteTest(TestCase):
         self.assertTrue(CMSEmbedAllowedHost.objects.filter(pk=self.host.pk).exists())
 
     @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_email_sent_after_delete(self, mock_send):
+    def test_confirmed_delete_does_not_notify_staff(self, mock_send):
         _make_staff(email="notify-del@example.com")
 
         url = reverse("admin:cms_cmsembedallowedhost_delete", args=[self.host.pk])
@@ -261,9 +248,8 @@ class ConfirmOnSaveDeleteTest(TestCase):
         confirm_url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
         self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
 
-        mock_send.assert_called()
-        call_kwargs = mock_send.call_args[1]
-        self.assertIn("Deleted", call_kwargs["subject"])
+        self.assertFalse(CMSEmbedAllowedHost.objects.filter(pk=self.host.pk).exists())
+        mock_send.assert_not_called()
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)

@@ -6,16 +6,16 @@ class EmailServiceConfig(models.Model):
     Email delivery configuration.
 
     AWS SES credentials and region live on ``AWSCredentialConfig``; this model
-    stores email-specific settings like sender address, campaign throughput,
-    and the SMTP fallback. Multiple configs can exist but only one may be
-    active at a time. Managed via Django admin under Site Settings.
+    stores email-specific settings like sender address and campaign
+    throughput. Multiple configs can exist but only one may be active at a
+    time.
     """
 
     name = models.CharField(
         max_length=128,
         default="Default",
         verbose_name="Config Name",
-        help_text="A label to identify this configuration (e.g. 'Production SES', 'Dev SMTP').",
+        help_text="A label to identify this configuration (e.g. 'Production SES', 'Dev SES').",
     )
     is_active = models.BooleanField(
         default=False,
@@ -28,7 +28,7 @@ class EmailServiceConfig(models.Model):
         blank=True,
         default="i2g@g.ucmerced.edu",
         verbose_name="From Email",
-        help_text="Sender email address for both SES and SMTP.",
+        help_text="Sender email address used by AWS SES.",
     )
     ses_from_name = models.CharField(
         max_length=128,
@@ -43,33 +43,6 @@ class EmailServiceConfig(models.Model):
         help_text="Max emails per second for bulk campaigns. Keep below SES account limit to leave room for transactional mail.",
     )
 
-    smtp_host = models.CharField(
-        max_length=254,
-        blank=True,
-        default="smtp.gmail.com",
-        verbose_name="SMTP Host",
-    )
-    smtp_port = models.PositiveIntegerField(
-        default=587,
-        verbose_name="SMTP Port",
-    )
-    smtp_use_tls = models.BooleanField(
-        default=True,
-        verbose_name="SMTP Use TLS",
-    )
-    smtp_username = models.CharField(
-        max_length=254,
-        blank=True,
-        default="",
-        verbose_name="SMTP Username",
-    )
-    smtp_password = models.CharField(
-        max_length=256,
-        blank=True,
-        default="",
-        verbose_name="SMTP Password",
-    )
-
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -78,9 +51,8 @@ class EmailServiceConfig(models.Model):
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
-        if self.ses_configured:
-            return f"{self.name}: SES + SMTP fallback{status}"
-        return f"{self.name}: SMTP ({self.smtp_host}){status}"
+        provider = "AWS SES" if self.ses_configured else "AWS SES not configured"
+        return f"{self.name}: {provider}{status}"
 
     def save(self, *args, **kwargs):
         if self.is_active:
@@ -113,7 +85,3 @@ class EmailServiceConfig(models.Model):
         from core.models import AWSCredentialConfig
 
         return AWSCredentialConfig.load().ses_configured
-
-    @property
-    def smtp_configured(self) -> bool:
-        return bool(self.smtp_host and self.smtp_username and self.smtp_password)

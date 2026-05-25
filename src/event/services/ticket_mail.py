@@ -2,8 +2,7 @@
 Ticket confirmation email service.
 
 Sends a branded HTML email with an inline PDF417 barcode image.
-Uses AWS SES (primary) with Django SMTP fallback — same dual-provider
-pattern as authn.services.email.send_email.
+Uses AWS SES through the shared Notification Delivery configuration.
 """
 
 import logging
@@ -82,44 +81,6 @@ def _send_via_ses(*, config, mime_message) -> bool:
         return False
 
 
-def _send_via_smtp(*, config, mime_message):
-    """Send via SMTP using DB-stored credentials."""
-    from django.core.mail import get_connection
-
-    connection = get_connection(
-        backend="django.core.mail.backends.smtp.EmailBackend",
-        host=config.smtp_host,
-        port=config.smtp_port,
-        username=config.smtp_username,
-        password=config.smtp_password,
-        use_tls=config.smtp_use_tls,
-        fail_silently=False,
-    )
-    from django.core.mail import EmailMessage
-
-    email = EmailMessage(
-        subject=mime_message["Subject"],
-        body=mime_message.as_string(),
-        from_email=mime_message["From"],
-        to=mime_message["To"].split(", "),
-        connection=connection,
-    )
-    email.content_subtype = "html"
-    # Replace the body with the full MIME message for inline images
-    email.encoding = "utf-8"
-    email.extra_headers = {"Content-Type": f'multipart/related; boundary="{mime_message.get_boundary()}"'}
-    # Use the low-level connection to send the raw MIME message directly
-    connection.open()
-    try:
-        connection.connection.sendmail(
-            mime_message["From"],
-            mime_message["To"].split(", "),
-            mime_message.as_string(),
-        )
-    finally:
-        connection.close()
-
-
 def send_ticket_email(registration: EventRegistration) -> None:
     """
     Send a ticket confirmation email with an inline barcode.
@@ -182,9 +143,7 @@ def send_ticket_email(registration: EventRegistration) -> None:
         if _send_via_ses(config=config, mime_message=mime_message):
             logger.info("Ticket email sent via SES for registration %s", registration.pk)
         else:
-            logger.info("SES unavailable; falling back to SMTP for registration %s", registration.pk)
-            _send_via_smtp(config=config, mime_message=mime_message)
-            logger.info("Ticket email sent via SMTP for registration %s", registration.pk)
+            raise RuntimeError("Ticket email delivery via AWS SES failed or is not configured.")
 
         registration.ticket_email_sent_at = timezone.now()
         registration.ticket_email_error = ""

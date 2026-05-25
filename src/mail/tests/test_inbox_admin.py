@@ -3,7 +3,9 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.urls import reverse
 
+from core.models import AWSCredentialConfig, EmailServiceConfig
 from event.tests.helpers import make_superuser
+from mail.services.inbox.reply import send_reply
 
 
 class InboxAdminFragmentTest(TestCase):
@@ -81,3 +83,43 @@ class InboxAdminFragmentTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"&lt;/pre&gt;&lt;script&gt;alert", response.content)
         self.assertNotIn(b"</pre><script>alert", response.content)
+
+
+class InboxReplySendSettingsTest(TestCase):
+    def setUp(self):
+        EmailServiceConfig.objects.create(
+            name="Mail",
+            is_active=True,
+            ses_from_email="reply@example.com",
+            ses_from_name="I2G",
+        )
+
+    def test_reply_requires_ses_when_aws_is_not_configured(self):
+        error = send_reply(
+            to_email="recipient@example.com",
+            subject="Re: Hi",
+            reply_body="Hello",
+            cc_email="copy@example.com",
+        )
+
+        self.assertIn("Email delivery is not configured", error)
+
+    @patch("boto3.client")
+    def test_reply_returns_error_when_ses_send_fails(self, mock_boto_client):
+        AWSCredentialConfig.objects.create(
+            name="AWS",
+            is_active=True,
+            access_key_id="AKID",
+            secret_access_key="SECRET",
+            default_region="us-west-2",
+        )
+        mock_boto_client.return_value.send_raw_email.side_effect = RuntimeError("SES failed")
+
+        error = send_reply(
+            to_email="recipient@example.com",
+            subject="Re: Hi",
+            reply_body="Hello",
+        )
+
+        self.assertIn("Failed to send reply", error)
+        mock_boto_client.return_value.send_raw_email.assert_called_once()

@@ -127,18 +127,17 @@ class ConfirmActionTest(TestCase):
         self.assertContains(response, "2")
 
     @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_sent_after_confirmed_action(self, mock_send):
-        other_staff = _make_staff(email="notify@example.com")
+    def test_confirmed_action_does_not_notify_staff(self, mock_send):
+        _make_staff(email="notify@example.com")
         semester = _make_semester()
         self._action_post("publish_selected", [semester.pk])
 
         confirm_url = reverse("admin:projects_semester_confirm_action")
         self.client.post(confirm_url, _confirm_action_data(self.client, "semester"))
 
-        mock_send.assert_called()
-        call_kwargs = mock_send.call_args[1]
-        self.assertIn("Publish selected semesters", call_kwargs["subject"])
-        self.assertEqual(call_kwargs["recipient"], "notify@example.com")
+        semester.refresh_from_db()
+        self.assertTrue(semester.is_published)
+        mock_send.assert_not_called()
 
     def test_no_pending_action_shows_error(self):
         confirm_url = reverse("admin:projects_semester_confirm_action")

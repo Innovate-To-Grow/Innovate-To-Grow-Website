@@ -11,11 +11,12 @@ class MailConfig(AppConfig):
         from django.db.models.signals import post_migrate
 
         from .admin.inbox import get_inbox_urls
+        from .admin.settings import get_mail_settings_urls
 
         original_get_urls = admin.AdminSite.get_urls
 
         def patched_get_urls(site_self):
-            return get_inbox_urls() + original_get_urls(site_self)
+            return get_inbox_urls() + get_mail_settings_urls() + original_get_urls(site_self)
 
         admin.AdminSite.get_urls = patched_get_urls
 
@@ -27,10 +28,22 @@ class MailConfig(AppConfig):
 
 def _reset_stuck_sending_campaigns(sender, **kwargs):
     try:
-        from .models import EmailCampaign
+        from django.db import connections
+
+        from .models import EmailCampaign, SmsCampaign
     except Exception:
         return
-    EmailCampaign.objects.filter(status="sending").update(
-        status="failed",
-        error_message="Campaign worker restarted mid-send; marked failed by recovery.",
-    )
+
+    connection = connections[kwargs.get("using") or "default"]
+    table_names = set(connection.introspection.table_names())
+    error_message = "Campaign worker restarted mid-send; marked failed by recovery."
+    if EmailCampaign._meta.db_table in table_names:
+        EmailCampaign.objects.using(connection.alias).filter(status="sending").update(
+            status="failed",
+            error_message=error_message,
+        )
+    if SmsCampaign._meta.db_table in table_names:
+        SmsCampaign.objects.using(connection.alias).filter(status="sending").update(
+            status="failed",
+            error_message=error_message,
+        )

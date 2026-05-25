@@ -53,11 +53,11 @@ class Command(BaseCommand):
             )
 
         email = EmailServiceConfig.load()
-        email_ok = bool(email.pk) and (aws_ok or self._smtp_configured(email))
+        email_ok = bool(email.pk) and aws_ok
         self._report("EmailServiceConfig", email, email_ok, required=True)
         if not email_ok:
             failures.append(
-                "EmailServiceConfig is not configured (needs AWS Credentials for SES or SMTP fallback fields)."
+                "EmailServiceConfig is not configured (needs an active EmailServiceConfig and AWS Credentials for SES)."
             )
 
         sms_ok = bool(aws.pk) and aws.sns_configured
@@ -94,7 +94,3 @@ class Command(BaseCommand):
 
         marker = self.style.ERROR("MISSING") if required else self.style.WARNING("missing")
         self.stdout.write(f"{label}: {marker}")
-
-    @staticmethod
-    def _smtp_configured(config) -> bool:
-        return bool(config.smtp_host and config.smtp_username and config.smtp_password)
