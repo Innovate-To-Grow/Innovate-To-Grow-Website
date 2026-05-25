@@ -7,6 +7,7 @@ from core.services.aws.credentials import AwsCredentialsError, resolve_aws_crede
 
 logger = logging.getLogger(__name__)
 REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for details."
+REPLY_DELIVERY_NOT_CONFIGURED = "Email delivery is not configured. Check Notification Delivery in admin."
 
 
 def render_reply_html(body_text, original_from="", original_date="", quoted_text=""):
@@ -64,18 +65,10 @@ def send_reply(
         references=references,
     )
 
-    if config.ses_configured:
-        error = _send_reply_via_ses(config=config, to_email=to_email, cc_list=cc_list, message=message)
-        if not error:
-            return ""
-        if not config.smtp_configured:
-            return error
-        logger.warning("SES reply send failed; falling back to Gmail SMTP for %s.", to_email)
+    if not config.ses_configured:
+        return REPLY_DELIVERY_NOT_CONFIGURED
 
-    if not config.smtp_configured:
-        return "Mail delivery is not configured. Cannot send reply."
-
-    return _send_reply_via_gmail(config=config, to_email=to_email, cc_list=cc_list, message=message)
+    return _send_reply_via_ses(config=config, to_email=to_email, cc_list=cc_list, message=message)
 
 
 def _send_reply_via_ses(*, config, to_email, cc_list, message) -> str:
@@ -100,34 +93,6 @@ def _send_reply_via_ses(*, config, to_email, cc_list, message) -> str:
         return "AWS IAM is not configured. Cannot send reply."
     except Exception:
         logger.exception("Failed to send reply to %s.", to_email)
-        return REPLY_SEND_FAILURE_MESSAGE
-
-
-def _send_reply_via_gmail(*, config, to_email, cc_list, message) -> str:
-    try:
-        from django.core.mail import get_connection
-
-        connection = get_connection(
-            backend="django.core.mail.backends.smtp.EmailBackend",
-            host=config.smtp_host,
-            port=config.smtp_port,
-            username=config.smtp_username,
-            password=config.smtp_password,
-            use_tls=config.smtp_use_tls,
-            fail_silently=False,
-        )
-        connection.open()
-        try:
-            connection.connection.sendmail(
-                message["From"],
-                [to_email] + cc_list,
-                message.as_string(),
-            )
-        finally:
-            connection.close()
-        return ""
-    except Exception:
-        logger.exception("Failed to send reply to %s via Gmail SMTP.", to_email)
         return REPLY_SEND_FAILURE_MESSAGE
 
 

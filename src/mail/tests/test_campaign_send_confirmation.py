@@ -104,7 +104,7 @@ class CampaignSendConfirmationTest(TestCase):
 
     @patch("mail.admin.campaign.views.send.CampaignSendMixin._background_send")
     @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_sent_after_campaign_send(self, mock_notify, mock_bg):
+    def test_campaign_send_does_not_notify_staff(self, mock_notify, mock_bg):
         from authn.models import ContactEmail, Member
 
         other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
@@ -115,23 +115,11 @@ class CampaignSendConfirmationTest(TestCase):
         campaign = _make_campaign(name="Notify Campaign")
 
         url = reverse("admin:mail_emailcampaign_send_confirm", args=[campaign.pk])
-        self.client.post(url, {"confirmation_text": "Notify Campaign"})
+        response = self.client.post(url, {"confirmation_text": "Notify Campaign"})
 
-        mock_notify.assert_called()
-        call_kwargs = mock_notify.call_args[1]
-        self.assertIn("Sent Campaign", call_kwargs["subject"])
-        self.assertEqual(call_kwargs["recipient"], "staff-notify@example.com")
-
-    @patch("mail.admin.campaign.views.send.CampaignSendMixin._background_send")
-    @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_excludes_actor(self, mock_notify, mock_bg):
-        campaign = _make_campaign(name="Exclude Actor Campaign")
-
-        url = reverse("admin:mail_emailcampaign_send_confirm", args=[campaign.pk])
-        self.client.post(url, {"confirmation_text": "Exclude Actor Campaign"})
-
-        for call in mock_notify.call_args_list:
-            self.assertNotEqual(call[1]["recipient"], "admin@example.com")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("status", response.url)
+        mock_notify.assert_not_called()
 
     def test_already_sent_campaign_redirects(self):
         campaign = _make_campaign(name="Already Sent", status="sent")

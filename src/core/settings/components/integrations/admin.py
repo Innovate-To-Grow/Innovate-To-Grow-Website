@@ -130,47 +130,11 @@ UNFOLD = {
         "show_search": True,
         "navigation": [
             {
-                "title": "Site Settings",
-                "items": [
-                    {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
-                    {"title": "Service Configs", "link": "/admin/core/awscredentialconfig/"},
-                    {"title": "Admin Log", "link": "/admin/admin/logentry/"},
-                ],
-            },
-            {
                 "title": "Content Management System",
                 "items": [
-                    {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
                     {"title": "News Management", "link": "/admin/cms/newsarticle/"},
-                ],
-            },
-            {
-                "title": "Members & Authentication",
-                "items": [
-                    {"title": "Members", "link": "/admin/authn/member/"},
-                    {"title": "Contact Info", "link": "/admin/authn/contactemail/"},
-                    {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
-                    {"title": "Member Sheet Sync", "link": "/admin/authn/membersheetsyncconfig/"},
-                ],
-            },
-            {
-                "title": "Amazon SES Email & Gmail",
-                "items": [
-                    {"title": "Mail Settings", "link": "/admin/mail/settings/"},
-                    {"title": "Gmail", "link": "/admin/mail/inbox/"},
-                    {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
-                    {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
-                ],
-            },
-            {
-                "title": "System Intelligence",
-                "items": [
-                    {"title": "System Intelligence", "link": "/admin/system-intelligence/"},
-                    {
-                        "title": "System Intelligence settings",
-                        "link": "/admin/system_intelligence/systemintelligenceconfig/",
-                    },
+                    {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                 ],
             },
             {
@@ -183,8 +147,43 @@ UNFOLD = {
             {
                 "title": "Projects",
                 "items": [
-                    {"title": "Semesters", "link": "/admin/projects/semester/"},
                     {"title": "Projects", "link": "/admin/projects/project/"},
+                    {"title": "Semesters", "link": "/admin/projects/semester/"},
+                ],
+            },
+            {
+                "title": "Members & Authentication",
+                "items": [
+                    {"title": "Members", "link": "/admin/authn/member/"},
+                    {"title": "Contact Info", "link": "/admin/authn/contactemail/"},
+                    {"title": "Admin Invitations", "link": "/admin/authn/admininvitation/"},
+                    {"title": "Member Sheet Sync", "link": "/admin/authn/membersheetsyncconfig/"},
+                ],
+            },
+            {
+                "title": "Broadcast Delivery",
+                "items": [
+                    {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/"},
+                    {"title": "Gmail Inbox", "link": "/admin/mail/inbox/"},
+                    {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
+                ],
+            },
+            {
+                "title": "AI Assistant",
+                "items": [
+                    {"title": "Chat", "link": "/admin/system-intelligence/"},
+                    {
+                        "title": "Assistant Settings",
+                        "link": "/admin/system_intelligence/systemintelligenceconfig/",
+                    },
+                ],
+            },
+            {
+                "title": "Site Settings",
+                "items": [
+                    {"title": "Site Maintenance Control", "link": "/admin/core/sitemaintenancecontrol/"},
+                    {"title": "Service Configs", "link": "/admin/core/awscredentialconfig/"},
+                    {"title": "Admin Log", "link": "/admin/admin/logentry/"},
                 ],
             },
         ],

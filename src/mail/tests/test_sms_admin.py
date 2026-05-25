@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from authn.models import ContactPhone
+from authn.models import ContactEmail, ContactPhone, Member
 from core.models import AWSCredentialConfig
 from event.tests.helpers import make_member, make_superuser
 from mail.models import SmsCampaign
@@ -84,6 +84,33 @@ class SmsCampaignAdminTests(TestCase):
         self.assertIn("status", response.url)
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()
+
+    @patch("mail.admin.sms_campaign.threading.Thread")
+    @patch("authn.services.email.send_email.senders.send_notification_email")
+    def test_confirm_send_does_not_notify_staff(self, mock_notify, mock_thread):
+        other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
+        ContactEmail.objects.create(
+            member=other_staff,
+            email_address="sms-staff-notify@example.com",
+            email_type="primary",
+            verified=True,
+        )
+        campaign = SmsCampaign.objects.create(
+            name="No Staff Notify SMS",
+            message="Hi",
+            audience_type="manual",
+            manual_phones="+12095551001",
+        )
+
+        response = self.client.post(
+            reverse("admin:mail_smscampaign_send_confirm", args=[campaign.pk]),
+            {"confirmation_text": "No Staff Notify SMS"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("status", response.url)
+        mock_thread.assert_called_once()
+        mock_notify.assert_not_called()
 
     @patch("mail.admin.sms_campaign.threading.Thread")
     def test_wrong_confirmation_text_rejects_send(self, mock_thread):

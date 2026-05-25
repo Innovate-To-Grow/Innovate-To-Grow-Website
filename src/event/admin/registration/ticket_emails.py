@@ -83,20 +83,7 @@ class TicketEmailAdminMixin:
                     messages.error(request, "Confirmation text does not match event name. Please try again.")
                     return redirect(reverse("admin:event_eventregistration_send_all_ticket_emails"))
 
-            sent = self._send_ticket_email_batch(request, queryset)
-
-            from core.admin.notifications import notify_staff_of_action
-
-            notify_staff_of_action(
-                actor=request.user,
-                action=f"Sent Ticket Emails: {event_name}",
-                summary=[
-                    {"label": "Event", "value": event_name},
-                    {"label": "Total registrations", "value": str(registration_count)},
-                    {"label": "Emails sent", "value": str(sent)},
-                ],
-                admin_url=request.build_absolute_uri(changelist_url),
-            )
+            self._send_ticket_email_batch(request, queryset)
 
             return redirect(changelist_url)
 

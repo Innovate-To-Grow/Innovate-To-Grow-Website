@@ -6,6 +6,7 @@ from .actions import render_email_body
 from .config import PURPOSE_SUBJECTS
 
 logger = logging.getLogger(__name__)
+SES_DELIVERY_ERROR = "Email delivery via AWS SES failed or is not configured."
 
 
 def send_notification_email(*, recipient: str, subject: str, template: str, context: dict):
@@ -23,17 +24,7 @@ def send_notification_email(*, recipient: str, subject: str, template: str, cont
         logger.info("Notification email sent via SES")
         return
 
-    logger.info("SES unavailable; falling back to SMTP for notification email")
-    try:
-        email_api._send_via_smtp(
-            config=config,
-            recipient=recipient,
-            subject=subject,
-            html_body=html_body,
-        )
-        logger.info("Notification email sent via SMTP")
-    except Exception:
-        logger.exception("Failed to send notification email")
+    logger.error("Notification email was not sent: %s", SES_DELIVERY_ERROR)
 
 
 def send_admin_invitation_email(*, invitation, request=None):
@@ -52,12 +43,7 @@ def send_admin_invitation_email(*, invitation, request=None):
         },
     )
 
-    if not config.ses_configured:
-        logger.info(
-            "SES not configured; sending admin invitation via SMTP (host=%s)",
-            config.smtp_host,
-        )
-    elif email_api._send_via_ses(
+    if email_api._send_via_ses(
         config=config,
         recipient=invitation.email,
         subject=subject,
@@ -65,19 +51,8 @@ def send_admin_invitation_email(*, invitation, request=None):
     ):
         logger.info("Admin invitation email sent via SES")
         return
-    else:
-        logger.warning(
-            "SES send failed; falling back to SMTP for admin invitation (host=%s)",
-            config.smtp_host,
-        )
 
-    email_api._send_via_smtp(
-        config=config,
-        recipient=invitation.email,
-        subject=subject,
-        html_body=html_body,
-    )
-    logger.info("Admin invitation email sent via SMTP")
+    raise RuntimeError(SES_DELIVERY_ERROR)
 
 
 def send_verification_email(
@@ -103,12 +78,7 @@ def send_verification_email(
         link_source=link_source,
     )
 
-    if not config.ses_configured:
-        logger.info(
-            "SES not configured; sending verification email via SMTP (host=%s)",
-            config.smtp_host,
-        )
-    elif email_api._send_via_ses(
+    if email_api._send_via_ses(
         config=config,
         recipient=recipient,
         subject=subject,
@@ -116,16 +86,5 @@ def send_verification_email(
     ):
         logger.info("Verification email sent via SES")
         return
-    else:
-        logger.warning(
-            "SES send failed; falling back to SMTP (host=%s)",
-            config.smtp_host,
-        )
 
-    email_api._send_via_smtp(
-        config=config,
-        recipient=recipient,
-        subject=subject,
-        html_body=html_body,
-    )
-    logger.info("Verification email sent via SMTP")
+    raise RuntimeError(SES_DELIVERY_ERROR)

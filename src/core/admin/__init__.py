@@ -13,7 +13,6 @@ from .mixins import (
     ExcelExportMixin,
     TimestampedAdminMixin,
 )
-from .notifications import notify_staff_of_action
 from .service_credentials import (  # noqa: F401 - register admin
     GmailAccessAccountAdmin,
     GoogleCredentialConfigAdmin,
@@ -29,8 +28,6 @@ __all__ = [
     "TimestampedAdminMixin",
     "DataExportMixin",
     "ExcelExportMixin",
-    # Notifications
-    "notify_staff_of_action",
     # Utilities
     "admin_url",
     "truncate_text",

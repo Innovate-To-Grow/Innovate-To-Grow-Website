@@ -4,12 +4,12 @@
 <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
     <h3 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-2">
         <span class="material-symbols-outlined !text-[18px]">settings</span>
-        Mail Configuration
+        Notification Delivery
     </h3>
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div class="rounded-default border border-base-200 p-4 dark:border-base-700">
             <h4 class="mb-3 text-sm font-semibold text-font-important-light dark:text-font-important-dark">
-                Email Delivery Account
+                SES Email Sender
             </h4>
             {% if email_config.pk %}
             <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -27,7 +27,7 @@
                 </div>
                 <div>
                     <span class="text-base-400">Provider:</span>
-                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{% if email_config.ses_configured %}AWS IAM ({{ aws_config.region|default:"us-west-2" }}){% else %}Gmail ({{ email_config.smtp_host }}){% endif %}</span>
+                    <span class="font-medium text-font-default-light dark:text-font-default-dark">{% if email_config.ses_configured %}AWS SES ({{ aws_config.region|default:"us-west-2" }}){% else %}Not configured{% endif %}</span>
                 </div>
                 <div>
                     <span class="text-base-400">Sender:</span>
@@ -44,13 +44,13 @@
                 <a href="{% url 'admin:mail_settings' %}"
                    class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                     <span class="material-symbols-outlined !text-[14px]">settings</span>
-                    Edit Mail Settings
+                    Edit Notification Delivery
                 </a>
             </div>
             {% else %}
             <p class="text-sm text-base-400">
-                No email service configuration found.
-                <a href="{% url 'admin:mail_settings' %}" class="text-primary-600 hover:text-primary-700 dark:text-primary-400">Create one</a>
+                No email delivery configuration found.
+                <a href="{% url 'admin:mail_settings' %}" class="text-primary-600 hover:text-primary-700 dark:text-primary-400">Configure delivery</a>
             </p>
             {% endif %}
         </div>

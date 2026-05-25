@@ -153,9 +153,8 @@ STORAGES = {
     },
 }
 
-# Email
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_PROVIDER = os.environ.get("EMAIL_PROVIDER", "gmail")
+# Email metadata. Application email services send through AWS SES directly.
+EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "i2g@g.ucmerced.edu")
 
 # Logging (structured console output for container environments)

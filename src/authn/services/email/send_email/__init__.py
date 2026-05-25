@@ -6,10 +6,7 @@ some callers patch this package directly (for example
 here even when they are not part of the public star-import surface.
 """
 
-import time
-
 import boto3
-from django.core.mail import EmailMessage
 
 from .actions import render_email_body as _render_email_body
 from .senders import (
@@ -17,7 +14,7 @@ from .senders import (
     send_notification_email,
     send_verification_email,
 )
-from .transport import _load_config, _send_via_ses, _send_via_smtp
+from .transport import _load_config, _send_via_ses
 
 __all__ = [
     "send_admin_invitation_email",

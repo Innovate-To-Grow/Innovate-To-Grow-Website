@@ -11,7 +11,7 @@ from ..audience import get_recipients
 from ..personalize import personalize
 from ..preview import render_email_html
 from ..unsubscribe_token import build_oneclick_unsubscribe_url
-from .transport import _get_configuration_set_name, _get_ses_client, _send_via_gmail, _send_via_ses
+from .transport import SesSendResult, _get_configuration_set_name, _get_ses_client, _send_via_ses
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ def send_campaign(campaign, sent_by):
     _mark_campaign_sending(campaign, sent_by, len(recipients))
 
     ses_client = _get_ses_client(config)
-    if ses_client is None and not config.smtp_configured:
-        _fail_campaign_for_missing_delivery_config(campaign)
+    if ses_client is None:
+        _fail_campaign_for_missing_delivery_config(campaign, recipients)
 
     send_timing = SendTiming(config.ses_max_send_rate or 0)
     configuration_set = _get_configuration_set_name(config)
@@ -99,7 +99,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
                 "member_id": recipient["member_id"],
                 "recipient_name": recipient["full_name"],
                 "status": "failed",
-                "provider": _configured_provider(config, ses_client),
+                "provider": _configured_provider(ses_client),
                 "error_message": str(exc),
             },
         )
@@ -110,7 +110,7 @@ def _send_with_configured_provider(
     *, config, ses_client, configuration_set, recipient, subject, wrapped_html, unsubscribe_url
 ):
     if ses_client is not None:
-        result = _send_via_ses(
+        return _send_via_ses(
             ses_client=ses_client,
             source=config.source_address,
             recipient=recipient,
@@ -119,24 +119,12 @@ def _send_with_configured_provider(
             unsubscribe_url=unsubscribe_url,
             configuration_set=configuration_set,
         )
-        if not result.error or not config.smtp_configured:
-            return result
-        logger.warning("SES send failed for %s; falling back to Gmail SMTP.", recipient)
-
-    return _send_via_gmail(
-        config=config,
-        recipient=recipient,
-        subject=subject,
-        html_body=wrapped_html,
-        unsubscribe_url=unsubscribe_url,
-    )
+    return SesSendResult(provider="", error="Email delivery is not configured.")
 
 
-def _configured_provider(config, ses_client):
+def _configured_provider(ses_client):
     if ses_client is not None:
         return "ses"
-    if config.smtp_configured:
-        return "gmail"
     return ""
 
 
@@ -203,8 +191,22 @@ def _mark_campaign_sending(campaign, sent_by, recipient_count):
     )
 
 
-def _fail_campaign_for_missing_delivery_config(campaign):
+def _fail_campaign_for_missing_delivery_config(campaign, recipients):
+    error_message = "Email delivery is not configured. Check Notification Delivery in admin."
+    for recipient in recipients:
+        RecipientLog.objects.update_or_create(
+            campaign=campaign,
+            email_address=recipient["email"],
+            defaults={
+                "member_id": recipient["member_id"],
+                "recipient_name": recipient["full_name"],
+                "status": "failed",
+                "provider": "",
+                "error_message": error_message,
+            },
+        )
     campaign.status = "failed"
-    campaign.error_message = "Mail delivery is not configured. Check Mail Settings in admin."
-    campaign.save(update_fields=["status", "error_message"])
-    raise RuntimeError("Mail delivery is not configured. Cannot send campaign.")
+    campaign.failed_count = len(recipients)
+    campaign.error_message = error_message
+    campaign.save(update_fields=["status", "failed_count", "error_message"])
+    raise RuntimeError("Email delivery is not configured. Cannot send campaign.")

@@ -66,7 +66,7 @@ class TestSendViewsMixin:
             "input_label": "Recipient email address",
             "input_type": "email",
             "input_placeholder": "admin@example.com",
-            "input_help": f"A test email will be sent from {config.source_address} using the active config.",
+            "input_help": f"A test email will be sent from {config.source_address} through AWS SES.",
             "submit_label": "Send Test Email",
             "cancel_url": changelist_url,
         }

@@ -12,7 +12,7 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="si-root"')
         self.assertContains(response, "Conversations")
-        self.assertContains(response, "Message System Intelligence")
+        self.assertContains(response, "Message AI Assistant")
         self.assertContains(response, "ADK Debug")
         self.assertContains(response, "data-si-sidebar-toggle")
         self.assertContains(response, 'aria-controls="si-chat-sidebar-body"')

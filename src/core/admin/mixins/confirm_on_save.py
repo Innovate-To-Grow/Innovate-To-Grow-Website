@@ -1,4 +1,3 @@
-import logging
 import uuid
 
 from django.contrib import messages
@@ -17,8 +16,6 @@ from .confirm_on_save_utils import (
     deserialize_post_data,
     serialize_post_data,
 )
-
-logger = logging.getLogger(__name__)
 
 SESSION_KEY_PREFIX = "_admin_pending_change"
 SESSION_ACTION_KEY_PREFIX = "_admin_pending_action"
@@ -254,7 +251,6 @@ class ConfirmOnSaveMixin:
 
         if isinstance(response, HttpResponseRedirect):
             request.session.pop(self._session_key(), None)
-            self._send_change_notification(request, pending)
         return response
 
     def _do_confirmed_delete(self, request, pending):
@@ -271,7 +267,6 @@ class ConfirmOnSaveMixin:
 
         if isinstance(response, HttpResponseRedirect):
             request.session.pop(self._session_key(), None)
-            self._send_change_notification(request, pending)
         return response
 
     def _execute_confirmed_save(self, request, object_id, form_url, extra_context):
@@ -285,44 +280,6 @@ class ConfirmOnSaveMixin:
         del post["_confirmed_delete"]
         request.POST = post
         return super().delete_view(request, object_id, extra_context)
-
-    def _send_change_notification(self, request, pending):
-        from core.admin.notifications import notify_staff_of_action
-
-        action_type = pending["action"]
-        action_verb = {"add": "Added", "change": "Changed", "delete": "Deleted"}.get(action_type, "Modified")
-        action_desc = f"{action_verb} {self.opts.verbose_name}: {pending['object_repr']}"
-
-        summary = []
-        diff = pending.get("diff", [])
-        for item in diff[:10]:
-            if action_type == "delete":
-                summary.append({"label": item["label"], "value": item.get("value", "-")})
-            elif action_type == "add":
-                summary.append({"label": item["label"], "value": item.get("new_value", "-")})
-            else:
-                old = item.get("old_value", "-")
-                new = item.get("new_value", "-")
-                summary.append({"label": item["label"], "value": f"{old} → {new}"})
-
-        admin_url = None
-        if action_type != "delete" and pending.get("object_id"):
-            try:
-                admin_url = request.build_absolute_uri(
-                    reverse(
-                        f"admin:{self.opts.app_label}_{self.opts.model_name}_change",
-                        args=[pending["object_id"]],
-                    )
-                )
-            except Exception:
-                logger.debug("Could not build admin URL for %s", pending.get("object_id"))
-
-        notify_staff_of_action(
-            actor=request.user,
-            action=action_desc,
-            summary=summary,
-            admin_url=admin_url,
-        )
 
     # --- Bulk action confirmation ---
 
@@ -475,33 +432,7 @@ class ConfirmOnSaveMixin:
 
         request.session.pop(self._session_action_key(), None)
 
-        self._send_action_notification(request, pending)
-
         if isinstance(response, HttpResponseBase):
             return response
 
         return HttpResponseRedirect(self._changelist_url())
-
-    def _send_action_notification(self, request, pending):
-        from core.admin.notifications import notify_staff_of_action
-
-        item_count = str(pending.get("item_count", len(pending["selected_pks"])))
-        action_desc = f"{pending['action_description']} ({item_count} {self.opts.verbose_name_plural})"
-
-        try:
-            admin_url = request.build_absolute_uri(
-                reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
-            )
-        except Exception:
-            admin_url = None
-
-        notify_staff_of_action(
-            actor=request.user,
-            action=action_desc,
-            summary=[
-                {"label": "Action", "value": pending["action_description"]},
-                {"label": "Items affected", "value": item_count},
-                {"label": "Model", "value": str(self.opts.verbose_name)},
-            ],
-            admin_url=admin_url,
-        )

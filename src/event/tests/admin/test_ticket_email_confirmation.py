@@ -88,7 +88,7 @@ class TicketEmailTypedConfirmationTest(TestCase):
 
     @patch("event.services.ticket_mail.send_ticket_email")
     @patch("authn.services.email.send_email.senders.send_notification_email")
-    def test_notification_sent_to_staff_after_send(self, mock_notify, mock_send):
+    def test_send_all_ticket_emails_does_not_notify_staff(self, mock_notify, mock_send):
         from authn.models import ContactEmail, Member
 
         other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
@@ -101,15 +101,14 @@ class TicketEmailTypedConfirmationTest(TestCase):
         member = make_member(email="notify-target@example.com")
         make_registration(member, event, ticket)
 
-        self.client.post(
+        response = self.client.post(
             reverse("admin:event_eventregistration_send_all_ticket_emails"),
             {"confirmation_text": "Notify Event"},
         )
 
-        mock_notify.assert_called()
-        call_kwargs = mock_notify.call_args[1]
-        self.assertIn("Sent Ticket Emails", call_kwargs["subject"])
-        self.assertEqual(call_kwargs["recipient"], "other-staff@example.com")
+        self.assertRedirects(response, reverse("admin:event_eventregistration_changelist"))
+        mock_send.assert_called_once()
+        mock_notify.assert_not_called()
 
     @patch("event.services.ticket_mail.send_ticket_email")
     def test_empty_registrations_does_not_require_confirmation(self, mock_send):

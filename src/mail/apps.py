@@ -28,14 +28,22 @@ class MailConfig(AppConfig):
 
 def _reset_stuck_sending_campaigns(sender, **kwargs):
     try:
+        from django.db import connections
+
         from .models import EmailCampaign, SmsCampaign
     except Exception:
         return
-    EmailCampaign.objects.filter(status="sending").update(
-        status="failed",
-        error_message="Campaign worker restarted mid-send; marked failed by recovery.",
-    )
-    SmsCampaign.objects.filter(status="sending").update(
-        status="failed",
-        error_message="Campaign worker restarted mid-send; marked failed by recovery.",
-    )
+
+    connection = connections[kwargs.get("using") or "default"]
+    table_names = set(connection.introspection.table_names())
+    error_message = "Campaign worker restarted mid-send; marked failed by recovery."
+    if EmailCampaign._meta.db_table in table_names:
+        EmailCampaign.objects.using(connection.alias).filter(status="sending").update(
+            status="failed",
+            error_message=error_message,
+        )
+    if SmsCampaign._meta.db_table in table_names:
+        SmsCampaign.objects.using(connection.alias).filter(status="sending").update(
+            status="failed",
+            error_message=error_message,
+        )

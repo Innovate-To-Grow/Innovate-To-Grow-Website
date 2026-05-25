@@ -40,9 +40,6 @@ class CampaignSendMixin:
                     messages.error(request, "Confirmation text does not match campaign name. Please try again.")
                     return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_confirm", args=[object_id]))
 
-            recipients = campaign_api.get_recipients(obj)
-            recipient_count = len(recipients)
-
             updated = EmailCampaign.objects.filter(pk=obj.pk, status="draft").update(status="sending")
             if not updated:
                 messages.warning(request, "This campaign has already been sent.")
@@ -54,20 +51,6 @@ class CampaignSendMixin:
                 daemon=False,
             )
             thread.start()
-
-            from core.admin.notifications import notify_staff_of_action
-
-            notify_staff_of_action(
-                actor=request.user,
-                action=f"Sent Campaign: {obj.name}",
-                summary=[
-                    {"label": "Campaign", "value": obj.name},
-                    {"label": "Subject", "value": obj.subject},
-                    {"label": "Audience", "value": obj.get_audience_type_display()},
-                    {"label": "Recipients", "value": str(recipient_count)},
-                ],
-                admin_url=request.build_absolute_uri(change_url),
-            )
 
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_status", args=[object_id]))
 

@@ -92,17 +92,9 @@ class InboxReplySendSettingsTest(TestCase):
             is_active=True,
             ses_from_email="reply@example.com",
             ses_from_name="I2G",
-            smtp_host="smtp.gmail.com",
-            smtp_port=587,
-            smtp_use_tls=True,
-            smtp_username="reply@example.com",
-            smtp_password="app-password",
         )
 
-    @patch("django.core.mail.get_connection")
-    def test_reply_uses_gmail_settings_when_aws_is_not_configured(self, mock_get_connection):
-        mock_connection = mock_get_connection.return_value
-
+    def test_reply_requires_ses_when_aws_is_not_configured(self):
         error = send_reply(
             to_email="recipient@example.com",
             subject="Re: Hi",
@@ -110,14 +102,10 @@ class InboxReplySendSettingsTest(TestCase):
             cc_email="copy@example.com",
         )
 
-        self.assertEqual(error, "")
-        mock_get_connection.assert_called_once()
-        self.assertEqual(mock_get_connection.call_args.kwargs["host"], "smtp.gmail.com")
-        mock_connection.connection.sendmail.assert_called_once()
+        self.assertIn("Email delivery is not configured", error)
 
-    @patch("django.core.mail.get_connection")
     @patch("boto3.client")
-    def test_reply_falls_back_to_gmail_when_aws_send_fails(self, mock_boto_client, mock_get_connection):
+    def test_reply_returns_error_when_ses_send_fails(self, mock_boto_client):
         AWSCredentialConfig.objects.create(
             name="AWS",
             is_active=True,
@@ -133,7 +121,5 @@ class InboxReplySendSettingsTest(TestCase):
             reply_body="Hello",
         )
 
-        self.assertEqual(error, "")
+        self.assertIn("Failed to send reply", error)
         mock_boto_client.return_value.send_raw_email.assert_called_once()
-        mock_get_connection.assert_called_once()
-        mock_get_connection.return_value.connection.sendmail.assert_called_once()

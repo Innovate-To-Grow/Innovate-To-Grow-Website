@@ -11,11 +11,6 @@ def _mock_config(ses_configured=True):
     config = MagicMock()
     config.ses_configured = ses_configured
     config.source_address = "Innovate to Grow <i2g@test.com>"
-    config.smtp_host = "smtp.test.com"
-    config.smtp_port = 587
-    config.smtp_username = "user"
-    config.smtp_password = "pass"
-    config.smtp_use_tls = True
     return config
 
 
@@ -54,30 +49,29 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNotNone(self.registration.ticket_email_sent_at)
         self.assertEqual(self.registration.ticket_email_error, "")
 
-    @patch("event.services.ticket_mail._send_via_smtp")
     @patch("event.services.ticket_mail._send_via_ses", return_value=False)
     @patch("event.services.ticket_mail._load_config")
-    def test_falls_back_to_smtp(self, mock_load_config, mock_ses, mock_smtp):
+    def test_records_error_when_ses_is_not_configured(self, mock_load_config, mock_ses):
         mock_load_config.return_value = _mock_config(ses_configured=False)
 
-        send_ticket_email(self.registration)
-
-        mock_smtp.assert_called_once()
-        self.registration.refresh_from_db()
-        self.assertIsNotNone(self.registration.ticket_email_sent_at)
-
-    @patch("event.services.ticket_mail._send_via_smtp", side_effect=ConnectionError("SMTP down"))
-    @patch("event.services.ticket_mail._send_via_ses", return_value=False)
-    @patch("event.services.ticket_mail._load_config")
-    def test_records_error_on_failure(self, mock_load_config, mock_ses, mock_smtp):
-        mock_load_config.return_value = _mock_config(ses_configured=False)
-
-        with self.assertRaises(ConnectionError):
+        with self.assertRaises(RuntimeError):
             send_ticket_email(self.registration)
 
         self.registration.refresh_from_db()
         self.assertIsNone(self.registration.ticket_email_sent_at)
-        self.assertIn("SMTP down", self.registration.ticket_email_error)
+        self.assertIn("AWS SES", self.registration.ticket_email_error)
+
+    @patch("event.services.ticket_mail._send_via_ses", return_value=False)
+    @patch("event.services.ticket_mail._load_config")
+    def test_records_error_on_ses_failure(self, mock_load_config, mock_ses):
+        mock_load_config.return_value = _mock_config(ses_configured=True)
+
+        with self.assertRaises(RuntimeError):
+            send_ticket_email(self.registration)
+
+        self.registration.refresh_from_db()
+        self.assertIsNone(self.registration.ticket_email_sent_at)
+        self.assertIn("AWS SES", self.registration.ticket_email_error)
 
     @patch("event.services.ticket_mail.resolve_aws_credentials")
     @patch("event.services.ticket_mail.boto3")
