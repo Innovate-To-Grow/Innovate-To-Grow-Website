@@ -24,7 +24,7 @@ google-api-python-client>=2.195.0
 google-auth>=2.53.0
 google-adk>=1.31.1,<2.0
 litellm>=1.83.13,<2.0
-gspread>=5.5.0
+gspread>=6.2.1
 imap-tools>=1.7.0
 
 # Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
