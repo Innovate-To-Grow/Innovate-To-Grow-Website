@@ -28,10 +28,14 @@ class MailConfig(AppConfig):
 
 def _reset_stuck_sending_campaigns(sender, **kwargs):
     try:
-        from .models import EmailCampaign
+        from .models import EmailCampaign, SmsCampaign
     except Exception:
         return
     EmailCampaign.objects.filter(status="sending").update(
+        status="failed",
+        error_message="Campaign worker restarted mid-send; marked failed by recovery.",
+    )
+    SmsCampaign.objects.filter(status="sending").update(
         status="failed",
         error_message="Campaign worker restarted mid-send; marked failed by recovery.",
     )

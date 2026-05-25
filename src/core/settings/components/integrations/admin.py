@@ -110,10 +110,12 @@ UNFOLD = {
             ],
         },
         {
-            "models": ["mail.emailcampaign", "mail.recipientlog"],
+            "models": ["mail.emailcampaign", "mail.recipientlog", "mail.smscampaign", "mail.smsrecipientlog"],
             "items": [
                 {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
                 {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
+                {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
+                {"title": "SMS Log", "link": "/admin/mail/smsrecipientlog/"},
             ],
         },
         {
@@ -158,6 +160,7 @@ UNFOLD = {
                     {"title": "Mail Settings", "link": "/admin/mail/settings/"},
                     {"title": "Gmail", "link": "/admin/mail/inbox/"},
                     {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
+                    {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
                 ],
             },
             {

@@ -60,6 +60,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertEqual(items_by_title["Mail Settings"]["link"], "/admin/mail/settings/")
         self.assertEqual(items_by_title["Gmail"]["link"], "/admin/mail/inbox/")
         self.assertEqual(items_by_title["Broadcast Email"]["link"], "/admin/mail/emailcampaign/")
+        self.assertEqual(items_by_title["Broadcast SMS"]["link"], "/admin/mail/smscampaign/")
 
     def test_service_config_tabs_exclude_standalone_mail_settings(self):
         tabs = settings.UNFOLD["TABS"]
@@ -78,6 +79,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
     def test_mail_settings_route_is_registered_under_mail_app(self):
         self.assertEqual(reverse("admin:mail_settings"), "/admin/mail/settings/")
+        self.assertEqual(reverse("admin:mail_smscampaign_changelist"), "/admin/mail/smscampaign/")
         with self.assertRaises(NoReverseMatch):
             reverse("admin:core_emailserviceconfig_changelist")
 

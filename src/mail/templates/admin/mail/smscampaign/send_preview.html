@@ -1,0 +1,71 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;">
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+            <span class="material-symbols-outlined !text-[18px]">info</span>
+            Campaign Details
+        </h3>
+        <div class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <div>
+                <span class="text-base-400">Name:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ campaign.name }}</span>
+            </div>
+            <div>
+                <span class="text-base-400">Audience:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ campaign.get_audience_type_display }}{% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}
+                </span>
+            </div>
+            <div>
+                <span class="text-base-400">Phone eligibility:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ campaign.get_phone_policy_display }}</span>
+            </div>
+            <div>
+                <span class="text-base-400">Recipients:</span>
+                <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ recipient_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-6 overflow-hidden rounded-default border border-base-200 dark:border-base-700">
+        <div class="flex items-center gap-2 border-b border-base-200 bg-base-50 px-4 py-2 dark:border-base-700 dark:bg-base-800">
+            <span class="material-symbols-outlined !text-[16px] text-base-400">visibility</span>
+            <span class="text-xs font-medium text-base-400">SMS Preview (Name Example Data: Hongzhe Xie)</span>
+        </div>
+        <div class="bg-white p-4 dark:bg-base-900">
+            <div class="rounded-default border border-base-200 bg-base-50 p-4 text-sm leading-6 text-font-default-light dark:border-base-700 dark:bg-base-800 dark:text-font-default-dark">
+                <pre class="whitespace-pre-wrap break-words font-sans">{{ preview_message }}</pre>
+            </div>
+            <p class="mt-2 text-xs text-base-400">{{ preview_message|length }} characters</p>
+        </div>
+    </div>
+
+    <div class="flex gap-3">
+        {% if confirm_url %}
+            {% if recipient_count > 0 %}
+            <a href="{{ confirm_url }}"
+               class="inline-flex items-center gap-2 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                <span class="material-symbols-outlined !text-[18px]">send</span>
+                Proceed to Send
+            </a>
+            {% else %}
+            <span class="inline-flex cursor-not-allowed items-center gap-2 rounded-md bg-base-200 px-4 py-2 text-sm font-medium text-base-400">
+                <span class="material-symbols-outlined !text-[18px]">block</span>
+                No Recipients Found
+            </span>
+            {% endif %}
+        {% endif %}
+        <a href="{{ cancel_url }}"
+           class="inline-flex items-center gap-2 rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+            <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+            Back to Campaign
+        </a>
+    </div>
+</div>
+{% endblock %}

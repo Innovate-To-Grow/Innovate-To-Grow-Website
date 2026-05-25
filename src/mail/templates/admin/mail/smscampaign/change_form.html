@@ -1,0 +1,13 @@
+{% extends "admin/change_form.html" %}
+
+{% block form_before %}
+  {% if add %}
+    <div
+      class="mb-4 rounded-default border-2 border-red-600 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-xs dark:border-red-500 dark:bg-red-950/50 dark:text-red-100"
+      role="alert"
+    >
+      Fill in the <strong>Audience</strong>, <strong>Phone eligibility</strong>, and <strong>SMS Message</strong>, then
+      <strong>save</strong> to preview recipients and send.
+    </div>
+  {% endif %}
+{% endblock %}

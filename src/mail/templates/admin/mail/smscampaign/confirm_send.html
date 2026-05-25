@@ -1,0 +1,74 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:560px">
+    <div class="mb-6 rounded-default border border-yellow-300 bg-yellow-50 p-4 dark:border-yellow-700 dark:bg-yellow-900/20">
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined mt-0.5 !text-[22px] text-yellow-600 dark:text-yellow-400">warning</span>
+            <div>
+                <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                    You are about to send this SMS campaign to {{ recipient_count }} recipient{{ recipient_count|pluralize }}.
+                </p>
+                <p class="mt-1 text-xs text-yellow-700 dark:text-yellow-400">
+                    This action cannot be undone. SMS messages will be delivered immediately.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-6 space-y-1 text-sm">
+        <p><span class="text-base-400">Campaign:</span> <strong>{{ campaign.name }}</strong></p>
+        <p><span class="text-base-400">Audience:</span> {{ campaign.get_audience_type_display }}{% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}</p>
+        <p><span class="text-base-400">Phone eligibility:</span> {{ campaign.get_phone_policy_display }}</p>
+        <p><span class="text-base-400">Recipients:</span> {{ recipient_count }}</p>
+    </div>
+
+    {% if recipient_count > 0 %}
+    <form method="post" id="confirm-send-form">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label for="confirm-input" class="mb-2 block text-sm font-medium text-base-700 dark:text-base-300">
+                Type <strong>"{{ campaign.name }}"</strong> to confirm:
+            </label>
+            <input type="text" id="confirm-input" name="confirmation_text" autocomplete="off"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm text-base-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-base-600 dark:bg-base-800 dark:text-base-100"
+                   placeholder="Type campaign name here">
+        </div>
+        <div class="flex gap-3">
+            <button type="submit" id="confirm-send-btn" disabled
+                    class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="material-symbols-outlined !text-[18px]">send</span>
+                Confirm &amp; Send
+            </button>
+            <a href="{{ preview_url }}"
+               class="inline-flex items-center gap-2 rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+                Back to Preview
+            </a>
+        </div>
+    </form>
+    {{ campaign.name|json_script:"campaign-name-data" }}
+    <script>
+    (function() {
+        const input = document.getElementById('confirm-input');
+        const btn = document.getElementById('confirm-send-btn');
+        const expected = JSON.parse(document.getElementById('campaign-name-data').textContent);
+        input.addEventListener('input', function() {
+            btn.disabled = input.value.trim() !== expected;
+        });
+    })();
+    </script>
+    {% else %}
+    <p class="mb-4 text-sm text-base-400">No recipients found for this audience. Cannot send.</p>
+    <a href="{{ preview_url }}"
+       class="inline-flex items-center gap-2 rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+        <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+        Back to Preview
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
