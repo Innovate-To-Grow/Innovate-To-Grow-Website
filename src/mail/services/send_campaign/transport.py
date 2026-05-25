@@ -17,6 +17,7 @@ class SesSendResult:
 
     message_id: str = ""
     error: str = ""
+    provider: str = "ses"
 
 
 def _get_ses_client(config):
@@ -98,3 +99,39 @@ def _send_via_ses(
     except Exception as exc:
         logger.exception("SES send failed for %s", recipient)
         return SesSendResult(error=str(exc))
+
+
+def _send_via_gmail(
+    *,
+    config,
+    recipient,
+    subject,
+    html_body,
+    unsubscribe_url="",
+) -> SesSendResult:
+    try:
+        from django.core.mail import EmailMessage, get_connection
+
+        connection = get_connection(
+            backend="django.core.mail.backends.smtp.EmailBackend",
+            host=config.smtp_host,
+            port=config.smtp_port,
+            username=config.smtp_username,
+            password=config.smtp_password,
+            use_tls=config.smtp_use_tls,
+            fail_silently=False,
+        )
+        message = EmailMessage(
+            subject=subject,
+            body=html_body,
+            from_email=config.source_address,
+            to=[recipient],
+            headers=_build_unsubscribe_headers(unsubscribe_url),
+            connection=connection,
+        )
+        message.content_subtype = "html"
+        message.send()
+        return SesSendResult(provider="gmail")
+    except Exception as exc:
+        logger.exception("Gmail SMTP send failed for %s", recipient)
+        return SesSendResult(error=str(exc), provider="gmail")

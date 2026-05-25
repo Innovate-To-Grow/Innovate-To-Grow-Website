@@ -42,8 +42,8 @@
         {# Display form errors #}
         {% if form.errors or form.non_field_errors %}
             <div class="flex flex-col gap-4 mb-4 *:mb-0">
-                {% for field_errors in form.errors.values %}
-                    {% for err in field_errors %}
+                {% for field in form %}
+                    {% for err in field.errors %}
                         <div class="login-message login-message--error">{{ err }}</div>
                     {% endfor %}
                 {% endfor %}

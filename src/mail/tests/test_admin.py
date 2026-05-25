@@ -5,12 +5,97 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from cms.models import CMSPage
-from core.models import EmailServiceConfig, GmailAccessAccount
+from core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount
 from event.tests.helpers import make_superuser
 from mail.admin.campaign import EmailCampaignAdmin
 from mail.models import EmailCampaign
 from mail.services import GMAIL_FOLDER_DISPLAY
 from mail.services.preview import HTML_MARKER
+
+
+class MailSettingsAdminTest(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+        self.config = EmailServiceConfig.objects.create(
+            name="Production Mail",
+            is_active=True,
+            ses_from_email="admin@example.com",
+            ses_from_name="I2G Admin",
+            ses_max_send_rate=12,
+            smtp_host="smtp.gmail.com",
+            smtp_port=587,
+            smtp_use_tls=True,
+            smtp_username="admin@example.com",
+            smtp_password="app-password",
+        )
+
+    def test_settings_page_shows_mail_config_and_gmail_provider(self):
+        response = self.client.get(reverse("admin:mail_settings"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Production Mail")
+        self.assertContains(response, "Gmail (smtp.gmail.com)")
+        self.assertContains(response, "I2G Admin &lt;admin@example.com&gt;")
+        self.assertContains(response, 'href="/admin/mail/settings/test-email/"')
+
+    def test_settings_page_shows_aws_iam_provider_when_aws_is_configured(self):
+        AWSCredentialConfig.objects.create(
+            name="Primary AWS",
+            is_active=True,
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            default_region="us-west-2",
+        )
+
+        response = self.client.get(reverse("admin:mail_settings"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "AWS IAM (us-west-2)")
+
+    def test_settings_post_updates_active_mail_config(self):
+        response = self.client.post(
+            reverse("admin:mail_settings"),
+            {
+                "name": "Updated Mail",
+                "is_active": "on",
+                "ses_from_name": "Updated Sender",
+                "ses_from_email": "updated@example.com",
+                "ses_max_send_rate": "8",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": "587",
+                "smtp_use_tls": "on",
+                "smtp_username": "updated@example.com",
+                "smtp_password": "new-password",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_settings"))
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.name, "Updated Mail")
+        self.assertEqual(self.config.ses_from_email, "updated@example.com")
+        self.assertEqual(self.config.ses_max_send_rate, 8)
+        self.assertEqual(self.config.smtp_password, "new-password")
+
+    def test_test_email_view_renders_form(self):
+        response = self.client.get(reverse("admin:mail_settings_test_email"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Send Test Email")
+        self.assertContains(response, "admin@example.com")
+
+    @patch("mail.admin.settings._send_test_email")
+    def test_test_email_post_uses_active_mail_config(self, mock_send_test_email):
+        mock_send_test_email.return_value = "Gmail"
+
+        response = self.client.post(reverse("admin:mail_settings_test_email"), {"recipient": "ops@example.com"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:mail_settings"))
+        mock_send_test_email.assert_called_once()
+        self.assertEqual(mock_send_test_email.call_args.kwargs["config"].pk, self.config.pk)
+        self.assertEqual(mock_send_test_email.call_args.kwargs["recipient"], "ops@example.com")
 
 
 class EmailCampaignAdminImportTest(TestCase):
@@ -55,6 +140,8 @@ class EmailCampaignAdminImportTest(TestCase):
         self.assertContains(response, "campaigns@ucmerced.edu")
         self.assertContains(response, GMAIL_FOLDER_DISPLAY)
         self.assertContains(response, "Innovate to Grow &lt;campaigns@ucmerced.edu&gt;")
+        self.assertContains(response, 'href="/admin/mail/settings/"')
+        self.assertContains(response, "Edit Mail Settings")
 
     def test_import_gmail_html_view_renders_recent_messages(self):
         with patch("mail.admin.campaign.list_recent_sent_messages") as mock_list:

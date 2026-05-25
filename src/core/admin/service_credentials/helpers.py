@@ -41,7 +41,7 @@ def _send_test_email(*, config, recipient):
                 },
                 Source=config.source_address,
             )
-            return "SES"
+            return "AWS IAM"
         except AwsCredentialsError:
             logger.warning("SES test send skipped: AWS credentials are not configured")
         except Exception:
@@ -66,7 +66,7 @@ def _send_test_email(*, config, recipient):
     )
     msg.content_subtype = "html"
     msg.send()
-    return "SMTP"
+    return "Gmail"
 
 
 def _send_test_sms(*, phone_number):

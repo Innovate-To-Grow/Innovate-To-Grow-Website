@@ -52,10 +52,33 @@ def send_reply(
     cc_email: str = "",
 ) -> str:
     config = EmailServiceConfig.load()
-    if not config.ses_configured:
-        return "SES is not configured. Cannot send reply."
-
     cc_list = [email.strip() for email in cc_email.split(",") if email.strip()] if cc_email else []
+    html = render_reply_html(reply_body, original_from, original_date, quoted_text)
+    message = _build_reply_message(
+        config=config,
+        to_email=to_email,
+        subject=subject,
+        html=html,
+        cc_list=cc_list,
+        in_reply_to=in_reply_to,
+        references=references,
+    )
+
+    if config.ses_configured:
+        error = _send_reply_via_ses(config=config, to_email=to_email, cc_list=cc_list, message=message)
+        if not error:
+            return ""
+        if not config.smtp_configured:
+            return error
+        logger.warning("SES reply send failed; falling back to Gmail SMTP for %s.", to_email)
+
+    if not config.smtp_configured:
+        return "Mail delivery is not configured. Cannot send reply."
+
+    return _send_reply_via_gmail(config=config, to_email=to_email, cc_list=cc_list, message=message)
+
+
+def _send_reply_via_ses(*, config, to_email, cc_list, message) -> str:
     try:
         import boto3
 
@@ -66,15 +89,6 @@ def send_reply(
             aws_access_key_id=creds.access_key_id,
             aws_secret_access_key=creds.secret_access_key,
         )
-        message = _build_reply_message(
-            config=config,
-            to_email=to_email,
-            subject=subject,
-            html=render_reply_html(reply_body, original_from, original_date, quoted_text),
-            cc_list=cc_list,
-            in_reply_to=in_reply_to,
-            references=references,
-        )
         client.send_raw_email(
             Source=config.source_address,
             Destinations=[to_email] + cc_list,
@@ -83,9 +97,37 @@ def send_reply(
         return ""
     except AwsCredentialsError:
         logger.warning("Reply send skipped: AWS credentials are not configured")
-        return "SES is not configured. Cannot send reply."
+        return "AWS IAM is not configured. Cannot send reply."
     except Exception:
         logger.exception("Failed to send reply to %s.", to_email)
+        return REPLY_SEND_FAILURE_MESSAGE
+
+
+def _send_reply_via_gmail(*, config, to_email, cc_list, message) -> str:
+    try:
+        from django.core.mail import get_connection
+
+        connection = get_connection(
+            backend="django.core.mail.backends.smtp.EmailBackend",
+            host=config.smtp_host,
+            port=config.smtp_port,
+            username=config.smtp_username,
+            password=config.smtp_password,
+            use_tls=config.smtp_use_tls,
+            fail_silently=False,
+        )
+        connection.open()
+        try:
+            connection.connection.sendmail(
+                message["From"],
+                [to_email] + cc_list,
+                message.as_string(),
+            )
+        finally:
+            connection.close()
+        return ""
+    except Exception:
+        logger.exception("Failed to send reply to %s via Gmail SMTP.", to_email)
         return REPLY_SEND_FAILURE_MESSAGE
 
 

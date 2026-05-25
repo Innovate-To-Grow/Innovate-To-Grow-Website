@@ -148,12 +148,12 @@ class SendCampaignErrorTests(TestCase):
             status="draft",
         )
 
-    def test_missing_ses_config_fails_campaign(self):
+    def test_missing_delivery_config_fails_campaign(self):
         with self.assertRaises(RuntimeError):
             send_campaign(self.campaign, self.sender)
         self.campaign.refresh_from_db()
         self.assertEqual(self.campaign.status, "failed")
-        self.assertIn("SES is not configured", self.campaign.error_message)
+        self.assertIn("Mail delivery is not configured", self.campaign.error_message)
 
     @patch("mail.services.send_campaign.runner._send_via_ses")
     @patch("mail.services.send_campaign.runner._get_ses_client")
@@ -168,6 +168,60 @@ class SendCampaignErrorTests(TestCase):
             send_campaign(self.campaign, self.sender)
         self.campaign.refresh_from_db()
         self.assertEqual(self.campaign.status, "failed")
+
+    @patch("mail.services.send_campaign.runner._send_via_gmail")
+    @patch("mail.services.send_campaign.runner._get_ses_client")
+    def test_gmail_settings_send_campaign_without_aws(self, mock_client, mock_send_gmail):
+        EmailServiceConfig.objects.create(
+            is_active=True,
+            ses_from_email="noreply@example.com",
+            ses_from_name="Test",
+            ses_max_send_rate=0,
+            smtp_host="smtp.gmail.com",
+            smtp_port=587,
+            smtp_use_tls=True,
+            smtp_username="user",
+            smtp_password="pass",
+        )
+        mock_client.return_value = None
+        mock_send_gmail.return_value = SesSendResult(provider="gmail")
+
+        send_campaign(self.campaign, self.sender)
+
+        self.campaign.refresh_from_db()
+        self.assertEqual(self.campaign.status, "sent")
+        logs = RecipientLog.objects.filter(campaign=self.campaign)
+        self.assertGreater(logs.count(), 0)
+        self.assertEqual(logs.exclude(provider="gmail").count(), 0)
+
+    @patch("mail.services.send_campaign.runner._send_via_gmail")
+    @patch("mail.services.send_campaign.runner._send_via_ses")
+    @patch("mail.services.send_campaign.runner._get_ses_client")
+    def test_ses_failure_falls_back_to_gmail_settings(self, mock_client, mock_send_ses, mock_send_gmail):
+        _make_active_aws()
+        EmailServiceConfig.objects.create(
+            is_active=True,
+            ses_from_email="noreply@example.com",
+            ses_from_name="Test",
+            ses_max_send_rate=0,
+            smtp_host="smtp.gmail.com",
+            smtp_port=587,
+            smtp_use_tls=True,
+            smtp_username="user",
+            smtp_password="pass",
+        )
+        mock_client.return_value = MagicMock()
+        mock_send_ses.return_value = SesSendResult(error="SES throttled")
+        mock_send_gmail.return_value = SesSendResult(provider="gmail")
+
+        send_campaign(self.campaign, self.sender)
+
+        self.campaign.refresh_from_db()
+        self.assertEqual(self.campaign.status, "sent")
+        logs = RecipientLog.objects.filter(campaign=self.campaign)
+        self.assertGreater(logs.count(), 0)
+        self.assertEqual(logs.exclude(provider="gmail").count(), 0)
+        self.assertEqual(logs.exclude(ses_message_id="").count(), 0)
 
     @patch("mail.services.send_campaign.runner._send_via_ses")
     @patch("mail.services.send_campaign.runner._get_ses_client")

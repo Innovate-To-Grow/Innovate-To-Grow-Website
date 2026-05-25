@@ -11,11 +11,12 @@ class MailConfig(AppConfig):
         from django.db.models.signals import post_migrate
 
         from .admin.inbox import get_inbox_urls
+        from .admin.settings import get_mail_settings_urls
 
         original_get_urls = admin.AdminSite.get_urls
 
         def patched_get_urls(site_self):
-            return get_inbox_urls() + original_get_urls(site_self)
+            return get_inbox_urls() + get_mail_settings_urls() + original_get_urls(site_self)
 
         admin.AdminSite.get_urls = patched_get_urls
 

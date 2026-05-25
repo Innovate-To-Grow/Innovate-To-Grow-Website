@@ -79,8 +79,8 @@ class EmailServiceConfig(models.Model):
     def __str__(self):
         status = " (active)" if self.is_active else ""
         if self.ses_configured:
-            return f"{self.name}: SES + SMTP fallback{status}"
-        return f"{self.name}: SMTP ({self.smtp_host}){status}"
+            return f"{self.name}: AWS IAM + Gmail fallback{status}"
+        return f"{self.name}: Gmail ({self.smtp_host}){status}"
 
     def save(self, *args, **kwargs):
         if self.is_active:
