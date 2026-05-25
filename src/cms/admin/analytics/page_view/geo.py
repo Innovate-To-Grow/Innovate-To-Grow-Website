@@ -1,5 +1,7 @@
 """IP geolocation lookup view for analytics admin."""
 
+import ipaddress
+
 from django.core.cache import cache
 from django.http import JsonResponse
 
@@ -14,6 +16,11 @@ def ip_geo_lookup_view(request):
     ip = request.GET.get("ip", "").strip()
     if not ip:
         return JsonResponse({"error": "No IP provided"}, status=400)
+
+    try:
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return JsonResponse({"error": "Invalid IP address"}, status=400)
 
     cache_key = f"{IP_GEO_CACHE_PREFIX}{ip}"
     cached = cache.get(cache_key)

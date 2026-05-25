@@ -1,13 +1,12 @@
 """Campaign preview views."""
 
-import json
-
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from unfold.decorators import action
 
 import mail.admin.campaign as campaign_api
+from core.json_utils import safe_json
 from mail.models import EmailCampaign
 from mail.services.personalize import personalize
 from mail.services.preview import HTML_MARKER, SAMPLE_CONTEXT, render_email_html
@@ -48,7 +47,7 @@ class CampaignPreviewMixin:
             "title": f"Preview Email - {obj.name}",
             "campaign": obj,
             "recipient_count": len(recipients),
-            "preview_html_json": json.dumps(preview["html"]),
+            "preview_html_json": safe_json(preview["html"]),
             "confirm_url": reverse("admin:mail_emailcampaign_send_confirm", args=[object_id]) if is_draft else None,
             "cancel_url": change_url,
         }

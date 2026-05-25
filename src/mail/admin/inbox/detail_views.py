@@ -1,7 +1,5 @@
 """Inbox detail admin views."""
 
-import json
-
 from django.contrib import admin, messages
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
@@ -9,6 +7,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import mail.admin.inbox as inbox_api
+from core.json_utils import safe_json
 
 from .helpers import message_body_html
 
@@ -35,7 +34,7 @@ def inbox_detail_view(request, uid):
         **admin.site.each_context(request),
         "title": f"Message: {msg['subject']}",
         "msg": msg,
-        "body_html_json": json.dumps(body_html),
+        "body_html_json": safe_json(body_html),
         "reply_url": reverse("admin:mail_inbox_reply", args=[uid]),
         "list_url": list_url,
         "scam_analysis": scam_analysis,
@@ -66,7 +65,7 @@ def inbox_detail_fragment_view(request, uid):
         "admin/mail/inbox/_inbox_preview.html",
         {
             "msg": msg,
-            "body_html_json": json.dumps(body_html),
+            "body_html_json": safe_json(body_html),
             "reply_url": reverse("admin:mail_inbox_reply", args=[uid]),
             "reply_fragment_url": reverse("admin:mail_inbox_reply_fragment", args=[uid]),
             "scam_analysis": scam_analysis,

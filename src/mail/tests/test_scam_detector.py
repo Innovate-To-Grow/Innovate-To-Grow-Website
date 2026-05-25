@@ -35,7 +35,12 @@ class AnalyzeEmailBasicTest(SimpleTestCase):
         result = analyze_email(_msg())
         self.assertIn("risk_level", result)
         self.assertIn("score", result)
+        self.assertIn("score_percent", result)
         self.assertIn("reasons", result)
+        self.assertIn("findings", result)
+        self.assertIn("summary", result)
+        self.assertIn("recommendation", result)
+        self.assertIn("link_warnings", result)
         self.assertIsInstance(result["reasons"], list)
 
 
@@ -127,11 +132,22 @@ class LinkHeuristicsTest(SimpleTestCase):
     def test_domain_mismatch_in_link_text(self):
         result = analyze_email(_msg(html='<a href="http://evil-site.com/login">paypal.com</a>'))
         self.assertTrue(any("different domain" in r.lower() for r in result["reasons"]))
+        self.assertEqual(result["link_warnings"][0]["display_domain"], "paypal.com")
+        self.assertEqual(result["link_warnings"][0]["actual_domain"], "evil-site.com")
+        self.assertIn("embedded link", result["recommendation"])
 
     def test_matching_link_text_no_flag(self):
         result = analyze_email(_msg(html='<a href="https://paypal.com/login">paypal.com</a>'))
         link_reasons = [r for r in result["reasons"] if "different domain" in r.lower()]
         self.assertEqual(len(link_reasons), 0)
+
+    def test_matching_multilevel_domain_link_text_no_flag(self):
+        result = analyze_email(
+            _msg(html='<a href="https://engr-advising.ucmerced.edu/">https://engr-advising.ucmerced.edu/</a>')
+        )
+        link_reasons = [r for r in result["reasons"] if "different domain" in r.lower()]
+        self.assertEqual(link_reasons, [])
+        self.assertEqual(result["link_warnings"], [])
 
     def test_many_unique_domains(self):
         links = "".join(f'<a href="https://domain{i}.com">link</a>' for i in range(7))

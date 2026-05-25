@@ -19,6 +19,8 @@ from .patterns import (
 )
 from .structure import html_hidden_reasons
 
+DOMAIN_IN_TEXT_RE = re.compile(r"(?:[a-z0-9](?:[-a-z0-9]*[a-z0-9])?\.)+[a-z]{2,}", re.IGNORECASE)
+
 
 def check_sender(msg: dict[str, Any]) -> list[tuple[int, str]]:
     findings: list[tuple[int, str]] = []
@@ -116,12 +118,12 @@ def check_links(msg: dict[str, Any]) -> list[tuple[int, str]]:
     if ip_count:
         findings.append((3, f"Contains {ip_count} link(s) using raw IP addresses"))
 
-    mismatch_count = mismatched_link_count(links)
-    if mismatch_count:
+    mismatch_details = mismatched_link_details(links)
+    if mismatch_details:
         findings.append(
             (
                 3,
-                f"{mismatch_count} link(s) display a different domain than the actual URL",
+                f"{len(mismatch_details)} link(s) display a different domain than the actual URL",
             )
         )
 
@@ -162,7 +164,7 @@ def extract_links(html: str) -> list[dict[str, str]]:
         if not href.startswith(("http://", "https://")):
             continue
         try:
-            domain = urlparse(href).netloc.lower()
+            domain = normalize_domain(urlparse(href).hostname or "")
         except Exception:
             domain = ""
         links.append({"href": href, "text": anchor.get_text(strip=True), "href_domain": domain})
@@ -170,13 +172,87 @@ def extract_links(html: str) -> list[dict[str, str]]:
 
 
 def mismatched_link_count(links: list[dict[str, str]]) -> int:
-    domain_re = re.compile(r"[a-z0-9][-a-z0-9]*\.[a-z]{2,}", re.IGNORECASE)
-    count = 0
+    return len(mismatched_link_details(links))
+
+
+def mismatched_link_details(links: list[dict[str, str]]) -> list[dict[str, str]]:
+    details: list[dict[str, str]] = []
     for link in links:
-        text_domain_match = domain_re.search(link["text"])
-        if not text_domain_match or not link["href_domain"]:
+        text_domain = displayed_domain(link["text"])
+        href_domain = link["href_domain"]
+        if not text_domain or not href_domain:
             continue
-        text_domain = text_domain_match.group(0).lower()
-        if text_domain != link["href_domain"] and not link["href_domain"].endswith("." + text_domain):
-            count += 1
-    return count
+        if not domains_match(text_domain, href_domain):
+            details.append(
+                {
+                    "type": "domain_mismatch",
+                    "label": "Displayed domain does not match destination",
+                    "display_domain": text_domain,
+                    "actual_domain": href_domain,
+                }
+            )
+    return details
+
+
+def link_warning_details(msg: dict[str, Any]) -> list[dict[str, str]]:
+    return mismatched_link_details(extract_links(msg.get("html", "") or ""))
+
+
+_FILE_EXTENSIONS = frozenset(
+    {
+        "pdf",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx",
+        "zip",
+        "rar",
+        "tar",
+        "gz",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "svg",
+        "webp",
+        "mp4",
+        "mp3",
+        "wav",
+        "csv",
+        "txt",
+        "json",
+        "xml",
+        "html",
+        "css",
+        "exe",
+        "dmg",
+        "apk",
+        "iso",
+    }
+)
+
+
+def displayed_domain(link_text: str) -> str:
+    match = DOMAIN_IN_TEXT_RE.search(link_text)
+    if not match:
+        return ""
+    candidate = normalize_domain(match.group(0))
+    parts = candidate.rsplit(".", 1)
+    if len(parts) == 2 and parts[1] in _FILE_EXTENSIONS:
+        return ""
+    return candidate
+
+
+def normalize_domain(domain: str) -> str:
+    domain = domain.lower().strip().rstrip(".")
+    return domain[4:] if domain.startswith("www.") else domain
+
+
+def domains_match(display_domain: str, href_domain: str) -> bool:
+    display_domain = normalize_domain(display_domain)
+    href_domain = normalize_domain(href_domain)
+    if href_domain == display_domain:
+        return True
+    return href_domain.endswith("." + display_domain) or display_domain.endswith("." + href_domain)

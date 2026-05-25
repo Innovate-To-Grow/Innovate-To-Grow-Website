@@ -37,6 +37,7 @@ def _bounce_envelope() -> dict:
     }
 
 
+@override_settings(SES_SNS_TOPIC_ARN="arn:aws:sns:us-west-2:123:ses-events")
 class SesEventWebhookViewTests(TestCase):
     def setUp(self):
         self.campaign = EmailCampaign.objects.create(subject="Hi", body="B")
@@ -131,6 +132,18 @@ class SesEventWebhookViewTests(TestCase):
         )
         kwargs = mock_verify.call_args.kwargs
         self.assertEqual(kwargs["allowed_topic_arns"], {"arn:aws:sns:us-west-2:123:ses-events"})
+
+    @override_settings(SES_SNS_TOPIC_ARN="")
+    @patch("mail.views.ses_webhook.verify_sns_message")
+    def test_empty_topic_arn_rejects_all_messages(self, mock_verify):
+        """When no topic ARN is configured, reject messages (fail-closed)."""
+        response = self.client.post(
+            "/mail/ses/events/",
+            data=json.dumps(_bounce_envelope()),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 503)
+        mock_verify.assert_not_called()
 
 
 class MailViewsImportSafetyTests(TestCase):

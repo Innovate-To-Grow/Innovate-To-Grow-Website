@@ -1,0 +1,85 @@
+<div data-scam-analysis-panel class="{{ panel_margin|default:'mb-3' }} rounded-default border px-3 py-3 text-sm shadow-sm {% if scam_analysis.risk_level == 'high' %}border-red-300 bg-red-50 text-red-950 dark:border-red-700 dark:bg-red-900/25 dark:text-red-100{% else %}border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-100{% endif %}">
+    <div class="flex flex-wrap items-start gap-3">
+        <span class="material-symbols-outlined !text-[22px] shrink-0 {% if scam_analysis.risk_level == 'high' %}text-red-600 dark:text-red-300{% else %}text-amber-600 dark:text-amber-300{% endif %}">gpp_maybe</span>
+        <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="font-semibold text-font-important-light dark:text-font-important-dark">Security analysis</span>
+                <span class="rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase {% if scam_analysis.risk_level == 'high' %}bg-red-100 text-red-700 ring-1 ring-inset ring-red-300 dark:bg-red-900/40 dark:text-red-200 dark:ring-red-700{% else %}bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-700{% endif %}">
+                    {{ scam_analysis.risk_level }} risk
+                </span>
+            </div>
+            <p class="mt-1 text-xs leading-5 {% if scam_analysis.risk_level == 'high' %}text-red-700 dark:text-red-200{% else %}text-amber-700 dark:text-amber-200{% endif %}">
+                {% firstof scam_analysis.summary "Review this message before clicking links or replying." %}
+            </p>
+        </div>
+        <div class="shrink-0 text-right">
+            <div class="text-[11px] font-medium uppercase {% if scam_analysis.risk_level == 'high' %}text-red-500 dark:text-red-300{% else %}text-amber-500 dark:text-amber-300{% endif %}">Signal score</div>
+            <div class="text-base font-semibold tabular-nums text-font-important-light dark:text-font-important-dark">{{ scam_analysis.score }}</div>
+        </div>
+    </div>
+
+    <div class="mt-3 h-1.5 overflow-hidden rounded-full {% if scam_analysis.risk_level == 'high' %}bg-red-100 dark:bg-red-950{% else %}bg-amber-100 dark:bg-amber-950{% endif %}">
+        <div class="h-full rounded-full {% if scam_analysis.risk_level == 'high' %}bg-red-500 dark:bg-red-400{% else %}bg-amber-500 dark:bg-amber-400{% endif %}" style="width:{% firstof scam_analysis.score_percent 0 %}%;"></div>
+    </div>
+
+    <div class="mt-3 border-t pt-3 {% if scam_analysis.risk_level == 'high' %}border-red-200 dark:border-red-800{% else %}border-amber-200 dark:border-amber-800{% endif %}">
+        <div class="flex items-start gap-2 text-xs leading-5">
+            <span class="material-symbols-outlined !text-[16px] shrink-0 {% if scam_analysis.risk_level == 'high' %}text-red-600 dark:text-red-300{% else %}text-amber-600 dark:text-amber-300{% endif %}">verified_user</span>
+            <span class="{% if scam_analysis.risk_level == 'high' %}text-red-700 dark:text-red-200{% else %}text-amber-700 dark:text-amber-200{% endif %}">
+                {% firstof scam_analysis.recommendation "Verify the sender and destination before taking action from this message." %}
+            </span>
+        </div>
+
+        {% if scam_analysis.link_warnings %}
+        <div class="mt-3">
+            <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase {% if scam_analysis.risk_level == 'high' %}text-red-600 dark:text-red-300{% else %}text-amber-600 dark:text-amber-300{% endif %}">
+                <span class="material-symbols-outlined !text-[14px]">link</span>
+                <span>Link check</span>
+                <span class="font-medium normal-case opacity-80">{{ scam_analysis.link_warnings|length }} flagged</span>
+            </div>
+            <div class="mt-1 divide-y {% if scam_analysis.risk_level == 'high' %}divide-red-200 dark:divide-red-800{% else %}divide-amber-200 dark:divide-amber-800{% endif %}">
+                {% for warning in scam_analysis.link_warnings %}
+                <div class="grid gap-2 py-2 sm:grid-cols-2">
+                    <div class="min-w-0">
+                        <div class="text-[11px] font-medium uppercase opacity-70">Shown as</div>
+                        <div class="break-all font-medium text-font-important-light dark:text-font-important-dark">{{ warning.display_domain }}</div>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-[11px] font-medium uppercase opacity-70">Destination</div>
+                        <div class="break-all font-medium text-font-important-light dark:text-font-important-dark">{{ warning.actual_domain }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-3">
+            <div class="flex items-center gap-2 text-[11px] font-semibold uppercase {% if scam_analysis.risk_level == 'high' %}text-red-600 dark:text-red-300{% else %}text-amber-600 dark:text-amber-300{% endif %}">
+                <span class="material-symbols-outlined !text-[14px]">rule</span>
+                <span>Detected signals</span>
+            </div>
+            <ul class="mt-1 divide-y {% if scam_analysis.risk_level == 'high' %}divide-red-200 dark:divide-red-800{% else %}divide-amber-200 dark:divide-amber-800{% endif %}">
+                {% if scam_analysis.findings %}
+                    {% for finding in scam_analysis.findings %}
+                    <li class="flex items-start gap-2 py-1.5 text-xs leading-5">
+                        <span class="material-symbols-outlined !text-[14px] mt-0.5 shrink-0 {% if scam_analysis.risk_level == 'high' %}text-red-500 dark:text-red-300{% else %}text-amber-500 dark:text-amber-300{% endif %}">warning</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-medium text-font-important-light dark:text-font-important-dark">{{ finding.category }} - {{ finding.impact }} impact</span>
+                            <span class="block break-words {% if scam_analysis.risk_level == 'high' %}text-red-700 dark:text-red-200{% else %}text-amber-700 dark:text-amber-200{% endif %}">{{ finding.reason }}</span>
+                        </span>
+                        <span class="shrink-0 tabular-nums opacity-70">+{{ finding.score }}</span>
+                    </li>
+                    {% endfor %}
+                {% else %}
+                    {% for reason in scam_analysis.reasons %}
+                    <li class="flex items-start gap-2 py-1.5 text-xs leading-5">
+                        <span class="material-symbols-outlined !text-[14px] mt-0.5 shrink-0 {% if scam_analysis.risk_level == 'high' %}text-red-500 dark:text-red-300{% else %}text-amber-500 dark:text-amber-300{% endif %}">warning</span>
+                        <span class="break-words {% if scam_analysis.risk_level == 'high' %}text-red-700 dark:text-red-200{% else %}text-amber-700 dark:text-amber-200{% endif %}">{{ reason }}</span>
+                    </li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
