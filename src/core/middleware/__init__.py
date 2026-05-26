@@ -44,8 +44,9 @@ class HealthCheckMiddleware:
                 cursor.execute("SELECT 1")
                 cursor.fetchone()
         except (DatabaseError, OSError) as e:
+            logger.warning("Health check database probe failed: %s", e)
             health_status["status"] = "error"
-            health_status["database"] = str(e)
+            health_status["database"] = "unavailable"
             return self._json_response(health_status, status=503)
 
         try:

@@ -54,10 +54,12 @@ class SesEventWebhookView(APIView):
             return Response({"detail": "expected JSON object"}, status=status.HTTP_400_BAD_REQUEST)
 
         topic_arn = (getattr(settings, "SES_SNS_TOPIC_ARN", "") or "").strip()
-        allowed = {topic_arn} if topic_arn else None
+        if not topic_arn:
+            logger.warning("SES_SNS_TOPIC_ARN not configured; rejecting SNS message")
+            return Response({"detail": "webhook not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         try:
-            verify_sns_message(envelope, allowed_topic_arns=allowed)
+            verify_sns_message(envelope, allowed_topic_arns={topic_arn})
         except SnsVerificationError:
             logger.warning("SNS signature rejected", exc_info=True)
             return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)

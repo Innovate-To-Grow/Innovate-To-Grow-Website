@@ -1,15 +1,5 @@
 """JSON helpers for safely inlining editor configuration."""
 
-import json
+from core.json_utils import safe_json as _safe_json
 
-_JSON_SCRIPT_ESCAPES = {
-    ord("<"): "\\u003C",
-    ord(">"): "\\u003E",
-    ord("&"): "\\u0026",
-    0x2028: "\\u2028",
-    0x2029: "\\u2029",
-}
-
-
-def _safe_json(value, **kwargs):
-    return json.dumps(value, **kwargs).translate(_JSON_SCRIPT_ESCAPES)
+__all__ = ["_safe_json"]

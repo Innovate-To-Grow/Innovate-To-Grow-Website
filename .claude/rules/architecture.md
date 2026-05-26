@@ -13,13 +13,12 @@
 | App | Purpose |
 |-----|---------|
 | `authn` | Auth, Member model, registration, login, JWT, admin invitations |
-| `core` | Base models, middleware, management commands, shared utilities |
-| `cms` | CMS pages and blocks, menus, footer, site settings, media, page view analytics |
+| `core` | Base models, middleware, management commands, shared utilities, service credential configs |
+| `cms` | CMS pages and blocks, menus, footer, site settings, media, page view analytics, news articles and feed sync |
 | `projects` | Projects, semesters, past project shares |
 | `event` | Events, tickets, questions, registrations |
-| `mail` | Email campaigns, recipient logs, magic login links, Gmail import |
-| `news` | Articles, feed sources, sync from external feeds |
-| `sponsors` | Sponsor management |
+| `mail` | Email/SMS campaigns, recipient logs, magic login links, Gmail import, inbox with scam detection, SES event webhooks, unsubscribe management |
+| `system_intelligence` | AI chat conversations, action requests, config, and data export |
 
 ### Base model: `ProjectControlModel`
 
@@ -46,8 +45,8 @@ Root router in `core/urls.py`:
 - `/event/` — event endpoints
 - `/news/` — news API (routed to `cms.news_urls`)
 - `/projects/` — project endpoints
-- `/sponsors/` — sponsor endpoints
 - `/analytics/` — page view analytics (routed to `cms.analytics_urls`)
+- `/mail/` — magic login, unsubscribe/resubscribe, SES event webhook
 - `/layout/` — combined menu + footer API
 - `/health/` — ALB health check (intercepted by middleware, returns JSON status)
 - `/maintenance/bypass/` — maintenance mode toggle
@@ -73,10 +72,10 @@ Root router in `core/urls.py`:
 - `app/` owns bootstrap and router setup.
 - `pages/` (within `src/`) owns routed page components (HomePage, NewsPage, etc.).
 - `features/` owns domain code such as auth, CMS, layout, projects, events, and news.
-- `shared/` owns reusable auth helpers, API clients, hooks, styles, and utilities.
-- `pages/src/services/` houses cross-cutting helpers (`auth.ts`, `crypto.ts`) and a `services/api/` subdirectory of feature-specific API modules. Add new endpoints to the matching `services/api/<feature>.ts`, not a single mega-module.
+- `shared/` owns reusable utilities: `api/` (Axios client setup), `auth/`, `crypto.ts`, and `utils/`.
+- Feature-specific API modules live inside each feature directory (`features/<domain>/api.ts`). Add new endpoints to the matching feature's `api.ts`, not a central module.
 - Three React roots: `#root` (main app with router), `#menu-root` (MainMenu only, no BrowserRouter), `#footer-root` (Footer). This means menu and footer render independently and share auth state via the `i2g-auth-state-change` custom event.
-- Vite dev server proxies `/api`, `/media`, `/static` to Django backend (configurable via `VITE_BACKEND_URL` env var, defaults to `http://localhost:8000`).
+- Vite dev server proxies `/api`, `/media`, `/static` to Django backend (configurable via `VITE_BACKEND_URL` env var, defaults to `http://127.0.0.1:8000`). The `/api` proxy **strips the prefix** — frontend calls `/api/cms/pages/` which Vite rewrites to `/cms/pages/` for Django.
 - Manual code-splitting: react-vendor and router chunks are split separately in `vite.config.ts`.
 - Testing: vitest + @testing-library/react.
 

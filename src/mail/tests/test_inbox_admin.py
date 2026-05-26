@@ -64,25 +64,61 @@ class InboxAdminFragmentTest(TestCase):
     @patch("mail.admin.inbox.fetch_inbox_message")
     def test_detail_escapes_plain_text_body_fallback(self, mock_fetch, mock_analyze):
         mock_fetch.return_value = self._plain_text_message()
-        mock_analyze.return_value = {"risk_level": "low", "score": 0, "reasons": []}
+        mock_analyze.return_value = {
+            "risk_level": "low",
+            "score": 0,
+            "score_percent": 0,
+            "reasons": [],
+            "findings": [],
+            "summary": "",
+            "recommendation": "",
+            "link_warnings": [],
+        }
 
         response = self.client.get(reverse("admin:mail_inbox_detail", args=["42"]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"&lt;/pre&gt;&lt;script&gt;alert", response.content)
+        self.assertIn(b"\\u0026lt;/pre\\u0026gt;", response.content)
         self.assertNotIn(b"</pre><script>alert", response.content)
+        self.assertNotIn(b"<script>alert", response.content)
 
     @patch("mail.admin.inbox.analyze_email")
     @patch("mail.admin.inbox.fetch_inbox_message")
     def test_detail_fragment_escapes_plain_text_body_fallback(self, mock_fetch, mock_analyze):
         mock_fetch.return_value = self._plain_text_message()
-        mock_analyze.return_value = {"risk_level": "low", "score": 0, "reasons": []}
+        mock_analyze.return_value = {
+            "risk_level": "low",
+            "score": 0,
+            "score_percent": 0,
+            "reasons": [],
+            "findings": [],
+            "summary": "",
+            "recommendation": "",
+            "link_warnings": [],
+        }
 
         response = self.client.get(reverse("admin:mail_inbox_detail_fragment", args=["42"]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"&lt;/pre&gt;&lt;script&gt;alert", response.content)
+        self.assertIn(b"\\u0026lt;/pre\\u0026gt;", response.content)
         self.assertNotIn(b"</pre><script>alert", response.content)
+        self.assertNotIn(b"<script>alert", response.content)
+
+    @patch("mail.admin.inbox.fetch_inbox_message")
+    def test_detail_fragment_renders_security_analysis_panel(self, mock_fetch):
+        message = self._plain_text_message()
+        message["text"] = ""
+        message["html"] = '<a href="https://evil.example/login">ucmerced.edu</a>'
+        mock_fetch.return_value = message
+
+        response = self.client.get(reverse("admin:mail_inbox_detail_fragment", args=["42"]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-scam-analysis-panel")
+        self.assertContains(response, "Security analysis")
+        self.assertContains(response, "Link check")
+        self.assertContains(response, "ucmerced.edu")
+        self.assertContains(response, "evil.example")
 
 
 class InboxReplySendSettingsTest(TestCase):

@@ -72,7 +72,7 @@ class HealthCheckMiddlewareTest(TestCase):
         self.assertEqual(response.status_code, 503)
         data = json.loads(response.content)
         self.assertEqual(data["status"], "error")
-        self.assertIn("db down", data["database"])
+        self.assertEqual(data["database"], "unavailable")
 
     def test_health_returns_503_when_database_unavailable(self):
         with patch("django.db.connection.cursor", side_effect=DatabaseError("db down")):
@@ -81,7 +81,7 @@ class HealthCheckMiddlewareTest(TestCase):
         self.assertEqual(response.status_code, 503)
         data = json.loads(response.content)
         self.assertEqual(data["status"], "error")
-        self.assertIn("db down", data["database"])
+        self.assertEqual(data["database"], "unavailable")
 
     def test_non_health_path_passes_through(self):
         response = self.client.get("/")
