@@ -1,5 +1,4 @@
-from cms.models import CMSPage, NewsFeedSource
-from cms.models.content.news.sync_log import NewsSyncLog
+from cms.models import CMSBlock, CMSPage, Menu
 from system_intelligence.models import SystemIntelligenceActionRequest
 from system_intelligence.services import actions
 from system_intelligence.services.actions.comparison import build_db_comparison
@@ -60,9 +59,9 @@ class BuildDbComparisonTests(SystemIntelligenceActionBase):
         raise AssertionError(f"field {field!r} not found in comparison rows")
 
     def test_boolean_renders_as_yes_no(self):
-        before = {"name": "UC Merced", "is_active": True, "__repr__": "UC Merced"}
-        after = {"name": "UC Merced", "is_active": False, "__repr__": "UC Merced"}
-        comparison = build_db_comparison(NewsFeedSource, before, after, mode="update")
+        before = {"name": "main", "is_active": True, "__repr__": "Main"}
+        after = {"name": "main", "is_active": False, "__repr__": "Main"}
+        comparison = build_db_comparison(Menu, before, after, mode="update")
         is_active = self._row(comparison, "is_active")
         self.assertTrue(is_active["changed"])
         self.assertEqual(is_active["before_display"], "Yes")
@@ -79,33 +78,33 @@ class BuildDbComparisonTests(SystemIntelligenceActionBase):
         self.assertEqual(status["after_display"], "Published")
 
     def test_foreign_key_uses_related_repr(self):
-        source = NewsFeedSource.objects.create(
-            name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml"
-        )
-        before = {"feed_source_id": source.pk, "articles_created": 0}
-        after = {"feed_source_id": source.pk, "articles_created": 5}
-        comparison = build_db_comparison(NewsSyncLog, before, after, mode="update")
-        fk_row = self._row(comparison, "feed_source_id")
+        page = CMSPage.objects.create(title="Test Page", slug="test-fk", route="/test-fk", status="draft")
+        before = {"page_id": page.pk, "sort_order": 0}
+        after = {"page_id": page.pk, "sort_order": 1}
+        comparison = build_db_comparison(CMSBlock, before, after, mode="update")
+        fk_row = self._row(comparison, "page_id")
         self.assertEqual(fk_row["type"], "ForeignKey")
-        self.assertEqual(fk_row["before_display"], "UC Merced")
-        self.assertEqual(fk_row["after_display"], "UC Merced")
+        self.assertEqual(fk_row["before_display"], str(page))
+        self.assertEqual(fk_row["after_display"], str(page))
 
     def test_foreign_key_missing_target_falls_back_to_id(self):
-        before = {"feed_source_id": 999999, "articles_created": 0}
-        after = {"feed_source_id": 999999, "articles_created": 1}
-        comparison = build_db_comparison(NewsSyncLog, before, after, mode="update")
-        fk_row = self._row(comparison, "feed_source_id")
-        self.assertEqual(fk_row["before_display"], "#999999")
+        import uuid
+
+        fake_pk = uuid.uuid4()
+        before = {"page_id": fake_pk, "sort_order": 0}
+        after = {"page_id": fake_pk, "sort_order": 1}
+        comparison = build_db_comparison(CMSBlock, before, after, mode="update")
+        fk_row = self._row(comparison, "page_id")
+        self.assertEqual(fk_row["before_display"], f"#{fake_pk}")
 
     def test_create_mode_marks_all_fields_changed(self):
         after = {
-            "name": "New Feed",
-            "source_key": "new",
-            "feed_url": "https://example.com/new.xml",
+            "name": "new-menu",
+            "display_name": "New Menu",
             "is_active": True,
-            "__repr__": "New Feed",
+            "__repr__": "New Menu",
         }
-        comparison = build_db_comparison(NewsFeedSource, {}, after, mode="create")
+        comparison = build_db_comparison(Menu, {}, after, mode="create")
         self.assertEqual(comparison["mode"], "create")
         self.assertEqual(comparison["context_fields"], [])
         for row in comparison["fields"]:
@@ -114,42 +113,41 @@ class BuildDbComparisonTests(SystemIntelligenceActionBase):
 
     def test_delete_mode_renders_before_only(self):
         before = {
-            "name": "Old Feed",
-            "source_key": "old",
-            "feed_url": "https://example.com/old.xml",
+            "name": "old-menu",
+            "display_name": "Old Menu",
             "is_active": False,
-            "__repr__": "Old Feed",
+            "__repr__": "Old Menu",
         }
-        comparison = build_db_comparison(NewsFeedSource, before, {}, mode="delete")
+        comparison = build_db_comparison(Menu, before, {}, mode="delete")
         self.assertEqual(comparison["mode"], "delete")
         for row in comparison["fields"]:
             self.assertTrue(row["changed"])
             self.assertEqual(row["after_display"], "—")
 
     def test_repr_key_is_skipped(self):
-        before = {"name": "A", "__repr__": "A"}
-        after = {"name": "B", "__repr__": "B"}
-        comparison = build_db_comparison(NewsFeedSource, before, after, mode="update")
+        before = {"name": "a", "__repr__": "A"}
+        after = {"name": "b", "__repr__": "B"}
+        comparison = build_db_comparison(Menu, before, after, mode="update")
         self.assertEqual(comparison["record_repr"], "B")
         for row in comparison["fields"] + comparison["context_fields"]:
             self.assertNotEqual(row["field"], "__repr__")
 
     def test_unchanged_fields_land_in_context_fields(self):
-        before = {"name": "UC Merced", "is_active": True, "source_key": "ucm", "__repr__": "UC Merced"}
-        after = {"name": "UC Merced", "is_active": False, "source_key": "ucm", "__repr__": "UC Merced"}
-        comparison = build_db_comparison(NewsFeedSource, before, after, mode="update")
+        before = {"name": "main", "is_active": True, "display_name": "Main", "__repr__": "Main"}
+        after = {"name": "main", "is_active": False, "display_name": "Main", "__repr__": "Main"}
+        comparison = build_db_comparison(Menu, before, after, mode="update")
         changed_field_names = [row["field"] for row in comparison["fields"]]
         context_field_names = [row["field"] for row in comparison["context_fields"]]
         self.assertEqual(changed_field_names, ["is_active"])
         self.assertIn("name", context_field_names)
-        self.assertIn("source_key", context_field_names)
+        self.assertIn("display_name", context_field_names)
         for row in comparison["context_fields"]:
             self.assertFalse(row["changed"])
 
     def test_unknown_field_falls_back_to_humanized_label(self):
         before = {"some_unknown_field": "old"}
         after = {"some_unknown_field": "new"}
-        comparison = build_db_comparison(NewsFeedSource, before, after, mode="update")
+        comparison = build_db_comparison(Menu, before, after, mode="update")
         row = self._row(comparison, "some_unknown_field")
         self.assertEqual(row["label"], "Some Unknown Field")
         self.assertEqual(row["type"], "Field")

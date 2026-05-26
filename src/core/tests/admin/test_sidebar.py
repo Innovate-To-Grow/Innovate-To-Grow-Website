@@ -19,6 +19,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 "Members & Authentication",
                 "Broadcast Delivery",
                 "AI Assistant",
+                "Mini Programs",
                 "Site Settings",
             ],
         )
@@ -40,7 +41,6 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         items_by_title = {item["title"]: item for item in content_section["items"]}
 
         self.assertEqual(items_by_title["Page Content"]["link"], "/admin/cms/cmspage/")
-        self.assertEqual(items_by_title["News Management"]["link"], "/admin/cms/newsarticle/")
         self.assertEqual(items_by_title["Page Analytics"]["link"], "/admin/cms/pageview/")
 
     def test_events_and_projects_navigation_keeps_existing_names(self):

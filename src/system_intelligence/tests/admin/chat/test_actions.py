@@ -1,7 +1,7 @@
 from django.core.cache import cache
 from django.urls import reverse
 
-from cms.models import CMSBlock, CMSPage, NewsFeedSource
+from cms.models import CMSBlock, CMSPage, Menu
 from system_intelligence.models import SystemIntelligenceActionRequest
 from system_intelligence.services import actions
 from system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
@@ -9,27 +9,27 @@ from system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
 class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
     def test_action_approve_and_reject_endpoints_update_status_and_data(self):
-        source = NewsFeedSource.objects.create(
-            name="Feed",
-            source_key="feed",
-            feed_url="https://example.com/feed.xml",
+        menu = Menu.objects.create(
+            name="test-feed",
+            display_name="Feed",
+            items=[{"title": "Home", "url": "/"}],
         )
-        approve_action_id = self._propose_update(source, "Approved Feed")
+        approve_action_id = self._propose_update(menu, "Approved Feed")
         approve_response = self.client.post(
             reverse("admin:system_intelligence_action_approve", args=[approve_action_id])
         )
 
         self.assertEqual(approve_response.status_code, 200)
-        source.refresh_from_db()
-        self.assertEqual(source.name, "Approved Feed")
+        menu.refresh_from_db()
+        self.assertEqual(menu.display_name, "Approved Feed")
         self.assertEqual(approve_response.json()["action_request"]["status"], "applied")
 
-        reject_action_id = self._propose_update(source, "Rejected Feed")
+        reject_action_id = self._propose_update(menu, "Rejected Feed")
         reject_response = self.client.post(reverse("admin:system_intelligence_action_reject", args=[reject_action_id]))
 
         self.assertEqual(reject_response.status_code, 200)
-        source.refresh_from_db()
-        self.assertEqual(source.name, "Approved Feed")
+        menu.refresh_from_db()
+        self.assertEqual(menu.display_name, "Approved Feed")
         self.assertEqual(reject_response.json()["action_request"]["status"], "rejected")
 
     def test_action_preview_endpoint_renders_cms_payload_inside_admin_frame(self):
@@ -63,10 +63,10 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         self.assertContains(response, "New Copy")
         self.assertNotContains(response, "Old")
 
-    def _propose_update(self, source, name):
+    def _propose_update(self, menu, display_name):
         tokens = actions.set_action_context(str(self.conversation.pk), str(self.admin_user.pk))
         try:
-            payload = actions.propose_db_update("cms", "NewsFeedSource", str(source.pk), {"name": name})
+            payload = actions.propose_db_update("cms", "Menu", str(menu.pk), {"display_name": display_name})
         finally:
             actions.reset_action_context(tokens)
         return payload["action_request"]["id"]

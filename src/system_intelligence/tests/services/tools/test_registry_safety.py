@@ -13,7 +13,6 @@ READ_TOOL_NAMES = frozenset(
         "search_email_campaigns",
         "get_campaign_stats",
         "search_cms_pages",
-        "search_news",
         "get_page_views",
         "get_checkin_stats",
         "search_semesters",
@@ -47,7 +46,6 @@ READ_TOOL_NAMES = frozenset(
         "search_style_sheets",
         "get_style_sheet_detail",
         "search_cms_assets",
-        "get_news_source_detail",
     }
 )
 

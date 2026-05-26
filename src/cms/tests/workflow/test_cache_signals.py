@@ -3,7 +3,7 @@
 from django.core.cache import cache
 from django.test import TestCase
 
-from cms.models import CMSBlock, CMSPage, NewsArticle
+from cms.models import CMSBlock, CMSPage
 
 
 class CMSBlockCacheInvalidationTests(TestCase):
@@ -63,32 +63,3 @@ class CMSPageRouteChangeCacheTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             CMSPage.objects.create(slug="layout-clear", route="/layout-clear", title="LC", status="published")
         self.assertIsNone(cache.get("layout:data"))
-
-
-class NewsArticleCacheInvalidationTests(TestCase):
-    def setUp(self):
-        cache.clear()
-
-    def test_article_save_clears_news_list_cache(self):
-        cache.set("news:list", {"cached": True})
-        with self.captureOnCommitCallbacks(execute=True):
-            from django.utils import timezone
-
-            NewsArticle.objects.create(
-                source_guid="cache-test",
-                title="Cache Test",
-                source_url="https://example.com",
-                published_at=timezone.now(),
-            )
-        self.assertIsNone(cache.get("news:list"))
-
-    def test_article_delete_clears_news_list_cache(self):
-        from django.utils import timezone
-
-        article = NewsArticle.objects.create(
-            source_guid="del-cache", title="Delete Cache", source_url="https://example.com", published_at=timezone.now()
-        )
-        cache.set("news:list", {"cached": True})
-        with self.captureOnCommitCallbacks(execute=True):
-            article.delete()
-        self.assertIsNone(cache.get("news:list"))

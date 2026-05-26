@@ -273,8 +273,19 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate
 
-      - name: Run Django tests
-        run: python manage.py test ${{ matrix.app }}
+      - name: Run Django tests with coverage
+        run: |
+          coverage run --source='${{ matrix.app }}' --omit='*/migrations/*,*/tests/*' \
+            manage.py test ${{ matrix.app }}
+          coverage report --fail-under=40
+          coverage xml -o coverage-${{ matrix.app }}.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.app }}
+          path: src/coverage-${{ matrix.app }}.xml
 
       - name: Check Django configuration
         run: python manage.py check
@@ -408,8 +419,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npx vitest run --reporter=verbose
+      - name: Run tests with coverage
+        run: npx vitest run --coverage --reporter=verbose
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
@@ -438,3 +449,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Check bundle size
+        run: npx size-limit

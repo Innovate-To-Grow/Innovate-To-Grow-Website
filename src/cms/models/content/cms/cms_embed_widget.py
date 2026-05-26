@@ -89,9 +89,9 @@ class CMSEmbedWidget(ProjectControlModel):
         # still embeddable. Block-level validation calls this to reject
         # references that would resolve to a runtime 404 ("Embed not found").
         if self.widget_type == WIDGET_TYPE_APP_ROUTE:
-            from cms.app_routes import EMBEDDABLE_APP_ROUTES
+            from cms.app_routes import get_embeddable_app_routes
 
-            allowed = {entry["url"] for entry in EMBEDDABLE_APP_ROUTES}
+            allowed = {entry["url"] for entry in get_embeddable_app_routes()}
             return (self.app_route or "").strip() in allowed
         return self.page is not None and self.page.status == "published"
 
@@ -123,12 +123,12 @@ class CMSEmbedWidget(ProjectControlModel):
         self.hide_section_titles = "section_titles" in self.hidden_sections
 
     def _clean_app_route(self):
-        from cms.app_routes import EMBEDDABLE_APP_ROUTES
+        from cms.app_routes import get_embeddable_app_routes
 
         route = (self.app_route or "").strip()
         if not route:
             raise ValidationError({"app_route": "App route is required for app_route widgets."})
-        allowed = {entry["url"] for entry in EMBEDDABLE_APP_ROUTES}
+        allowed = {entry["url"] for entry in get_embeddable_app_routes()}
         if route not in allowed:
             raise ValidationError({"app_route": f"Unknown app route: {route}."})
         self.app_route = route

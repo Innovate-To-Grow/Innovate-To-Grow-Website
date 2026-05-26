@@ -30,6 +30,12 @@
 {% block after_field_sets %}
     {{ block.super }}
 
+    <!-- Frontend Status Indicator -->
+    <div id="cms-frontend-status" class="cms-frontend-status">
+        <span class="cms-frontend-status-icon" id="cms-frontend-status-icon"></span>
+        <span class="cms-frontend-status-text" id="cms-frontend-status-text">Checking frontend…</span>
+    </div>
+
     <!-- Inline Live Preview Panel -->
     <div id="cms-inline-preview" class="cms-preview-wrapper cms-page-live-preview">
         <div class="cms-preview-header">
@@ -122,6 +128,7 @@
         window.CMS_ASSET_MANAGER = {{ asset_manager_config_json|safe }};
         window.CMS_ROUTE_EDITOR = {
             checkUrl: "{{ route_check_url|escapejs }}",
+            frontendStatusUrl: "{{ frontend_status_url|escapejs }}",
             pageId: "{{ current_page_id|escapejs }}",
             pageRoute: "{{ current_page_route|escapejs }}",
             frontendUrl: "{{ frontend_url|escapejs }}",
@@ -137,6 +144,7 @@
     <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=2"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=8"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=3"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/frontend-status.js' %}?v=1"></script>
     <script src="{% static 'cms/js/cms-block-editor.js' %}?v=8"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}

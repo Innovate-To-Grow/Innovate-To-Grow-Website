@@ -53,8 +53,6 @@ urlpatterns = [
     path("layout/styles.css", LayoutStylesheetView.as_view(), name="layout-styles"),
     # event
     path("event/", include("event.urls")),
-    # news
-    path("news/", include("cms.news_urls")),
     # projects
     path("projects/", include("projects.urls")),
     # ckeditor 5
@@ -67,6 +65,8 @@ urlpatterns = [
     path("analytics/", include("cms.analytics_urls")),
     # mail (magic login links)
     path("mail/", include("mail.urls")),
+    # mini programs
+    path("miniapps/", include("miniapps.urls")),
 ]
 
 handler404 = "core.views.custom_404"

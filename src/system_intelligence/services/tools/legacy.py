@@ -60,13 +60,6 @@ async def search_cms_pages(title: str | None = None, slug: str | None = None, st
     return await run_tool_async("search_cms_pages", locals())
 
 
-async def search_news(
-    title: str | None = None, source: str | None = None, date_from: str | None = None, date_to: str | None = None
-):
-    """Search news articles by title, source, or date range."""
-    return await run_tool_async("search_news", locals())
-
-
 async def get_page_views(
     path: str | None = None, date_from: str | None = None, date_to: str | None = None, count_only: bool | None = None
 ):

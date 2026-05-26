@@ -1,11 +1,8 @@
-import datetime
-
 from django.test import SimpleTestCase, TestCase
-from django.utils import timezone
 
-from cms.models import CMSPage, NewsArticle, PageView
+from cms.models import CMSPage, PageView
 from core.services.db_tools.tool_modules.analytics import get_page_views
-from core.services.db_tools.tool_modules.cms import search_cms_pages, search_news
+from core.services.db_tools.tool_modules.cms import search_cms_pages
 from core.services.db_tools.tool_modules.custom.query import is_allowed_query_key, run_custom_query
 from projects.models import Semester
 
@@ -29,41 +26,6 @@ class SearchCmsPagesToolTests(TestCase):
         result = search_cms_pages({"status": "draft"})
         self.assertIn("Contact", result)
         self.assertNotIn("About Us", result)
-
-
-class SearchNewsToolTests(TestCase):
-    def setUp(self):
-        self.a1 = NewsArticle.objects.create(
-            title="Research Award",
-            source="ucmerced",
-            source_guid="guid-1",
-            source_url="https://example.com/1",
-            author="Jane",
-            published_at=timezone.now(),
-        )
-        self.a2 = NewsArticle.objects.create(
-            title="New Building",
-            source="external",
-            source_guid="guid-2",
-            source_url="https://example.com/2",
-            author="John",
-            published_at=timezone.now() - datetime.timedelta(days=5),
-        )
-
-    def test_returns_all_with_no_filters(self):
-        result = search_news({})
-        self.assertIn("Research Award", result)
-        self.assertIn("New Building", result)
-
-    def test_filters_by_title(self):
-        result = search_news({"title": "Research"})
-        self.assertIn("Research Award", result)
-        self.assertNotIn("New Building", result)
-
-    def test_filters_by_source(self):
-        result = search_news({"source": "external"})
-        self.assertIn("New Building", result)
-        self.assertNotIn("Research Award", result)
 
 
 class GetPageViewsToolTests(TestCase):

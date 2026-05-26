@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { BlockRenderer } from './BlockRenderer';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '../../features/cms/api';
 import { resolveEmbedAppRoute } from './embedAppRoutes';
+import { MiniAppRenderer } from '../MiniApp';
 import {
   SECTION_TITLES_KEY,
   buildHiddenSectionsCss,
@@ -181,6 +182,14 @@ const EmbedBody = ({ data, containerRef }: EmbedBodyProps) => {
 
   if (data.widget_type === 'app_route') {
     if (!appRouteComponent) {
+      const slug = data.app_route?.replace(/^\//, '') || '';
+      if (slug) {
+        return (
+          <div ref={containerRef} className="cms-embed-app-route">
+            <MiniAppRenderer slug={slug} path={data.app_route} />
+          </div>
+        );
+      }
       return (
         <div style={{ padding: '24px', color: '#6b7280', fontFamily: 'sans-serif', textAlign: 'center' }}>
           App route <code>{data.app_route}</code> is not available for embedding.

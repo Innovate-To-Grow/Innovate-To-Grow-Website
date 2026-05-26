@@ -6,6 +6,9 @@ import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '../components/CMS/BlockPreviewPage';
 import {EmbedBlockPage} from '../components/CMS/EmbedBlockPage';
 
+// Mini-app catch-all: tries miniapp resolve first, falls through to CMS
+const MiniAppPage = React.lazy(() => import('../pages/MiniAppPage').then(m => ({default: m.MiniAppPage})));
+
 // Matches the inline spinner in pages/index.html (#root:empty::before) so
 // lazy-route fallbacks and the initial-load spinner share one visual language.
 const routeFallback = (
@@ -38,8 +41,6 @@ const ForgotPasswordPage = React.lazy(() => import('../components/Auth/pages/For
 const VerifyEmailPage = React.lazy(() => import('../components/Auth/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
 
 // Content pages (lazy) — only non-CMS pages
-const NewsPage = React.lazy(() => import('../pages/NewsPage').then(m => ({default: m.NewsPage})));
-const NewsDetailPage = React.lazy(() => import('../pages/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
 const ProjectsPage = React.lazy(() => import('../pages/ProjectsPage').then(m => ({default: m.ProjectsPage})));
 const PastProjectsPage = React.lazy(() => import('../pages/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
 const PresentingTeamsPage = React.lazy(() => import('../pages/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
@@ -70,10 +71,6 @@ export const router = createBrowserRouter([
 
             // homepage — resolved dynamically from SiteSettings.homepage_route
             {index: true, element: <HomepageResolver/>},
-
-            // news pages
-            {path: 'news', element: lazyRoute(<NewsPage/>)},
-            {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
 
             // project pages
             {path: 'projects', element: <CMSPageComponent/>},
@@ -164,8 +161,8 @@ export const router = createBrowserRouter([
             // Account management
             {path: 'account', element: lazyRoute(<AccountPage/>)},
 
-            // Catch-all CMS route
-            {path: '*', element: <CMSPageComponent/>},
+            // Catch-all: mini-app resolution → falls through to CMS if not found
+            {path: '*', element: lazyRoute(<MiniAppPage/>)},
         ],
     },
 ]);

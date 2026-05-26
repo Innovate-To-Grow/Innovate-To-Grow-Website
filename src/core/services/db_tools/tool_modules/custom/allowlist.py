@@ -13,8 +13,6 @@ MODEL_MAP = {
     "RecipientLog": ("mail.models", "RecipientLog"),
     "CMSPage": ("cms.models", "CMSPage"),
     "CMSBlock": ("cms.models", "CMSBlock"),
-    "NewsArticle": ("cms.models", "NewsArticle"),
-    "NewsFeedSource": ("cms.models", "NewsFeedSource"),
     "PageView": ("cms.models", "PageView"),
     "Menu": ("cms.models", "Menu"),
 }
@@ -85,18 +83,6 @@ ALLOWED_QUERY_FIELDS = {
         "updated_at",
     },
     "CMSBlock": {"id", "block_type", "sort_order", "created_at", "updated_at"},
-    "NewsArticle": {
-        "id",
-        "title",
-        "source",
-        "author",
-        "source_url",
-        "published_at",
-        "summary",
-        "created_at",
-        "updated_at",
-    },
-    "NewsFeedSource": {"id", "name", "feed_url", "is_active", "created_at", "updated_at"},
     "PageView": {"id", "path", "timestamp", "created_at"},
     "Menu": {"id", "name", "display_name", "is_active", "created_at", "updated_at"},
 }

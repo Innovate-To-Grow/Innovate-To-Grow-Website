@@ -1,0 +1,1 @@
+export { MiniAppPage } from './MiniAppPage';

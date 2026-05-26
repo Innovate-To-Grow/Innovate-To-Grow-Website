@@ -11,16 +11,6 @@ DEFINITIONS = [
         },
     ),
     tool_spec(
-        "search_news",
-        "Search news articles by title, source, or date range.",
-        {
-            "title": prop("string", "Search by article title (partial match)"),
-            "source": prop("string", "Filter by news source (partial match)"),
-            "date_from": prop("string", "Start date (YYYY-MM-DD)"),
-            "date_to": prop("string", "End date (YYYY-MM-DD)"),
-        },
-    ),
-    tool_spec(
         "get_page_views",
         "Get website analytics page views, optionally filtered by path or date range. Returns view counts by date and top pages.",
         {

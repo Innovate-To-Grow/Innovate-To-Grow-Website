@@ -1,0 +1,52 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'miniapps/css/editor.css' %}">
+{% endblock %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+<div id="miniapp-editor-container" class="miniapp-editor-container">
+  <!-- Tabs -->
+  <div class="miniapp-editor-tabs">
+    <button type="button" class="miniapp-tab active" data-lang="html">HTML</button>
+    <button type="button" class="miniapp-tab" data-lang="javascript">JavaScript</button>
+    <button type="button" class="miniapp-tab" data-lang="css">CSS</button>
+    <div class="miniapp-tab-actions">
+      <button type="button" id="miniapp-preview-btn" class="miniapp-action-btn" title="Preview (Ctrl+Shift+P)">▶ Preview</button>
+      <button type="button" id="miniapp-fullscreen-btn" class="miniapp-action-btn" title="Toggle fullscreen">⛶ Fullscreen</button>
+    </div>
+  </div>
+
+  <!-- Editor Panes -->
+  <div class="miniapp-editor-body">
+    <div class="miniapp-editor-pane">
+      <div id="miniapp-monaco-editor" class="miniapp-monaco-editor"></div>
+    </div>
+    <div class="miniapp-preview-pane" id="miniapp-preview-pane" style="display:none;">
+      <div class="miniapp-preview-toolbar">
+        <button type="button" class="miniapp-device-btn active" data-width="100%">Desktop</button>
+        <button type="button" class="miniapp-device-btn" data-width="768px">Tablet</button>
+        <button type="button" class="miniapp-device-btn" data-width="375px">Mobile</button>
+        <button type="button" id="miniapp-close-preview" class="miniapp-close-btn">✕</button>
+      </div>
+      <div class="miniapp-preview-frame-container">
+        <iframe id="miniapp-preview-iframe" class="miniapp-preview-iframe" sandbox="allow-scripts allow-forms allow-popups"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schema Builder -->
+  <div class="miniapp-schema-section">
+    <h3 class="miniapp-section-title">Data Schema</h3>
+    <p class="miniapp-section-help">Define the fields for this app's data records. The SDK <code>ITG.api</code> methods use this schema for validation.</p>
+    <div id="miniapp-schema-builder"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/loader.js"></script>
+<script src="{% static 'miniapps/js/editor.js' %}"></script>
+{% endblock %}

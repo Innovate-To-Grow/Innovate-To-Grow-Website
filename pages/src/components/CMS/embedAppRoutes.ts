@@ -17,7 +17,6 @@ export const EMBED_APP_ROUTE_COMPONENTS: Record<string, LazyExoticComponent<Comp
   '/presenting-teams': React.lazy(() => import('../../pages/PresentingTeamsPage').then((m) => ({default: m.PresentingTeamsPage}))),
   '/past-projects': React.lazy(() => import('../../pages/PastProjectsPage').then((m) => ({default: m.PastProjectsPage}))),
   '/acknowledgement': React.lazy(() => import('../../pages/AcknowledgementPage').then((m) => ({default: m.AcknowledgementPage}))),
-  '/news': React.lazy(() => import('../../pages/NewsPage').then((m) => ({default: m.NewsPage}))),
   '/event-registration': React.lazy(() => import('../../pages/EventRegistrationPage').then((m) => ({default: m.EventRegistrationPage}))),
   '/subscribe': React.lazy(() => import('../../pages/SubscribePage').then((m) => ({default: m.SubscribePage}))),
 };

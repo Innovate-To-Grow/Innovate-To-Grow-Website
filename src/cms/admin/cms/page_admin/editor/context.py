@@ -50,6 +50,7 @@ def build_editor_context(obj=None):
         "asset_manager_config_json": _safe_json(_asset_manager_config()),
         "embed_default_sandbox": DEFAULT_SANDBOX,
         "route_check_url": reverse("admin:cms_cmspage_route_conflict"),
+        "frontend_status_url": reverse("admin:cms_cmspage_frontend_status"),
         "current_page_id": str(obj.pk) if obj else "",
         "current_page_route": obj.route if obj else "",
         "frontend_url": (getattr(django_settings, "FRONTEND_URL", "") or "").rstrip("/"),

@@ -1,0 +1,236 @@
+/* Hide the default Django textareas for code fields — Monaco replaces them */
+.miniapp-code-fields .form-row {
+  display: none !important;
+}
+
+/* Editor container */
+.miniapp-editor-container {
+  margin: 1rem 0 2rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e1e1e;
+}
+
+/* Tabs */
+.miniapp-editor-tabs {
+  display: flex;
+  align-items: center;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
+  padding: 0 0.5rem;
+}
+
+.miniapp-tab {
+  padding: 0.6rem 1.2rem;
+  background: transparent;
+  border: none;
+  color: #969696;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.miniapp-tab:hover {
+  color: #e0e0e0;
+}
+
+.miniapp-tab.active {
+  color: #fff;
+  border-bottom-color: #007acc;
+}
+
+.miniapp-tab-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.miniapp-action-btn {
+  padding: 0.4rem 0.8rem;
+  background: #0e639c;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.miniapp-action-btn:hover {
+  background: #1177bb;
+}
+
+/* Editor body */
+.miniapp-editor-body {
+  display: flex;
+  height: 500px;
+}
+
+.miniapp-editor-pane {
+  flex: 1;
+  min-width: 0;
+}
+
+.miniapp-monaco-editor {
+  width: 100%;
+  height: 100%;
+}
+
+/* Preview pane */
+.miniapp-preview-pane {
+  width: 45%;
+  border-left: 1px solid #3c3c3c;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.miniapp-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.miniapp-device-btn {
+  padding: 0.3rem 0.6rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.miniapp-device-btn.active {
+  background: #007acc;
+  color: #fff;
+  border-color: #007acc;
+}
+
+.miniapp-close-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+}
+
+.miniapp-preview-frame-container {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  background: #f9f9f9;
+}
+
+.miniapp-preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* Schema section */
+.miniapp-schema-section {
+  padding: 1.5rem;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+}
+
+.miniapp-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.miniapp-section-help {
+  margin: 0 0 1rem;
+  font-size: 13px;
+  color: #666;
+}
+
+.miniapp-section-help code {
+  background: #f0f0f0;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* Schema builder */
+#miniapp-schema-builder {
+  min-height: 60px;
+}
+
+.miniapp-schema-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.miniapp-schema-field input,
+.miniapp-schema-field select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.miniapp-schema-field input[type="text"] {
+  flex: 1;
+  min-width: 120px;
+}
+
+.miniapp-schema-field-remove {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.miniapp-schema-add-btn {
+  margin-top: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* Fullscreen mode */
+.miniapp-editor-container.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  margin: 0;
+  border-radius: 0;
+}
+
+.miniapp-editor-container.fullscreen .miniapp-editor-body {
+  height: calc(100vh - 42px);
+}
+
+.miniapp-editor-container.fullscreen .miniapp-schema-section {
+  display: none;
+}

@@ -7,7 +7,7 @@ from django.utils.html import format_html
 from unfold.widgets import UnfoldAdminSelectWidget
 
 from cms.admin.cms.page_admin.editor import _safe_json
-from cms.app_routes import EMBEDDABLE_APP_ROUTES
+from cms.app_routes import get_embeddable_app_routes
 from cms.embed_sections import (
     hidden_section_choices,
     hidden_section_presets_payload,
@@ -20,12 +20,12 @@ from core.admin import BaseModelAdmin
 class CMSEmbedWidgetAdminForm(forms.ModelForm):
     app_route = forms.ChoiceField(
         required=False,
-        choices=[("", "— select an app route —")]
-        + [(r["url"], f"{r['title']} ({r['url']})") for r in EMBEDDABLE_APP_ROUTES],
+        choices=[("", "— select an app route —")],
         label="App route",
         help_text="The interactive app page to embed.",
         widget=UnfoldAdminSelectWidget,
     )
+
     hidden_sections = forms.MultipleChoiceField(
         required=False,
         choices=hidden_section_choices(),
@@ -53,6 +53,9 @@ class CMSEmbedWidgetAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["app_route"].choices = [("", "— select an app route —")] + [
+            (r["url"], f"{r['title']} ({r['url']})") for r in get_embeddable_app_routes()
+        ]
         self.fields["slug"].widget.attrs["placeholder"] = "e.g. homepage-hero-banner"
         if self.instance and self.instance.app_route:
             self.fields["app_route"].initial = self.instance.app_route
@@ -132,7 +135,7 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def app_routes_view(self, request):
-        return JsonResponse({"routes": list(EMBEDDABLE_APP_ROUTES)})
+        return JsonResponse({"routes": get_embeddable_app_routes()})
 
     def page_blocks_view(self, request):
         page_id = request.GET.get("page_id") or ""

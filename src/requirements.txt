@@ -51,3 +51,4 @@ bleach>=6.0.0
 # Development Only
 # django-debug-toolbar>=4.0.0
 ruff>=0.15.12  # Python linter and formatter
+coverage>=7.6

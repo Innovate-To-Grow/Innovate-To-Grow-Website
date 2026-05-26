@@ -23,29 +23,3 @@ def search_cms_pages(params):
             "published_at",
         ],
     )
-
-
-def search_news(params):
-    from cms.models import NewsArticle
-
-    qs = NewsArticle.objects.all()
-    if params.get("title"):
-        qs = qs.filter(title__icontains=params["title"])
-    if params.get("source"):
-        qs = qs.filter(source__icontains=params["source"])
-    if params.get("date_from"):
-        qs = qs.filter(published_at__gte=params["date_from"])
-    if params.get("date_to"):
-        qs = qs.filter(published_at__lte=params["date_to"])
-    return _serialize_rows(
-        qs.order_by("-published_at"),
-        [
-            "id",
-            "title",
-            "source",
-            "author",
-            "source_url",
-            "published_at",
-            "summary",
-        ],
-    )

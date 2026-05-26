@@ -17,7 +17,6 @@ from .approval_tools import (
 from .cms import (
     get_footer_content_detail,
     get_menu_detail,
-    get_news_source_detail,
     get_site_settings_detail,
     get_style_sheet_detail,
     search_cms_assets,
@@ -39,7 +38,6 @@ from .events import (
 from .exports import (
     export_events_to_excel,
     export_members_to_excel,
-    export_news_to_excel,
     export_projects_to_excel,
     export_records_to_excel,
 )
@@ -54,7 +52,6 @@ from .legacy import (
     search_email_campaigns,
     search_events,
     search_members,
-    search_news,
     search_projects,
     search_semesters,
 )
@@ -93,7 +90,6 @@ def get_adk_tools(*, include_writes: bool = True, include_exports: bool = True) 
         get_campaign_recipient_logs,
         get_failed_recipient_report,
         search_cms_pages,
-        search_news,
         search_menus,
         get_menu_detail,
         get_footer_content_detail,
@@ -101,7 +97,6 @@ def get_adk_tools(*, include_writes: bool = True, include_exports: bool = True) 
         search_style_sheets,
         get_style_sheet_detail,
         search_cms_assets,
-        get_news_source_detail,
         get_page_views,
         get_checkin_stats,
         get_page_view_summary,
@@ -127,7 +122,6 @@ def get_adk_tools(*, include_writes: bool = True, include_exports: bool = True) 
         export_members_to_excel,
         export_events_to_excel,
         export_projects_to_excel,
-        export_news_to_excel,
     ]
     if not include_writes:
         tools = [tool for tool in tools if tool.__name__ not in WRITE_TOOL_NAMES]

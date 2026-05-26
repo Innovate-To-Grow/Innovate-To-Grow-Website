@@ -77,14 +77,6 @@ UNFOLD = {
                 {"title": "Phones", "link": "/admin/authn/contactphone/"},
             ],
         },
-        {
-            "models": ["cms.newsarticle", "cms.newsfeedsource", "cms.newssynclog"],
-            "items": [
-                {"title": "Articles", "link": "/admin/cms/newsarticle/"},
-                {"title": "Feed Sources", "link": "/admin/cms/newsfeedsource/"},
-                {"title": "Sync Logs", "link": "/admin/cms/newssynclog/"},
-            ],
-        },
         # projects.semester / projects.project are intentionally omitted from TABS.
         # Duplicating the same links in TABS and SIDEBAR triggers Unfold's
         # _get_is_tab_active(), which marks both sidebar rows active when either
@@ -133,7 +125,6 @@ UNFOLD = {
                 "title": "Content Management System",
                 "items": [
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
-                    {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                 ],
             },
@@ -176,6 +167,13 @@ UNFOLD = {
                         "title": "Assistant Settings",
                         "link": "/admin/system_intelligence/systemintelligenceconfig/",
                     },
+                ],
+            },
+            {
+                "title": "Mini Programs",
+                "items": [
+                    {"title": "Apps", "link": "/admin/miniapps/miniapp/"},
+                    {"title": "Data Records", "link": "/admin/miniapps/miniappdatarecord/"},
                 ],
             },
             {

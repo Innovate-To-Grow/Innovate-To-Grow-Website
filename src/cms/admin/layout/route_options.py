@@ -1,12 +1,12 @@
 import json
 
-from cms.app_routes import APP_ROUTES
+from cms.app_routes import get_all_app_routes
 from cms.models import CMSPage
 
 
 def build_route_editor_context():
     """Return route-editor JSON with app routes taking precedence over CMS routes."""
-    app_routes = list(APP_ROUTES)
+    app_routes = get_all_app_routes()
     app_route_urls = {route["url"] for route in app_routes}
     cms_pages = list(CMSPage.objects.filter(status="published").order_by("title").values("route", "title"))
     cms_routes = [

@@ -9,7 +9,8 @@ import { MaintenanceMode } from './MaintenanceMode';
 import { HealthCheckContext, type HealthCheckContextType } from './context';
 
 const BYPASS_KEY = 'maintenance-bypass';
-const IS_LIVE_PREVIEW = new URLSearchParams(window.location.search).has('cms_live_preview');
+const PREVIEW_PARAMS = ['cms_live_preview', 'cms_preview_token'];
+const IS_CMS_PREVIEW = PREVIEW_PARAMS.some((p) => new URLSearchParams(window.location.search).has(p));
 
 interface HealthCheckProviderProps {
   children: ReactNode;
@@ -111,7 +112,7 @@ export const HealthCheckProvider = ({
   // Render optimistically: show children while checking, only block on confirmed failure.
   // Before initialization completes or when healthy, render children normally.
   // Only show maintenance screen when the health check has completed and returned unhealthy.
-  if (hasInitialized && !isHealthy && !isBypassed && !IS_LIVE_PREVIEW) {
+  if (hasInitialized && !isHealthy && !isBypassed && !IS_CMS_PREVIEW) {
     return (
       <HealthCheckContext.Provider value={contextValue}>
         <MaintenanceMode

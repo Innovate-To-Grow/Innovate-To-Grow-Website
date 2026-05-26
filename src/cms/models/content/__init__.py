@@ -10,7 +10,6 @@ from .cms import (
     validate_block_data,
 )
 from .layout import FooterContent, Menu, SiteSettings, StyleSheet
-from .news import NewsArticle, NewsFeedSource, NewsSyncLog
 
 __all__ = [
     # Layout
@@ -27,10 +26,6 @@ __all__ = [
     "BLOCK_TYPE_KEYS",
     "BLOCK_SCHEMAS",
     "validate_block_data",
-    # News
-    "NewsArticle",
-    "NewsFeedSource",
-    "NewsSyncLog",
     # Analytics
     "PageView",
 ]

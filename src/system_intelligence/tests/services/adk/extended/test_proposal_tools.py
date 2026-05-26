@@ -3,10 +3,9 @@ import datetime
 
 from django.core.cache import cache
 from django.test import TransactionTestCase
-from django.utils import timezone
 
 from authn.models import ContactPhone
-from cms.models import CMSAsset, FooterContent, Menu, NewsArticle, NewsFeedSource, PageView, SiteSettings, StyleSheet
+from cms.models import CMSAsset, FooterContent, Menu, PageView, SiteSettings, StyleSheet
 from event.models import CheckIn, CheckInRecord, CurrentProject, CurrentProjectSchedule, Question
 from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 from mail.models import EmailCampaign, RecipientLog
@@ -152,16 +151,6 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
             defaults={"display_name": "Tool Global", "css": "body { color: #123; }", "is_active": True},
         )
         CMSAsset.objects.create(name="Map", file="cms/assets/map.pdf")
-        source = NewsFeedSource.objects.create(
-            name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True
-        )
-        NewsArticle.objects.create(
-            source=source.source_key,
-            source_guid="news-1",
-            title="News",
-            source_url="https://example.com/news",
-            published_at=timezone.now(),
-        )
 
         campaign = EmailCampaign.objects.create(name="Invite", subject="Join us", body="Hello")
         RecipientLog.objects.create(

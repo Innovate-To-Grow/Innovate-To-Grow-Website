@@ -1,8 +1,12 @@
 import logging
+import urllib.request
+from urllib.error import URLError
 
 from django import forms
+from django.conf import settings as django_settings
 from django.contrib import admin, messages
 from django.db.models import Count
+from django.http import JsonResponse
 
 from cms.admin.cms.page_admin.editor import (
     assets_list_response,
@@ -16,6 +20,7 @@ from cms.admin.cms.page_admin.import_export import export_pages_response, render
 from cms.models import CMSPage
 from cms.models.content.cms.cms_page import validate_cms_route
 from core.admin import BaseModelAdmin
+from core.models import SiteMaintenanceControl
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +114,11 @@ class CMSPageAdmin(BaseModelAdmin):
             ),
             path("import/", self.admin_site.admin_view(self.import_view), name="cms_cmspage_import"),
             path("export/", self.admin_site.admin_view(self.export_all_view), name="cms_cmspage_export"),
+            path(
+                "frontend-status/",
+                self.admin_site.admin_view(self.frontend_status_view),
+                name="cms_cmspage_frontend_status",
+            ),
         ]
         return custom_urls + super().get_urls()
 
@@ -161,3 +171,26 @@ class CMSPageAdmin(BaseModelAdmin):
             require_upload=True,
             validate_required=True,
         )
+
+    def frontend_status_view(self, request):
+        frontend_url = (getattr(django_settings, "FRONTEND_URL", "") or "").rstrip("/")
+        result = {"frontend_reachable": False, "maintenance_mode": False, "preview_available": False}
+
+        try:
+            config = SiteMaintenanceControl.load()
+            result["maintenance_mode"] = config.is_maintenance
+        except Exception:
+            pass
+
+        if frontend_url:
+            try:
+                req = urllib.request.Request(frontend_url, method="HEAD")
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    result["frontend_reachable"] = resp.status < 500
+            except (URLError, OSError, ValueError):
+                result["frontend_reachable"] = False
+        else:
+            result["frontend_reachable"] = False
+
+        result["preview_available"] = result["frontend_reachable"]
+        return JsonResponse(result)

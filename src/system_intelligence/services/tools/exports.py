@@ -118,20 +118,3 @@ async def export_projects_to_excel(
         limit=limit,
         title="Projects export",
     )
-
-
-async def export_news_to_excel(
-    filters: dict[str, Any] | None = None,
-    fields: list[str] | None = None,
-    limit: int | None = None,
-) -> dict[str, Any]:
-    """Export news articles to an xlsx file the admin can download."""
-    return await run_action_service_async(
-        _create,
-        app_label="cms",
-        model_name="NewsArticle",
-        filters=filters,
-        fields=fields,
-        limit=limit,
-        title="News export",
-    )

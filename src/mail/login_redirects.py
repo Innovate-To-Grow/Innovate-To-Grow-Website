@@ -1,6 +1,6 @@
 """Allowed redirect destinations for campaign magic-login links."""
 
-from cms.app_routes import APP_ROUTES
+from cms.app_routes import get_all_app_routes
 from cms.models import CMSPage
 
 DEFAULT_LOGIN_REDIRECT_PATH = "/account"
@@ -20,7 +20,7 @@ def get_login_redirect_choices(*, current_path: str | None = None) -> list[tuple
     choices = [(DEFAULT_LOGIN_REDIRECT_PATH, f"Account ({DEFAULT_LOGIN_REDIRECT_PATH})")]
     seen = {DEFAULT_LOGIN_REDIRECT_PATH}
 
-    for route in APP_ROUTES:
+    for route in get_all_app_routes():
         path = route.get("url", "").strip()
         if not is_safe_internal_redirect_path(path) or path in seen:
             continue

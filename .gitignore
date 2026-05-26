@@ -165,6 +165,9 @@ node_modules/
 # Build outputs
 pages/dist/
 
+# Coverage reports
+pages/coverage/
+
 # =====================================
 # IDE / Editors
 # =====================================
@@ -252,3 +255,8 @@ Thumbs.db
 # Gemini AI
 # =====================================
 GEMINI.md
+
+# =====================================
+# JetBrains Junie
+# =====================================
+.junie/

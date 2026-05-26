@@ -14,9 +14,6 @@ from .content import (
     CMSPage,
     FooterContent,
     Menu,
-    NewsArticle,
-    NewsFeedSource,
-    NewsSyncLog,
     PageView,
     SiteSettings,
     StyleSheet,
@@ -40,10 +37,6 @@ __all__ = [
     "BLOCK_TYPE_KEYS",
     "BLOCK_SCHEMAS",
     "validate_block_data",
-    # News
-    "NewsArticle",
-    "NewsFeedSource",
-    "NewsSyncLog",
     # Analytics
     "PageView",
 ]

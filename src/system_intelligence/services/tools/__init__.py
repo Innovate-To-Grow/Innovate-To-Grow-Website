@@ -19,7 +19,6 @@ from .approval_tools import (
 from .cms import (
     get_footer_content_detail,
     get_menu_detail,
-    get_news_source_detail,
     get_site_settings_detail,
     get_style_sheet_detail,
     search_cms_assets,
@@ -49,7 +48,6 @@ from .legacy import (
     search_email_campaigns,
     search_events,
     search_members,
-    search_news,
     search_projects,
     search_semesters,
 )
@@ -75,7 +73,6 @@ __all__ = [
     "get_member_activity_summary",
     "get_member_detail",
     "get_model_schema",
-    "get_news_source_detail",
     "get_page_views",
     "get_page_view_summary",
     "get_page_view_trend",
@@ -106,7 +103,6 @@ __all__ = [
     "search_events",
     "search_members",
     "search_menus",
-    "search_news",
     "search_projects",
     "search_records",
     "search_semesters",

@@ -55,7 +55,7 @@ known-first-party = [
     "authn",
     "cms",
     "event",
-    "news",
+    "miniapps",
     "projects",
     "mail",
     "sheets",

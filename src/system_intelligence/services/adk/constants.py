@@ -65,7 +65,6 @@ EXPORT_TOOL_NAMES: frozenset[str] = frozenset(
         "export_members_to_excel",
         "export_events_to_excel",
         "export_projects_to_excel",
-        "export_news_to_excel",
     }
 )
 SENTINEL = object()
