@@ -1,7 +1,7 @@
 import type {ClassConfig} from '../components/ScheduleGrid';
 
 /**
- * Shared schedule class configurations used by HomePage and SchedulePage.
+ * Shared schedule class configurations used by SchedulePage.
  * Each entry defines a class section in the event schedule grid.
  */
 export const SCHEDULE_CLASS_CONFIGS: ClassConfig[] = [

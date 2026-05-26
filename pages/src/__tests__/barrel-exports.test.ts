@@ -72,7 +72,6 @@ describe('Page barrel exports', () => {
     ['AcknowledgementPage', 'AcknowledgementPage'],
     ['EventArchivePage', 'EventArchivePage'],
     ['EventRegistrationPage', 'EventRegistrationPage'],
-    ['HomePage', 'HomePage'],
     ['NewsDetailPage', 'NewsDetailPage'],
     ['NewsPage', 'NewsPage'],
     ['NotFoundPage', 'NotFoundPage'],
