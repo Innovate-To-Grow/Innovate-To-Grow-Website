@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { RegisterFields } from './RegisterFields';
+import { PrivacyLegalNotice } from '../shared/PrivacyLegalNotice';
 
 type OrganizationType = 'individual' | 'organization';
 
@@ -145,6 +146,8 @@ export const RegisterForm = () => {
           clearError();
         }}
       />
+
+      <PrivacyLegalNotice action="creating an account" />
 
       <button
         type="submit"
