@@ -13,6 +13,8 @@ from .base import *  # noqa: F403
 SECRET_KEY = "ci-secret-key"
 DEBUG = False
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:4173", "http://localhost:4173"]
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 # ---------------------------------------------------------------------------
 # Database (PostgreSQL service container spun up by CI)

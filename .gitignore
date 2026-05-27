@@ -164,6 +164,9 @@ node_modules/
 
 # Build outputs
 pages/dist/
+pages/coverage/
+pages/playwright-report/
+pages/test-results/
 
 # =====================================
 # IDE / Editors
@@ -171,6 +174,7 @@ pages/dist/
 
 # JetBrains (PyCharm, WebStorm, etc.)
 .idea/
+.junie/
 
 # VS Code
 # .vscode/
