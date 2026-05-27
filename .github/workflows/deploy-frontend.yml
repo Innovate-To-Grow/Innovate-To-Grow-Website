@@ -113,6 +113,7 @@ jobs:
           PY
 
       - name: Deploy to AWS Amplify
+        id: deploy-amplify
         env:
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
           AMPLIFY_BRANCH: main
@@ -142,4 +143,59 @@ jobs:
             --branch-name "$AMPLIFY_BRANCH" \
             --job-id "$JOB_ID"
 
+          echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
           echo "Deployment started successfully (Job ID: $JOB_ID). Check Amplify console for status."
+
+      - name: Wait for Amplify deployment to finish
+        env:
+          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
+          AMPLIFY_BRANCH: main
+          JOB_ID: ${{ steps.deploy-amplify.outputs.job-id }}
+        run: |
+          set -euo pipefail
+
+          while true; do
+            status="$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --query 'job.summary.status' \
+              --output text)"
+            echo "Amplify job $JOB_ID status: $status"
+
+            case "$status" in
+              SUCCEED)
+                exit 0
+                ;;
+              FAILED|CANCELLED)
+                aws amplify get-job \
+                  --app-id "$AMPLIFY_APP_ID" \
+                  --branch-name "$AMPLIFY_BRANCH" \
+                  --job-id "$JOB_ID" \
+                  --output json
+                exit 1
+                ;;
+              *)
+                sleep 15
+                ;;
+            esac
+          done
+
+      - name: Smoke check deployed frontend
+        env:
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          frontend="${FRONTEND_URL%/}"
+          api="${VITE_API_BASE_URL%/}"
+
+          for url in "$frontend/" "$frontend/robots.txt" "$frontend/sitemap.xml" "$api/readyz/"; do
+            echo "Checking $url"
+            curl --fail --show-error --silent --location --max-time 30 "$url" >/tmp/smoke-body
+            if [ ! -s /tmp/smoke-body ]; then
+              echo "::error::Smoke target returned an empty body: $url"
+              exit 1
+            fi
+          done

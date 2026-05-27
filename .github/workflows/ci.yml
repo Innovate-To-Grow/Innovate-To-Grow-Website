@@ -4,42 +4,114 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'src/**'
-      - 'pages/**'
-      - 'aws/**'
-      - '.github/workflows/**'
-      - 'pyproject.toml'
-      - '.pre-commit-config.yaml'
-      - '.bandit-baseline.json'
+      - "src/**"
+      - "pages/**"
+      - "aws/**"
+      - "scripts/**"
+      - ".github/dependabot.yml"
+      - ".github/workflows/**"
+      - "pyproject.toml"
+      - ".pre-commit-config.yaml"
+      - ".bandit-baseline.json"
   pull_request:
     paths:
-      - 'src/**'
-      - 'pages/**'
-      - 'aws/**'
-      - '.github/workflows/**'
-      - 'pyproject.toml'
-      - '.pre-commit-config.yaml'
-      - '.bandit-baseline.json'
+      - "src/**"
+      - "pages/**"
+      - "aws/**"
+      - "scripts/**"
+      - ".github/dependabot.yml"
+      - ".github/workflows/**"
+      - "pyproject.toml"
+      - ".pre-commit-config.yaml"
+      - ".bandit-baseline.json"
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+  DJANGO_SETTINGS_MODULE: core.settings.ci
+
 jobs:
-  # ============================================
-  # Stage 0: Secrets scan (fast, runs first)
-  # ============================================
-  secrets-scan:
-    name: Secrets Scan
+  preflight:
+    name: Preflight
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      # Run the gitleaks CLI directly instead of the `gitleaks/gitleaks-action`
-      # GitHub Action, which requires a paid license when the repository is
-      # owned by an organization. The CLI itself is Apache-2.0 and works the
-      # same, we just lose the Action's PR-comment integration.
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            src/requirements.txt
+            .pre-commit-config.yaml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install preflight tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pre-commit==4.0.1" "PyYAML==6.0.2"
+          ACTIONLINT_VERSION="1.7.7"
+          curl -sSL -o /tmp/actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          sudo mv /tmp/actionlint /usr/local/bin/actionlint
+
+      - name: Validate workflow syntax
+        run: actionlint
+
+      - name: Validate YAML, TOML, and JSON
+        run: |
+          pre-commit run check-yaml --all-files --show-diff-on-failure
+          pre-commit run check-toml --all-files --show-diff-on-failure
+          pre-commit run check-json --all-files --show-diff-on-failure
+
+      - name: Validate tool version pins
+        run: python scripts/ci/validate_tool_versions.py
+
+      - name: Validate npm lockfile consistency
+        working-directory: pages
+        run: npm ci --ignore-scripts
+
+      - name: Validate Dependabot labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/ci/validate_dependabot_labels.py
+
+  lint:
+    name: Code Style Check
+    needs: preflight
+    uses: ./.github/workflows/lint.yml
+
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    needs: preflight
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Install gitleaks
         run: |
           GITLEAKS_VERSION="8.21.2"
@@ -47,12 +119,7 @@ jobs:
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           mkdir -p /tmp/gitleaks
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks
-      # Scope the scan to commits introduced by this PR/push, not the whole
-      # repo history. Historical leaks (pre-remediation commits from before
-      # the codebase cleanup) were flagged and broke CI on otherwise-clean
-      # branches; that's a separate "purge history" operation, not a gate
-      # on new changes. This scan fails only when the current PR or push
-      # introduces a *new* secret.
+
       - name: Run gitleaks on PR/push diff
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -60,17 +127,15 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_HEAD: ${{ github.sha }}
         run: |
-          if [ -n "$BASE_SHA" ] && [ -n "$PR_HEAD_SHA" ]; then
+          set -euo pipefail
+          if [ -n "${BASE_SHA:-}" ] && [ -n "${PR_HEAD_SHA:-}" ]; then
             RANGE="${BASE_SHA}..${PR_HEAD_SHA}"
-          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then
+          elif [ -n "${PUSH_BEFORE:-}" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then
             RANGE="${PUSH_BEFORE}..${PUSH_HEAD}"
           else
-            # New branch push or detached state — scan the latest commit only.
-            # `HEAD~0..HEAD` is an empty range; `HEAD^..HEAD` scans the one
-            # commit at HEAD, which is the correct fallback when we don't
-            # have a base SHA to diff against.
             RANGE="HEAD^..HEAD"
           fi
+
           echo "Scanning commit range: $RANGE"
           /tmp/gitleaks/gitleaks detect \
             --source . \
@@ -80,26 +145,10 @@ jobs:
             --log-opts "$RANGE" \
             --exit-code 1
 
-  # ============================================
-  # Stage 1: Code Style Check
-  # ============================================
-  lint:
-    name: Code Style Check
-    uses: ./.github/workflows/lint.yml
-
-  # ============================================
-  # Stage 2: Build & Test (depends on linting)
-  # Order: DB migration → Docker build → Django test
-  # ============================================
-
-  # Backend Migration Validation (PostgreSQL) — runs first so a bad
-  # schema change fails fast before we pay for a Docker build or the
-  # full Django test matrix.
   backend-db-migration:
     name: Backend DB Migration Test (PostgreSQL)
     runs-on: ubuntu-latest
     needs: lint
-
     services:
       postgres:
         image: postgres:16
@@ -114,18 +163,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     defaults:
       run:
         working-directory: src
     env:
-      DJANGO_SETTINGS_MODULE: core.settings.ci
       DB_NAME: itg_ci
       DB_USER: itg_ci_user
       DB_PASSWORD: itg_ci_pass
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -133,8 +179,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
           cache-dependency-path: src/requirements.txt
 
       - name: Install dependencies
@@ -151,80 +197,57 @@ jobs:
       - name: Ensure no pending migrations remain
         run: python manage.py migrate --check
 
-  # Backend Docker Build Validation — runs after migrations pass so we
-  # don't waste a ~minute building an image on top of a broken schema.
-  backend-docker-build:
-    name: Backend Docker Build Test
+  backend-static-and-prod-check:
+    name: Backend Static and Production Checks
     runs-on: ubuntu-latest
-    needs: backend-db-migration
-    # security-events: write is required by the SARIF-upload step.
-    permissions:
-      contents: read
-      security-events: write
-
+    needs: lint
+    defaults:
+      run:
+        working-directory: src
+    env:
+      DJANGO_SECRET_KEY: ci-production-smoke-secret-key-with-enough-entropy-2026
+      DJANGO_ALLOWED_HOSTS: api.example.com
+      BACKEND_URL: https://api.example.com
+      FRONTEND_URL: https://i2g.example.com
+      DB_NAME: itg_ci
+      DB_USER: itg_ci_user
+      DB_PASSWORD: itg_ci_pass
+      DB_HOST: db.example.com
+      DB_PORT: 5432
+      AWS_STORAGE_BUCKET_NAME: itg-ci-static
+      CSRF_TRUSTED_ORIGINS: https://i2g.example.com
+      CORS_ALLOWED_ORIGINS: https://i2g.example.com
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Lint Dockerfile (hadolint)
-        uses: hadolint/hadolint-action@v3.3.0
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          dockerfile: src/Dockerfile
-          failure-threshold: error
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
 
-      - name: Build backend Docker image
-        run: docker build -t itg-backend-ci:${{ github.sha }} src/
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      # Trivy runs twice:
-      # 1) SARIF scan over CRITICAL+HIGH → upload to Security tab so HIGHs
-      #    are tracked/visible. exit-code 0 because we don't hard-fail on
-      #    fixed-upstream CVEs that Debian hasn't yet shipped into the
-      #    python:3.11-slim tag (openssl/libssl HIGHs, jaraco.context,
-      #    wheel — all "fixed" status but not in current base image).
-      # 2) CRITICAL-only gate with exit-code 1 — mirrors the npm audit
-      #    pattern for xlsx. Raise the bar to HIGH once the base image
-      #    includes the pending openssl/python-package fixes.
-      - name: Scan image (trivy, SARIF — CRITICAL/HIGH → Security tab)
-        id: trivy-sarif
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: itg-backend-ci:${{ github.sha }}
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-          ignore-unfixed: true
+      - name: Import production settings
+        run: DJANGO_SETTINGS_MODULE=core.settings.prod python -c "import django; django.setup()"
 
-      - name: Upload Trivy SARIF to GitHub Security tab
-        if: ${{ !cancelled() }}
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy-backend-image
+      - name: Run Django deploy checks
+        run: DJANGO_SETTINGS_MODULE=core.settings.prod python manage.py check --deploy
 
-      - name: Trivy human-readable table (CRITICAL/HIGH, log only)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: itg-backend-ci:${{ github.sha }}
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-          ignore-unfixed: true
+      - name: Dry-run collectstatic with CI settings
+        run: python manage.py collectstatic --dry-run --noinput --settings=core.settings.ci
 
-      - name: Trivy hard-fail gate (CRITICAL only)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: itg-backend-ci:${{ github.sha }}
-          format: table
-          severity: CRITICAL
-          exit-code: '1'
-          ignore-unfixed: true
-
-  # Django Backend Tests (per app) — runs last in the backend chain.
   django-build:
     name: Django Test (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: backend-docker-build
+    needs:
+      - backend-db-migration
+      - backend-static-and-prod-check
     strategy:
       fail-fast: false
       matrix:
@@ -247,13 +270,11 @@ jobs:
       run:
         working-directory: src
     env:
-      DJANGO_SETTINGS_MODULE: core.settings.ci
       DB_NAME: itg_ci
       DB_USER: itg_ci_user
       DB_PASSWORD: itg_ci_pass
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -261,39 +282,116 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
           cache-dependency-path: src/requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt "coverage[toml]==7.6.10"
 
       - name: Run migrations
-        run: python manage.py migrate
+        run: python manage.py migrate --noinput
 
-      - name: Run Django tests
-        run: python manage.py test ${{ matrix.app }}
+      - name: Run Django tests with per-app coverage
+        run: |
+          coverage run \
+            --source="${{ matrix.app }}" \
+            --omit="*/migrations/*,*/tests/*" \
+            manage.py test "${{ matrix.app }}"
+          coverage report --fail-under=40
+          coverage xml -o "coverage-${{ matrix.app }}.xml"
 
       - name: Check Django configuration
         run: python manage.py check
 
-  # ============================================
-  # Security audits (run in parallel with lint + tests)
-  # ============================================
+      - name: Upload backend coverage XML
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: backend-coverage-${{ matrix.app }}
+          path: src/coverage-${{ matrix.app }}.xml
+          if-no-files-found: warn
 
-  # Python dependency audit — hard-fail on any known vuln. Moved out of
-  # django-build so a vulnerable dep doesn't mask (or get masked by) test
-  # failures, and so a flaky audit doesn't gate Django tests.
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Upload frontend coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: frontend-coverage
+          path: |
+            pages/coverage/lcov.info
+            pages/coverage/coverage-summary.json
+          if-no-files-found: warn
+
+  frontend-build:
+    name: Frontend Build and Size
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Enforce bundle budgets
+        run: npm run size
+
+      - name: Upload frontend dist
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: frontend-dist
+          path: pages/dist
+          if-no-files-found: warn
+
   python-security-audit:
     name: Python Security Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    needs: preflight
     defaults:
       run:
         working-directory: src
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -301,32 +399,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
           cache-dependency-path: src/requirements.txt
 
       - name: Install pip-audit
-        run: pip install "pip-audit==2.7.3"
+        run: pip install "pip-audit[cyclonedx]==2.7.3"
 
       - name: Audit Python dependencies
-        id: audit
         run: |
           set -o pipefail
-          # pip-audit exits non-zero on ANY finding. We don't have a native
-          # severity filter; add specific GHSA/CVE ids to --ignore-vuln here
-          # with a written reason if a finding needs deferral.
-          #
-          # Deferral: litellm 1.83.13 currently pins python-dotenv==1.0.1
-          # and aiohttp==3.13.3, so fixed floors cannot be applied without
-          # making the resolver fail. Keep the ignores narrow and remove
-          # them when litellm publishes metadata that allows fixed versions.
-          #
-          # PYSEC-2025-183: disputed by PyJWT maintainers — the advisory
-          # concerns application-chosen key lengths, not a library defect.
-          #
-          # PYSEC-2026-161: Starlette fix is 1.0.1, but google-adk 1.x/2.0.0
-          # currently requires starlette>=0.49.1,<1. Remove when google-adk
-          # allows Starlette 1.x.
           pip-audit \
             --requirement requirements.txt \
             --progress-spinner off \
@@ -346,17 +428,13 @@ jobs:
             --ignore-vuln PYSEC-2026-161 \
             | tee "$GITHUB_STEP_SUMMARY"
 
-  # Frontend dependency audit — hard-fail only on CRITICAL per plan Q1.
-  # HIGH stays warn-only until `xlsx` (no upstream fix) is swapped; that
-  # swap is tracked as a separate follow-up.
   frontend-security-audit:
     name: Frontend Security Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    needs: preflight
     defaults:
       run:
         working-directory: pages
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -364,77 +442,323 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: pages/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: npm audit (HIGH, warn-only)
+      - name: npm audit (moderate and above)
+        run: npm audit --audit-level=moderate
+
+  semgrep-sast:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    needs: preflight
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Semgrep
+        run: pip install "semgrep==1.107.0"
+
+      - name: Run Semgrep
+        id: semgrep
+        continue-on-error: true
+        run: semgrep scan --config auto --metrics=off --error --sarif --output semgrep.sarif src pages
+
+      - name: Upload Semgrep SARIF artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: warn
+
+      - name: Enforce Semgrep result
+        if: ${{ steps.semgrep.outcome == 'failure' }}
+        run: exit 1
+
+  backend-docker-build:
+    name: Backend Docker Build and Scan
+    runs-on: ubuntu-latest
+    needs:
+      - django-build
+      - python-security-audit
+      - semgrep-sast
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: src/Dockerfile
+          failure-threshold: error
+
+      - name: Build backend Docker image
+        run: docker build -t itg-backend-ci:${{ github.sha }} src/
+
+      - name: Scan image (Trivy CRITICAL/HIGH)
+        id: trivy-sarif
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: itg-backend-ci:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: trivy-sarif
+          path: trivy-results.sarif
+          if-no-files-found: warn
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        if: ${{ github.event_name == 'push' && !cancelled() }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-backend-image
+
+      - name: Trivy human-readable table
+        if: ${{ always() }}
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: itg-backend-ci:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+          ignore-unfixed: true
+
+      - name: Enforce Trivy result
+        if: ${{ steps.trivy-sarif.outcome == 'failure' }}
+        run: exit 1
+
+  supply-chain-reports:
+    name: Supply Chain Reports
+    runs-on: ubuntu-latest
+    needs:
+      - python-security-audit
+      - frontend-security-audit
+    if: ${{ always() }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install SBOM and license tools
         run: |
-          set +e
-          npm audit --audit-level=high
-          rc=$?
-          if [ "$rc" -ne 0 ]; then
-            echo "::warning::npm audit found HIGH-severity issues (see above). CRITICAL fails the next step."
-          fi
-          exit 0
+          python -m pip install --upgrade pip
+          pip install "pip-audit[cyclonedx]==2.7.3"
+          cd pages
+          npm ci
 
-      - name: npm audit (CRITICAL, hard-fail)
-        run: npm audit --audit-level=critical
+      - name: Generate Python SBOM
+        run: |
+          pip-audit \
+            --requirement src/requirements.txt \
+            --progress-spinner off \
+            --format cyclonedx-json \
+            --output python-sbom.cdx.json \
+            || true
+          test -s python-sbom.cdx.json
 
-  # Frontend Tests
-  frontend-test:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    needs: lint
-    timeout-minutes: 10
-    defaults:
-      run:
+      - name: Generate npm SBOM
         working-directory: pages
+        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Check npm licenses
+        run: python scripts/ci/check_npm_licenses.py --package-lock pages/package-lock.json --output npm-license-report.json
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Upload supply chain artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: pages/package-lock.json
+          name: supply-chain-reports
+          path: |
+            python-sbom.cdx.json
+            npm-sbom.cdx.json
+            npm-license-report.json
+          if-no-files-found: warn
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npx vitest run --reporter=verbose
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    needs:
+      - backend-docker-build
+      - frontend-build
+      - frontend-test
+      - frontend-security-audit
+      - supply-chain-reports
+      - secrets-scan
+    services:
+      postgres:
+        image: postgres:16
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
-
-  # Frontend Build
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    needs: lint
-    defaults:
-      run:
-        working-directory: pages
-
+          POSTGRES_DB: itg_ci
+          POSTGRES_USER: itg_ci_user
+          POSTGRES_PASSWORD: itg_ci_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_NAME: itg_ci
+      DB_USER: itg_ci_user
+      DB_PASSWORD: itg_ci_pass
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      VITE_API_BASE_URL: http://127.0.0.1:8000
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+      PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: pages/package-lock.json
 
-      - name: Install dependencies
+      - name: Install backend dependencies
+        working-directory: src
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install frontend dependencies
+        working-directory: pages
         run: npm ci
 
-      - name: Build frontend
+      - name: Install Playwright browsers
+        working-directory: pages
+        run: npm run e2e:install
+
+      - name: Prepare backend database
+        working-directory: src
+        run: python manage.py migrate --noinput
+
+      - name: Start backend
+        working-directory: src
+        run: |
+          python manage.py runserver 127.0.0.1:8000 > ../backend-e2e.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8000/readyz/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat ../backend-e2e.log
+          exit 1
+
+      - name: Build frontend for E2E
+        working-directory: pages
         run: npm run build
+
+      - name: Start frontend preview
+        working-directory: pages
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > ../frontend-e2e.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat ../frontend-e2e.log
+          exit 1
+
+      - name: Run Playwright tests
+        working-directory: pages
+        run: npm run e2e
+
+      - name: Upload Playwright artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-artifacts
+          path: |
+            pages/playwright-report
+            pages/test-results
+            backend-e2e.log
+            frontend-e2e.log
+          if-no-files-found: warn
+
+  ci-result:
+    name: CI Result
+    runs-on: ubuntu-latest
+    needs:
+      - preflight
+      - lint
+      - secrets-scan
+      - backend-db-migration
+      - backend-static-and-prod-check
+      - django-build
+      - frontend-test
+      - frontend-build
+      - python-security-audit
+      - frontend-security-audit
+      - semgrep-sast
+      - backend-docker-build
+      - supply-chain-reports
+      - e2e
+    if: ${{ always() }}
+    steps:
+      - name: Summarize required jobs
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          failed = {name: data["result"] for name, data in needs.items() if data["result"] != "success"}
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All required CI jobs passed.")
+          PY
