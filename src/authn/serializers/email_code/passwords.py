@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from authn.security_messages import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
+from authn.constants import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
 from authn.serializers.helpers import decrypt_password_pair
 from authn.services import (
     AuthChallengeInvalid,

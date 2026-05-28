@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from rest_framework import serializers
 
-from authn.security_messages import VERIFICATION_INVALID
+from authn.constants import VERIFICATION_INVALID
 from authn.services import (
     AuthChallengeInvalid,
     claim_unclaimed_contact_email,

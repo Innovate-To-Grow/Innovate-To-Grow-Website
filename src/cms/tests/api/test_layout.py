@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from cms.models import FooterContent, Menu, SiteSettings, StyleSheet
-from cms.views.views import LAYOUT_CACHE_TIMEOUT, LAYOUT_STYLESHEET_CACHE_KEY
+from cms.views.layout import LAYOUT_CACHE_TIMEOUT, LAYOUT_STYLESHEET_CACHE_KEY
 
 
 class LayoutMenuFilteringTests(TestCase):

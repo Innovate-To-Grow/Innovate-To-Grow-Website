@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from authn.models import Member
 from cms.models import StyleSheet
-from cms.views.views import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
+from cms.views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
 
 class StyleSheetAdminImportExportTests(TestCase):

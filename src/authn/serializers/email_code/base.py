@@ -6,8 +6,8 @@ import re
 
 from rest_framework import serializers
 
+from authn.constants import VERIFICATION_INVALID
 from authn.models.security import EmailAuthChallenge
-from authn.security_messages import VERIFICATION_INVALID
 from authn.services import AuthChallengeInvalid, normalize_email, verify_email_code
 
 _CODE_RE = re.compile(r"^\d{6}$")

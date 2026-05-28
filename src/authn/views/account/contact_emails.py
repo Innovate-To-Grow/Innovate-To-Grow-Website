@@ -7,13 +7,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authn.models import ContactEmail
-from authn.security_messages import (
+from authn.constants import (
     CONTACT_EMAIL_ADD_FAILED,
     CONTACT_EMAIL_PRIMARY_FAILED,
     CONTACT_EMAIL_SEND_FAILED,
     VERIFICATION_INVALID,
 )
+from authn.models import ContactEmail
 from authn.serializers import (
     ContactEmailCreateSerializer,
     ContactEmailSerializer,

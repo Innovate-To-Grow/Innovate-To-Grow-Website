@@ -7,14 +7,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authn.models import ContactPhone
-from authn.security_messages import (
+from authn.constants import (
     CONTACT_PHONE_ADD_FAILED,
     CONTACT_PHONE_SEND_FAILED,
     PHONE_VERIFICATION_DELIVERY_FAILED,
     VERIFICATION_INVALID,
     VERIFICATION_THROTTLED,
 )
+from authn.models import ContactPhone
 from authn.serializers import (
     ContactPhoneCreateSerializer,
     ContactPhoneSerializer,
