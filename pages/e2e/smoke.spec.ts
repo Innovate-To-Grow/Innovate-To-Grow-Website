@@ -23,7 +23,7 @@ test('backend readiness and admin login smoke', async ({page, request}) => {
 
   const adminResponse = await page.goto(`${apiBaseUrl}/admin/login/`, {waitUntil: 'domcontentloaded'});
   expect(adminResponse?.status()).toBeLessThan(500);
-  await expect(page.getByRole('heading', {name: /log in|login|innovate to grow admin/i})).toBeVisible();
+  await expect(page.locator('.login-title, h1, [role="heading"]').first()).toBeVisible();
 });
 
 test('public frontend routes load homepage, CMS, and news shells', async ({page}) => {

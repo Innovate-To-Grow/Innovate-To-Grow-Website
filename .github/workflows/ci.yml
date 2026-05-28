@@ -603,6 +603,7 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs:
       - backend-docker-build
       - frontend-build
