@@ -71,11 +71,14 @@ jobs:
 
       - name: Install preflight tools
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install "pre-commit==4.0.1" "PyYAML==6.0.2"
           ACTIONLINT_VERSION="1.7.7"
+          ACTIONLINT_SHA256="023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
           curl -sSL -o /tmp/actionlint.tar.gz \
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict -
           tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
           sudo mv /tmp/actionlint /usr/local/bin/actionlint
 
@@ -118,9 +121,12 @@ jobs:
 
       - name: Install gitleaks
         run: |
+          set -euo pipefail
           GITLEAKS_VERSION="8.21.2"
+          GITLEAKS_SHA256="5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba"
           curl -sSL -o /tmp/gitleaks.tar.gz \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check --strict -
           mkdir -p /tmp/gitleaks
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks
 
