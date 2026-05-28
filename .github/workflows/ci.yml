@@ -30,7 +30,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded runs only for pull requests; let every push to a default
+  # branch finish so main/master is always fully validated.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.11"
@@ -41,6 +43,7 @@ jobs:
   preflight:
     name: Preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       issues: read
@@ -68,11 +71,14 @@ jobs:
 
       - name: Install preflight tools
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install "pre-commit==4.0.1" "PyYAML==6.0.2"
           ACTIONLINT_VERSION="1.7.7"
+          ACTIONLINT_SHA256="023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
           curl -sSL -o /tmp/actionlint.tar.gz \
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict -
           tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
           sudo mv /tmp/actionlint /usr/local/bin/actionlint
 
@@ -105,6 +111,7 @@ jobs:
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: preflight
     steps:
       - name: Checkout code
@@ -114,9 +121,12 @@ jobs:
 
       - name: Install gitleaks
         run: |
+          set -euo pipefail
           GITLEAKS_VERSION="8.21.2"
+          GITLEAKS_SHA256="5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba"
           curl -sSL -o /tmp/gitleaks.tar.gz \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check --strict -
           mkdir -p /tmp/gitleaks
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp/gitleaks
 
@@ -148,6 +158,7 @@ jobs:
   backend-db-migration:
     name: Backend DB Migration Test (PostgreSQL)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     services:
       postgres:
@@ -200,6 +211,7 @@ jobs:
   backend-static-and-prod-check:
     name: Backend Static and Production Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     defaults:
       run:
@@ -245,6 +257,7 @@ jobs:
   django-build:
     name: Django Test (${{ matrix.app }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
@@ -317,6 +330,7 @@ jobs:
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     defaults:
       run:
@@ -353,6 +367,7 @@ jobs:
   frontend-build:
     name: Frontend Build and Size
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     defaults:
       run:
@@ -388,6 +403,7 @@ jobs:
   python-security-audit:
     name: Python Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: preflight
     defaults:
       run:
@@ -431,6 +447,7 @@ jobs:
   frontend-security-audit:
     name: Frontend Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: preflight
     defaults:
       run:
@@ -455,6 +472,7 @@ jobs:
   semgrep-sast:
     name: Semgrep SAST
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: preflight
     steps:
       - name: Checkout code
@@ -484,6 +502,7 @@ jobs:
   backend-docker-build:
     name: Backend Docker Build and Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs:
       - django-build
       - python-security-audit
@@ -496,17 +515,39 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Lint Dockerfile (hadolint)
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: src/Dockerfile
           failure-threshold: error
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
       - name: Build backend Docker image
-        run: docker build -t itg-backend-ci:${{ github.sha }} src/
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: src
+          load: true
+          tags: itg-backend-ci:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Persist Trivy's vulnerability DB across runs so the scan below doesn't
+      # re-pull it from the registry on every CI run. Both Trivy steps point at
+      # this dir via TRIVY_CACHE_DIR.
+      - name: Cache Trivy vulnerability database
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: |
+            trivy-db-
 
       - name: Scan image (Trivy CRITICAL/HIGH)
         id: trivy-sarif
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: sarif
@@ -525,14 +566,20 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && !cancelled() }}
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           sarif_file: trivy-results.sarif
           category: trivy-backend-image
 
+      # Only re-render the human-readable table when something failed. On the
+      # happy path the SARIF artifact above already captures every finding, so
+      # skipping this avoids a second full image scan. The cached DB above keeps
+      # this fast when it does run.
       - name: Trivy human-readable table
-        if: ${{ always() }}
-        uses: aquasecurity/trivy-action@v0.36.0
+        if: ${{ failure() }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table
@@ -543,6 +590,7 @@ jobs:
   supply-chain-reports:
     name: Supply Chain Reports
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - python-security-audit
       - frontend-security-audit
@@ -603,9 +651,12 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     continue-on-error: true
     needs:
-      - backend-docker-build
+      # backend-docker-build intentionally omitted: e2e runs the app via
+      # `manage.py runserver`, never the built image, so depending on it only
+      # serialized e2e behind the slowest job without adding coverage.
       - frontend-build
       - frontend-test
       - frontend-security-audit
@@ -662,9 +713,32 @@ jobs:
         working-directory: pages
         run: npm ci
 
-      - name: Install Playwright browsers
+      # Key the browser cache on the resolved Playwright version so a version
+      # bump invalidates it automatically.
+      - name: Resolve Playwright version
+        id: playwright-version
+        working-directory: pages
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      # On a cache hit the browser binaries are restored, but the OS-level
+      # dependencies (apt packages) are not — install just those. On a miss,
+      # do the full download + deps install.
+      - name: Install Playwright browsers (cache miss)
+        if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' }}
         working-directory: pages
         run: npm run e2e:install
+
+      - name: Install Playwright system dependencies (cache hit)
+        if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' }}
+        working-directory: pages
+        run: npx playwright install-deps chromium
 
       - name: Prepare backend database
         working-directory: src
@@ -719,6 +793,7 @@ jobs:
   ci-result:
     name: CI Result
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       - preflight
       - lint

@@ -11,6 +11,7 @@ jobs:
   python-lint:
     name: Python Linting
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: src
@@ -46,6 +47,7 @@ jobs:
   frontend-lint:
     name: Frontend Linting
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: pages
