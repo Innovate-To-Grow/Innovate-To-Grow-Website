@@ -35,6 +35,7 @@ class SnsEnvelopeParser(BaseParser):
         try:
             return json.loads(raw.decode("utf-8"))
         except Exception:
+            logger.warning("Failed to decode SNS envelope body", exc_info=True)
             return None
 
 
