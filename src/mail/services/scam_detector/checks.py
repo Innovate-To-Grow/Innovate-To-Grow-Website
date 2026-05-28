@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 from urllib.parse import urlparse
@@ -18,6 +19,8 @@ from .patterns import (
     URL_SHORTENERS,
 )
 from .structure import html_hidden_reasons
+
+logger = logging.getLogger(__name__)
 
 DOMAIN_IN_TEXT_RE = re.compile(r"(?:[a-z0-9](?:[-a-z0-9]*[a-z0-9])?\.)+[a-z]{2,}", re.IGNORECASE)
 
@@ -166,6 +169,7 @@ def extract_links(html: str) -> list[dict[str, str]]:
         try:
             domain = normalize_domain(urlparse(href).hostname or "")
         except Exception:
+            logger.debug("Failed to parse link domain from %r", href, exc_info=True)
             domain = ""
         links.append({"href": href, "text": anchor.get_text(strip=True), "href_domain": domain})
     return links
