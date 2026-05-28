@@ -8,7 +8,7 @@ class EventRegistrationAdminForm(forms.ModelForm):
         required=False,
         initial=False,
         label="Send ticket email to attendee",
-        help_text=("If checked, a confirmation email with the ticket barcode will be sent " "after saving."),
+        help_text=("If checked, a confirmation email with the ticket barcode will be sent after saving."),
     )
 
     class Meta:

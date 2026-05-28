@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { FormEvent, RefObject } from 'react';
+import { PrivacyLegalNotice } from '../shared/PrivacyLegalNotice';
 
 interface LoginPasswordModeProps {
   email: string;
@@ -56,6 +57,8 @@ export const LoginPasswordMode = ({
           autoComplete="current-password"
         />
       </div>
+
+      <PrivacyLegalNotice />
 
       <button type="submit" className="auth-form-submit" disabled={isLoading || !email || !password}>
         {isLoading ? (

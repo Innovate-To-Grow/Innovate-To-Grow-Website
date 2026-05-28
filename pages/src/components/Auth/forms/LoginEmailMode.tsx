@@ -1,4 +1,5 @@
 import type { FormEvent, RefObject } from 'react';
+import { PrivacyLegalNotice } from '../shared/PrivacyLegalNotice';
 
 interface LoginEmailModeProps {
   email: string;
@@ -38,6 +39,8 @@ export const LoginEmailMode = ({
           We&apos;ll sign you in if this email already exists, or start your account setup if it&apos;s new.
         </span>
       </div>
+
+      <PrivacyLegalNotice />
 
       <button type="submit" className="auth-form-submit" disabled={isLoading || !email}>
         {isLoading ? (

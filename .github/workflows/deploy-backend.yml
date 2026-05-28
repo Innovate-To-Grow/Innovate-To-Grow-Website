@@ -78,8 +78,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest src/
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" src/
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       # SECURITY: DJANGO_SECRET_KEY, DB_PASSWORD, and REDIS_URL MUST be stored
       # in GitHub Secrets (not vars.*). Values from vars.* are NOT masked in
@@ -118,8 +118,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
       - name: Render ECS task definition from template
         id: task-def
@@ -252,6 +252,9 @@ jobs:
           wait-for-service-stability: true
 
       - name: Verify deployment was not rolled back
+        env:
+          QUERY_PRIMARY: 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]'
+          QUERY_EVENTS: 'services[0].events[0:5].message'
         run: |
           set -euo pipefail
 
@@ -262,7 +265,7 @@ jobs:
           active_taskdef="$(aws ecs describe-services \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
-            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --query "$QUERY_PRIMARY" \
             --output text)"
           echo "Active task definition:   $active_taskdef"
 
@@ -272,7 +275,7 @@ jobs:
             aws ecs describe-services \
               --cluster "$ECS_CLUSTER" \
               --services "$ECS_SERVICE" \
-              --query 'services[0].events[0:5].message' \
+              --query "$QUERY_EVENTS" \
               --output table
             exit 1
           fi

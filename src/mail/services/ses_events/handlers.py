@@ -41,9 +41,9 @@ def apply_delivery(log: RecipientLog, ses_event: dict, sns_message_id: str) -> N
 
 def apply_delivery_delay(log: RecipientLog, ses_event: dict, sns_message_id: str) -> None:
     delay = ses_event.get("deliveryDelay", {})
-    log.error_message = (
-        f"Delayed: {delay.get('delayType', 'Unknown')} - expires " f"{delay.get('expirationTime', '')}"
-    )[:DIAG_MAX]
+    log.error_message = (f"Delayed: {delay.get('delayType', 'Unknown')} - expires {delay.get('expirationTime', '')}")[
+        :DIAG_MAX
+    ]
     _save_event_fields(
         log,
         "DeliveryDelay",

@@ -3,8 +3,6 @@ name: CodeQL
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
   schedule:
     # Weekly full-repo scan Mondays 03:00 UTC — catches drift when no PRs
     # touched the scanned paths.
@@ -25,7 +23,7 @@ jobs:
     permissions:
       # Required for CodeQL to upload results to the Security tab.
       security-events: write
-      # Required to read workflow metadata for PR analysis.
+      # Required by CodeQL to read workflow metadata.
       actions: read
       contents: read
 

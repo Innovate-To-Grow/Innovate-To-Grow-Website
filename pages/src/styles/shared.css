@@ -1,2 +1,13 @@
 /* Fallback tokens only — full styles served from backend via LayoutProvider */
 @import "./shared/tokens.css";
+
+.auth-legal-notice {
+  margin: -0.25rem 0 0;
+  line-height: 1.55;
+}
+
+.auth-legal-notice-link {
+  display: inline;
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+}

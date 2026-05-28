@@ -27,7 +27,7 @@ PUBLIC_LINK_LABELS = {
 
 PUBLIC_LINK_DESCRIPTIONS = {
     "login": "Use this secure link within the next 10 minutes to sign in instantly.",
-    "subscribe": ("Use this secure link within the next 10 minutes to continue with your " "newsletter access."),
-    "event_registration": ("Use this secure link within the next 10 minutes to continue with event " "registration."),
-    "register": ("Use this secure link within the next 10 minutes to continue setting up your " "account."),
+    "subscribe": ("Use this secure link within the next 10 minutes to continue with your newsletter access."),
+    "event_registration": ("Use this secure link within the next 10 minutes to continue with event registration."),
+    "register": ("Use this secure link within the next 10 minutes to continue setting up your account."),
 }

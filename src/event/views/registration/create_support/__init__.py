@@ -80,7 +80,7 @@ def question_answers_or_response(event, answers):
         question_id = str(answer["question_id"])
         if question_id not in questions:
             return Response(
-                {"detail": ("One of your answers references an invalid question. " "Please reload and try again.")},
+                {"detail": ("One of your answers references an invalid question. Please reload and try again.")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         question_answers.append(

@@ -37,7 +37,7 @@ def check_sender(msg: dict[str, Any]) -> list[tuple[int, str]]:
             findings.append(
                 (
                     3,
-                    (f'Display name mentions "{brand_match.group(1)}" but ' f"email domain is {email_domain}"),
+                    (f'Display name mentions "{brand_match.group(1)}" but email domain is {email_domain}'),
                 )
             )
 
