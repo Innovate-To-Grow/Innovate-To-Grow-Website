@@ -648,7 +648,9 @@ jobs:
     timeout-minutes: 30
     continue-on-error: true
     needs:
-      - backend-docker-build
+      # backend-docker-build intentionally omitted: e2e runs the app via
+      # `manage.py runserver`, never the built image, so depending on it only
+      # serialized e2e behind the slowest job without adding coverage.
       - frontend-build
       - frontend-test
       - frontend-security-audit
@@ -705,9 +707,32 @@ jobs:
         working-directory: pages
         run: npm ci
 
-      - name: Install Playwright browsers
+      # Key the browser cache on the resolved Playwright version so a version
+      # bump invalidates it automatically.
+      - name: Resolve Playwright version
+        id: playwright-version
+        working-directory: pages
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      # On a cache hit the browser binaries are restored, but the OS-level
+      # dependencies (apt packages) are not — install just those. On a miss,
+      # do the full download + deps install.
+      - name: Install Playwright browsers (cache miss)
+        if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' }}
         working-directory: pages
         run: npm run e2e:install
+
+      - name: Install Playwright system dependencies (cache hit)
+        if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' }}
+        working-directory: pages
+        run: npx playwright install-deps chromium
 
       - name: Prepare backend database
         working-directory: src
