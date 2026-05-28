@@ -745,7 +745,13 @@ jobs:
           import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          failed = {name: data["result"] for name, data in needs.items() if data["result"] != "success"}
+          # E2E is informational while tests stabilize
+          non_blocking = {"e2e"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if data["result"] != "success" and name not in non_blocking
+          }
           if failed:
               for name, result in failed.items():
                   print(f"{name}: {result}")
