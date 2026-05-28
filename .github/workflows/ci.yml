@@ -514,8 +514,17 @@ jobs:
           dockerfile: src/Dockerfile
           failure-threshold: error
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build backend Docker image
-        run: docker build -t itg-backend-ci:${{ github.sha }} src/
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          load: true
+          tags: itg-backend-ci:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Scan image (Trivy CRITICAL/HIGH)
         id: trivy-sarif
