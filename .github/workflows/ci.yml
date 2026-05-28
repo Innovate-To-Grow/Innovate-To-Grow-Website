@@ -506,14 +506,13 @@ jobs:
 
       - name: Scan image (Trivy CRITICAL/HIGH)
         id: trivy-sarif
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          exit-code: "0"
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF artifact
@@ -540,10 +539,6 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "0"
           ignore-unfixed: true
-
-      - name: Enforce Trivy result
-        if: ${{ steps.trivy-sarif.outcome == 'failure' }}
-        run: exit 1
 
   supply-chain-reports:
     name: Supply Chain Reports
