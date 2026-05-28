@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authn.security_messages import UNSUBSCRIBE_LOGIN_ALREADY_USED, UNSUBSCRIBE_LOGIN_INVALID
+from authn.constants import UNSUBSCRIBE_LOGIN_ALREADY_USED, UNSUBSCRIBE_LOGIN_INVALID
 from authn.services.unsubscribe_token import (
     UnsubscribeLoginTokenAlreadyUsed,
     UnsubscribeLoginTokenInvalid,

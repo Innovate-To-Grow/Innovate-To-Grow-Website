@@ -1,10 +1,10 @@
-"""Tests for core.json_utils — safe JSON embedding in HTML script contexts."""
+"""Tests for core.utils.json_helpers — safe JSON embedding in HTML script contexts."""
 
 import json
 
 from django.test import TestCase
 
-from core.json_utils import safe_json
+from core.utils.json_helpers import safe_json
 
 
 class SafeJsonTests(TestCase):

@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 
 from authn.throttles import LoginRateThrottle
 from authn.views.helpers import build_auth_success_payload
-from mail.login_redirects import get_magic_login_redirect_path
 from mail.models import MagicLoginToken
+from mail.utils.redirects import get_magic_login_redirect_path
 
 
 class MagicLoginView(APIView):

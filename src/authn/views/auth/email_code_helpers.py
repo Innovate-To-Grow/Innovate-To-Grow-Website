@@ -3,7 +3,7 @@
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
-from authn.security_messages import VERIFICATION_INVALID
+from authn.constants import VERIFICATION_INVALID
 from authn.services import AuthChallengeInvalid
 
 from ..helpers import challenge_error_response

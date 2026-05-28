@@ -4,7 +4,7 @@ from django.core.cache import cache
 from django.db import transaction
 
 from cms.models import StyleSheet
-from cms.views.views import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
+from cms.views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
 
 def sync_stylesheets(normalized_rows):

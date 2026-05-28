@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authn.security_messages import VERIFICATION_LINK_INVALID
+from authn.constants import VERIFICATION_LINK_INVALID
 from authn.serializers import (
     AccountEmailsSerializer,
     ChangePasswordCodeConfirmSerializer,

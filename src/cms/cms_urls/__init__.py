@@ -1,7 +1,7 @@
 from django.urls import path
 
 from cms.views.cms import CMSLivePreviewView, CMSPageView, CMSPreviewFetchView
-from cms.views.views import EmbedBlockView
+from cms.views.layout import EmbedBlockView
 
 urlpatterns = [
     path("live-preview/<uuid:page_id>/", CMSLivePreviewView.as_view(), name="cms-live-preview"),

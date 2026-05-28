@@ -1,7 +1,7 @@
 from .analytics import PageViewCreateView
 from .cms import CMSPageView, CMSPreviewFetchView
+from .layout import EmbedBlockView, LayoutAPIView, LayoutStylesheetView
 from .news import NewsDetailAPIView, NewsListAPIView
-from .views import EmbedBlockView, LayoutAPIView, LayoutStylesheetView
 
 __all__ = [
     "LayoutAPIView",

@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from authn.security_messages import VERIFICATION_THROTTLED
+from authn.constants import VERIFICATION_THROTTLED
 from authn.services import AuthChallengeDeliveryError, AuthChallengeThrottled
 
 

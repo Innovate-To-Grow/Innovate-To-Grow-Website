@@ -15,7 +15,8 @@ from mail.services.unsubscribe_token import (
     get_member_from_resubscribe_token,
 )
 
-from .constants import RESUBSCRIBE_LINK_INVALID_MESSAGE, UNSUBSCRIBE_LINK_INVALID_MESSAGE
+UNSUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired unsubscribe link."
+RESUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired resubscribe link."
 
 logger = logging.getLogger(__name__)
 

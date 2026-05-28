@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from authn.security_messages import ENCRYPTED_FIELD_DECRYPT_FAILED
+from authn.constants import ENCRYPTED_FIELD_DECRYPT_FAILED
 from authn.services import RSADecryptionError, decrypt_password, is_encrypted_password
 
 

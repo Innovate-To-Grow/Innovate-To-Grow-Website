@@ -5,8 +5,8 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from event.tests.helpers import make_member
-from mail.login_redirects import DEFAULT_LOGIN_REDIRECT_PATH
 from mail.models import EmailCampaign, MagicLoginToken
+from mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH
 
 
 class MagicLoginViewTests(APITestCase):

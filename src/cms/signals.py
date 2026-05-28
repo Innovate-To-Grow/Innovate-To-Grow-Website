@@ -12,7 +12,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import CMSBlock, CMSPage, FooterContent, Menu, NewsArticle, SiteSettings, StyleSheet
-from .views.views import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
+from .views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
 
 def _clear_layout_caches():
