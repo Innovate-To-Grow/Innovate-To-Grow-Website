@@ -252,8 +252,10 @@ jobs:
           wait-for-service-stability: true
 
       - name: Verify deployment was not rolled back
+        env:
+          QUERY_PRIMARY: 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]'
+          QUERY_EVENTS: 'services[0].events[0:5].message'
         run: |
-          # shellcheck disable=SC2016
           set -euo pipefail
 
           expected_taskdef="${{ steps.deploy-ecs.outputs.task-definition-arn }}"
@@ -263,7 +265,7 @@ jobs:
           active_taskdef="$(aws ecs describe-services \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
-            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --query "$QUERY_PRIMARY" \
             --output text)"
           echo "Active task definition:   $active_taskdef"
 
@@ -273,7 +275,7 @@ jobs:
             aws ecs describe-services \
               --cluster "$ECS_CLUSTER" \
               --services "$ECS_SERVICE" \
-              --query 'services[0].events[0:5].message' \
+              --query "$QUERY_EVENTS" \
               --output table
             exit 1
           fi
