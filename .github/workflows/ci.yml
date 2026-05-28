@@ -526,9 +526,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Persist Trivy's vulnerability DB across runs so the scan below doesn't
+      # re-pull it from the registry on every CI run. Both Trivy steps point at
+      # this dir via TRIVY_CACHE_DIR.
+      - name: Cache Trivy vulnerability database
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: |
+            trivy-db-
+
       - name: Scan image (Trivy CRITICAL/HIGH)
         id: trivy-sarif
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: sarif
@@ -552,9 +565,15 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-backend-image
 
+      # Only re-render the human-readable table when something failed. On the
+      # happy path the SARIF artifact above already captures every finding, so
+      # skipping this avoids a second full image scan. The cached DB above keeps
+      # this fast when it does run.
       - name: Trivy human-readable table
-        if: ${{ always() }}
+        if: ${{ failure() }}
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table
