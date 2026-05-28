@@ -30,7 +30,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded runs only for pull requests; let every push to a default
+  # branch finish so main/master is always fully validated.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.11"
@@ -41,6 +43,7 @@ jobs:
   preflight:
     name: Preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       issues: read
@@ -105,6 +108,7 @@ jobs:
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: preflight
     steps:
       - name: Checkout code
@@ -148,6 +152,7 @@ jobs:
   backend-db-migration:
     name: Backend DB Migration Test (PostgreSQL)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     services:
       postgres:
@@ -200,6 +205,7 @@ jobs:
   backend-static-and-prod-check:
     name: Backend Static and Production Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     defaults:
       run:
@@ -245,6 +251,7 @@ jobs:
   django-build:
     name: Django Test (${{ matrix.app }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
@@ -317,6 +324,7 @@ jobs:
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     defaults:
       run:
@@ -353,6 +361,7 @@ jobs:
   frontend-build:
     name: Frontend Build and Size
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
     defaults:
       run:
@@ -388,6 +397,7 @@ jobs:
   python-security-audit:
     name: Python Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: preflight
     defaults:
       run:
@@ -431,6 +441,7 @@ jobs:
   frontend-security-audit:
     name: Frontend Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: preflight
     defaults:
       run:
@@ -455,6 +466,7 @@ jobs:
   semgrep-sast:
     name: Semgrep SAST
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: preflight
     steps:
       - name: Checkout code
@@ -484,6 +496,7 @@ jobs:
   backend-docker-build:
     name: Backend Docker Build and Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs:
       - django-build
       - python-security-audit
@@ -543,6 +556,7 @@ jobs:
   supply-chain-reports:
     name: Supply Chain Reports
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - python-security-audit
       - frontend-security-audit
@@ -603,6 +617,7 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     continue-on-error: true
     needs:
       - backend-docker-build
@@ -719,6 +734,7 @@ jobs:
   ci-result:
     name: CI Result
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       - preflight
       - lint
