@@ -6,7 +6,7 @@ from django.urls import reverse
 from unfold.decorators import action
 
 import mail.admin.campaign as campaign_api
-from core.json_utils import safe_json
+from core.utils.json_helpers import safe_json
 from mail.models import EmailCampaign
 from mail.services.personalize import personalize
 from mail.services.preview import HTML_MARKER, SAMPLE_CONTEXT, render_email_html

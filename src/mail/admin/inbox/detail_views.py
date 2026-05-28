@@ -7,7 +7,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import mail.admin.inbox as inbox_api
-from core.json_utils import safe_json
+from core.utils.json_helpers import safe_json
 
 from .helpers import message_body_html
 

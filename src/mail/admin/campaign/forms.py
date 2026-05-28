@@ -8,10 +8,10 @@ from unfold.widgets import (
 )
 
 from event.models import Ticket
-from mail.login_redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 from mail.models import EmailCampaign
 from mail.models.campaign import ALL_AUDIENCE_CHOICES, EXCLUDE_AUDIENCE_CHOICES
 from mail.services.preview import HTML_MARKER
+from mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 
 from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
 
