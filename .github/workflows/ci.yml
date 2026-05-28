@@ -683,7 +683,7 @@ jobs:
         working-directory: src
         run: |
           python manage.py runserver 127.0.0.1:8000 > ../backend-e2e.log 2>&1 &
-          for i in {1..60}; do
+          for _ in {1..60}; do
             if curl --fail --silent http://127.0.0.1:8000/readyz/ >/dev/null; then
               exit 0
             fi
@@ -700,7 +700,7 @@ jobs:
         working-directory: pages
         run: |
           npm run preview -- --host 127.0.0.1 --port 4173 > ../frontend-e2e.log 2>&1 &
-          for i in {1..60}; do
+          for _ in {1..60}; do
             if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
               exit 0
             fi
