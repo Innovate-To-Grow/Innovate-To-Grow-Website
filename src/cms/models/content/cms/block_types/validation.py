@@ -65,8 +65,7 @@ def _validate_item_urls(data, *, prefix):
         url = item.get("url", "")
         if url and not validate_safe_url(url):
             raise ValidationError(
-                f"{prefix} #{index + 1}: URL uses an unsafe scheme. "
-                "Only http, https, mailto, and tel URLs are allowed."
+                f"{prefix} #{index + 1}: URL uses an unsafe scheme. Only http, https, mailto, and tel URLs are allowed."
             )
 
 

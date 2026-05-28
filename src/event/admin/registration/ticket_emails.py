@@ -42,7 +42,7 @@ class TicketEmailAdminMixin:
             logger.exception("Failed to send ticket email for registration %s", registration.pk)
             messages.error(
                 request,
-                ("Failed to send email for " f"{registration.attendee_name or registration.ticket_code}."),
+                (f"Failed to send email for {registration.attendee_name or registration.ticket_code}."),
             )
             return False
 

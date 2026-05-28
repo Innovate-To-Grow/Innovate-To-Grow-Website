@@ -472,7 +472,7 @@ jobs:
       - name: Run Semgrep
         id: semgrep
         continue-on-error: true
-        run: semgrep scan --config auto --metrics=off --error --sarif --output semgrep.sarif src pages
+        run: semgrep scan --config p/default --config p/python --config p/javascript --metrics=off --error --sarif --output semgrep.sarif src pages
 
       - name: Upload Semgrep SARIF artifact
         if: ${{ always() }}
