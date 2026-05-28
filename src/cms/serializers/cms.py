@@ -37,5 +37,8 @@ class CMSPageSerializer(serializers.ModelSerializer):
 
     # noinspection PyMethodMayBeStatic
     def get_blocks(self, obj):
-        blocks = obj.blocks.all().order_by("sort_order")
+        # CMSBlock.Meta.ordering is ["sort_order"], so .all() preserves order while
+        # reusing the view's prefetch_related("blocks") cache; an explicit .order_by()
+        # would re-query and defeat the prefetch.
+        blocks = obj.blocks.all()
         return CMSBlockSerializer(blocks, many=True).data
