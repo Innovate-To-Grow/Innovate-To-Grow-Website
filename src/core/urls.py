@@ -52,7 +52,7 @@ urlpatterns = [
     # render-blocking stylesheet (linked from index.html to prevent FOUC)
     path("layout/styles.css", LayoutStylesheetView.as_view(), name="layout-styles"),
     # event
-    path("event/", include("event.urls")),
+    path("event/", include("apps.event.urls")),
     # news
     path("news/", include("cms.news_urls")),
     # projects

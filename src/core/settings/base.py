@@ -12,6 +12,7 @@ alphabetically, which would re-introduce the subtle ordering bug).
 """
 
 # ruff: noqa: I001
+from . import _legacy_imports  # noqa: F401  # installs the legacy app-import meta-path finder (must be first)
 from .components.framework.environment import *  # noqa: F403  # BASE_DIR, .env, shared env vars
 from .components.framework.django import *  # noqa: F403       # apps, middleware, templates, auth, static
 from .components.integrations.admin import *  # noqa: F403     # Unfold admin theme

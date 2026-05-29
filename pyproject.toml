@@ -50,6 +50,12 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = [
+    # New layout: business apps live under `apps`, project config under `config`.
+    "apps",
+    "config",
+    "common",
+    # Legacy top-level names, kept first-party during the apps/ migration so
+    # imports stay in one block while apps are moved incrementally.
     "core",
     "system_intelligence",
     "authn",
