@@ -1,7 +1,7 @@
 import {useEffect, useState, type FormEvent} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {useAuth} from '../../components/Auth';
-import {getProfile, updateProfileFields} from '../../services/auth';
+import {getAccessToken, getProfile, updateProfileFields} from '../../services/auth';
 import {hasRequiredNameFields} from '../../shared/auth/profileCompletion';
 import type {ProfileResponse} from '../../shared/auth/types';
 import {CodeStep} from './steps/CodeStep';
@@ -12,6 +12,14 @@ import {getSubscribeErrorMessage} from './steps/helpers';
 
 type Step = 'email' | 'code' | 'profile' | 'manage';
 type OrganizationType = 'individual' | 'organization';
+
+function hasStoredAccessToken() {
+  try {
+    return Boolean(getAccessToken());
+  } catch {
+    return false;
+  }
+}
 
 export const SubscribePage = () => {
   const [searchParams] = useSearchParams();
@@ -75,7 +83,8 @@ export const SubscribePage = () => {
   // Fetch profile data for both the manage screen and the direct profile-link
   // flow so existing account details are preserved.
   useEffect(() => {
-    if (!isAuthenticated || (step !== 'manage' && step !== 'profile')) {
+    const hasSession = isAuthenticated || hasStoredAccessToken();
+    if (!hasSession || (step !== 'manage' && step !== 'profile')) {
       return;
     }
 
