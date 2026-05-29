@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     "cms.apps.CmsConfig",
     "apps.event.apps.EventConfig",
     "projects.apps.ProjectsConfig",
-    "mail.apps.MailConfig",
+    "apps.mail.apps.MailConfig",
     # Third-party
     "corsheaders",
     "rest_framework",

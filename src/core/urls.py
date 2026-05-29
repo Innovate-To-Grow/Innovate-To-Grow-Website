@@ -66,7 +66,7 @@ urlpatterns = [
     # analytics
     path("analytics/", include("cms.analytics_urls")),
     # mail (magic login links)
-    path("mail/", include("mail.urls")),
+    path("mail/", include("apps.mail.urls")),
 ]
 
 handler404 = "core.views.custom_404"
