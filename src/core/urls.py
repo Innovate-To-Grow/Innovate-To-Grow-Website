@@ -56,7 +56,7 @@ urlpatterns = [
     # news
     path("news/", include("cms.news_urls")),
     # projects
-    path("projects/", include("projects.urls")),
+    path("projects/", include("apps.projects.urls")),
     # ckeditor 5
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     # cms

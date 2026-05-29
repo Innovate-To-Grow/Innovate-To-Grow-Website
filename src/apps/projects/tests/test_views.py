@@ -2,7 +2,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from projects.models import Project, Semester
+from apps.projects.models import Project, Semester
 
 
 class PastProjectsAPIViewTest(TestCase):

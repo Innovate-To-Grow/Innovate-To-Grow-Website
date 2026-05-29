@@ -3,7 +3,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from projects.models import PastProjectShare
+from apps.projects.models import PastProjectShare
 
 
 def sample_row(**overrides):

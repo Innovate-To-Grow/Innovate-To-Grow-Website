@@ -1,7 +1,7 @@
 from django.test import TestCase
 
-from projects.models import Semester
-from projects.services.hooks import resolve_project_row
+from apps.projects.models import Semester
+from apps.projects.services.hooks import resolve_project_row
 
 
 class ResolveProjectRowTest(TestCase):

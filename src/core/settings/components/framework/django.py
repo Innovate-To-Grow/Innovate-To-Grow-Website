@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "system_intelligence.apps.SystemIntelligenceConfig",
     "cms.apps.CmsConfig",
     "apps.event.apps.EventConfig",
-    "projects.apps.ProjectsConfig",
+    "apps.projects.apps.ProjectsConfig",
     "apps.mail.apps.MailConfig",
     # Third-party
     "corsheaders",

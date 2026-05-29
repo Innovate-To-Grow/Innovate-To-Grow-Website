@@ -7,7 +7,7 @@ allowing custom parsing of compound values in sheet columns.
 
 import re
 
-from projects.models import Semester
+from apps.projects.models import Semester
 
 YEAR_SEMESTER_RE = re.compile(r"^(\d{4})-(\d)\s")
 

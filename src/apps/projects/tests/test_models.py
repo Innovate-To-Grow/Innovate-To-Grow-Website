@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from projects.models import Project, Semester
+from apps.projects.models import Project, Semester
 
 
 class SemesterModelTest(TestCase):

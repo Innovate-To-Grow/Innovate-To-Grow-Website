@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 
-from projects.models import Project, Semester
+from apps.projects.models import Project, Semester
 
 YEAR_SEMESTER_RE = re.compile(r"^(\d{4})-(\d)\s")
 
