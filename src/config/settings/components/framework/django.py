@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Project apps
+    "apps.common.apps.CommonConfig",
     "apps.core.apps.CoreConfig",
     "apps.system_intelligence.apps.SystemIntelligenceConfig",
     "apps.cms.apps.CmsConfig",
