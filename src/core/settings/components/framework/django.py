@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     # Project apps
     "core.apps.CoreConfig",
     "apps.system_intelligence.apps.SystemIntelligenceConfig",
-    "cms.apps.CmsConfig",
+    "apps.cms.apps.CmsConfig",
     "apps.event.apps.EventConfig",
     "apps.projects.apps.ProjectsConfig",
     "apps.mail.apps.MailConfig",
