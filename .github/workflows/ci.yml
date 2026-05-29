@@ -310,7 +310,7 @@ jobs:
       - name: Run Django tests with per-app coverage
         run: |
           coverage run \
-            --source="${{ matrix.app }}" \
+            --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "${{ matrix.app }}"
           coverage report --fail-under=40
