@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     "unfold.contrib.filters",
     "unfold.contrib.forms",
     # authn before django.contrib.auth so our createsuperuser command wins
-    "authn.apps.AuthnConfig",
+    "apps.authn.apps.AuthnConfig",
     # Django built-ins
     "django.contrib.admin",
     "django.contrib.auth",
@@ -123,5 +123,5 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "authn.Member"
 AUTHENTICATION_BACKENDS = [
-    "authn.backends.EmailAuthBackend",
+    "apps.authn.backends.EmailAuthBackend",
 ]

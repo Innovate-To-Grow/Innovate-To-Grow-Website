@@ -62,7 +62,7 @@ urlpatterns = [
     # cms
     path("cms/", include("apps.cms.cms_urls")),
     # authn
-    path("authn/", include("authn.urls")),
+    path("authn/", include("apps.authn.urls")),
     # analytics
     path("analytics/", include("apps.cms.analytics_urls")),
     # mail (magic login links)
