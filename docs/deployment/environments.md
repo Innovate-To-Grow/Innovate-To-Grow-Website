@@ -6,11 +6,11 @@ Configuration differences across development, CI, and production.
 
 | Environment | Settings module | Database | Triggered by |
 |-------------|----------------|----------|-------------|
-| Local development | `core.settings.dev` | SQLite | `manage.py runserver` (default) |
-| CI | `core.settings.ci` | PostgreSQL 16 (GH Actions service) | GitHub Actions workflow |
-| Production | `core.settings.prod` | PostgreSQL + SSL | ECS task environment variables |
+| Local development | `config.settings.local` | SQLite | `manage.py runserver` (default) |
+| CI | `config.settings.test` | PostgreSQL 16 (GH Actions service) | GitHub Actions workflow |
+| Production | `config.settings.production` | PostgreSQL + SSL | ECS task environment variables |
 
-All three extend `core.settings.base`, which wildcard-imports from `core/settings/components/`.
+All three extend `config.settings.base`, which wildcard-imports from `config/settings/components/`.
 
 ## Environment variable reference
 
@@ -57,7 +57,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 
 ### AWS services (SES, SNS, Bedrock)
 
-A single IAM key in [`AWSCredentialConfig`](../../src/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/core/models/base/service_credentials/email.py).
+A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
@@ -81,7 +81,7 @@ A single IAM key in [`AWSCredentialConfig`](../../src/core/models/base/service_c
 
 ### Google Sheets
 
-Google service-account credentials live in [`GoogleCredentialConfig`](../../src/core/models/base/service_credentials/google.py) in the database. Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs. No process env vars are required.
+Google service-account credentials live in [`GoogleCredentialConfig`](../../src/apps/core/models/base/service_credentials/google.py) in the database. Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs. No process env vars are required.
 
 ### Database-managed credentials
 

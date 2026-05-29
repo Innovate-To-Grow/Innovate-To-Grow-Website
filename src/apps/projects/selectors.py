@@ -1,1 +1,1 @@
-"""Read/query logic (selectors) — read paths kept separate from services for the projects app."""
+"""Read/query logic for the projects app — read paths kept separate from services."""

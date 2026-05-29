@@ -1,1 +1,1 @@
-"""Read/query logic (selectors) — read paths kept separate from services for the event app."""
+"""Read/query logic for the event app — read paths kept separate from services."""

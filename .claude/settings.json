@@ -15,7 +15,7 @@
       "Bash(cd pages && npm run build)",
       "Bash(cd src && ruff check .)",
       "Bash(cd src && ruff format --check .)",
-      "Bash(cd src && python manage.py check --settings=core.settings.dev)",
+      "Bash(cd src && python manage.py check --settings=config.settings.local)",
       "Bash(cd src && python manage.py test:*)",
       "Bash(pre-commit run --all-files)"
     ]

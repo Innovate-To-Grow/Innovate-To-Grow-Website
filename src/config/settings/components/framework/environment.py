@@ -15,14 +15,14 @@ from dotenv import load_dotenv
 # Paths
 # ---------------------------------------------------------------------------
 # BASE_DIR points to the ``src/`` directory (four parents up from this file).
-# framework/environment.py → framework/ → components/ → settings/ → core/ → src/
+# framework/environment.py → framework/ → components/ → settings/ → config/ → src/
 BASE_DIR = Path(__file__).resolve().parents[4]
 
 load_dotenv(BASE_DIR / ".env")
 
 # ---------------------------------------------------------------------------
 # Application URLs (set per environment; empty defaults are overridden in
-# dev.py / prod.py as needed)
+# local.py / production.py as needed)
 # ---------------------------------------------------------------------------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "")

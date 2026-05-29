@@ -1,2 +1,5 @@
-"""Background tasks. No Celery is configured in this project; this is a
-placeholder for future async work. for the event app."""
+"""Background tasks for the event app.
+
+No Celery is configured in this project; this module is a placeholder for
+future async work.
+"""

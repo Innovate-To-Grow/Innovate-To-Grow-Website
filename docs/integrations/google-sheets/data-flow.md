@@ -4,7 +4,7 @@ How data moves between the Django backend and Google Sheets.
 
 ## Registration sync (Django → Sheets)
 
-**Service:** `src/event/services/registration_sheet_sync.py`
+**Service:** `src/apps/event/services/registration_sheet_sync.py`
 
 When a new event registration is created, the system appends a row to the configured Google Sheet.
 
@@ -49,7 +49,7 @@ Triggered via Django admin action on the Event model.
 
 ## Schedule sync (Sheets → Django)
 
-**Service:** `src/event/services/schedule_sync.py`
+**Service:** `src/apps/event/services/schedule_sync.py`
 
 Imports track assignments and project data from a Google Sheet into the database.
 

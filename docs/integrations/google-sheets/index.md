@@ -15,8 +15,8 @@ Engineers maintaining the event registration pipeline, admins configuring Google
 
 | Integration | Direction | Trigger | Service |
 |-------------|-----------|---------|---------|
-| Registration sync | Django → Sheets | On registration creation | `src/event/services/registration_sheet_sync.py` |
-| Schedule sync | Sheets → Django | Admin action or management | `src/event/services/schedule_sync.py` |
+| Registration sync | Django → Sheets | On registration creation | `src/apps/event/services/registration_sheet_sync.py` |
+| Schedule sync | Sheets → Django | Admin action or management | `src/apps/event/services/schedule_sync.py` |
 
 Both integrations authenticate via a Google service account whose credentials are stored in the `GoogleCredentialConfig` model (managed through Django admin).
 
@@ -30,7 +30,7 @@ Both integrations authenticate via a Google service account whose credentials ar
 
 ## Authentication
 
-Credentials are stored in `GoogleCredentialConfig` (`src/core/models/service_credentials.py`) as a JSON text field containing a Google service account key. The model validates that the JSON includes:
+Credentials are stored in `GoogleCredentialConfig` (`src/apps/core/models/service_credentials.py`) as a JSON text field containing a Google service account key. The model validates that the JSON includes:
 
 - `type`
 - `project_id`

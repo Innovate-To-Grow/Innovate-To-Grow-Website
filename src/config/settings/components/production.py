@@ -1,7 +1,7 @@
 """
 Production-only settings.
 
-Imported by ``prod.py`` on top of ``base.py``.  All secrets and host names
+Imported by ``production.py`` on top of ``base.py``.  All secrets and host names
 come from environment variables -- nothing is hard-coded for production use.
 """
 

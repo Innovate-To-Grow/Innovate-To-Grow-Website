@@ -1,2 +1,5 @@
-"""Background tasks. No Celery is configured in this project; this is a
-placeholder for future async work. for the system_intelligence app."""
+"""Background tasks for the system_intelligence app.
+
+No Celery is configured in this project; this module is a placeholder for
+future async work.
+"""

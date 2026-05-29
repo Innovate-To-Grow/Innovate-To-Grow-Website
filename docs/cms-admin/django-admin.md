@@ -4,14 +4,14 @@ Admin interface customization, theme configuration, and extension patterns.
 
 ## Unfold theme
 
-The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme with a custom OKLch color palette (purple primary). Configuration is in `src/core/settings/components/integrations/admin.py`.
+The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme with a custom OKLch color palette (purple primary). Configuration is in `src/config/settings/components/integrations/admin.py`.
 
 ### Base classes
 
-All admin classes **must** inherit from `core.admin.BaseModelAdmin` or `ReadOnlyModelAdmin`, not Django's stock `ModelAdmin`. This ensures consistent theming and behavior.
+All admin classes **must** inherit from `apps.core.admin.BaseModelAdmin` or `ReadOnlyModelAdmin`, not Django's stock `ModelAdmin`. This ensures consistent theming and behavior.
 
 ```python
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 class MyModelAdmin(BaseModelAdmin):
     ...
@@ -31,17 +31,17 @@ The admin sidebar is organized into five sections:
 
 ### Tab groups
 
-Related models are grouped into tabs in the admin interface. Tab configuration is in `src/core/settings/components/integrations/admin.py`. For example, event-related models appear as tabs when viewing an event.
+Related models are grouped into tabs in the admin interface. Tab configuration is in `src/config/settings/components/integrations/admin.py`. For example, event-related models appear as tabs when viewing an event.
 
 ## Custom admin views
 
 ### Admin login
 
-`AdminLoginView` (`src/authn/views/admin/login.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
+`AdminLoginView` (`src/apps/authn/views/admin/login.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
 
 ### Email campaign admin
 
-`EmailCampaignAdmin` (`src/mail/admin/campaign.py`) provides:
+`EmailCampaignAdmin` (`src/apps/mail/admin/campaign.py`) provides:
 - Inline recipient logs
 - Campaign status display
 - Gmail template import action
@@ -65,7 +65,7 @@ Semester admin includes:
 
 Rich text editing for CMS block content and email campaign bodies.
 
-**Configuration:** `src/core/settings/components/integrations/editor.py`
+**Configuration:** `src/config/settings/components/integrations/editor.py`
 
 - Toolbar: heading, bold, italic, link, list, image, table, blockquote, code, alignment
 - File uploads: `/ckeditor5/` endpoint, restricted to staff users
@@ -73,9 +73,9 @@ Rich text editing for CMS block content and email campaign bodies.
 
 ## Adding new admin pages
 
-1. Create an admin class inheriting from `core.admin.BaseModelAdmin`
+1. Create an admin class inheriting from `apps.core.admin.BaseModelAdmin`
 2. Register it in the app's `admin.py`
-3. Add it to the appropriate sidebar section in `core/settings/components/integrations/admin.py`
+3. Add it to the appropriate sidebar section in `config/settings/components/integrations/admin.py`
 4. If it should appear in a tab group with related models, add it to the tab configuration
 
 ## Related pages

@@ -3,7 +3,7 @@ Core Django framework configuration.
 
 Defines the fundamental Django settings shared across all environments:
 installed apps, middleware stack, templates, authentication, and static/media
-file handling.  Environment-specific files (dev/prod/ci) may override values
+file handling.  Environment-specific files (local/production/test) may override values
 like DATABASES, STATICFILES_DIRS, or STORAGES.
 """
 
@@ -98,7 +98,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Static and media files (defaults; prod.py overrides with S3)
+# Static and media files (defaults; production.py overrides with S3)
 # ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"

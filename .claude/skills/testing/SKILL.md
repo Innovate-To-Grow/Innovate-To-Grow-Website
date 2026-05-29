@@ -9,9 +9,9 @@ description: Use this skill when writing or running backend Django tests or fron
 ### Running
 
 ```bash
-cd src && python manage.py test --settings=core.settings.dev                      # all tests
-cd src && python manage.py test event.tests.test_current_projects --settings=core.settings.dev  # one module
-cd src && python manage.py test event.tests.test_current_projects.CurrentProjectsAPIViewTest.test_returns_newest_published_semester --settings=core.settings.dev  # one test
+cd src && python manage.py test --settings=config.settings.local                      # all tests
+cd src && python manage.py test apps.event.tests.test_current_projects --settings=config.settings.local  # one module
+cd src && python manage.py test apps.event.tests.test_current_projects.CurrentProjectsAPIViewTest.test_returns_newest_published_semester --settings=config.settings.local  # one test
 ```
 
 ### File Structure
@@ -51,7 +51,7 @@ class MyAPIViewTest(TestCase):
         self.assertIsInstance(response.data["items"], list)
 ```
 
-See `src/event/tests/test_current_projects.py` for a full example.
+See `src/apps/event/tests/test_current_projects.py` for a full example.
 
 ### Key Patterns
 
@@ -133,9 +133,9 @@ describe('MyComponent', () => {
 
 ## Key Files
 
-- `src/event/tests/test_current_projects.py` — canonical backend API test
-- `src/authn/tests/api/test_token_and_profile.py` — JWT-authenticated test
-- `src/authn/tests/helpers.py` — shared test utilities
+- `src/apps/event/tests/test_current_projects.py` — canonical backend API test
+- `src/apps/authn/tests/api/test_token_and_profile.py` — JWT-authenticated test
+- `src/apps/authn/tests/helpers.py` — shared test utilities
 - `pages/src/__tests__/setup.ts` — Vitest setup
 - `pages/vitest.config.ts` — Vitest configuration
 - `.github/workflows/ci.yml` — CI pipeline

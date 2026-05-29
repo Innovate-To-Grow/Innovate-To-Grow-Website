@@ -1,1 +1,1 @@
-"""Read/query logic (selectors) — read paths kept separate from services for the authn app."""
+"""Read/query logic for the authn app — read paths kept separate from services."""

@@ -6,7 +6,7 @@ Maintenance tasks, data management, and operational guidance for administrators.
 
 ### Enabling
 
-The `SiteMaintenanceControl` model (`src/core/models/web.py`) controls maintenance mode:
+The `SiteMaintenanceControl` model (`src/apps/core/models/web.py`) controls maintenance mode:
 
 1. In Django admin → Site Settings → Site Maintenance Control
 2. Set `is_maintenance = True`
@@ -76,7 +76,7 @@ Only one of each can be active. Setting a new config as active deactivates the p
 ## News sync
 
 ```bash
-cd src && python manage.py sync_news --settings=core.settings.dev
+cd src && python manage.py sync_news --settings=config.settings.local
 ```
 
 Fetches articles from all configured `NewsFeedSource` records. Results logged in `NewsSyncLog`.
@@ -105,7 +105,7 @@ From Event admin:
 
 ## Project import
 
-Projects are imported via CSV in the Semester admin page. The CSV service (`src/projects/services/`) maps columns to `Project` model fields.
+Projects are imported via CSV in the Semester admin page. The CSV service (`src/apps/projects/services/`) maps columns to `Project` model fields.
 
 ## Member operations
 

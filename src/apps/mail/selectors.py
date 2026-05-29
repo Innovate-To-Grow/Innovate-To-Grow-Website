@@ -1,1 +1,1 @@
-"""Read/query logic (selectors) — read paths kept separate from services for the mail app."""
+"""Read/query logic for the mail app — read paths kept separate from services."""

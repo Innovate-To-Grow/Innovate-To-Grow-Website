@@ -30,7 +30,7 @@ Runs on every push and pull request. All stages must pass before deployment work
 
 - Python 3.11
 - `python manage.py migrate` — verify migrations apply
-- `python manage.py test --settings=core.settings.dev` — run test suite
+- `python manage.py test --settings=config.settings.local` — run test suite
 - `python manage.py check` — Django system checks
 
 Uses SQLite (dev settings) for fast test execution.
@@ -44,7 +44,7 @@ Uses SQLite (dev settings) for fast test execution.
 ### Stage 4: PostgreSQL migration test
 
 - Spins up PostgreSQL 16 as a GitHub Actions service container
-- Runs `python manage.py migrate --settings=core.settings.ci`
+- Runs `python manage.py migrate --settings=config.settings.test`
 - Validates no pending migrations (`python manage.py makemigrations --check`)
 - Catches migration issues that don't surface with SQLite
 
@@ -97,7 +97,7 @@ Both deploy workflows use AWS credentials stored in GitHub Secrets.
 
 When adding new CI stages:
 1. Add the step to the appropriate workflow file in `.github/workflows/`
-2. For new backend checks, use `--settings=core.settings.dev` (SQLite) or `--settings=core.settings.ci` (PostgreSQL)
+2. For new backend checks, use `--settings=config.settings.local` (SQLite) or `--settings=config.settings.test` (PostgreSQL)
 3. For new frontend checks, ensure Node.js 20 compatibility
 4. Keep stages independent where possible for parallel execution
 

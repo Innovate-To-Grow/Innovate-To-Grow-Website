@@ -57,7 +57,7 @@ Frontend type: `PaginatedResponse<T>` from `shared/api/types.ts`.
 
 - Backend uses kebab-case: `/event/registration-options/`.
 - UUID params: `<uuid:pk>` in Django, interpolated in frontend: `` `/event/my-tickets/${id}/resend-email/` ``.
-- App prefix in core router: `path("event/", include("event.urls"))`.
+- App prefix in core router: `path("event/", include("apps.event.urls"))`.
 
 ## Auth Header Pattern (Frontend)
 
@@ -83,6 +83,6 @@ const response = await api.get<T>('/endpoint/', {headers: authHeaders()});
 - `pages/vite.config.ts` — proxy rewrite rules
 - `pages/src/shared/api/client.ts` — Axios instance
 - `pages/src/shared/api/types.ts` — `PaginatedResponse<T>`
-- `src/core/urls.py` — root URL router
-- `src/event/urls.py` — canonical app URL patterns
-- `src/core/settings/components/integrations/api.py` — DRF + JWT config
+- `src/apps/core/urls.py` — root URL router
+- `src/apps/event/urls.py` — canonical app URL patterns
+- `src/config/settings/components/integrations/api.py` — DRF + JWT config

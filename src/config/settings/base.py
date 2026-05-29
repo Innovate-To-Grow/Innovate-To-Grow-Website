@@ -2,7 +2,7 @@
 Base settings entrypoint.
 
 Assembles all component fragments via wildcard imports so that environment
-files (dev.py, prod.py, ci.py) can simply ``from .base import *`` and then
+files (local.py, production.py, test.py) can simply ``from .base import *`` and then
 apply their own overrides.
 
 Import order matters: environment first (BASE_DIR), then django (uses

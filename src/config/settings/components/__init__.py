@@ -7,6 +7,6 @@ Organized into subpackages by concern:
   integrations/   – Third-party package config (DRF, JWT, Unfold, CKEditor).
   production.py   – Production-only overlay (security, S3, logging, caching).
 
-Assembled by ``base.py``; environment entrypoints (dev/prod/ci) import from
+Assembled by ``base.py``; environment entrypoints (local/production/test) import from
 base and apply their own overrides.
 """

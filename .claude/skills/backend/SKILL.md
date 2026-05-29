@@ -6,14 +6,14 @@ description: Use this skill when writing Django backend code — models, views, 
 
 ## Models
 
-Inherit from `core.models.ProjectControlModel` (UUID PK, `created_at`, `updated_at`).
-Mix in `AuthoredModel`, `OrderedModel`, or `ActiveModel` from `core.models.mixins` as needed.
+Inherit from `apps.core.models.ProjectControlModel` (UUID PK, `created_at`, `updated_at`).
+Mix in `AuthoredModel`, `OrderedModel`, or `ActiveModel` from `apps.core.models.mixins` as needed.
 
 ```python
 # src/<app>/models/<name>.py
 from django.db import models
-from core.models import ProjectControlModel
-from core.models.mixins import ActiveModel, OrderedModel
+from apps.core.models import ProjectControlModel
+from apps.core.models.mixins import ActiveModel, OrderedModel
 
 class Widget(ActiveModel, OrderedModel, ProjectControlModel):
     name = models.CharField(max_length=200)
@@ -56,7 +56,7 @@ class WidgetListView(APIView):
         return Response(data)
 ```
 
-See `src/event/views/current_projects.py` for the canonical pattern.
+See `src/apps/event/views/current_projects.py` for the canonical pattern.
 
 ## Serializers
 
@@ -75,12 +75,12 @@ Always include `id`, `created_at`, `updated_at` in `read_only_fields`.
 
 ## Admin
 
-Always inherit from `core.admin.BaseModelAdmin` (Unfold theme). Use `@admin.register`.
+Always inherit from `apps.core.admin.BaseModelAdmin` (Unfold theme). Use `@admin.register`.
 
 ```python
 # src/<app>/admin/<name>.py
 from django.contrib import admin
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 @admin.register(Widget)
 class WidgetAdmin(BaseModelAdmin):
@@ -115,7 +115,7 @@ urlpatterns = [
 ]
 ```
 
-Register in `src/core/urls.py` via `path("widgets/", include("widgets.urls"))`.
+Register in `src/apps/core/urls.py` via `path("widgets/", include("widgets.urls"))`.
 
 ## Style
 
@@ -126,7 +126,7 @@ Register in `src/core/urls.py` via `path("widgets/", include("widgets.urls"))`.
 ## Do NOT
 
 - Use ViewSets, generic API views, or DRF routers.
-- Use stock `ModelAdmin` — always use `core.admin.BaseModelAdmin`.
+- Use stock `ModelAdmin` — always use `apps.core.admin.BaseModelAdmin`.
 - Set `DEFAULT_THROTTLE_CLASSES` globally (breaks tests at 127.0.0.1).
 - Use integer auto-increment PKs — all models use UUID.
 - Put heavy business logic in views — extract to `services/`.
@@ -134,11 +134,11 @@ Register in `src/core/urls.py` via `path("widgets/", include("widgets.urls"))`.
 
 ## Key Files
 
-- `src/core/models/base/control.py` — ProjectControlModel
-- `src/core/models/mixins/base.py` — AuthoredModel, OrderedModel, ActiveModel
-- `src/core/admin/base.py` — BaseModelAdmin, ReadOnlyModelAdmin
-- `src/core/admin/mixins.py` — TimestampedAdminMixin, ImportExportMixin, ExportMixin
-- `src/event/views/current_projects.py` — canonical view pattern
-- `src/event/urls.py` — canonical URL patterns
-- `src/authn/services/` — service layer examples
+- `src/apps/core/models/base/control.py` — ProjectControlModel
+- `src/apps/core/models/mixins/base.py` — AuthoredModel, OrderedModel, ActiveModel
+- `src/apps/core/admin/base.py` — BaseModelAdmin, ReadOnlyModelAdmin
+- `src/apps/core/admin/mixins.py` — TimestampedAdminMixin, ImportExportMixin, ExportMixin
+- `src/apps/event/views/current_projects.py` — canonical view pattern
+- `src/apps/event/urls.py` — canonical URL patterns
+- `src/apps/authn/services/` — service layer examples
 - `pyproject.toml` — Ruff configuration

@@ -21,13 +21,13 @@ pre-commit install --hook-type pre-commit --hook-type pre-push --install-hooks
 
 ## Backend
 
-All Django commands require `--settings=core.settings.dev` locally (except `runserver` and `migrate` which pick it up from defaults).
+All Django commands require `--settings=config.settings.local` locally (except `runserver` and `migrate` which pick it up from defaults).
 
 ```bash
 cd src && python manage.py runserver
 cd src && python manage.py migrate
 cd src && python manage.py makemigrations
-cd src && python manage.py test --settings=core.settings.dev
+cd src && python manage.py test --settings=config.settings.local
 cd src && ruff check .
 cd src && ruff check . --fix      # auto-fix lint issues
 cd src && ruff format --check .
@@ -37,9 +37,9 @@ cd src && ruff format .           # auto-format in place
 ### Running a single test
 
 ```bash
-cd src && python manage.py test authn.tests.test_api --settings=core.settings.dev       # one module
-cd src && python manage.py test authn.tests.test_api.LoginTest --settings=core.settings.dev  # one class
-cd src && python manage.py test authn.tests.test_api.LoginTest.test_login --settings=core.settings.dev  # one method
+cd src && python manage.py test apps.authn.tests.test_api --settings=config.settings.local       # one module
+cd src && python manage.py test apps.authn.tests.test_api.LoginTest --settings=config.settings.local  # one class
+cd src && python manage.py test apps.authn.tests.test_api.LoginTest.test_login --settings=config.settings.local  # one method
 ```
 
 ### Pre-commit and SAST
@@ -48,7 +48,7 @@ cd src && python manage.py test authn.tests.test_api.LoginTest.test_login --sett
 pre-commit run --all-files                                  # all hooks against full tree
 pre-commit run --hook-stage pre-push --all-files            # include slow pre-push hooks
 cd src && bandit -r . -c ../pyproject.toml --baseline ../.bandit-baseline.json -q
-cd src && python manage.py check --settings=core.settings.dev
+cd src && python manage.py check --settings=config.settings.local
 ```
 
 ### Management commands
@@ -58,7 +58,7 @@ cd src && python manage.py resetdb --force                        # destructive 
 cd src && python manage.py seed_service_configs                   # create skeleton EmailServiceConfig / optional AWSCredentialConfig rows
 cd src && python manage.py verify_service_configs --strict        # confirm active DB configs before prod deploy
 cd src && python manage.py createsuperuser                        # prompts for email (not username)
-cd src && python manage.py sync_news --settings=core.settings.dev # sync articles from UC Merced RSS feed
+cd src && python manage.py sync_news --settings=config.settings.local # sync articles from UC Merced RSS feed
 cd src && python manage.py loaddata cms/fixtures/footer_content.json
 ```
 

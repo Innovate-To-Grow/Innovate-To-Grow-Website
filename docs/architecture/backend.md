@@ -16,7 +16,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 
 ## Base model: ProjectControlModel
 
-Defined in `src/core/models/base.py`. Nearly all domain models inherit from this abstract class.
+Defined in `src/apps/core/models/base.py`. Nearly all domain models inherit from this abstract class.
 
 ```
 ProjectControlModel (abstract)
@@ -30,7 +30,7 @@ ProjectControlModel (abstract)
 
 ### Model mixins
 
-Additional abstract mixins in `src/core/models/mixins/`:
+Additional abstract mixins in `src/apps/core/models/mixins/`:
 
 | Mixin | Fields |
 |-------|--------|
@@ -40,7 +40,7 @@ Additional abstract mixins in `src/core/models/mixins/`:
 
 ## Settings structure
 
-Settings live in `src/core/settings/` with a modular import pattern:
+Settings live in `src/config/settings/` with a modular import pattern:
 
 ```
 core/settings/
@@ -76,7 +76,7 @@ core/settings/
 
 Detailed in [API: Auth & Mail](../api/auth-and-mail.md). Summary:
 
-- **Member model** (`src/authn/models/member.py`): extends `AbstractUser` + `ProjectControlModel`. PK is a UUID. `USERNAME_FIELD = "id"`.
+- **Member model** (`src/apps/authn/models/member.py`): extends `AbstractUser` + `ProjectControlModel`. PK is a UUID. `USERNAME_FIELD = "id"`.
 - **JWT**: SimpleJWT with 1-hour access tokens, 7-day refresh tokens, rotation, and blacklisting.
 - **Email challenges**: `EmailAuthChallenge` model provides time-limited codes for registration, login, password reset, account deletion, and contact verification.
 - **RSA encryption**: Client encrypts passwords with a server-provided RSA public key before transmission. Keys rotate on each login.
@@ -84,7 +84,7 @@ Detailed in [API: Auth & Mail](../api/auth-and-mail.md). Summary:
 
 ## Middleware stack
 
-Defined in `src/core/settings/components/framework/django.py`:
+Defined in `src/config/settings/components/framework/django.py`:
 
 1. `GZipMiddleware` — Response compression
 2. `CorsMiddleware` — Cross-origin headers (django-cors-headers)
@@ -99,7 +99,7 @@ Defined in `src/core/settings/components/framework/django.py`:
 
 ### HealthCheckMiddleware
 
-`src/core/middleware.py` provides three health endpoints:
+`src/apps/core/middleware.py` provides three health endpoints:
 
 | Path | Purpose | Database check |
 |------|---------|----------------|
@@ -111,7 +111,7 @@ Defined in `src/core/settings/components/framework/django.py`:
 
 ## Singleton configuration models
 
-Several models in `src/core/models/` use a singleton pattern (only one active record):
+Several models in `src/apps/core/models/` use a singleton pattern (only one active record):
 
 | Model | Purpose | Location |
 |-------|---------|----------|

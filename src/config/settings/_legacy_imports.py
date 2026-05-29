@@ -65,13 +65,21 @@ class _LegacyAppLoader(Loader):
     def create_module(self, spec):
         module = importlib.import_module(self._canonical_name)
         sys.modules[spec.name] = module
+        # Capture the canonical spec before the import machinery overwrites
+        # ``module.__spec__`` with this legacy-named spec (see exec_module).
+        self._canonical_spec = module.__spec__
         return module
 
     def exec_module(self, module):
         # The canonical module body already executed during import_module above;
         # re-executing here would create a second object and break __module__
-        # identity, so this is intentionally a no-op.
-        pass
+        # identity, so we do not re-exec. We only restore __spec__: the import
+        # machinery just set module.__spec__ to this loader's legacy-named spec,
+        # which would leave __spec__.name out of sync with __name__ (and point a
+        # later importlib.reload() at the wrong name). Restoring the canonical
+        # spec keeps the shared module object's metadata self-consistent.
+        if getattr(self, "_canonical_spec", None) is not None:
+            module.__spec__ = self._canonical_spec
 
 
 class _LegacyAppFinder(MetaPathFinder):

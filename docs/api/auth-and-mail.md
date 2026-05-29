@@ -10,13 +10,13 @@ The auth system is built on `rest_framework_simplejwt` with custom extensions fo
 
 | Concern | Path |
 |---------|------|
-| Views | `src/authn/views/` (subpackages: `auth/`, `account/`, `admin/`) |
-| Serializers | `src/authn/serializers/` |
-| Services | `src/authn/services/` |
-| Models | `src/authn/models/` |
-| URLs | `src/authn/urls.py` |
-| Throttles | `src/authn/throttles.py` |
-| Mail views | `src/mail/views.py` |
+| Views | `src/apps/authn/views/` (subpackages: `auth/`, `account/`, `admin/`) |
+| Serializers | `src/apps/authn/serializers/` |
+| Services | `src/apps/authn/services/` |
+| Models | `src/apps/authn/models/` |
+| URLs | `src/apps/authn/urls.py` |
+| Throttles | `src/apps/authn/throttles.py` |
+| Mail views | `src/apps/mail/views.py` |
 
 ## Registration
 
@@ -42,7 +42,7 @@ Creates a new member account. Passwords are RSA-encrypted by the frontend before
 - Email must not be already registered
 - Password decrypted server-side using matching RSA keypair
 
-**Service:** `src/authn/services/create_member.py` (`CreateMemberService`)
+**Service:** `src/apps/authn/services/create_member.py` (`CreateMemberService`)
 
 ## Login
 
@@ -237,9 +237,9 @@ Three token-based login paths for email-originated actions:
 
 | Endpoint | Token source | Service |
 |----------|-------------|---------|
-| `POST /authn/unsubscribe-login/` | Unsubscribe link in emails | `src/authn/views/auth/` |
-| `POST /event/ticket-login/` | QR code on event ticket | `src/event/views/` |
-| `POST /mail/magic-login/` | Magic link in campaign email | `src/mail/views.py` |
+| `POST /authn/unsubscribe-login/` | Unsubscribe link in emails | `src/apps/authn/views/auth/` |
+| `POST /event/ticket-login/` | QR code on event ticket | `src/apps/event/views/` |
+| `POST /mail/magic-login/` | Magic link in campaign email | `src/apps/mail/views.py` |
 
 Each validates the token and returns JWT access/refresh tokens.
 
@@ -251,7 +251,7 @@ Accepts an admin invitation token and sets up the admin account.
 
 ## Mail system
 
-The mail app (`src/mail/`) handles email campaigns. Its only public API endpoint is the magic login above. Campaign management is done through Django admin — see [CMS & Admin: Member & Mail Tools](../cms-admin/member-and-mail-tools.md).
+The mail app (`src/apps/mail/`) handles email campaigns. Its only public API endpoint is the magic login above. Campaign management is done through Django admin — see [CMS & Admin: Member & Mail Tools](../cms-admin/member-and-mail-tools.md).
 
 ## Related pages
 

@@ -10,11 +10,11 @@ The event system manages the Innovate To Grow showcase event lifecycle: registra
 
 | Concern | Path |
 |---------|------|
-| Views | `src/event/views/` |
-| Serializers | `src/event/serializers/` |
-| Services | `src/event/services/` |
-| Models | `src/event/models/` |
-| URLs | `src/event/urls.py` |
+| Views | `src/apps/event/views/` |
+| Serializers | `src/apps/event/serializers/` |
+| Services | `src/apps/event/services/` |
+| Models | `src/apps/event/models/` |
+| URLs | `src/apps/event/urls.py` |
 
 ## Key models
 

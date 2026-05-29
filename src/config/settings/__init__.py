@@ -2,9 +2,9 @@
 #
 # Structure:
 #   base.py        – Assembles all component fragments into one importable module.
-#   dev.py         – Development overrides (SQLite, DEBUG=True, insecure key).
-#   prod.py        – Production overrides (imports components/production.py).
-#   ci.py          – CI pipeline overrides (PostgreSQL test database).
+#   local.py       – Local development overrides (SQLite, DEBUG=True, insecure key).
+#   production.py  – Production overrides (imports components/production.py).
+#   test.py        – CI / test pipeline overrides (PostgreSQL test database).
 #
 #   components/
 #     framework/
