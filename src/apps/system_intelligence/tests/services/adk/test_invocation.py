@@ -6,6 +6,7 @@ from google.adk.events import Event
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.adk import (
     _TEMPERATURE_DEPRECATED_MODEL_IDS,
@@ -13,7 +14,6 @@ from apps.system_intelligence.services.adk import (
     APP_NAME,
     _invoke_system_intelligence_stream_async,
 )
-from core.models import AWSCredentialConfig
 
 
 class SystemIntelligenceADKInvocationTests(TestCase):

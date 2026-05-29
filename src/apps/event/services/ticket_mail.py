@@ -15,6 +15,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from apps.event.models import EventRegistration
 from apps.event.services.calendar import build_google_calendar_url, generate_ics
 from apps.event.services.ticket_assets import (
@@ -22,13 +23,12 @@ from apps.event.services.ticket_assets import (
     build_ticket_login_token,
     generate_ticket_barcode_png_bytes,
 )
-from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 
 
 def _load_config():
-    from core.models import EmailServiceConfig
+    from apps.core.models import EmailServiceConfig
 
     return EmailServiceConfig.load()
 

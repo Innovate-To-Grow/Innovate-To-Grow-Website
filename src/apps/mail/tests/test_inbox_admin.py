@@ -3,9 +3,9 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.event.tests.helpers import make_superuser
 from apps.mail.services.inbox.reply import send_reply
-from core.models import AWSCredentialConfig, EmailServiceConfig
-from event.tests.helpers import make_superuser
 
 
 class InboxAdminFragmentTest(TestCase):

@@ -4,9 +4,9 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, MagicLoginToken
 from apps.mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH
-from event.tests.helpers import make_member
 
 
 class MagicLoginViewTests(APITestCase):

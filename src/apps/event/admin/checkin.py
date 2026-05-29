@@ -8,8 +8,8 @@ from django.utils.html import format_html
 from django.utils.text import slugify
 from unfold.decorators import display
 
+from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 from apps.event.services.checkin_export import build_checkin_export
-from core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 
 from ..models import CheckIn, CheckInRecord
 

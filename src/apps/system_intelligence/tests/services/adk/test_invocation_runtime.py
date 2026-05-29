@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 from google.adk.events import Event
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.adk import (
     AGENT_NAME,
@@ -10,7 +11,6 @@ from apps.system_intelligence.services.adk import (
     _to_litellm_bedrock_model,
     invoke_system_intelligence_stream,
 )
-from core.models import AWSCredentialConfig
 
 
 class SystemIntelligenceADKInvocationTests(TestCase):
@@ -72,7 +72,7 @@ class SystemIntelligenceADKInvocationTests(TestCase):
         self.assertEqual(events, [{"type": "text", "chunk": "Loaded"}])
 
     def test_litellm_model_adapter_normalizes_without_catalog_lookup(self):
-        with patch("core.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError):
+        with patch("apps.core.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError):
             self.assertEqual(
                 _to_litellm_bedrock_model("us.anthropic.claude-sonnet-4-20250514-v1:0"),
                 "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",

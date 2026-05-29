@@ -1,7 +1,7 @@
 from django.core.cache import cache
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 def default_footer_content():

@@ -6,7 +6,7 @@ from django.utils.html import format_html
 
 from apps.cms.models import CMSAsset
 from apps.cms.models.media import ALLOWED_ASSET_EXTENSIONS, IMAGE_ASSET_EXTENSIONS
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 _IMAGE_EXTENSIONS = {f".{ext}" for ext in IMAGE_ASSET_EXTENSIONS}
 _ACCEPT_EXTENSIONS = ",".join(f".{ext}" for ext in ALLOWED_ASSET_EXTENSIONS)

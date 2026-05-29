@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from apps.cms.models import NewsSyncLog
-from core.admin import ReadOnlyModelAdmin
+from apps.core.admin import ReadOnlyModelAdmin
 
 
 @admin.register(NewsSyncLog)

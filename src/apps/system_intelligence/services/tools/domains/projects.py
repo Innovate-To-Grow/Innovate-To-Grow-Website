@@ -49,7 +49,7 @@ async def get_current_project_schedule(
 
 
 def _find_project(project_id: str | None = None, title: str | None = None, team_number: str | None = None):
-    from projects.models import Project
+    from apps.projects.models import Project
 
     qs = Project.objects.select_related("semester")
     if project_id:
@@ -83,7 +83,7 @@ def _season_value(season: str | int | None):
 
 
 def _find_semester(semester_id=None, year=None, season=None):
-    from projects.models import Semester
+    from apps.projects.models import Semester
 
     qs = Semester.objects.all()
     if semester_id:
@@ -116,7 +116,7 @@ def _get_semester_project_summary(semester_id=None, year=None, season=None) -> d
 
 
 def _get_current_project_schedule(schedule_id=None, active_only=True) -> dict[str, Any]:
-    from event.models import CurrentProjectSchedule
+    from apps.event.models import CurrentProjectSchedule
 
     qs = CurrentProjectSchedule.objects.prefetch_related("projects")
     if schedule_id:

@@ -9,7 +9,7 @@ from hashlib import sha256
 from django.core import signing
 from django.core.cache import cache
 
-from event.services.ticket_assets import build_frontend_absolute_url
+from apps.event.services.ticket_assets import build_frontend_absolute_url
 
 _UNSUBSCRIBE_LOGIN_SALT = "email-unsubscribe-login"
 _UNSUBSCRIBE_LOGIN_MAX_AGE = 60 * 60 * 24 * 90  # 90 days

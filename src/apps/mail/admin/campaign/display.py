@@ -6,7 +6,7 @@ from django.utils.html import escape, format_html
 from unfold.decorators import display
 
 import apps.mail.admin.campaign as campaign_api
-from core.models import EmailServiceConfig, GmailAccessAccount
+from apps.core.models import EmailServiceConfig, GmailAccessAccount
 
 
 class CampaignDisplayMixin:
@@ -100,7 +100,7 @@ class CampaignDisplayMixin:
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         try:
-            from core.models import AWSCredentialConfig
+            from apps.core.models import AWSCredentialConfig
 
             extra_context["email_config"] = EmailServiceConfig.load()
             extra_context["aws_config"] = AWSCredentialConfig.load()

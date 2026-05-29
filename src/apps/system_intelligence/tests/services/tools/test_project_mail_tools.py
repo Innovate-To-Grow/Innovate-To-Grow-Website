@@ -1,9 +1,9 @@
 from django.test import TestCase
 
-from core.services.db_tools.tool_modules.mail import get_campaign_stats, search_email_campaigns
-from core.services.db_tools.tool_modules.projects import search_projects, search_semesters
-from mail.models import EmailCampaign, RecipientLog
-from projects.models import Project, Semester
+from apps.core.services.db_tools.tool_modules.mail import get_campaign_stats, search_email_campaigns
+from apps.core.services.db_tools.tool_modules.projects import search_projects, search_semesters
+from apps.mail.models import EmailCampaign, RecipientLog
+from apps.projects.models import Project, Semester
 
 
 class SearchProjectsToolTests(TestCase):

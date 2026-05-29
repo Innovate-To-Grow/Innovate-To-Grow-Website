@@ -87,9 +87,9 @@ class TicketEmailTypedConfirmationTest(TestCase):
         mock_send.assert_called_once()
 
     @patch("apps.event.services.ticket_mail.send_ticket_email")
-    @patch("authn.services.email.send_email.senders.send_notification_email")
+    @patch("apps.authn.services.email.send_email.senders.send_notification_email")
     def test_send_all_ticket_emails_does_not_notify_staff(self, mock_notify, mock_send):
-        from authn.models import ContactEmail, Member
+        from apps.authn.models import ContactEmail, Member
 
         other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
         ContactEmail.objects.create(

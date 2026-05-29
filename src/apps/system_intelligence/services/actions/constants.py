@@ -1,6 +1,6 @@
 import re
 
-from core.services.db_tools.helpers import MAX_ROWS
+from apps.core.services.db_tools.helpers import MAX_ROWS
 
 PREVIEW_TTL_SECONDS = 600
 COMPARISON_MAX_BLOCKS = 8

@@ -2,7 +2,7 @@ import re
 
 from django.db import transaction
 
-from event.models import EventRegistration
+from apps.event.models import EventRegistration
 
 from ....models import ContactPhone
 from ....models.contact.phone_regions import PHONE_REGION_CHOICES

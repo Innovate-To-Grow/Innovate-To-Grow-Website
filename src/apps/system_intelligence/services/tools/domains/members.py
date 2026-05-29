@@ -43,7 +43,7 @@ async def get_member_activity_summary(member_id: str | None = None, email: str |
 
 
 def _find_member(member_id: str | None = None, email: str | None = None):
-    from authn.models import Member
+    from apps.authn.models import Member
 
     qs = Member.objects.prefetch_related("contact_emails", "contact_phones")
     if member_id:
@@ -54,7 +54,7 @@ def _find_member(member_id: str | None = None, email: str | None = None):
 
 
 def _get_member_detail(member_id: str | None = None, email: str | None = None) -> dict[str, Any]:
-    from mail.models import RecipientLog
+    from apps.mail.models import RecipientLog
 
     member = _find_member(member_id, email)
     emails = [
@@ -85,7 +85,7 @@ def _search_contact_info(
     verified: bool | None = None,
     limit: int | None = None,
 ) -> dict[str, Any]:
-    from authn.models import ContactEmail, ContactPhone
+    from apps.authn.models import ContactEmail, ContactPhone
 
     row_limit = bounded_limit(limit)
     email_qs = ContactEmail.objects.select_related("member")
@@ -119,9 +119,9 @@ def _search_contact_info(
 
 
 def _get_member_activity_summary(member_id: str | None = None, email: str | None = None) -> dict[str, Any]:
-    from cms.models import PageView
-    from event.models import EventRegistration
-    from mail.models import RecipientLog
+    from apps.cms.models import PageView
+    from apps.event.models import EventRegistration
+    from apps.mail.models import RecipientLog
 
     member = _find_member(member_id, email)
     registrations = EventRegistration.objects.filter(member=member).select_related("event", "ticket")

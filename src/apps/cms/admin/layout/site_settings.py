@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.core.cache import cache
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ...models import CMSPage, SiteSettings
 

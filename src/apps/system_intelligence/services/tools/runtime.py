@@ -2,7 +2,7 @@ from typing import Any
 
 from asgiref.sync import sync_to_async
 
-from core.services.db_tools import TOOL_REGISTRY
+from apps.core.services.db_tools import TOOL_REGISTRY
 
 
 def compact(params: dict[str, Any]) -> dict[str, Any]:

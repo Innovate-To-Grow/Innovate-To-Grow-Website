@@ -3,9 +3,9 @@ from unittest.mock import patch
 from django.db import IntegrityError
 from django.test import TestCase
 
+from apps.authn.models import ContactPhone
 from apps.event.services.sync_registration_to_account import sync_name_to_account, sync_phone_to_account
 from apps.event.tests.helpers import make_member
-from authn.models import ContactPhone
 
 
 class SyncNameToAccountTest(TestCase):

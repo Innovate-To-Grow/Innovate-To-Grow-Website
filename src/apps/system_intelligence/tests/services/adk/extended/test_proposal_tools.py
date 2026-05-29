@@ -5,15 +5,24 @@ from django.core.cache import cache
 from django.test import TransactionTestCase
 from django.utils import timezone
 
+from apps.authn.models import ContactPhone
+from apps.cms.models import (
+    CMSAsset,
+    FooterContent,
+    Menu,
+    NewsArticle,
+    NewsFeedSource,
+    PageView,
+    SiteSettings,
+    StyleSheet,
+)
+from apps.event.models import CheckIn, CheckInRecord, CurrentProject, CurrentProjectSchedule, Question
+from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
+from apps.mail.models import EmailCampaign, RecipientLog
+from apps.projects.models import Project, Semester
 from apps.system_intelligence.models import ChatConversation, SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services import tools as system_intelligence_tools
-from authn.models import ContactPhone
-from cms.models import CMSAsset, FooterContent, Menu, NewsArticle, NewsFeedSource, PageView, SiteSettings, StyleSheet
-from event.models import CheckIn, CheckInRecord, CurrentProject, CurrentProjectSchedule, Question
-from event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
-from mail.models import EmailCampaign, RecipientLog
-from projects.models import Project, Semester
 
 
 class SystemIntelligenceExtendedToolTests(TransactionTestCase):

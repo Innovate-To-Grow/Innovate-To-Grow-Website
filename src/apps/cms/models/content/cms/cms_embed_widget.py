@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 from ....embed_sections import effective_hidden_sections, normalize_hidden_sections
 from .cms_page import CMSPage

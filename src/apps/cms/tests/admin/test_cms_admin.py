@@ -5,10 +5,10 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.authn.models import ContactEmail
 from apps.cms.admin.cms.cms_page import CMSPageAdminForm
 from apps.cms.admin.cms.page_admin.editor import _format_widget_label, build_editor_context, save_blocks_from_json
 from apps.cms.models import BLOCK_SCHEMAS, CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
-from authn.models import ContactEmail
 
 Member = get_user_model()
 

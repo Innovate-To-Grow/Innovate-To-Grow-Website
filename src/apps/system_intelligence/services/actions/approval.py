@@ -6,8 +6,8 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from apps.cms.models import CMSPage
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
-from cms.models import CMSPage
 
 from .cms import apply_cms_page_update
 from .db import apply_db_create, apply_db_delete, apply_db_update

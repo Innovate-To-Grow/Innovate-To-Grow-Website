@@ -5,10 +5,10 @@ from typing import Any
 from django.db import close_old_connections
 from google.adk.cli.utils.base_agent_loader import BaseAgentLoader
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.adk.constants import APP_NAME
 from apps.system_intelligence.services.adk.runner import build_agent
-from core.models import AWSCredentialConfig
 
 
 class SystemIntelligenceAgentLoader(BaseAgentLoader):

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail
 

@@ -1,6 +1,6 @@
+from apps.authn.models import ContactPhone, Member
+from apps.event.models import EventRegistration
 from apps.mail.models.sms_campaign import E164_RE, parse_manual_sms_phones
-from authn.models import ContactPhone, Member
-from event.models import EventRegistration
 
 
 def get_sms_recipients(campaign):
@@ -126,7 +126,7 @@ def _ticket_type_for_event(event, ticket_id: str, phone_policy):
 
 
 def _checked_in(event, phone_policy):
-    from event.models import CheckInRecord
+    from apps.event.models import CheckInRecord
 
     if not event:
         return []
@@ -141,7 +141,7 @@ def _checked_in(event, phone_policy):
 
 
 def _not_checked_in(event, phone_policy):
-    from event.models import CheckInRecord
+    from apps.event.models import CheckInRecord
 
     if not event:
         return []

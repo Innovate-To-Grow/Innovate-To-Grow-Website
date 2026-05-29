@@ -15,7 +15,7 @@ def _mock_config(ses_configured=True):
 
 
 def _aws_creds():
-    from core.services.aws.credentials import AwsCredentials
+    from apps.core.services.aws.credentials import AwsCredentials
 
     return AwsCredentials(access_key_id="test-key", secret_access_key="test-secret", region="us-west-2")
 

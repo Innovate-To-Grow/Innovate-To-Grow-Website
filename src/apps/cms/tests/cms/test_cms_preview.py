@@ -4,7 +4,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from authn.models import Member
+from apps.authn.models import Member
 
 
 class CMSPreviewAPITest(TestCase):

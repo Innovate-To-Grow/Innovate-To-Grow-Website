@@ -1,5 +1,5 @@
+from apps.core.models import GoogleCredentialConfig
 from apps.event.models import Event
-from core.models import GoogleCredentialConfig
 
 
 class RegistrationSyncError(RuntimeError):

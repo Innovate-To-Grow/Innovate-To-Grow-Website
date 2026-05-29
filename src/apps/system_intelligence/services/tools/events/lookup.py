@@ -31,7 +31,7 @@ async def get_event_detail(
 
 
 def _find_event(event_id: str | None = None, slug: str | None = None, name: str | None = None):
-    from event.models import Event
+    from apps.event.models import Event
 
     qs = Event.objects.all()
     if event_id:

@@ -27,7 +27,7 @@ class SendPhoneCodeView(APIView):
 
         phone = registration_api._normalize_phone(phone, region)
         try:
-            from authn.services.sms import (
+            from apps.authn.services.sms import (
                 PhoneVerificationDeliveryError,
                 PhoneVerificationInvalid,
                 start_phone_verification,
@@ -72,7 +72,7 @@ class VerifyPhoneCodeView(APIView):
 
         phone = registration_api._normalize_phone(phone, region)
         try:
-            from authn.services.sms import (
+            from apps.authn.services.sms import (
                 PhoneVerificationInvalid,
                 PhoneVerificationThrottled,
                 check_phone_verification,

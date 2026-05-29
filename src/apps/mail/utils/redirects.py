@@ -1,7 +1,7 @@
 """Allowed redirect destinations for campaign magic-login links."""
 
-from cms.app_routes import APP_ROUTES
-from cms.models import CMSPage
+from apps.cms.app_routes import APP_ROUTES
+from apps.cms.models import CMSPage
 
 DEFAULT_LOGIN_REDIRECT_PATH = "/account"
 

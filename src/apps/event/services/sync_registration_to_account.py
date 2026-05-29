@@ -8,8 +8,8 @@ import logging
 
 from django.db import IntegrityError
 
-from authn.models import ContactPhone
-from authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
+from apps.authn.models import ContactPhone
+from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
 
 logger = logging.getLogger(__name__)
 

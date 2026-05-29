@@ -4,8 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from apps.core.models import ProjectControlModel
 from apps.mail.models.campaign import STATUS_CHOICES
-from core.models import ProjectControlModel
 
 SMS_AUDIENCE_CHOICES = [
     ("subscribers", "SMS Subscribers"),

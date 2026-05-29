@@ -1,10 +1,10 @@
 from django.contrib.auth.models import Permission
 from django.core.exceptions import PermissionDenied
 
+from apps.authn.models import Member
+from apps.cms.models import CMSPage, NewsFeedSource
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
-from authn.models import Member
-from cms.models import CMSPage, NewsFeedSource
 
 from .base import SystemIntelligenceActionBase
 

@@ -3,7 +3,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
-from event.models import CurrentProjectSchedule
+from apps.event.models import CurrentProjectSchedule
 
 
 class EmbedBlockViewTest(TestCase):

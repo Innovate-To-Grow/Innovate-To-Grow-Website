@@ -3,8 +3,8 @@ from django.contrib import admin, messages
 from unfold.admin import TabularInline
 from unfold.decorators import display
 
-from core.admin import BaseModelAdmin
-from core.models import EmailServiceConfig, GoogleCredentialConfig
+from apps.core.admin import BaseModelAdmin
+from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ..models import Event, Question, Ticket
 
@@ -141,7 +141,7 @@ class EventAdmin(BaseModelAdmin):
 
     @staticmethod
     def _get_site_settings_context():
-        from core.models import AWSCredentialConfig
+        from apps.core.models import AWSCredentialConfig
 
         email_config = EmailServiceConfig.load()
         google_config = GoogleCredentialConfig.load()

@@ -29,7 +29,7 @@ async def get_failed_recipient_report(
 
 
 def _find_campaign(campaign_id: str | None = None, campaign_name: str | None = None):
-    from mail.models import EmailCampaign
+    from apps.mail.models import EmailCampaign
 
     qs = EmailCampaign.objects.all()
     if campaign_id:

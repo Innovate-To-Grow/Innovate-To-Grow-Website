@@ -3,7 +3,7 @@ import secrets
 from django.conf import settings
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 def generate_registration_ticket_code():

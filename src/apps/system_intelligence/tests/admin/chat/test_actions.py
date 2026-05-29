@@ -1,10 +1,10 @@
 from django.core.cache import cache
 from django.urls import reverse
 
+from apps.cms.models import CMSBlock, CMSPage, NewsFeedSource
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
-from cms.models import CMSBlock, CMSPage, NewsFeedSource
 
 
 class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):

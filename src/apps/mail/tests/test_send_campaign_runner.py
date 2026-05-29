@@ -2,11 +2,11 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, MagicLoginToken, RecipientLog
 from apps.mail.services.send_campaign.runner import SendTiming, send_campaign
 from apps.mail.services.send_campaign.transport import SesSendResult
-from core.models import AWSCredentialConfig, EmailServiceConfig
-from event.tests.helpers import make_member
 
 
 def _make_active_aws():

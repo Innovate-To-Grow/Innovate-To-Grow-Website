@@ -19,7 +19,7 @@ async def get_style_sheet_detail(sheet_id: str | None = None, name: str | None =
 
 
 def _search_style_sheets(name=None, is_active=None, limit=None) -> dict[str, Any]:
-    from cms.models import StyleSheet
+    from apps.cms.models import StyleSheet
 
     qs = StyleSheet.objects.all()
     if name:
@@ -34,7 +34,7 @@ def _search_style_sheets(name=None, is_active=None, limit=None) -> dict[str, Any
 
 
 def _get_style_sheet_detail(sheet_id=None, name=None) -> dict[str, Any]:
-    from cms.models import StyleSheet
+    from apps.cms.models import StyleSheet
 
     qs = StyleSheet.objects.all()
     if sheet_id:

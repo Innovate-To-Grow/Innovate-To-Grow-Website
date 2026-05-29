@@ -5,9 +5,9 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.core.models import EmailServiceConfig
+from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign
-from core.models import EmailServiceConfig
-from event.tests.helpers import make_superuser
 
 
 def _make_campaign(name="Test Campaign", **kwargs):
@@ -23,7 +23,7 @@ def _make_campaign(name="Test Campaign", **kwargs):
 
 
 def _make_email_config():
-    from core.models import AWSCredentialConfig
+    from apps.core.models import AWSCredentialConfig
 
     AWSCredentialConfig.objects.all().delete()
     AWSCredentialConfig.objects.create(
@@ -103,9 +103,9 @@ class CampaignSendConfirmationTest(TestCase):
         mock_thread.return_value.start.assert_called_once()
 
     @patch("apps.mail.admin.campaign.views.send.CampaignSendMixin._background_send")
-    @patch("authn.services.email.send_email.senders.send_notification_email")
+    @patch("apps.authn.services.email.send_email.senders.send_notification_email")
     def test_campaign_send_does_not_notify_staff(self, mock_notify, mock_bg):
-        from authn.models import ContactEmail, Member
+        from apps.authn.models import ContactEmail, Member
 
         other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
         ContactEmail.objects.create(

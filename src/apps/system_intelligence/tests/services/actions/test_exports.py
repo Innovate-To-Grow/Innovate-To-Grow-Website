@@ -9,7 +9,7 @@ from .base import SystemIntelligenceActionBase
 
 class CreateExportTests(SystemIntelligenceActionBase):
     def _make_members(self, count, prefix="User"):
-        from authn.models import Member
+        from apps.authn.models import Member
 
         for index in range(count):
             Member.objects.create_user(

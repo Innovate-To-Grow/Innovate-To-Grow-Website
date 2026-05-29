@@ -9,7 +9,7 @@ A Menu contains a JSON structure of navigation items that can be:
 
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 def default_menu_items():

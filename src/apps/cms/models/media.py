@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 IMAGE_ASSET_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
 DOCUMENT_ASSET_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "csv", "txt"]

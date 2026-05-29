@@ -12,7 +12,7 @@ from unfold.decorators import action, display
 
 from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
 from apps.cms.services.news import sync_news
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 
 class NewsSyncLogInline(TabularInline):

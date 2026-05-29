@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ...models import FooterContent
 from .route_options import build_route_editor_context

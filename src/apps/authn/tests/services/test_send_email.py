@@ -37,7 +37,7 @@ class SendViaSesTests(TestCase):
     @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
     @patch("apps.authn.services.email.send_email.boto3")
     def test_returns_true_on_success(self, mock_boto3, mock_resolve):
-        from core.services.aws.credentials import AwsCredentials
+        from apps.core.services.aws.credentials import AwsCredentials
 
         mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
         config = _fake_config(ses_configured=True)
@@ -50,7 +50,7 @@ class SendViaSesTests(TestCase):
     def test_returns_false_on_client_error(self, mock_boto3, mock_resolve):
         from botocore.exceptions import ClientError
 
-        from core.services.aws.credentials import AwsCredentials
+        from apps.core.services.aws.credentials import AwsCredentials
 
         mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
         mock_boto3.client.return_value.send_email.side_effect = ClientError(

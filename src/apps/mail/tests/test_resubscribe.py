@@ -2,9 +2,9 @@ from unittest.mock import patch
 
 from rest_framework.test import APITestCase
 
+from apps.authn.models import ContactEmail
+from apps.event.tests.helpers import make_member
 from apps.mail.services.unsubscribe_token import build_resubscribe_token
-from authn.models import ContactEmail
-from event.tests.helpers import make_member
 
 
 class ResubscribeViewTests(APITestCase):
@@ -36,7 +36,7 @@ class ResubscribeViewTests(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 405)
 
-    @patch("authn.services.email.send_notification_email")
+    @patch("apps.authn.services.email.send_notification_email")
     def test_sends_confirmation_email(self, mock_send):
         self.client.post(self.url)
         mock_send.assert_called_once()

@@ -3,11 +3,11 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from core.services.db_tools.executor import execute_tool
-from core.services.db_tools.tool_modules.events import get_checkin_stats, get_event_registrations, search_events
-from core.services.db_tools.tool_modules.members import count_members, search_members
-from event.models import CheckIn, CheckInRecord
-from event.tests.helpers import make_event, make_member, make_registration, make_ticket
+from apps.core.services.db_tools.executor import execute_tool
+from apps.core.services.db_tools.tool_modules.events import get_checkin_stats, get_event_registrations, search_events
+from apps.core.services.db_tools.tool_modules.members import count_members, search_members
+from apps.event.models import CheckIn, CheckInRecord
+from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
 
 class ExecuteToolDispatchTests(TestCase):
@@ -27,7 +27,7 @@ class ExecuteToolDispatchTests(TestCase):
         result = execute_tool({"toolUseId": "t1", "input": {}})
         self.assertEqual(result, "Unknown tool: ")
 
-    @patch("core.services.db_tools.executor.TOOL_REGISTRY", {"boom": lambda p: 1 / 0})
+    @patch("apps.core.services.db_tools.executor.TOOL_REGISTRY", {"boom": lambda p: 1 / 0})
     def test_exception_returns_tool_error(self):
         result = execute_tool({"name": "boom", "toolUseId": "t1", "input": {}})
         self.assertIn("Tool error:", result)

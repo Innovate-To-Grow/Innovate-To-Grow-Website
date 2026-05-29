@@ -7,11 +7,11 @@ from unfold.widgets import (
     UnfoldAdminTextareaWidget,
 )
 
+from apps.event.models import Ticket
 from apps.mail.models import EmailCampaign
 from apps.mail.models.campaign import ALL_AUDIENCE_CHOICES, EXCLUDE_AUDIENCE_CHOICES
 from apps.mail.services.preview import HTML_MARKER
 from apps.mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
-from event.models import Ticket
 
 from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
 

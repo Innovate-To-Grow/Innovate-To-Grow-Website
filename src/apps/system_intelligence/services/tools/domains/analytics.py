@@ -39,7 +39,7 @@ async def get_page_view_trend(
 
 
 def _page_view_queryset(path=None, date_from=None, date_to=None):
-    from cms.models import PageView
+    from apps.cms.models import PageView
 
     qs = PageView.objects.all()
     if path:

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ..models import Project
 

@@ -5,9 +5,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.authn.models import Member
 from apps.cms.models import StyleSheet
 from apps.cms.views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
-from authn.models import Member
 
 
 class StyleSheetAdminImportExportTests(TestCase):

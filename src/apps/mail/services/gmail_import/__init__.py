@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from imap_tools import MailBox
 
-from core.models import GmailAccessAccount
+from apps.core.models import GmailAccessAccount
 
 from .connection import (
     DEFAULT_GMAIL_FOLDER,

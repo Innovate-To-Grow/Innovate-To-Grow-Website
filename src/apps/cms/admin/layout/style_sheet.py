@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.core.cache import cache
 
 from apps.cms.admin.layout.import_export import export_stylesheets_response, render_stylesheet_import
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ...models import StyleSheet
 

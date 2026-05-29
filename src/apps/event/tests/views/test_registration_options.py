@@ -1,9 +1,9 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.authn.models import ContactEmail, ContactPhone
 from apps.event.models import EventRegistration, Question, Ticket
 from apps.event.tests.helpers import make_event, make_member
-from authn.models import ContactEmail, ContactPhone
 
 
 class EventRegistrationOptionsViewTest(TestCase):

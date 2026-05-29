@@ -7,8 +7,8 @@ from django.urls import reverse
 from unfold.decorators import action
 
 import apps.mail.admin.campaign as campaign_api
+from apps.core.models import GmailAccessAccount
 from apps.mail.models import EmailCampaign
-from core.models import GmailAccessAccount
 
 
 class CampaignGmailMixin:

@@ -16,8 +16,8 @@ from apps.authn.services.sms.sns_verify import (
     check_phone_verification,
     start_phone_verification,
 )
-from core.models import AWSCredentialConfig, EmailServiceConfig
-from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 
 @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})

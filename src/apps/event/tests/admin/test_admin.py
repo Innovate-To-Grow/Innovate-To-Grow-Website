@@ -8,6 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import load_workbook
 
+from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.event.admin.registration import EventRegistrationAdmin
 from apps.event.models import CheckIn, CheckInRecord, Event, EventRegistration, Ticket
 from apps.event.services import ScheduleSyncStats
@@ -18,7 +19,6 @@ from apps.event.tests.helpers import (
     make_superuser,
     make_ticket,
 )
-from authn.models import ContactEmail, ContactPhone, Member
 
 
 class EventAdminTest(TestCase):

@@ -2,7 +2,7 @@ import logging
 
 from django.db import IntegrityError
 
-from authn.models import ContactEmail
+from apps.authn.models import ContactEmail
 
 logger = logging.getLogger(__name__)
 

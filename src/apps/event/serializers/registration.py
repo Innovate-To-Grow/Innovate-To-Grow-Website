@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
+from apps.authn.models.contact.phone_regions import PHONE_REGION_CHOICES
 from apps.event.services import generate_ticket_barcode_data_url
-from authn.models.contact.phone_regions import PHONE_REGION_CHOICES
 
 TICKET_EMAIL_FAILURE_MESSAGE = "Ticket email could not be sent. Please try again later."
 

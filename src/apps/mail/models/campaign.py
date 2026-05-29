@@ -2,8 +2,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from apps.core.models import ProjectControlModel
 from apps.mail.utils.redirects import is_safe_internal_redirect_path
-from core.models import ProjectControlModel
 
 ALL_AUDIENCE_CHOICES = [
     ("subscribers", "All Email Subscribers"),

@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.authn.models.contact.phone_regions import PHONE_REGION_CHOICES
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 class ContactEmail(ProjectControlModel):

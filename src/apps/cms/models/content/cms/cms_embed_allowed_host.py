@@ -3,7 +3,7 @@ import re
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 HOST_RE = re.compile(r"^(?:\*\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
 

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 def default_expiry():

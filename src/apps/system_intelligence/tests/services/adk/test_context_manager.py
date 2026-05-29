@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from apps.core.models import AWSCredentialConfig
+from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import (
     ChatConversation,
     ChatMessage,
@@ -9,8 +11,6 @@ from apps.system_intelligence.models import (
     SystemIntelligenceConfig,
 )
 from apps.system_intelligence.services.adk.context_manager import prepare_conversation_context
-from core.models import AWSCredentialConfig
-from event.tests.helpers import make_superuser
 
 
 class SystemIntelligenceContextManagerTests(TestCase):

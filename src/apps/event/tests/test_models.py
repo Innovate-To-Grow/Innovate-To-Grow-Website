@@ -5,9 +5,9 @@ from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.test import TestCase
 
+from apps.authn.models import ContactEmail
 from apps.event.models import Event, EventRegistration, Question, Ticket
 from apps.event.tests.helpers import make_event, make_member, make_ticket
-from authn.models import ContactEmail
 
 
 def _make_question(event, text="What is your role?", **kwargs):

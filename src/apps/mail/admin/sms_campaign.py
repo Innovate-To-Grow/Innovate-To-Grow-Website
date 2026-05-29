@@ -14,14 +14,14 @@ from unfold.admin import TabularInline
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
+from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
+from apps.event.models import Ticket
 from apps.mail.admin.campaign.views.status import _short_error
 from apps.mail.admin.campaign.widgets import TicketSelectWidget
 from apps.mail.models import SmsCampaign, SmsRecipientLog
 from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES, SMS_EXCLUDE_AUDIENCE_CHOICES
 from apps.mail.services.personalize import personalize
 from apps.mail.services.sms_audience import get_sms_recipients
-from core.admin import BaseModelAdmin, ReadOnlyModelAdmin
-from event.models import Ticket
 
 
 class SmsCampaignForm(forms.ModelForm):
@@ -519,7 +519,7 @@ class SmsCampaignAdmin(BaseModelAdmin):
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         try:
-            from core.models import AWSCredentialConfig
+            from apps.core.models import AWSCredentialConfig
 
             extra_context["aws_config"] = AWSCredentialConfig.load()
         except Exception:

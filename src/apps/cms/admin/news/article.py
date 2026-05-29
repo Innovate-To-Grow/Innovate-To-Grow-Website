@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from apps.cms.models import NewsArticle
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 
 @admin.register(NewsArticle)

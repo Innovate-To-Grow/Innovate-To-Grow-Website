@@ -3,6 +3,7 @@ import json
 from django.http import JsonResponse
 from django.utils import timezone
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import (
     ChatConversation,
     SystemIntelligenceActionRequest,
@@ -12,7 +13,6 @@ from apps.system_intelligence.services.adk.context_manager import (
     RECENT_TARGET_TURNS,
     ensure_context_summary,
 )
-from core.models import AWSCredentialConfig
 
 from ..stream import build_stream_response, persist_user_message
 

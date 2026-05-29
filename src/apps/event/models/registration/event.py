@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 class Event(ProjectControlModel):

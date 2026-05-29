@@ -8,9 +8,9 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.authn.models import ContactEmail
 from apps.cms.models import CMSAsset
 from apps.cms.models.media import MAX_ASSET_UPLOAD_BYTES
-from authn.models import ContactEmail
 
 Member = get_user_model()
 

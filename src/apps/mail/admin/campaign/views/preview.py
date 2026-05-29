@@ -6,10 +6,10 @@ from django.urls import reverse
 from unfold.decorators import action
 
 import apps.mail.admin.campaign as campaign_api
+from apps.core.utils.json_helpers import safe_json
 from apps.mail.models import EmailCampaign
 from apps.mail.services.personalize import personalize
 from apps.mail.services.preview import HTML_MARKER, SAMPLE_CONTEXT, render_email_html
-from core.utils.json_helpers import safe_json
 
 
 class CampaignPreviewMixin:

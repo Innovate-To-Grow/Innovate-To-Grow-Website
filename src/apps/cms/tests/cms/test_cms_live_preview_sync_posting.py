@@ -4,8 +4,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.authn.models import Member
 from apps.cms.models import CMSBlock, CMSPage
-from authn.models import Member
 
 
 class CMSLivePreviewSyncPostingTest(TestCase):

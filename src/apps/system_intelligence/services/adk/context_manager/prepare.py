@@ -1,8 +1,8 @@
 import math
 from typing import Any
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import ChatConversation, ChatMessage, SystemIntelligenceConfig
-from core.models import AWSCredentialConfig
 
 from ..constants import APPROVAL_INSTRUCTION
 from ..context_window import estimate_context_window

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from apps.core.models import GoogleCredentialConfig
 from apps.event.models import CurrentProjectSchedule
-from core.models import GoogleCredentialConfig
 
 from .shared import ScheduleSyncError
 

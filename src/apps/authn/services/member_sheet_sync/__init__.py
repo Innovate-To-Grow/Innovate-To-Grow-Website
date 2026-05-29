@@ -1,6 +1,6 @@
 import threading
 
-from core.models import GoogleCredentialConfig
+from apps.core.models import GoogleCredentialConfig
 
 from .rows import build_header as _build_header
 from .rows import build_row as _build_row

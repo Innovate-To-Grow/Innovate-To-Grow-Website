@@ -15,7 +15,7 @@ from apps.cms.admin.cms.page_admin.editor import (
 from apps.cms.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from apps.cms.models import CMSPage
 from apps.cms.models.content.cms.cms_page import validate_cms_route
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 logger = logging.getLogger(__name__)
 

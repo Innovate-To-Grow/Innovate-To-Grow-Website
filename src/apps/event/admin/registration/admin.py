@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ...models import EventRegistration, Ticket
 from .config import (

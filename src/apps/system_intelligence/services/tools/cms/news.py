@@ -16,7 +16,7 @@ async def get_news_source_detail(
 
 
 def _get_news_source_detail(source_id=None, source_key=None, name=None) -> dict[str, Any]:
-    from cms.models import NewsArticle, NewsFeedSource
+    from apps.cms.models import NewsArticle, NewsFeedSource
 
     qs = NewsFeedSource.objects.all()
     if source_id:

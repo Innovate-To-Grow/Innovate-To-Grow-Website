@@ -2,13 +2,13 @@ import logging
 
 from botocore.exceptions import BotoCoreError, ClientError
 
-from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 
 
 def _load_config():
-    from core.models import EmailServiceConfig
+    from apps.core.models import EmailServiceConfig
 
     return EmailServiceConfig.load()
 

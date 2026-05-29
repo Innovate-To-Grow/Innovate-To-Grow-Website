@@ -6,7 +6,7 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.admin import TabularInline
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ..models import Project, Semester
 from ..services.csv_import import import_projects_from_csv

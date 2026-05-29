@@ -1,10 +1,10 @@
 from django.core.cache import cache
 from django.test import TransactionTestCase
 
+from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import ChatConversation
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services import tools as system_intelligence_tools
-from event.tests.helpers import make_superuser
 
 
 class SystemIntelligenceExtendedToolTests(TransactionTestCase):

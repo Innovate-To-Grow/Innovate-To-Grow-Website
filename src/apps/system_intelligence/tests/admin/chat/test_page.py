@@ -5,7 +5,7 @@ from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBas
 
 
 class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
-    @override_settings(ROOT_URLCONF="core.urls")
+    @override_settings(ROOT_URLCONF="config.urls")
     def test_main_page_renders_custom_chat_shell(self):
         response = self.client.get(reverse("admin:system_intelligence"))
 

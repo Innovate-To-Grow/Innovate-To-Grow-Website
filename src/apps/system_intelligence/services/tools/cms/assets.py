@@ -10,7 +10,7 @@ async def search_cms_assets(name: str | None = None, limit: int | None = None) -
 
 
 def _search_cms_assets(name=None, limit=None) -> dict[str, Any]:
-    from cms.models import CMSAsset
+    from apps.cms.models import CMSAsset
 
     qs = CMSAsset.objects.all()
     if name:

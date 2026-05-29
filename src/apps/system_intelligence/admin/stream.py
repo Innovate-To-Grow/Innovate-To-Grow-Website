@@ -2,6 +2,7 @@ import json
 
 from django.http import JsonResponse, StreamingHttpResponse
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import (
     ChatConversation,
     ChatMessage,
@@ -9,7 +10,6 @@ from apps.system_intelligence.models import (
 )
 from apps.system_intelligence.services.adk import invoke_system_intelligence_stream as _default_stream
 from apps.system_intelligence.services.adk.context_manager import prepare_conversation_context
-from core.models import AWSCredentialConfig
 
 from .stream_helpers import _create_assistant_message, _handle_stream_event, _sse, _stream_exception
 

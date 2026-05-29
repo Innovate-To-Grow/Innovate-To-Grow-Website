@@ -9,10 +9,10 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.authn.models import ContactEmail
 from apps.cms.admin.cms.cms_embed_widget import CMSEmbedWidgetAdminForm
 from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
-from authn.models import ContactEmail
-from event.models import CurrentProjectSchedule
+from apps.event.models import CurrentProjectSchedule
 
 Member = get_user_model()
 

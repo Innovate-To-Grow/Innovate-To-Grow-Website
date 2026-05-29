@@ -6,9 +6,9 @@ from collections.abc import Iterable
 
 from django.db import close_old_connections
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services import actions as system_intelligence_actions
-from core.models import AWSCredentialConfig
 
 from .constants import SENTINEL, TEMPERATURE_DEPRECATED_MODEL_IDS
 from .errors import SystemIntelligenceADKError, format_system_intelligence_error, is_temperature_deprecated_error

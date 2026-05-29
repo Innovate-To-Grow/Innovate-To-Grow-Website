@@ -2,8 +2,8 @@ import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from core.models import EmailServiceConfig
-from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.models import EmailServiceConfig
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for details."

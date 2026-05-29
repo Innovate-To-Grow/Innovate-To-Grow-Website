@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from django.db import models
 from django.utils import timezone
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 class RSAKeypair(ProjectControlModel):

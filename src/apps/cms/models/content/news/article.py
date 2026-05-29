@@ -1,6 +1,6 @@
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 class NewsArticle(ProjectControlModel):

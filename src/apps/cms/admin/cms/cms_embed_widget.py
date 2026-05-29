@@ -14,7 +14,7 @@ from apps.cms.embed_sections import (
     normalize_hidden_sections,
 )
 from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 
 class CMSEmbedWidgetAdminForm(forms.ModelForm):

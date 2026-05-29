@@ -16,7 +16,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.cache import cache
 
-from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class PhoneVerificationDeliveryError(PhoneVerificationError):
 
 
 def _load_aws_config():
-    from core.models import AWSCredentialConfig
+    from apps.core.models import AWSCredentialConfig
 
     return AWSCredentialConfig.load()
 

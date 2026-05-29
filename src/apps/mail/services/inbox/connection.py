@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import MailBox
 
-from core.models import GmailAccessAccount
+from apps.core.models import GmailAccessAccount
 
 logger = logging.getLogger(__name__)
 

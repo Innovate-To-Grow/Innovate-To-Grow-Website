@@ -31,7 +31,7 @@ async def get_site_settings_detail() -> dict[str, Any]:
 
 
 def _search_menus(name=None, is_active=None, limit=None) -> dict[str, Any]:
-    from cms.models import Menu
+    from apps.cms.models import Menu
 
     qs = Menu.objects.all()
     if name:
@@ -42,7 +42,7 @@ def _search_menus(name=None, is_active=None, limit=None) -> dict[str, Any]:
 
 
 def _find_menu(menu_id=None, name=None):
-    from cms.models import Menu
+    from apps.cms.models import Menu
 
     qs = Menu.objects.all()
     if menu_id:
@@ -60,7 +60,7 @@ def _get_menu_detail(menu_id=None, name=None) -> dict[str, Any]:
 
 
 def _get_footer_content_detail(footer_id=None, slug=None, active_only=True) -> dict[str, Any]:
-    from cms.models import FooterContent
+    from apps.cms.models import FooterContent
 
     qs = FooterContent.objects.all()
     if footer_id:
@@ -75,7 +75,7 @@ def _get_footer_content_detail(footer_id=None, slug=None, active_only=True) -> d
 
 
 def _get_site_settings_detail() -> dict[str, Any]:
-    from cms.models import SiteSettings
+    from apps.cms.models import SiteSettings
 
     settings = SiteSettings.load()
     tokens = settings.design_tokens or {}

@@ -8,12 +8,12 @@ from django.template.loader import render_to_string
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
+from apps.authn.services import email as email_api
 from apps.mail.services.unsubscribe_token import (
     build_resubscribe_token,
     get_member_from_oneclick_token,
     get_member_from_resubscribe_token,
 )
-from authn.services import email as email_api
 
 UNSUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired unsubscribe link."
 RESUBSCRIBE_LINK_INVALID_MESSAGE = "Invalid or expired resubscribe link."

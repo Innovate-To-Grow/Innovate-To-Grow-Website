@@ -5,11 +5,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.authn.views.helpers import build_auth_success_payload
 from apps.event.services.ticket_assets import (
     TicketLoginTokenError,
     get_member_from_login_token,
 )
-from authn.views.helpers import build_auth_success_payload
 
 logger = logging.getLogger(__name__)
 

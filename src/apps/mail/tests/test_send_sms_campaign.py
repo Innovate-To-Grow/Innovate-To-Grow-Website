@@ -2,11 +2,11 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from apps.authn.models import ContactPhone
+from apps.core.models import AWSCredentialConfig
+from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsRecipientLog
 from apps.mail.services.send_sms_campaign import send_sms_campaign
-from authn.models import ContactPhone
-from core.models import AWSCredentialConfig
-from event.tests.helpers import make_member
 
 
 def _make_sms_config():

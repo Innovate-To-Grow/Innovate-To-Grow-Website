@@ -4,8 +4,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.authn.models import ContactEmail
 from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
-from authn.models import ContactEmail
 
 Member = get_user_model()
 

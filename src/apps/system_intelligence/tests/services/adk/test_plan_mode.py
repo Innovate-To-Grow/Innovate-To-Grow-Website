@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.adk.constants import (
     APPROVAL_INSTRUCTION,
@@ -12,7 +13,6 @@ from apps.system_intelligence.services.adk.constants import (
 )
 from apps.system_intelligence.services.adk.runner import build_agent
 from apps.system_intelligence.services.tools import get_adk_tools
-from core.models import AWSCredentialConfig
 
 
 class PlanModeAgentTests(TestCase):

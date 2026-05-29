@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from core.admin import BaseModelAdmin, ReadOnlyModelAdmin
+from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 
 from ..models import MemberSheetSyncConfig, MemberSheetSyncLog
 

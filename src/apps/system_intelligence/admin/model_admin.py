@@ -8,8 +8,8 @@ from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
+from apps.core.admin.base import BaseModelAdmin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest, SystemIntelligenceConfig
-from core.admin.base import BaseModelAdmin
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            from core.services.bedrock import get_available_models
+            from apps.core.services.bedrock import get_available_models
 
             grouped = get_available_models()
             choices = [("", "---------")]
@@ -84,7 +84,7 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         if not obj.default_model_id:
             return "—"
         try:
-            from core.services.bedrock import get_available_models
+            from apps.core.services.bedrock import get_available_models
 
             for _group, models in get_available_models():
                 for mid, name in models:

@@ -3,12 +3,12 @@ from unittest.mock import patch
 from django.core import signing
 from rest_framework.test import APITestCase
 
+from apps.authn.models import ContactEmail, Member
+from apps.event.tests.helpers import make_member
 from apps.mail.services.unsubscribe_token import (
     _SALT,
     build_oneclick_unsubscribe_token,
 )
-from authn.models import ContactEmail, Member
-from event.tests.helpers import make_member
 
 
 class OneClickUnsubscribeViewTests(APITestCase):
@@ -90,7 +90,7 @@ class OneClickUnsubscribeViewTests(APITestCase):
         self.client.post(self.url)
         self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
 
-    @patch("authn.services.email.send_notification_email")
+    @patch("apps.authn.services.email.send_notification_email")
     def test_sends_confirmation_email(self, mock_send):
         self.client.post(self.url)
 
@@ -99,7 +99,7 @@ class OneClickUnsubscribeViewTests(APITestCase):
         self.assertEqual(call_kwargs["recipient"], "unsub@example.com")
         self.assertIn("unsubscribed", call_kwargs["subject"].lower())
 
-    @patch("authn.services.email.send_notification_email")
+    @patch("apps.authn.services.email.send_notification_email")
     def test_replay_post_does_not_resend_email(self, mock_send):
         """Second POST is rejected (token consumed), so no confirmation email is sent."""
         self.client.post(self.url)

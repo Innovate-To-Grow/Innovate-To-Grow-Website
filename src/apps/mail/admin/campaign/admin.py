@@ -2,8 +2,8 @@
 
 from django.contrib import admin
 
+from apps.core.admin import BaseModelAdmin
 from apps.mail.models import EmailCampaign
-from core.admin import BaseModelAdmin
 
 from .display import CampaignDisplayMixin
 from .forms import EmailCampaignForm

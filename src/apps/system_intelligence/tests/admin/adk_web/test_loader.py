@@ -3,10 +3,10 @@ from unittest.mock import patch
 
 from django.test import TransactionTestCase
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.admin.adk_web import SystemIntelligenceAgentLoader
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.adk.constants import APP_NAME, EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
-from core.models import AWSCredentialConfig
 
 
 class SystemIntelligenceAgentLoaderTests(TransactionTestCase):

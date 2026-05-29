@@ -1,4 +1,4 @@
-from core.models import AWSCredentialConfig
+from apps.core.models import AWSCredentialConfig
 
 from .constants import BEDROCK_CONNECTIVITY_KEYWORDS, BEDROCK_HOST_RE
 

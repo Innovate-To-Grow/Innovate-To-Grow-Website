@@ -1,8 +1,8 @@
 import logging
 import os
 
-from core.models import AWSCredentialConfig
-from core.services.bedrock import normalize_bedrock_model_id
+from apps.core.models import AWSCredentialConfig
+from apps.core.services.bedrock import normalize_bedrock_model_id
 
 from .errors import SystemIntelligenceADKError
 

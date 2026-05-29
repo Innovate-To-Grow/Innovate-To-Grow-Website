@@ -1,8 +1,8 @@
+from apps.cms.models import CMSPage, NewsFeedSource
+from apps.cms.models.content.news.sync_log import NewsSyncLog
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.comparison import build_db_comparison
-from cms.models import CMSPage, NewsFeedSource
-from cms.models.content.news.sync_log import NewsSyncLog
 
 from .base import SystemIntelligenceActionBase
 

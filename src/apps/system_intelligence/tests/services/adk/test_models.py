@@ -2,6 +2,8 @@ import uuid
 
 from django.test import TestCase
 
+from apps.core.models import ProjectControlModel
+from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import (
     ChatConversation,
     ChatMessage,
@@ -9,8 +11,6 @@ from apps.system_intelligence.models import (
     SystemIntelligenceConfig,
     SystemIntelligenceExport,
 )
-from core.models import ProjectControlModel
-from event.tests.helpers import make_superuser
 
 
 class SystemIntelligenceProjectControlModelTests(TestCase):

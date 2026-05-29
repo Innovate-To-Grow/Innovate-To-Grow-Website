@@ -2,9 +2,9 @@ from typing import Any
 
 from django.db import transaction
 
+from apps.cms.models import CMSBlock, CMSPage
+from apps.core.services.db_tools.helpers import _truncate
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
-from cms.models import CMSBlock, CMSPage
-from core.services.db_tools.helpers import _truncate
 
 from ..comparison import build_cms_comparison, build_diff
 from ..context import current_conversation, current_user_id

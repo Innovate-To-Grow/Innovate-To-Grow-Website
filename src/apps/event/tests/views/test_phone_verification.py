@@ -13,7 +13,7 @@ class PhoneVerificationViewsTest(TestCase):
         self.member = make_member()
         self.client.force_authenticate(self.member)
 
-    @patch("authn.services.sms.start_phone_verification", side_effect=RuntimeError("provider down"))
+    @patch("apps.authn.services.sms.start_phone_verification", side_effect=RuntimeError("provider down"))
     def test_send_phone_code_returns_generic_service_error(self, _mock_start):
         with patch("apps.event.views.registration.logger.warning") as warning:
             response = self.client.post(
@@ -25,7 +25,7 @@ class PhoneVerificationViewsTest(TestCase):
         self.assertEqual(response.data["detail"], "Failed to send verification code. Please try again later.")
         warning.assert_called_once_with("Failed to send phone verification SMS", exc_info=True)
 
-    @patch("authn.services.sms.check_phone_verification", side_effect=RuntimeError("provider down"))
+    @patch("apps.authn.services.sms.check_phone_verification", side_effect=RuntimeError("provider down"))
     def test_verify_phone_code_returns_generic_service_error(self, _mock_check):
         with patch("apps.event.views.registration.logger.warning") as warning:
             response = self.client.post(
@@ -38,7 +38,7 @@ class PhoneVerificationViewsTest(TestCase):
         warning.assert_called_once_with("Phone verification failed", exc_info=True)
 
     @patch("apps.event.services.ticket_mail.send_ticket_email")
-    @patch("authn.services.sms.check_phone_verification", return_value="approved")
+    @patch("apps.authn.services.sms.check_phone_verification", return_value="approved")
     def test_verified_phone_proof_is_consumed_by_registration(self, _mock_check, _mock_ticket_email):
         event = make_event(is_live=True, collect_phone=True, verify_phone=True)
         ticket = Ticket.objects.create(event=event, name="GA")

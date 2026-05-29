@@ -13,7 +13,7 @@ from django.urls import path
 from django.utils.translation import gettext_lazy as _
 from unfold.forms import AdminPasswordChangeForm
 
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 from ...models import ImpersonationToken, Member
 from .forms import MemberChangeForm, MemberCreationForm

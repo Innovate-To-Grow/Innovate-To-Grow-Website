@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.decorators import display
 
-from core.admin import ReadOnlyModelAdmin
+from apps.core.admin import ReadOnlyModelAdmin
 
 from ..models import ScheduleSyncLog
 

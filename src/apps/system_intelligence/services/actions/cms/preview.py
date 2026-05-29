@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
-from cms.models import CMSBlock, CMSPage
-from cms.models.content.cms.cms_page import normalize_cms_route
+from apps.cms.models import CMSBlock, CMSPage
+from apps.cms.models.content.cms.cms_page import normalize_cms_route
 
 from ..constants import PREVIEW_TTL_SECONDS
 

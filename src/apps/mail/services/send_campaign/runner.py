@@ -4,8 +4,8 @@ import time
 from django.conf import settings
 from django.utils import timezone
 
+from apps.core.models import EmailServiceConfig
 from apps.mail.models import MagicLoginToken, RecipientLog
-from core.models import EmailServiceConfig
 
 from ..audience import get_recipients
 from ..personalize import personalize

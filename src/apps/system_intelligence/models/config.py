@@ -1,6 +1,6 @@
 from django.db import models
 
-from core.models.base.control import ProjectControlModel
+from apps.core.models.base.control import ProjectControlModel
 
 
 class SystemIntelligenceConfig(ProjectControlModel):

@@ -1,5 +1,8 @@
 from django.test import TestCase
 
+from apps.authn.models import ContactEmail, Member
+from apps.event.models import CheckIn, CheckInRecord
+from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.mail.models import EmailCampaign
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.audience.converters import (
@@ -8,9 +11,6 @@ from apps.mail.services.audience.converters import (
     registrations_to_recipients,
 )
 from apps.mail.services.audience.resolvers import recipients_for_audience
-from authn.models import ContactEmail, Member
-from event.models import CheckIn, CheckInRecord
-from event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
 
 class SubscribersResolverTests(TestCase):
@@ -393,21 +393,21 @@ class RegistrationsToRecipientsTests(TestCase):
         self.ticket = make_ticket(self.event)
 
     def test_uses_attendee_email_when_present(self):
-        from event.models import EventRegistration
+        from apps.event.models import EventRegistration
 
         make_registration(self.m1, self.event, self.ticket, attendee_email="attendee@example.com")
         result = registrations_to_recipients(EventRegistration.objects.filter(event=self.event))
         self.assertEqual(result[0]["email"], "attendee@example.com")
 
     def test_falls_back_to_member_primary(self):
-        from event.models import EventRegistration
+        from apps.event.models import EventRegistration
 
         make_registration(self.m1, self.event, self.ticket, attendee_email="")
         result = registrations_to_recipients(EventRegistration.objects.filter(event=self.event))
         self.assertEqual(result[0]["email"], "mem@example.com")
 
     def test_deduplicates_by_email(self):
-        from event.models import EventRegistration
+        from apps.event.models import EventRegistration
 
         m2 = make_member(email="dup@example.com", first_name="Dup", last_name="Two")
         make_registration(self.m1, self.event, self.ticket, attendee_email="dup@example.com")
@@ -417,7 +417,7 @@ class RegistrationsToRecipientsTests(TestCase):
         self.assertEqual(emails.count("dup@example.com"), 1)
 
     def test_result_dict_structure(self):
-        from event.models import EventRegistration
+        from apps.event.models import EventRegistration
 
         make_registration(self.m1, self.event, self.ticket, attendee_email="x@y.com")
         result = registrations_to_recipients(EventRegistration.objects.filter(event=self.event))

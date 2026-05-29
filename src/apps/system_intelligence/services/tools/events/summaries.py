@@ -35,7 +35,7 @@ def _get_ticket_capacity_summary(event_id=None, event_name=None) -> dict[str, An
 
 
 def _get_checkin_breakdown(event_id=None, event_name=None) -> dict[str, Any]:
-    from event.models import CheckInRecord
+    from apps.event.models import CheckInRecord
 
     event = _find_event(event_id=event_id, name=event_name)
     stations = event.check_ins.annotate(scan_count=Count("records")).order_by("name")

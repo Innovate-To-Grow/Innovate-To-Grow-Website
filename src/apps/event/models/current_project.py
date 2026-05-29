@@ -1,7 +1,7 @@
 from django.db import models
 
-from core.models import ProjectControlModel
-from core.models.mixins import ActiveModel
+from apps.core.models import ProjectControlModel
+from apps.core.models.mixins import ActiveModel
 
 
 class CurrentProjectSchedule(ActiveModel, ProjectControlModel):

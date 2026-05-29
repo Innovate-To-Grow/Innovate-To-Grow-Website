@@ -5,8 +5,8 @@ from email.mime.text import MIMEText
 
 from django.conf import settings
 
-from core.models import EmailServiceConfig
-from core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.models import EmailServiceConfig
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 logger = logging.getLogger(__name__)
 

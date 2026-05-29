@@ -7,7 +7,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import apps.mail.admin.inbox as inbox_api
-from core.models import GmailAccessAccount
+from apps.core.models import GmailAccessAccount
 
 from .helpers import parse_limit
 

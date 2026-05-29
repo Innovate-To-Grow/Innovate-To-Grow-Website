@@ -5,8 +5,8 @@ from django.core.cache import cache
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
-from event.models import EventRegistration
-from event.tests.helpers import make_event, make_ticket
+from apps.event.models import EventRegistration
+from apps.event.tests.helpers import make_event, make_ticket
 
 Member = get_user_model()
 

@@ -4,13 +4,13 @@ from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
+from apps.cms.models import CMSPage
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount
+from apps.event.tests.helpers import make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.models import EmailCampaign
 from apps.mail.services import GMAIL_FOLDER_DISPLAY
 from apps.mail.services.preview import HTML_MARKER
-from cms.models import CMSPage
-from core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount
-from event.tests.helpers import make_superuser
 
 
 class MailSettingsAdminTest(TestCase):
@@ -161,7 +161,7 @@ class EmailCampaignAdminImportTest(TestCase):
             gmail_username="campaigns@ucmerced.edu",
             gmail_password="app-password",
         )
-        from core.models import AWSCredentialConfig
+        from apps.core.models import AWSCredentialConfig
 
         AWSCredentialConfig.objects.all().delete()
         self.aws_config = AWSCredentialConfig.objects.create(

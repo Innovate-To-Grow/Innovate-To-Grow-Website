@@ -1,8 +1,8 @@
 from django.test import TestCase
 
+from apps.core.models import AWSCredentialConfig
+from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import ChatConversation, SystemIntelligenceConfig
-from core.models import AWSCredentialConfig
-from event.tests.helpers import make_superuser
 
 
 class SystemIntelligenceAdminBase(TestCase):

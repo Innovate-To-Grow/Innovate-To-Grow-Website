@@ -1,9 +1,9 @@
 from django.urls import reverse
 
+from apps.cms.models import CMSBlock, CMSPage
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.exceptions import ActionRequestError
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
-from cms.models import CMSBlock, CMSPage
 
 
 class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):

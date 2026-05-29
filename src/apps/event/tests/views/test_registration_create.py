@@ -4,9 +4,9 @@ from unittest.mock import patch
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.authn.models import ContactPhone
 from apps.event.models import EventRegistration, Question, Ticket
 from apps.event.tests.helpers import make_event, make_member
-from authn.models import ContactPhone
 
 
 class EventRegistrationCreateViewTest(TestCase):

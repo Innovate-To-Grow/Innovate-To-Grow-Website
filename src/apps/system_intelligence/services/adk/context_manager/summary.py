@@ -10,8 +10,8 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import ChatConversation, ChatMessage, SystemIntelligenceConfig
-from core.models import AWSCredentialConfig
 
 from ..constants import APP_NAME
 from ..events import StreamState, normalize_adk_event

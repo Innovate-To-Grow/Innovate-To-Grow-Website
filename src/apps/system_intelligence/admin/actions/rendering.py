@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from django.utils.html import conditional_escape, format_html, format_html_join
 
-from cms.services.sanitize import sanitize_html_for_render
+from apps.cms.services.sanitize import sanitize_html_for_render
 
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 

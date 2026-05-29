@@ -1,7 +1,7 @@
 import datetime
 
+from apps.authn.models import ContactEmail, Member
 from apps.event.models import Event, EventRegistration, Ticket
-from authn.models import ContactEmail, Member
 
 
 def make_member(email="test@example.com", **kwargs):

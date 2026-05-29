@@ -2,8 +2,8 @@ from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
-from core.admin import BaseModelAdmin
-from core.models import GoogleCredentialConfig
+from apps.core.admin import BaseModelAdmin
+from apps.core.models import GoogleCredentialConfig
 
 from ..models import CurrentProject, CurrentProjectSchedule, EventScheduleTrack
 from ..services import ScheduleSyncError, sync_schedule

@@ -2,10 +2,10 @@
 
 from django.test import TestCase
 
+from apps.authn.models import ContactEmail
+from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.mail.models import EmailCampaign
 from apps.mail.services.audience import get_recipients
-from authn.models import ContactEmail
-from event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
 
 class AudienceExclusionTest(TestCase):

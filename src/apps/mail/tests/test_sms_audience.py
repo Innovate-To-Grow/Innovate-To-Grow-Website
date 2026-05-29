@@ -1,9 +1,9 @@
 from django.test import TestCase
 
+from apps.authn.models import ContactPhone
+from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.mail.models import SmsCampaign
 from apps.mail.services.sms_audience import get_sms_recipients, manual_sms_recipients_from_body
-from authn.models import ContactPhone
-from event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
 
 def _add_phone(member, number, *, subscribe=True, verified=True):

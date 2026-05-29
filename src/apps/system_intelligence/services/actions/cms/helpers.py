@@ -2,8 +2,8 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 
-from cms.models import BLOCK_TYPE_CHOICES, CMSPage, validate_block_data
-from cms.models.content.cms.cms_page import normalize_cms_route
+from apps.cms.models import BLOCK_TYPE_CHOICES, CMSPage, validate_block_data
+from apps.cms.models.content.cms.cms_page import normalize_cms_route
 
 from ..constants import CMS_PAGE_FIELDS
 from ..exceptions import ActionRequestError

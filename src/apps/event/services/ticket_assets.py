@@ -50,7 +50,7 @@ def get_member_from_login_token(token: str):
     click the email link repeatedly without being locked out. Security relies
     on the signed, time-limited token itself rather than one-time consumption.
     """
-    from authn.models import Member
+    from apps.authn.models import Member
 
     try:
         payload = signing.loads(token, salt=_TICKET_LOGIN_SALT, max_age=_TICKET_LOGIN_MAX_AGE)

@@ -3,8 +3,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.authn.models import ContactEmail
 from apps.projects.models import Project, Semester
-from authn.models import ContactEmail
 
 User = get_user_model()
 

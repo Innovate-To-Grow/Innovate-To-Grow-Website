@@ -1,7 +1,7 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 from .block_types import BLOCK_TYPE_CHOICES, normalize_block_data_for_storage, validate_block_data
 from .cms_page import CMSPage

@@ -7,8 +7,8 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
-from core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
-from core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 
 
 class EmailDeliveryForm(forms.ModelForm):

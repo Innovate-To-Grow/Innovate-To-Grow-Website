@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from apps.authn.models import AdminInvitation
-from core.admin import BaseModelAdmin
+from apps.core.admin import BaseModelAdmin
 
 logger = logging.getLogger(__name__)
 

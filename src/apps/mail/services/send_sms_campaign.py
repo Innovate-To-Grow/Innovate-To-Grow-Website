@@ -2,11 +2,11 @@ import logging
 
 from django.utils import timezone
 
+from apps.authn.services.sms import publish_plain_sms
+from apps.core.models import AWSCredentialConfig
 from apps.mail.models import SmsRecipientLog
 from apps.mail.services.personalize import personalize
 from apps.mail.services.sms_audience import get_sms_recipients
-from authn.services.sms import publish_plain_sms
-from core.models import AWSCredentialConfig
 
 logger = logging.getLogger(__name__)
 

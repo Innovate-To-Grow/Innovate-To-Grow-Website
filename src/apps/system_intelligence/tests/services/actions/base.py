@@ -1,9 +1,9 @@
 from django.core.cache import cache
 from django.test import TestCase
 
+from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import ChatConversation
 from apps.system_intelligence.services import actions
-from event.tests.helpers import make_superuser
 
 
 class SystemIntelligenceActionBase(TestCase):

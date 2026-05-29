@@ -6,7 +6,7 @@ from django.urls import path
 from django.utils.html import format_html
 
 from apps.cms.models import PageView
-from core.admin import ReadOnlyModelAdmin
+from apps.core.admin import ReadOnlyModelAdmin
 
 from .geo import ip_geo_lookup_view
 from .stats import DASHBOARD_CACHE_KEY, DASHBOARD_CACHE_TTL, compute_dashboard_stats

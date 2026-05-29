@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from core.models import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 def generate_barcode():

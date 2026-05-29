@@ -2,7 +2,7 @@ import logging
 import urllib.request
 from urllib.parse import parse_qs, urlparse
 
-from core.utils.security import SecurityValidationError, validate_aws_sns_https_url
+from apps.core.utils.security import SecurityValidationError, validate_aws_sns_https_url
 
 logger = logging.getLogger(__name__)
 

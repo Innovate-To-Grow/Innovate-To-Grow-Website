@@ -5,9 +5,9 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.authn.models import ContactEmail
 from apps.cms.models import CMSEmbedAllowedHost
 from apps.cms.services.embed_hosts import get_allowed_hosts, invalidate_cache
-from authn.models import ContactEmail
 
 Member = get_user_model()
 

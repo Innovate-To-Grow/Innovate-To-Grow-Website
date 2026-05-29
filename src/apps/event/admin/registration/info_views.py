@@ -7,7 +7,7 @@ from ...models import Event
 class RegistrationInfoViewsMixin:
     # noinspection PyMethodMayBeStatic
     def _member_info_view(self, request, pk):
-        from authn.models import Member
+        from apps.authn.models import Member
 
         try:
             member = Member.objects.get(pk=pk)

@@ -1,5 +1,5 @@
-from authn.models import Member
-from event.models import EventRegistration
+from apps.authn.models import Member
+from apps.event.models import EventRegistration
 
 from .converters import (
     manual_emails_from_body,
@@ -76,7 +76,7 @@ def _ticket_type_for_event(event, ticket_id: str):
 
 
 def _checked_in(event):
-    from event.models import CheckInRecord
+    from apps.event.models import CheckInRecord
 
     if not event:
         return []
@@ -90,7 +90,7 @@ def _checked_in(event):
 
 
 def _not_checked_in(event):
-    from event.models import CheckInRecord
+    from apps.event.models import CheckInRecord
 
     if not event:
         return []

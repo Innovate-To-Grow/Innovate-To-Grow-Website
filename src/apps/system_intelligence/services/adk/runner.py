@@ -7,9 +7,9 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.tools import get_adk_tools
-from core.models import AWSCredentialConfig
 
 from .constants import (
     AGENT_NAME,

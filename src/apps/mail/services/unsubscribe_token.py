@@ -34,7 +34,7 @@ def get_member_from_oneclick_token(token: str):
     Marks the token as used (one-time).
     Raises ``ValueError`` on invalid, expired, or unknown-member tokens.
     """
-    from authn.models import Member
+    from apps.authn.models import Member
 
     try:
         payload = signing.loads(token, salt=_SALT, max_age=_MAX_AGE)
@@ -68,7 +68,7 @@ def get_member_from_resubscribe_token(token: str):
 
     Raises ``ValueError`` on invalid, expired, or unknown-member tokens.
     """
-    from authn.models import Member
+    from apps.authn.models import Member
 
     try:
         payload = signing.loads(token, salt=_RESUBSCRIBE_SALT, max_age=_RESUBSCRIBE_MAX_AGE)

@@ -3,9 +3,9 @@ from unittest.mock import patch
 from django.db import IntegrityError
 from django.test import TestCase
 
+from apps.authn.models import ContactEmail
 from apps.event.services.sync_registration_email import sync_secondary_email_to_account
 from apps.event.tests.helpers import make_member
-from authn.models import ContactEmail
 
 
 class SyncSecondaryEmailToAccountTest(TestCase):

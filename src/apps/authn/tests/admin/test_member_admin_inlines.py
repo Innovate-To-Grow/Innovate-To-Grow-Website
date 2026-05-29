@@ -15,7 +15,7 @@ from apps.authn.models import ContactEmail, ContactPhone
 Member = get_user_model()
 
 
-@override_settings(ROOT_URLCONF="core.urls")
+@override_settings(ROOT_URLCONF="config.urls")
 class MemberAdminInlineVisibilityTest(TestCase):
     """Inline sections must render for every staff user, not just superusers."""
 
@@ -88,7 +88,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
         self._assert_inlines_visible(resp)
 
 
-@override_settings(ROOT_URLCONF="core.urls", ADMIN_REQUIRE_CONFIRMATION=False)
+@override_settings(ROOT_URLCONF="config.urls", ADMIN_REQUIRE_CONFIRMATION=False)
 class MemberAdminInlineUUIDSubmitTest(TestCase):
     """Submitting inline forms with UUID PKs must not break on 'None' values.
 

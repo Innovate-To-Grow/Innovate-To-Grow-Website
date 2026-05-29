@@ -13,7 +13,7 @@ from apps.authn.services.export_members_vcf import CRLF, MAX_LINE_OCTETS, _fold
 Member = get_user_model()
 
 
-@override_settings(ROOT_URLCONF="core.urls")
+@override_settings(ROOT_URLCONF="config.urls")
 class MemberVCardExportActionTest(TestCase):
     CHANGELIST_URL = "/admin/authn/member/"
 

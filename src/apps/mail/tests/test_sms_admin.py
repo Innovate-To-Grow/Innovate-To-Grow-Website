@@ -3,10 +3,10 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.authn.models import ContactEmail, ContactPhone, Member
+from apps.core.models import AWSCredentialConfig
+from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import SmsCampaign
-from authn.models import ContactEmail, ContactPhone, Member
-from core.models import AWSCredentialConfig
-from event.tests.helpers import make_member, make_superuser
 
 
 def _add_phone(member, number, *, subscribe=True, verified=True):
@@ -86,7 +86,7 @@ class SmsCampaignAdminTests(TestCase):
         mock_thread.return_value.start.assert_called_once()
 
     @patch("apps.mail.admin.sms_campaign.threading.Thread")
-    @patch("authn.services.email.send_email.senders.send_notification_email")
+    @patch("apps.authn.services.email.send_email.senders.send_notification_email")
     def test_confirm_send_does_not_notify_staff(self, mock_notify, mock_thread):
         other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
         ContactEmail.objects.create(

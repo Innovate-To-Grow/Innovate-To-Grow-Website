@@ -1,9 +1,9 @@
 from django.core.cache import cache
 from django.test import override_settings
 
+from apps.cms.models import CMSBlock, CMSPage
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
-from cms.models import CMSBlock, CMSPage
 
 from .base import SystemIntelligenceActionBase
 

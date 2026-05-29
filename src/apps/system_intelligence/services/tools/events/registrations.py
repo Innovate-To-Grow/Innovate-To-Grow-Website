@@ -25,7 +25,7 @@ async def get_registration_detail(registration_id: str | None = None, ticket_cod
 
 
 def _registration_queryset(event_id=None, event_name=None, email=None, ticket_id=None):
-    from event.models import EventRegistration
+    from apps.event.models import EventRegistration
 
     qs = EventRegistration.objects.select_related("event", "ticket", "member")
     if event_id:
@@ -64,7 +64,7 @@ def _search_event_registrations(
 
 
 def _get_registration_detail(registration_id: str | None = None, ticket_code: str | None = None) -> dict[str, Any]:
-    from event.models import EventRegistration
+    from apps.event.models import EventRegistration
 
     qs = EventRegistration.objects.select_related("event", "ticket", "member").prefetch_related("check_in_records")
     if registration_id:
