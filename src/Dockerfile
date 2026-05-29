@@ -20,7 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev=17.10-0+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
+# requirements.txt is a thin `-r requirements/local.txt` entrypoint, so the
+# nested requirements/ dir (base/local/production) must be copied too for the
+# -r include chain to resolve.
 COPY requirements.txt .
+COPY requirements/ requirements/
 
 # pip itself is pinned (DL3013). Resolved site-packages are staged under
 # /install so the production stage can copy them without dragging the

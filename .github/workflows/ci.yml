@@ -264,7 +264,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [authn, core, system_intelligence, cms, event, projects, mail]
+        app: [authn, core, common, system_intelligence, cms, event, projects, mail]
     services:
       postgres:
         image: postgres:16
@@ -312,7 +312,7 @@ jobs:
           coverage run \
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
-            manage.py test "${{ matrix.app }}"
+            manage.py test "apps.${{ matrix.app }}"
           coverage report --fail-under=40
           coverage xml -o "coverage-${{ matrix.app }}.xml"
 

@@ -13,7 +13,9 @@ except ImportError as exc:  # pragma: no cover - exercised in CI preflight
     raise SystemExit("PyYAML is required: python -m pip install PyYAML") from exc
 
 ROOT = Path(__file__).resolve().parents[2]
-REQUIREMENTS = ROOT / "src" / "requirements.txt"
+# The ruff pin lives in the local/CI requirements file (src/requirements.txt is
+# now a thin `-r requirements/local.txt` entrypoint after the requirements split).
+REQUIREMENTS = ROOT / "src" / "requirements" / "local.txt"
 PRE_COMMIT = ROOT / ".pre-commit-config.yaml"
 LINT_WORKFLOW = ROOT / ".github" / "workflows" / "lint.yml"
 
@@ -55,7 +57,7 @@ def main() -> int:
     requirements = read(REQUIREMENTS)
     lint = read(LINT_WORKFLOW)
 
-    expected_ruff = require_match(r"^ruff==([0-9.]+)\b", requirements, "ruff pin in src/requirements.txt")
+    expected_ruff = require_match(r"^ruff==([0-9.]+)\b", requirements, "ruff pin in src/requirements/local.txt")
     workflow_ruff = require_match(r"ruff==([0-9.]+)", lint, "ruff pin in .github/workflows/lint.yml")
     hook_ruff = ruff_pre_commit_version()
 
