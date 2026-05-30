@@ -4,7 +4,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { bypassMaintenance, checkHealth } from '../../services/api/health';
+import { bypassMaintenance, checkHealth } from '@/lib/health';
 import { MaintenanceMode } from './MaintenanceMode';
 import { HealthCheckContext, type HealthCheckContextType } from './context';
 
