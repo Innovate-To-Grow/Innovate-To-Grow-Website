@@ -1,4 +1,4 @@
-import { router } from '@/router';
+import { router } from '@/app/router';
 import {MemberMenu} from './parts/MemberMenu';
 import {MenuTree} from './parts/MenuTree';
 import {MobileMenuPanel} from './parts/MobileMenuPanel';

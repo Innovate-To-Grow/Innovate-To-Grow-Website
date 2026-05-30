@@ -3,14 +3,14 @@ import {describe, it, expect} from 'vitest';
 
 describe('Router', () => {
   it('router object is created without errors', async () => {
-    const {router} = await import('../router');
+    const {router} = await import('@/app/router');
     expect(router).toBeDefined();
     expect(router.routes).toBeDefined();
     expect(router.routes.length).toBeGreaterThan(0);
   });
 
   it('keeps acknowledgement on a dedicated route instead of CMSPageComponent', async () => {
-    const {router} = await import('../router');
+    const {router} = await import('@/app/router');
     const rootRoute = router.routes.find((route) => route.path === '/');
     const acknowledgementRoute = rootRoute?.children?.find((route) => route.path === 'acknowledgement');
 
@@ -50,7 +50,7 @@ describe('Router', () => {
   ];
 
   it.each(lazyRoutePaths)('lazy route %s is wrapped in Suspense', async (path) => {
-    const {router} = await import('../router');
+    const {router} = await import('@/app/router');
     const rootRoute = router.routes.find((route) => route.path === '/');
     // Non-index children carry an `element` prop; the types model index vs
     // non-index routes separately, so narrow with a cast rather than a
