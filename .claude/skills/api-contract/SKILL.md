@@ -7,7 +7,7 @@ description: Use this skill when defining or consuming API endpoints between the
 ## Proxy Setup
 
 - Vite dev server proxies `/api/*` to Django at `http://127.0.0.1:8000`, stripping the `/api` prefix.
-- Frontend Axios `baseURL` is `/api` (set in `shared/api/client.ts`).
+- Frontend Axios `baseURL` is `/api` (set in `lib/api-client.ts`).
 - So `api.get('/event/schedule/')` hits Vite at `/api/event/schedule/`, which proxies to Django at `/event/schedule/`.
 - In production, the proxy is handled at the infrastructure level.
 
@@ -27,7 +27,7 @@ description: Use this skill when defining or consuming API endpoints between the
 ```json
 {"count": 42, "next": "...?page=2", "previous": null, "results": [...]}
 ```
-Frontend type: `PaginatedResponse<T>` from `shared/api/types.ts`.
+Frontend type: `PaginatedResponse<T>` from `types/api.ts`.
 
 **Validation error:** `400`
 ```json
@@ -81,8 +81,8 @@ const response = await api.get<T>('/endpoint/', {headers: authHeaders()});
 ## Key Files
 
 - `pages/vite.config.ts` — proxy rewrite rules
-- `pages/src/shared/api/client.ts` — Axios instance
-- `pages/src/shared/api/types.ts` — `PaginatedResponse<T>`
+- `pages/src/lib/api-client.ts` — Axios instance
+- `pages/src/types/api.ts` — `PaginatedResponse<T>`
 - `src/apps/core/urls.py` — root URL router
 - `src/apps/event/urls.py` — canonical app URL patterns
 - `src/config/settings/components/integrations/api.py` — DRF + JWT config

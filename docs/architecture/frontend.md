@@ -35,14 +35,14 @@ Any change to auth flow must ensure both mechanisms fire correctly.
 
 ## Router
 
-Defined in `pages/src/router/index.tsx`. All page components are lazy-loaded with `React.lazy()`.
+Defined in `pages/src/app/router.tsx`. All page components are lazy-loaded with `React.lazy()`.
 
 ### Route groups
 
 | Pattern | Component | Notes |
 |---------|-----------|-------|
 | `/` | `HomepageResolver` | Dynamically loads homepage from `SiteSettings.homepage_route` |
-| `/login`, `/register`, `/account`, etc. | Auth pages | Under `components/Auth/pages/` |
+| `/login`, `/register`, `/account`, etc. | Auth pages | Under `features/auth/components/pages/` |
 | `/news`, `/news/:id` | News list and detail | |
 | `/current-projects`, `/past-projects`, `/projects/:id` | Project pages | |
 | `/event-registration`, `/events/:eventSlug`, `/schedule` | Event pages | |
@@ -56,7 +56,7 @@ Legacy URLs (e.g., `/profile`) redirect to their current equivalents (e.g., `/ac
 
 ### HealthCheckProvider
 
-`src/components/MaintenanceMode/HealthCheckProvider.tsx`
+`src/app/MaintenanceMode/HealthCheckProvider.tsx`
 
 - Checks `/health/` on startup (5-second timeout)
 - Polls every 10 seconds when the backend is unhealthy
@@ -66,7 +66,7 @@ Legacy URLs (e.g., `/profile`) redirect to their current equivalents (e.g., `/ac
 
 ### AuthProvider
 
-`src/components/Auth/AuthContext.tsx`
+`src/features/auth/components/AuthContext.tsx`
 
 - Manages user state, authentication status, and profile completion requirement
 - Provides 20+ auth action methods (login, register, email flows, password management, etc.)
@@ -74,7 +74,7 @@ Legacy URLs (e.g., `/profile`) redirect to their current equivalents (e.g., `/ac
 
 ### LayoutProvider
 
-`src/components/Layout/LayoutProvider/LayoutProvider.tsx`
+`src/features/layout/components/LayoutProvider/LayoutProvider.tsx`
 
 - Fetches menus and footer from `/layout/` endpoint
 - Caches in `sessionStorage` with version key (`v1`)
@@ -82,28 +82,30 @@ Legacy URLs (e.g., `/profile`) redirect to their current equivalents (e.g., `/ac
 
 ## Feature modules
 
-Each feature under `pages/src/features/` exports API functions for its domain:
+Each feature under `pages/src/features/` is a vertical slice (`api/`, `components/`, optional `hooks/`, `types.ts`, public `index.ts` barrel) and exposes API functions for its domain:
 
-| Feature | File | Key exports |
-|---------|------|-------------|
-| `analytics` | `api.ts` | `trackPageView()` |
-| `cms` | `api.ts` | `fetchCMSPage()`, `fetchCMSPreview()`, `fetchCMSLivePreview()` |
-| `events` | `api.ts` | Registration, tickets, schedules, phone verification |
-| `layout` | `api.ts` | `fetchLayoutData()` with session caching |
-| `news` | `api.ts` | `fetchNews()`, `fetchLatestNews()`, `fetchNewsDetail()` |
-| `projects` | `api.ts` | Current/past projects, detail, sharing |
+| Feature | Module | Key exports |
+|---------|--------|-------------|
+| `auth` | `api/` | Token storage, refresh flow, login/register/email/password flows, contacts, profile, sessions |
+| `cms` | `api/` | `fetchCMSPage()`, `fetchCMSPreview()`, `fetchCMSLivePreview()` |
+| `events` | `api/` | Registration, tickets, schedules, phone verification |
+| `layout` | `api/` | `fetchLayoutData()` with session caching |
+| `news` | `api/` | `fetchNews()`, `fetchLatestNews()`, `fetchNewsDetail()` |
+| `projects` | `api/` | Current/past projects, detail, sharing |
+
+(`trackPageView()` is not a feature — it lives in `lib/analytics.ts`, with the `usePageTracking` hook in `hooks/`.)
 
 ## Shared modules
 
-`pages/src/shared/` contains cross-cutting concerns:
-
-### API client (`shared/api/client.ts`)
+### API client (`lib/api-client.ts`)
 
 - Axios instance with `/api` base URL
 - **Request interceptor**: Injects `Authorization: Bearer <token>` from `localStorage`
 - **Response interceptor**: On 401, attempts token refresh via `/authn/refresh/`, then retries the original request
 
-### Auth helpers (`shared/auth/`)
+(The auth-specific Axios instance with automatic refresh + `i2g-auth-state-change` dispatch lives in `features/auth/api/client.ts`.)
+
+### Auth helpers (`features/auth/api/`)
 
 | Module | Responsibility |
 |--------|---------------|
@@ -114,7 +116,7 @@ Each feature under `pages/src/features/` exports API functions for its domain:
 | `profile.ts` | Profile read/update, image upload |
 | `session.ts` | Auto-login helpers (ticket, magic link, unsubscribe) |
 
-### Crypto (`services/crypto.ts`)
+### Crypto (`lib/crypto.ts`)
 
 - Fetches RSA public key from `/authn/public-key/` (cached 5 minutes)
 - Encrypts passwords with Web Crypto API (RSA-OAEP) before sending to backend
@@ -124,7 +126,7 @@ Each feature under `pages/src/features/` exports API functions for its domain:
 
 The frontend uses plain CSS with a design token system.
 
-### Token system (`src/styles/shared/tokens.css`)
+### Token system (`src/assets/styles/shared/tokens.css`)
 
 CSS custom properties define the design vocabulary:
 - **Colors**: `--itg-color-primary` (#0f2d52), accent-gold, error, success, etc.
@@ -134,10 +136,9 @@ CSS custom properties define the design vocabulary:
 
 ### CSS organization
 
-- `src/styles/shared/` — Global: tokens, layout, responsive, utilities, rich-content
+- `src/assets/styles/shared/` — Global: tokens, layout, responsive, utilities, rich-content
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - Component-scoped `.css` files alongside each component
-- CMS-specific styles in `components/CMS/styles/` and `components/CMS/page-styles/`
 
 ## Testing
 
