@@ -19,7 +19,7 @@ import {EmbedBlockPage} from './EmbedBlockPage';
 // Shared mocks
 const fetchCMSEmbedMock = vi.fn();
 
-vi.mock('../../features/cms/api', () => ({
+vi.mock('@/features/cms/api', () => ({
   fetchCMSEmbed: (slug: string) => fetchCMSEmbedMock(slug),
 }));
 

@@ -4,7 +4,7 @@ import {
   fetchCMSLivePreview,
   fetchCMSPage,
   fetchCMSPreview,
-} from '../../features/cms/api';
+} from '@/features/cms/api';
 
 interface UseCMSPageResult {
   page: CMSPageResponse | null;

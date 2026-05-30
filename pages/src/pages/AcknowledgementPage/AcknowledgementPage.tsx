@@ -1,10 +1,10 @@
-import type {CMSBlock} from '../../features/cms/api';
+import type {CMSBlock} from '@/features/cms/api';
 import {Link, useLocation} from 'react-router-dom';
 import {
   SponsorYearBlock,
   type SponsorYearBlockData,
-} from '../../components/CMS/blocks/showcase/SponsorYearBlock';
-import {useCMSPage} from '../../components/CMS/useCMSPage';
+} from '@/features/cms/components/blocks/showcase/SponsorYearBlock';
+import {useCMSPage} from '@/features/cms/components/useCMSPage';
 
 function isSponsorYearBlock(
   block: CMSBlock,

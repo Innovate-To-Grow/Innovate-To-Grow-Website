@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BlockRenderer } from './BlockRenderer';
-import type { CMSBlock } from '../../features/cms/api';
+import type { CMSBlock } from '@/features/cms/api';
 
 /**
  * Lightweight page rendered inside an iframe for per-block admin preview.

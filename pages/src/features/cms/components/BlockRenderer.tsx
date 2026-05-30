@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react';
-import type { CMSBlock } from '../../features/cms/api';
+import type { CMSBlock } from '@/features/cms/api';
 import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
 import { EmbedBlock } from './blocks/content/EmbedBlock';
 import { EmbedWidgetBlock } from './blocks/content/EmbedWidgetBlock';

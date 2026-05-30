@@ -9,7 +9,7 @@ vi.mock('@/lib/api-client', () => ({
   default: {get: getMock},
 }));
 
-import {fetchCMSPage, normalizeCMSRoute} from '../features/cms/api';
+import {fetchCMSPage, normalizeCMSRoute} from '@/features/cms/api';
 
 describe('normalizeCMSRoute', () => {
   it('normalizes local CMS route segments', () => {

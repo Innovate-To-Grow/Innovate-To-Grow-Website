@@ -18,7 +18,7 @@ describe('Component barrel exports', () => {
   });
 
   it('components/CMS exports resolve', async () => {
-    const mod = await import('../components/CMS');
+    const mod = await import('@/features/cms');
     expect(mod.CMSPageComponent).toBeDefined();
     expect(mod.BlockRenderer).toBeDefined();
     expect(mod.useCMSPage).toBeDefined();

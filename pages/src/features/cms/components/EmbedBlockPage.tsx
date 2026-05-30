@@ -1,7 +1,7 @@
 import { createElement, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { BlockRenderer } from './BlockRenderer';
-import { fetchCMSEmbed, type CMSEmbedResponse } from '../../features/cms/api';
+import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
 import { resolveEmbedAppRoute } from './embedAppRoutes';
 import {
   SECTION_TITLES_KEY,

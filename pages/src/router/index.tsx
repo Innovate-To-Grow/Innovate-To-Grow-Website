@@ -1,10 +1,10 @@
 import React, {Suspense, type ReactElement} from 'react';
 import {createBrowserRouter, Navigate} from 'react-router-dom';
 import {Layout} from '../components/Layout';
-import {CMSPageComponent} from '../components/CMS';
+import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
-import {BlockPreviewPage} from '../components/CMS/BlockPreviewPage';
-import {EmbedBlockPage} from '../components/CMS/EmbedBlockPage';
+import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
+import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 
 // Matches the inline spinner in pages/index.html (#root:empty::before) so
 // lazy-route fallbacks and the initial-load spinner share one visual language.

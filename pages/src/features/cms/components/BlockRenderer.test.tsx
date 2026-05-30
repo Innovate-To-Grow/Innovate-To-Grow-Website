@@ -1,7 +1,7 @@
 import {render} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import type {CMSBlock} from '../../features/cms/api';
+import type {CMSBlock} from '@/features/cms/api';
 import {BlockRenderer} from './BlockRenderer';
 
 /**

@@ -1,5 +1,5 @@
 import {useLayout} from '../components/Layout/LayoutProvider/context';
-import {CMSPageComponent} from '../components/CMS';
+import {CMSPageComponent} from '@/features/cms';
 
 export const HomepageResolver = () => {
   const {homepage_route, state} = useLayout();
