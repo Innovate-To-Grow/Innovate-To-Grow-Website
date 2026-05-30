@@ -31,7 +31,7 @@ def fetch_schedule_sheet_records() -> tuple[list[dict[str, Any]], list[dict[str,
         spreadsheet = client.open_by_key(source.sheet_id)
         tracks_worksheet = get_worksheet_by_gid(spreadsheet, int(source.tracks_gid))
         projects_worksheet = get_worksheet_by_gid(spreadsheet, int(source.projects_gid))
-    except Exception as exc:  # pragma: no cover - exercised by mocked service tests
+    except Exception as exc:
         raise ScheduleSyncError(f"Unable to open the configured Google Sheet: {exc}") from exc
 
     if tracks_worksheet is None:
@@ -41,5 +41,5 @@ def fetch_schedule_sheet_records() -> tuple[list[dict[str, Any]], list[dict[str,
 
     try:
         return tracks_worksheet.get_all_records(), projects_worksheet.get_all_records()
-    except Exception as exc:  # pragma: no cover - exercised by mocked service tests
+    except Exception as exc:
         raise ScheduleSyncError(f"Unable to read schedule worksheet records: {exc}") from exc

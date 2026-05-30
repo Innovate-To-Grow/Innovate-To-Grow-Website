@@ -146,3 +146,109 @@ class VerifySnsMessageTests(TestCase):
             verify_sns_message(envelope)
             verify_sns_message(envelope)
             mock_urlopen.assert_not_called()
+
+    def test_invalid_signature_encoding_raises(self):
+        # Cert is cached via setUp, so _fetch_cert succeeds and we reach b64decode.
+        envelope = _base_notification()
+        envelope["Signature"] = "!!!not base64!!!"
+        with patch("apps.mail.services.sns_signature.base64.b64decode", side_effect=ValueError("bad")):
+            with self.assertRaisesMessage(SnsVerificationError, "invalid Signature encoding"):
+                verify_sns_message(envelope)
+
+
+class CanonicalStringTests(TestCase):
+    def test_subscription_confirmation_uses_subscription_fields(self):
+        envelope = {
+            "Type": "SubscriptionConfirmation",
+            "Message": "m",
+            "MessageId": "id",
+            "SubscribeURL": "https://example.com",
+            "Timestamp": "t",
+            "Token": "tok",
+            "TopicArn": "arn",
+        }
+        canonical = sns_signature._canonical_string(envelope)
+        self.assertIn(b"SubscribeURL", canonical)
+        self.assertIn(b"Token", canonical)
+
+    def test_unknown_type_raises(self):
+        with self.assertRaisesMessage(SnsVerificationError, "Unknown SNS Type"):
+            sns_signature._canonical_string({"Type": "Weird"})
+
+    def test_notification_skips_optional_missing_subject(self):
+        envelope = {
+            "Type": "Notification",
+            "Message": "m",
+            "MessageId": "id",
+            "Timestamp": "t",
+            "TopicArn": "arn",
+            # Subject deliberately absent
+        }
+        canonical = sns_signature._canonical_string(envelope)
+        self.assertNotIn(b"Subject", canonical)
+
+    def test_missing_required_field_raises(self):
+        envelope = {
+            "Type": "Notification",
+            "Message": "m",
+            # MessageId missing
+            "Timestamp": "t",
+            "TopicArn": "arn",
+            "Subject": "s",
+        }
+        with self.assertRaisesMessage(SnsVerificationError, "Missing field"):
+            sns_signature._canonical_string(envelope)
+
+
+class FetchCertTests(TestCase):
+    def setUp(self):
+        sns_signature._CERT_CACHE.clear()
+
+    def tearDown(self):
+        sns_signature._CERT_CACHE.clear()
+
+    def test_fetch_downloads_and_caches_pem(self):
+        cert_url = "https://sns.us-west-2.amazonaws.com/cert.pem"
+
+        class _Resp:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *args):
+                return False
+
+            def read(self_inner):
+                return b"PEM-BYTES"
+
+        with patch("apps.mail.services.sns_signature.urllib.request.urlopen", return_value=_Resp()) as mock_open:
+            pem = sns_signature._fetch_cert(cert_url)
+
+        self.assertEqual(pem, b"PEM-BYTES")
+        self.assertEqual(sns_signature._CERT_CACHE[cert_url], b"PEM-BYTES")
+        mock_open.assert_called_once()
+
+    def test_fetch_evicts_cache_when_full(self):
+        cert_url = "https://sns.us-west-2.amazonaws.com/cert.pem"
+        for i in range(sns_signature._CERT_CACHE_MAX):
+            sns_signature._CERT_CACHE[f"https://sns.amazonaws.com/{i}.pem"] = b"old"
+
+        class _Resp:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *args):
+                return False
+
+            def read(self_inner):
+                return b"NEW-PEM"
+
+        with patch("apps.mail.services.sns_signature.urllib.request.urlopen", return_value=_Resp()):
+            pem = sns_signature._fetch_cert(cert_url)
+
+        self.assertEqual(pem, b"NEW-PEM")
+        # Cache was cleared then repopulated with only the new entry.
+        self.assertEqual(sns_signature._CERT_CACHE, {cert_url: b"NEW-PEM"})
+
+    def test_fetch_rejects_disallowed_host(self):
+        with self.assertRaises(SnsVerificationError):
+            sns_signature._fetch_cert("https://evil.example.com/cert.pem")

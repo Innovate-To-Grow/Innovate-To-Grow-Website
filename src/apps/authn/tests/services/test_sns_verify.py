@@ -11,9 +11,12 @@ from apps.authn.services.sms.sns_verify import (
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
+    _get_sns_client,
     _otp_cache_key,
+    _random_code,
     _send_count_cache_key,
     check_phone_verification,
+    publish_plain_sms,
     start_phone_verification,
 )
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
@@ -174,6 +177,102 @@ class SnsVerifyServiceTest(TestCase):
 
         with self.assertRaises(PhoneVerificationThrottled):
             start_phone_verification(self.phone)
+
+
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+class SnsVerifyExtraCoverageTest(TestCase):
+    phone = "+12065551234"
+
+    def setUp(self):
+        cache.clear()
+        AWSCredentialConfig.objects.all().delete()
+        self.aws_config = AWSCredentialConfig.objects.create(
+            name="AWS",
+            is_active=True,
+            access_key_id="aws-key",
+            secret_access_key="aws-secret",
+            default_region="us-west-2",
+            sms_from_number="+12065550000",
+        )
+
+    def test_random_code_is_six_digit_string(self):
+        code = _random_code()
+        self.assertEqual(len(code), 6)
+        self.assertTrue(code.isdigit())
+
+    @patch("apps.authn.services.sms.sns_verify.resolve_aws_credentials")
+    def test_get_sns_client_raises_delivery_error_when_no_credentials(self, mock_resolve):
+        mock_resolve.side_effect = AwsCredentialsError("missing")
+        with self.assertRaises(PhoneVerificationDeliveryError):
+            _get_sns_client()
+
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
+    def test_publish_maps_botocore_error_to_delivery_error(self, _mock_code, mock_boto_client):
+        from botocore.exceptions import BotoCoreError
+
+        mock_client = MagicMock()
+        mock_client.publish.side_effect = BotoCoreError()
+        mock_boto_client.return_value = mock_client
+
+        with self.assertRaises(PhoneVerificationDeliveryError):
+            start_phone_verification(self.phone)
+
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
+    def test_publish_maps_unknown_client_error_to_delivery_error(self, _mock_code, mock_boto_client):
+        mock_client = MagicMock()
+        mock_client.publish.side_effect = ClientError(
+            {"Error": {"Code": "SomethingElse", "Message": "boom"}},
+            "Publish",
+        )
+        mock_boto_client.return_value = mock_client
+
+        with self.assertRaises(PhoneVerificationDeliveryError):
+            start_phone_verification(self.phone)
+
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    def test_start_phone_verification_raises_on_invalid_template(self, mock_boto_client):
+        self.aws_config.sms_message_template = "No placeholder here"
+        self.aws_config.save(update_fields=["sms_message_template"])
+
+        with self.assertRaises(PhoneVerificationDeliveryError):
+            start_phone_verification(self.phone)
+        # Cache entry should have been cleaned up after the template failure.
+        self.assertIsNone(cache.get(_otp_cache_key(self.phone)))
+
+    def test_check_phone_verification_no_payload_raises_invalid(self):
+        with self.assertRaises(PhoneVerificationInvalid):
+            check_phone_verification(self.phone, "123456")
+
+    def test_check_phone_verification_already_at_max_attempts_throttles(self):
+        cache.set(
+            _otp_cache_key(self.phone),
+            {"code_hash": make_password("123456"), "attempts": MAX_VERIFY_ATTEMPTS},
+            timeout=600,
+        )
+        with self.assertRaises(PhoneVerificationThrottled):
+            check_phone_verification(self.phone, "123456")
+        # Cache cleared on throttle.
+        self.assertIsNone(cache.get(_otp_cache_key(self.phone)))
+
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    def test_publish_plain_sms_sends_message(self, mock_boto_client):
+        mock_client = MagicMock()
+        mock_client.publish.return_value = {"MessageId": "plain-1"}
+        mock_boto_client.return_value = mock_client
+
+        message_id = publish_plain_sms(phone_number=self.phone, message="hello")
+
+        self.assertEqual(message_id, "plain-1")
+        mock_client.publish.assert_called_once()
+
+    def test_publish_plain_sms_raises_when_not_configured(self):
+        self.aws_config.sms_from_number = ""
+        self.aws_config.save(update_fields=["sms_from_number"])
+
+        with self.assertRaises(PhoneVerificationDeliveryError):
+            publish_plain_sms(phone_number=self.phone, message="hello")
 
 
 class AwsSmsConfigTest(TestCase):

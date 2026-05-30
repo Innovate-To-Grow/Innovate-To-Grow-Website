@@ -46,6 +46,41 @@ class AcceptInvitationViewTests(TestCase):
         response = self.client.get(f"/authn/invite/{invitation.token}/")
         self.assertEqual(response.status_code, 400)
 
+    def test_get_existing_verified_member_upgrades_and_shows_registered(self):
+        invitation = self._create_invitation(email="existing@example.com")
+        member = Member.objects.create_user(
+            password="StrongPass123!", first_name="Ex", last_name="Member", is_staff=False, is_active=True
+        )
+        ContactEmail.objects.create(
+            member=member, email_address="existing@example.com", email_type="primary", verified=True
+        )
+        response = self.client.get(f"/authn/invite/{invitation.token}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "existing@example.com")
+        member.refresh_from_db()
+        self.assertTrue(member.is_staff)
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, AdminInvitation.Status.ACCEPTED)
+
+    def test_post_invalid_token_returns_error(self):
+        response = self.client.post(
+            "/authn/invite/nonexistent-token/",
+            {"first_name": "A", "last_name": "B", "password1": "x", "password2": "x"},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_post_rate_limited_returns_429(self):
+        from django.core.cache import cache
+
+        invitation = self._create_invitation(email="rl@example.com")
+        cache.set(f"invitation-rate:{invitation.token}", 10, timeout=3600)
+        response = self.client.post(
+            f"/authn/invite/{invitation.token}/",
+            {"first_name": "A", "last_name": "B", "password1": "x", "password2": "x"},
+        )
+        self.assertEqual(response.status_code, 429)
+        cache.clear()
+
     def test_post_creates_staff_member(self):
         invitation = self._create_invitation()
         response = self.client.post(

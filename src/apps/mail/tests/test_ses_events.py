@@ -150,6 +150,76 @@ class ProcessSnsEnvelopeTests(TestCase):
         with self.assertRaises(SesEventError):
             process_sns_envelope({"Type": "Notification", "MessageId": "x", "Message": "not json"})
 
+    def test_notification_without_ses_message_id_is_skipped(self):
+        body = {"eventType": "Bounce", "mail": {}, "bounce": {}}
+        env = {"Type": "Notification", "MessageId": "sns-z", "Message": json.dumps(body)}
+
+        # Should return without raising and without touching the log.
+        process_sns_envelope(env)
+
+        self.assertEqual(self._reload().status, "sent")
+
+    def test_send_event_records_idempotency_without_status_change(self):
+        env = _envelope("Send", {}, sns_message_id="sns-send-1")
+        process_sns_envelope(env)
+        log = self._reload()
+        self.assertEqual(log.status, "sent")
+        self.assertEqual(log.last_sns_message_id, "sns-send-1")
+
+    def test_unknown_event_type_does_not_change_log(self):
+        env = _envelope("SomethingNovel", {}, sns_message_id="sns-unknown")
+        process_sns_envelope(env)
+        log = self._reload()
+        self.assertEqual(log.status, "sent")
+        # 'unknown' handler is a logging no-op; last_sns_message_id untouched.
+        self.assertEqual(log.last_sns_message_id, "")
+
+
+class UnsubscribeConfirmationTests(TestCase):
+    def test_unsubscribe_confirmation_is_logged_and_noop(self):
+        # Should not raise and not attempt any network call.
+        process_sns_envelope({"Type": "UnsubscribeConfirmation", "TopicArn": "arn:x"})
+
+
+class SubscriptionUrlopenFailureTests(TestCase):
+    def test_failed_auto_confirm_is_swallowed(self):
+        envelope = {
+            "Type": "SubscriptionConfirmation",
+            "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription&Token=abc",
+            "TopicArn": "arn:aws:sns:us-west-2:123:t",
+        }
+        with patch(
+            "apps.mail.services.ses_events.subscription.urllib.request.urlopen",
+            side_effect=RuntimeError("network down"),
+        ) as mock_urlopen:
+            # Should not raise even though the confirmation request failed.
+            process_sns_envelope(envelope)
+            mock_urlopen.assert_called_once()
+
+
+class ParseTimestampTests(TestCase):
+    def test_parse_ts_returns_none_for_empty(self):
+        from apps.mail.services.ses_events.handlers import parse_ts
+
+        self.assertIsNone(parse_ts(""))
+
+    def test_parse_ts_uses_fromisoformat_fallback(self):
+        from apps.mail.services.ses_events.handlers import parse_ts
+
+        # Django's parse_datetime is permissive; force the fromisoformat fallback
+        # by making parse_datetime return None for an otherwise-valid ISO value.
+        with patch("apps.mail.services.ses_events.handlers.parse_datetime", return_value=None):
+            result = parse_ts("2026-04-22T12:00:00Z")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.year, 2026)
+
+    def test_parse_ts_returns_none_for_garbage(self):
+        from apps.mail.services.ses_events.handlers import parse_ts
+
+        with patch("apps.mail.services.ses_events.handlers.parse_datetime", return_value=None):
+            self.assertIsNone(parse_ts("not-a-timestamp"))
+
 
 class SubscriptionConfirmationTests(TestCase):
     def test_auto_confirm_calls_subscribe_url(self):

@@ -91,6 +91,43 @@ class SendTicketEmailTest(TestCase):
         self.assertIn("secondary@example.com", raw_data)
 
     @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket_mail._load_config")
+    def test_send_via_ses_returns_false_on_credentials_error(self, mock_load_config, mock_resolve):
+        from apps.core.services.aws.credentials import AwsCredentialsError
+
+        mock_load_config.return_value = _mock_config(ses_configured=True)
+        mock_resolve.side_effect = AwsCredentialsError("missing creds")
+
+        with self.assertRaises(RuntimeError):
+            send_ticket_email(self.registration)
+
+        self.registration.refresh_from_db()
+        self.assertIsNone(self.registration.ticket_email_sent_at)
+        self.assertIn("AWS SES", self.registration.ticket_email_error)
+
+    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket_mail.boto3")
+    @patch("apps.event.services.ticket_mail._load_config")
+    def test_send_via_ses_returns_false_on_client_error(self, mock_load_config, mock_boto3, mock_resolve):
+        from botocore.exceptions import ClientError
+
+        mock_load_config.return_value = _mock_config(ses_configured=True)
+        mock_resolve.return_value = _aws_creds()
+        mock_client = MagicMock()
+        mock_client.send_raw_email.side_effect = ClientError(
+            {"Error": {"Code": "MessageRejected", "Message": "rejected"}},
+            "SendRawEmail",
+        )
+        mock_boto3.client.return_value = mock_client
+
+        with self.assertRaises(RuntimeError):
+            send_ticket_email(self.registration)
+
+        self.registration.refresh_from_db()
+        self.assertIsNone(self.registration.ticket_email_sent_at)
+        self.assertIn("AWS SES", self.registration.ticket_email_error)
+
+    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
     @patch("apps.event.services.ticket_mail.boto3")
     @patch("apps.event.services.ticket_mail._load_config")
     def test_clears_previous_error_on_success(self, mock_load_config, mock_boto3, mock_resolve):

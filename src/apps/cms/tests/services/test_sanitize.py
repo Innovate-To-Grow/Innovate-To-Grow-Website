@@ -3,7 +3,50 @@ from django.utils.html import conditional_escape
 
 from apps.cms.models import CMSEmbedAllowedHost
 from apps.cms.services import embed_hosts
-from apps.cms.services.sanitize import sanitize_html, sanitize_html_for_render
+from apps.cms.services.sanitize import (
+    _iframe_attr_filter,
+    sanitize_html,
+    sanitize_html_for_render,
+    validate_safe_url,
+)
+
+
+class ValidateSafeUrlTests(SimpleTestCase):
+    def test_non_string_is_unsafe(self):
+        self.assertFalse(validate_safe_url(None))
+        self.assertFalse(validate_safe_url(123))
+
+    def test_empty_string_is_unsafe(self):
+        self.assertFalse(validate_safe_url(""))
+        self.assertFalse(validate_safe_url("   "))
+
+    def test_relative_and_fragment_urls_are_safe(self):
+        for url in ("#anchor", "/path", "./rel", "../up"):
+            self.assertTrue(validate_safe_url(url))
+
+    def test_scheme_relative_without_scheme_is_safe(self):
+        # urlparse yields no scheme for a bare path with no protocol.
+        self.assertTrue(validate_safe_url("example.com/page"))
+
+    def test_safe_schemes_allowed(self):
+        for url in ("http://x", "https://x", "mailto:a@b.com", "tel:+15551234"):
+            self.assertTrue(validate_safe_url(url))
+
+    def test_dangerous_scheme_rejected(self):
+        self.assertFalse(validate_safe_url("javascript:alert(1)"))
+
+
+class IframeAttrFilterTests(SimpleTestCase):
+    def test_static_attrs_allowed(self):
+        for attr in ("width", "height", "frameborder", "allowfullscreen", "allow"):
+            self.assertTrue(_iframe_attr_filter("iframe", attr, "1"))
+
+    def test_non_src_unknown_attr_rejected(self):
+        self.assertFalse(_iframe_attr_filter("iframe", "onload", "evil()"))
+
+    def test_malformed_src_rejected(self):
+        # parse_embed_url raises InvalidEmbedURL for an unparseable src.
+        self.assertFalse(_iframe_attr_filter("iframe", "src", "javascript:alert(1)"))
 
 
 class SanitizeHtmlForRenderTests(SimpleTestCase):

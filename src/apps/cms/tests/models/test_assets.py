@@ -97,3 +97,32 @@ class CMSAssetValidationTests(TestCase):
             asset.full_clean()
 
         self.assertIn("20 MB", str(ctx.exception))
+
+    def test_allows_svg_with_utf8_bom(self):
+        # A UTF-8 BOM is stripped before checking for the <svg root.
+        self.assert_asset_valid(
+            "bom.svg",
+            b"\xef\xbb\xbf<svg xmlns='http://www.w3.org/2000/svg'></svg>",
+        )
+
+    def test_rejects_svg_without_svg_markup(self):
+        self.assert_asset_invalid("notreally.svg", b"this is just plain text, no markup at all")
+
+    def test_rejects_text_asset_with_binary_data(self):
+        self.assert_asset_invalid("binary.txt", b"hello\x00world")
+
+    def test_rejects_non_utf8_text_asset(self):
+        # Invalid UTF-8 byte sequence triggers the decode error branch.
+        self.assert_asset_invalid("latin1.txt", b"\xff\xfe\xfa not valid utf-8")
+
+    def test_public_url_empty_without_file(self):
+        asset = CMSAsset(name="No File")
+        self.assertEqual(asset.public_url, "")
+
+    def test_public_url_returns_file_url(self):
+        asset = CMSAsset.objects.create(
+            name="Has File",
+            file=uploaded_file("logo.png", b"\x89PNG\r\n\x1a\n", "image/png"),
+        )
+        self.assertTrue(asset.public_url)
+        self.assertEqual(asset.public_url, asset.file.url)

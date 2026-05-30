@@ -1,6 +1,6 @@
 """Tests for PageViewCreateView: IP extraction, serializer validation, auth."""
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.cms.models import PageView
@@ -45,6 +45,33 @@ class PageViewIPExtractionTests(TestCase):
         flush_sync()
         pv = PageView.objects.first()
         self.assertEqual(pv.user_agent, "TestBot/1.0")
+
+    @override_settings(NUM_PROXIES=1)
+    def test_ip_honours_num_proxies_trusted_hops(self):
+        # With NUM_PROXIES=1, index = len(parts) - 1 selects the rightmost entry
+        # (the single trusted hop's client-facing address).
+        self.client.post(
+            "/analytics/pageview/",
+            {"path": "/test"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="203.0.113.50, 198.51.100.7",
+        )
+        flush_sync()
+        pv = PageView.objects.first()
+        self.assertEqual(pv.ip_address, "198.51.100.7")
+
+    @override_settings(NUM_PROXIES=2)
+    def test_ip_num_proxies_clamps_to_leftmost(self):
+        # NUM_PROXIES exceeds the hop count, so the index clamps to 0 (leftmost).
+        self.client.post(
+            "/analytics/pageview/",
+            {"path": "/test"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="203.0.113.50, 198.51.100.7",
+        )
+        flush_sync()
+        pv = PageView.objects.first()
+        self.assertEqual(pv.ip_address, "203.0.113.50")
 
 
 class PageViewValidationTests(TestCase):

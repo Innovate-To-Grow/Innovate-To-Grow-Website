@@ -109,6 +109,27 @@ class ValidateBlockDataTests(TestCase):
             },
         )
 
+    def test_sponsor_year_sponsors_must_be_list(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("sponsor_year", {"year": "2025", "sponsors": "not-a-list"})
+        self.assertIn("'sponsors' to be a list", str(ctx.exception))
+
+    def test_sponsor_year_each_sponsor_must_be_object(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_block_data("sponsor_year", {"year": "2025", "sponsors": ["plain string"]})
+        self.assertIn("must be an object", str(ctx.exception))
+
+    def test_link_list_non_list_items_is_accepted_without_url_checks(self):
+        # items provided but not a list -> URL validation is skipped, no error.
+        validate_block_data("link_list", {"items": "not-a-list"})
+
+    def test_link_list_non_dict_item_is_skipped(self):
+        # A non-dict entry is skipped rather than raising.
+        validate_block_data("link_list", {"items": ["not-a-dict", {"label": "ok", "url": "https://x"}]})
+
+    def test_contact_info_non_list_items_is_accepted(self):
+        validate_block_data("contact_info", {"items": "not-a-list"})
+
     def test_all_block_types_have_schemas(self):
         """Every block type in BLOCK_TYPE_KEYS must have a corresponding schema."""
         for key in BLOCK_TYPE_KEYS:

@@ -78,6 +78,35 @@ class SitemapXmlTest(TestCase):
         self.assertEqual(root.findall(f"{SITEMAP_NS}url"), [])
 
 
+class CanonicalFrontendBaseTest(TestCase):
+    def test_falls_back_to_request_host_when_no_frontend_url(self):
+        from apps.core.views import _canonical_frontend_base
+
+        request = RequestFactory().get("/sitemap.xml")
+        with override_settings(FRONTEND_URL=""):
+            base = _canonical_frontend_base(request)
+        # build_absolute_uri("/") on testserver, trailing slash stripped.
+        self.assertEqual(base, "http://testserver")
+
+    def test_sitemap_uses_request_host_without_frontend_url(self):
+        CMSPage.objects.create(slug="home", route="/", title="Home", status="published")
+        with override_settings(FRONTEND_URL=""):
+            response = self.client.get("/sitemap.xml")
+        self.assertIn("<loc>http://testserver/</loc>", response.content.decode())
+
+
+class SitemapLastmodTest(TestCase):
+    def test_returns_empty_when_no_timestamps(self):
+        from apps.core.views import _sitemap_lastmod
+
+        class _FakePage:
+            updated_at = None
+            published_at = None
+            latest_block_updated_at = None
+
+        self.assertEqual(_sitemap_lastmod(_FakePage()), "")
+
+
 class Custom404Test(TestCase):
     def test_returns_404_status(self):
         factory = RequestFactory()

@@ -86,3 +86,18 @@ class HealthCheckMiddlewareTest(TestCase):
     def test_non_health_path_passes_through(self):
         response = self.client.get("/")
         self.assertNotEqual(response["Content-Type"], "application/json")
+
+    def test_maintenance_load_failure_logs_but_returns_ok(self):
+        """If the DB probe succeeds but loading maintenance config fails, return ok."""
+        with (
+            patch.object(SiteMaintenanceControl, "load", side_effect=DatabaseError("config table gone")),
+            patch("apps.core.middleware.logger.exception") as exc_log,
+        ):
+            response = self.client.get(self.HEALTH_URL)
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        # DB probe passed -> status stays ok; maintenance flag unchanged.
+        self.assertEqual(data["status"], "ok")
+        self.assertFalse(data["maintenance"])
+        exc_log.assert_called_once()

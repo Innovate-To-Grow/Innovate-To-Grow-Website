@@ -144,6 +144,36 @@ class MailSettingsAdminTest(TestCase):
         self.assertEqual(response.url, reverse("admin:mail_settings"))
         mock_send_test_sms.assert_called_once_with(phone_number="+12065550123")
 
+    def test_test_email_post_without_recipient_shows_error(self):
+        response = self.client.post(reverse("admin:mail_settings_test_email"), {"recipient": "  "}, follow=True)
+
+        self.assertContains(response, "Please provide a recipient email address")
+
+    @patch("apps.mail.admin.settings._send_test_email", side_effect=RuntimeError("SES boom"))
+    def test_test_email_post_reports_send_failure(self, mock_send):
+        response = self.client.post(
+            reverse("admin:mail_settings_test_email"), {"recipient": "ops@example.com"}, follow=True
+        )
+
+        self.assertContains(response, "Failed to send test email: SES boom")
+
+    def test_test_sms_post_without_recipient_shows_error(self):
+        response = self.client.post(
+            reverse("admin:mail_settings_test_sms"), {"country_code": "+1", "recipient": ""}, follow=True
+        )
+
+        self.assertContains(response, "Please provide a phone number")
+
+    @patch("apps.mail.admin.settings._send_test_sms", side_effect=RuntimeError("SNS boom"))
+    def test_test_sms_post_reports_send_failure(self, mock_send):
+        response = self.client.post(
+            reverse("admin:mail_settings_test_sms"),
+            {"country_code": "+1", "recipient": "2065550123"},
+            follow=True,
+        )
+
+        self.assertContains(response, "Failed to send test SMS: SNS boom")
+
 
 class EmailCampaignAdminImportTest(TestCase):
     def setUp(self):

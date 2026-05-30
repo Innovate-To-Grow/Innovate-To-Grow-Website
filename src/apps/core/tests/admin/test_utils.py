@@ -3,12 +3,34 @@
 from django.test import TestCase
 
 from apps.core.admin.utils import (
+    admin_url,
     format_duration,
     format_file_size,
     format_json,
     get_field_value,
     truncate_text,
 )
+
+
+class AdminUrlTest(TestCase):
+    def test_none_returns_dash(self):
+        self.assertEqual(admin_url(None), "-")
+
+    def test_generates_link_with_default_label(self):
+        from apps.projects.models import Semester
+
+        semester = Semester.objects.create(year=2025, season=1, is_published=True)
+        html = admin_url(semester)
+        self.assertIn(f"/admin/projects/semester/{semester.pk}/change/", html)
+        self.assertIn(str(semester), html)
+        self.assertIn("<a href=", html)
+
+    def test_custom_label(self):
+        from apps.projects.models import Semester
+
+        semester = Semester.objects.create(year=2025, season=1, is_published=True)
+        html = admin_url(semester, label="Click me")
+        self.assertIn("Click me", html)
 
 
 class TruncateTextTest(TestCase):
@@ -96,6 +118,10 @@ class FormatFileSizeTest(TestCase):
 
     def test_zero(self):
         self.assertEqual(format_file_size(0), "0.0 B")
+
+    def test_petabytes(self):
+        # Larger than 1024 TB falls through the unit loop to the PB branch.
+        self.assertEqual(format_file_size(1024**5), "1.0 PB")
 
 
 class FormatDurationTest(TestCase):

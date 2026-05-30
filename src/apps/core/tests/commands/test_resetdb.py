@@ -66,6 +66,106 @@ class ResetDBCommandTest(TestCase):
                 stdout=out,
             )
 
-    # TODO: Add integration tests that use a separate test database to verify
-    # the actual SQL execution for each vendor (PostgreSQL, MySQL, SQLite).
-    # This would require configuring these databases in the test environment.
+    @override_settings(DEBUG=True)
+    def test_postgresql_vendor_branch(self):
+        """A postgresql connection routes to reset_postgresql."""
+        from unittest.mock import MagicMock, patch
+
+        conn = MagicMock()
+        conn.vendor = "postgresql"
+        conn.settings_dict = {"NAME": "devdb"}
+        with (
+            patch("apps.core.management.commands.resetdb.delete_migration_files"),
+            patch("apps.core.management.commands.resetdb.connections", {"default": conn}),
+            patch("apps.core.management.commands.resetdb.reset_postgresql") as pg,
+            patch("apps.core.management.commands.resetdb.reset_mysql") as mysql,
+            patch("apps.core.management.commands.resetdb.reset_sqlite") as sqlite,
+            patch("apps.core.management.commands.resetdb.create_default_admin"),
+            patch("apps.core.management.commands.resetdb.seed_archive_data"),
+            patch("apps.core.management.commands.resetdb.call_command"),
+        ):
+            call_command("resetdb", "--force", "--confirm=RESET_DB", stdout=StringIO())
+        pg.assert_called_once_with(conn)
+        mysql.assert_not_called()
+        sqlite.assert_not_called()
+
+    @override_settings(DEBUG=True)
+    def test_mysql_vendor_branch(self):
+        """A mysql connection routes to reset_mysql."""
+        from unittest.mock import MagicMock, patch
+
+        conn = MagicMock()
+        conn.vendor = "mysql"
+        conn.settings_dict = {"NAME": "devdb"}
+        with (
+            patch("apps.core.management.commands.resetdb.delete_migration_files"),
+            patch("apps.core.management.commands.resetdb.connections", {"default": conn}),
+            patch("apps.core.management.commands.resetdb.reset_mysql") as mysql,
+            patch("apps.core.management.commands.resetdb.create_default_admin"),
+            patch("apps.core.management.commands.resetdb.seed_archive_data"),
+            patch("apps.core.management.commands.resetdb.call_command"),
+        ):
+            call_command("resetdb", "--force", "--confirm=RESET_DB", stdout=StringIO())
+        mysql.assert_called_once_with(conn)
+
+    @override_settings(DEBUG=True)
+    def test_unsupported_vendor_raises(self):
+        """An unknown vendor raises CommandError, wrapped by the except handler."""
+        from unittest.mock import MagicMock, patch
+
+        conn = MagicMock()
+        conn.vendor = "oracle"
+        conn.settings_dict = {"NAME": "devdb"}
+        with (
+            patch("apps.core.management.commands.resetdb.delete_migration_files"),
+            patch("apps.core.management.commands.resetdb.connections", {"default": conn}),
+        ):
+            with self.assertRaises(CommandError) as cm:
+                call_command("resetdb", "--force", "--confirm=RESET_DB", stdout=StringIO())
+        self.assertIn("Unsupported database vendor: oracle", str(cm.exception))
+
+    @override_settings(DEBUG=True)
+    def test_reset_error_is_wrapped(self):
+        """An exception raised during reset is wrapped as CommandError."""
+        from unittest.mock import MagicMock, patch
+
+        conn = MagicMock()
+        conn.vendor = "sqlite"
+        conn.settings_dict = {"NAME": "devdb"}
+        with (
+            patch("apps.core.management.commands.resetdb.delete_migration_files"),
+            patch("apps.core.management.commands.resetdb.connections", {"default": conn}),
+            patch(
+                "apps.core.management.commands.resetdb.reset_sqlite",
+                side_effect=RuntimeError("disk full"),
+            ),
+        ):
+            with self.assertRaises(CommandError) as cm:
+                call_command("resetdb", "--force", "--confirm=RESET_DB", stdout=StringIO())
+        self.assertIn("Error during database reset: disk full", str(cm.exception))
+
+    @override_settings(DEBUG=False)
+    def test_production_warning_emitted(self):
+        """Running with --allow-production under DEBUG=False emits the warning banner."""
+        from unittest.mock import MagicMock, patch
+
+        conn = MagicMock()
+        conn.vendor = "sqlite"
+        conn.settings_dict = {"NAME": "devdb"}
+        out = StringIO()
+        with (
+            patch("apps.core.management.commands.resetdb.delete_migration_files"),
+            patch("apps.core.management.commands.resetdb.connections", {"default": conn}),
+            patch("apps.core.management.commands.resetdb.reset_sqlite"),
+            patch("apps.core.management.commands.resetdb.create_default_admin"),
+            patch("apps.core.management.commands.resetdb.seed_archive_data"),
+            patch("apps.core.management.commands.resetdb.call_command"),
+        ):
+            call_command(
+                "resetdb",
+                "--force",
+                "--confirm=RESET_DB",
+                "--allow-production",
+                stdout=out,
+            )
+        self.assertIn("RUNNING RESETDB IN PRODUCTION ENVIRONMENT", out.getvalue())
