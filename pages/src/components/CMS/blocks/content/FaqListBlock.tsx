@@ -1,4 +1,4 @@
-import {SafeHtml} from '../../../SafeHtml/SafeHtml';
+import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 
 interface FaqItem {
   question: string;

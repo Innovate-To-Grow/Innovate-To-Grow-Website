@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchNewsDetail, type NewsArticle } from '../../features/news/api';
-import {SafeHtml} from '../../components/SafeHtml/SafeHtml';
+import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 import { safeHref } from '@/lib/safeHref';
 
 export const NewsDetailPage = () => {
