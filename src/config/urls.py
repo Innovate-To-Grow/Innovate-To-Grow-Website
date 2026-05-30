@@ -67,6 +67,8 @@ urlpatterns = [
     path("analytics/", include("apps.cms.analytics_urls")),
     # mail (magic login links)
     path("mail/", include("apps.mail.urls")),
+    # cli admin API (OAuth2 + PKCE generic CRUD for the i2g-admin CLI)
+    path("admin-api/", include("apps.cli_admin.urls")),
 ]
 
 handler404 = "apps.core.views.custom_404"

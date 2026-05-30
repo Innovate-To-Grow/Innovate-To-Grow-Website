@@ -186,6 +186,14 @@ UNFOLD = {
                     {"title": "Admin Log", "link": "/admin/admin/logentry/"},
                 ],
             },
+            {
+                "title": "CLI Admin",
+                "items": [
+                    {"title": "Access Tokens", "link": "/admin/cli_admin/cliaccesstoken/"},
+                    {"title": "Authorization Codes", "link": "/admin/cli_admin/cliauthorizationcode/"},
+                    {"title": "Audit Log", "link": "/admin/cli_admin/cliauditlog/"},
+                ],
+            },
         ],
     },
 }

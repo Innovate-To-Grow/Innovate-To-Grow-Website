@@ -1,12 +1,12 @@
 import json
-from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 
+# json_safe moved into the shared safe-ORM layer; re-exported here for the old path.
+from apps.core.services.db_tools.safe_orm.json import json_safe
 
-def json_safe(value: Any) -> Any:
-    return json.loads(json.dumps(value, cls=DjangoJSONEncoder, default=str))
+__all__ = ["json_safe", "validation_message"]
 
 
 def validation_message(exc: ValidationError) -> str:

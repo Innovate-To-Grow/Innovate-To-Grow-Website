@@ -25,6 +25,9 @@ REST_FRAMEWORK = {
         "past_project_share": "10/minute",
         "contact_email_create": "5/hour",
         "ses_events": "600/minute",
+        "cli_oauth": "30/minute",
+        "cli_read": "120/minute",
+        "cli_write": "60/minute",
     },
 }
 
