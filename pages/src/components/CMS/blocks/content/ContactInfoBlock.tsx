@@ -1,4 +1,4 @@
-import { safeHref } from '../../../../shared/utils/safeHref';
+import { safeHref } from '@/lib/safeHref';
 
 interface ContactItem {
   label: string;

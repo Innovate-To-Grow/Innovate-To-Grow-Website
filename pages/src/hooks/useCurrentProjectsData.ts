@@ -2,7 +2,7 @@ import {useState, useEffect} from 'react';
 import {fetchCurrentProjectsFull} from '../features/projects/api';
 import type {ProjectTableRow} from '../features/projects/api';
 import type {SheetRow} from '../components/SheetsDataTable';
-import {formatSemesterLabel} from '../shared/utils/semester';
+import {formatSemesterLabel} from '@/lib/semester';
 
 function projectToSheetRow(p: ProjectTableRow): SheetRow {
   return {

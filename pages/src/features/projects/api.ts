@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import {formatSemesterLabel} from '../../shared/utils/semester';
+import {formatSemesterLabel} from '@/lib/semester';
 import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '../events/api';
 
