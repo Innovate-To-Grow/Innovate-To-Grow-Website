@@ -1,5 +1,5 @@
-import {type MenuItem} from '../../../../features/layout/api';
-import {type User} from '../../../../shared/auth/types';
+import {type MenuItem} from '@/features/layout/api';
+import {type User} from '@/shared/auth/types';
 import {type LayoutLoadState} from '../../LayoutProvider/context';
 import {MenuTree} from './MenuTree';
 import {MENU_BAR_SKELETON_WIDTHS_PX} from './shared';

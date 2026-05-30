@@ -6,9 +6,9 @@ describe('CSS imports resolve', () => {
   });
 
   const componentsWithCSS = [
-    ['Layout/Container', () => import('../components/Layout/Container/Container')],
-    ['Layout/MainMenu', () => import('../components/Layout/MainMenu/MainMenu')],
-    ['Layout/Footer', () => import('../components/Layout/Footer/Footer')],
+    ['Layout/Container', () => import('@/features/layout/components/Container/Container')],
+    ['Layout/MainMenu', () => import('@/features/layout/components/MainMenu/MainMenu')],
+    ['Layout/Footer', () => import('@/features/layout/components/Footer/Footer')],
     ['CMS/CMSPageComponent', () => import('@/features/cms/components/CMSPageComponent')],
     ['ScheduleGrid', () => import('../components/ScheduleGrid/ScheduleGrid')],
     ['SheetsDataTable', () => import('@/components/ui/SheetsDataTable/SheetsDataTable')],

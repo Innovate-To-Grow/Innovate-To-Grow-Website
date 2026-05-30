@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
-import { usePageTracking } from '../../../hooks/usePageTracking';
+import { usePageTracking } from '@/hooks/usePageTracking';
 
 export const Container = () => {
   usePageTracking();

@@ -1,4 +1,4 @@
-import {type MenuItem} from '../../../../features/layout/api';
+import {type MenuItem} from '@/features/layout/api';
 import {safeHref} from '@/lib/safeHref';
 
 export const buildHref = (item: MenuItem) => safeHref(item.url);

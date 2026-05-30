@@ -25,7 +25,7 @@ describe('Component barrel exports', () => {
   });
 
   it('components/Layout exports resolve', async () => {
-    const mod = await import('../components/Layout');
+    const mod = await import('@/features/layout');
     expect(mod.Footer).toBeDefined();
     expect(mod.MainMenu).toBeDefined();
     expect(mod.Container).toBeDefined();

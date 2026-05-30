@@ -1,6 +1,6 @@
 import React, {Suspense, type ReactElement} from 'react';
 import {createBrowserRouter, Navigate} from 'react-router-dom';
-import {Layout} from '../components/Layout';
+import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';

@@ -12,7 +12,7 @@ import {
   readLayoutCache,
   writeLayoutCache,
   type LayoutData,
-} from '../../../features/layout/api';
+} from '@/features/layout/api';
 import { LayoutContext, type LayoutContextValue, type LayoutLoadState } from './context';
 
 interface LayoutProviderProps {

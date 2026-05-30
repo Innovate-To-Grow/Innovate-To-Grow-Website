@@ -1,4 +1,4 @@
-import {type User} from '../../../../shared/auth/types';
+import {type User} from '@/shared/auth/types';
 
 interface MemberMenuProps {
   user: User | null;

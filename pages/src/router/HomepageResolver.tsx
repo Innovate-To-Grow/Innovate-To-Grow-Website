@@ -1,4 +1,4 @@
-import {useLayout} from '../components/Layout/LayoutProvider/context';
+import {useLayout} from '@/features/layout/components/LayoutProvider/context';
 import {CMSPageComponent} from '@/features/cms';
 
 export const HomepageResolver = () => {

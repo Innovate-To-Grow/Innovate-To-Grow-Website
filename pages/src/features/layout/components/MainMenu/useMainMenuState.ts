@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useMenu} from '../LayoutProvider/context';
-import {useAuth} from '../../Auth';
+import {useAuth} from '@/components/Auth';
 import {formatCurrentMenuDate} from './parts/shared';
 
 export const useMainMenuState = () => {

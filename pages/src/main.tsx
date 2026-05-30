@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { router } from '@/router';
-import { Footer, MainMenu, LayoutProvider } from './components/Layout';
+import { Footer, MainMenu, LayoutProvider } from '@/features/layout';
 import { HealthCheckProvider } from '@/app/MaintenanceMode';
 import { AuthProvider } from './components/Auth';
 import { ErrorBoundary } from '@/app/ErrorBoundary';

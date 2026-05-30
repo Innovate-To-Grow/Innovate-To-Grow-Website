@@ -1,5 +1,5 @@
 import {type FocusEvent, type KeyboardEvent, type ReactElement} from 'react';
-import {type MenuItem} from '../../../../features/layout/api';
+import {type MenuItem} from '@/features/layout/api';
 import {buildHref} from './shared';
 
 interface MenuTreeProps {
