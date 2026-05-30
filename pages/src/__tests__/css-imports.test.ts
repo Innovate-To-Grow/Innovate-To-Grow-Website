@@ -11,7 +11,7 @@ describe('CSS imports resolve', () => {
     ['Layout/Footer', () => import('../components/Layout/Footer/Footer')],
     ['CMS/CMSPageComponent', () => import('../components/CMS/CMSPageComponent')],
     ['ScheduleGrid', () => import('../components/ScheduleGrid/ScheduleGrid')],
-    ['SheetsDataTable', () => import('../components/SheetsDataTable/SheetsDataTable')],
+    ['SheetsDataTable', () => import('@/components/ui/SheetsDataTable/SheetsDataTable')],
     ['MaintenanceMode', () => import('../components/MaintenanceMode/MaintenanceMode')],
     ['HealthCheckProvider', () => import('../components/MaintenanceMode/HealthCheckProvider')],
   ] as const;

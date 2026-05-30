@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import type {SheetRow, TrackInfo} from '../SheetsDataTable';
+import type {SheetRow, TrackInfo} from '@/components/ui/SheetsDataTable';
 import {addMinutes} from '@/lib/time';
 
 export interface ClassConfig {
