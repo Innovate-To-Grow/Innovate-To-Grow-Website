@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import type {FormEvent} from 'react';
 
-import {VERIFICATION_CODE_PLACEHOLDER} from '../../../components/Auth';
+import {VERIFICATION_CODE_PLACEHOLDER} from '@/features/auth';
 import {formatPhoneDisplay, stripPhoneFormat} from '@/lib/phoneRegions';
 import type {EventRegistrationOptions} from '@/features/events/api';
 import type {OrganizationType} from '../useEventRegistration';

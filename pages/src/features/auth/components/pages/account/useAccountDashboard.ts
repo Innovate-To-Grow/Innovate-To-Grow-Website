@@ -12,7 +12,7 @@ import {
   verifyAccountDeletionCode,
   verifyPasswordChangeCode,
   type ProfileResponse,
-} from '../../../../services/auth';
+} from '@/features/auth/api';
 import {
   fetchMyTickets,
   fetchRegistrationOptions,

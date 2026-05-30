@@ -30,12 +30,12 @@ const lazyRoute = (element: ReactElement): ReactElement => (
 );
 
 // Auth pages (lazy)
-const LoginPage = React.lazy(() => import('../components/Auth/pages/LoginPage').then(m => ({default: m.LoginPage})));
-const RegisterPage = React.lazy(() => import('../components/Auth/pages/RegisterPage').then(m => ({default: m.RegisterPage})));
-const AccountPage = React.lazy(() => import('../components/Auth/pages/AccountPage').then(m => ({default: m.AccountPage})));
-const CompleteProfilePage = React.lazy(() => import('../components/Auth/pages/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
-const ForgotPasswordPage = React.lazy(() => import('../components/Auth/pages/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
-const VerifyEmailPage = React.lazy(() => import('../components/Auth/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
+const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
+const RegisterPage = React.lazy(() => import('@/features/auth/components/pages/RegisterPage').then(m => ({default: m.RegisterPage})));
+const AccountPage = React.lazy(() => import('@/features/auth/components/pages/AccountPage').then(m => ({default: m.AccountPage})));
+const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
+const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
+const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
 
 // Content pages (lazy) — only non-CMS pages
 const NewsPage = React.lazy(() => import('@/routes/NewsPage').then(m => ({default: m.NewsPage})));

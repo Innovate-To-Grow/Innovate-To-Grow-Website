@@ -2,7 +2,7 @@ import {describe, it, expect} from 'vitest';
 
 describe('Component barrel exports', () => {
   it('components/Auth exports resolve', async () => {
-    const mod = await import('../components/Auth');
+    const mod = await import('@/features/auth');
     expect(mod.AuthProvider).toBeDefined();
     expect(mod.useAuth).toBeDefined();
     expect(mod.CodeInput).toBeDefined();

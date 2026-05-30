@@ -1,7 +1,7 @@
 import type {FormEvent} from 'react';
 import {CodeInput} from '../forms/CodeInput';
 import {StatusAlert} from '../shared/StatusAlert';
-import type {ContactEmail} from '../../../services/auth';
+import type {ContactEmail} from '@/features/auth/api';
 
 interface ContactEmailCardProps {
   contact: ContactEmail;

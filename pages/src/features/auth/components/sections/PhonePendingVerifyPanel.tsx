@@ -1,5 +1,5 @@
 import type {FormEvent} from 'react';
-import type {ContactPhone} from '../../../services/auth';
+import type {ContactPhone} from '@/features/auth/api';
 import {CodeInput} from '../forms/CodeInput';
 import {StatusAlert} from '../shared/StatusAlert';
 import {formatPhoneDisplay} from './internal/helpers';

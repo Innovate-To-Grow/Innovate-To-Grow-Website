@@ -5,7 +5,7 @@ import './index.css';
 import { router } from '@/router';
 import { Footer, MainMenu, LayoutProvider } from '@/features/layout';
 import { HealthCheckProvider } from '@/app/MaintenanceMode';
-import { AuthProvider } from './components/Auth';
+import { AuthProvider } from '@/features/auth';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import {
   SECTION_TITLES_KEY,

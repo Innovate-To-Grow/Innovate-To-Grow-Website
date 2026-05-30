@@ -8,11 +8,11 @@ const mockMagicAutoLogin = vi.fn();
 const mockNavigate = vi.fn();
 const mockDispatchAuthStateChange = vi.fn();
 
-vi.mock('../../services/auth', () => ({
+vi.mock('@/features/auth', () => ({
   magicAutoLogin: (...args: unknown[]) => mockMagicAutoLogin(...args),
 }));
 
-vi.mock('../../components/Auth/context/shared', () => ({
+vi.mock('@/features/auth/components/context/shared', () => ({
   dispatchAuthStateChange: () => mockDispatchAuthStateChange(),
 }));
 

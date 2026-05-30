@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import type {ProfileResponse} from '../../../shared/auth/types';
+import type {ProfileResponse} from '@/features/auth/api/types';
 
 interface ManageStepProps {
   profile: ProfileResponse | null;

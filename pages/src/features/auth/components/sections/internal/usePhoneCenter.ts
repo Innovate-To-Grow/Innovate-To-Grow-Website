@@ -7,7 +7,7 @@ import {
     requestContactPhoneVerification,
     verifyContactPhoneCode,
     type ContactPhone,
-} from '../../../../services/auth';
+} from '@/features/auth/api';
 import {USER_FACING_GENERIC_ERROR} from '../../shared/apiErrors';
 import {canSubmitNationalPhone, capNationalDigitsForRegion} from './phoneInput';
 

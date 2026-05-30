@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getPostAuthPath } from '../../../shared/auth/redirects';
+import { getPostAuthPath } from '@/features/auth/api/redirects';
 import { LoginEmailMode } from './LoginEmailMode';
 import { LoginPasswordMode } from './LoginPasswordMode';
 

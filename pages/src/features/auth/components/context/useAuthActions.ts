@@ -23,7 +23,7 @@ import {
   verifyRegistrationCode as apiVerifyRegistrationCode,
   isAuthenticated as checkIsAuthenticated,
   updateStoredUser,
-} from '../../../services/auth';
+} from '@/features/auth/api';
 
 import { dispatchAuthStateChange, getAuthErrorMessage } from './shared';
 

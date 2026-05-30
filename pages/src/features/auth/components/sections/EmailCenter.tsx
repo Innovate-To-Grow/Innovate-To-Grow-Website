@@ -1,6 +1,6 @@
 import {
     type ProfileResponse,
-} from '../../../services/auth';
+} from '@/features/auth/api';
 import {EmailAddForm} from './EmailAddForm';
 import {ContactEmailCard} from './ContactEmailCard';
 import {PrimaryEmailCard} from './PrimaryEmailCard';

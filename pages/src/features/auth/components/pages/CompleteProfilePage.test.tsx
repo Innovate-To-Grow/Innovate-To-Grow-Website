@@ -13,8 +13,8 @@ vi.mock('../AuthContext', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock('../../../services/auth', async () => {
-  const actual = await vi.importActual<typeof import('../../../services/auth')>('../../../services/auth');
+vi.mock('@/features/auth/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/auth/api')>('@/features/auth/api');
   return {
     ...actual,
     getProfile: (...args: unknown[]) => mockGetProfile(...args),

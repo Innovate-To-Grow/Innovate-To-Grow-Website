@@ -1,7 +1,7 @@
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
-import {unsubscribeAutoLogin} from '../../services/auth';
-import {getPostAuthPath} from '../../shared/auth/redirects';
+import {unsubscribeAutoLogin} from '@/features/auth';
+import {getPostAuthPath} from '@/features/auth/api/redirects';
 
 export function UnsubscribeLoginPage() {
   const [searchParams] = useSearchParams();

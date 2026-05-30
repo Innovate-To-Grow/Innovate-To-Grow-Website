@@ -1,8 +1,8 @@
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
-import {magicAutoLogin} from '../../services/auth';
-import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
-import {getPostAuthPath} from '../../shared/auth/redirects';
+import {magicAutoLogin} from '@/features/auth';
+import {dispatchAuthStateChange} from '@/features/auth/components/context/shared';
+import {getPostAuthPath} from '@/features/auth/api/redirects';
 
 export function MagicLoginPage() {
   const [searchParams] = useSearchParams();

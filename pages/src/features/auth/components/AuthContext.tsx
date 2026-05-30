@@ -11,7 +11,7 @@ import {
     isProfileCompletionRequired as checkProfileCompletionRequired,
     getStoredUser,
     isAuthenticated as checkIsAuthenticated,
-} from '../../services/auth';
+} from '@/features/auth/api';
 import { AUTH_STATE_CHANGE_EVENT, defaultContextValue, type AuthContextValue } from './context/shared';
 import { useAuthActions } from './context/useAuthActions';
 

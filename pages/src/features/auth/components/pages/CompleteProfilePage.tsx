@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getProfile, updateProfileFields } from '../../../services/auth';
-import { getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
+import { getProfile, updateProfileFields } from '@/features/auth/api';
+import { getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
 import { getAuthErrorMessage } from '../context/shared';
 import { CompleteProfileForm } from './CompleteProfileForm';
 

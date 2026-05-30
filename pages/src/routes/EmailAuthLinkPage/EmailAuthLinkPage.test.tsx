@@ -8,12 +8,12 @@ const mockConsumeEmailAuthQuery = vi.fn();
 const mockNavigate = vi.fn();
 const mockDispatchAuthStateChange = vi.fn();
 
-vi.mock('../../services/auth', () => ({
+vi.mock('@/features/auth', () => ({
   consumeEmailAuthQuery: (...args: unknown[]) => mockConsumeEmailAuthQuery(...args),
 }));
 
-vi.mock('../../components/Auth/context/shared', async () => {
-  const actual = await vi.importActual<typeof import('../../components/Auth/context/shared')>('../../components/Auth/context/shared');
+vi.mock('@/features/auth/components/context/shared', async () => {
+  const actual = await vi.importActual<typeof import('@/features/auth/components/context/shared')>('@/features/auth/components/context/shared');
   return {
     ...actual,
     dispatchAuthStateChange: () => mockDispatchAuthStateChange(),

@@ -1,11 +1,11 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {useAuth} from '../../components/Auth';
-import {updateProfileFields} from '../../services/auth';
+import {useAuth} from '@/features/auth';
+import {updateProfileFields} from '@/features/auth';
 import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '@/features/events/api';
 import {maxPhoneDigits, validatePhoneDigits} from '@/lib/phoneRegions';
-import {hasRequiredNameFields} from '../../shared/auth/profileCompletion';
-import {buildCompleteProfilePath} from '../../shared/auth/redirects';
+import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
+import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';

@@ -1,9 +1,9 @@
 import {useEffect, useState, type FormEvent} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {useAuth} from '../../components/Auth';
-import {getAccessToken, getProfile, updateProfileFields} from '../../services/auth';
-import {hasRequiredNameFields} from '../../shared/auth/profileCompletion';
-import type {ProfileResponse} from '../../shared/auth/types';
+import {useAuth} from '@/features/auth';
+import {getAccessToken, getProfile, updateProfileFields} from '@/features/auth';
+import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
+import type {ProfileResponse} from '@/features/auth/api/types';
 import {CodeStep} from './steps/CodeStep';
 import {EmailStep} from './steps/EmailStep';
 import {ManageStep} from './steps/ManageStep';

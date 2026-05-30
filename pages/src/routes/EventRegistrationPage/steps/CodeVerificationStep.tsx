@@ -1,6 +1,6 @@
 import type {FormEvent} from 'react';
 
-import {CodeInput} from '../../../components/Auth';
+import {CodeInput} from '@/features/auth';
 
 interface CodeVerificationStepProps {
   email: string;

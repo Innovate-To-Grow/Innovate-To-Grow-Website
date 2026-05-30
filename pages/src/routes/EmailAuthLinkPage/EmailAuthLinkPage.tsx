@@ -1,8 +1,8 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useSearchParams} from 'react-router-dom';
-import {dispatchAuthStateChange, getAuthErrorMessage} from '../../components/Auth/context/shared';
-import {consumeEmailAuthQuery, type EmailAuthFlow, type EmailAuthSource} from '../../services/auth';
-import {getEmailAuthSourcePath} from '../../shared/auth/redirects';
+import {dispatchAuthStateChange, getAuthErrorMessage} from '@/features/auth/components/context/shared';
+import {consumeEmailAuthQuery, type EmailAuthFlow, type EmailAuthSource} from '@/features/auth';
+import {getEmailAuthSourcePath} from '@/features/auth/api/redirects';
 
 const isEmailAuthFlow = (value: string | null): value is EmailAuthFlow =>
   value === 'auth' || value === 'login' || value === 'register';

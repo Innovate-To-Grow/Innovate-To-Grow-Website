@@ -1,8 +1,8 @@
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router-dom';
-import {impersonateAutoLogin} from '../../shared/auth/session';
-import {dispatchAuthStateChange} from '../../components/Auth/context/shared';
-import {getPostAuthPath} from '../../shared/auth/redirects';
+import {impersonateAutoLogin} from '@/features/auth/api/session';
+import {dispatchAuthStateChange} from '@/features/auth/components/context/shared';
+import {getPostAuthPath} from '@/features/auth/api/redirects';
 
 export function ImpersonateLoginPage() {
   const [searchParams] = useSearchParams();

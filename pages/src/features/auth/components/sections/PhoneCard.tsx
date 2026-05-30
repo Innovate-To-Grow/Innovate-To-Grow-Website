@@ -1,28 +1,28 @@
 import type {FormEvent} from 'react';
-import type {ProfileResponse} from '../../../services/auth';
+import type {ContactPhone} from '@/features/auth/api';
 import {CodeInput} from '../forms/CodeInput';
 import {StatusAlert} from '../shared/StatusAlert';
+import {formatPhoneDisplay} from './internal/helpers';
 
-interface PrimaryEmailCardProps {
-  profile: ProfileResponse;
-  subscribeSaving: boolean;
-  verifying: boolean;
+interface PhoneCardProps {
+  phone: ContactPhone;
+  verifyingId: string | null;
   verifyCode: string;
   verifyLoading: boolean;
   verifyError: string | null;
   resendLoading: boolean;
-  onToggleSubscribe: () => void;
-  onToggleVerify: () => void;
+  onToggleSubscribe: (phone: ContactPhone) => void;
+  onToggleVerify: (phoneId: string) => void;
   onVerifyCodeChange: (value: string) => void;
   onVerifySubmit: (event: FormEvent) => void;
-  onResend: () => void;
+  onResend: (phoneId: string) => void;
   onCancelVerify: () => void;
+  onDelete: (phoneId: string) => void;
 }
 
-export const PrimaryEmailCard = ({
-  profile,
-  subscribeSaving,
-  verifying,
+export const PhoneCard = ({
+  phone,
+  verifyingId,
   verifyCode,
   verifyLoading,
   verifyError,
@@ -33,36 +33,40 @@ export const PrimaryEmailCard = ({
   onVerifySubmit,
   onResend,
   onCancelVerify,
-}: PrimaryEmailCardProps) => (
+  onDelete,
+}: PhoneCardProps) => (
   <div className="email-center-card">
     <div className="email-center-row">
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
-          <span className="email-center-card-title email-center-card-title--emphasis">{profile.email}</span>
-          <span className="email-center-badge primary">Primary</span>
-          <span className={`email-center-badge ${profile.email_verified ? 'verified' : 'unverified'}`}>
-            {profile.email_verified ? 'Verified' : 'Unverified'}
+          <span className="email-center-card-title">{formatPhoneDisplay(phone.phone_number, phone.region)}</span>
+          <span className="email-center-badge primary">{phone.region_display}</span>
+          <span className={`email-center-badge ${phone.verified ? 'verified' : 'unverified'}`}>
+            {phone.verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
         <div className="email-center-actions">
-          <label className="email-center-toggle" aria-label="Subscribe primary email">
-            <input type="checkbox" checked={profile.email_subscribe} onChange={onToggleSubscribe} disabled={subscribeSaving} />
+          <label className="email-center-toggle" aria-label="Allow SMS Message">
+            <input type="checkbox" checked={phone.subscribe} onChange={() => onToggleSubscribe(phone)} />
             <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Newsletters</span>
+            <span className="email-center-toggle-label">Allow SMS Message</span>
           </label>
-          {!profile.email_verified && profile.primary_email_id && !verifying ? (
-            <button type="button" className="email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
+          {!phone.verified && verifyingId !== phone.id ? (
+            <button type="button" className="email-center-btn verify" onClick={() => onToggleVerify(phone.id)}>
               Verify
             </button>
           ) : null}
+          <button type="button" className="email-center-btn delete" onClick={() => onDelete(phone.id)}>
+            Remove
+          </button>
         </div>
       </div>
     </div>
 
-    {verifying && !profile.email_verified ? (
+    {verifyingId === phone.id && !phone.verified ? (
       <div className="email-center-verify-inline">
         <p className="email-center-verify-hint">
-          Enter the 6-digit code we sent to this address, then tap Submit code.
+          Enter the 6-digit code we sent by SMS, then tap Submit code.
         </p>
         <form onSubmit={onVerifySubmit} className="email-center-verify-form">
           <div className="email-center-verify-code-wrap">
@@ -81,7 +85,7 @@ export const PrimaryEmailCard = ({
                 type="button"
                 className="email-center-btn verify email-center-verify-secondary-btn"
                 disabled={resendLoading}
-                onClick={onResend}
+                onClick={() => onResend(phone.id)}
               >
                 {resendLoading ? 'Sending...' : 'Resend Code'}
               </button>

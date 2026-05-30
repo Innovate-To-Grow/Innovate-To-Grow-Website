@@ -11,7 +11,7 @@ import {
   verifyContactEmailCode,
   type ContactEmail,
   type ProfileResponse,
-} from '../../../../services/auth';
+} from '@/features/auth/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
 
 interface UseEmailCenterOptions {

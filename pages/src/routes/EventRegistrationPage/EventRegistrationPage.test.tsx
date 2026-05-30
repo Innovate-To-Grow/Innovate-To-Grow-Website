@@ -8,8 +8,8 @@ const mockUseAuth = vi.fn();
 const mockNavigate = vi.fn();
 const mockFetchRegistrationOptions = vi.fn();
 
-vi.mock('../../components/Auth', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../components/Auth')>();
+vi.mock('@/features/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth')>();
   return {
     ...actual,
     useAuth: () => mockUseAuth(),

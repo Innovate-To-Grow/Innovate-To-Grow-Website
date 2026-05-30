@@ -7,7 +7,7 @@ import type {
   RegisterResponse,
   User,
   VerificationTokenResponse,
-} from '../../../services/auth';
+} from '@/features/auth/api';
 
 export const AUTH_STATE_CHANGE_EVENT = 'i2g-auth-state-change';
 

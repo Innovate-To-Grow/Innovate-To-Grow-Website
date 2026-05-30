@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { getPostAuthPath, getSafeInternalRedirectPath } from '../../../shared/auth/redirects';
+import { getPostAuthPath, getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import { FLOW_META, isVerifyFlow, type VerifyFlow } from './verify/shared';
