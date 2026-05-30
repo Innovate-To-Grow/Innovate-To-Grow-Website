@@ -1,7 +1,7 @@
 import axios from 'axios';
 import {useEffect, useState} from 'react';
 
-import {fetchCurrentSchedule, type EventSchedulePayload} from './api';
+import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
 
 interface UseCurrentEventScheduleResult {
   data: EventSchedulePayload | null;

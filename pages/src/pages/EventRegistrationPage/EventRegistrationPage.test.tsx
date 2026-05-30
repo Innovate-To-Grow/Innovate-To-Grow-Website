@@ -16,8 +16,8 @@ vi.mock('../../components/Auth', async (importOriginal) => {
   };
 });
 
-vi.mock('../../features/events/api', async () => {
-  const actual = await vi.importActual<typeof import('../../features/events/api')>('../../features/events/api');
+vi.mock('@/features/events/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/events/api')>('@/features/events/api');
   return {
     ...actual,
     fetchRegistrationOptions: (...args: unknown[]) => mockFetchRegistrationOptions(...args),

@@ -3,7 +3,7 @@ import type {FormEvent} from 'react';
 
 import {VERIFICATION_CODE_PLACEHOLDER} from '../../../components/Auth';
 import {formatPhoneDisplay, stripPhoneFormat} from '@/lib/phoneRegions';
-import type {EventRegistrationOptions} from '../../../features/events/api';
+import type {EventRegistrationOptions} from '@/features/events/api';
 import type {OrganizationType} from '../useEventRegistration';
 
 interface RegistrationFormStepProps {

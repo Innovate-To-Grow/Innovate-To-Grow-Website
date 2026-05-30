@@ -1,6 +1,6 @@
 import {Link} from 'react-router-dom';
-import type {Registration} from '../../../features/events/api';
-import {resendTicketEmail} from '../../../features/events/api';
+import type {Registration} from '@/features/events/api';
+import {resendTicketEmail} from '@/features/events/api';
 import {formatEventDate} from './helpers';
 import {useState} from 'react';
 

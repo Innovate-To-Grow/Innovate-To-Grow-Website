@@ -1,5 +1,5 @@
 import {Link} from 'react-router-dom';
-import type {EventRegistrationOptions, Registration} from '../../../../features/events/api';
+import type {EventRegistrationOptions, Registration} from '@/features/events/api';
 
 interface TicketsSectionProps {
   tickets: Registration[];

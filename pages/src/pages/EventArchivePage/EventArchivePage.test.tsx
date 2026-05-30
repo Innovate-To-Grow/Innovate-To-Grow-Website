@@ -10,7 +10,7 @@ vi.mock('../../hooks/usePastProjectsData', () => ({
   usePastProjectsData: () => mockUsePastProjectsData(),
 }));
 
-vi.mock('../../components/ScheduleGrid', () => ({
+vi.mock('@/features/events/components/ScheduleGrid', () => ({
   ScheduleGrid: ({rows}: {rows: Array<Record<string, string>>}) => (
     <div data-testid="schedule-rows">{rows.map((row) => row['Year-Semester']).join('|')}</div>
   ),

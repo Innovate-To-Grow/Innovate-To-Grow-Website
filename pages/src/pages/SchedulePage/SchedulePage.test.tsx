@@ -2,12 +2,12 @@ import {render} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-import type {EventSchedulePayload, ScheduleSlot} from '../../features/events/api';
+import type {EventSchedulePayload, ScheduleSlot} from '@/features/events/api';
 import {SchedulePage} from './SchedulePage';
 
 const useCurrentEventScheduleMock = vi.fn();
 
-vi.mock('../../features/events/useCurrentEventSchedule', () => ({
+vi.mock('@/features/events/hooks/useCurrentEventSchedule', () => ({
   useCurrentEventSchedule: (scheduleId?: string | null) => useCurrentEventScheduleMock(scheduleId),
 }));
 

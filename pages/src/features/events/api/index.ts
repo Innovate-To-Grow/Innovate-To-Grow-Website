@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import {getAccessToken} from '../../services/auth';
+import {getAccessToken} from '@/services/auth';
 
 // --- Types ---
 

@@ -2,7 +2,7 @@ import type {CSSProperties} from 'react';
 import {useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '../../components/Projects';
-import {useCurrentEventSchedule} from '../../features/events/useCurrentEventSchedule';
+import {useCurrentEventSchedule} from '@/features/events/hooks/useCurrentEventSchedule';
 import {scheduleProjectToGridRow} from '../../features/projects/api';
 import {addMinutes} from '@/lib/time';
 

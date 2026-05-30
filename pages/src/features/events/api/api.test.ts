@@ -9,7 +9,7 @@ vi.mock('@/lib/api-client', () => ({
   api: apiMock,
 }));
 
-import {fetchCurrentSchedule} from './api';
+import {fetchCurrentSchedule} from './index';
 
 describe('event API', () => {
   beforeEach(() => {

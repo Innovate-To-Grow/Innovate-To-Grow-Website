@@ -19,7 +19,7 @@ import {
   resendTicketEmail,
   type EventRegistrationOptions,
   type Registration,
-} from '../../../../features/events/api';
+} from '@/features/events/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
 
 export const useAccountDashboard = () => {

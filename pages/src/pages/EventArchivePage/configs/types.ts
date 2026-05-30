@@ -1,4 +1,4 @@
-import type {ClassConfig} from '../../../components/ScheduleGrid';
+import type {ClassConfig} from '@/features/events/components/ScheduleGrid';
 
 export interface EventConfig {
   title: string;

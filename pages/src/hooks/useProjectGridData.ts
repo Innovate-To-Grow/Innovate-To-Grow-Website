@@ -7,7 +7,7 @@ import {
   type PastProjectShare,
   type ProjectGridRow,
 } from '../features/projects/api';
-import {fetchCurrentSchedule} from '../features/events/api';
+import {fetchCurrentSchedule} from '@/features/events/api';
 
 interface ProjectGridDataResult {
   rows: ProjectGridRow[];

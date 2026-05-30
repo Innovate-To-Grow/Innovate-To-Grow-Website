@@ -56,8 +56,8 @@ describe('Component barrel exports', () => {
     expect(mod.stripProjectGridItem).toBeDefined();
   });
 
-  it('components/ScheduleGrid exports resolve', async () => {
-    const mod = await import('../components/ScheduleGrid');
+  it('@/features/events/components/ScheduleGrid exports resolve', async () => {
+    const mod = await import('@/features/events/components/ScheduleGrid');
     expect(mod.ScheduleGrid).toBeDefined();
   });
 
