@@ -22,6 +22,7 @@ URL organization for the Django backend, defined in `src/apps/core/urls.py` with
 | `/event/` | `apps.event.urls` | Event registration and management |
 | `/projects/` | `apps.projects.urls` | Past project archives |
 | `/mail/` | `apps.mail.urls` | Magic login links |
+| `/admin-api/` | `apps.cli_admin.urls` | OAuth2 + PKCE generic CRUD for the `i2g-admin` CLI |
 | `/ckeditor5/` | CKEditor 5 | Rich text editor file uploads |
 
 ## Route groups by domain
@@ -72,6 +73,15 @@ See [CMS & News](cms-and-news.md) for details.
 ### Mail (`/mail/`)
 
 - `/mail/magic-login/` — Token-based auto-login from campaign emails
+
+### Admin API (`/admin-api/`)
+
+Generic, denylist-gated CRUD for the `i2g-admin` terminal CLI, authenticated by a short-lived bearer token minted from the staff admin login via OAuth2 + PKCE. Staff status is the gate (no per-model permissions); a SimpleJWT is rejected here. See [CMS & Admin: i2g-admin CLI](../cms-admin/cli-admin.md) for the full guide.
+
+- `/admin-api/oauth/authorize/`, `/admin-api/oauth/token/` — PKCE authorization-code flow
+- `/admin-api/whoami/`, `/admin-api/models/`, `/admin-api/models/{app}/{model}/schema/`
+- `/admin-api/records/{app}/{model}/` — list / create
+- `/admin-api/records/{app}/{model}/{pk}/` — retrieve / update / delete
 
 ## Frontend route mapping
 
