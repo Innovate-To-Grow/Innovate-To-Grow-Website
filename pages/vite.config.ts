@@ -38,6 +38,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), copyDjangoVendorStaticPlugin()],
+    resolve: {
+      alias: {
+        '@': resolve(configDir, 'src'),
+      },
+    },
     build: {
       rollupOptions: {
         output: {
