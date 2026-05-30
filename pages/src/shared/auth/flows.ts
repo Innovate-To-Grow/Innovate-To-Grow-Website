@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { clearKeyCache, encryptPasswordWithCurrentKey } from '../crypto';
+import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/crypto';
 import { authApi } from './client';
 import {
   clearProfileCompletionRequired,

@@ -12,7 +12,7 @@ vi.mock('./client', () => ({
   authApi: {post: mocks.post},
 }));
 
-vi.mock('../crypto', () => ({
+vi.mock('@/lib/crypto', () => ({
   encryptPasswordWithCurrentKey: mocks.encrypt,
   clearKeyCache: mocks.clearKeyCache,
 }));

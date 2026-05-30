@@ -1,1 +1,1 @@
-export { fetchPublicKey, clearKeyCache, encryptPassword, encryptPasswordWithCurrentKey } from '../shared/crypto';
+export { fetchPublicKey, clearKeyCache, encryptPassword, encryptPasswordWithCurrentKey } from '@/lib/crypto';
