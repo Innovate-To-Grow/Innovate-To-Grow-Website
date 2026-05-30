@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchNewsDetail, type NewsArticle } from '../../features/news/api';
+import { fetchNewsDetail, type NewsArticle } from '@/features/news';
 import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 import { safeHref } from '@/lib/safeHref';
 
