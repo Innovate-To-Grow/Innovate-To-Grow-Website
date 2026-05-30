@@ -4,12 +4,12 @@ const {getMock} = vi.hoisted(() => ({
   getMock: vi.fn(),
 }));
 
-vi.mock('../shared/api/client', () => ({
+vi.mock('@/lib/api-client', () => ({
   api: {get: getMock},
   default: {get: getMock},
 }));
 
-import {fetchCMSPage, normalizeCMSRoute} from '../features/cms/api';
+import {fetchCMSPage, normalizeCMSRoute} from '@/features/cms/api';
 
 describe('normalizeCMSRoute', () => {
   it('normalizes local CMS route segments', () => {

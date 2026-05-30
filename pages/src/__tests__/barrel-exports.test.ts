@@ -2,7 +2,7 @@ import {describe, it, expect} from 'vitest';
 
 describe('Component barrel exports', () => {
   it('components/Auth exports resolve', async () => {
-    const mod = await import('../components/Auth');
+    const mod = await import('@/features/auth');
     expect(mod.AuthProvider).toBeDefined();
     expect(mod.useAuth).toBeDefined();
     expect(mod.CodeInput).toBeDefined();
@@ -18,14 +18,14 @@ describe('Component barrel exports', () => {
   });
 
   it('components/CMS exports resolve', async () => {
-    const mod = await import('../components/CMS');
+    const mod = await import('@/features/cms');
     expect(mod.CMSPageComponent).toBeDefined();
     expect(mod.BlockRenderer).toBeDefined();
     expect(mod.useCMSPage).toBeDefined();
   });
 
   it('components/Layout exports resolve', async () => {
-    const mod = await import('../components/Layout');
+    const mod = await import('@/features/layout');
     expect(mod.Footer).toBeDefined();
     expect(mod.MainMenu).toBeDefined();
     expect(mod.Container).toBeDefined();
@@ -36,15 +36,15 @@ describe('Component barrel exports', () => {
     expect(mod.useFooter).toBeDefined();
   });
 
-  it('components/MaintenanceMode exports resolve', async () => {
-    const mod = await import('../components/MaintenanceMode');
+  it('@/app/MaintenanceMode exports resolve', async () => {
+    const mod = await import('@/app/MaintenanceMode');
     expect(mod.MaintenanceMode).toBeDefined();
     expect(mod.HealthCheckProvider).toBeDefined();
     expect(mod.useHealthCheck).toBeDefined();
   });
 
   it('components/Projects exports resolve', async () => {
-    const mod = await import('../components/Projects');
+    const mod = await import('@/features/projects');
     expect(mod.MergedResultsTable).toBeDefined();
     expect(mod.PastProjectsBuilder).toBeDefined();
     expect(mod.ProjectGridTable).toBeDefined();
@@ -56,13 +56,13 @@ describe('Component barrel exports', () => {
     expect(mod.stripProjectGridItem).toBeDefined();
   });
 
-  it('components/ScheduleGrid exports resolve', async () => {
-    const mod = await import('../components/ScheduleGrid');
+  it('@/features/events/components/ScheduleGrid exports resolve', async () => {
+    const mod = await import('@/features/events/components/ScheduleGrid');
     expect(mod.ScheduleGrid).toBeDefined();
   });
 
-  it('components/SheetsDataTable exports resolve', async () => {
-    const mod = await import('../components/SheetsDataTable');
+  it('@/components/ui/SheetsDataTable exports resolve', async () => {
+    const mod = await import('@/components/ui/SheetsDataTable');
     expect(mod.SheetsDataTable).toBeDefined();
   });
 });
@@ -86,7 +86,7 @@ describe('Page barrel exports', () => {
   ] as const;
 
   it.each(pages)('pages/%s exports %s', async (dir, exportName) => {
-    const mod = await import(`../pages/${dir}/index.ts`);
+    const mod = await import(`@/routes/${dir}/index.ts`);
     expect(mod[exportName]).toBeDefined();
   });
 });

@@ -1,8 +1,18 @@
+import {dirname, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
 import {defineConfig} from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+const configDir = dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(configDir, 'src'),
+    },
+  },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
@@ -17,7 +27,8 @@ export default defineConfig({
         'src/**/*.test.{ts,tsx}',
         'src/__tests__/**',
         'src/main.tsx',
-        'src/router/index.tsx',
+        'src/app/providers.tsx',
+        'src/app/router.tsx',
         'src/vite-env.d.ts',
       ],
       thresholds: {

@@ -90,12 +90,12 @@ cd pages && npx vitest run --reporter=verbose  # verbose (CI mode)
 ### Canonical Pattern
 
 ```typescript
-// pages/src/pages/<PageName>/<PageName>.test.tsx
+// pages/src/routes/<PageName>/<PageName>.test.tsx
 import {render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {describe, expect, it, vi} from 'vitest';
 
-vi.mock('../../shared/api/client');
+vi.mock('@/lib/api-client');
 
 describe('MyComponent', () => {
   it('renders heading', () => {
@@ -113,9 +113,9 @@ describe('MyComponent', () => {
 
 - Wrap routed components in `<MemoryRouter>`.
 - Mock at module level with `vi.mock()`.
-- Mock auth: `vi.mock('../../components/Auth/AuthContext', () => ({ useAuth: () => ({...}) }))`.
+- Mock auth: `vi.mock('@/features/auth', () => ({ useAuth: () => ({...}) }))`.
 - Use `vi.fn()` for function mocks, `vi.importActual()` when partially mocking.
-- Co-locate tests: `pages/src/pages/<PageName>/<PageName>.test.tsx`.
+- Co-locate tests: `pages/src/routes/<PageName>/<PageName>.test.tsx`.
 
 ## CI Pipeline
 

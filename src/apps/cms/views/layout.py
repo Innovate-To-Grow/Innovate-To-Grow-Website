@@ -22,7 +22,7 @@ LAYOUT_CACHE_KEY = "layout:data"
 LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v3"
 LAYOUT_CACHE_TIMEOUT = 600
 
-# Mirrors GROUP_PREFIX in pages/src/components/Layout/LayoutProvider/LayoutProvider.tsx —
+# Mirrors GROUP_PREFIX in pages/src/features/layout/components/LayoutProvider/LayoutProvider.tsx —
 # both must agree so the CSS variables emitted server-side match the names JS sets.
 _DESIGN_TOKEN_GROUP_PREFIX = {
     "colors": "color",

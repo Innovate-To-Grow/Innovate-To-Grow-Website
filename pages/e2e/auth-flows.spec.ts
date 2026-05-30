@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 import {mockHealthyAppShell} from './helpers';
-import type {ProfileResponse} from '../src/shared/auth/types';
+import type {ProfileResponse} from '../src/features/auth/api/types';
 
 const subscriberProfile = (overrides: Partial<ProfileResponse> = {}): ProfileResponse => ({
   member_uuid: 'member-e2e-1',

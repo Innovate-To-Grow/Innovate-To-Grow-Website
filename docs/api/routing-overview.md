@@ -85,7 +85,7 @@ Generic, denylist-gated CRUD for the `i2g-admin` terminal CLI, authenticated by 
 
 ## Frontend route mapping
 
-The frontend router (`pages/src/router/index.tsx`) maps browser URLs to React components. Most frontend routes call one or more API endpoints:
+The frontend router (`pages/src/app/router.tsx`) maps browser URLs to React components. Most frontend routes call one or more API endpoints:
 
 | Frontend route | Primary API call |
 |---------------|-----------------|

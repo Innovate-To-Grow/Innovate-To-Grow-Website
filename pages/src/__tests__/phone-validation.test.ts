@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {validatePhoneDigits} from '../constants/phoneRegions';
+import {validatePhoneDigits} from '@/lib/phoneRegions';
 
 describe('validatePhoneDigits', () => {
   it('returns null for empty input', () => {
