@@ -10,6 +10,7 @@ from apps.common.exceptions import exception_handler
 from apps.common.models import TimeStampedModel
 from apps.common.pagination import DefaultPageNumberPagination
 from apps.common.permissions import IsOwnerOrReadOnly
+from apps.common.serializers import TimeStampedModelSerializer
 
 
 class TimeStampedModelTests(SimpleTestCase):
@@ -50,6 +51,17 @@ class ExceptionHandlerTests(SimpleTestCase):
     def test_returns_none_for_unhandled_exception(self):
         # DRF's default handler returns None for non-API exceptions; we pass it through.
         self.assertIsNone(exception_handler(ValueError("boom"), {}))
+
+
+class TimeStampedModelSerializerTests(SimpleTestCase):
+    def test_declares_timestamp_fields_as_read_only(self):
+        # The base class declares the timestamp fields without a Meta.model;
+        # subclasses supply Meta, so inspect the declared fields directly.
+        declared = TimeStampedModelSerializer._declared_fields
+        self.assertIn("created_at", declared)
+        self.assertIn("updated_at", declared)
+        self.assertTrue(declared["created_at"].read_only)
+        self.assertTrue(declared["updated_at"].read_only)
 
 
 class IsOwnerOrReadOnlyTests(SimpleTestCase):

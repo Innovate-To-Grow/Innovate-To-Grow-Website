@@ -1,9 +1,12 @@
+from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail
+from apps.projects.admin.semester import SemesterAdmin
 from apps.projects.models import Project, Semester
 
 User = get_user_model()
@@ -93,3 +96,66 @@ class ProjectAdminConfirmationTest(TestCase):
 
         self.assertRedirects(response, reverse("admin:projects_semester_changelist"))
         self.assertEqual(Project.objects.count(), 0)
+
+    def test_import_without_file_reports_error(self):
+        response = self.client.post(reverse("admin:projects_import_csv"), {}, follow=True)
+
+        self.assertContains(response, "No file uploaded.")
+        self.assertEqual(Project.objects.count(), 0)
+
+    def test_import_surfaces_row_errors_as_warnings(self):
+        # A CSV whose data row has a malformed semester label produces row-level
+        # errors that the admin echoes back as warning messages.
+        content = "\n".join(
+            [
+                "Year-Semester,ClassCode,Team#,TeamName,ProjectTitle,Organization,Industry,Col7,Abstract,StudentNames",
+                "bad-semester,CSE,101,Alpha,Title,Org,Software,,Abstract,Alice",
+            ]
+        )
+        upload = SimpleUploadedFile("projects.csv", content.encode("utf-8"), content_type="text/csv")
+
+        response = self.client.post(
+            reverse("admin:projects_import_csv"),
+            {"csv_file": upload, "confirmation_text": "import"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("admin:projects_semester_changelist"))
+        messages = [m.message for m in response.context["messages"]]
+        self.assertTrue(any("row" in m.lower() or "error" in m.lower() or "invalid" in m.lower() for m in messages))
+
+
+class SemesterAdminActionTest(TestCase):
+    """Exercises the bulk publish/unpublish action methods directly.
+
+    Driving them through the changelist POST would route through the
+    confirmation mixin; calling the bound action methods isolates the action
+    logic (the queryset update + cache invalidation + user message).
+    """
+
+    def setUp(self):
+        self.admin = SemesterAdmin(Semester, admin.site)
+        self.factory = RequestFactory()
+
+    def _request(self):
+        request = self.factory.post("/admin/projects/semester/")
+        # message_user needs the messages framework wired onto the request.
+        request.session = "session"
+        request._messages = FallbackStorage(request)
+        return request
+
+    def test_publish_selected_action_publishes(self):
+        semester = Semester.objects.create(year=2024, season=Semester.Season.FALL, is_published=False)
+
+        self.admin.publish_selected(self._request(), Semester.objects.filter(pk=semester.pk))
+
+        semester.refresh_from_db()
+        self.assertTrue(semester.is_published)
+
+    def test_unpublish_selected_action_unpublishes(self):
+        semester = Semester.objects.create(year=2024, season=Semester.Season.FALL, is_published=True)
+
+        self.admin.unpublish_selected(self._request(), Semester.objects.filter(pk=semester.pk))
+
+        semester.refresh_from_db()
+        self.assertFalse(semester.is_published)
