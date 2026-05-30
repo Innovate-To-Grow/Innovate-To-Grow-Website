@@ -208,3 +208,81 @@ class StyleSheetAdminImportExportTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(StyleSheet.objects.filter(name="dup").exists())
         self.assertIn("Duplicate stylesheet name", response.content.decode())
+
+    def test_import_get_renders_upload_form(self):
+        response = self.client.get(reverse("admin:cms_stylesheet_import"))
+        self.assertEqual(response.status_code, 200)
+        # No results have been computed on a GET.
+        self.assertNotIn("has_results", response.context or {})
+
+    def test_import_without_file_shows_error(self):
+        response = self.client.post(reverse("admin:cms_stylesheet_import"), {"action": "dry_run"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Please select a JSON file to import.", response.content.decode())
+
+    def test_import_invalid_json_shows_error(self):
+        upload = SimpleUploadedFile("bad.json", b"{not valid json", content_type="application/json")
+        response = self.client.post(
+            reverse("admin:cms_stylesheet_import"),
+            {"json_file": upload, "action": "dry_run"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Invalid JSON file:", response.content.decode())
+
+    def test_import_row_not_object_reports_error(self):
+        # Entry is a string, not an object -> normalize_stylesheet_row error path.
+        upload = SimpleUploadedFile(
+            "stylesheets.json",
+            json.dumps({"version": 1, "stylesheets": ["not-an-object"]}).encode("utf-8"),
+            content_type="application/json",
+        )
+        response = self.client.post(
+            reverse("admin:cms_stylesheet_import"),
+            {"json_file": upload, "action": "dry_run"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("expected an object", response.content.decode())
+        self.assertEqual(StyleSheet.objects.count(), 0)
+
+    def test_import_row_validation_error_reported(self):
+        # Missing required name triggers full_clean ValidationError -> error row surfaced.
+        response = self._upload(
+            [{"name": "", "display_name": "No Name", "css": "/* x */"}],
+            action="execute",
+        )
+        self.assertEqual(response.status_code, 200)
+        # Execution is blocked because validation errors exist.
+        self.assertIn("Import not executed because validation errors were found.", response.content.decode())
+        self.assertEqual(StyleSheet.objects.count(), 0)
+
+
+class StyleSheetAdminSaveModelTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin_user = Member.objects.create_superuser(
+            password="testpass123",
+            first_name="Save",
+            last_name="Admin",
+        )
+        self.client.force_login(self.admin_user)
+        StyleSheet.objects.all().delete()
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_save_model_busts_layout_cache(self):
+        from django.contrib.admin.sites import AdminSite
+        from django.test import RequestFactory
+
+        from apps.cms.admin.layout.style_sheet import StyleSheetAdmin
+
+        cache.set("layout:data", {"stale": True}, timeout=60)
+        admin_obj = StyleSheetAdmin(StyleSheet, AdminSite())
+        request = RequestFactory().post("/admin/cms/stylesheet/add/")
+        request.user = self.admin_user
+        sheet = StyleSheet(name="fresh", display_name="Fresh", css="/* fresh */", sort_order=1)
+
+        admin_obj.save_model(request, sheet, form=None, change=False)
+
+        self.assertTrue(StyleSheet.objects.filter(name="fresh").exists())
+        self.assertIsNone(cache.get("layout:data"))

@@ -224,3 +224,19 @@ class GetEventDatetimeTest(TestCase):
         event = make_event(date=datetime.date(2025, 6, 15))
         result = get_event_datetime(event)
         self.assertFalse(timezone.is_naive(result))
+
+    def test_already_aware_datetime_returned_unchanged(self):
+        from django.utils import timezone
+
+        event = make_event(date=datetime.date(2025, 6, 15))
+        expected = datetime.datetime.combine(event.date, datetime.datetime.min.time())
+        # Force is_naive to report False so the aware-return branch runs; assert
+        # make_aware is NOT called and the naive value is returned verbatim.
+        with (
+            patch("apps.event.services.ticket_assets.timezone.is_naive", return_value=False),
+            patch("apps.event.services.ticket_assets.timezone.make_aware") as mock_make_aware,
+        ):
+            result = get_event_datetime(event)
+        mock_make_aware.assert_not_called()
+        self.assertEqual(result, expected)
+        self.assertTrue(timezone.is_naive(result))

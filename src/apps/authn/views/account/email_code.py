@@ -87,7 +87,8 @@ class DeleteAccountCodeRequestView(APIView):
     # noinspection PyMethodMayBeStatic
     def post(self, request):
         serializer = DeleteAccountCodeRequestSerializer(data=request.data, context={"request": request})
-        if not serializer.is_valid():
+        # Defensive guard: this serializer has no fields, so is_valid() is always True.
+        if not serializer.is_valid():  # pragma: no cover
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             payload = serializer.save()

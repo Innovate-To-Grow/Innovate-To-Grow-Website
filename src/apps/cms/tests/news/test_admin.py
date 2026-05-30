@@ -1,10 +1,15 @@
+from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.authn.models import ContactEmail
+from apps.cms.admin.news.feed_source import NewsFeedSourceAdmin
+from apps.cms.admin.news.sync_log import NewsSyncLogAdmin
 from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
 
 Member = get_user_model()
@@ -104,6 +109,89 @@ class NewsFeedSourceAdminTest(TestCase):
         )
         resp = self.client.get(reverse("admin:cms_newsfeedsource_changelist"))
         self.assertContains(resp, ">1</a>")
+
+    def test_sync_this_feed_inactive_source_warns(self):
+        self.source.is_active = False
+        self.source.save()
+        resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+        self.assertEqual(resp.status_code, 302)
+        # No sync log is created for an inactive feed.
+        self.assertEqual(NewsSyncLog.objects.count(), 0)
+
+    @patch("apps.cms.admin.news.feed_source.sync_news")
+    def test_sync_this_feed_with_errors_warns(self, mock_sync):
+        mock_sync.return_value = {"created": 0, "updated": 0, "errors": ["broken"]}
+        resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+        self.assertEqual(resp.status_code, 302)
+        log = NewsSyncLog.objects.get()
+        self.assertTrue(log.has_errors)
+        self.assertIn("broken", log.errors_text)
+
+
+class NewsFeedSourceAdminDisplayTests(TestCase):
+    def setUp(self):
+        self.admin = NewsFeedSourceAdmin(NewsFeedSource, AdminSite())
+
+    def test_status_badge_active(self):
+        source = NewsFeedSource(name="A", source_key="a", feed_url="https://x/feed", is_active=True)
+        self.assertEqual(self.admin.status_badge(source), ("Active", "success"))
+
+    def test_status_badge_inactive(self):
+        source = NewsFeedSource(name="B", source_key="b", feed_url="https://x/feed", is_active=False)
+        self.assertEqual(self.admin.status_badge(source), ("Inactive", "danger"))
+
+    def test_sync_result_badge_never_synced(self):
+        source = NewsFeedSource(name="C", source_key="c", feed_url="https://x/feed")
+        self.assertEqual(self.admin.sync_result_badge(source), ("Never synced", "info"))
+
+    def test_sync_result_badge_errors(self):
+        source = NewsFeedSource(
+            name="D",
+            source_key="d",
+            feed_url="https://x/feed",
+            last_synced_at=timezone.now(),
+            last_sync_errors="something failed",
+        )
+        self.assertEqual(self.admin.sync_result_badge(source), ("Errors", "warning"))
+
+    def test_sync_result_badge_success(self):
+        source = NewsFeedSource(
+            name="E",
+            source_key="e",
+            feed_url="https://x/feed",
+            last_synced_at=timezone.now(),
+            last_sync_errors="",
+        )
+        self.assertEqual(self.admin.sync_result_badge(source), ("Success", "success"))
+
+    def test_time_since_sync_never(self):
+        source = NewsFeedSource(name="F", source_key="f", feed_url="https://x/feed")
+        self.assertEqual(self.admin.time_since_sync(source), "-")
+
+    def test_time_since_sync_with_timestamp(self):
+        source = NewsFeedSource(
+            name="G",
+            source_key="g",
+            feed_url="https://x/feed",
+            last_synced_at=timezone.now() - timedelta(hours=2),
+        )
+        result = self.admin.time_since_sync(source)
+        self.assertTrue(result.endswith("ago"))
+        self.assertIn("hour", result)
+
+
+class NewsSyncLogAdminDisplayTests(TestCase):
+    def setUp(self):
+        self.admin = NewsSyncLogAdmin(NewsSyncLog, AdminSite())
+        self.source = NewsFeedSource.objects.create(name="Log Source", source_key="logsrc", feed_url="https://x/feed")
+
+    def test_has_errors_display_true(self):
+        log = NewsSyncLog.objects.create(feed_source=self.source, started_at=timezone.now(), errors_text="boom")
+        self.assertTrue(self.admin.has_errors_display(log))
+
+    def test_has_errors_display_false(self):
+        log = NewsSyncLog.objects.create(feed_source=self.source, started_at=timezone.now(), errors_text="")
+        self.assertFalse(self.admin.has_errors_display(log))
 
 
 class NewsSyncLogAdminTest(TestCase):

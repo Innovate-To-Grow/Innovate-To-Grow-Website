@@ -5,9 +5,12 @@ drops an embed provider (YouTube, Google Docs, Calendly, etc.) fails CI
 instead of only being caught by a report-uri violation in production.
 """
 
-from django.test import RequestFactory, TestCase
+import json
+from unittest.mock import patch
 
-from apps.core.middleware import ContentSecurityPolicyMiddleware
+from django.test import Client, RequestFactory, TestCase
+
+from apps.core.middleware import ContentSecurityPolicyMiddleware, csp_report
 
 
 class CSPHeaderTests(TestCase):
@@ -79,3 +82,78 @@ class CSPHeaderTests(TestCase):
         response = mw(self.factory.get("/"))
         self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
         self.assertNotIn("Content-Security-Policy-Report-Only", response)
+
+
+class CSPReportEndpointTests(TestCase):
+    """Cover the csp_report view that logs browser violation reports."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _post(self, body, content_type="application/json"):
+        request = self.factory.post("/csp-report/", data=body, content_type=content_type)
+        return csp_report(request)
+
+    def test_valid_report_is_logged_with_sanitized_fields(self):
+        body = json.dumps(
+            {
+                "csp-report": {
+                    "violated-directive": "script-src",
+                    "blocked-uri": "https://evil.example/x\n.js",
+                    "document-uri": "https://site.example/page",
+                    "source-file": "https://site.example/app.js",
+                }
+            }
+        )
+        with patch("apps.core.middleware.logger.warning") as warn:
+            response = self._post(body)
+        self.assertEqual(response.status_code, 204)
+        warn.assert_called_once()
+        # The newline in blocked-uri must be sanitized out of the logged args.
+        logged_args = warn.call_args.args
+        self.assertIn("script-src", logged_args)
+        self.assertTrue(all("\n" not in str(a) for a in logged_args))
+
+    def test_falls_back_to_effective_directive(self):
+        body = json.dumps({"csp-report": {"effective-directive": "img-src"}})
+        with patch("apps.core.middleware.logger.warning") as warn:
+            response = self._post(body)
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("img-src", warn.call_args.args)
+
+    def test_unparseable_body_returns_204_and_warns(self):
+        with patch("apps.core.middleware.logger.warning") as warn:
+            response = self._post(b"\xff\xfe not json", content_type="application/json")
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("unparseable body", warn.call_args.args[0])
+
+    def test_missing_csp_report_object_returns_204(self):
+        body = json.dumps({"something-else": True})
+        with patch("apps.core.middleware.logger.warning") as warn:
+            response = self._post(body)
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("missing 'csp-report' object", warn.call_args.args[0])
+
+    def test_non_dict_payload_returns_204(self):
+        body = json.dumps(["not", "a", "dict"])
+        with patch("apps.core.middleware.logger.warning") as warn:
+            response = self._post(body)
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("missing 'csp-report' object", warn.call_args.args[0])
+
+    def test_unexpected_error_is_caught(self):
+        # Force an exception after parsing by making .get raise via a bad object.
+        request = self.factory.post("/csp-report/", data="{}", content_type="application/json")
+        with (
+            patch("apps.core.middleware.json.loads", side_effect=RuntimeError("boom")),
+            patch("apps.core.middleware.logger.exception") as exc_log,
+        ):
+            response = csp_report(request)
+        self.assertEqual(response.status_code, 204)
+        exc_log.assert_called_once()
+
+    def test_get_method_not_allowed(self):
+        # require_POST decorator rejects GET via the URL dispatcher.
+        client = Client()
+        response = client.get("/csp-report/")
+        self.assertEqual(response.status_code, 405)

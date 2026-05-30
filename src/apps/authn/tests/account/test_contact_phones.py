@@ -1,7 +1,15 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
+from apps.authn.services import (
+    PhoneVerificationDeliveryError,
+    PhoneVerificationInvalid,
+    PhoneVerificationThrottled,
+)
+from apps.authn.services.email_challenges import AuthChallengeInvalid
 
 Member = get_user_model()
 
@@ -180,6 +188,105 @@ class ContactPhoneTests(APITestCase):
         phone = ContactPhone.objects.create(member=self.other_member, phone_number="2025551234", region="1-US")
         response = self.client.delete(f"/authn/contact-phones/{phone.pk}/")
         self.assertEqual(response.status_code, 404)
+
+    # ── Patch validation ─────────────────────────────────
+
+    def test_patch_invalid_payload_returns_400(self):
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.patch(
+            f"/authn/contact-phones/{phone.pk}/",
+            {"subscribe": "not-a-bool-value-xyz"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    # ── Request verification ─────────────────────────────
+
+    @patch("apps.authn.views.account.contact_phones.request_phone_verification")
+    def test_request_verification_success(self, mock_request):
+        mock_request.return_value = {"message": "Verification code sent via SMS."}
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(f"/authn/contact-phones/{phone.pk}/request-verification/")
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.data["message"], "Verification code sent via SMS.")
+
+    @patch("apps.authn.views.account.contact_phones.request_phone_verification")
+    def test_request_verification_not_found_returns_400(self, mock_request):
+        mock_request.side_effect = AuthChallengeInvalid("nope")
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(f"/authn/contact-phones/{phone.pk}/request-verification/")
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.authn.views.account.contact_phones.request_phone_verification")
+    def test_request_verification_throttled_returns_429(self, mock_request):
+        mock_request.side_effect = PhoneVerificationThrottled()
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(f"/authn/contact-phones/{phone.pk}/request-verification/")
+        self.assertEqual(response.status_code, 429)
+
+    @patch("apps.authn.views.account.contact_phones.request_phone_verification")
+    def test_request_verification_delivery_error_returns_503(self, mock_request):
+        mock_request.side_effect = PhoneVerificationDeliveryError()
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(f"/authn/contact-phones/{phone.pk}/request-verification/")
+        self.assertEqual(response.status_code, 503)
+
+    # ── Verify code ──────────────────────────────────────
+
+    def test_verify_code_invalid_payload_returns_400(self):
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(
+            f"/authn/contact-phones/{phone.pk}/verify-code/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.authn.views.account.contact_phones.verify_phone_code")
+    def test_verify_code_success(self, mock_verify):
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        phone.verified = True
+        mock_verify.return_value = phone
+        response = self.client.post(
+            f"/authn/contact-phones/{phone.pk}/verify-code/",
+            {"code": "123456"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["verified"])
+
+    @patch("apps.authn.views.account.contact_phones.verify_phone_code")
+    def test_verify_code_auth_challenge_invalid_returns_400(self, mock_verify):
+        mock_verify.side_effect = AuthChallengeInvalid("nope")
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(
+            f"/authn/contact-phones/{phone.pk}/verify-code/",
+            {"code": "123456"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.authn.views.account.contact_phones.verify_phone_code")
+    def test_verify_code_phone_verification_invalid_returns_400(self, mock_verify):
+        mock_verify.side_effect = PhoneVerificationInvalid()
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(
+            f"/authn/contact-phones/{phone.pk}/verify-code/",
+            {"code": "123456"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.authn.views.account.contact_phones.verify_phone_code")
+    def test_verify_code_throttled_returns_429(self, mock_verify):
+        mock_verify.side_effect = PhoneVerificationThrottled()
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        response = self.client.post(
+            f"/authn/contact-phones/{phone.pk}/verify-code/",
+            {"code": "123456"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 429)
 
     # ── Auth required ────────────────────────────────────
 

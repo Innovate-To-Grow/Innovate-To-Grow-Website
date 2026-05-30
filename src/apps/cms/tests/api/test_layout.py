@@ -268,3 +268,35 @@ class LayoutStylesheetViewTests(TestCase):
         self.client.get("/layout/styles.css")
 
         self.assertIsNotNone(cache.get(LAYOUT_STYLESHEET_CACHE_KEY))
+
+
+class DesignTokensToCssTests(TestCase):
+    """Direct unit tests for the _design_tokens_to_css helper edge cases."""
+
+    def test_non_dict_tokens_returns_empty(self):
+        from apps.cms.views.layout import _design_tokens_to_css
+
+        self.assertEqual(_design_tokens_to_css(None), "")
+        self.assertEqual(_design_tokens_to_css("not a dict"), "")
+        self.assertEqual(_design_tokens_to_css([1, 2, 3]), "")
+
+    def test_non_dict_group_values_are_skipped(self):
+        from apps.cms.views.layout import _design_tokens_to_css
+
+        # 'layout' has dict values (emitted); 'broken' is a string (skipped).
+        css = _design_tokens_to_css({"layout": {"max_width": "1200px"}, "broken": "ignored"})
+        self.assertIn("--itg-max-width: 1200px;", css)
+        self.assertNotIn("broken", css)
+
+    def test_all_groups_non_dict_returns_empty(self):
+        from apps.cms.views.layout import _design_tokens_to_css
+
+        # No group has dict values -> no lines -> empty string.
+        self.assertEqual(_design_tokens_to_css({"colors": "x", "layout": 5}), "")
+
+    def test_colors_group_uses_color_prefix(self):
+        from apps.cms.views.layout import _design_tokens_to_css
+
+        css = _design_tokens_to_css({"colors": {"primary": "#fff"}})
+        self.assertIn("--itg-color-primary: #fff;", css)
+        self.assertTrue(css.startswith(":root {"))

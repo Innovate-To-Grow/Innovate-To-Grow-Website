@@ -137,6 +137,22 @@ class ImportProjectsFromCSVTest(TestCase):
         result = import_projects_from_csv(csv_file)
         self.assertEqual(result.created, 1)
 
+    def test_file_path_input_opens_and_closes(self):
+        # Passing a path string exercises the open()/finally-close branch.
+        import os
+        import tempfile
+
+        header = "Year-Semester,ClassCode,Team#,TeamName,ProjectTitle,Organization,Industry,Col7,Abstract,StudentNames"
+        row = "2024-2 Fall,CSE,101,Alpha,PathApp,Org,Ind,,Abs,Names"
+        fd, path = tempfile.mkstemp(suffix=".csv")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8-sig") as fh:
+                fh.write(f"{header}\n{row}\n")
+            result = import_projects_from_csv(path)
+            self.assertEqual(result.created, 1)
+        finally:
+            os.unlink(path)
+
 
 class ImportResultTest(TestCase):
     def test_defaults(self):

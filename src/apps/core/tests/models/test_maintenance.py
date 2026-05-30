@@ -48,3 +48,26 @@ class SiteMaintenanceControlModelTest(TestCase):
 
         config = SiteMaintenanceControl.load()
         self.assertTrue(config.check_bypass_password("legacy-secret"))
+
+    def test_check_hashed_password_uses_django_hasher(self):
+        """A stored hash routes through check_password (not constant-time compare)."""
+        from django.contrib.auth.hashers import make_password
+
+        from apps.core.models.base.web import _looks_like_password_hash
+
+        config = SiteMaintenanceControl(is_maintenance=True)
+        config.bypass_password = make_password("hashed-secret")
+        # Saving again must NOT re-hash an already-hashed value.
+        config.save()
+        self.assertTrue(_looks_like_password_hash(config.bypass_password))
+        self.assertTrue(config.check_bypass_password("hashed-secret"))
+        self.assertFalse(config.check_bypass_password("wrong"))
+
+    def test_check_bypass_password_empty_returns_false(self):
+        config = SiteMaintenanceControl(is_maintenance=True, bypass_password="")
+        self.assertFalse(config.check_bypass_password("anything"))
+
+    def test_looks_like_password_hash_false_for_empty(self):
+        from apps.core.models.base.web import _looks_like_password_hash
+
+        self.assertFalse(_looks_like_password_hash(""))

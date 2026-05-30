@@ -97,6 +97,19 @@ class SesEventWebhookViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     @patch("apps.mail.views.ses_webhook.verify_sns_message")
+    def test_undecodable_body_yields_none_and_returns_400(self, mock_verify):
+        """The SNS parser returns None on a body that is not valid JSON; the
+        view then treats request.data as a non-dict and returns 400."""
+        response = self.client.post(
+            "/mail/ses/events/",
+            data=b"this-is-not-json{",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "expected JSON object")
+        mock_verify.assert_not_called()
+
+    @patch("apps.mail.views.ses_webhook.verify_sns_message")
     def test_text_plain_content_type_is_accepted(self, mock_verify):
         """SNS sometimes posts SubscriptionConfirmation as text/plain."""
         envelope = {

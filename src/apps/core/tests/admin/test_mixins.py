@@ -477,6 +477,34 @@ class DataExportMixinCustomFieldsTest(TestCase):
     def test_backward_compat_excel_export_filename_property(self):
         self.assertEqual(self.admin.excel_export_filename, "custom_articles")
 
+    def test_excel_export_fields_setter(self):
+        self.admin.excel_export_fields = ["title"]
+        self.assertEqual(self.admin.export_fields, ["title"])
+
+    def test_excel_export_filename_setter(self):
+        self.admin.excel_export_filename = "renamed"
+        self.assertEqual(self.admin.export_filename, "renamed")
+
+    def test_get_export_fields_falls_back_for_unknown_field(self):
+        admin = _DataExportCustomAdmin()
+        admin.export_fields = ["title", "not_a_real_field"]
+        fields = dict(admin.get_export_fields())
+        # Real field keeps its verbose name; unknown field gets a humanized label.
+        self.assertEqual(fields["title"], "Title")
+        self.assertEqual(fields["not_a_real_field"], "Not A Real Field")
+
+
+class DataExportRelatedValueTest(TestCase):
+    def test_related_object_value_returned_as_str(self):
+        """A FK value (has .pk) is serialized via str()."""
+        from apps.event.models import CheckIn, Event
+
+        admin = _DataExportAdmin()
+        event = Event.objects.create(name="E", slug="e-export", date="2025-06-15", location="L")
+        check_in = CheckIn.objects.create(event=event, name="Door")
+        result = admin.get_export_value(check_in, "event")
+        self.assertEqual(result, str(event))
+
 
 # ---------------------------------------------------------------------------
 # DataExportMixin — DateField and JSONField serialization

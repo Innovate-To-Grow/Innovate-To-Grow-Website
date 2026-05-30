@@ -102,3 +102,13 @@ class VerifyServiceConfigsCommandTest(TestCase):
         self._create_email()
         with self.assertRaises(CommandError):
             self._run("--strict", "--require-aws")
+
+    def test_non_strict_with_failures_reports_and_returns(self):
+        """Non-strict mode with a required failure prints FAIL but does not raise."""
+        # EmailServiceConfig is required; with no AWS config email_ok is False ->
+        # a failure is recorded, but without --strict the command returns cleanly.
+        self._create_email()
+        out, _ = self._run()
+        self.assertIn("FAIL: EmailServiceConfig is not configured", out)
+        # The success line is NOT printed because we returned early at the failures branch.
+        self.assertNotIn("Service config verification passed.", out)

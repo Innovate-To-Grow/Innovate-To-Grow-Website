@@ -143,7 +143,9 @@ def _safe_href(url):
     parsed = urlparse(href)
     if parsed.scheme and parsed.scheme not in {"http", "https"}:
         return "#"
-    if parsed.netloc and not parsed.scheme:
+    # Defense-in-depth: urlparse only populates netloc for "//"-prefixed input,
+    # which the startswith(("//", "\\")) guard above already rejects — unreachable.
+    if parsed.netloc and not parsed.scheme:  # pragma: no cover
         return "#"
     return href
 

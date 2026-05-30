@@ -1,12 +1,17 @@
 """Tests for ProfileView PATCH (text field updates)."""
 
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail
 
 Member = get_user_model()
+
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 40
 
 
 class ProfileUpdateTests(APITestCase):
@@ -108,6 +113,59 @@ class ProfileUpdateTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.member.refresh_from_db()
         self.assertEqual(str(self.member.member_uuid), original_uuid)
+
+    def test_patch_email_subscribe_with_data_uri_profile_image_representation(self):
+        # Store a data: URI directly so to_representation passes it through (lines 64-69).
+        self.member.profile_image = "data:image/png;base64,QQ=="
+        self.member.save(update_fields=["profile_image"])
+        response = self.client.get("/authn/profile/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["profile_image"], "data:image/png;base64,QQ==")
+
+    def test_get_profile_wraps_bare_base64_with_data_uri(self):
+        self.member.profile_image = "QQ=="
+        self.member.save(update_fields=["profile_image"])
+        response = self.client.get("/authn/profile/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["profile_image"], "data:image/png;base64,QQ==")
+
+    def test_get_profile_serialization_failure_returns_500(self):
+        with patch(
+            "apps.authn.views.account.profile.ProfileSerializer",
+            side_effect=ValueError("boom"),
+        ):
+            response = self.client.get("/authn/profile/")
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.data["detail"], "Failed to load profile.")
+
+    def test_patch_profile_image_upload_success(self):
+        upload = SimpleUploadedFile("avatar.png", _PNG_BYTES, content_type="image/png")
+        response = self.client.patch("/authn/profile/", {"profile_image": upload}, format="multipart")
+        self.assertEqual(response.status_code, 200)
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.profile_image.startswith("data:image/png;base64,"))
+
+    def test_patch_profile_image_too_large(self):
+        big = SimpleUploadedFile("big.png", b"\x89PNG\r\n\x1a\n" + b"0" * (6 * 1024 * 1024), content_type="image/png")
+        response = self.client.patch("/authn/profile/", {"profile_image": big}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("5 MB", response.data["detail"])
+
+    def test_patch_profile_image_disallowed_content_type(self):
+        upload = SimpleUploadedFile("doc.pdf", _PNG_BYTES, content_type="application/pdf")
+        response = self.client.patch("/authn/profile/", {"profile_image": upload}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("JPEG, PNG, GIF, or WebP", response.data["detail"])
+
+    def test_patch_profile_image_bad_magic_bytes(self):
+        upload = SimpleUploadedFile("fake.png", b"not-an-image-at-all", content_type="image/png")
+        response = self.client.patch("/authn/profile/", {"profile_image": upload}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("does not match", response.data["detail"])
+
+    def test_patch_invalid_json_field_returns_400(self):
+        response = self.client.patch("/authn/profile/", {"first_name": ""}, format="json")
+        self.assertEqual(response.status_code, 400)
 
     def test_unauthenticated_returns_401(self):
         self.client.force_authenticate(user=None)

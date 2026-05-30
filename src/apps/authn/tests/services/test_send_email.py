@@ -9,6 +9,7 @@ from apps.authn.services.email.send_email import (
     _render_email_body,
     _send_via_ses,
     send_admin_invitation_email,
+    send_notification_email,
     send_verification_email,
 )
 
@@ -129,6 +130,44 @@ class SendVerificationEmailTests(TestCase):
         with self.assertRaises(RuntimeError):
             send_verification_email(recipient="a@b.com", code="123456", purpose="admin_login")
         mock_ses.assert_called_once()
+
+
+class SendNotificationEmailTests(TestCase):
+    @patch("apps.authn.services.email.send_email._send_via_ses", return_value=True)
+    @patch("apps.authn.services.email.send_email._load_config")
+    def test_notification_sent_via_ses(self, mock_config, mock_ses):
+        mock_config.return_value = _fake_config(ses_configured=True)
+        send_notification_email(
+            recipient="owner@example.com",
+            subject="Security notice",
+            template="authn/email/email_claim_notification.html",
+            context={"account_url": "https://example.com/account"},
+        )
+        mock_ses.assert_called_once()
+
+    @patch("apps.authn.services.email.send_email._send_via_ses", return_value=False)
+    @patch("apps.authn.services.email.send_email._load_config")
+    def test_notification_logs_when_send_fails(self, mock_config, mock_ses):
+        mock_config.return_value = _fake_config(ses_configured=False)
+        # Should NOT raise — notification failures are swallowed (logged).
+        send_notification_email(
+            recipient="owner@example.com",
+            subject="Security notice",
+            template="authn/email/email_claim_notification.html",
+            context={"account_url": ""},
+        )
+        mock_ses.assert_called_once()
+
+
+class SendViaSesCredentialErrorTests(TestCase):
+    @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
+    def test_returns_false_when_credentials_missing(self, mock_resolve):
+        from apps.core.services.aws.credentials import AwsCredentialsError
+
+        mock_resolve.side_effect = AwsCredentialsError("no creds")
+        config = _fake_config(ses_configured=True)
+        result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
+        self.assertFalse(result)
 
 
 class SendAdminInvitationEmailTests(TestCase):

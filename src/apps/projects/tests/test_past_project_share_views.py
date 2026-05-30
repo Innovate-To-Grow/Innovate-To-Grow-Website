@@ -4,6 +4,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.projects.models import PastProjectShare
+from apps.projects.serializers.past_project_share import PastProjectShareSerializer
 
 
 def sample_row(**overrides):
@@ -76,6 +77,13 @@ class PastProjectShareAPIViewTests(TestCase):
         response = self.client.get(f"/projects/past-shares/{uuid.uuid4()}/")
 
         self.assertEqual(response.status_code, 404)
+
+    def test_share_url_falls_back_to_relative_path_without_request(self):
+        # Serializing outside a request context (no request in context) yields a
+        # relative share URL rather than an absolute one.
+        share = PastProjectShare.objects.create(rows=[sample_row()])
+        data = PastProjectShareSerializer(share).data
+        self.assertEqual(data["share_url"], f"/past-projects/{share.pk}")
 
     @override_settings(
         REST_FRAMEWORK={

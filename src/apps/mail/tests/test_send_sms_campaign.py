@@ -84,3 +84,17 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(SmsRecipientLog.objects.filter(campaign=campaign, status="sent").count(), 1)
         failed = SmsRecipientLog.objects.get(campaign=campaign, status="failed")
         self.assertEqual(failed.error_message, "boom")
+
+    @patch("apps.mail.services.send_sms_campaign.publish_plain_sms", return_value="sns-id")
+    def test_send_sms_campaign_persists_progress_every_ten_recipients(self, mock_publish):
+        _make_sms_config()
+        # 10 manual phones trigger the (sent+failed) % 10 == 0 periodic save.
+        phones = "\n".join(f"+1209555{1000 + i:04d}" for i in range(10))
+        campaign = SmsCampaign.objects.create(message="Hi", audience_type="manual", manual_phones=phones)
+
+        result = send_sms_campaign(campaign, sent_by=self.sender)
+
+        campaign.refresh_from_db()
+        self.assertEqual(result, {"total": 10, "sent": 10, "failed": 0})
+        self.assertEqual(campaign.status, "sent")
+        self.assertEqual(mock_publish.call_count, 10)
