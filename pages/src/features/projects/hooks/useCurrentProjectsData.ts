@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react';
-import {fetchAllPastProjects} from '../features/projects/api';
-import type {ProjectTableRow} from '../features/projects/api';
+import {fetchCurrentProjectsFull} from '@/features/projects/api';
+import type {ProjectTableRow} from '@/features/projects/api';
 import type {SheetRow} from '@/components/ui/SheetsDataTable';
 import {formatSemesterLabel} from '@/lib/semester';
 
@@ -17,18 +17,18 @@ function projectToSheetRow(p: ProjectTableRow): SheetRow {
     Industry: p.industry,
     Abstract: p.abstract,
     'Student Names': p.student_names,
-    'Showcase Participation': p.is_presenting == null ? '' : p.is_presenting ? 'Yes' : 'No',
+    'Showcase Participation': p.is_presenting ? 'Yes' : 'No',
     NameTitle: '',
   };
 }
 
-interface UsePastProjectsDataResult {
+interface UseCurrentProjectsDataResult {
   rows: SheetRow[];
   loading: boolean;
   error: string | null;
 }
 
-export function usePastProjectsData(): UsePastProjectsDataResult {
+export function useCurrentProjectsData(): UseCurrentProjectsDataResult {
   const [rows, setRows] = useState<SheetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,14 +36,14 @@ export function usePastProjectsData(): UsePastProjectsDataResult {
   useEffect(() => {
     let cancelled = false;
 
-    fetchAllPastProjects()
-      .then((projects) => {
+    fetchCurrentProjectsFull()
+      .then((semester) => {
         if (cancelled) return;
-        setRows(projects.map(projectToSheetRow));
+        setRows(semester.projects.map(projectToSheetRow));
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Failed to load past projects');
+        setError(err instanceof Error ? err.message : 'Failed to load projects');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

@@ -1,6 +1,6 @@
 import {useState, useCallback, useMemo} from 'react';
 import {useParams, Link} from 'react-router-dom';
-import {usePastProjectsData} from '../../hooks/usePastProjectsData';
+import {usePastProjectsData} from '@/features/projects/hooks/usePastProjectsData';
 import {ScheduleGrid} from '@/features/events/components/ScheduleGrid';
 import {SheetsDataTable} from '@/components/ui/SheetsDataTable';
 import {EVENT_CONFIGS} from './eventConfigs';

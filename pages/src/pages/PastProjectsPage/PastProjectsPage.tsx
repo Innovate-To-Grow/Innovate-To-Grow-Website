@@ -1,8 +1,8 @@
 import {useMemo} from 'react';
 import {useParams} from 'react-router-dom';
-import {MergedResultsTable, PastProjectsBuilder, createProjectGridItems} from '../../components/Projects';
-import {usePastProjectGridData, usePastProjectShareData} from '../../hooks/useProjectGridData';
-import {createPastProjectShare} from '../../features/projects/api';
+import {MergedResultsTable, PastProjectsBuilder, createProjectGridItems} from '@/features/projects';
+import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
+import {createPastProjectShare} from '@/features/projects/api';
 
 export const PastProjectsPage = () => {
   const {shareId} = useParams<{shareId: string}>();

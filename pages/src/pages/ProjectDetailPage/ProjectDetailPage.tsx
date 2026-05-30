@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchProjectDetail, type ProjectDetail } from '../../features/projects/api';
+import { fetchProjectDetail, type ProjectDetail } from '@/features/projects/api';
 import { formatSemesterLabel } from '@/lib/semester';
 
 export const ProjectDetailPage = () => {

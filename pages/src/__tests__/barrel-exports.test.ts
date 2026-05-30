@@ -44,7 +44,7 @@ describe('Component barrel exports', () => {
   });
 
   it('components/Projects exports resolve', async () => {
-    const mod = await import('../components/Projects');
+    const mod = await import('@/features/projects');
     expect(mod.MergedResultsTable).toBeDefined();
     expect(mod.PastProjectsBuilder).toBeDefined();
     expect(mod.ProjectGridTable).toBeDefined();

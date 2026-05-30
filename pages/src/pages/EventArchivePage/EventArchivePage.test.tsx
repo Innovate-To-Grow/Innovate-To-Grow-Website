@@ -6,7 +6,7 @@ import {EventArchivePage} from './EventArchivePage';
 
 const mockUsePastProjectsData = vi.fn();
 
-vi.mock('../../hooks/usePastProjectsData', () => ({
+vi.mock('@/features/projects/hooks/usePastProjectsData', () => ({
   usePastProjectsData: () => mockUsePastProjectsData(),
 }));
 
