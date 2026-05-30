@@ -1,5 +1,5 @@
 import type {FormEvent} from 'react';
-import {PHONE_REGION_CHOICES} from '../../../constants/phoneRegions';
+import {PHONE_REGION_CHOICES} from '@/lib/phoneRegions';
 import {StatusAlert} from '../shared/StatusAlert';
 import {getDialCode} from './internal/helpers';
 import {

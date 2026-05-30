@@ -3,7 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../../components/Auth';
 import {updateProfileFields} from '../../services/auth';
 import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '../../features/events/api';
-import {maxPhoneDigits, validatePhoneDigits} from '../../constants/phoneRegions';
+import {maxPhoneDigits, validatePhoneDigits} from '@/lib/phoneRegions';
 import {hasRequiredNameFields} from '../../shared/auth/profileCompletion';
 import {buildCompleteProfilePath} from '../../shared/auth/redirects';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
