@@ -10,13 +10,13 @@ The CMS serves dynamic pages built from ordered content blocks. News articles ar
 
 | Concern | Path |
 |---------|------|
-| CMS views | `src/cms/views/` |
-| CMS models | `src/cms/models/` |
-| CMS serializers | `src/cms/serializers/` |
-| CMS URLs | `src/cms/cms_urls.py` |
-| News URLs | `src/cms/news_urls.py` |
-| Analytics URLs | `src/cms/analytics_urls.py` |
-| Layout view | `src/core/urls.py` (inline) or `src/cms/views/` |
+| CMS views | `src/apps/cms/views/` |
+| CMS models | `src/apps/cms/models/` |
+| CMS serializers | `src/apps/cms/serializers/` |
+| CMS URLs | `src/apps/cms/cms_urls.py` |
+| News URLs | `src/apps/cms/news_urls.py` |
+| Analytics URLs | `src/apps/cms/analytics_urls.py` |
+| Layout view | `src/apps/core/urls.py` (inline) or `src/apps/cms/views/` |
 
 ## CMS pages
 
@@ -103,7 +103,7 @@ Single article detail.
 Articles are imported from RSS feeds via the `sync_news` management command:
 
 ```bash
-cd src && python manage.py sync_news --settings=core.settings.dev
+cd src && python manage.py sync_news --settings=config.settings.local
 ```
 
 **Models:**

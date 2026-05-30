@@ -22,10 +22,10 @@ campaign sender (send_raw_email)        SES                AWS SNS
 
 Code entry points:
 
-- Sender tags every send with `ConfigurationSetName`: `src/mail/services/send_campaign.py::_send_via_ses`
-- Webhook: `src/mail/views.py::SesEventWebhookView` mounted at `/mail/ses/events/`
-- Signature verifier: `src/mail/services/sns_signature.py`
-- Event dispatcher: `src/mail/services/ses_events.py`
+- Sender tags every send with `ConfigurationSetName`: `src/apps/mail/services/send_campaign.py::_send_via_ses`
+- Webhook: `src/apps/mail/views.py::SesEventWebhookView` mounted at `/mail/ses/events/`
+- Signature verifier: `src/apps/mail/services/sns_signature.py`
+- Event dispatcher: `src/apps/mail/services/ses_events.py`
 
 ## AWS setup — one-time per environment
 

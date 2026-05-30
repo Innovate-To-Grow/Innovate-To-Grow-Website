@@ -1,54 +1,12 @@
-# Django Backend Dependencies
-
-# Core Framework
-Django>=5.2,<7.0
-djangorestframework==3.17.1
-djangorestframework-simplejwt>=5.3.0
-
-# Environment Variables
-python-dotenv>=1.0.0
-
-# Admin Theme
-django-unfold>=0.78.0
-
-# Rich Text Editor
-django-ckeditor-5>=0.2.13
-Pillow>=12.2.0
-pdf417gen>=0.7.0
-
-# Excel Import/Export
-openpyxl>=3.1.5
-
-# Google APIs
-google-api-python-client>=2.195.0
-google-auth>=2.53.0
-google-adk>=1.31.1,<2.0
-litellm>=1.83.13,<2.0
-fastapi!=0.136.3  # Exclude MAL-2026-4750; do not ignore MAL advisories in pip-audit.
-gspread>=6.2.1
-imap-tools>=1.7.0
-
-# Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
-# in CVE fixes to the Rust bindings.
-cryptography>=48.0.0
-
-# Storage Backend (S3/R2/OSS compatible)
-django-storages[s3]>=1.14.6
-boto3>=1.43.14
-
-# Production Dependencies
-gunicorn>=25.3.0
-uvicorn[standard]>=0.48.0,<1.0
-psycopg2-binary>=2.9.12  # PostgreSQL adapter
-django-redis>=5.4.0  # Redis cache backend
-django-cors-headers>=4.4.0
-
-# HTML Parsing
-beautifulsoup4>=4.14.3
-
-# HTML Sanitization
-bleach>=6.0.0
-
-# Development Only
-# django-debug-toolbar>=4.0.0
-ruff==0.15.12  # Python linter and formatter
+# Dependency manifest entrypoint.
+#
+# Dependencies are split under requirements/:
+#   requirements/base.txt        — shared across all environments
+#   requirements/production.txt  — base + WSGI/ASGI servers, PostgreSQL, Redis, S3
+#   requirements/local.txt       — production + dev/CI tooling (ruff, ...)
+#
+# This file resolves to the local/CI closure so every existing consumer
+# (`pip install -r requirements.txt`, the Docker build, pip-audit, and the
+# setup-python pip cache keyed on src/requirements.txt) keeps working unchanged.
+# For a lean production image, install requirements/production.txt instead.
+-r requirements/local.txt

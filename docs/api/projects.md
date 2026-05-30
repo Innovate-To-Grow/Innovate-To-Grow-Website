@@ -10,11 +10,11 @@ The projects system stores historical project records organized by semester. Pro
 
 | Concern | Path |
 |---------|------|
-| Views | `src/projects/views/` |
-| Serializers | `src/projects/serializers/` |
-| Services | `src/projects/services/` |
-| Models | `src/projects/models/` |
-| URLs | `src/projects/urls.py` |
+| Views | `src/apps/projects/views/` |
+| Serializers | `src/apps/projects/serializers/` |
+| Services | `src/apps/projects/services/` |
+| Models | `src/apps/projects/models/` |
+| URLs | `src/apps/projects/urls.py` |
 
 ## Key models
 
@@ -66,13 +66,13 @@ Retrieves share details.
 
 ## Data import
 
-Projects are imported via CSV through the Django admin. The import service is at `src/projects/services/`.
+Projects are imported via CSV through the Django admin. The import service is at `src/apps/projects/services/`.
 
 CSV columns map to Project model fields. Import is triggered from the Semester admin page.
 
 ## Relationship to events
 
-Projects displayed in the event schedule are linked via `CurrentProjectSchedule` → `Semester` → `Project`. The schedule sync service (`src/event/services/schedule_sync.py`) can also create/update Project records from Google Sheets.
+Projects displayed in the event schedule are linked via `CurrentProjectSchedule` → `Semester` → `Project`. The schedule sync service (`src/apps/event/services/schedule_sync.py`) can also create/update Project records from Google Sheets.
 
 ## Related pages
 

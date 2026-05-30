@@ -24,11 +24,11 @@ Repository guidance is split into short references so local instructions stay ea
 - Active docs live under `docs/`: architecture (`docs/architecture/`), API contracts (`docs/api/`), CMS & admin operations (`docs/cms-admin/`), deployment (`docs/deployment/`), integrations (`docs/integrations/`). Consult these before re-deriving things from code.
 - Historical material lives under `archive/`.
 - Dev database is SQLite; prod is PostgreSQL.
-- Settings use `--settings=core.settings.dev` for local work.
+- Settings use `--settings=config.settings.local` for local work.
 - Vite dev server (port 5173) proxies `/api`, `/media`, `/static` to Django (port 8000).
 - Ruff: line length 120, target Python 3.11, double quotes, LF endings.
-- Deployment: Amplify (frontend ZIP upload to S3 via AWS Amplify API); CI settings: `core.settings.ci`.
-- Admin theme: Unfold (all admin classes inherit from `core.admin.BaseModelAdmin` or `ReadOnlyModelAdmin`, not stock `ModelAdmin`).
+- Deployment: Amplify (frontend ZIP upload to S3 via AWS Amplify API); CI settings: `config.settings.test`.
+- Admin theme: Unfold (all admin classes inherit from `apps.core.admin.BaseModelAdmin` or `ReadOnlyModelAdmin`, not stock `ModelAdmin`).
 
 ## Key gotchas
 

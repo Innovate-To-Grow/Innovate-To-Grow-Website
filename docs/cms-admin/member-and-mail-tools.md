@@ -6,7 +6,7 @@ Member management, email campaigns, and contact administration.
 
 ### Member model
 
-`Member` (`src/authn/models/member.py`) extends Django's `AbstractUser` with `ProjectControlModel` (UUID PK). Key fields:
+`Member` (`src/apps/authn/models/member.py`) extends Django's `AbstractUser` with `ProjectControlModel` (UUID PK). Key fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -46,11 +46,11 @@ Contact verification uses the email challenge system or AWS SNS SMS.
 
 ### Overview
 
-The mail app (`src/mail/`) provides email campaign functionality through Django admin. Campaigns are composed in the admin using CKEditor 5 and sent to selected audiences.
+The mail app (`src/apps/mail/`) provides email campaign functionality through Django admin. Campaigns are composed in the admin using CKEditor 5 and sent to selected audiences.
 
 ### Campaign model
 
-`EmailCampaign` (`src/mail/models/campaign.py`):
+`EmailCampaign` (`src/apps/mail/models/campaign.py`):
 
 | Field | Purpose |
 |-------|---------|
@@ -75,11 +75,11 @@ The mail app (`src/mail/`) provides email campaign functionality through Django 
 | `all_members` | All active members |
 | `staff` | Staff users only |
 
-Audience resolution is handled by `src/mail/services/audience.py`.
+Audience resolution is handled by `src/apps/mail/services/audience.py`.
 
 ### Personalization
 
-`src/mail/services/personalize.py` supports template variables in the email body:
+`src/apps/mail/services/personalize.py` supports template variables in the email body:
 
 | Variable | Replaced with |
 |----------|--------------|
@@ -89,7 +89,7 @@ Audience resolution is handled by `src/mail/services/audience.py`.
 
 ### Sending
 
-`src/mail/services/send_campaign.py`:
+`src/apps/mail/services/send_campaign.py`:
 
 1. Resolves audience to recipient list
 2. Personalizes the body for each recipient
@@ -99,15 +99,15 @@ Audience resolution is handled by `src/mail/services/audience.py`.
 
 ### Magic login tokens
 
-`MagicLoginToken` (`src/mail/models/magic_login.py`) enables one-click login from campaign emails. When a personalized email includes a magic link, clicking it authenticates the user via `POST /mail/magic-login/`.
+`MagicLoginToken` (`src/apps/mail/models/magic_login.py`) enables one-click login from campaign emails. When a personalized email includes a magic link, clicking it authenticates the user via `POST /mail/magic-login/`.
 
 ### Gmail import
 
-The campaign admin includes a Gmail import feature (`src/mail/services/gmail_import.py`) that can fetch email templates from a Gmail account for use as campaign bodies.
+The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmail_import.py`) that can fetch email templates from a Gmail account for use as campaign bodies.
 
 ### Recipient logs
 
-`RecipientLog` (`src/mail/models/recipient_log.py`) tracks per-recipient delivery:
+`RecipientLog` (`src/apps/mail/models/recipient_log.py`) tracks per-recipient delivery:
 
 | Field | Purpose |
 |-------|---------|

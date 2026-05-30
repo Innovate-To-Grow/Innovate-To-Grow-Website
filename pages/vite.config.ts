@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react'
 import type { PluginOption } from 'vite'
 
 const configDir = dirname(fileURLToPath(import.meta.url))
-const djangoVendorStaticDir = resolve(configDir, '../src/core/static/vendor')
+const djangoVendorStaticDir = resolve(configDir, '../src/apps/core/static/vendor')
 
 function copyDjangoVendorStaticPlugin(): PluginOption {
   return {

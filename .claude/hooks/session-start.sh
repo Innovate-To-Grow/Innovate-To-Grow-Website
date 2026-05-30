@@ -15,5 +15,5 @@ pip install cffi -r "$PROJECT_DIR/src/requirements.txt"
 cd "$PROJECT_DIR/pages"
 npm install
 
-# Set Django settings for dev (SQLite, no external services needed)
-echo 'export DJANGO_SETTINGS_MODULE="core.settings.dev"' >> "$CLAUDE_ENV_FILE"
+# Set Django settings for local dev (SQLite, no external services needed)
+echo 'export DJANGO_SETTINGS_MODULE="config.settings.local"' >> "$CLAUDE_ENV_FILE"

@@ -1,0 +1,48 @@
+# Django Backend Dependencies — base (shared across all environments)
+
+# Core Framework
+Django>=5.2,<7.0
+djangorestframework==3.17.1
+djangorestframework-simplejwt>=5.3.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Admin Theme
+django-unfold>=0.78.0
+
+# Rich Text Editor
+django-ckeditor-5>=0.2.13
+Pillow>=12.2.0
+pdf417gen>=0.7.0
+
+# Excel Import/Export
+openpyxl>=3.1.5
+
+# Google APIs
+google-api-python-client>=2.195.0
+google-auth>=2.53.0
+google-adk>=1.31.1,<2.0
+# google-adk requires opentelemetry but sets no version floor. Pin a floor that
+# includes the gen_ai semantic-convention attributes adk's telemetry imports, so
+# an environment with a stale pre-installed opentelemetry can't break adk import.
+opentelemetry-api>=1.36.0
+opentelemetry-sdk>=1.36.0
+opentelemetry-exporter-otlp-proto-http>=1.36.0
+litellm>=1.83.13,<2.0
+fastapi!=0.136.3  # Exclude MAL-2026-4750; do not ignore MAL advisories in pip-audit.
+gspread>=6.2.1
+imap-tools>=1.7.0
+
+# Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
+# in CVE fixes to the Rust bindings.
+cryptography>=48.0.0
+
+# HTML Parsing
+beautifulsoup4>=4.14.3
+
+# HTML Sanitization
+bleach>=6.0.0
+
+# CORS (needed in every environment so the API is reachable from the SPA)
+django-cors-headers>=4.4.0

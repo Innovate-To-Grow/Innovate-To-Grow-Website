@@ -37,7 +37,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
-  DJANGO_SETTINGS_MODULE: core.settings.ci
+  DJANGO_SETTINGS_MODULE: config.settings.test
 
 jobs:
   preflight:
@@ -246,13 +246,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Import production settings
-        run: DJANGO_SETTINGS_MODULE=core.settings.prod python -c "import django; django.setup()"
+        run: DJANGO_SETTINGS_MODULE=config.settings.production python -c "import django; django.setup()"
 
       - name: Run Django deploy checks
-        run: DJANGO_SETTINGS_MODULE=core.settings.prod python manage.py check --deploy
+        run: DJANGO_SETTINGS_MODULE=config.settings.production python manage.py check --deploy
 
       - name: Dry-run collectstatic with CI settings
-        run: python manage.py collectstatic --dry-run --noinput --settings=core.settings.ci
+        run: python manage.py collectstatic --dry-run --noinput --settings=config.settings.test
 
   django-build:
     name: Django Test (${{ matrix.app }})
@@ -264,7 +264,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [authn, core, system_intelligence, cms, event, projects, mail]
+        app: [authn, core, common, system_intelligence, cms, event, projects, mail]
     services:
       postgres:
         image: postgres:16
@@ -310,9 +310,9 @@ jobs:
       - name: Run Django tests with per-app coverage
         run: |
           coverage run \
-            --source="${{ matrix.app }}" \
+            --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
-            manage.py test "${{ matrix.app }}"
+            manage.py test "apps.${{ matrix.app }}"
           coverage report --fail-under=40
           coverage xml -o "coverage-${{ matrix.app }}.xml"
 

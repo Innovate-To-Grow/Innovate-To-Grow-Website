@@ -1,0 +1,12 @@
+# Local development & CI dependencies.
+#
+# Pulls in the production stack too: CI runs the test suite against PostgreSQL
+# (psycopg2), exercises S3/Redis-backed production settings, and builds the
+# Docker image (gunicorn/uvicorn), so the full closure must be installable here.
+-r production.txt
+
+# Linter / formatter
+ruff==0.15.12
+
+# Development Only
+# django-debug-toolbar>=4.0.0

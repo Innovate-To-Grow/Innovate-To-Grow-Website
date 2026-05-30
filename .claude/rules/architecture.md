@@ -4,8 +4,8 @@
 
 - Django apps stay isolated by domain under `src/`.
 - Thin entrypoints should delegate to services, serializers, admin helpers, or models.
-- `core/settings/*.py` remain stable import targets even when implementation moves to submodules.
-- Settings are modular: `core/settings/base.py` wildcard-imports from `core/settings/components/` (framework/environment, framework/django, integrations/api, integrations/admin, integrations/editor, production). `dev.py`, `prod.py`, and `ci.py` extend `base.py`.
+- `config/settings/*.py` remain stable import targets even when implementation moves to submodules.
+- Settings are modular: `config/settings/base.py` wildcard-imports from `config/settings/components/` (framework/environment, framework/django, integrations/api, integrations/admin, integrations/editor, production). `dev.py`, `prod.py`, and `ci.py` extend `base.py`.
 - Main URL router: `core/urls.py` delegates to each app's `urls.py`.
 
 ### Django apps
@@ -22,18 +22,18 @@
 
 ### Base model: `ProjectControlModel`
 
-Nearly all models inherit from `core.models.ProjectControlModel`, which provides:
+Nearly all models inherit from `apps.core.models.ProjectControlModel`, which provides:
 - **UUID primary key** (not auto-increment integers)
 - **Timestamps**: `created_at`, `updated_at`
 - **Soft delete**: `is_deleted`, `deleted_at`; `objects` excludes deleted, `all_objects` includes all
-- **Version tracking**: JSON snapshots via `save_version()`, `rollback()`, `get_versions()`; stored in `core.models.ModelVersion` (generic FK by content type + object UUID)
+- **Version tracking**: JSON snapshots via `save_version()`, `rollback()`, `get_versions()`; stored in `apps.core.models.ModelVersion` (generic FK by content type + object UUID)
 
 ### Auth system
 
 - JWT via `rest_framework_simplejwt` (access 1h, refresh 7d, rotation + blacklist).
 - `Member` extends `AbstractUser` + `ProjectControlModel` — the PK (`id`) is a UUID.
 - `EmailOrUsernameBackend` allows login by username or verified email.
-- Admin login is overridden: `authn.views.AdminLoginView` at `/admin/login/`.
+- Admin login is overridden: `apps.authn.views.AdminLoginView` at `/admin/login/`.
 - Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 
 ### URL routing
@@ -43,9 +43,9 @@ Root router in `core/urls.py`:
 - `/authn/` — authentication endpoints
 - `/cms/` — CMS API
 - `/event/` — event endpoints
-- `/news/` — news API (routed to `cms.news_urls`)
+- `/news/` — news API (routed to `apps.cms.news_urls`)
 - `/projects/` — project endpoints
-- `/analytics/` — page view analytics (routed to `cms.analytics_urls`)
+- `/analytics/` — page view analytics (routed to `apps.cms.analytics_urls`)
 - `/mail/` — magic login, unsubscribe/resubscribe, SES event webhook
 - `/layout/` — combined menu + footer API
 - `/health/` — ALB health check (intercepted by middleware, returns JSON status)
@@ -82,9 +82,9 @@ Root router in `core/urls.py`:
 ## Admin theme
 
 - Unfold admin with custom OKLch color palette (purple primary).
-- All admin classes must inherit from `core.admin.BaseModelAdmin` (or `ReadOnlyModelAdmin`), not Django's stock `ModelAdmin`.
+- All admin classes must inherit from `apps.core.admin.BaseModelAdmin` (or `ReadOnlyModelAdmin`), not Django's stock `ModelAdmin`.
 - Sidebar organized into 5 sections: Site Settings, CMS, Events, Projects, Members & Auth.
-- Tab groups for domain-related models configured in `core/settings/components/integrations/admin.py`.
+- Tab groups for domain-related models configured in `config/settings/components/integrations/admin.py`.
 
 ## CI/CD
 

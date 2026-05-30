@@ -50,6 +50,12 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = [
+    # New layout: business apps live under `apps`, project config under `config`.
+    "apps",
+    "config",
+    "common",
+    # Legacy top-level names, kept first-party during the apps/ migration so
+    # imports stay in one block while apps are moved incrementally.
     "core",
     "system_intelligence",
     "authn",
@@ -91,3 +97,37 @@ skips = [
     # (e.g., type-narrowing invariants).
     "B101",
 ]
+
+# Coverage.py configuration (read via `coverage[toml]`). CI runs
+# `coverage run --source="apps.<app>"` per app, so these settings shape what
+# counts toward coverage for every app.
+[tool.coverage.run]
+branch = false
+omit = [
+    # Migrations are byte-for-byte managed by Django and forbidden to edit;
+    # their RunPython data-migration code is not meaningfully unit-testable.
+    "*/migrations/*",
+    # Test modules should not measure their own coverage (circular).
+    "*/tests/*",
+    "*/test_*.py",
+    "*/tests.py",
+    # Project entrypoints / config that run outside the test process.
+    "*/wsgi.py",
+    "*/asgi.py",
+    "manage.py",
+]
+
+[tool.coverage.report]
+# Lines that are intentionally unreachable in the test process. Mark genuinely
+# untestable code with `# pragma: no cover` and justify it inline.
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+    "^\\s*\\.\\.\\.\\s*$",
+]
+show_missing = true
+skip_covered = false

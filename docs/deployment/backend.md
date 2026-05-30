@@ -13,7 +13,7 @@ The backend runs as a Docker container on AWS ECS Fargate, fronted by an Applica
 - Entry command: Uvicorn
 
 ```
-uvicorn core.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 20
+uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 20
 ```
 
 ### Build
@@ -111,7 +111,7 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
 ## Production settings
 
-`core.settings.prod` applies security hardening:
+`config.settings.production` applies security hardening:
 
 - `DEBUG = False`
 - `SECURE_HSTS_SECONDS` enabled

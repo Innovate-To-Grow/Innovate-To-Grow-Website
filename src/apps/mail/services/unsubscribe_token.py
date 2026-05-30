@@ -1,0 +1,97 @@
+"""RFC 8058 one-click unsubscribe token utilities."""
+
+import logging
+from hashlib import sha256
+
+from django.conf import settings
+from django.core import signing
+from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
+
+_SALT = "rfc8058-one-click-unsubscribe"
+_MAX_AGE = 60 * 60 * 24 * 90  # 90 days
+
+
+def _consume_oneclick_token(token: str) -> bool:
+    """Atomically mark a token as used. Returns True on first use, False on replay."""
+    token_digest = sha256(token.encode("utf-8")).hexdigest()
+    return cache.add(f"mail:oneclick-unsub-used:{token_digest}", True, timeout=_MAX_AGE)
+
+
+def build_oneclick_unsubscribe_token(member_or_id) -> str:
+    """Create a signed token encoding the member's PK.
+
+    Accepts a Member instance or a raw UUID/string PK.
+    """
+    pk = str(member_or_id.pk if hasattr(member_or_id, "pk") else member_or_id)
+    return signing.dumps({"member_id": pk}, salt=_SALT, compress=True)
+
+
+def get_member_from_oneclick_token(token: str):
+    """Validate a one-click unsubscribe token and return the Member.
+
+    Marks the token as used (one-time).
+    Raises ``ValueError`` on invalid, expired, or unknown-member tokens.
+    """
+    from apps.authn.models import Member
+
+    try:
+        payload = signing.loads(token, salt=_SALT, max_age=_MAX_AGE)
+        member_id = payload["member_id"]
+    except (signing.BadSignature, KeyError) as exc:
+        raise ValueError("Invalid or expired unsubscribe link.") from exc
+
+    try:
+        member = Member.objects.get(pk=member_id, is_active=True)
+    except Member.DoesNotExist as exc:
+        raise ValueError("Account not found.") from exc
+
+    if not _consume_oneclick_token(token):
+        raise ValueError("This unsubscribe link has already been used.")
+
+    return member
+
+
+_RESUBSCRIBE_SALT = "mail-resubscribe"
+_RESUBSCRIBE_MAX_AGE = 60 * 60  # 1 hour
+
+
+def build_resubscribe_token(member_or_id) -> str:
+    """Create a short-lived signed token for re-subscribing."""
+    pk = str(member_or_id.pk if hasattr(member_or_id, "pk") else member_or_id)
+    return signing.dumps({"member_id": pk}, salt=_RESUBSCRIBE_SALT, compress=True)
+
+
+def get_member_from_resubscribe_token(token: str):
+    """Validate a resubscribe token and return the Member.
+
+    Raises ``ValueError`` on invalid, expired, or unknown-member tokens.
+    """
+    from apps.authn.models import Member
+
+    try:
+        payload = signing.loads(token, salt=_RESUBSCRIBE_SALT, max_age=_RESUBSCRIBE_MAX_AGE)
+        member_id = payload["member_id"]
+    except (signing.BadSignature, KeyError) as exc:
+        raise ValueError("Invalid or expired resubscribe link.") from exc
+
+    try:
+        return Member.objects.get(pk=member_id, is_active=True)
+    except Member.DoesNotExist as exc:
+        raise ValueError("Account not found.") from exc
+
+
+def build_oneclick_unsubscribe_url(member_or_id) -> str:
+    """Return the absolute backend URL for the one-click unsubscribe endpoint.
+
+    Accepts a Member instance or a raw UUID/string PK.
+    Returns empty string when ``BACKEND_URL`` is not configured (header
+    injection will be skipped).
+    """
+    backend_url = (getattr(settings, "BACKEND_URL", "") or "").strip().rstrip("/")
+    if not backend_url:
+        logger.warning("BACKEND_URL is not configured; skipping one-click unsubscribe URL generation")
+        return ""
+    token = build_oneclick_unsubscribe_token(member_or_id)
+    return f"{backend_url}/mail/unsubscribe/{token}/"

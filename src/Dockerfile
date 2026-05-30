@@ -20,7 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev=17.10-0+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
+# requirements.txt is a thin `-r requirements/local.txt` entrypoint, so the
+# nested requirements/ dir (base/local/production) must be copied too for the
+# -r include chain to resolve.
 COPY requirements.txt .
+COPY requirements/ requirements/
 
 # pip itself is pinned (DL3013). Resolved site-packages are staged under
 # /install so the production stage can copy them without dragging the
@@ -58,10 +62,10 @@ RUN pip install "pip==26.0.1" "setuptools==82.0.1" "wheel==0.46.3"
 COPY --chown=app:app . .
 
 # Bake static assets into the image instead of running collectstatic at boot.
-# core.settings.dev points at SQLite + local FS, which is enough for the
+# config.settings.local points at SQLite + local FS, which is enough for the
 # build-time staticfiles pass (no DB or S3 credentials needed). entrypoint.sh
 # is made executable in the same layer so there's one RUN for app setup.
-ENV DJANGO_SETTINGS_MODULE=core.settings.dev
+ENV DJANGO_SETTINGS_MODULE=config.settings.local
 RUN chmod +x entrypoint.sh \
  && mkdir -p data \
  && chown app:app data \

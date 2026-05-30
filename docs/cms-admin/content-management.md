@@ -68,7 +68,7 @@ News articles are imported from external RSS feeds, not created manually in admi
 
 **Sync command:**
 ```bash
-cd src && python manage.py sync_news --settings=core.settings.dev
+cd src && python manage.py sync_news --settings=config.settings.local
 ```
 
 **Admin workflow:**

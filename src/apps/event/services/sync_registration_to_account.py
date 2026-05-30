@@ -1,0 +1,70 @@
+"""
+Sync event registration data back to the member's Django account.
+
+Updates: first_name, last_name, and creates ContactPhone if phone was collected.
+"""
+
+import logging
+
+from django.db import IntegrityError
+
+from apps.authn.models import ContactPhone
+from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
+
+logger = logging.getLogger(__name__)
+
+
+def sync_name_to_account(member, first_name: str, last_name: str) -> None:
+    """Update the member's first_name and last_name from the registration form.
+
+    Only non-empty incoming values overwrite existing values — never clear a
+    previously-set name by passing in a blank string.
+    """
+    changed = False
+    if first_name and first_name != member.first_name:
+        member.first_name = first_name
+        changed = True
+    if last_name and last_name != member.last_name:
+        member.last_name = last_name
+        changed = True
+    if changed:
+        member.save(update_fields=["first_name", "last_name", "updated_at"])
+        logger.info("Synced registration name fields to member %s.", member.pk)
+
+
+def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:
+    """Sync event registration phone to the member's ContactPhone.
+
+    Conflict rules (same pattern as sync_secondary_email_to_account):
+    - Already on this member → update verified status if needed.
+    - Owned by a different member → skip (don't steal).
+    - Brand new → create.
+    - Race condition → swallow IntegrityError.
+    """
+    if not phone_number or not phone_number.strip():
+        return
+
+    region = infer_region_from_e164(phone_number.strip(), region)
+    national = normalize_to_national(phone_number.strip(), region)
+
+    existing = ContactPhone.objects.filter(phone_number=national).first()
+    if existing:
+        if existing.member_id == member.pk:
+            if verified and not existing.verified:
+                existing.verified = True
+                existing.save(update_fields=["verified", "updated_at"])
+                logger.info("Marked registration phone as verified for member %s.", member.pk)
+        else:
+            logger.info("Registration phone belongs to another member; not syncing to member %s.", member.pk)
+        return
+
+    try:
+        ContactPhone.objects.create(
+            member=member,
+            phone_number=national,
+            region=region,
+            verified=verified,
+        )
+        logger.info("Synced registration phone to member %s account.", member.pk)
+    except IntegrityError:
+        logger.warning("Registration phone was claimed concurrently; skipping sync for member %s.", member.pk)

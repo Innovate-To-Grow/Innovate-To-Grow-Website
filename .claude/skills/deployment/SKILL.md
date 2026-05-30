@@ -6,7 +6,7 @@ description: Use this skill when working with Docker, CI/CD, environment setting
 
 ## Settings Architecture
 
-Component-based under `src/core/settings/`. Import order matters:
+Component-based under `src/config/settings/`. Import order matters:
 
 ```
 core/settings/
@@ -36,7 +36,7 @@ Import order in `base.py`: `environment` → `django` → `admin` → `api` → 
 | Email | Console | Console | SMTP |
 | Storage | Local filesystem | Local filesystem | S3/R2 via boto3 |
 | Passwords | Plain text OK | Plain text OK | Encrypted required |
-| Settings module | `core.settings.dev` | `core.settings.ci` | `core.settings.prod` |
+| Settings module | `config.settings.local` | `config.settings.test` | `config.settings.production` |
 
 ## Backend Docker
 
@@ -71,7 +71,7 @@ Triggers: push to main, PRs touching `src/`, `pages/`, `aws/`, `.github/workflow
 
 ## Adding New Settings
 
-- New integration: add a component file under `core/settings/components/integrations/`.
+- New integration: add a component file under `config/settings/components/integrations/`.
 - Small change: add to the appropriate existing component.
 - Import new components in `base.py` in the correct position.
 - Environment-specific overrides go in `dev.py`, `ci.py`, or the `production.py` component.
@@ -94,11 +94,11 @@ Triggers: push to main, PRs touching `src/`, `pages/`, `aws/`, `.github/workflow
 
 ## Key Files
 
-- `src/core/settings/base.py` — settings assembly
-- `src/core/settings/dev.py` — local development
-- `src/core/settings/ci.py` — CI pipeline
-- `src/core/settings/prod.py` — production entry
-- `src/core/settings/components/production.py` — S3, Redis, SMTP, SSL
+- `src/config/settings/base.py` — settings assembly
+- `src/config/settings/dev.py` — local development
+- `src/config/settings/ci.py` — CI pipeline
+- `src/config/settings/prod.py` — production entry
+- `src/config/settings/components/production.py` — S3, Redis, SMTP, SSL
 - `src/Dockerfile` — backend Docker image
 - `src/entrypoint.sh` — container entrypoint
 - `src/.env.example` — required environment variables

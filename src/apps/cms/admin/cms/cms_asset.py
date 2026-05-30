@@ -1,0 +1,63 @@
+import os
+
+from django import forms
+from django.contrib import admin
+from django.utils.html import format_html
+
+from apps.cms.models import CMSAsset
+from apps.cms.models.media import ALLOWED_ASSET_EXTENSIONS, IMAGE_ASSET_EXTENSIONS
+from apps.core.admin import BaseModelAdmin
+
+_IMAGE_EXTENSIONS = {f".{ext}" for ext in IMAGE_ASSET_EXTENSIONS}
+_ACCEPT_EXTENSIONS = ",".join(f".{ext}" for ext in ALLOWED_ASSET_EXTENSIONS)
+
+
+class CMSAssetAdminForm(forms.ModelForm):
+    class Meta:
+        model = CMSAsset
+        fields = "__all__"
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"accept": _ACCEPT_EXTENSIONS}),
+        }
+
+
+@admin.register(CMSAsset)
+class CMSAssetAdmin(BaseModelAdmin):
+    form = CMSAssetAdminForm
+    list_display = ("name", "file_preview", "public_url_link", "updated_at")
+    search_fields = ("name", "file")
+    readonly_fields = ("public_url_link", "file_preview", "created_at", "updated_at")
+    fieldsets = (
+        (
+            "Asset",
+            {
+                "fields": ("name", "file", "public_url_link", "file_preview"),
+                "description": (
+                    "Upload reusable CMS media here, or use the asset picker inside CMS Page blocks to insert "
+                    "images and document links directly."
+                ),
+            },
+        ),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    @admin.display(description="Public URL")
+    def public_url_link(self, obj):
+        if not obj.file:
+            return "-"
+        return format_html('<a href="{0}" target="_blank" rel="noopener noreferrer">{0}</a>', obj.public_url)
+
+    @admin.display(description="Preview")
+    def file_preview(self, obj):
+        if not obj.file:
+            return "-"
+        _, ext = os.path.splitext(obj.file.name)
+        if ext.lower() in _IMAGE_EXTENSIONS:
+            return format_html(
+                '<a href="{0}" target="_blank" rel="noopener noreferrer">'
+                '<img src="{0}" alt="{1}" style="max-height: 64px; max-width: 140px; object-fit: contain;" />'
+                "</a>",
+                obj.public_url,
+                obj.name,
+            )
+        return format_html('<a href="{0}" target="_blank" rel="noopener noreferrer">Open file</a>', obj.public_url)

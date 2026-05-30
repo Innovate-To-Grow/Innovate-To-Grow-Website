@@ -20,7 +20,7 @@ Engineers adding or modifying API endpoints, frontend developers consuming the A
 
 Most endpoints require JWT authentication. The frontend sends an `Authorization: Bearer <access_token>` header. Public endpoints use `AllowAny` permission.
 
-JWT configuration (from `src/core/settings/components/integrations/api.py`):
+JWT configuration (from `src/config/settings/components/integrations/api.py`):
 - Access token lifetime: 1 hour
 - Refresh token lifetime: 7 days
 - Rotation: enabled (new refresh token on each refresh)

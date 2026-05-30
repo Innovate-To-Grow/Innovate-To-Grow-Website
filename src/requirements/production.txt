@@ -1,0 +1,16 @@
+# Production-only dependencies (WSGI/ASGI servers, PostgreSQL, Redis, S3).
+-r base.txt
+
+# Production servers
+gunicorn>=25.3.0
+uvicorn[standard]>=0.48.0,<1.0
+
+# PostgreSQL adapter
+psycopg2-binary>=2.9.12
+
+# Redis cache backend
+django-redis>=5.4.0
+
+# Storage Backend (S3/R2/OSS compatible)
+django-storages[s3]>=1.14.6
+boto3>=1.43.14

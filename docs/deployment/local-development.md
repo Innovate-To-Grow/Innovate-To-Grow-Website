@@ -45,7 +45,7 @@ Django runs at `http://localhost:8000`. Admin is at `http://localhost:8000/admin
 
 ### Settings
 
-Local development uses `core.settings.dev` by default. Key behaviors:
+Local development uses `config.settings.local` by default. Key behaviors:
 - `DEBUG = True`
 - SQLite database (`src/db.sqlite3`)
 - Emails printed to console
@@ -55,7 +55,7 @@ Local development uses `core.settings.dev` by default. Key behaviors:
 Most Django commands pick up dev settings automatically. For `test`, you must specify explicitly:
 
 ```bash
-python manage.py test --settings=core.settings.dev
+python manage.py test --settings=config.settings.local
 ```
 
 ### Database reset
@@ -96,12 +96,12 @@ cd src
 python manage.py runserver                                              # Start dev server
 python manage.py migrate                                                # Apply migrations
 python manage.py makemigrations                                         # Generate migrations
-python manage.py test --settings=core.settings.dev                      # Run all tests
-python manage.py test authn.tests.test_api.LoginTest --settings=core.settings.dev  # Single test class
+python manage.py test --settings=config.settings.local                      # Run all tests
+python manage.py test apps.authn.tests.test_api.LoginTest --settings=config.settings.local  # Single test class
 ruff check .                                                            # Lint
 ruff check . --fix                                                      # Auto-fix lint
 ruff format .                                                           # Format
-python manage.py sync_news --settings=core.settings.dev                 # Sync RSS feeds
+python manage.py sync_news --settings=config.settings.local                 # Sync RSS feeds
 ```
 
 ### Frontend
@@ -124,7 +124,7 @@ npm run build        # Production build (tsc -b + vite build)
 
 ```bash
 # Backend
-cd src && ruff check . && ruff format --check . && python manage.py test --settings=core.settings.dev
+cd src && ruff check . && ruff format --check . && python manage.py test --settings=config.settings.local
 
 # Frontend
 cd pages && npm run lint && npx tsc --noEmit && npm test && npm run build
@@ -132,7 +132,7 @@ cd pages && npm run lint && npx tsc --noEmit && npm test && npm run build
 
 ## Gotchas
 
-- **Settings flag**: Always pass `--settings=core.settings.dev` to `test` and `sync_news` commands. `runserver` and `migrate` pick it up from defaults.
+- **Settings flag**: Always pass `--settings=config.settings.local` to `test` and `sync_news` commands. `runserver` and `migrate` pick it up from defaults.
 - **Superuser creation**: Uses email, not username. For non-interactive mode: `python manage.py createsuperuser --email admin@example.com`
 - **Three React roots**: If you change auth behavior, test that the menu and footer roots also update correctly.
 - **Migration edits**: Never edit a migration that has been merged to `main`. Create a new migration instead.

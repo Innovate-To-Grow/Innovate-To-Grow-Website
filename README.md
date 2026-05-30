@@ -70,7 +70,7 @@ The first secrets scan downloads the pinned gitleaks release used by CI. Run `np
 ```bash
 # Backend
 cd src && ruff check . && ruff format --check .
-cd src && python manage.py test --settings=core.settings.dev
+cd src && python manage.py test --settings=config.settings.local
 
 # Frontend
 cd pages && npm run lint

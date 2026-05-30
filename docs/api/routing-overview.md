@@ -1,6 +1,6 @@
 # Routing Overview
 
-URL organization for the Django backend, defined in `src/core/urls.py` with delegation to app-level routers.
+URL organization for the Django backend, defined in `src/apps/core/urls.py` with delegation to app-level routers.
 
 ## Root URL patterns
 
@@ -15,13 +15,13 @@ URL organization for the Django backend, defined in `src/core/urls.py` with dele
 | `/health/` | `HealthCheckMiddleware` | Frontend-compatible health and maintenance status |
 | `/maintenance/bypass/` | `MaintenanceBypassView` | Maintenance mode bypass with password |
 | `/layout/` | `LayoutAPIView` | Combined menu + footer data for frontend |
-| `/authn/` | `authn.urls` | Authentication and member endpoints |
-| `/cms/` | `cms.cms_urls` | CMS page endpoints |
-| `/news/` | `cms.news_urls` | News article endpoints |
-| `/analytics/` | `cms.analytics_urls` | Page view tracking |
-| `/event/` | `event.urls` | Event registration and management |
-| `/projects/` | `projects.urls` | Past project archives |
-| `/mail/` | `mail.urls` | Magic login links |
+| `/authn/` | `apps.authn.urls` | Authentication and member endpoints |
+| `/cms/` | `apps.cms.cms_urls` | CMS page endpoints |
+| `/news/` | `apps.cms.news_urls` | News article endpoints |
+| `/analytics/` | `apps.cms.analytics_urls` | Page view tracking |
+| `/event/` | `apps.event.urls` | Event registration and management |
+| `/projects/` | `apps.projects.urls` | Past project archives |
+| `/mail/` | `apps.mail.urls` | Magic login links |
 | `/ckeditor5/` | CKEditor 5 | Rich text editor file uploads |
 
 ## Route groups by domain
@@ -97,7 +97,7 @@ When adding a new API endpoint:
 
 1. Create views and serializers in the appropriate app
 2. Add URL patterns in the app's `urls.py`
-3. If it's a new top-level path, register it in `src/core/urls.py`
+3. If it's a new top-level path, register it in `src/apps/core/urls.py`
 4. Apply appropriate permission classes and throttles per-view
 5. Update the frontend feature API module if the frontend will consume it
 
