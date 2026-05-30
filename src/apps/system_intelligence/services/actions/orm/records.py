@@ -41,5 +41,9 @@ def check_model_permission(user, model: type[models.Model], action: str) -> None
 
 
 def assert_snapshot_unchanged(before: dict, current: dict, label: str) -> None:
-    if before and json_safe(before) != json_safe(current):
+    # Use an explicit None check rather than truthiness: a falsy `before == {}`
+    # must still be compared, otherwise an empty snapshot would silently skip
+    # change-detection (defense-in-depth — UPDATE/DELETE snapshots always carry
+    # at least __repr__, but the guard should not depend on that).
+    if before is not None and json_safe(before) != json_safe(current):
         raise ActionRequestError(f"{label} changed after this request was proposed. Create a fresh proposal.")

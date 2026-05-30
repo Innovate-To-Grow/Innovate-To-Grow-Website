@@ -32,6 +32,15 @@ def _get_int_env(name: str, default: int) -> int:
     return parsed
 
 
+def _split_csv_env(name: str) -> list[str]:
+    """Parse a comma-separated env var into a clean list (entries stripped,
+    blanks dropped). Stripping matters for CSRF_TRUSTED_ORIGINS, which Django
+    compares against the request Origin by exact string match — a stray space
+    after a comma would otherwise reject a valid cross-origin request."""
+    raw = os.environ.get(name, "")
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 def _get_bool_env(name: str, default: bool) -> bool:
     value = os.environ.get(name, "").strip().lower()
     if not value:
@@ -87,12 +96,8 @@ X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_AGE = 28800  # 8-hour admin sessions (default was 2 weeks)
 
 # CORS / CSRF trusted origins (comma-separated env vars)
-CSRF_TRUSTED_ORIGINS = (
-    os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if os.environ.get("CSRF_TRUSTED_ORIGINS") else []
-)
-CORS_ALLOWED_ORIGINS = (
-    os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if os.environ.get("CORS_ALLOWED_ORIGINS") else []
-)
+CSRF_TRUSTED_ORIGINS = _split_csv_env("CSRF_TRUSTED_ORIGINS")
+CORS_ALLOWED_ORIGINS = _split_csv_env("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
 
 # Validate CORS_ALLOWED_ORIGINS when credentials are enabled

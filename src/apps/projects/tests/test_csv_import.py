@@ -7,30 +7,29 @@ from apps.projects.services.csv_import import ImportResult, _parse_semester, imp
 
 
 class ParseSemesterTest(TestCase):
+    # _parse_semester only parses + get_or_creates the Semester now; publishing is
+    # handled atomically by import_projects_from_csv (see test_publish_flag and
+    # test_publish_is_atomic_with_bulk_create below).
     def test_valid_year_semester(self):
-        semester = _parse_semester("2024-2 Fall", publish=False)
+        semester = _parse_semester("2024-2 Fall")
         self.assertIsNotNone(semester)
         self.assertEqual(semester.year, 2024)
         self.assertEqual(semester.season, 2)
         self.assertFalse(semester.is_published)
 
-    def test_valid_year_semester_with_publish(self):
-        semester = _parse_semester("2023-1 Spring", publish=True)
-        self.assertIsNotNone(semester)
-        self.assertTrue(semester.is_published)
-
-    def test_publish_updates_existing_unpublished(self):
+    def test_does_not_publish(self):
+        # Parsing must never flip is_published — that is the importer's job.
         Semester.objects.create(year=2022, season=1, is_published=False)
-        semester = _parse_semester("2022-1 Spring", publish=True)
-        self.assertTrue(semester.is_published)
+        semester = _parse_semester("2022-1 Spring")
+        self.assertFalse(semester.is_published)
 
     def test_invalid_format_returns_none(self):
-        self.assertIsNone(_parse_semester("bad data", publish=False))
-        self.assertIsNone(_parse_semester("", publish=False))
+        self.assertIsNone(_parse_semester("bad data"))
+        self.assertIsNone(_parse_semester(""))
 
     def test_get_or_create_reuses_existing(self):
         Semester.objects.create(year=2024, season=1)
-        semester = _parse_semester("2024-1 Spring", publish=False)
+        semester = _parse_semester("2024-1 Spring")
         self.assertEqual(Semester.objects.filter(year=2024, season=1).count(), 1)
         self.assertEqual(semester.year, 2024)
 
@@ -127,6 +126,40 @@ class ImportProjectsFromCSVTest(TestCase):
         import_projects_from_csv(csv_file, publish=True)
         semester = Semester.objects.get(year=2024, season=2)
         self.assertTrue(semester.is_published)
+
+    def test_internal_duplicate_rows_are_deduplicated(self):
+        # Two rows with the same (semester, class_code, team_number) in ONE CSV
+        # must insert only once — the DB existence check can't see rows still
+        # staged for bulk_create, so dedup also tracks staged keys.
+        csv_file = self._make_csv(
+            [
+                "2024-2 Fall,CSE,101,Alpha,First,Org,Ind,,Abs,Names",
+                "2024-2 Fall,CSE,101,Alpha,Duplicate,Org,Ind,,Abs,Names",
+            ]
+        )
+        result = import_projects_from_csv(csv_file)
+        self.assertEqual(result.created, 1)
+        self.assertEqual(result.skipped, 1)
+        self.assertEqual(Project.objects.filter(class_code="CSE", team_number="101").count(), 1)
+
+    def test_publish_rolls_back_when_bulk_create_fails(self):
+        from unittest.mock import patch
+
+        from django.db import DatabaseError
+
+        csv_file = self._make_csv(
+            [
+                "2024-2 Fall,CSE,101,Alpha,Title,Org,Ind,,Abs,Names",
+            ]
+        )
+        with patch.object(Project.objects, "bulk_create", side_effect=DatabaseError("boom")):
+            with self.assertRaises(DatabaseError):
+                import_projects_from_csv(csv_file, publish=True)
+
+        # The semester publish must roll back with the failed insert — no
+        # half-applied state (published semester with zero projects).
+        self.assertFalse(Semester.objects.filter(year=2024, season=2, is_published=True).exists())
+        self.assertEqual(Project.objects.count(), 0)
 
     def test_bytes_file_input(self):
         header = "Year-Semester,ClassCode,Team#,TeamName,ProjectTitle,Organization,Industry,Col7,Abstract,StudentNames"

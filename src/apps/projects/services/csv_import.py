@@ -37,15 +37,12 @@ class ImportResult:
     errors: list[str] = field(default_factory=list)
 
 
-def _parse_semester(value: str, publish: bool) -> Semester | None:
+def _parse_semester(value: str) -> Semester | None:
     match = YEAR_SEMESTER_RE.match(value.strip())
     if not match:
         return None
     year, season = int(match.group(1)), int(match.group(2))
     semester, created = Semester.objects.get_or_create(year=year, season=season)
-    if publish and not semester.is_published:
-        semester.is_published = True
-        semester.save(update_fields=["is_published"])
     return semester
 
 
@@ -74,6 +71,11 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
         next(reader, None)  # skip header
 
         rows_to_create = []
+        # Track (semester_pk, class_code, team_number) staged this run so a single
+        # CSV containing internal duplicates does not insert them twice — the DB
+        # existence check alone cannot see rows still pending in bulk_create.
+        staged_keys: set[tuple] = set()
+        semesters_to_publish: set = set()
 
         for line_no, row in enumerate(reader, start=2):
             if len(row) < 5:
@@ -83,7 +85,7 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
             if not year_sem:
                 continue
 
-            semester = _parse_semester(year_sem, publish)
+            semester = _parse_semester(year_sem)
             if semester is None:
                 result.errors.append(f"Row {line_no}: unparseable Year-Semester '{year_sem}'")
                 continue
@@ -96,19 +98,31 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
                 result.errors.append(f"Row {line_no}: missing project_title, skipped")
                 continue
 
-            # Duplicate check: same semester + class_code + team_number
-            if Project.objects.filter(
-                semester=semester,
-                class_code=fields["class_code"],
-                team_number=fields["team_number"],
-            ).exists():
+            # Duplicate check: same semester + class_code + team_number, against
+            # both already-persisted rows and rows staged earlier in this import.
+            dup_key = (semester.pk, fields["class_code"], fields["team_number"])
+            if (
+                dup_key in staged_keys
+                or Project.objects.filter(
+                    semester=semester,
+                    class_code=fields["class_code"],
+                    team_number=fields["team_number"],
+                ).exists()
+            ):
                 result.skipped += 1
                 continue
 
+            staged_keys.add(dup_key)
+            if publish and not semester.is_published:
+                semesters_to_publish.add(semester.pk)
             rows_to_create.append(Project(semester=semester, **fields))
 
         if not dry_run:
+            # Publish semesters and insert projects in one transaction so a failed
+            # insert does not leave semesters published with no projects.
             with transaction.atomic():
+                if semesters_to_publish:
+                    Semester.objects.filter(pk__in=semesters_to_publish, is_published=False).update(is_published=True)
                 Project.objects.bulk_create(rows_to_create)
         result.created = len(rows_to_create)
     finally:
