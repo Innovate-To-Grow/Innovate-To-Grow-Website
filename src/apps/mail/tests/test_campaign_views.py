@@ -74,6 +74,16 @@ class CampaignSendViewTests(TestCase):
 
 
 class CampaignBackgroundSendTests(TestCase):
+    def setUp(self):
+        # _background_send runs in a real thread in production and calls
+        # django.db.connections.close_all() to drop the parent thread's handles.
+        # Invoked synchronously here it would close the test's own connection —
+        # harmless on SQLite but raises InterfaceError on PostgreSQL. Neutralize
+        # the cross-thread connection teardown for these direct calls.
+        patcher = patch("django.db.connections.close_all")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @patch("apps.mail.services.send_campaign.send_campaign")
     def test_background_send_runs_service(self, mock_send):
         admin_user = make_superuser()

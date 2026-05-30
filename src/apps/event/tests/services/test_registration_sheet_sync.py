@@ -261,6 +261,15 @@ class LogsHelperTest(TestCase):
 class AppendBranchTest(TestCase):
     def setUp(self):
         self.event = make_event(name="Append Event")
+        # _flush_pending_sync runs inside a background Timer thread in production
+        # and calls close_old_connections() to refresh that thread's DB handle.
+        # When we invoke it synchronously inside a TestCase's atomic transaction,
+        # that call would close the test connection itself — harmless on SQLite
+        # but raises InterfaceError ("connection already closed") on PostgreSQL.
+        # Neutralize the cross-thread connection plumbing for these direct calls.
+        patcher = patch("apps.event.services.registration_sheet_sync.append.close_old_connections")
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_schedule_sync_noop_without_sheet_id(self):
         from apps.event.services.registration_sheet_sync.append import schedule_registration_sync

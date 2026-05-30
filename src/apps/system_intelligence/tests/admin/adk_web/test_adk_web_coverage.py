@@ -57,6 +57,16 @@ PREFIX = SYSTEM_INTELLIGENCE_ADK_PREFIX
 class SessionLoadingTests(TestCase):
     """Covers session.py lines 14, 18-45, 49-58."""
 
+    def setUp(self):
+        # _load_staff_user_id_from_headers_sync calls close_old_connections()
+        # (it normally runs in a sync_to_async worker thread). Called directly
+        # inside the TestCase transaction it would close the test's own
+        # connection — harmless on SQLite but raises InterfaceError on
+        # PostgreSQL. Neutralize the connection teardown for these direct calls.
+        patcher = mock.patch("apps.system_intelligence.admin.adk_web.auth.session.close_old_connections")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def _cookie_headers_for(self, member):
         """Log the member in through the test client and return ASGI headers.
 
