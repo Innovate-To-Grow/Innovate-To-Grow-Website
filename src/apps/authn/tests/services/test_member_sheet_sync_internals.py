@@ -123,6 +123,16 @@ class BuildRowPhoneTests(TestCase):
 
 
 class SchedulerTests(TestCase):
+    def setUp(self):
+        # _flush_pending_sync runs in a background Timer thread in production and
+        # calls close_old_connections() to refresh that thread's DB handle. The
+        # direct synchronous calls below would otherwise close the test's own
+        # connection — harmless on SQLite but raises InterfaceError on
+        # PostgreSQL (and corrupts later tests in this class via ordering).
+        patcher = patch("apps.authn.services.member_sheet_sync.scheduler.close_old_connections")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @patch("apps.authn.services.member_sheet_sync.threading.Timer")
     def test_schedule_immediate_sync_starts_timer(self, mock_timer_cls):
         mock_timer = MagicMock()
