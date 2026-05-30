@@ -11,19 +11,19 @@ describe('Lazy route modules resolve', () => {
   ] as const;
 
   const contentPages = [
-    ['NewsPage', () => import('../pages/NewsPage')],
-    ['NewsDetailPage', () => import('../pages/NewsDetailPage')],
-    ['ProjectsPage', () => import('../pages/ProjectsPage')],
-    ['PastProjectsPage', () => import('../pages/PastProjectsPage')],
-    ['PresentingTeamsPage', () => import('../pages/PresentingTeamsPage')],
-    ['ProjectDetailPage', () => import('../pages/ProjectDetailPage')],
-    ['SchedulePage', () => import('../pages/SchedulePage')],
-    ['AcknowledgementPage', () => import('../pages/AcknowledgementPage')],
-    ['EventArchivePage', () => import('../pages/EventArchivePage')],
-    ['EventRegistrationPage', () => import('../pages/EventRegistrationPage')],
-    ['TicketLoginPage', () => import('../pages/TicketLoginPage')],
-    ['SubscribePage', () => import('../pages/SubscribePage')],
-    ['UnsubscribeLoginPage', () => import('../pages/UnsubscribeLoginPage')],
+    ['NewsPage', () => import('@/routes/NewsPage')],
+    ['NewsDetailPage', () => import('@/routes/NewsDetailPage')],
+    ['ProjectsPage', () => import('@/routes/ProjectsPage')],
+    ['PastProjectsPage', () => import('@/routes/PastProjectsPage')],
+    ['PresentingTeamsPage', () => import('@/routes/PresentingTeamsPage')],
+    ['ProjectDetailPage', () => import('@/routes/ProjectDetailPage')],
+    ['SchedulePage', () => import('@/routes/SchedulePage')],
+    ['AcknowledgementPage', () => import('@/routes/AcknowledgementPage')],
+    ['EventArchivePage', () => import('@/routes/EventArchivePage')],
+    ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
+    ['TicketLoginPage', () => import('@/routes/TicketLoginPage')],
+    ['SubscribePage', () => import('@/routes/SubscribePage')],
+    ['UnsubscribeLoginPage', () => import('@/routes/UnsubscribeLoginPage')],
   ] as const;
 
   it.each([...authPages, ...contentPages])(

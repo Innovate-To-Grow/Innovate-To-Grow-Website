@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { NotFoundPage } from '@/pages/NotFoundPage';
+import { NotFoundPage } from '@/routes/NotFoundPage';
 import { BlockRenderer } from './BlockRenderer';
 import { useCMSPage } from './useCMSPage';
 

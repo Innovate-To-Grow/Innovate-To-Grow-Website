@@ -86,7 +86,7 @@ describe('Page barrel exports', () => {
   ] as const;
 
   it.each(pages)('pages/%s exports %s', async (dir, exportName) => {
-    const mod = await import(`../pages/${dir}/index.ts`);
+    const mod = await import(`@/routes/${dir}/index.ts`);
     expect(mod[exportName]).toBeDefined();
   });
 });

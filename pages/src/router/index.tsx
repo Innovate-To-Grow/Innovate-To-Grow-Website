@@ -38,22 +38,22 @@ const ForgotPasswordPage = React.lazy(() => import('../components/Auth/pages/For
 const VerifyEmailPage = React.lazy(() => import('../components/Auth/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
 
 // Content pages (lazy) — only non-CMS pages
-const NewsPage = React.lazy(() => import('../pages/NewsPage').then(m => ({default: m.NewsPage})));
-const NewsDetailPage = React.lazy(() => import('../pages/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
-const ProjectsPage = React.lazy(() => import('../pages/ProjectsPage').then(m => ({default: m.ProjectsPage})));
-const PastProjectsPage = React.lazy(() => import('../pages/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
-const PresentingTeamsPage = React.lazy(() => import('../pages/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
-const ProjectDetailPage = React.lazy(() => import('../pages/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
-const SchedulePage = React.lazy(() => import('../pages/SchedulePage').then(m => ({default: m.SchedulePage})));
-const AcknowledgementPage = React.lazy(() => import('../pages/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
-const EventArchivePage = React.lazy(() => import('../pages/EventArchivePage').then(m => ({default: m.EventArchivePage})));
-const EventRegistrationPage = React.lazy(() => import('../pages/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
-const TicketLoginPage = React.lazy(() => import('../pages/TicketLoginPage').then(m => ({default: m.TicketLoginPage})));
-const SubscribePage = React.lazy(() => import('../pages/SubscribePage').then(m => ({default: m.SubscribePage})));
-const UnsubscribeLoginPage = React.lazy(() => import('../pages/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
-const MagicLoginPage = React.lazy(() => import('../pages/MagicLoginPage').then(m => ({default: m.MagicLoginPage})));
-const EmailAuthLinkPage = React.lazy(() => import('../pages/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
-const ImpersonateLoginPage = React.lazy(() => import('../pages/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
+const NewsPage = React.lazy(() => import('@/routes/NewsPage').then(m => ({default: m.NewsPage})));
+const NewsDetailPage = React.lazy(() => import('@/routes/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
+const ProjectsPage = React.lazy(() => import('@/routes/ProjectsPage').then(m => ({default: m.ProjectsPage})));
+const PastProjectsPage = React.lazy(() => import('@/routes/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
+const PresentingTeamsPage = React.lazy(() => import('@/routes/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
+const ProjectDetailPage = React.lazy(() => import('@/routes/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
+const SchedulePage = React.lazy(() => import('@/routes/SchedulePage').then(m => ({default: m.SchedulePage})));
+const AcknowledgementPage = React.lazy(() => import('@/routes/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
+const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').then(m => ({default: m.EventArchivePage})));
+const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
+const TicketLoginPage = React.lazy(() => import('@/routes/TicketLoginPage').then(m => ({default: m.TicketLoginPage})));
+const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
+const UnsubscribeLoginPage = React.lazy(() => import('@/routes/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
+const MagicLoginPage = React.lazy(() => import('@/routes/MagicLoginPage').then(m => ({default: m.MagicLoginPage})));
+const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
+const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
 export const router = createBrowserRouter([
     // Block preview route — rendered in iframe for admin live preview, no menu/footer
