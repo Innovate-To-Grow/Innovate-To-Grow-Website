@@ -36,8 +36,8 @@ describe('Component barrel exports', () => {
     expect(mod.useFooter).toBeDefined();
   });
 
-  it('components/MaintenanceMode exports resolve', async () => {
-    const mod = await import('../components/MaintenanceMode');
+  it('@/app/MaintenanceMode exports resolve', async () => {
+    const mod = await import('@/app/MaintenanceMode');
     expect(mod.MaintenanceMode).toBeDefined();
     expect(mod.HealthCheckProvider).toBeDefined();
     expect(mod.useHealthCheck).toBeDefined();

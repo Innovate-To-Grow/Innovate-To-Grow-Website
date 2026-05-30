@@ -4,9 +4,9 @@ import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { router } from '@/router';
 import { Footer, MainMenu, LayoutProvider } from './components/Layout';
-import { HealthCheckProvider } from './components/MaintenanceMode';
+import { HealthCheckProvider } from '@/app/MaintenanceMode';
 import { AuthProvider } from './components/Auth';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from '@/app/ErrorBoundary';
 import {
   SECTION_TITLES_KEY,
   buildHiddenSectionsCss,

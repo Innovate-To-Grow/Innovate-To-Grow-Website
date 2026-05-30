@@ -12,8 +12,8 @@ describe('CSS imports resolve', () => {
     ['CMS/CMSPageComponent', () => import('../components/CMS/CMSPageComponent')],
     ['ScheduleGrid', () => import('../components/ScheduleGrid/ScheduleGrid')],
     ['SheetsDataTable', () => import('@/components/ui/SheetsDataTable/SheetsDataTable')],
-    ['MaintenanceMode', () => import('../components/MaintenanceMode/MaintenanceMode')],
-    ['HealthCheckProvider', () => import('../components/MaintenanceMode/HealthCheckProvider')],
+    ['MaintenanceMode', () => import('@/app/MaintenanceMode/MaintenanceMode')],
+    ['HealthCheckProvider', () => import('@/app/MaintenanceMode/HealthCheckProvider')],
   ] as const;
 
   it.each(componentsWithCSS)('%s CSS import resolves', async (_name, importFn) => {
