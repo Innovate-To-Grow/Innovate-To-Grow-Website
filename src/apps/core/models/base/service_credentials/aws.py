@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 
 class AWSCredentialConfig(models.Model):
@@ -71,9 +71,16 @@ class AWSCredentialConfig(models.Model):
         return f"{self.name}: {key_hint}{status}"
 
     def save(self, *args, **kwargs):
+        # Serialize concurrent activations so only one config is ever active:
+        # lock the active rows, deactivate them, then activate self atomically.
+        # select_for_update is a no-op on SQLite (dev), effective on PostgreSQL.
         if self.is_active:
-            AWSCredentialConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                list(AWSCredentialConfig.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
+                AWSCredentialConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):

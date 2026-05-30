@@ -157,7 +157,11 @@ class AcceptInvitationView(View):
 
     # noinspection PyMethodMayBeStatic
     def _upgrade_member(self, member, invitation):
-        member.is_staff = True
-        member.is_active = True
-        member.save(update_fields=["is_staff", "is_active", "updated_at"])
-        invitation.mark_accepted(member)
+        # Upgrade the member and mark the invitation accepted atomically so a
+        # failure between the two writes can't leave a staff-upgraded member with
+        # a still-PENDING invitation.
+        with transaction.atomic():
+            member.is_staff = True
+            member.is_active = True
+            member.save(update_fields=["is_staff", "is_active", "updated_at"])
+            invitation.mark_accepted(member)

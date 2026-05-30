@@ -32,16 +32,19 @@ def get_latest_pending_for_purposes(
     *,
     purposes: Sequence[str],
     target_email: str,
+    for_update: bool = False,
 ):
-    return (
-        EmailAuthChallenge.objects.filter(
-            purpose__in=purposes,
-            target_email__iexact=target_email,
-            status=EmailAuthChallenge.Status.PENDING,
-        )
-        .order_by("-created_at")
-        .first()
+    queryset = EmailAuthChallenge.objects.filter(
+        purpose__in=purposes,
+        target_email__iexact=target_email,
+        status=EmailAuthChallenge.Status.PENDING,
     )
+    if for_update:
+        # Lock the row so concurrent verification attempts serialize, preventing
+        # lost attempt-counter increments and double-verification (no-op on SQLite,
+        # effective on PostgreSQL in production).
+        queryset = queryset.select_for_update()
+    return queryset.order_by("-created_at").first()
 
 
 def assert_within_limit(*, member, purpose: str, target_email: str, now):
@@ -62,8 +65,9 @@ def assert_within_limit(*, member, purpose: str, target_email: str, now):
         raise api.AuthChallengeThrottled("Please wait before requesting another code.")
 
 
-def latest_pending_for_input(*, purposes: Sequence[str], target_email: str):
+def latest_pending_for_input(*, purposes: Sequence[str], target_email: str, for_update: bool = False):
     return get_latest_pending_for_purposes(
         purposes=purposes,
         target_email=normalize_email(target_email),
+        for_update=for_update,
     )

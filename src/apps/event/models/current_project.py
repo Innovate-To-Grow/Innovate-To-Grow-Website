@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models import ProjectControlModel
 from apps.core.models.mixins import ActiveModel
@@ -50,9 +50,16 @@ class CurrentProjectSchedule(ActiveModel, ProjectControlModel):
         return self.name or "Not configured"
 
     def save(self, **kwargs):
+        # Serialize concurrent activations so the single-active invariant holds:
+        # lock the currently-active rows, deactivate them, then activate self —
+        # all in one transaction. select_for_update is a no-op on SQLite (dev).
         if self.is_active:
-            CurrentProjectSchedule.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-        super().save(**kwargs)
+            with transaction.atomic():
+                list(CurrentProjectSchedule.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
+                CurrentProjectSchedule.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                super().save(**kwargs)
+        else:
+            super().save(**kwargs)
 
     @classmethod
     def load(cls):

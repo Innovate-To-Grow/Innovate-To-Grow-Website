@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils.text import slugify
 
 from apps.core.models import ProjectControlModel
@@ -71,7 +71,14 @@ class Event(ProjectControlModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
         update_fields = kwargs.get("update_fields")
-        if self.is_live and (update_fields is None or "is_live" in update_fields):
-            Event.objects.exclude(pk=self.pk).filter(is_live=True).update(is_live=False)
+        will_demote = self.is_live and (update_fields is None or "is_live" in update_fields)
+        # Promote-self and demote-others must be atomic and serialized, or two
+        # concurrent live-promotions can interleave and leave zero live events
+        # (each demotes the other). The lock serializes promotions; no-op on SQLite.
+        with transaction.atomic():
+            if will_demote:
+                list(Event.objects.select_for_update().filter(is_live=True).exclude(pk=self.pk))
+            super().save(*args, **kwargs)
+            if will_demote:
+                Event.objects.exclude(pk=self.pk).filter(is_live=True).update(is_live=False)
