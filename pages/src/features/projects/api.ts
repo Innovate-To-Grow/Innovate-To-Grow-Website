@@ -1,9 +1,9 @@
-import { api } from '../../shared/api/client';
+import { api } from '@/lib/api-client';
 import {formatSemesterLabel} from '../../shared/utils/semester';
-import type { PaginatedResponse } from '../../shared/api/types';
+import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '../events/api';
 
-export type { PaginatedResponse } from '../../shared/api/types';
+export type { PaginatedResponse } from '@/types/api';
 
 export interface ProjectSummary {
   id: string;

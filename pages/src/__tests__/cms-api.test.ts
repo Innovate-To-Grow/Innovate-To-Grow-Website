@@ -4,7 +4,7 @@ const {getMock} = vi.hoisted(() => ({
   getMock: vi.fn(),
 }));
 
-vi.mock('../shared/api/client', () => ({
+vi.mock('@/lib/api-client', () => ({
   api: {get: getMock},
   default: {get: getMock},
 }));

@@ -1,7 +1,7 @@
-import { api } from '../../shared/api/client';
-import type { PaginatedResponse } from '../../shared/api/types';
+import { api } from '@/lib/api-client';
+import type { PaginatedResponse } from '@/types/api';
 
-export type { PaginatedResponse } from '../../shared/api/types';
+export type { PaginatedResponse } from '@/types/api';
 
 export interface NewsArticle {
   id: string;

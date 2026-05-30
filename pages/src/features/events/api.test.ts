@@ -5,7 +5,7 @@ const apiMock = vi.hoisted(() => ({
   post: vi.fn(),
 }));
 
-vi.mock('../../shared/api/client', () => ({
+vi.mock('@/lib/api-client', () => ({
   api: apiMock,
 }));
 

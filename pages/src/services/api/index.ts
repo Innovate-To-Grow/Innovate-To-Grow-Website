@@ -1,4 +1,4 @@
-export { api } from '../../shared/api/client';
+export { api } from '@/lib/api-client';
 export type { HealthCheckResponse, HealthStatus } from './health';
 export { checkHealth, bypassMaintenance } from './health';
-export type { PaginatedResponse } from '../../shared/api/types';
+export type { PaginatedResponse } from '@/types/api';

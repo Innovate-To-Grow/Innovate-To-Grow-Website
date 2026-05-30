@@ -1,4 +1,4 @@
-import { api } from '../../shared/api/client';
+import { api } from '@/lib/api-client';
 import {getAccessToken} from '../../services/auth';
 
 // --- Types ---

@@ -1,4 +1,4 @@
-import { api } from '../../shared/api/client';
+import { api } from '@/lib/api-client';
 
 const CMS_ROUTE_SEGMENT_RE = /^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$/;
 const URL_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
