@@ -1,0 +1,4 @@
+# Local environment overrides (never commit real config)
+.env
+.env.*
+!.env.example

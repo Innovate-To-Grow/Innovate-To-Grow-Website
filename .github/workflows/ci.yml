@@ -328,7 +328,7 @@ jobs:
           if-no-files-found: warn
 
   cli-admin-coverage:
-    name: CLI Admin Coverage (100%)
+    name: CLI Admin Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
@@ -376,7 +376,7 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate --noinput
 
-      - name: Enforce 100% coverage for cli_admin and safe_orm
+      - name: Enforce coverage for cli_admin and safe_orm
         run: |
           coverage run \
             --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
