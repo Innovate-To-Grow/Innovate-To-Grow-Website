@@ -25,6 +25,10 @@ _PRESET_FORM_FIELDS = (
     "remove_ads",
 )
 
+# Editing any of these on the change form re-captures the page on save (the
+# frozen output depends on them), so saved edits actually take effect.
+_CAPTURE_FIELDS = ("source_url", *_PRESET_FORM_FIELDS, "extra_remove_selectors")
+
 
 class FrozenPageImportForm(forms.Form):
     """Capture form for the 'Import from URL' admin view."""
@@ -65,6 +69,12 @@ class FrozenPageAdmin(BaseModelAdmin):
     search_fields = ("title", "slug", "source_url")
     actions = ["refreeze_selected"]
     change_list_template = "admin/cms/frozenpage/change_list.html"
+    # This is a content model with its own capture-on-save semantics; the
+    # type-to-confirm gate just makes Save look broken (mirrors CMSPageAdmin).
+    require_confirmation = False
+    save_on_top = True
+    # frozen_html is the captured blob (can be multi-MB) — never edited by hand,
+    # so it is omitted from the fieldsets below rather than shown as a textarea.
     readonly_fields = ("size_display", "fetched_at", "preview_link")
     fieldsets = (
         (None, {"fields": ("source_url", "title", "slug", "status")}),
@@ -79,15 +89,11 @@ class FrozenPageAdmin(BaseModelAdmin):
                     "remove_ads",
                     "extra_remove_selectors",
                 ),
-                "description": "After changing these, run the 'Re-freeze' action (or save) to re-capture the page.",
+                "description": "Saving re-captures the page from its source URL with these options applied.",
             },
         ),
         ("Capture", {"fields": ("size_display", "fetched_at", "preview_link")}),
     )
-
-    # Never render the (potentially multi-MB) frozen_html blob in the form.
-    def get_fields(self, request, obj=None):
-        return [f for f in super().get_fields(request, obj) if f != "frozen_html"]
 
     @admin.display(description="Size")
     def size_display(self, obj):
@@ -106,14 +112,23 @@ class FrozenPageAdmin(BaseModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        # First-time capture on add (or after the blob was cleared): freeze now so
-        # the row is usable immediately. Re-captures after option edits use the action.
-        if obj.source_url and not obj.frozen_html:
-            self._capture(request, obj)
+        # (Re-)capture whenever the source URL or any removal option changed, or
+        # the page was never captured — so edits to those options actually take
+        # effect on save instead of silently doing nothing.
+        changed = set(getattr(form, "changed_data", None) or [])
+        needs_capture = not change or not obj.frozen_html or bool(changed.intersection(_CAPTURE_FIELDS))
+        if obj.source_url and needs_capture:
+            captured = self._capture(request, obj)
+            if captured:
+                self.message_user(request, f"Captured {obj.byte_size:,} bytes from {obj.source_url}.", messages.SUCCESS)
         transaction.on_commit(lambda: clear_frozen_page_cache(obj.pk))
 
     def _capture(self, request, obj) -> bool:
-        """(Re-)freeze ``obj`` and persist it. Returns True on success, else messages the error."""
+        """(Re-)freeze ``obj`` and persist it. Returns True on success, else messages the error.
+
+        Never raises: a capture failure (bad URL, network, blocked host) must not
+        500 the admin save — the row is still saved, just without fresh content.
+        """
         try:
             obj.re_freeze()
         except BlockedURLError as exc:
@@ -121,6 +136,9 @@ class FrozenPageAdmin(BaseModelAdmin):
             return False
         except FreezeError as exc:
             self.message_user(request, f"Could not freeze {obj.source_url}: {exc}", messages.ERROR)
+            return False
+        except Exception as exc:  # noqa: BLE001 - defensive: never let capture break the save
+            self.message_user(request, f"Unexpected error freezing {obj.source_url}: {exc}", messages.ERROR)
             return False
         obj.save()  # full save: works for both a new (INSERT) and existing (UPDATE) row
         clear_frozen_page_cache(obj.pk)

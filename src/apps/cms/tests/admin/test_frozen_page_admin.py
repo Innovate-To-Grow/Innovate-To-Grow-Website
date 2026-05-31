@@ -114,3 +114,70 @@ class FrozenPageAdminTests(TestCase):
         obj.refresh_from_db()
         self.assertEqual(obj.frozen_html, "<html>A</html>")
         self.assertEqual(obj.byte_size, 9)
+
+    @patch(_FREEZE_TARGET)
+    def test_add_via_changeform_saves_without_confirmation(self, mock_freeze):
+        # Regression: ConfirmOnSaveMixin used to intercept Save and create nothing.
+        mock_freeze.return_value = _result(html="<html>A</html>", title="From Form", byte_size=12)
+        resp = self.client.post(
+            reverse("admin:cms_frozenpage_add"),
+            {
+                "source_url": "https://example.com/",
+                "title": "From Form",
+                "slug": "from-form",
+                "status": "draft",
+                "remove_header": "on",
+                "extra_remove_selectors": "",
+                "_save": "Save",
+            },
+        )
+        self.assertRedirects(resp, reverse("admin:cms_frozenpage_changelist"))
+        page = FrozenPage.objects.get(slug="from-form")
+        self.assertEqual(page.frozen_html, "<html>A</html>")
+        self.assertEqual(page.byte_size, 12)
+
+    @patch(_FREEZE_TARGET)
+    def test_editing_removal_option_recaptures_on_save(self, mock_freeze):
+        page = FrozenPage.objects.create(
+            source_url="https://example.com/", slug="edit-me", status="draft", frozen_html="<old>", byte_size=5
+        )
+        mock_freeze.return_value = _result(html="<html>RECAPTURED</html>", title="t", byte_size=23)
+        resp = self.client.post(
+            reverse("admin:cms_frozenpage_change", args=[page.pk]),
+            {
+                "source_url": "https://example.com/",
+                "title": "",
+                "slug": "edit-me",
+                "status": "draft",
+                "remove_footer": "on",  # newly ticked → must trigger re-capture
+                "extra_remove_selectors": "",
+                "_save": "Save",
+            },
+        )
+        self.assertRedirects(resp, reverse("admin:cms_frozenpage_changelist"))
+        page.refresh_from_db()
+        self.assertTrue(page.remove_footer)
+        self.assertEqual(page.frozen_html, "<html>RECAPTURED</html>")
+        self.assertIn("footer", mock_freeze.call_args.kwargs["remove_presets"])
+
+    @patch(_FREEZE_TARGET)
+    def test_editing_only_status_does_not_recapture(self, mock_freeze):
+        page = FrozenPage.objects.create(
+            source_url="https://example.com/", slug="keep", status="draft", frozen_html="<keep>", byte_size=7
+        )
+        resp = self.client.post(
+            reverse("admin:cms_frozenpage_change", args=[page.pk]),
+            {
+                "source_url": "https://example.com/",
+                "title": "",
+                "slug": "keep",
+                "status": "published",  # only a non-capture field changed
+                "extra_remove_selectors": "",
+                "_save": "Save",
+            },
+        )
+        self.assertRedirects(resp, reverse("admin:cms_frozenpage_changelist"))
+        page.refresh_from_db()
+        self.assertEqual(page.status, "published")
+        self.assertEqual(page.frozen_html, "<keep>")  # unchanged — no needless refetch
+        mock_freeze.assert_not_called()
