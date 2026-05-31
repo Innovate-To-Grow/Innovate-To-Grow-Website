@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { BlockRenderer } from './BlockRenderer';
 import { useCMSPage } from './useCMSPage';
+import { useLegacyProjectTables } from './useLegacyProjectTables';
 
 function formatExpiryTime(isoString: string): string {
   const date = new Date(isoString);
@@ -18,6 +19,7 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const location = useLocation();
   const route = routeOverride || location.pathname;
   const preview = new URLSearchParams(location.search).has('cms_preview');
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const { page, loading, error, isLivePreview } = useCMSPage(route, preview);
   const [showPreviewModal, setShowPreviewModal] = useState(isLivePreview);
@@ -34,6 +36,8 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
       document.title = `${page.title}${suffix} | Innovate to Grow`;
     }
   }, [page?.title, isLivePreview]);
+
+  useLegacyProjectTables(pageRef, page ?? route);
 
   // Inject per-page CSS from the backend
   useEffect(() => {
@@ -93,7 +97,7 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
           )}
         </div>
       )}
-      <div className={page?.page_css_class || 'cms-page'}>
+      <div ref={pageRef} className={page?.page_css_class || 'cms-page'}>
         {page && <BlockRenderer blocks={page.blocks} />}
       </div>
     </>
