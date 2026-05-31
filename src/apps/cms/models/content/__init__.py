@@ -7,6 +7,7 @@ from .cms import (
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
     CMSPage,
+    FrozenPage,
     validate_block_data,
 )
 from .layout import FooterContent, Menu, SiteSettings, StyleSheet
@@ -23,6 +24,7 @@ __all__ = [
     "CMSBlock",
     "CMSEmbedWidget",
     "CMSEmbedAllowedHost",
+    "FrozenPage",
     "BLOCK_TYPE_CHOICES",
     "BLOCK_TYPE_KEYS",
     "BLOCK_SCHEMAS",

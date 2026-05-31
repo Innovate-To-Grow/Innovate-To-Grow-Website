@@ -17,6 +17,7 @@ BLOCK_TYPE_CHOICES = [
     ("sponsor_year", "Sponsor Year"),
     ("embed", "Embed (iframe)"),
     ("embed_widget", "Embed CMS Widget"),
+    ("frozen_page", "Frozen Page (imported)"),
 ]
 
 BLOCK_TYPE_KEYS = {choice[0] for choice in BLOCK_TYPE_CHOICES}
@@ -43,5 +44,9 @@ BLOCK_SCHEMAS = {
     "embed_widget": {
         "required": ["slug"],
         "optional": ["heading", "height", "aspect_ratio", "hide_section_titles", "hidden_sections"],
+    },
+    "frozen_page": {
+        "required": ["frozen_page_id"],
+        "optional": ["heading", "height"],
     },
 }

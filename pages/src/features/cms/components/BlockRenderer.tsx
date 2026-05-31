@@ -4,6 +4,7 @@ import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
 import { EmbedBlock } from './blocks/content/EmbedBlock';
 import { EmbedWidgetBlock } from './blocks/content/EmbedWidgetBlock';
 import { FaqListBlock } from './blocks/content/FaqListBlock';
+import { FrozenPageBlock } from './blocks/content/FrozenPageBlock';
 import { ImageTextBlock } from './blocks/content/ImageTextBlock';
 import { LinkListBlock } from './blocks/content/LinkListBlock';
 import { RichTextBlock } from './blocks/content/RichTextBlock';
@@ -29,6 +30,7 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   sponsor_year: SponsorYearBlock,
   embed: EmbedBlock,
   embed_widget: EmbedWidgetBlock,
+  frozen_page: FrozenPageBlock,
 };
 
 export const BlockRenderer = memo(

@@ -145,6 +145,21 @@
             );
     }
 
-    const renderers = { hero: renderHeroFields, rich_text: renderRichTextField, faq_list: renderFaqListFields, link_list: renderLinkListFields, cta_group: renderCtaGroupFields, image_text: renderImageTextFields, notice: renderNoticeFields, contact_info: renderContactInfoFields, section_group: renderSectionGroupFields, table: renderTableFields, numbered_list: renderNumberedListFields, proposal_cards: renderProposalCardsFields, navigation_grid: renderNavigationGridFields, sponsor_year: renderSponsorYearFields, embed: renderEmbedFields, embed_widget: renderEmbedWidgetFields };
+    function renderFrozenPageFields(data, idx) {
+        const pages = Array.isArray(window.CMS_FROZEN_PAGES) ? window.CMS_FROZEN_PAGES : [];
+        const options = [['', '— select a frozen page —']].concat(
+            pages.map(p => [p.id, p.label + (p.status !== 'published' ? ' (' + p.status + ')' : '')])
+        );
+        const emptyHint = pages.length
+            ? ''
+            : '<div class="cms-block-field"><span class="field-hint">No frozen pages yet. Import one under CMS &gt; Frozen Pages.</span></div>';
+        return P.textField('Heading (optional)', data.heading, idx, 'heading')
+            + P.selectField('Frozen page', data.frozen_page_id, idx, 'frozen_page_id', options)
+            + emptyHint
+            + P.textField('Fixed Height (px)', data.height, idx, 'height')
+            + '<div class="cms-block-field"><span class="field-hint">Rendered in a sandboxed iframe; set a fixed height (auto-resize is not possible).</span></div>';
+    }
+
+    const renderers = { hero: renderHeroFields, rich_text: renderRichTextField, faq_list: renderFaqListFields, link_list: renderLinkListFields, cta_group: renderCtaGroupFields, image_text: renderImageTextFields, notice: renderNoticeFields, contact_info: renderContactInfoFields, section_group: renderSectionGroupFields, table: renderTableFields, numbered_list: renderNumberedListFields, proposal_cards: renderProposalCardsFields, navigation_grid: renderNavigationGridFields, sponsor_year: renderSponsorYearFields, embed: renderEmbedFields, embed_widget: renderEmbedWidgetFields, frozen_page: renderFrozenPageFields };
     window.ITGCmsBlockRenderers = { renderAll: renderAll };
 })();

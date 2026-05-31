@@ -71,6 +71,21 @@ describe('BlockRenderer', () => {
     expect(iframe?.getAttribute('loading')).toBe('eager');
   });
 
+  it('renders a sandboxed <iframe> for the "frozen_page" block type', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'frozen_page',
+        sort_order: 0,
+        data: {frozen_page_id: 'fp-1'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute('src')).toBe('/api/cms/frozen/fp-1/');
+    expect(iframe?.getAttribute('sandbox')).toBe('');
+  });
+
   it('logs a console.warn and renders nothing for an unknown block type', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const blocks: CMSBlock[] = [

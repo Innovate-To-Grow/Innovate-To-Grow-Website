@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.cms.views.cms import CMSLivePreviewView, CMSPageView, CMSPreviewFetchView
+from apps.cms.views.frozen import FrozenPageDocumentView
 from apps.cms.views.layout import EmbedBlockView
 
 urlpatterns = [
@@ -9,4 +10,5 @@ urlpatterns = [
     path("pages/", CMSPageView.as_view(), {"route_path": ""}, name="cms-page-root"),
     path("pages/<path:route_path>/", CMSPageView.as_view(), name="cms-page"),
     path("embed/<slug:embed_slug>/", EmbedBlockView.as_view(), name="cms-embed-block"),
+    path("frozen/<uuid:pk>/", FrozenPageDocumentView.as_view(), name="cms-frozen-page"),
 ]

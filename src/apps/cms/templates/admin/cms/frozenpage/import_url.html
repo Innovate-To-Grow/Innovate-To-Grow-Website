@@ -1,0 +1,20 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div style="max-width: 760px;">
+    <h1>{% trans "Import a webpage" %}</h1>
+    <p style="color: var(--body-quiet-color, #666);">
+        {% trans "Fetch an external page, inline its CSS and images, and store it as a frozen page. Scripts are stripped; the document renders inside a sandboxed iframe." %}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_div }}
+        <div style="margin: 20px 0;">
+            <button type="submit" class="default">{% trans "Import" %}</button>
+            <a href="../" class="button cancel-link">{% trans "Cancel" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

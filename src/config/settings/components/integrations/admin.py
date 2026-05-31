@@ -95,6 +95,7 @@ UNFOLD = {
                 "cms.cmspage",
                 "cms.cmsembedwidget",
                 "cms.cmsembedallowedhost",
+                "cms.frozenpage",
                 "cms.menu",
                 "cms.footercontent",
                 "cms.stylesheet",
@@ -104,6 +105,7 @@ UNFOLD = {
                 {"title": "Pages", "link": "/admin/cms/cmspage/"},
                 {"title": "Embed Widgets", "link": "/admin/cms/cmsembedwidget/"},
                 {"title": "Embed Allowed Hosts", "link": "/admin/cms/cmsembedallowedhost/"},
+                {"title": "Frozen Pages", "link": "/admin/cms/frozenpage/"},
                 {"title": "Menus", "link": "/admin/cms/menu/"},
                 {"title": "Footer", "link": "/admin/cms/footercontent/"},
                 {"title": "Style Sheets", "link": "/admin/cms/stylesheet/"},
@@ -133,6 +135,7 @@ UNFOLD = {
                 "title": "Content Management System",
                 "items": [
                     {"title": "Page Content", "link": "/admin/cms/cmspage/"},
+                    {"title": "Frozen Pages", "link": "/admin/cms/frozenpage/"},
                     {"title": "News Management", "link": "/admin/cms/newsarticle/"},
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/"},
                 ],

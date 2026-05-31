@@ -6,6 +6,7 @@ from apps.cms.services.sanitize import validate_safe_url
 
 from .choices import BLOCK_SCHEMAS
 from .embed import normalize_embed_widget_block_data, validate_embed_block, validate_embed_widget_block
+from .frozen_page import validate_frozen_page_block
 
 
 def validate_block_data(block_type, data):
@@ -30,6 +31,8 @@ def validate_block_data(block_type, data):
         validate_embed_block(data)
     if block_type == "embed_widget":
         validate_embed_widget_block(data)
+    if block_type == "frozen_page":
+        validate_frozen_page_block(data)
 
 
 def normalize_block_data_for_storage(block_type, data):

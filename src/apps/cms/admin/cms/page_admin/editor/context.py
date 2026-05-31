@@ -10,6 +10,7 @@ from apps.cms.models import (
     BLOCK_TYPE_CHOICES,
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
+    FrozenPage,
 )
 from apps.cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from apps.cms.models.media import ALLOWED_ASSET_EXTENSIONS, IMAGE_ASSET_EXTENSIONS, MAX_ASSET_UPLOAD_BYTES
@@ -41,11 +42,16 @@ def build_editor_context(obj=None):
         }
         for widget in CMSEmbedWidget.objects.order_by("slug")
     ]
+    frozen_pages = [
+        {"id": str(fp.pk), "label": fp.title or fp.slug, "slug": fp.slug, "status": fp.status}
+        for fp in FrozenPage.objects.order_by("-updated_at")
+    ]
     context = {
         "block_schemas_json": _safe_json(BLOCK_SCHEMAS),
         "block_type_choices_json": _safe_json(BLOCK_TYPE_CHOICES),
         "embed_allowed_hosts_json": _safe_json(allowed_hosts),
         "embed_widgets_json": _safe_json(embed_widgets),
+        "frozen_pages_json": _safe_json(frozen_pages),
         "hidden_section_presets_json": _safe_json(hidden_section_presets_payload()),
         "asset_manager_config_json": _safe_json(_asset_manager_config()),
         "embed_default_sandbox": DEFAULT_SANDBOX,
