@@ -264,7 +264,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [authn, core, common, system_intelligence, cms, event, projects, mail]
+        app: [authn, core, common, system_intelligence, cms, event, projects, mail, cli_admin]
     services:
       postgres:
         image: postgres:16
@@ -326,6 +326,63 @@ jobs:
           name: backend-coverage-${{ matrix.app }}
           path: src/coverage-${{ matrix.app }}.xml
           if-no-files-found: warn
+
+  cli-admin-coverage:
+    name: CLI Admin Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - backend-db-migration
+      - backend-static-and-prod-check
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: itg_ci
+          POSTGRES_USER: itg_ci_user
+          POSTGRES_PASSWORD: itg_ci_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: src
+    env:
+      DB_NAME: itg_ci
+      DB_USER: itg_ci_user
+      DB_PASSWORD: itg_ci_pass
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt "coverage[toml]==7.6.10"
+
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+
+      - name: Enforce coverage for cli_admin and safe_orm
+        run: |
+          coverage run \
+            --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
+            --omit="*/migrations/*,*/tests/*" \
+            manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
+          coverage report -m --fail-under=100
 
   frontend-test:
     name: Frontend Tests
@@ -801,6 +858,7 @@ jobs:
       - backend-db-migration
       - backend-static-and-prod-check
       - django-build
+      - cli-admin-coverage
       - frontend-test
       - frontend-build
       - python-security-audit

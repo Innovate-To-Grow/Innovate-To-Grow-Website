@@ -20,6 +20,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 "Broadcast Delivery",
                 "AI Assistant",
                 "Site Settings",
+                "CLI Admin",
             ],
         )
 

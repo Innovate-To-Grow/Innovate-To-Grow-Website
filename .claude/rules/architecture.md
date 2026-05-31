@@ -69,11 +69,16 @@ Root router in `core/urls.py`:
 
 ## Frontend
 
-- `app/` owns bootstrap and router setup.
-- `pages/` (within `src/`) owns routed page components (HomePage, NewsPage, etc.).
-- `features/` owns domain code such as auth, CMS, layout, projects, events, and news.
-- `shared/` owns reusable utilities: `api/` (Axios client setup), `auth/`, `crypto.ts`, and `utils/`.
-- Feature-specific API modules live inside each feature directory (`features/<domain>/api.ts`). Add new endpoints to the matching feature's `api.ts`, not a central module.
+- The frontend uses a feature-based (vertical-slice) layout under `pages/src/`:
+  - `app/` owns bootstrap and app-shell infra: `providers.tsx` (the imperative 3-root mount, called from `main.tsx`), `router.tsx`, `HomepageResolver.tsx`, `ErrorBoundary/`, `MaintenanceMode/`.
+  - `features/<domain>/` owns each domain (auth, cms, events, layout, news, projects) as a self-contained slice: `api/` (data layer), `components/` (UI), optional `hooks/`, a `types.ts`, and a public `index.ts` barrel. The six features import from each other only through those barrels.
+  - `routes/` owns routed page components (NewsPage, ProjectsPage, etc.), lazy-loaded by `app/router.tsx` via deep imports (importing through a barrel would defeat code-splitting).
+  - `lib/` owns framework-agnostic utilities: `api-client.ts` (shared Axios client), `crypto.ts`, `time.ts`, `semester.ts`, `safeHref.ts`, `phoneRegions.ts`, `analytics.ts`, `health.ts`.
+  - `components/ui/` owns cross-feature presentational components (`SafeHtml/`, `SheetsDataTable/`).
+  - `hooks/` owns cross-feature hooks (e.g. `usePageTracking`); `types/` owns shared types (`api.ts` → `PaginatedResponse`); `assets/styles/` owns global styles (`index.css` stays at `src/` root).
+- A `@/*` path alias maps to `pages/src/*` (configured in `tsconfig.app.json`, `vite.config.ts`, and `vitest.config.ts`). Prefer `@/...` imports over deep relative paths.
+- Add new endpoints to the matching feature's `api/` module (or `lib/api-client.ts` for the shared client), not a central dumping-ground service module.
+- Within a feature, import the data layer via the `api/` sub-path (e.g. `@/features/auth/api`) rather than the feature barrel, to keep barrels acyclic.
 - Three React roots: `#root` (main app with router), `#menu-root` (MainMenu only, no BrowserRouter), `#footer-root` (Footer). This means menu and footer render independently and share auth state via the `i2g-auth-state-change` custom event.
 - Vite dev server proxies `/api`, `/media`, `/static` to Django backend (configurable via `VITE_BACKEND_URL` env var, defaults to `http://127.0.0.1:8000`). The `/api` proxy **strips the prefix** — frontend calls `/api/cms/pages/` which Vite rewrites to `/cms/pages/` for Django.
 - Manual code-splitting: react-vendor and router chunks are split separately in `vite.config.ts`.
