@@ -8,6 +8,7 @@ type SortDirection = 'asc' | 'desc';
 interface RowState {
   element: HTMLTableRowElement;
   cells: string[];
+  detailCell: HTMLTableCellElement | null;
   searchableText: string;
 }
 
@@ -44,6 +45,48 @@ function createPaginationButton(
   return button;
 }
 
+function getHiddenCellText(row: HTMLTableRowElement, className: string): string {
+  return row.querySelector<HTMLTableCellElement>(`.${className}`)?.textContent?.trim() ?? '';
+}
+
+function buildDetailRow(row: RowState, colspan: number): HTMLTableRowElement {
+  const detailRow = document.createElement('tr');
+  detailRow.className = 'legacy-dt-child-row child';
+
+  const detailCell = document.createElement('td');
+  detailCell.colSpan = colspan;
+
+  const detailTable = document.createElement('table');
+  detailTable.className = 'legacy-project-detail-table';
+
+  const tbody = document.createElement('tbody');
+  const fields = [
+    ['Abstract:', getHiddenCellText(row.element, 'legacy-dt-detail-abstract')],
+    ['Student Names:', getHiddenCellText(row.element, 'legacy-dt-detail-students')],
+  ].filter(([, value]) => value);
+
+  const fallbackFields = [
+    ['Project Title:', row.cells[5] ?? ''],
+    ['Organization:', row.cells[6] ?? ''],
+  ].filter(([, value]) => value);
+
+  for (const [label, value] of fields.length > 0 ? fields : fallbackFields) {
+    const tableRow = document.createElement('tr');
+    const labelCell = document.createElement('td');
+    const valueCell = document.createElement('td');
+    labelCell.textContent = label;
+    valueCell.textContent = value;
+    tableRow.append(labelCell, valueCell);
+    tbody.append(tableRow);
+  }
+
+  detailTable.append(tbody);
+  detailCell.append(detailTable);
+  detailRow.append(detailCell);
+
+  return detailRow;
+}
+
 function enhanceProjectTable(table: HTMLTableElement): () => void {
   const tbody = table.tBodies.item(0);
   const wrapper = table.closest<HTMLElement>('.dataTables_wrapper');
@@ -59,9 +102,9 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
   const paginationEl = pagination;
   const infoEl = info;
   const headers = Array.from(table.tHead?.querySelectorAll<HTMLTableCellElement>('th') ?? []);
-  const dataRows = Array.from(tableBody.querySelectorAll<HTMLTableRowElement>('tr')).filter(
-    (row) => row !== footerRow,
-  );
+  const dataRows = Array.from(tableBody.querySelectorAll<HTMLTableRowElement>('tr')).filter((row) => (
+    row !== footerRow && !row.classList.contains('legacy-dt-child-row')
+  ));
 
   if (dataRows.length === 0) {
     return () => {};
@@ -72,6 +115,7 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
     return {
       element,
       cells,
+      detailCell: element.querySelector<HTMLTableCellElement>('td.details-control'),
       searchableText: normalizeText(cells.join(' ')),
     };
   });
@@ -96,6 +140,43 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
       placeholder.replaceWith(searchInput);
     } else {
       wrapper.querySelector('.dataTables_filter label')?.append(searchInput);
+    }
+  }
+
+  function closeDetailRows(): void {
+    tableBody.querySelectorAll<HTMLTableRowElement>('tr.legacy-dt-child-row').forEach((row) => row.remove());
+    rows.forEach((row) => {
+      row.element.classList.remove('shown');
+      row.detailCell?.querySelector('button')?.setAttribute('aria-expanded', 'false');
+      const button = row.detailCell?.querySelector<HTMLButtonElement>('button');
+      if (button) {
+        button.textContent = '+';
+      }
+    });
+  }
+
+  function toggleDetails(row: RowState): void {
+    const nextRow = row.element.nextElementSibling;
+    const existingDetailRow = nextRow instanceof HTMLTableRowElement && nextRow.classList.contains('legacy-dt-child-row')
+      ? nextRow
+      : null;
+    const toggle = row.detailCell?.querySelector<HTMLButtonElement>('button') ?? null;
+
+    if (existingDetailRow) {
+      existingDetailRow.remove();
+      row.element.classList.remove('shown');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = '+';
+      }
+      return;
+    }
+
+    row.element.insertAdjacentElement('afterend', buildDetailRow(row, headers.length || row.element.cells.length));
+    row.element.classList.add('shown');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.textContent = '-';
     }
   }
 
@@ -124,6 +205,7 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
   }
 
   function applySort(): void {
+    closeDetailRows();
     orderedRows = [...rows].sort((a, b) =>
       compareCellValues(a.cells[sortColumn] ?? '', b.cells[sortColumn] ?? '', sortDirection),
     );
@@ -175,6 +257,7 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
   }
 
   function render(): void {
+    closeDetailRows();
     const query = normalizeText(searchInput?.value ?? '');
     const matchingRows = orderedRows.filter((row) => !query || row.searchableText.includes(query));
     const pageCount = Math.max(1, Math.ceil(matchingRows.length / PAGE_SIZE));
@@ -210,6 +293,30 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
   searchInput.addEventListener('input', handleSearch);
 
   const headerListeners: Array<() => void> = [];
+  const detailListeners: Array<() => void> = [];
+
+  rows.forEach((row) => {
+    if (!row.detailCell) {
+      return;
+    }
+
+    row.detailCell.textContent = '';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'legacy-dt-detail-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Show project details');
+    toggle.textContent = '+';
+    row.detailCell.append(toggle);
+
+    const handleToggle = (event: MouseEvent) => {
+      event.preventDefault();
+      toggleDetails(row);
+    };
+    row.detailCell.addEventListener('click', handleToggle);
+    detailListeners.push(() => row.detailCell?.removeEventListener('click', handleToggle));
+  });
+
   headers.forEach((header, index) => {
     if (header.classList.contains('sorting_disabled')) {
       return;
@@ -249,7 +356,9 @@ function enhanceProjectTable(table: HTMLTableElement): () => void {
   render();
 
   return () => {
+    closeDetailRows();
     searchInput?.removeEventListener('input', handleSearch);
+    detailListeners.forEach((cleanup) => cleanup());
     headerListeners.forEach((cleanup) => cleanup());
   };
 }
