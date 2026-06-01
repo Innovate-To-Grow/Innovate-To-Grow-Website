@@ -34,7 +34,7 @@ Repository guidance is split into short references so local instructions stay ea
 
 - Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 - `Member` PK is a UUID, not an integer. All models using `ProjectControlModel` have UUID PKs.
-- `objects` manager excludes soft-deleted rows; use `all_objects` to include them.
+- `ProjectControlModel` provides only a UUID PK + `created_at`/`updated_at` — there is no soft delete or version tracking (no `all_objects`, `is_deleted`, or `save_version`). Deletes are hard deletes.
 - Three independent React roots (`#root`, `#menu-root`, `#footer-root`) share auth state via the `i2g-auth-state-change` custom event — changes to auth flow must propagate to all three.
 - Custom `createsuperuser` command prompts for email (not username). Use `--email` for non-interactive mode.
 - Settings component import order matters: `environment` → `django` → `admin` → `api` → `editor` → `production`.

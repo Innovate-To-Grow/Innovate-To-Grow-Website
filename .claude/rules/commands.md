@@ -12,6 +12,8 @@ cd src && python manage.py createsuperuser   # prompts for email, not username
 cd pages && npm ci
 ```
 
+`src/requirements.txt` is a thin entrypoint that includes `requirements/local.txt`, which layers `production.txt` over `base.txt`; installing it pulls the full local toolchain (it pins Ruff). For a prod-only image install `requirements/production.txt`.
+
 Optional but recommended — install local git hooks (fast checks pre-commit, Bandit + frontend lint/type pre-push):
 
 ```bash
@@ -75,4 +77,17 @@ cd pages && npm test             # vitest
 cd pages && npx vitest run path/to/file.test.ts   # one frontend test file
 cd pages && npm run test:watch   # vitest watch mode
 cd pages && npm run build        # runs tsc -b then vite build
+cd pages && npm run e2e:install  # first-time: Playwright Chromium
+cd pages && npm run e2e          # Playwright e2e (pages/e2e/*.spec.ts)
+```
+
+## CLI (`i2g-admin`)
+
+The `cli/` package is a standalone tool with **its own pytest suite** (not Django's runner). See the `cli-admin` skill and `docs/cms-admin/cli-admin.md` for the full flow.
+
+```bash
+cd cli && pip install -e .       # installs the `i2g-admin` command (deps: typer, requests, rich)
+cd cli && pytest --cov           # client test suite (per-app coverage bar: 100%)
+cd src && python manage.py test apps.cli_admin --settings=config.settings.local  # backend /admin-api/ tests
+cd src && python manage.py cli_admin_cleanup     # purge expired auth codes + tokens (schedule in prod)
 ```

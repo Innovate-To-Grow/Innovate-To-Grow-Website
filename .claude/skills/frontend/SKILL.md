@@ -6,7 +6,7 @@ description: Use this skill when writing React frontend code — pages, componen
 
 ## Architecture
 
-- React 19, TypeScript 5.9, Vite 7, React Router v7.
+- React 19, TypeScript 5.9, Vite 8, React Router v7, Vitest 4.
 - Code lives under `pages/src/` in a feature-based (vertical-slice) layout.
 - Three independent React roots: `#root` (main app + router), `#menu-root` (menu), `#footer-root` (footer), mounted by `app/providers.tsx`.
 - Auth state syncs across roots via the `i2g-auth-state-change` custom event + localStorage.

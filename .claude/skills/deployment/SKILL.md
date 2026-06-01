@@ -9,11 +9,12 @@ description: Use this skill when working with Docker, CI/CD, environment setting
 Component-based under `src/config/settings/`. Import order matters:
 
 ```
-core/settings/
+config/settings/
   base.py                          # Assembles via wildcard imports (order matters)
-  dev.py                           # SQLite, DEBUG=True, console email
-  ci.py                            # PostgreSQL, DEBUG=False
-  prod.py                          # Imports base + production component
+  local.py                         # SQLite, DEBUG=True, console email (dev)
+  test.py                          # PostgreSQL, DEBUG=False (CI)
+  production.py                    # Imports base + components/production
+  _legacy_imports.py               # meta-path shim aliasing legacy app imports to apps.*
   components/
     framework/environment.py       # BASE_DIR, .env loading, shared env vars
     framework/django.py            # INSTALLED_APPS, middleware, templates, auth
@@ -24,7 +25,7 @@ core/settings/
 ```
 
 Import order in `base.py`: `environment` → `django` → `admin` → `api` → `editor`.
-`prod.py` adds `production` on top.
+`production.py` layers the `components/production.py` overrides on top.
 
 ## Environment Differences
 
@@ -40,8 +41,8 @@ Import order in `base.py`: `environment` → `django` → `admin` → `api` → 
 
 ## Backend Docker
 
-- Dockerfile: `src/Dockerfile` (Python 3.11-slim).
-- Entrypoint: `src/entrypoint.sh` — runs migrations, collectstatic, starts Gunicorn (4 workers, 2 threads, 120s timeout, port 8000).
+- Dockerfile: `src/Dockerfile` (Python 3.11-slim, multi-stage).
+- Entrypoint: `src/entrypoint.sh` — runs migrations + collectstatic, then `exec uvicorn config.asgi:application --port 8000 --workers ${WEB_CONCURRENCY:-2} --timeout-graceful-shutdown 120 --limit-concurrency 20`. (gunicorn is installed but is not the runtime server.)
 - Deployed to ECR → ECS Fargate (512 CPU, 1024 MB).
 - Task definition template: `aws/task-definition.json`.
 
@@ -74,12 +75,12 @@ Triggers: push to main, PRs touching `src/`, `pages/`, `aws/`, `.github/workflow
 - New integration: add a component file under `config/settings/components/integrations/`.
 - Small change: add to the appropriate existing component.
 - Import new components in `base.py` in the correct position.
-- Environment-specific overrides go in `dev.py`, `ci.py`, or the `production.py` component.
+- Environment-specific overrides go in `local.py`, `test.py`, or the `components/production.py` component.
 
 ## Environment Variables
 
 - Prod secrets from env vars (never committed). See `src/.env.example`.
-- Dev uses hardcoded defaults in `dev.py` for zero-setup.
+- `local.py` uses hardcoded defaults for zero-setup dev.
 - CI uses env vars from GitHub Actions workflow file.
 - Required prod vars enforced by `_get_required_env()` in `production.py`.
 
@@ -87,17 +88,17 @@ Triggers: push to main, PRs touching `src/`, `pages/`, `aws/`, `.github/workflow
 
 - Commit secrets, API keys, or production credentials.
 - Change the settings import order in `base.py` without understanding dependencies.
-- Edit `ci.py` database config without updating `.github/workflows/ci.yml` to match.
+- Edit `test.py` database config without updating `.github/workflows/ci.yml` to match.
 - Skip Docker build validation — CI catches migration and build issues.
 - Modify `Dockerfile` without testing locally: `docker build -t test src/`.
-- Use `prod.py` settings locally — always use `dev.py`.
+- Use `production.py` settings locally — always use `local.py`.
 
 ## Key Files
 
 - `src/config/settings/base.py` — settings assembly
-- `src/config/settings/dev.py` — local development
-- `src/config/settings/ci.py` — CI pipeline
-- `src/config/settings/prod.py` — production entry
+- `src/config/settings/local.py` — local development
+- `src/config/settings/test.py` — CI pipeline
+- `src/config/settings/production.py` — production entry
 - `src/config/settings/components/production.py` — S3, Redis, SMTP, SSL
 - `src/Dockerfile` — backend Docker image
 - `src/entrypoint.sh` — container entrypoint

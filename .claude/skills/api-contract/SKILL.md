@@ -49,15 +49,15 @@ Frontend type: `PaginatedResponse<T>` from `types/api.ts`.
 
 ## Adding a New Endpoint
 
-1. **Backend:** Create view in `src/<app>/views/`, serializer in `src/<app>/serializers/`, add `path()` in `src/<app>/urls.py`.
-2. **Frontend:** Add types + API function in `pages/src/features/<name>/api.ts`.
+1. **Backend:** Create view in `src/apps/<app>/views/`, serializer in `src/apps/<app>/serializers/`, add `path()` in `src/apps/<app>/urls.py`.
+2. **Frontend:** Add types + API function in `pages/src/features/<name>/api/` (re-exported from the feature's `index.ts` barrel).
 3. **Verify** the URL path matches (frontend `/api/event/foo/` → Django `/event/foo/`).
 
 ## URL Naming
 
 - Backend uses kebab-case: `/event/registration-options/`.
 - UUID params: `<uuid:pk>` in Django, interpolated in frontend: `` `/event/my-tickets/${id}/resend-email/` ``.
-- App prefix in core router: `path("event/", include("apps.event.urls"))`.
+- App prefix in the root router (`src/config/urls.py`): `path("event/", include("apps.event.urls"))`.
 
 ## Auth Header Pattern (Frontend)
 
@@ -83,6 +83,6 @@ const response = await api.get<T>('/endpoint/', {headers: authHeaders()});
 - `pages/vite.config.ts` — proxy rewrite rules
 - `pages/src/lib/api-client.ts` — Axios instance
 - `pages/src/types/api.ts` — `PaginatedResponse<T>`
-- `src/apps/core/urls.py` — root URL router
+- `src/config/urls.py` — root URL router
 - `src/apps/event/urls.py` — canonical app URL patterns
 - `src/config/settings/components/integrations/api.py` — DRF + JWT config

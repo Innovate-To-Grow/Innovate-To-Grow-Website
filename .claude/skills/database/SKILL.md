@@ -83,7 +83,7 @@ Service config models (`EmailServiceConfig`, `GoogleCredentialConfig`, etc.) use
 
 - Use integer auto-increment primary keys — always UUID via `ProjectControlModel`.
 - Edit migrations already merged to `main`.
-- Query with `all_objects` unless you explicitly need soft-deleted rows.
+- Expect soft delete or version tracking on `ProjectControlModel` — it has neither. `objects` is a plain manager (no `all_objects`/`is_deleted`), and deletes are permanent.
 - Forget `transaction.on_commit()` when invalidating cache in signals.
 - Write raw SQL unless there is a clear performance need.
 - Forget to add `db_index=True` on fields used in frequent lookups or filters.
@@ -95,6 +95,6 @@ Service config models (`EmailServiceConfig`, `GoogleCredentialConfig`, etc.) use
 - `src/apps/core/models/mixins/base.py` — AuthoredModel, OrderedModel, ActiveModel
 - `src/apps/core/models/base/service_credentials.py` — singleton config pattern
 - `src/apps/cms/signals.py` — canonical signal + cache invalidation
-- `src/config/settings/dev.py` — SQLite config
-- `src/config/settings/ci.py` — PostgreSQL CI config
+- `src/config/settings/local.py` — SQLite dev config
+- `src/config/settings/test.py` — PostgreSQL CI config
 - `src/config/settings/components/production.py` — PostgreSQL + SSL prod config
