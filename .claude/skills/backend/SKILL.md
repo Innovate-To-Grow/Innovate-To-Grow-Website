@@ -10,7 +10,7 @@ Inherit from `apps.core.models.ProjectControlModel` (UUID PK, `created_at`, `upd
 Mix in `AuthoredModel`, `OrderedModel`, or `ActiveModel` from `apps.core.models.mixins` as needed.
 
 ```python
-# src/<app>/models/<name>.py
+# src/apps/<app>/models/<name>.py
 from django.db import models
 from apps.core.models import ProjectControlModel
 from apps.core.models.mixins import ActiveModel, OrderedModel
@@ -25,7 +25,7 @@ class Widget(ActiveModel, OrderedModel, ProjectControlModel):
         return self.name
 ```
 
-- Place models in `src/<app>/models/` as a package; re-export from `__init__.py`.
+- Place models in `src/apps/<app>/models/` as a package; re-export from `__init__.py`.
 - The default manager `objects` is `ProjectControlManager`.
 - ForeignKey `on_delete`: use `CASCADE` or `SET_NULL` (with `null=True`).
 - UUID path params: `<uuid:pk>`.
@@ -35,7 +35,7 @@ class Widget(ActiveModel, OrderedModel, ProjectControlModel):
 Use `rest_framework.views.APIView` with explicit HTTP method handlers.
 
 ```python
-# src/<app>/views/<name>.py
+# src/apps/<app>/views/<name>.py
 from django.core.cache import cache
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -61,7 +61,7 @@ See `src/apps/event/views/current_projects.py` for the canonical pattern.
 ## Serializers
 
 ```python
-# src/<app>/serializers/<name>.py
+# src/apps/<app>/serializers/<name>.py
 from rest_framework import serializers
 
 class WidgetSerializer(serializers.ModelSerializer):
@@ -78,7 +78,7 @@ Always include `id`, `created_at`, `updated_at` in `read_only_fields`.
 Always inherit from `apps.core.admin.BaseModelAdmin` (Unfold theme). Use `@admin.register`.
 
 ```python
-# src/<app>/admin/<name>.py
+# src/apps/<app>/admin/<name>.py
 from django.contrib import admin
 from apps.core.admin import BaseModelAdmin
 
@@ -97,14 +97,14 @@ For inlines use `unfold.admin.TabularInline` or `unfold.admin.StackedInline`.
 
 ## Services
 
-Place business logic in `src/<app>/services/` — one file per concern.
+Place business logic in `src/apps/<app>/services/` — one file per concern.
 Classes for complex operations, functions for simple utilities.
 Use `@transaction.atomic` for multi-step DB operations.
 
 ## URLs
 
 ```python
-# src/<app>/urls.py
+# src/apps/<app>/urls.py
 from django.urls import path
 from .views import WidgetListView
 
@@ -115,7 +115,7 @@ urlpatterns = [
 ]
 ```
 
-Register in `src/apps/core/urls.py` via `path("widgets/", include("widgets.urls"))`.
+Register in the root router `src/config/urls.py` via `path("widgets/", include("apps.widgets.urls"))`.
 
 ## Style
 

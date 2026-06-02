@@ -5,8 +5,8 @@
 - Django apps stay isolated by domain under `src/`.
 - Thin entrypoints should delegate to services, serializers, admin helpers, or models.
 - `config/settings/*.py` remain stable import targets even when implementation moves to submodules.
-- Settings are modular: `config/settings/base.py` wildcard-imports from `config/settings/components/` (framework/environment, framework/django, integrations/api, integrations/admin, integrations/editor, production). `dev.py`, `prod.py`, and `ci.py` extend `base.py`.
-- Main URL router: `core/urls.py` delegates to each app's `urls.py`.
+- Settings are modular: `config/settings/base.py` wildcard-imports `config/settings/components/` in order (framework/environment → framework/django → integrations/admin → integrations/api → integrations/editor). The environment entrypoints extend `base.py`: `local.py` (dev/SQLite), `test.py` (CI/PostgreSQL), and `production.py` (which also layers `components/production.py`). `_legacy_imports.py` is a meta-path shim that aliases pre-refactor top-level app imports (e.g. `event.models…`) to `apps.*` so landed migrations stay importable — which is why those migrations must never be edited.
+- Main URL router: `config/urls.py` delegates to each app's `urls.py` (`ROOT_URLCONF = "config.urls"`).
 
 ### Django apps
 
@@ -19,26 +19,28 @@
 | `event` | Events, tickets, questions, registrations |
 | `mail` | Email/SMS campaigns, recipient logs, magic login links, Gmail import, inbox with scam detection, SES event webhooks, unsubscribe management |
 | `system_intelligence` | AI chat conversations, action requests, config, and data export |
+| `common` | Shared cross-app infrastructure introduced by the apps/ refactor |
+| `cli_admin` | OAuth2 + PKCE `/admin-api/` backing the `i2g-admin` CLI (generic record CRUD; see the `cli-admin` skill) |
 
 ### Base model: `ProjectControlModel`
 
-Nearly all models inherit from `apps.core.models.ProjectControlModel`, which provides:
+Nearly all models inherit from `apps.core.models.ProjectControlModel`, defined in `apps/core/models/base/control.py`. It provides exactly two things:
 - **UUID primary key** (not auto-increment integers)
-- **Timestamps**: `created_at`, `updated_at`
-- **Soft delete**: `is_deleted`, `deleted_at`; `objects` excludes deleted, `all_objects` includes all
-- **Version tracking**: JSON snapshots via `save_version()`, `rollback()`, `get_versions()`; stored in `apps.core.models.ModelVersion` (generic FK by content type + object UUID)
+- **Timestamps**: `created_at`, `updated_at` (both `db_index=True`)
+
+There is **no soft delete and no version tracking** — deletes are hard deletes, and `objects` is a plain manager (no `all_objects`, `is_deleted`, `save_version`, or `ModelVersion`). For extra behavior, compose the mixins in `apps.core.models.mixins`: `AuthoredModel` (`created_by`/`updated_by`), `OrderedModel` (`order`), `ActiveModel` (`is_active`).
 
 ### Auth system
 
 - JWT via `rest_framework_simplejwt` (access 1h, refresh 7d, rotation + blacklist).
 - `Member` extends `AbstractUser` + `ProjectControlModel` — the PK (`id`) is a UUID.
-- `EmailOrUsernameBackend` allows login by username or verified email.
+- `EmailAuthBackend` (`apps.authn.backends`, the sole `AUTHENTICATION_BACKENDS` entry) authenticates by **verified `ContactEmail`** only — there is no username login path.
 - Admin login is overridden: `apps.authn.views.AdminLoginView` at `/admin/login/`.
 - Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 
 ### URL routing
 
-Root router in `core/urls.py`:
+Root router in `config/urls.py`:
 - `/admin/` — Unfold-themed admin (custom login at `/admin/login/`)
 - `/authn/` — authentication endpoints
 - `/cms/` — CMS API
@@ -47,9 +49,11 @@ Root router in `core/urls.py`:
 - `/projects/` — project endpoints
 - `/analytics/` — page view analytics (routed to `apps.cms.analytics_urls`)
 - `/mail/` — magic login, unsubscribe/resubscribe, SES event webhook
-- `/layout/` — combined menu + footer API
-- `/health/` — ALB health check (intercepted by middleware, returns JSON status)
+- `/layout/` — combined menu + footer API (+ `/layout/styles.css`)
+- `/admin-api/` — OAuth2 + PKCE generic record CRUD for the `i2g-admin` CLI (`apps.cli_admin`)
+- `/livez/`, `/readyz/`, `/health/` — health probes intercepted by middleware (return JSON; `/livez/` skips the DB, `/readyz/` + `/health/` check it)
 - `/maintenance/bypass/` — maintenance mode toggle
+- `/csp-report/` — CSP violation report sink
 - `/ckeditor5/` — rich text editor uploads
 
 ### Settings differences
@@ -64,7 +68,7 @@ Root router in `core/urls.py`:
 
 ### Middleware
 
-- `HealthCheckMiddleware` intercepts `/health/` before other middleware; returns JSON with database + maintenance status (always 200 for ALB probes).
+- `HealthCheckMiddleware` intercepts `/livez/`, `/readyz/`, and `/health/` before other middleware; returns JSON with database + maintenance status (`/livez/` is always 200 and DB-free; `/readyz/` returns 503 when the DB is unavailable).
 - `SiteMaintenanceControl` model drives maintenance mode.
 
 ## Frontend
@@ -97,18 +101,18 @@ GitHub Actions workflows under `.github/workflows/`:
 
 | Workflow | Triggers | Purpose |
 |---|---|---|
-| `ci.yml` | push / PR (paths) | Secrets scan (gitleaks), Ruff lint+format, Django tests on SQLite, PostgreSQL migration validation, frontend lint + type check + vitest + build |
+| `ci.yml` | push / PR (paths) | Secrets scan (gitleaks), Ruff lint+format, Bandit, Django tests on PostgreSQL (`config.settings.test`), migration validation, frontend lint + type check + vitest + build |
 | `lint.yml` | push / PR | Standalone lint pass |
 | `codeql.yml` | push / PR + Mon 03:00 UTC | CodeQL Python + JS/TS analysis |
 | `claude-code-review.yml` | `workflow_run` after CI success | Automated Claude PR review (gated on green CI) |
 | `claude.yml` | issue / PR comments mentioning `@claude` | On-demand Claude reviews |
-| `deploy-backend.yml` | `workflow_run` after CI on main | Build → ECR → ECS deploy (Gunicorn) |
+| `deploy-backend.yml` | `workflow_run` after CI on main | Build → ECR → ECS deploy (Uvicorn) |
 | `deploy-frontend.yml` | after CI on main | Build → S3 ZIP → Amplify deploy |
 
 Notes:
 - `claude-code-review.yml` reads from the **default branch** (per `workflow_run`); edits only take effect after merge to main.
 - `deploy-*` workflows gate on `github.event.workflow_run.conclusion == 'success'`.
-- Backend Docker image: Python 3.11-slim + Gunicorn (3 workers, 120s timeout, port 8000).
+- Backend Docker image: Python 3.11-slim, served by Uvicorn over ASGI (`config.asgi:application`) via `src/entrypoint.sh`: `--workers ${WEB_CONCURRENCY:-2}`, `--timeout-graceful-shutdown 120`, `--limit-concurrency 20`, port 8000. (gunicorn is still a dependency but is not the runtime server.)
 
 ## Product behavior to preserve
 

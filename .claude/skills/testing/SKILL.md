@@ -117,6 +117,17 @@ describe('MyComponent', () => {
 - Use `vi.fn()` for function mocks, `vi.importActual()` when partially mocking.
 - Co-locate tests: `pages/src/routes/<PageName>/<PageName>.test.tsx`.
 
+### E2E (Playwright)
+
+Specs live in `pages/e2e/*.spec.ts` (`smoke.spec.ts`, `auth-flows.spec.ts`); config in `pages/playwright.config.ts`.
+
+```bash
+cd pages && npm run e2e:install   # first time: installs Chromium
+cd pages && npm run e2e           # playwright test
+```
+
+Reach for e2e (not just vitest) when changing React async/auth-timing code — the three-root auth sync and token-refresh flows have behavior that unit tests with mocked modules can miss. E2E is `continue-on-error` in CI (informational, not a merge gate).
+
 ## CI Pipeline
 
 1. Backend: Ruff lint → Django tests (PostgreSQL) → Docker build → migration validation.

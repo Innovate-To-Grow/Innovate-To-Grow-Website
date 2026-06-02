@@ -6,7 +6,7 @@
 - Line length: 120. Target: Python 3.11. Double quotes, LF endings.
 - Enabled rule sets: E, W, F, I, B, C4, UP, DJ. E501 is disabled (length handled by formatter).
 - Also ignored: B008 (function calls in defaults — needed for Django), B904, DJ001, DJ007, DJ012.
-- Known first-party imports: core, authn, cms, event, news, projects, mail, sheets, sponsors.
+- Known first-party imports (`[tool.ruff.lint.isort]`): the new-layout roots `apps`, `config`, `common`, plus legacy top-level names kept first-party during the apps/ migration (`core`, `system_intelligence`, `authn`, `cms`, `event`, `news`, `projects`, `mail`, `sheets`, `sponsors`). Keep this list in sync with `pyproject.toml`.
 - Star imports (`F403`/`F405`) are allowed in `settings/` files; unused imports (`F401`) are allowed in `__init__.py`; unused variables (`F841`) are allowed in test files.
 - Migrations are excluded from linting.
 - Keep command, view, and serializer entrypoints thin.
