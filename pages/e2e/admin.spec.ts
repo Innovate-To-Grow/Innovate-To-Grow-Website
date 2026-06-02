@@ -3,15 +3,21 @@ import {expect, test, type Page} from '@playwright/test';
 const apiBaseUrl = process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://127.0.0.1:8000';
 const adminEmail = process.env.ADMIN_E2E_EMAIL ?? 'admin-e2e@example.com';
 const adminPassword = process.env.ADMIN_E2E_PASSWORD ?? 'admin-e2e-password';
+const nonstaffEmail = process.env.ADMIN_E2E_NONSTAFF_EMAIL ?? 'admin-e2e-nonstaff@example.com';
+const actionEmail = process.env.ADMIN_E2E_ACTION_EMAIL ?? 'action-e2e@example.com';
+const seededProjectTitle = 'E2E Solar Orchard Dashboard';
+const seededSemesterLabel = '2099-2 Fall';
 
-async function adminLogin(page: Page) {
+async function adminLogin(page: Page, email = adminEmail, password = adminPassword) {
   await page.goto(`${apiBaseUrl}/admin/login/?mode=password`, {waitUntil: 'domcontentloaded'});
   await expect(page.locator('.login-title, h1, [role="heading"]').first()).toBeVisible();
 
-  await page.getByLabel('Email').fill(adminEmail);
-  await page.getByLabel('Password').fill(adminPassword);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
   await page.getByRole('button', {name: /sign in/i}).click();
+}
 
+async function expectLoggedInAdmin(page: Page) {
   await expect(page).toHaveURL(/\/admin\/?(?:\?.*)?$/);
   await expect(page.locator('body')).toContainText(/Welcome to I2G Admin|Innovate To Grow Admin|I2G Admin/i);
 }
@@ -24,6 +30,19 @@ async function expectAdminDocument(page: Page, path: string) {
   await expect(page.locator('body')).not.toContainText(/Traceback|Internal Server Error/i);
 }
 
+async function runChangelistAction(page: Page, rowText: string, actionValue: string) {
+  const row = page.locator('tr', {hasText: rowText}).first();
+  await expect(row, `Expected an admin row containing ${rowText}`).toBeVisible();
+  await row.locator('input[name="_selected_action"]').check();
+  await page.locator('select[name="action"]').selectOption(actionValue);
+  await page.getByTitle('Run the selected action').click();
+
+  if (/\/confirm-action\//.test(page.url())) {
+    await page.locator('#confirm-input').fill('Contact Email');
+    await page.getByRole('button', {name: /confirm action/i}).click();
+  }
+}
+
 test.describe.serial('Django admin browser flows', () => {
   test('requires authentication before showing the admin index', async ({page}) => {
     await page.goto(`${apiBaseUrl}/admin/`, {waitUntil: 'domcontentloaded'});
@@ -32,21 +51,88 @@ test.describe.serial('Django admin browser flows', () => {
     await expect(page.getByLabel('Email')).toBeVisible();
   });
 
+  test('rejects invalid admin credentials without entering the dashboard', async ({page}) => {
+    await adminLogin(page, adminEmail, 'definitely-not-the-admin-password');
+
+    await expect(page).toHaveURL(/\/admin\/login\//);
+    await expect(page.locator('body')).toContainText(/Invalid email or password/i);
+    await expect(page.locator('body')).not.toContainText(/Welcome to I2G Admin/i);
+  });
+
+  test('blocks a valid non-staff user at the admin password login boundary', async ({page}) => {
+    await adminLogin(page, nonstaffEmail, adminPassword);
+
+    await expect(page).toHaveURL(/\/admin\/login\//);
+    await expect(page.locator('body')).toContainText(/Invalid email or password/i);
+    await expect(page.locator('body')).not.toContainText(/Welcome to I2G Admin/i);
+  });
+
   test('logs in through the deterministic password-mode admin login', async ({page}) => {
     await adminLogin(page);
+    await expectLoggedInAdmin(page);
+  });
+
+  test('loads the admin index and critical custom changelists', async ({page}) => {
+    await adminLogin(page);
+    await expectLoggedInAdmin(page);
+
+    const adminPaths = [
+      '/admin/authn/member/',
+      '/admin/authn/contactemail/',
+      '/admin/projects/project/',
+      '/admin/projects/semester/',
+      '/admin/cms/cmspage/',
+      '/admin/event/event/',
+      '/admin/mail/emailcampaign/',
+      '/admin/system_intelligence/systemintelligenceconfig/',
+    ];
+
+    for (const path of adminPaths) {
+      await expectAdminDocument(page, path);
+    }
   });
 
   test('loads project changelist and exercises admin search', async ({page}) => {
     await adminLogin(page);
     await expectAdminDocument(page, '/admin/projects/project/');
 
-    await expect(page.locator('body')).toContainText('E2E Solar Orchard Dashboard');
+    await expect(page.locator('body')).toContainText(seededProjectTitle);
     await page.locator('input[name="q"]').fill('Solar Orchard');
     await page.locator('input[name="q"]').press('Enter');
 
     await expect(page).toHaveURL(/\/admin\/projects\/project\/\?q=Solar\+Orchard/);
-    await expect(page.locator('body')).toContainText('E2E Solar Orchard Dashboard');
+    await expect(page.locator('body')).toContainText(seededProjectTitle);
     await expect(page.locator('body')).not.toContainText(/0 projects|0 results/i);
+  });
+
+  test('applies a project changelist filter from querystring-backed admin filters', async ({page}) => {
+    await adminLogin(page);
+    await expectAdminDocument(page, '/admin/projects/project/?industry=Testing');
+
+    await expect(page.locator('body')).toContainText(seededProjectTitle);
+    await expect(page.locator('body')).toContainText('Testing');
+  });
+
+  test('changes an existing project through the admin change form', async ({page}) => {
+    await adminLogin(page);
+    await expectAdminDocument(page, '/admin/projects/project/');
+
+    await page.locator('input[name="q"]').fill(seededProjectTitle);
+    await page.locator('input[name="q"]').press('Enter');
+    await page.getByRole('link', {name: seededProjectTitle}).first().click();
+
+    const updatedOrganization = `Innovate To Grow QA Updated ${Date.now()}`;
+    await expect(page.locator('input[name="organization"]')).toBeVisible();
+    await page.locator('input[name="organization"]').fill(updatedOrganization);
+    await page.locator('button[name="_save"]').click();
+
+    await expect(page).toHaveURL(/\/admin\/projects\/project\//);
+    await expect(page.locator('body')).toContainText(/was changed successfully|changed successfully/i);
+
+    await page.locator('input[name="q"]').fill(updatedOrganization);
+    await page.locator('input[name="q"]').press('Enter');
+    await expect(page.locator('body')).toContainText(seededProjectTitle);
+    await expect(page.locator('body')).toContainText(updatedOrganization);
   });
 
   test('adds a project through the admin change form', async ({page}) => {
@@ -55,7 +141,7 @@ test.describe.serial('Django admin browser flows', () => {
     const projectTitle = `E2E Browser Added Project ${Date.now()}`;
     await expectAdminDocument(page, '/admin/projects/project/add/');
 
-    await page.locator('select[name="semester"]').selectOption({label: '2099-2 Fall'});
+    await page.locator('select[name="semester"]').selectOption({label: seededSemesterLabel});
     await page.locator('input[name="class_code"]').fill('E2E');
     await page.locator('input[name="team_number"]').fill(`PW-${Date.now().toString().slice(-6)}`);
     await page.locator('input[name="team_name"]').fill('Playwright Admin Team');
@@ -75,6 +161,27 @@ test.describe.serial('Django admin browser flows', () => {
     await expect(page.locator('body')).toContainText(projectTitle);
   });
 
+  test('runs a dry-run project CSV import through the custom admin view', async ({page}) => {
+    await adminLogin(page);
+    await expectAdminDocument(page, '/admin/projects/semester/import-csv/');
+
+    const csv = [
+      'Year-Semester,ClassCode,Team#,TeamName,ProjectTitle,Organization,Industry,Col7,Abstract,StudentNames',
+      '2098-2 Fall,E2E,DRY-1,Dry Run Team,E2E Dry Run Import Project,QA Org,Testing,,Dry run abstract,Ada Lovelace',
+    ].join('\n');
+
+    await page.locator('input[name="csv_file"]').setInputFiles({
+      name: 'projects-e2e-dry-run.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(csv),
+    });
+    await page.locator('input[name="dry_run"]').check();
+    await page.getByRole('button', {name: /import/i}).click();
+
+    await expect(page).toHaveURL(/\/admin\/projects\/semester\//);
+    await expect(page.locator('body')).toContainText(/\[DRY RUN\].*project\(s\) created/i);
+  });
+
   test('publishes semesters through the custom admin toolbar action', async ({page}) => {
     await adminLogin(page);
     await expectAdminDocument(page, '/admin/projects/semester/');
@@ -84,5 +191,22 @@ test.describe.serial('Django admin browser flows', () => {
 
     await expect(page).toHaveURL(/\/admin\/projects\/semester\//);
     await expect(page.locator('body')).toContainText(/semester\(s\) published/i);
+  });
+
+  test('runs contact email bulk actions from the Unfold admin changelist', async ({page}) => {
+    await adminLogin(page);
+    await expectAdminDocument(page, '/admin/authn/contactemail/');
+
+    await page.locator('input[name="q"]').fill(actionEmail);
+    await page.locator('input[name="q"]').press('Enter');
+    await expect(page.locator('body')).toContainText(actionEmail);
+
+    await runChangelistAction(page, actionEmail, 'mark_verified');
+    await expect(page.locator('body')).toContainText(/1 email\(s\) marked as verified/i);
+
+    await page.locator('input[name="q"]').fill(actionEmail);
+    await page.locator('input[name="q"]').press('Enter');
+    await runChangelistAction(page, actionEmail, 'toggle_subscribe');
+    await expect(page.locator('body')).toContainText(/Toggled subscription for 1 email\(s\)/i);
   });
 });
