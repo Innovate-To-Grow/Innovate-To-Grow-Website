@@ -1,10 +1,11 @@
 ---
 description: Run the full local CI gate (ruff, bandit, Django tests, frontend lint/type/vitest) before pushing
-allowed-tools: Bash(cd src && ruff check .), Bash(cd src && ruff format --check .), Bash(cd src && bandit:*), Bash(cd src && python manage.py test:*), Bash(cd pages && npm run lint), Bash(cd pages && npx tsc --noEmit), Bash(cd pages && npx vitest run:*)
+allowed-tools: Bash(cd src && ruff check .:*), Bash(cd src && ruff format --check .:*), Bash(cd src && bandit:*), Bash(cd src && python manage.py test:*), Bash(cd pages && npm run lint:*), Bash(cd pages && npx tsc --noEmit:*), Bash(cd pages && npx vitest run:*)
 ---
 Run this project's local CI gate and report a concise ✓/✗ summary per step. Run each command
-from the repository root (use a subshell like `(cd src && …)` or an absolute `cd` so the working
-directory does not drift between steps). Stop at the first failure and surface its output — do not
+verbatim as written below, starting from the repository root — the Bash working directory persists
+between calls, so re-`cd` back to the repo root if it has drifted (this keeps the commands matching
+the `allowed-tools` allowlist above). Stop at the first failure and surface its output — do not
 attempt fixes unless I ask.
 
 Backend:

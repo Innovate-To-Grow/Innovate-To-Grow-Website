@@ -13,7 +13,7 @@ conventions exactly — read a neighboring test file before writing, and follow 
 - Hit full paths without the `/api` prefix: `/event/…`, `/authn/…`, `/admin-api/…`.
 - PKs are **UUIDs** — never hardcode integer IDs.
 - Users: `Member.objects.create_user(email=…, password=…, is_active=True)`. JWT auth:
-  `RefreshToken.for_user(member)` → `client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")`.
+  `refresh = RefreshToken.for_user(member)` → `client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")` (the **access** token — a refresh token is rejected with 401).
 - Mock external services (`@patch`): Twilio/SNS, Google APIs, SES/email, S3.
 - Cover success + error paths, permission enforcement (auth vs anon), 400 validation bodies, and
   cache behavior (miss then hit). Tests mirror app structure under `tests/{api,models,services,admin}/`.

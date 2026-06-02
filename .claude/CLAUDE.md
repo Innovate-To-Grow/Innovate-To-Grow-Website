@@ -37,6 +37,6 @@ Repository guidance is split into short references so local instructions stay ea
 - `ProjectControlModel` provides only a UUID PK + `created_at`/`updated_at` — there is no soft delete or version tracking (no `all_objects`, `is_deleted`, or `save_version`). Deletes are hard deletes.
 - Three independent React roots (`#root`, `#menu-root`, `#footer-root`) share auth state via the `i2g-auth-state-change` custom event — changes to auth flow must propagate to all three.
 - Custom `createsuperuser` command prompts for email (not username). Use `--email` for non-interactive mode.
-- Settings component import order matters: `environment` → `django` → `admin` → `api` → `editor` → `production`.
+- Settings component import order matters: `base.py` imports `environment` → `django` → `admin` → `api` → `editor`; `production.py` layers `components/production` on top separately.
 - Never edit an existing migration that has landed on `main`. Create a new migration instead.
 - Pre-push hooks run Bandit (backend) and `npm run lint` + `tsc --noEmit` (frontend). A `git push` can fail even after a clean commit. Run `npm install` in `pages/` before pushing so the hooks find the toolchain.

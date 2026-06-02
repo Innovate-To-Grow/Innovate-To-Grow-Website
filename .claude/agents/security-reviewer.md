@@ -11,8 +11,9 @@ judge exploitability. Defer whole-repo audits to `/security-review`.
 Look hardest at this project's known risk surfaces:
 - **ORM injection via dynamic lookups.** The AI action engine and the `/admin-api/` CLI build
   querysets from caller-supplied keys. Any `.filter(**kwargs)` / `.order_by(*fields)` fed by external
-  input must go through the `safe_orm` allowlists (`src/apps/core/services/db_tools/safe_orm/`) — a
-  traversal lookup like `member__password__icontains` must be impossible. Flag any bypass.
+  input must go through `safe_orm` (`src/apps/core/services/db_tools/safe_orm/`) — a model/field
+  **denylist** (`DENIED_*`) plus a `SAFE_LOOKUPS` operator allowlist — so a traversal lookup like
+  `member__password__icontains` is impossible. Flag any bypass.
 - **CLI denylist integrity** (`src/apps/cli_admin/`): staff-only is the *only* gate, so widening the
   reachable models/fields (esp. `authn`, `*credential*`/`*config*`/`*token*`, `is_staff`/`password`)
   is account-takeover risk. Bearer-token auth must reject SimpleJWT; codes single-use + short-TTL.

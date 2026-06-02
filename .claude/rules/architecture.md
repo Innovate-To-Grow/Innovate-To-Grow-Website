@@ -34,7 +34,7 @@ There is **no soft delete and no version tracking** — deletes are hard deletes
 
 - JWT via `rest_framework_simplejwt` (access 1h, refresh 7d, rotation + blacklist).
 - `Member` extends `AbstractUser` + `ProjectControlModel` — the PK (`id`) is a UUID.
-- `EmailOrUsernameBackend` allows login by username or verified email.
+- `EmailAuthBackend` (`apps.authn.backends`, the sole `AUTHENTICATION_BACKENDS` entry) authenticates by **verified `ContactEmail`** only — there is no username login path.
 - Admin login is overridden: `apps.authn.views.AdminLoginView` at `/admin/login/`.
 - Do NOT set `DEFAULT_THROTTLE_CLASSES` globally — it breaks tests at 127.0.0.1.
 

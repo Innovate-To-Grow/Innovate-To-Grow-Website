@@ -40,8 +40,10 @@ cd cli && pytest --cov                                                  # client
 cd src && python manage.py test apps.cli_admin --settings=config.settings.local   # backend suite (Django runner)
 ```
 
-The CLI's per-app coverage bar is **100%** (`--fail-under=100` in CI for `cli_admin`), stricter
-than the 40% floor elsewhere — add tests for every new path.
+CI enforces **100%** coverage on the **backend** `apps.cli_admin` (+ the shared `safe_orm` service)
+via `manage.py test` (`--fail-under=100`), stricter than the 40% floor elsewhere. The `cli/` client
+pytest suite is **not** run or gated in CI (its `pyproject.toml` sets no `fail_under`), so test it
+locally and treat the backend suite as the gated one — add backend tests for every new path.
 
 ## When developing the backend, preserve these invariants
 
@@ -63,7 +65,7 @@ than the 40% floor elsewhere — add tests for every new path.
 ## Key files
 
 - `cli/README.md`, `cli/pyproject.toml` — client package + `i2g-admin` entrypoint
-- `cli/tests/`, `cli/conftest.py` — client pytest suite
+- `cli/tests/` — client pytest suite (incl. `conftest.py`)
 - `src/apps/cli_admin/urls.py`, `views/`, `authentication.py`, `pkce.py`, `permissions.py`, `throttles.py`
 - `src/apps/cli_admin/constants.py` — CLI extra denylist
 - `src/apps/core/services/db_tools/safe_orm/` — shared model/field denylist
