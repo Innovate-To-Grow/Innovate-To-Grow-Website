@@ -75,7 +75,7 @@ Root router in `config/urls.py`:
 
 - The frontend uses a feature-based (vertical-slice) layout under `pages/src/`:
   - `app/` owns bootstrap and app-shell infra: `providers.tsx` (the imperative 3-root mount, called from `main.tsx`), `router.tsx`, `HomepageResolver.tsx`, `ErrorBoundary/`, `MaintenanceMode/`.
-  - `features/<domain>/` owns each domain (auth, cms, events, layout, news, projects) as a self-contained slice: `api/` (data layer), `components/` (UI), optional `hooks/`, a `types.ts`, and a public `index.ts` barrel. The six features import from each other only through those barrels.
+  - `features/<domain>/` owns each domain (auth, cms, events, layout, news, projects) as a self-contained slice: `api/` (data layer), `components/` (UI), optional `hooks/`, and (for most features) a public `index.ts` barrel. Features import from each other through those barrels, or through deep sub-paths where no top-level barrel is exposed (e.g. `@/features/events/api`).
   - `routes/` owns routed page components (NewsPage, ProjectsPage, etc.), lazy-loaded by `app/router.tsx` via deep imports (importing through a barrel would defeat code-splitting).
   - `lib/` owns framework-agnostic utilities: `api-client.ts` (shared Axios client), `crypto.ts`, `time.ts`, `semester.ts`, `safeHref.ts`, `phoneRegions.ts`, `analytics.ts`, `health.ts`.
   - `components/ui/` owns cross-feature presentational components (`SafeHtml/`, `SheetsDataTable/`).
