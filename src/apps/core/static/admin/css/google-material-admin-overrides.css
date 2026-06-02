@@ -61,3 +61,99 @@
 .dark #content-main form fieldset.module {
     background-color: var(--md-sys-color-surface-container) !important;
 }
+
+.i2g-admin-theme-toggle {
+    position: relative;
+}
+
+.i2g-admin-theme-toggle__button {
+    align-items: center;
+    background-color: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 999px !important;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    gap: 0.375rem;
+    height: 2.25rem;
+    line-height: 1;
+    padding: 0 0.75rem;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    white-space: nowrap;
+}
+
+.i2g-admin-theme-toggle__button:hover,
+.i2g-admin-theme-toggle__button[aria-expanded="true"] {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+    border-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-primary);
+}
+
+.i2g-admin-theme-toggle__button:focus-visible,
+.i2g-admin-theme-toggle__option:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
+    outline: none;
+}
+
+.i2g-admin-theme-toggle__icon,
+.i2g-admin-theme-toggle__option .material-symbols-outlined {
+    font-size: 18px !important;
+    line-height: 1 !important;
+}
+
+.i2g-admin-theme-toggle__text {
+    max-width: 5.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.i2g-admin-theme-toggle__menu {
+    background-color: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-small);
+    box-shadow: var(--md-sys-elevation-2);
+    color: var(--md-sys-color-on-surface);
+    display: flex;
+    flex-direction: column;
+    min-width: 10rem;
+    padding: 0.25rem;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 60;
+}
+
+.i2g-admin-theme-toggle__option {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--md-sys-shape-corner-small) !important;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    min-height: 2rem;
+    padding: 0 0.625rem;
+    text-align: left;
+    width: 100%;
+}
+
+.i2g-admin-theme-toggle__option:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+    color: var(--md-sys-color-primary);
+}
+
+.i2g-admin-theme-toggle__option.is-active {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+.dark .i2g-admin-theme-toggle__button,
+.dark .i2g-admin-theme-toggle__menu {
+    background-color: var(--md-sys-color-surface-container);
+}
