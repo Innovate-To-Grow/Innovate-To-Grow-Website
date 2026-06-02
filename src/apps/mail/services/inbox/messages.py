@@ -1,10 +1,12 @@
 import logging
+from email.utils import parseaddr
 from typing import Any
 
 from django.core.cache import cache
 from imap_tools import AND
 
 from .connection import (
+    INBOX_FOLDER,
     INBOX_LIMIT_CHOICES,
     INBOX_LIST_CACHE_KEY,
     INBOX_LIST_CACHE_TTL,
@@ -21,9 +23,10 @@ def list_inbox_messages(
     limit: int = 30,
     mailbox: str | None = None,
     *,
+    folder: str = INBOX_FOLDER,
     force_refresh: bool = False,
 ) -> list[dict[str, Any]]:
-    cache_key = f"{INBOX_LIST_CACHE_KEY}:{limit}"
+    cache_key = f"{INBOX_LIST_CACHE_KEY}:{folder}:{limit}"
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
@@ -32,7 +35,7 @@ def list_inbox_messages(
     try:
         import apps.mail.services.inbox as inbox_api
 
-        with inbox_api._open_inbox(mailbox=mailbox) as client:
+        with inbox_api._open_inbox(mailbox=mailbox, folder=folder) as client:
             messages = list(client.fetch(limit=limit, reverse=True, mark_seen=False, bulk=True))
     except InboxError:
         raise
@@ -45,8 +48,8 @@ def list_inbox_messages(
     return results
 
 
-def fetch_inbox_message(uid: str, mailbox: str | None = None) -> dict[str, Any]:
-    cache_key = f"{INBOX_MSG_CACHE_PREFIX}{uid}"
+def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = INBOX_FOLDER) -> dict[str, Any]:
+    cache_key = f"{INBOX_MSG_CACHE_PREFIX}{folder}:{uid}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -54,11 +57,11 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None) -> dict[str, Any]:
     try:
         import apps.mail.services.inbox as inbox_api
 
-        with inbox_api._open_inbox(mailbox=mailbox) as client:
+        with inbox_api._open_inbox(mailbox=mailbox, folder=folder) as client:
             for message in client.fetch(AND(uid=uid), limit=1, mark_seen=True, bulk=False):
                 result = detailed_message(message)
                 cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
-                update_list_cache_seen(uid)
+                update_list_cache_seen(uid, folder=folder)
                 return result
             raise InboxError("Message not found.")
     except InboxError:
@@ -76,6 +79,7 @@ def message_summary(message: Any) -> dict[str, Any]:
         "subject": str(getattr(message, "subject", "") or "").strip() or "(No subject)",
         "from_name": from_name,
         "from_email": from_email,
+        "to": extract_to(message),
         "date": format_date(getattr(message, "date", None)),
         "snippet": build_snippet(message),
         "is_seen": "\\Seen" in flags,
@@ -98,12 +102,22 @@ def detailed_message(message: Any) -> dict[str, Any]:
         "text": str(getattr(message, "text", "") or "").strip(),
         "message_id": str(message_id_list[0]) if message_id_list else "",
         "references": str(references_list[0]) if references_list else "",
+        # Authentication / routing headers the scam detector inspects (Gmail
+        # populates Authentication-Results). Empty strings when absent.
+        "reply_to": _header_address(headers, "reply-to"),
+        "return_path": _header_address(headers, "return-path"),
+        "authentication_results": " ".join(headers.get("authentication-results", []) or []),
     }
 
 
-def update_list_cache_seen(uid: str) -> None:
+def _header_address(headers: dict[str, Any], key: str) -> str:
+    values = headers.get(key, []) or []
+    return parseaddr(values[0])[1].strip().lower() if values else ""
+
+
+def update_list_cache_seen(uid: str, folder: str = INBOX_FOLDER) -> None:
     for limit in INBOX_LIMIT_CHOICES:
-        cache_key = f"{INBOX_LIST_CACHE_KEY}:{limit}"
+        cache_key = f"{INBOX_LIST_CACHE_KEY}:{folder}:{limit}"
         cached_list = cache.get(cache_key)
         if cached_list is None:
             continue

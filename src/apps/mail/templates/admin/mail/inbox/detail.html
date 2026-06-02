@@ -36,9 +36,7 @@
         </div>
     </div>
 
-    {% if scam_analysis.risk_level != "low" %}
     {% include "admin/mail/inbox/_scam_analysis_panel.html" with panel_margin="mb-4" %}
-    {% endif %}
 
     <!-- Email body -->
     <div class="mb-4 rounded-default border border-base-200 dark:border-base-700 overflow-hidden">
@@ -54,15 +52,17 @@
 
     <!-- Actions -->
     <div class="flex gap-3">
+        {% if folder != "SENT" %}
         <a href="{{ reply_url }}"
            class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 inline-flex items-center gap-2">
             <span class="material-symbols-outlined !text-[18px]">reply</span>
             Reply
         </a>
+        {% endif %}
         <a href="{{ list_url }}"
            class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
             <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
-            Back to Inbox
+            Back to {% if folder == "SENT" %}Sent{% else %}Inbox{% endif %}
         </a>
     </div>
 </div>
