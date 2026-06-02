@@ -11,10 +11,10 @@ export default defineConfig({
   fullyParallel: true,
   retries: isCI ? 1 : 0,
   // In CI each project runs in its own matrix leg and emits a uniquely-named
-  // blob report (PW_PROJECT set per leg); a downstream job merges the blobs
-  // into html/github/junit. Locally use `list`.
+  // blob report (PW_PROJECT set per leg) for the downstream merge job; `list`
+  // alongside it keeps per-leg failures readable in the job log. Locally `list`.
   reporter: isCI
-    ? [['blob', {fileName: `report-${(process.env.PW_PROJECT ?? 'all').replace(/[^a-zA-Z0-9_-]/g, '-')}.zip`}]]
+    ? [['list'], ['blob', {fileName: `report-${(process.env.PW_PROJECT ?? 'all').replace(/[^a-zA-Z0-9_-]/g, '-')}.zip`}]]
     : 'list',
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:4173',

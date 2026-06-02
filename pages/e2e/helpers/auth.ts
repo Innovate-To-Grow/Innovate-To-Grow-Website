@@ -66,6 +66,18 @@ export async function seedAuthenticatedSession(
     },
   );
 
+  // Any stray authenticated call that 401s against a live backend would trip
+  // the api-client refresh→logout cascade (client.ts) and unmount guarded
+  // pages mid-test. Make refresh succeed so a seeded session is never logged
+  // out by an un-mocked request.
+  await page.route('**/authn/refresh/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
+    }),
+  );
+
   const profileRef = {
     current: profileResponse({email: user.email, member_uuid: user.member_uuid, ...opts.profile}),
   };
@@ -83,6 +95,17 @@ export async function seedAuthenticatedSession(
         contentType: 'application/json',
         body: JSON.stringify({detail: 'No active event.'}),
       }),
+    );
+    // EmailCenter / PhoneCenter fetch these on mount; left unmocked against a
+    // live backend they 401 with the fake token and trigger the logout cascade.
+    await page.route('**/authn/account-emails/', (route) =>
+      route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: [user.email]})}),
+    );
+    await page.route('**/authn/contact-emails/', (route) =>
+      route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
+    );
+    await page.route('**/authn/contact-phones/', (route) =>
+      route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
     );
   }
 

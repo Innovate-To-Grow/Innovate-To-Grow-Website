@@ -793,7 +793,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
+          # only held chromium, which would otherwise hit and skip installing
+          # firefox/webkit, breaking those legs.
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-cfw
 
       # On a cache hit the browser binaries are restored, but the OS-level
       # dependencies (apt packages) are not — install just those. On a miss,
