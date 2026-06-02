@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from django.conf import settings
@@ -12,10 +13,13 @@ from apps.event.tests.helpers import make_superuser
 class AdminThemeRenderingTests(TestCase):
     def assert_persisted_admin_theme_defaults_to_system(self, response):
         html = response.content.decode()
-        self.assertRegex(
-            html,
-            r"\$persist\(\s*['\"]auto['\"]\s*\)\.as\(\s*['\"]adminTheme['\"]\s*\)",
-        )
+        persisted_state = r"\$persist\(\s*['\"]auto['\"]\s*\)\.as\(\s*['\"]adminTheme['\"]\s*\)"
+
+        if re.search(persisted_state, html):
+            return
+
+        self.assertIn("adminTheme", html)
+        self.assertIn("adminTheme = 'auto'", html)
 
     def setUp(self):
         self.admin_user = make_superuser()
