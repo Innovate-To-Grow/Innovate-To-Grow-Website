@@ -12,7 +12,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.event.tests.helpers import make_superuser
 from apps.mail.admin.scam_config import ScamDetectorConfigAdmin
 from apps.mail.models import ScamDetectorConfig
-from apps.mail.services.scam_detector import assess_email
+from apps.mail.services.scam_detector import analyze_email, assess_email
 from apps.mail.services.scam_detector.llm_classifier import (
     _build_prompt,
     _call_bedrock,
@@ -200,21 +200,35 @@ class AssessEmailTests(TestCase):
         with patch(_LLM_PATH, return_value=payload) as mock_llm:
             first = assess_email(_medium_msg())
             second = assess_email(_medium_msg())
+        # A confident high AI score fuses the meter up and re-bands to high.
         self.assertEqual(first["risk_level"], "high")
-        self.assertEqual(first["ai_review"]["verdict"], "scam")
-        self.assertIn("spoofed sender", first["reasons"])
+        self.assertGreaterEqual(first["score_percent"], 70)
+        self.assertEqual(first["ai_review"]["reasons"], ["spoofed sender"])
         self.assertEqual(second["risk_level"], "high")
         # Second call served from cache.
         mock_llm.assert_called_once()
 
-    def test_medium_legitimate_softens_copy(self):
+    def test_medium_legitimate_fuses_down_to_low(self):
         ScamDetectorConfig.objects.create(is_active=True, ai_review_enabled=True)
         _aws_configured()
         payload = {"text": '{"verdict": "legitimate", "confidence": 0.9, "risk_score": 5, "reasons": []}'}
         with patch(_LLM_PATH, return_value=payload):
             result = assess_email(_medium_msg())
-        self.assertEqual(result["risk_level"], "medium")
+        self.assertEqual(result["risk_level"], "low")
+        self.assertLess(result["score_percent"], 40)
         self.assertIn("likely legitimate", result["summary"])
+
+    def test_medium_partial_fusion_keeps_medium(self):
+        ScamDetectorConfig.objects.create(is_active=True, ai_review_enabled=True)
+        _aws_configured()
+        rule_only = analyze_email(_medium_msg())
+        payload = {"text": '{"verdict": "suspicious", "confidence": 0.5, "risk_score": 60, "reasons": ["odd link"]}'}
+        with patch(_LLM_PATH, return_value=payload):
+            result = assess_email(_medium_msg())
+        self.assertEqual(result["risk_level"], "medium")
+        # Fused meter sits between the rule-only meter and the AI's risk score.
+        self.assertNotEqual(result["score_percent"], rule_only["score_percent"])
+        self.assertLessEqual(result["score_percent"], 60)
 
 
 class ScamConfigAdminTests(TestCase):

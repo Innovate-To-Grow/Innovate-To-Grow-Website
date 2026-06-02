@@ -94,20 +94,43 @@ def assess_email(msg: dict[str, Any], *, folder: str = "INBOX") -> dict[str, Any
     return result
 
 
+# Risk-percent cutoffs for the AI-fused score. The model returns a 0-100 risk
+# scale where roughly 70+ reads as likely-malicious and 40-70 as suspicious.
+_FUSED_HIGH_PERCENT = 70
+_FUSED_MEDIUM_PERCENT = 40
+
+
 def _merge_ai_review(result: dict[str, Any], review: dict[str, Any]) -> None:
+    """Fuse the AI verdict into the score.
+
+    Blends the rule meter with the AI's risk score weighted by the AI's
+    confidence, then re-derives the risk band from the fused value, so the AI
+    can both raise an uncertain message to high and relax it to low. The AI's
+    own reasons remain in ``ai_review`` (shown in a dedicated panel section);
+    the deterministic findings are never removed.
+    """
     result["ai_review"] = review
-    verdict = review.get("verdict")
-    confidence = review.get("confidence", 0) or 0
-    if verdict == "scam" and confidence >= 0.7:
-        result["risk_level"] = "high"
-        result["score_percent"] = max(result.get("score_percent", 0), 90)
-        for reason in review.get("reasons", []):
-            result["reasons"].append(reason)
-            result["findings"].append({"category": "AI review", "impact": "High", "score": 0, "reason": reason})
-        result["summary"] = "AI review flagged this message as a likely scam. " + result.get("summary", "")
+    confidence = max(0.0, min(1.0, float(review.get("confidence", 0) or 0)))
+    ai_percent = max(0, min(100, int(review.get("risk_score", 0) or 0)))
+    rule_percent = result.get("score_percent", 0)
+
+    fused_percent = round((1 - confidence) * rule_percent + confidence * ai_percent)
+    result["score_percent"] = fused_percent
+    result["risk_level"] = _band_for_percent(fused_percent)
+
+    if result["risk_level"] == "high":
+        result["summary"] = "AI review raised this message to high risk. " + result.get("summary", "")
         result["recommendation"] = "Do not act on this message until verified. " + result.get("recommendation", "")
-    elif verdict == "legitimate" and confidence >= 0.7:
+    elif result["risk_level"] == "low":
         result["summary"] = (result.get("summary", "") + " AI review considers this message likely legitimate.").strip()
+
+
+def _band_for_percent(percent: int) -> str:
+    if percent >= _FUSED_HIGH_PERCENT:
+        return "high"
+    if percent >= _FUSED_MEDIUM_PERCENT:
+        return "medium"
+    return "low"
 
 
 def _trusted_result() -> dict[str, Any]:
