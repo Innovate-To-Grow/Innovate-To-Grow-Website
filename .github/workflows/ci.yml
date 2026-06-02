@@ -712,10 +712,14 @@ jobs:
           if-no-files-found: warn
 
   e2e:
-    name: Playwright E2E
+    name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, pixel7, iphone14, iphone-se, ipad]
     needs:
       # backend-docker-build intentionally omitted: e2e runs the app via
       # `manage.py runserver`, never the built image, so depending on it only
@@ -748,6 +752,7 @@ jobs:
       VITE_API_BASE_URL: http://127.0.0.1:8000
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
       PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000
+      PW_PROJECT: ${{ matrix.project }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -788,7 +793,10 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
+          # only held chromium, which would otherwise hit and skip installing
+          # firefox/webkit, breaking those legs.
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-cfw
 
       # On a cache hit the browser binaries are restored, but the OS-level
       # dependencies (apt packages) are not — install just those. On a miss,
@@ -801,11 +809,15 @@ jobs:
       - name: Install Playwright system dependencies (cache hit)
         if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' }}
         working-directory: pages
-        run: npx playwright install-deps chromium
+        run: npx playwright install-deps chromium firefox webkit
 
       - name: Prepare backend database
         working-directory: src
         run: python manage.py migrate --noinput
+
+      - name: Seed admin E2E data
+        working-directory: src
+        run: python manage.py seed_admin_e2e --yes
 
       - name: Start backend
         working-directory: src
@@ -839,18 +851,108 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: pages
-        run: npm run e2e
+        run: npx playwright test --project=${{ matrix.project }}
 
-      - name: Upload Playwright artifacts
+      - name: Upload blob report
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts
+          name: blob-${{ matrix.project }}
+          path: pages/blob-report/
+          if-no-files-found: warn
+
+      - name: Upload server logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-logs-${{ matrix.project }}
+          path: |
+            backend-e2e.log
+            frontend-e2e.log
+          if-no-files-found: warn
+
+  e2e-report:
+    name: E2E Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: e2e
+    if: ${{ always() }}
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: pages
+        run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v5
+        with:
+          path: pages/all-blob-reports
+          pattern: blob-*
+          merge-multiple: true
+
+      - name: Merge blob reports into HTML + JUnit + GitHub annotations
+        working-directory: pages
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: results.xml
+        run: npx playwright merge-reports --reporter html,github,junit ./all-blob-reports
+
+      - name: Write per-project job summary
+        if: ${{ always() }}
+        working-directory: pages
+        run: |
+          python3 - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          total = fail = err = skip = 0
+          dur = 0.0
+          for f in sorted(glob.glob('results*.xml')):
+              try:
+                  root = ET.parse(f).getroot()
+              except Exception:
+                  continue
+              suites = [root] if root.tag == 'testsuite' else root.iter('testsuite')
+              for s in suites:
+                  total += int(s.get('tests', 0))
+                  fail += int(s.get('failures', 0))
+                  err += int(s.get('errors', 0))
+                  skip += int(s.get('skipped', 0))
+                  dur += float(s.get('time', 0) or 0)
+          passed = total - fail - err - skip
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary, 'a') as fh:
+                  fh.write('## Playwright E2E\n\n')
+                  fh.write('| Total | Passed | Failed | Skipped | Duration |\n')
+                  fh.write('|---|---|---|---|---|\n')
+                  fh.write(f'| {total} | {passed} | {fail + err} | {skip} | {dur:.1f}s |\n')
+          PY
+
+      - name: Annotate test results on the PR
+        if: ${{ always() }}
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: pages/results.xml
+          detailed_summary: true
+          include_passed: false
+          fail_on_failure: false
+
+      - name: Upload merged HTML report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-html-report
           path: |
             pages/playwright-report
             pages/test-results
-            backend-e2e.log
-            frontend-e2e.log
           if-no-files-found: warn
 
   ci-result:
@@ -873,6 +975,7 @@ jobs:
       - backend-docker-build
       - supply-chain-reports
       - e2e
+      - e2e-report
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs
@@ -885,8 +988,8 @@ jobs:
           import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          # E2E is informational while tests stabilize
-          non_blocking = {"e2e"}
+          # E2E is informational while tests stabilize (flip to blocking once green)
+          non_blocking = {"e2e", "e2e-report"}
           failed = {
               name: data["result"]
               for name, data in needs.items()
