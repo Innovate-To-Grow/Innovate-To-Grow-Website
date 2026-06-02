@@ -599,7 +599,7 @@ jobs:
       # re-pull it from the registry on every CI run. Both Trivy steps point at
       # this dir via TRIVY_CACHE_DIR.
       - name: Cache Trivy vulnerability database
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.cache/trivy
           key: trivy-db-${{ github.run_id }}
@@ -790,7 +790,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
