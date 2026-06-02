@@ -327,7 +327,7 @@ jobs:
 
       - name: Upload backend coverage XML
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-${{ matrix.app }}
           path: src/coverage-${{ matrix.app }}.xml
@@ -419,7 +419,7 @@ jobs:
 
       - name: Upload frontend coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: |
@@ -457,7 +457,7 @@ jobs:
 
       - name: Upload frontend dist
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: pages/dist
@@ -556,7 +556,7 @@ jobs:
 
       - name: Upload Semgrep SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: semgrep-sarif
           path: semgrep.sarif
@@ -584,10 +584,10 @@ jobs:
           failure-threshold: error
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
       - name: Build backend Docker image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: src
           load: true
@@ -599,7 +599,7 @@ jobs:
       # re-pull it from the registry on every CI run. Both Trivy steps point at
       # this dir via TRIVY_CACHE_DIR.
       - name: Cache Trivy vulnerability database
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/.cache/trivy
           key: trivy-db-${{ github.run_id }}
@@ -621,7 +621,7 @@ jobs:
 
       - name: Upload Trivy SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-sarif
           path: trivy-results.sarif
@@ -702,7 +702,7 @@ jobs:
 
       - name: Upload supply chain artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: supply-chain-reports
           path: |
@@ -790,7 +790,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
@@ -855,7 +855,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: blob-${{ matrix.project }}
           path: pages/blob-report/
@@ -863,7 +863,7 @@ jobs:
 
       - name: Upload server logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-logs-${{ matrix.project }}
           path: |
@@ -947,7 +947,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-html-report
           path: |

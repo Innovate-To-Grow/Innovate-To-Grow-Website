@@ -23,10 +23,10 @@
     "jspdf-autotable": "^5.0.8",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-router-dom": "^7.15.1"
+    "react-router-dom": "^7.16.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.1.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -35,17 +35,17 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/coverage-v8": "^4.1.7",
-    "eslint": "^9.39.1",
+    "@vitest/coverage-v8": "^4.1.8",
+    "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "size-limit": "^12.1.0",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.7"
+    "typescript-eslint": "^8.60.1",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "tmp": "^0.2.6",
