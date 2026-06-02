@@ -14,6 +14,12 @@ def parse_limit(request) -> int:
     return value if value in inbox_api.INBOX_LIMIT_CHOICES else inbox_api.INBOX_DEFAULT_LIMIT
 
 
+def parse_folder(request) -> str:
+    """Parse and validate the requested inbox folder (INBOX or SENT)."""
+    folder = str(request.GET.get("folder", inbox_api.INBOX_FOLDER)).upper()
+    return folder if folder in inbox_api.INBOX_FOLDER_CHOICES else inbox_api.INBOX_FOLDER
+
+
 def message_body_html(msg: dict) -> str:
     """Return sanitized text fallback when a message has no HTML body."""
     if msg["html"]:

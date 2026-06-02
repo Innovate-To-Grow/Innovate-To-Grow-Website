@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
-{% block content_title %}{% endblock %}
+{% block content_title %}Gmail Inbox{% endblock %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -127,6 +127,49 @@
             background: var(--md-sys-color-outline-variant, #d9dee3);
             height: 1.5rem;
             width: 1px;
+        }
+
+        .i2g-mail-folder-tabs {
+            align-items: center;
+            background: var(--md-sys-color-surface-container, #eef2f7);
+            border-radius: 999px;
+            display: inline-flex;
+            gap: 0.125rem;
+            padding: 0.1875rem;
+        }
+
+        .i2g-mail-folder-tab {
+            align-items: center;
+            background: transparent;
+            border: 0;
+            border-radius: 999px;
+            color: var(--md-sys-color-on-surface-variant, #64748b);
+            display: inline-flex;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            gap: 0.375rem;
+            min-height: 1.75rem;
+            padding: 0 0.75rem;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+
+        .i2g-mail-folder-tab:hover {
+            color: var(--md-sys-color-on-surface, #111827);
+        }
+
+        .i2g-mail-folder-tab--active {
+            background: var(--md-sys-color-surface-container-lowest, #fff);
+            box-shadow: 0 1px 2px rgba(60, 64, 67, 0.12);
+            color: var(--md-sys-color-primary, #1d4ed8);
+        }
+
+        .dark .i2g-mail-folder-tabs {
+            background: var(--md-sys-color-surface-container, #1f2937);
+        }
+
+        .dark .i2g-mail-folder-tab--active {
+            background: var(--md-sys-color-surface-container-lowest, #111827);
+            color: var(--md-sys-color-primary, #93c5fd);
         }
 
         .i2g-inbox-refresh-btn,
@@ -516,6 +559,45 @@
     try {
       window.localStorage.setItem(LIST_COLLAPSE_KEY, collapsed ? '1' : '0');
     } catch (e) {}
+  }
+
+  var FOLDER_KEY = 'i2g-inbox-folder';
+
+  function getStoredFolder() {
+    try {
+      return window.localStorage.getItem(FOLDER_KEY) === 'SENT' ? 'SENT' : 'INBOX';
+    } catch (e) {
+      return 'INBOX';
+    }
+  }
+
+  function storeFolder(folder) {
+    try {
+      window.localStorage.setItem(FOLDER_KEY, folder === 'SENT' ? 'SENT' : 'INBOX');
+    } catch (e) {}
+  }
+
+  function getFolder(root) {
+    var activeTab = root ? root.querySelector('[data-inbox-folder].i2g-mail-folder-tab--active') : null;
+    if (activeTab) return activeTab.getAttribute('data-inbox-folder') === 'SENT' ? 'SENT' : 'INBOX';
+    return getStoredFolder();
+  }
+
+  function setActiveFolderTab(root, folder) {
+    if (!root) return;
+    root.querySelectorAll('[data-inbox-folder]').forEach(function (tab) {
+      var active = tab.getAttribute('data-inbox-folder') === folder;
+      tab.classList.toggle('i2g-mail-folder-tab--active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+
+  function clearPreviewPane(root) {
+    var content = root ? root.querySelector('#inbox-preview-content') : null;
+    if (content) {
+      content.innerHTML = '<div id="inbox-preview-empty" class="i2g-inbox-empty-preview flex flex-col items-center justify-center text-base-400"><span class="material-symbols-outlined !text-[48px] mb-2">mail</span><p class="text-sm">Select a message to preview</p></div>';
+    }
+    setActiveRow(root, null);
   }
 
   function setAccountCollapsed(root, collapsed) {
@@ -910,11 +992,28 @@
       return;
     }
 
+    var folderTab = e.target.closest('[data-inbox-folder]');
+    if (folderTab) {
+      e.preventDefault();
+      var folderRoot = getRoot(folderTab);
+      if (!folderRoot) return;
+      var nextFolder = folderTab.getAttribute('data-inbox-folder') === 'SENT' ? 'SENT' : 'INBOX';
+      if (nextFolder !== getFolder(folderRoot)) {
+        storeFolder(nextFolder);
+        setActiveFolderTab(folderRoot, nextFolder);
+        // A uid is unique only within its folder, so drop the open preview/hash.
+        clearPreviewPane(folderRoot);
+        setHashUid(null);
+        fetchInbox(folderRoot, { limit: getLimit(folderRoot), folder: nextFolder, refresh: '1' });
+      }
+      return;
+    }
+
     var btn = e.target.closest('[data-inbox-refresh]');
     if (btn) {
       e.preventDefault();
       var root = getRoot(btn);
-      if (root) fetchInbox(root, { limit: getLimit(root), refresh: '1' });
+      if (root) fetchInbox(root, { limit: getLimit(root), folder: getFolder(root), refresh: '1' });
       return;
     }
 
@@ -983,12 +1082,12 @@
     var sel = e.target.closest('[data-inbox-limit]');
     if (!sel) return;
     var root = getRoot(sel);
-    if (root) fetchInbox(root, { limit: getLimit(root) });
+    if (root) fetchInbox(root, { limit: getLimit(root), folder: getFolder(root) });
   });
 
   /* Auto-load on page ready */
   var root = document.getElementById('inbox-all-dynamic');
-  if (root) fetchInbox(root, {});
+  if (root) fetchInbox(root, { folder: getStoredFolder() });
 
   window.addEventListener('resize', resizePreviewIframe);
 

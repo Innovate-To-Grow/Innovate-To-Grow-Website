@@ -5,13 +5,16 @@
 import logging
 
 from apps.mail.services.inbox import (
+    INBOX_FOLDER,
+    INBOX_FOLDER_CHOICES,
     INBOX_LIMIT_CHOICES,
+    SENT_FOLDER,
     InboxError,
     fetch_inbox_message,
     list_inbox_messages,
     send_reply,
 )
-from apps.mail.services.scam_detector import analyze_email
+from apps.mail.services.scam_detector import analyze_email, assess_email
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +29,13 @@ from .reply_views import inbox_reply_fragment_view, inbox_reply_view
 from .urls import get_inbox_urls
 
 __all__ = [
+    "INBOX_FOLDER",
+    "INBOX_FOLDER_CHOICES",
     "INBOX_LIMIT_CHOICES",
+    "SENT_FOLDER",
     "InboxError",
     "analyze_email",
+    "assess_email",
     "fetch_inbox_message",
     "get_inbox_urls",
     "inbox_detail_fragment_view",

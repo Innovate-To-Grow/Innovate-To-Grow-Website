@@ -12,6 +12,7 @@ from apps.mail.admin.inbox.helpers import (
     build_reply_references,
     build_reply_subject,
     message_body_html,
+    parse_folder,
     parse_limit,
 )
 from apps.mail.services.inbox import InboxError
@@ -52,6 +53,18 @@ class InboxHelperTests(TestCase):
         allowed = INBOX_LIMIT_CHOICES[0]
         request = RequestFactory().get(f"/?limit={allowed}")
         self.assertEqual(parse_limit(request), allowed)
+
+    def test_parse_folder_defaults_to_inbox(self):
+        request = RequestFactory().get("/")
+        self.assertEqual(parse_folder(request), "INBOX")
+
+    def test_parse_folder_accepts_sent_case_insensitive(self):
+        request = RequestFactory().get("/?folder=sent")
+        self.assertEqual(parse_folder(request), "SENT")
+
+    def test_parse_folder_rejects_unknown_value(self):
+        request = RequestFactory().get("/?folder=trash")
+        self.assertEqual(parse_folder(request), "INBOX")
 
     def test_message_body_html_uses_html_when_present(self):
         self.assertEqual(message_body_html(_message(html="<b>Hi</b>")), "<b>Hi</b>")

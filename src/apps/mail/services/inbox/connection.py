@@ -14,6 +14,10 @@ INBOX_LIST_CACHE_TTL = 300
 INBOX_MSG_CACHE_PREFIX = "inbox:msg:"
 INBOX_MSG_CACHE_TTL = 1800
 
+INBOX_FOLDER = "INBOX"
+SENT_FOLDER = "SENT"
+INBOX_FOLDER_CHOICES = (INBOX_FOLDER, SENT_FOLDER)
+
 
 class InboxError(RuntimeError):
     """Raised when an inbox operation cannot be completed."""
@@ -36,18 +40,31 @@ def resolve_mailbox(mailbox: str | None = None) -> str:
 
 
 @contextmanager
-def _open_inbox(mailbox: str | None = None):
+def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER):
+    # Imported lazily (like resolve_mailbox) to avoid an inbox -> gmail_import cycle.
+    from apps.mail.services.gmail_import.connection import GmailImportError, select_sent_folder
+
     config = get_gmail_config()
     resolved_mailbox = resolve_mailbox(mailbox or config.mailbox)
+    # parse_folder already enforces the {INBOX, SENT} allowlist; any non-SENT value
+    # (incl. an unexpected one) routes to INBOX below.
+    normalized_folder = str(folder or INBOX_FOLDER).upper()
+    use_sent = normalized_folder == SENT_FOLDER
     try:
         with MailBox(config.imap_host).login(
             resolved_mailbox,
             config.gmail_password,
-            initial_folder="INBOX",
+            # The Sent mailbox name varies by provider, so select it after login.
+            initial_folder=None if use_sent else INBOX_FOLDER,
         ) as client:
+            if use_sent:
+                try:
+                    select_sent_folder(client)
+                except GmailImportError as exc:
+                    raise InboxError(str(exc)) from exc
             yield client
     except InboxError:
         raise
     except Exception as exc:
-        logger.exception("Failed to connect to Gmail IMAP inbox for %s.", resolved_mailbox)
+        logger.exception("Failed to connect to Gmail IMAP %s folder for %s.", normalized_folder, resolved_mailbox)
         raise InboxError(f"Unable to connect to inbox for {resolved_mailbox}.") from exc

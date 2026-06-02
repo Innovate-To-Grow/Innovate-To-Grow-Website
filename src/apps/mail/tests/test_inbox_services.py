@@ -108,6 +108,7 @@ class InboxMessageMappingTests(TestCase):
         self.assertEqual(summary["subject"], "Hi there")
         self.assertEqual(summary["from_name"], "Alice")
         self.assertEqual(summary["from_email"], "alice@example.com")
+        self.assertEqual(summary["to"], [{"name": "Bob", "email": "bob@example.com"}])
         self.assertTrue(summary["is_seen"])
         self.assertIn("Hello world", summary["snippet"])
 
@@ -128,6 +129,23 @@ class InboxMessageMappingTests(TestCase):
         self.assertEqual(detail["message_id"], "")
         self.assertEqual(detail["references"], "")
         self.assertEqual(detail["subject"], "(No subject)")
+        self.assertEqual(detail["reply_to"], "")
+        self.assertEqual(detail["return_path"], "")
+        self.assertEqual(detail["authentication_results"], "")
+
+    def test_detailed_message_extracts_auth_headers(self):
+        detail = detailed_message(
+            _fake_message(
+                headers={
+                    "reply-to": ["Support <reply@evil.com>"],
+                    "return-path": ["<bounce@evil.com>"],
+                    "authentication-results": ["mx.google.com; spf=fail; dmarc=fail"],
+                }
+            )
+        )
+        self.assertEqual(detail["reply_to"], "reply@evil.com")
+        self.assertEqual(detail["return_path"], "bounce@evil.com")
+        self.assertIn("dmarc=fail", detail["authentication_results"])
 
 
 class ListInboxMessagesTests(TestCase):
@@ -139,11 +157,18 @@ class ListInboxMessagesTests(TestCase):
 
     def test_list_returns_cached_when_present(self):
         cached = [{"uid": "99", "subject": "cached"}]
-        cache.set(f"{INBOX_LIST_CACHE_KEY}:30", cached, 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", cached, 300)
 
         result = list_inbox_messages(limit=30)
 
         self.assertEqual(result, cached)
+
+    def test_list_cache_isolated_per_folder(self):
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "1", "subject": "inbox"}], 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:SENT:30", [{"uid": "1", "subject": "sent"}], 300)
+
+        self.assertEqual(list_inbox_messages(limit=30)[0]["subject"], "inbox")
+        self.assertEqual(list_inbox_messages(limit=30, folder="SENT")[0]["subject"], "sent")
 
     def test_list_fetches_and_caches_messages(self):
         client = Mock()
@@ -154,7 +179,7 @@ class ListInboxMessagesTests(TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["uid"], "42")
-        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:30"), result)
+        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30"), result)
 
     def test_list_reraises_inbox_error(self):
         with patch("apps.mail.services.inbox._open_inbox", side_effect=InboxError("config")):
@@ -175,8 +200,15 @@ class FetchInboxMessageTests(TestCase):
         cache.clear()
 
     def test_fetch_returns_cached_when_present(self):
-        cache.set("inbox:msg:42", {"uid": "42", "subject": "cached"}, 1800)
+        cache.set("inbox:msg:INBOX:42", {"uid": "42", "subject": "cached"}, 1800)
         self.assertEqual(fetch_inbox_message("42")["subject"], "cached")
+
+    def test_fetch_cache_isolated_per_folder(self):
+        cache.set("inbox:msg:INBOX:42", {"uid": "42", "subject": "inbox-msg"}, 1800)
+        cache.set("inbox:msg:SENT:42", {"uid": "42", "subject": "sent-msg"}, 1800)
+
+        self.assertEqual(fetch_inbox_message("42")["subject"], "inbox-msg")
+        self.assertEqual(fetch_inbox_message("42", folder="SENT")["subject"], "sent-msg")
 
     def test_fetch_returns_detailed_message_and_caches(self):
         client = Mock()
@@ -186,7 +218,7 @@ class FetchInboxMessageTests(TestCase):
             result = fetch_inbox_message("42")
 
         self.assertEqual(result["uid"], "42")
-        self.assertEqual(cache.get("inbox:msg:42"), result)
+        self.assertEqual(cache.get("inbox:msg:INBOX:42"), result)
 
     def test_fetch_raises_when_message_not_found(self):
         client = Mock()
@@ -210,17 +242,27 @@ class UpdateListCacheSeenTests(TestCase):
         cache.clear()
 
     def test_marks_matching_uid_seen(self):
-        cache.set(f"{INBOX_LIST_CACHE_KEY}:30", [{"uid": "42", "is_seen": False}], 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "42", "is_seen": False}], 300)
 
         update_list_cache_seen("42")
 
-        updated = cache.get(f"{INBOX_LIST_CACHE_KEY}:30")
+        updated = cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30")
         self.assertTrue(updated[0]["is_seen"])
 
     def test_skips_when_no_cache_for_limit(self):
         # No cache set; should not raise.
         update_list_cache_seen("42")
-        self.assertIsNone(cache.get(f"{INBOX_LIST_CACHE_KEY}:30"))
+        self.assertIsNone(cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30"))
+
+    def test_update_scoped_to_folder(self):
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "42", "is_seen": False}], 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:SENT:30", [{"uid": "42", "is_seen": False}], 300)
+
+        update_list_cache_seen("42", folder="INBOX")
+
+        self.assertTrue(cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30")[0]["is_seen"])
+        # The SENT list with the same uid must be untouched (uids are folder-scoped).
+        self.assertFalse(cache.get(f"{INBOX_LIST_CACHE_KEY}:SENT:30")[0]["is_seen"])
 
 
 class InboxConnectionTests(TestCase):
@@ -276,6 +318,48 @@ class InboxConnectionTests(TestCase):
 
         mock_mailbox.assert_called_once_with("imap.gmail.com")
         mailbox_client.login.assert_called_once_with("campaigns@ucmerced.edu", "app-password", initial_folder="INBOX")
+
+    def test_open_inbox_sent_selects_sent_folder(self):
+        login_context = Mock()
+        login_client = Mock()
+        login_context.__enter__ = Mock(return_value=login_client)
+        login_context.__exit__ = Mock(return_value=False)
+        mailbox_client = Mock()
+        mailbox_client.login.return_value = login_context
+
+        with (
+            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
+            patch("apps.mail.services.gmail_import.connection.select_sent_folder") as mock_select,
+        ):
+            with _open_inbox(folder="SENT") as client:
+                self.assertIs(client, login_client)
+
+        # Sent mailbox name is provider-specific, so login starts folderless then selects it.
+        mailbox_client.login.assert_called_once_with("campaigns@ucmerced.edu", "app-password", initial_folder=None)
+        mock_select.assert_called_once_with(login_client)
+
+    def test_open_inbox_sent_missing_folder_raises_inbox_error(self):
+        from apps.mail.services.gmail_import.connection import GmailImportError
+
+        login_context = Mock()
+        login_client = Mock()
+        login_context.__enter__ = Mock(return_value=login_client)
+        login_context.__exit__ = Mock(return_value=False)
+        mailbox_client = Mock()
+        mailbox_client.login.return_value = login_context
+
+        with (
+            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
+            patch(
+                "apps.mail.services.gmail_import.connection.select_sent_folder",
+                side_effect=GmailImportError("no sent folder"),
+            ),
+        ):
+            with self.assertRaisesMessage(InboxError, "no sent folder"):
+                with _open_inbox(folder="SENT"):
+                    pass
 
     def test_open_inbox_wraps_connection_failure(self):
         with (

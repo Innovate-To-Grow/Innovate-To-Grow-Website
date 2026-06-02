@@ -23,6 +23,7 @@
 </div>
 
 <!-- Actions -->
+{% if folder != "SENT" %}
 <div class="mb-3 flex items-center gap-2 border-b border-base-100 dark:border-base-700 pb-3">
     <a href="#" data-inbox-reply-link="{{ reply_fragment_url }}"
        class="bg-primary-600 text-white px-3 py-1 rounded-md text-xs font-medium hover:bg-primary-700 inline-flex items-center gap-1 no-underline">
@@ -30,20 +31,21 @@
         Reply
     </a>
 </div>
-
-{% if scam_analysis.risk_level != "low" %}
-{% include "admin/mail/inbox/_scam_analysis_panel.html" with panel_margin="mb-3" %}
 {% endif %}
 
+{% include "admin/mail/inbox/_scam_analysis_panel.html" with panel_margin="mb-3" %}
+
 <!-- Email body -->
-{# SECURITY: this iframe renders untrusted inbound email HTML via srcdoc and is
-   NOT server-side sanitized. Its isolation depends on the sandbox OMITTING
-   allow-scripts (and allow-forms): with no script execution, the email content
-   cannot abuse allow-same-origin. allow-same-origin is present only so the
-   parent JS (getPreviewIframeHeight in list.html) can read contentDocument to
-   auto-size the frame to its content. Never add allow-scripts here:
-   allow-scripts + allow-same-origin lets the framed email escape the sandbox
-   into the admin origin (CSRF token / session cookies). #}
+{% comment %}
+SECURITY: this iframe renders untrusted inbound email HTML via srcdoc and is
+NOT server-side sanitized. Its isolation depends on the sandbox OMITTING
+allow-scripts (and allow-forms): with no script execution, the email content
+cannot abuse allow-same-origin. allow-same-origin is present only so the
+parent JS (getPreviewIframeHeight in list.html) can read contentDocument to
+auto-size the frame to its content. Never add allow-scripts here:
+allow-scripts + allow-same-origin lets the framed email escape the sandbox
+into the admin origin (CSRF token / session cookies).
+{% endcomment %}
 <script type="application/json" id="inbox-preview-body-data">{{ body_html_json|safe }}</script>
 <iframe id="inbox-preview-body"
         data-inbox-body-frame

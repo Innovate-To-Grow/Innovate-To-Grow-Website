@@ -17,6 +17,12 @@
         --i2g-scam-risk-border: #fecaca;
     }
 
+    .i2g-scam-panel[data-risk-level="low"] {
+        --i2g-scam-risk-color: #16a34a;
+        --i2g-scam-risk-soft: #f0fdf4;
+        --i2g-scam-risk-border: #bbf7d0;
+    }
+
     .dark .i2g-scam-panel {
         --i2g-scam-risk-color: #fbbf24;
         --i2g-scam-risk-soft: color-mix(in srgb, var(--i2g-scam-risk-color) 12%, transparent);
@@ -26,6 +32,10 @@
 
     .dark .i2g-scam-panel[data-risk-level="high"] {
         --i2g-scam-risk-color: #fca5a5;
+    }
+
+    .dark .i2g-scam-panel[data-risk-level="low"] {
+        --i2g-scam-risk-color: #4ade80;
     }
 
     .i2g-scam-panel__body {
@@ -324,7 +334,7 @@
     <div class="i2g-scam-panel__body">
         <div class="i2g-scam-panel__header">
             <div class="i2g-scam-panel__identity">
-                <span class="material-symbols-outlined i2g-scam-panel__icon">gpp_maybe</span>
+                <span class="material-symbols-outlined i2g-scam-panel__icon">{% if scam_analysis.risk_level == 'low' %}gpp_good{% elif scam_analysis.risk_level == 'high' %}gpp_bad{% else %}gpp_maybe{% endif %}</span>
 
                 <div class="i2g-scam-panel__intro">
                     <div class="i2g-scam-panel__title-row">
@@ -332,7 +342,7 @@
                         <span class="i2g-scam-panel__risk-badge">{{ scam_analysis.risk_level }} risk</span>
                     </div>
                     <p class="i2g-scam-panel__summary">
-                        {% firstof scam_analysis.summary "Review this message before clicking links or replying." %}
+                        {% firstof scam_analysis.summary "No automated security signals were flagged for this message." %}
                     </p>
                 </div>
             </div>
@@ -351,6 +361,28 @@
             <span class="material-symbols-outlined i2g-scam-panel__recommendation-icon">verified_user</span>
             <span>{% firstof scam_analysis.recommendation "Verify the sender and destination before taking action from this message." %}</span>
         </div>
+
+        {% if scam_analysis.ai_review %}
+        <div class="i2g-scam-panel__section" data-scam-ai-review>
+            <div class="i2g-scam-panel__section-heading">
+                <span class="material-symbols-outlined">smart_toy</span>
+                <span>AI review</span>
+                <span class="i2g-scam-panel__section-meta">{{ scam_analysis.ai_review.verdict|title }} &middot; {{ scam_analysis.ai_review.risk_score }}/100</span>
+            </div>
+            {% if scam_analysis.ai_review.reasons %}
+            <ul class="i2g-scam-panel__signals">
+                {% for reason in scam_analysis.ai_review.reasons %}
+                <li class="i2g-scam-panel__signal">
+                    <span class="i2g-scam-panel__signal-body">
+                        <span class="material-symbols-outlined i2g-scam-panel__signal-icon">smart_toy</span>
+                        <span class="i2g-scam-panel__signal-reason">{{ reason }}</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endif %}
 
         {% if scam_analysis.link_warnings %}
         <div class="i2g-scam-panel__section">
@@ -401,6 +433,13 @@
                         <span class="i2g-scam-panel__signal-body">
                             <span class="material-symbols-outlined i2g-scam-panel__signal-icon">warning</span>
                             <span class="i2g-scam-panel__signal-reason">{{ reason }}</span>
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="i2g-scam-panel__signal">
+                        <span class="i2g-scam-panel__signal-body">
+                            <span class="material-symbols-outlined i2g-scam-panel__signal-icon">check_circle</span>
+                            <span class="i2g-scam-panel__signal-reason">No suspicious signals detected.</span>
                         </span>
                     </li>
                     {% endfor %}

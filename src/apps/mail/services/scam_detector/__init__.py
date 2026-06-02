@@ -4,25 +4,46 @@ from __future__ import annotations
 
 from typing import Any
 
-from .checks import check_body, check_links, check_sender, check_structure, check_subject, link_warning_details
-from .patterns import HIGH_THRESHOLD, MEDIUM_THRESHOLD
+from .checks import (
+    check_address_alignment,
+    check_authentication,
+    check_body,
+    check_links,
+    check_sender,
+    check_structure,
+    check_subject,
+    link_warning_details,
+)
+from .patterns import BRAND_NAMES, HIGH_THRESHOLD, MEDIUM_THRESHOLD
+
+LLM_REVIEW_CACHE_TTL = 1800
 
 
-def analyze_email(msg: dict[str, Any]) -> dict[str, Any]:
+def analyze_email(
+    msg: dict[str, Any],
+    *,
+    brands: list[str] | None = None,
+    medium_threshold: int = MEDIUM_THRESHOLD,
+    high_threshold: int = HIGH_THRESHOLD,
+) -> dict[str, Any]:
+    """Deterministic rule scoring. Pure + DB-free; config is injected by assess_email."""
+    brands = brands if brands is not None else BRAND_NAMES
     all_findings: list[tuple[int, str]] = []
-    all_findings.extend(check_sender(msg))
+    all_findings.extend(check_sender(msg, brands))
     all_findings.extend(check_subject(msg))
     all_findings.extend(check_body(msg))
-    all_findings.extend(check_links(msg))
+    all_findings.extend(check_links(msg, brands))
     all_findings.extend(check_structure(msg))
+    all_findings.extend(check_authentication(msg))
+    all_findings.extend(check_address_alignment(msg))
 
     total_score = sum(score for score, _ in all_findings)
     reasons = [reason for _, reason in all_findings]
     link_warnings = link_warning_details(msg)
 
-    if total_score >= HIGH_THRESHOLD:
+    if total_score >= high_threshold:
         risk_level = "high"
-    elif total_score >= MEDIUM_THRESHOLD:
+    elif total_score >= medium_threshold:
         risk_level = "medium"
     else:
         risk_level = "low"
@@ -30,7 +51,7 @@ def analyze_email(msg: dict[str, Any]) -> dict[str, Any]:
     return {
         "risk_level": risk_level,
         "score": total_score,
-        "score_percent": _score_percent(total_score),
+        "score_percent": _score_percent(total_score, high_threshold),
         "reasons": reasons,
         "findings": [_format_finding(score, reason) for score, reason in sorted(all_findings, reverse=True)],
         "summary": _risk_summary(risk_level, len(all_findings), len(link_warnings)),
@@ -39,10 +60,74 @@ def analyze_email(msg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _score_percent(score: int) -> int:
+def assess_email(msg: dict[str, Any], *, folder: str = "INBOX") -> dict[str, Any]:
+    """Rule scoring + (for the uncertain band) a cached, optional AI second opinion."""
+    from django.core.cache import cache
+
+    from apps.mail.models import ScamDetectorConfig
+
+    from .llm_classifier import llm_review
+
+    config = ScamDetectorConfig.load()
+
+    if config.is_trusted_sender(msg.get("from_email", "")):
+        return _trusted_result()
+
+    result = analyze_email(
+        msg,
+        brands=config.brand_keywords(),
+        medium_threshold=config.medium_threshold,
+        high_threshold=config.high_threshold,
+    )
+
+    if result["risk_level"] != config.ai_review_band or not config.ai_review_enabled:
+        return result
+
+    cache_key = f"scam:llm:{folder}:{msg.get('uid', '')}"
+    review = cache.get(cache_key)
+    if review is None:
+        review = llm_review(msg)
+        if review:
+            cache.set(cache_key, review, LLM_REVIEW_CACHE_TTL)
+    if review:
+        _merge_ai_review(result, review)
+    return result
+
+
+def _merge_ai_review(result: dict[str, Any], review: dict[str, Any]) -> None:
+    result["ai_review"] = review
+    verdict = review.get("verdict")
+    confidence = review.get("confidence", 0) or 0
+    if verdict == "scam" and confidence >= 0.7:
+        result["risk_level"] = "high"
+        result["score_percent"] = max(result.get("score_percent", 0), 90)
+        for reason in review.get("reasons", []):
+            result["reasons"].append(reason)
+            result["findings"].append({"category": "AI review", "impact": "High", "score": 0, "reason": reason})
+        result["summary"] = "AI review flagged this message as a likely scam. " + result.get("summary", "")
+        result["recommendation"] = "Do not act on this message until verified. " + result.get("recommendation", "")
+    elif verdict == "legitimate" and confidence >= 0.7:
+        result["summary"] = (result.get("summary", "") + " AI review considers this message likely legitimate.").strip()
+
+
+def _trusted_result() -> dict[str, Any]:
+    return {
+        "risk_level": "low",
+        "score": 0,
+        "score_percent": 0,
+        "reasons": [],
+        "findings": [],
+        "summary": "Sender is on the trusted allowlist; automated checks were skipped.",
+        "recommendation": "Continue normal handling.",
+        "link_warnings": [],
+    }
+
+
+def _score_percent(score: int, high_threshold: int = HIGH_THRESHOLD) -> int:
     if score <= 0:
         return 0
-    return min(round((score / HIGH_THRESHOLD) * 100), 100)
+    threshold = high_threshold or HIGH_THRESHOLD
+    return min(round((score / threshold) * 100), 100)
 
 
 def _format_finding(score: int, reason: str) -> dict[str, Any]:
@@ -56,9 +141,14 @@ def _format_finding(score: int, reason: str) -> dict[str, Any]:
 
 def _category_for_reason(reason: str) -> str:
     reason_lower = reason.lower()
+    if any(term in reason_lower for term in ("spf", "dkim", "dmarc", "reply-to", "return-path", "authentication")):
+        return "Sender authentication"
     if any(term in reason_lower for term in ("link", "url", "ip address", "shortened")):
         return "Link integrity"
-    if any(term in reason_lower for term in ("sender", "display name", "freemail", "email domain")):
+    if any(
+        term in reason_lower
+        for term in ("sender", "display name", "freemail", "email domain", "imitates", "typosquat", "punycode")
+    ):
         return "Sender identity"
     if "subject" in reason_lower:
         return "Subject language"
@@ -102,4 +192,4 @@ def _recommendation(risk_level: str, *, has_link_warning: bool) -> str:
     return "Continue normal handling, but review unusual requests manually."
 
 
-__all__ = ["analyze_email"]
+__all__ = ["HIGH_THRESHOLD", "MEDIUM_THRESHOLD", "analyze_email", "assess_email"]
