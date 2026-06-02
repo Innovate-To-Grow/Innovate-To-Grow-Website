@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {formatSemesterLabel} from './semester';
+import {formatSemesterLabel, semesterParamToLabel} from './semester';
 
 describe('formatSemesterLabel', () => {
   it('strips the -1 suffix from spring labels', () => {
@@ -25,5 +25,31 @@ describe('formatSemesterLabel', () => {
 
   it('does not mangle multi-digit suffixes', () => {
     expect(formatSemesterLabel('2026-12 Other')).toBe('2026-12 Other');
+  });
+});
+
+describe('semesterParamToLabel', () => {
+  it('maps a fall param to the formatted label', () => {
+    expect(semesterParamToLabel('2024-fall')).toBe('2024 Fall');
+  });
+
+  it('maps a spring param to the formatted label', () => {
+    expect(semesterParamToLabel('2021-spring')).toBe('2021 Spring');
+  });
+
+  it('is case-insensitive and trims whitespace', () => {
+    expect(semesterParamToLabel('  2020-FALL ')).toBe('2020 Fall');
+  });
+
+  it('matches the output of formatSemesterLabel for round-tripping', () => {
+    expect(semesterParamToLabel('2024-fall')).toBe(formatSemesterLabel('2024-2 Fall'));
+    expect(semesterParamToLabel('2024-spring')).toBe(formatSemesterLabel('2024-1 Spring'));
+  });
+
+  it('returns null for malformed or unknown input', () => {
+    expect(semesterParamToLabel('')).toBeNull();
+    expect(semesterParamToLabel('2024')).toBeNull();
+    expect(semesterParamToLabel('2024-summer')).toBeNull();
+    expect(semesterParamToLabel('fall-2024')).toBeNull();
   });
 });

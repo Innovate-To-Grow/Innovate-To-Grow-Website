@@ -134,6 +134,7 @@ def upsert_page(page_data, existing, default_status):
         "title": page_data.get("title", ""),
         "meta_description": page_data.get("meta_description", ""),
         "page_css_class": page_data.get("page_css_class", ""),
+        "page_css": page_data.get("page_css", ""),
         "status": page_data.get("status", default_status),
         "sort_order": page_data.get("sort_order", 0),
     }
@@ -166,6 +167,7 @@ def serialize_page(page):
         "title": page.title,
         "meta_description": page.meta_description,
         "page_css_class": page.page_css_class,
+        "page_css": page.page_css,
         "status": page.status,
         "sort_order": page.sort_order,
         "blocks": [

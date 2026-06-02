@@ -9,6 +9,7 @@ Content management, Django admin operations, and member/mail tooling for the Inn
 - [Member & Mail Tools](member-and-mail-tools.md) — Member management, email campaigns, and contact tools
 - [Operations](operations.md) — Maintenance mode, data management, and operational tasks
 - [i2g-admin CLI](cli-admin.md) — Terminal CRUD over `/admin-api/` via OAuth2 + PKCE, riding the admin login
+- [Legacy Event Pages → CMS](legacy-event-pages-cms-html.md) — How the per-semester past-event pages were migrated into CMS, and how to re-import them
 
 ## Who this is for
 

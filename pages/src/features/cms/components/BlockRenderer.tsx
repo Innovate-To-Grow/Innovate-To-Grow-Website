@@ -6,6 +6,7 @@ import { EmbedWidgetBlock } from './blocks/content/EmbedWidgetBlock';
 import { FaqListBlock } from './blocks/content/FaqListBlock';
 import { ImageTextBlock } from './blocks/content/ImageTextBlock';
 import { LinkListBlock } from './blocks/content/LinkListBlock';
+import { ProjectTableBlock } from './blocks/content/ProjectTableBlock';
 import { RichTextBlock } from './blocks/content/RichTextBlock';
 import { TableBlock } from './blocks/content/TableBlock';
 import { NavigationGridBlock } from './blocks/navigation/NavigationGridBlock';
@@ -26,6 +27,7 @@ const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
   section_group: SectionGroupBlock,
   proposal_cards: ProposalCardsBlock,
   table: TableBlock,
+  project_table: ProjectTableBlock,
   sponsor_year: SponsorYearBlock,
   embed: EmbedBlock,
   embed_widget: EmbedWidgetBlock,

@@ -38,7 +38,6 @@ describe('Router', () => {
     'projects/:id',
     'schedule',
     'acknowledgement',
-    'events/:eventSlug',
     'event-registration',
     'membership/events',
     'ticket-login',

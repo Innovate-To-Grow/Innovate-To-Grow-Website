@@ -46,7 +46,6 @@ const PresentingTeamsPage = React.lazy(() => import('@/routes/PresentingTeamsPag
 const ProjectDetailPage = React.lazy(() => import('@/routes/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
 const SchedulePage = React.lazy(() => import('@/routes/SchedulePage').then(m => ({default: m.SchedulePage})));
 const AcknowledgementPage = React.lazy(() => import('@/routes/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
-const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').then(m => ({default: m.EventArchivePage})));
 const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
 const TicketLoginPage = React.lazy(() => import('@/routes/TicketLoginPage').then(m => ({default: m.TicketLoginPage})));
 const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
@@ -105,7 +104,6 @@ export const router = createBrowserRouter([
             // event pages
             {path: 'event', element: <CMSPageComponent/>},
             {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>)},
-            {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
             {path: 'schedule', element: lazyRoute(<SchedulePage/>)},
             {path: 'past-events', element: <CMSPageComponent/>},
             {path: 'post-event-home', element: <CMSPageComponent/>},
@@ -129,17 +127,8 @@ export const router = createBrowserRouter([
             {path: 'I2G-project-sponsor-acknowledgement', element: <Navigate to="/sponsor-acknowledgement" replace/>},
             {path: '2014-sponsors', element: <Navigate to="/sponsors/2014" replace/>},
             {path: '2015-sponsors', element: <Navigate to="/sponsors/2015" replace/>},
-            {path: '2025-fall-event', element: <Navigate to="/events/2025-fall" replace/>},
-            {path: '2025-spring-event', element: <Navigate to="/events/2025-spring" replace/>},
-            {path: '2024-fall-event', element: <Navigate to="/events/2024-fall" replace/>},
-            {path: '2024-spring-event', element: <Navigate to="/events/2024-spring" replace/>},
-            {path: '2023-fall-event', element: <Navigate to="/events/2023-fall" replace/>},
-            {path: '2023-spring-event', element: <Navigate to="/events/2023-spring" replace/>},
-            {path: '2022-fall-event', element: <Navigate to="/events/2022-fall" replace/>},
-            {path: '2022-spring-event', element: <Navigate to="/events/2022-spring" replace/>},
-            {path: '2021-fall-event', element: <Navigate to="/events/2021-fall" replace/>},
-            {path: '2021-spring-event', element: <Navigate to="/events/2021-spring" replace/>},
-            {path: '2020-fall-post-event', element: <Navigate to="/events/2020-fall" replace/>},
+            // Per-semester past-event pages (2020–2024) are now CMS pages served by the
+            // catch-all below at their canonical paths (e.g. /2024-fall-event).
 
             // Subscribe
             {path: 'subscribe', element: lazyRoute(<SubscribePage/>)},

@@ -70,7 +70,6 @@ describe('Component barrel exports', () => {
 describe('Page barrel exports', () => {
   const pages = [
     ['AcknowledgementPage', 'AcknowledgementPage'],
-    ['EventArchivePage', 'EventArchivePage'],
     ['EventRegistrationPage', 'EventRegistrationPage'],
     ['NewsDetailPage', 'NewsDetailPage'],
     ['NewsPage', 'NewsPage'],
