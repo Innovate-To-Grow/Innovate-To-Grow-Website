@@ -10,6 +10,13 @@ from apps.event.tests.helpers import make_superuser
 
 
 class AdminThemeRenderingTests(TestCase):
+    def assert_persisted_admin_theme_defaults_to_system(self, response):
+        html = response.content.decode()
+        self.assertRegex(
+            html,
+            r"\$persist\(\s*['\"]auto['\"]\s*\)\.as\(\s*['\"]adminTheme['\"]\s*\)",
+        )
+
     def setUp(self):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
@@ -23,7 +30,7 @@ class AdminThemeRenderingTests(TestCase):
         response = self.client.get(reverse("admin:core_sitemaintenancecontrol_change", args=[config.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "$persist('auto').as('adminTheme')")
+        self.assert_persisted_admin_theme_defaults_to_system(response)
         self.assertContains(response, 'data-testid="i2g-admin-theme-toggle"')
         self.assertNotContains(response, '<html lang="en-us" dir="ltr" class="light"')
 
@@ -44,7 +51,7 @@ class AdminThemeRenderingTests(TestCase):
         response = self.client.get("/admin/login/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "$persist('auto').as('adminTheme')")
+        self.assert_persisted_admin_theme_defaults_to_system(response)
         self.assertContains(response, "Light")
         self.assertContains(response, "Dark")
         self.assertContains(response, "System")
