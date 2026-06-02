@@ -18,7 +18,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 "Projects",
                 "Members & Authentication",
                 "Broadcast Delivery",
-                "AI Assistant",
+                "System Intelligence",
                 "Site Settings",
                 "CLI Admin",
             ],
@@ -58,10 +58,12 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertEqual(project_items_by_title["Projects"]["link"], "/admin/projects/project/")
         self.assertEqual(project_items_by_title["Semesters"]["link"], "/admin/projects/semester/")
 
-    def test_ai_assistant_navigation_includes_chat_and_settings(self):
+    def test_system_intelligence_navigation_includes_chat_and_settings(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
-        ai_assistant_section = next(section for section in navigation if section["title"] == "AI Assistant")
-        items_by_title = {item["title"]: item for item in ai_assistant_section["items"]}
+        system_intelligence_section = next(
+            section for section in navigation if section["title"] == "System Intelligence"
+        )
+        items_by_title = {item["title"]: item for item in system_intelligence_section["items"]}
 
         self.assertEqual(items_by_title["Chat"]["link"], "/admin/system-intelligence/")
         self.assertEqual(

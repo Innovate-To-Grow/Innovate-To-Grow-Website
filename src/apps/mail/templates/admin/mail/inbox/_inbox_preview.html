@@ -36,11 +36,21 @@
 {% endif %}
 
 <!-- Email body -->
+{# SECURITY: this iframe renders untrusted inbound email HTML via srcdoc and is
+   NOT server-side sanitized. Its isolation depends on the sandbox OMITTING
+   allow-scripts (and allow-forms): with no script execution, the email content
+   cannot abuse allow-same-origin. allow-same-origin is present only so the
+   parent JS (getPreviewIframeHeight in list.html) can read contentDocument to
+   auto-size the frame to its content. Never add allow-scripts here:
+   allow-scripts + allow-same-origin lets the framed email escape the sandbox
+   into the admin origin (CSRF token / session cookies). #}
 <script type="application/json" id="inbox-preview-body-data">{{ body_html_json|safe }}</script>
 <iframe id="inbox-preview-body"
-        sandbox="allow-popups"
+        data-inbox-body-frame
+        sandbox="allow-popups allow-same-origin"
         referrerpolicy="no-referrer"
-        style="width:100%;border:none;background:#fff;min-height:400px;"
+        scrolling="no"
+        style="width:100%;border:none;background:#fff;display:block;min-height:240px;overflow:hidden;"
         title="Email body"></iframe>
 
 <!-- Reply form loads here (below the email) -->

@@ -169,7 +169,7 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "AI Assistant",
+                "title": "System Intelligence",
                 "items": [
                     {"title": "Chat", "link": "/admin/system-intelligence/"},
                     {

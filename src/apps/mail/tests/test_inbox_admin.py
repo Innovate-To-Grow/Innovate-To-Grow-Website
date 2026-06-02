@@ -31,6 +31,10 @@ class InboxAdminFragmentTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         mock_list.assert_called_once_with(limit=30, force_refresh=True)
+        self.assertIn(b"i2g-mail-shell", response.content)
+        self.assertIn(b"data-inbox-account-toggle", response.content)
+        self.assertIn(b"data-inbox-account-panel", response.content)
+        self.assertIn(b"data-inbox-list-toggle", response.content)
         self.assertIn(b"Hi", response.content)
         self.assertIn(b"data-inbox-refresh", response.content)
 
@@ -115,6 +119,10 @@ class InboxAdminFragmentTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-scam-analysis-panel")
+        self.assertContains(response, "data-inbox-body-frame")
+        self.assertContains(response, 'scrolling="no"')
+        self.assertContains(response, "i2g-scam-panel")
+        self.assertContains(response, 'data-risk-level="medium"')
         self.assertContains(response, "Security analysis")
         self.assertContains(response, "Link check")
         self.assertContains(response, "ucmerced.edu")
