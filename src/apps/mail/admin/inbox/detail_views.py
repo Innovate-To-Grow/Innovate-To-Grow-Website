@@ -9,15 +9,16 @@ from django.urls import reverse
 import apps.mail.admin.inbox as inbox_api
 from apps.core.utils.json_helpers import safe_json
 
-from .helpers import message_body_html
+from .helpers import message_body_html, parse_folder
 
 
 def inbox_detail_view(request, uid):
     """Display a single inbox message."""
     list_url = reverse("admin:mail_inbox_list")
+    folder = parse_folder(request)
 
     try:
-        msg = inbox_api.fetch_inbox_message(uid)
+        msg = inbox_api.fetch_inbox_message(uid, folder=folder)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
         messages.error(request, inbox_api.INBOX_MESSAGE_ERROR_MESSAGE)
@@ -28,7 +29,7 @@ def inbox_detail_view(request, uid):
         return HttpResponseRedirect(list_url)
 
     body_html = message_body_html(msg)
-    scam_analysis = inbox_api.analyze_email(msg)
+    scam_analysis = inbox_api.assess_email(msg, folder=folder)
 
     context = {
         **admin.site.each_context(request),
@@ -38,14 +39,16 @@ def inbox_detail_view(request, uid):
         "reply_url": reverse("admin:mail_inbox_reply", args=[uid]),
         "list_url": list_url,
         "scam_analysis": scam_analysis,
+        "folder": folder,
     }
     return TemplateResponse(request, "admin/mail/inbox/detail.html", context)
 
 
 def inbox_detail_fragment_view(request, uid):
     """Return HTML partial for the message preview pane."""
+    folder = parse_folder(request)
     try:
-        msg = inbox_api.fetch_inbox_message(uid)
+        msg = inbox_api.fetch_inbox_message(uid, folder=folder)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
         return HttpResponse(
@@ -60,7 +63,7 @@ def inbox_detail_fragment_view(request, uid):
         )
 
     body_html = message_body_html(msg)
-    scam_analysis = inbox_api.analyze_email(msg)
+    scam_analysis = inbox_api.assess_email(msg, folder=folder)
     html = render_to_string(
         "admin/mail/inbox/_inbox_preview.html",
         {
@@ -69,6 +72,7 @@ def inbox_detail_fragment_view(request, uid):
             "reply_url": reverse("admin:mail_inbox_reply", args=[uid]),
             "reply_fragment_url": reverse("admin:mail_inbox_reply_fragment", args=[uid]),
             "scam_analysis": scam_analysis,
+            "folder": folder,
         },
         request=request,
     )

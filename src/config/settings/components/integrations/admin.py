@@ -165,11 +165,12 @@ UNFOLD = {
                 "items": [
                     {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/"},
                     {"title": "Gmail Inbox", "link": "/admin/mail/inbox/"},
+                    {"title": "Scam Detection", "link": "/admin/mail/scamdetectorconfig/"},
                     {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
                 ],
             },
             {
-                "title": "AI Assistant",
+                "title": "System Intelligence",
                 "items": [
                     {"title": "Chat", "link": "/admin/system-intelligence/"},
                     {
