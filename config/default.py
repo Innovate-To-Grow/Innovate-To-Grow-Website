@@ -25,11 +25,11 @@ class Config():
     MAIL_SERVER = "smtp.gmail.com"
     IMAP_SERVER = "imap.gmail.com"
 
-    MAIL_USERNAME = "i2g@g.ucmerced.edu"
-    MAIL_PASSWORD = "iekmvhditchuxnik"
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 
-    SECRET_KEY = "\xa6NF\x17\x8b\xc7a\xcc\x80`\xef\x90\x13M\xcc\xe5\xa8\x05\xed\x07\n\xa5oN"
-    SECURITY_PASSWORD_SALT = "\xb6\x04\x91\xf8\xcf\x02CKT\xc6G\xef\x9fq\xe0\xff\xbfu\xd4\x10q\x07\x8a"
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    SECURITY_PASSWORD_SALT = os.getenv("SECURITY_PASSWORD_SALT")
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + APP_ROOT + "/db/data.sqlite3"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -37,9 +37,9 @@ class Config():
     CACHE_TYPE = "simple"
     CACHE_DEFAULT_TIMEOUT = 300
 
-    AWS_ACCESS_KEY_ID = "***REMOVED_AWS_KEY_ID***"
-    AWS_SECRET_ACCESS_KEY = "***REMOVED_AWS_SECRET***"
-    TWILIO_ACCOUNT_SID = "***REMOVED_TWILIO_ACCOUNT_SID***"
-    TWILIO_AUTH_TOKEN = "***REMOVED_TWILIO_TOKEN***"
-    TWILIO_NUMBER = "+12093911562"
-    VERIFY_SID= "***REMOVED_TWILIO_VERIFY_SID***"
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+    TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
+    VERIFY_SID = os.getenv("VERIFY_SID")
