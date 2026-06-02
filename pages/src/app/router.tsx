@@ -75,71 +75,19 @@ export const router = createBrowserRouter([
             {path: 'news', element: lazyRoute(<NewsPage/>)},
             {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
 
-            // project pages
-            {path: 'projects', element: <CMSPageComponent/>},
+            // project pages (plain CMS routes like /projects, /sample-proposals
             {path: 'current-projects', element: lazyRoute(<ProjectsPage/>)},
             {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>)},
             {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>)},
-            {path: 'projects/past', element: <Navigate to="/past-projects" replace/>},
             {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
-            {path: 'sample-proposals', element: <CMSPageComponent/>},
 
-            // about pages
-            {path: 'about', element: <CMSPageComponent/>},
-            {path: 'engineering-capstone', element: <CMSPageComponent/>},
-            {path: 'software-capstone', element: <CMSPageComponent/>},
-            {path: 'about-engsl', element: <CMSPageComponent/>},
-            {path: 'project-submission', element: <CMSPageComponent/>},
-            {path: 'partnership', element: <CMSPageComponent/>},
-            {path: 'sponsorship', element: <CMSPageComponent/>},
-            {path: 'sponsor-acknowledgement', element: <CMSPageComponent/>},
-            {path: 'sponsors/2014', element: <CMSPageComponent/>},
-            {path: 'sponsors/2015', element: <CMSPageComponent/>},
-
-            // judge & attendee pages
-            {path: 'judges', element: <CMSPageComponent/>},
-            {path: 'attendees', element: <CMSPageComponent/>},
-            {path: 'judging', element: <CMSPageComponent/>},
-
-            // event pages
-            {path: 'event', element: <CMSPageComponent/>},
+            // event pages (plain CMS routes like /event, /past-events are served
+            // by the catch-all CMS route below)
             {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>)},
             {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
             {path: 'schedule', element: lazyRoute(<SchedulePage/>)},
-            {path: 'past-events', element: <CMSPageComponent/>},
-            {path: 'post-event-home', element: <CMSPageComponent/>},
             {path: 'acknowledgement', element: lazyRoute(<AcknowledgementPage/>)},
-
-            // student pages
-            {path: 'students', element: <CMSPageComponent/>},
-            {path: 'student-agreement', element: <CMSPageComponent/>},
-            {path: 'event-preparation', element: <CMSPageComponent/>},
-            {path: 'video-preparation', element: <CMSPageComponent/>},
-            {path: 'purchasing-reimbursement', element: <CMSPageComponent/>},
-            {path: 'ferpa', element: <CMSPageComponent/>},
-            {path: 'privacy', element: <CMSPageComponent/>},
-            {path: 'faqs', element: <CMSPageComponent/>},
-            {path: 'contact-us', element: <CMSPageComponent/>},
-            {path: 'I2G-student-agreement', element: <Navigate to="/student-agreement" replace/>},
-            {path: 'i2g-students-preparation', element: <Navigate to="/event-preparation" replace/>},
-            {path: 'capstone-purchasing-reimbursement', element: <Navigate to="/purchasing-reimbursement" replace/>},
-            {path: 'about_EngSL', element: <Navigate to="/about-engsl" replace/>},
-            {path: 'FAQs', element: <Navigate to="/faqs" replace/>},
-            {path: 'I2G-project-sponsor-acknowledgement', element: <Navigate to="/sponsor-acknowledgement" replace/>},
-            {path: '2014-sponsors', element: <Navigate to="/sponsors/2014" replace/>},
-            {path: '2015-sponsors', element: <Navigate to="/sponsors/2015" replace/>},
-            {path: '2025-fall-event', element: <Navigate to="/events/2025-fall" replace/>},
-            {path: '2025-spring-event', element: <Navigate to="/events/2025-spring" replace/>},
-            {path: '2024-fall-event', element: <Navigate to="/events/2024-fall" replace/>},
-            {path: '2024-spring-event', element: <Navigate to="/events/2024-spring" replace/>},
-            {path: '2023-fall-event', element: <Navigate to="/events/2023-fall" replace/>},
-            {path: '2023-spring-event', element: <Navigate to="/events/2023-spring" replace/>},
-            {path: '2022-fall-event', element: <Navigate to="/events/2022-fall" replace/>},
-            {path: '2022-spring-event', element: <Navigate to="/events/2022-spring" replace/>},
-            {path: '2021-fall-event', element: <Navigate to="/events/2021-fall" replace/>},
-            {path: '2021-spring-event', element: <Navigate to="/events/2021-spring" replace/>},
-            {path: '2020-fall-post-event', element: <Navigate to="/events/2020-fall" replace/>},
 
             // Subscribe
             {path: 'subscribe', element: lazyRoute(<SubscribePage/>)},
