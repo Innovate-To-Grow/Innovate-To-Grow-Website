@@ -13,7 +13,6 @@ UNFOLD = {
     "SITE_HEADER": "Innovate To Grow",
     "SITE_ICON": lambda request: static("images/i2glogo.png"),
     "SITE_LOGO": lambda request: static("images/i2glogo.png"),
-    "THEME": "light",
     "COLORS": {
         "primary": {
             "50": "#f9f9ff",
@@ -33,8 +32,6 @@ UNFOLD = {
         lambda request: static("admin/css/google-material-admin.css"),
         lambda request: static("admin/css/tabs.css"),
         lambda request: static("admin/css/file-input.css"),
-        lambda request: static("admin/css/admin-surfaces.css"),
-        lambda request: static("admin/css/material-web-components.css"),
     ],
     "TABS": [
         {
