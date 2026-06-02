@@ -85,9 +85,7 @@ class Command(BaseCommand):
             member.is_staff = True
             member.is_superuser = True
             member.set_password(password)
-            member.save(
-                update_fields=["first_name", "last_name", "is_active", "is_staff", "is_superuser", "password"]
-            )
+            member.save(update_fields=["first_name", "last_name", "is_active", "is_staff", "is_superuser", "password"])
 
         ContactEmail.objects.update_or_create(
             email_address=email,
@@ -121,9 +119,7 @@ class Command(BaseCommand):
             member.is_staff = False
             member.is_superuser = False
             member.set_password(password)
-            member.save(
-                update_fields=["first_name", "last_name", "is_active", "is_staff", "is_superuser", "password"]
-            )
+            member.save(update_fields=["first_name", "last_name", "is_active", "is_staff", "is_superuser", "password"])
 
         ContactEmail.objects.update_or_create(
             email_address=email,

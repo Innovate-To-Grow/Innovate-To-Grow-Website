@@ -43,7 +43,9 @@ async function runChangelistAction(page: Page, rowText: string, actionValue: str
   }
 }
 
-test.describe.serial('Django admin browser flows', () => {
+// @admin pins this live, DB-mutating admin suite to the chromium project
+// (see playwright.config.ts) — firefox/webkit and the mobile devices skip it.
+test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
   test('requires authentication before showing the admin index', async ({page}) => {
     await page.goto(`${apiBaseUrl}/admin/`, {waitUntil: 'domcontentloaded'});
 

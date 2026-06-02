@@ -33,9 +33,12 @@ export default defineConfig({
       },
   projects: [
     // Desktop engines run the full suite except mobile-only responsive specs.
+    // The live Django-admin suite is @admin-tagged and pinned to chromium only:
+    // it is a serial, DB-mutating internal-tool flow where cross-engine reruns
+    // add flake surface without meaningful coverage, so firefox/webkit skip it.
     {name: 'chromium', use: {...devices['Desktop Chrome']}, grepInvert: /@mobile-only/},
-    {name: 'firefox', use: {...devices['Desktop Firefox']}, grepInvert: /@mobile-only/},
-    {name: 'webkit', use: {...devices['Desktop Safari']}, grepInvert: /@mobile-only/},
+    {name: 'firefox', use: {...devices['Desktop Firefox']}, grepInvert: /@mobile-only|@admin/},
+    {name: 'webkit', use: {...devices['Desktop Safari']}, grepInvert: /@mobile-only|@admin/},
     // Mobile/tablet devices run the core journeys + mobile-only responsive specs.
     {name: 'pixel7', use: {...devices['Pixel 7']}, grep: /@core|@mobile-only/},
     {name: 'iphone14', use: {...devices['iPhone 14']}, grep: /@core|@mobile-only/},
