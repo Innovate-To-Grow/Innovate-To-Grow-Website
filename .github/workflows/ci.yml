@@ -729,26 +729,18 @@ jobs:
       - frontend-security-audit
       - supply-chain-reports
       - secrets-scan
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: itg_ci
-          POSTGRES_USER: itg_ci_user
-          POSTGRES_PASSWORD: itg_ci_pass
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No postgres service: the e2e suite drives the app over HTTP and is
+    # database-engine-agnostic, so it runs the backend on a file-backed SQLite
+    # DB instead. This removes the Docker Hub `postgres:16` pull — a recurring
+    # "Initialize containers" flake (registry timeouts) that intermittently
+    # reddened individual e2e matrix legs (e.g. iphone14). The blocking
+    # `Django Test (*)` jobs keep PostgreSQL for prod parity; only e2e moves to
+    # SQLite. Settings stay on config.settings.test (workflow-level env), so the
+    # CORS allow-list the live smoke spec asserts is unchanged — only DB_ENGINE
+    # + DB_NAME are overridden to point Django at SQLite.
     env:
-      DB_NAME: itg_ci
-      DB_USER: itg_ci_user
-      DB_PASSWORD: itg_ci_pass
-      DB_HOST: 127.0.0.1
-      DB_PORT: 5432
+      DB_ENGINE: django.db.backends.sqlite3
+      DB_NAME: /tmp/e2e.sqlite3
       VITE_API_BASE_URL: http://127.0.0.1:8000
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
       PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000
