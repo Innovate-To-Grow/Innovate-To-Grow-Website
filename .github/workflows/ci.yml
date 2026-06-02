@@ -327,7 +327,7 @@ jobs:
 
       - name: Upload backend coverage XML
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-${{ matrix.app }}
           path: src/coverage-${{ matrix.app }}.xml
@@ -419,7 +419,7 @@ jobs:
 
       - name: Upload frontend coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: |
@@ -457,7 +457,7 @@ jobs:
 
       - name: Upload frontend dist
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: pages/dist
@@ -556,7 +556,7 @@ jobs:
 
       - name: Upload Semgrep SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: semgrep-sarif
           path: semgrep.sarif
@@ -621,7 +621,7 @@ jobs:
 
       - name: Upload Trivy SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-sarif
           path: trivy-results.sarif
@@ -702,7 +702,7 @@ jobs:
 
       - name: Upload supply chain artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: supply-chain-reports
           path: |
@@ -855,7 +855,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: blob-${{ matrix.project }}
           path: pages/blob-report/
@@ -863,7 +863,7 @@ jobs:
 
       - name: Upload server logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-logs-${{ matrix.project }}
           path: |
@@ -947,7 +947,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-html-report
           path: |
