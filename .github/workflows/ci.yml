@@ -24,6 +24,12 @@ on:
       - "pyproject.toml"
       - ".pre-commit-config.yaml"
       - ".bandit-baseline.json"
+      # Validate Claude Code project config in PRs so a .claude/-only PR still
+      # produces the required `CI Result` check. Intentionally NOT in the push
+      # paths above: a .claude/-only merge to main should not run CI and so
+      # should not trigger the deploy-*.yml chain (which fires on CI completing
+      # on main).
+      - ".claude/**"
 
 permissions:
   contents: read
