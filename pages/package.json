@@ -13,7 +13,7 @@
     "test:coverage": "vitest run --coverage --reporter=verbose",
     "size": "size-limit",
     "e2e": "playwright test",
-    "e2e:install": "playwright install --with-deps chromium"
+    "e2e:install": "playwright install --with-deps chromium firefox webkit"
   },
   "dependencies": {
     "axios": "^1.16.1",
