@@ -9,7 +9,7 @@ uvicorn[standard]>=0.48.0,<1.0
 psycopg2-binary>=2.9.12
 
 # Redis cache backend
-django-redis>=5.4.0
+django-redis>=6.0.0
 
 # Storage Backend (S3/R2/OSS compatible)
 django-storages[s3]>=1.14.6

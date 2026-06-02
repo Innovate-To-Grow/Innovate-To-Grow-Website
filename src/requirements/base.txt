@@ -1,18 +1,18 @@
 # Django Backend Dependencies — base (shared across all environments)
 
 # Core Framework
-Django>=5.2,<7.0
+Django>=5.2.14,<7.0
 djangorestframework==3.17.1
-djangorestframework-simplejwt>=5.3.0
+djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
 python-dotenv>=1.0.0
 
 # Admin Theme
-django-unfold>=0.78.0
+django-unfold>=0.95.0
 
 # Rich Text Editor
-django-ckeditor-5>=0.2.13
+django-ckeditor-5>=0.2.20
 Pillow>=12.2.0
 pdf417gen>=0.7.0
 
@@ -45,4 +45,4 @@ beautifulsoup4>=4.14.3
 bleach>=6.0.0
 
 # CORS (needed in every environment so the API is reachable from the SPA)
-django-cors-headers>=4.4.0
+django-cors-headers>=4.9.0
