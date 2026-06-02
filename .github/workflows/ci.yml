@@ -815,6 +815,10 @@ jobs:
         working-directory: src
         run: python manage.py migrate --noinput
 
+      - name: Seed admin E2E data
+        working-directory: src
+        run: python manage.py seed_admin_e2e --yes
+
       - name: Start backend
         working-directory: src
         run: |
