@@ -7,9 +7,10 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
+from .domains import brand_lookalike, email_domain, registrable_domain, suspicious_idn_reason
 from .patterns import (
     BODY_URGENCY_PATTERNS,
-    BRAND_KEYWORDS_IN_NAME,
+    BRAND_NAMES,
     FREEMAIL_DOMAINS,
     GENERIC_GREETING_PATTERNS,
     IP_URL_PATTERN,
@@ -23,9 +24,18 @@ from .structure import html_hidden_reasons
 logger = logging.getLogger(__name__)
 
 DOMAIN_IN_TEXT_RE = re.compile(r"(?:[a-z0-9](?:[-a-z0-9]*[a-z0-9])?\.)+[a-z]{2,}", re.IGNORECASE)
+TEXT_URL_RE = re.compile(r"https?://[^\s<>\"')]+", re.IGNORECASE)
 
 
-def check_sender(msg: dict[str, Any]) -> list[tuple[int, str]]:
+def _matched_brand(text: str, brands: list[str]) -> str:
+    for brand in brands:
+        match = re.search(rf"\b{re.escape(brand)}\b", text, re.IGNORECASE)
+        if match:
+            return match.group(0)
+    return ""
+
+
+def check_sender(msg: dict[str, Any], brands: list[str] = BRAND_NAMES) -> list[tuple[int, str]]:
     findings: list[tuple[int, str]] = []
     from_name = msg.get("from_name", "")
     from_email = msg.get("from_email", "")
@@ -33,21 +43,60 @@ def check_sender(msg: dict[str, Any]) -> list[tuple[int, str]]:
     if not from_name:
         findings.append((1, "Sender has no display name"))
 
-    email_domain = from_email.rsplit("@", 1)[-1].lower() if "@" in from_email else ""
-    if from_name and email_domain:
-        brand_match = BRAND_KEYWORDS_IN_NAME.search(from_name)
-        if brand_match and brand_match.group(1).lower() not in email_domain:
-            findings.append(
-                (
-                    3,
-                    (f'Display name mentions "{brand_match.group(1)}" but email domain is {email_domain}'),
-                )
-            )
+    domain = email_domain(from_email)
+    if from_name and domain:
+        matched = _matched_brand(from_name, brands)
+        if matched and matched.lower() not in domain:
+            findings.append((3, f'Display name mentions "{matched}" but email domain is {domain}'))
 
-    if from_name and email_domain in FREEMAIL_DOMAINS:
-        if BRAND_KEYWORDS_IN_NAME.search(from_name):
-            findings.append((2, f"Claims to be a known brand but uses freemail domain ({email_domain})"))
+    if from_name and domain in FREEMAIL_DOMAINS and _matched_brand(from_name, brands):
+        findings.append((2, f"Claims to be a known brand but uses freemail domain ({domain})"))
 
+    if domain:
+        idn_reason = suspicious_idn_reason(domain)
+        if idn_reason:
+            findings.append((3, idn_reason))
+        lookalike = brand_lookalike(domain, brands)
+        if lookalike:
+            findings.append((3, lookalike))
+
+    return findings
+
+
+def check_authentication(msg: dict[str, Any]) -> list[tuple[int, str]]:
+    findings: list[tuple[int, str]] = []
+    auth = (msg.get("authentication_results", "") or "").lower()
+    if not auth:
+        return findings
+
+    dmarc = re.search(r"dmarc=(\w+)", auth)
+    spf = re.search(r"spf=(\w+)", auth)
+    dkim = re.search(r"dkim=(\w+)", auth)
+
+    if dmarc and dmarc.group(1) == "fail":
+        findings.append((3, "Email failed DMARC authentication (sender is likely spoofed)"))
+    if spf and spf.group(1) == "fail":
+        findings.append((2, "Email failed SPF authentication (sending server is not authorized)"))
+    elif spf and spf.group(1) == "softfail":
+        findings.append((1, "Email soft-failed SPF authentication"))
+    if dkim and dkim.group(1) == "fail":
+        findings.append((1, "Email failed DKIM signature verification"))
+    return findings
+
+
+def check_address_alignment(msg: dict[str, Any]) -> list[tuple[int, str]]:
+    findings: list[tuple[int, str]] = []
+    from_domain = registrable_domain(email_domain(msg.get("from_email", "")))
+    if not from_domain:
+        return findings
+
+    reply_to = registrable_domain(email_domain(msg.get("reply_to", "")))
+    return_path = registrable_domain(email_domain(msg.get("return_path", "")))
+
+    if reply_to and reply_to != from_domain:
+        findings.append((2, f"Reply-To domain ({reply_to}) differs from the sender domain ({from_domain})"))
+    if return_path and return_path != from_domain:
+        findings.append((1, f"Return-Path domain ({return_path}) differs from the sender domain ({from_domain})"))
     return findings
 
 
@@ -105,9 +154,11 @@ def check_body(msg: dict[str, Any]) -> list[tuple[int, str]]:
     return findings
 
 
-def check_links(msg: dict[str, Any]) -> list[tuple[int, str]]:
+def check_links(msg: dict[str, Any], brands: list[str] = BRAND_NAMES) -> list[tuple[int, str]]:
     findings: list[tuple[int, str]] = []
-    links = extract_links(msg.get("html", "") or "")
+    anchors = extract_links(msg.get("html", "") or "")
+    # Also scan plain-body URLs (raw text isn't wrapped in <a> tags).
+    links = _dedupe_links(anchors + extract_text_urls(body_text(msg)))
     if not links:
         return findings
 
@@ -121,7 +172,8 @@ def check_links(msg: dict[str, Any]) -> list[tuple[int, str]]:
     if ip_count:
         findings.append((3, f"Contains {ip_count} link(s) using raw IP addresses"))
 
-    mismatch_details = mismatched_link_details(links)
+    # Displayed-vs-actual mismatch only applies to anchors (raw URLs have no link text).
+    mismatch_details = mismatched_link_details(anchors)
     if mismatch_details:
         findings.append(
             (
@@ -129,6 +181,17 @@ def check_links(msg: dict[str, Any]) -> list[tuple[int, str]]:
                 f"{len(mismatch_details)} link(s) display a different domain than the actual URL",
             )
         )
+
+    idn_reasons = {reason for link in links if (reason := suspicious_idn_reason(link["href_domain"]))}
+    if idn_reasons:
+        findings.append((3, f"{len(idn_reasons)} link domain(s) use punycode or non-ASCII look-alike characters"))
+
+    brand_reasons = {reason for link in links if (reason := brand_lookalike(link["href_domain"], brands))}
+    if brand_reasons:
+        if len(brand_reasons) == 1:
+            findings.append((3, next(iter(brand_reasons))))
+        else:
+            findings.append((3, f"{len(brand_reasons)} link domain(s) impersonate known brands"))
 
     unique_domains = {link["href_domain"] for link in links if link["href_domain"]}
     if len(unique_domains) > 5:
@@ -173,6 +236,32 @@ def extract_links(html: str) -> list[dict[str, str]]:
             domain = ""
         links.append({"href": href, "text": anchor.get_text(strip=True), "href_domain": domain})
     return links
+
+
+def extract_text_urls(text: str) -> list[dict[str, str]]:
+    if not text:
+        return []
+    links: list[dict[str, str]] = []
+    for raw in TEXT_URL_RE.findall(text):
+        href = raw.rstrip(".,;:!?)\"'")
+        try:
+            domain = normalize_domain(urlparse(href).hostname or "")
+        except Exception:
+            logger.debug("Failed to parse text URL %r", href, exc_info=True)
+            domain = ""
+        links.append({"href": href, "text": "", "href_domain": domain})
+    return links
+
+
+def _dedupe_links(links: list[dict[str, str]]) -> list[dict[str, str]]:
+    seen: set[str] = set()
+    deduped: list[dict[str, str]] = []
+    for link in links:
+        if link["href"] in seen:
+            continue
+        seen.add(link["href"])
+        deduped.append(link)
+    return deduped
 
 
 def mismatched_link_count(links: list[dict[str, str]]) -> int:

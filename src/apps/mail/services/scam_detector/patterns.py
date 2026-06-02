@@ -83,9 +83,29 @@ FREEMAIL_DOMAINS = frozenset(
     }
 )
 
+# Single source of truth for brand keywords, shared by the display-name check
+# and the domain look-alike / typosquat detection in domains.py.
+BRAND_NAMES = [
+    "amazon",
+    "paypal",
+    "apple",
+    "microsoft",
+    "google",
+    "netflix",
+    "bank",
+    "wells fargo",
+    "chase",
+    "citibank",
+    "hsbc",
+    "irs",
+    "fedex",
+    "ups",
+    "dhl",
+    "usps",
+]
+
 BRAND_KEYWORDS_IN_NAME = re.compile(
-    r"\b(amazon|paypal|apple|microsoft|google|netflix|bank|wells fargo"
-    r"|chase|citibank|hsbc|irs|fedex|ups|dhl|usps)\b",
+    r"\b(" + "|".join(re.escape(name) for name in BRAND_NAMES) + r")\b",
     re.IGNORECASE,
 )
 
