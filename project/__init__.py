@@ -9,6 +9,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash
 
 from config.default import APP_ROOT, Config
@@ -17,6 +18,7 @@ from config.default import APP_ROOT, Config
 app = Flask(__name__)
 
 app.config.from_object(Config())
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 cache = Cache(app)
 
