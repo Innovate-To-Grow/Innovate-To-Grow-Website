@@ -1,0 +1,81 @@
+{% extends "membership/layout.html" %}
+{% import "membership/render_helper.html" as forms %}
+
+{% block content %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <br>
+    <br>
+    <div class="clearfix main">
+        <div class="container">
+            <div class="info-content">
+                <p>You have signed up as an I2G member with the following information</p>
+                <p> First Name: {{ user["First Name"] }}</p>
+                <p> Last Name: {{ user["Last Name"] }}</p>
+                <p> Primary Email: {{ user["Primary Email"] }} {% if user["Primary Verified"] == "TRUE" %}
+                    (Verified){% else %}(Unverified){% endif %}</p>
+                <p> Secondary Email: {{ user["Secondary Email"] }} {% if user["Secondary Verified"] == "TRUE" %}
+                    (Verified){% else %}(Unverified){% endif %}</p>
+                <br>
+                <p> You may enter the additional info below: </p>
+            </div>
+
+            <br>
+            <br>
+            <form action="{{ url_for('registration.info', token=token) }}" method=post>
+                {{ form.hidden_tag() }}
+
+                {{ forms.render(form) }}
+
+                <br>
+                {{ form.submit }}
+                <br>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        const submitBtn = document.getElementById("submit");
+        submitBtn.addEventListener("click", function () {
+            submitBtn.style.pointerEvents = "none";
+
+            setTimeout(function () {
+                submitBtn.style.pointerEvents = "auto";
+            }, 3000);
+        });
+
+        const registerCheckbox = document.querySelector('#register_event');
+        const eventDivs = document.querySelectorAll('div[id^="event_"]');
+
+        registerCheckbox.addEventListener('change', function () {
+            if (this.checked) {
+                eventDivs.forEach(div => {
+                    div.style.display = 'block';
+                    div.querySelectorAll('input').forEach(input => {
+                        input.setAttribute('required', '');
+                    });
+                });
+            } else {
+                eventDivs.forEach(div => {
+                    div.style.display = 'none';
+                    div.querySelectorAll('input').forEach(input => {
+                        input.removeAttribute('required');
+                    });
+                });
+            }
+        });
+
+        window.addEventListener('load', function () {
+            registerCheckbox.dispatchEvent(new Event('change'));
+        });
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                registerCheckbox.dispatchEvent(new Event('change'));
+            }
+        });
+
+    </script>
+
+{% endblock %}

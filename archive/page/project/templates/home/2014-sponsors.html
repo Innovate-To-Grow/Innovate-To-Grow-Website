@@ -1,0 +1,43 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+          href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/i2glogo.png') }}"
+          type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title> 2014 Sponsors | Innovate To Grow </title>
+    {{ styles() }}
+</head>
+
+<body class="html front not-logged-in no-sidebars page-node">
+<!-- NAVBAR -->
+{{ nav() }}
+<!-- END NAVBAR -->
+<div id="main" class="clearfix main" role="main">
+    <div class="container">
+        <div id="main-content" class="row main-content">
+            <div id="content" class="mc-content span12">
+                <div id="content-wrapper" class="content-wrapper">
+                    <div id="content-head" class="row-fluid content-head">
+                        <h1 class="title" id="page-title"> 2014 Sponsors </h1>
+                        <p><img alt=""
+                                src="{{ url_for('static', filename='images/140424_innovatetogrow_sponsors.jpg') }}"
+                                style="width: 722px; height: 1112px;"/></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
+</body>
+
+</html>
