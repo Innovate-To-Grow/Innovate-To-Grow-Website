@@ -273,3 +273,5 @@ GEMINI.md
 service_account.json
 # Archived legacy-site secret (subtree import — never track this key)
 archive/page/service_account.json
+# Archived static site: runtime client-side Sheets API key (see config.example.js)
+archive/page/static/config.js
