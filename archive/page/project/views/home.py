@@ -426,18 +426,6 @@ def fall_event_post_2020():
     return render_template("2020-fall-post-event.html")
 
 
-@home_blueprint.route("/2014-sponsors", methods=["GET", "POST"])
-@cache.cached()
-def sponsors_2014():
-    return render_template("2014-sponsors.html")
-
-
-@home_blueprint.route("/2015-sponsors", methods=["GET", "POST"])
-@cache.cached()
-def sponsors_2015():
-    return render_template("2015-sponsors.html")
-
-
 @home_blueprint.route("/past-projects", methods=["GET", "POST"])
 @home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
 def past_projects(uuid_string=None):
