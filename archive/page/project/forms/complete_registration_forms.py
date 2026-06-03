@@ -2,7 +2,6 @@ from flask_wtf import FlaskForm
 from wtforms import (
     BooleanField,
     HiddenField,
-    SelectField,
     StringField,
     SubmitField,
     ValidationError,
@@ -64,85 +63,16 @@ class CompleteRegistrationForm(FlaskForm):
         "Subscribe to Email News \n(You can opt out anytime)", default=True
     )
 
-    # Phone number fields
-    country_code = SelectField(
-        "Country Code",
-        choices=[
-            ("", "No Phone"),
-            ("+1", "+1 (USA)"),
-            ("+52", "+52 (Mexico)"),
-            ("+44", "+44 (UK)"),
-            ("+61", "+61 (Australia)"),
-            ("+81", "+81 (Japan)"),
-            ("+91", "+91 (India)"),
-            ("+49", "+49 (Germany)"),
-            ("+33", "+33 (France)"),
-            ("+86", "+86 (China)"),
-        ],
-    )
-
-    phone_number = StringField("Phone Number", [Optional()])
-
-    # we will add this question later when the text message sending is improved
-    # phone_subscribe = BooleanField("Subscribe to Text Messages")
-
-    confirm_phone_number = StringField(
-        "Confirm Phone Number",
-        [
-            ConditionalRequiredIfFieldProvided(
-                "phone_number", "Please confirm your phone number"
-            ),
-            EqualTo("phone_number", message="Must match phone number"),
-        ],
-    )
-
-    # Hidden field to store registration method
-    # 1 = two emails, 2 = email and phone, 3 = all three methods
+    # Hidden field kept for template/back-compat; always "1" (two-email registration).
     registration_method = HiddenField("Registration Method")
 
     submit = SubmitField("Submit")
 
     def validate(self, extra_validators=None):
-        """Custom form validation to ensure secondary contact and phone-country consistency."""
+        """Custom form validation. Phone-based registration has been removed."""
         # This runs all the individual field validators first.
         if not super().validate(extra_validators=extra_validators):
             return False
 
-        success = True
-
-        # Rule 1: At least one secondary contact is required.
-        if not self.secondary_email.data and not self.phone_number.data:
-            error_msg = "At least one secondary contact method is required"
-            self.secondary_email.errors.append(error_msg)
-            self.phone_number.errors.append(error_msg)
-            success = False
-
-        phone_provided = self.phone_number.data
-        country_code_provided = (
-            self.country_code.data
-        )  # This is falsy if "" (No Phone) is selected
-
-        # Rule 2: If phone is provided, country code must be too.
-        if phone_provided and not country_code_provided:
-            self.country_code.errors.append(
-                "A country code is required when a phone number is provided."
-            )
-            success = False
-
-        # Rule 3: If country code is provided, phone must be too.
-        if country_code_provided and not phone_provided:
-            self.phone_number.errors.append(
-                "A phone number is required when a country code is selected."
-            )
-            success = False
-
-        # If validation passed so far, set the registration method.
-        if success:
-            if self.secondary_email.data and self.phone_number.data:
-                self.registration_method.data = "3"
-            elif self.secondary_email.data:
-                self.registration_method.data = "1"
-            elif self.phone_number.data:
-                self.registration_method.data = "2"
-
-        return success
+        self.registration_method.data = "1"
+        return True

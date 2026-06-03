@@ -16,7 +16,6 @@
     <p>You have successfully registered for {{ event.name }} </p>
     <p>Below is a summary of your membership information. If you have any questions, please contact us <a
             href="mailto:i2g@ucmerced.edu">here.</a></p>
-    <p>Update your membership anytime <a href="{{ update_url }}">here.</a></p>
     <br>
     <br>
 
@@ -31,12 +30,6 @@
             <p> Secondary Email: {{ secondary_email }} {% if secondary_verified == "TRUE" %}(Verified){% else %}
                 (Unverified){% endif %} {% if secondary_subscribed == "TRUE" %}(Subscribed){% else %}
                 (Unsubscribed){% endif %}</p>
-        </div>
-    {% endif %}
-    {% if phone_number and phone_number.strip() %}
-        <div>
-            <p> Phone Number: {{ phone_number }} {% if phone_number_verified == "TRUE" %}(Verified){% else %}
-                (Unverified){% endif %} </p>
         </div>
     {% endif %}
     <br>

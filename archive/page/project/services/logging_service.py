@@ -54,18 +54,6 @@ class Logger():
         ]
         self.logging_sheet.append_row(row)
 
-    def log_complete_registration(self, path, first_name, last_name, primary_email, secondary_email, phone_number="",
-                                  register_event="No Event"):
-        order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
-        phone_info = f"Phone: {phone_number}" if phone_number else "No Phone"
-        row = [
-            order, path, str(datetime.now(tz).replace(second=0, microsecond=0).strftime("%Y-%m-%d %I:%M %p")),
-            "First Name: " + first_name, "Last Name: " + last_name,
-            "Primary Email: " + primary_email, "Secondary Email: " + secondary_email,
-            phone_info, register_event
-        ]
-        self.logging_sheet.append_row(row)
-
     def log_background_error(self, route: str, user_email: str, error_details: dict):
         """Log background thread errors with full stack traces"""
         order = int(self.logging_sheet.col_values(1)[-1]) + 1 if self.logging_sheet.col_values(1)[-1].isdigit() else 1
