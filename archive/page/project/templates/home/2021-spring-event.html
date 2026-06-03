@@ -15,7 +15,7 @@
     {{ styles() }}
 </head>
 
-<body class="html front not-logged-in no-sidebars page-node">
+<body class="html front not-logged-in no-sidebars page-node i2g-center">
 <!-- NAVBAR -->
 <!-- END NAVBAR -->
 <div id="main" class="clearfix main" role="main">
@@ -85,11 +85,11 @@
 
                                     <ul>
                                         <li>Presentations will <strong>start promptly at 11:00</strong>!</li>
-                                        <li>Plan to click the <a href="{{ url_for('home.mainpage') }}">I2G Home Page</a>
+                                        <li>Plan to click the <a href="#">I2G Home Page</a>
                                             <strong> by 10:50</strong> to find and join a track!
                                         </li>
                                         <li>Access to <strong>Zoom rooms </strong> will appear in the Schedule below and
-                                            in the <a href="{{ url_for('home.mainpage') }}">I2G Home Page</a> <strong>on
+                                            in the <a href="#">I2G Home Page</a> <strong>on
                                                 the event day</strong>.
                                         </li>
                                     </ul>
@@ -693,7 +693,7 @@
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/10_l1AyeiwCN8GZl6CfL6CwOwVH6K66zmrZd1xxVx7qk/values/2021-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/10_l1AyeiwCN8GZl6CfL6CwOwVH6K66zmrZd1xxVx7qk/values/2021-01-Spring-I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {

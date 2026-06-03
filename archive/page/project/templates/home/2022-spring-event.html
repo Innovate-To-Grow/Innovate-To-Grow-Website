@@ -15,7 +15,7 @@
     {{ styles() }}
 </head>
 
-<body class="html front not-logged-in no-sidebars page-node">
+<body class="html front not-logged-in no-sidebars page-node i2g-center">
 <!-- NAVBAR -->
 <!-- END NAVBAR -->
 <div id="main" class="clearfix main" role="main">
@@ -343,7 +343,7 @@
                             $(document).ready(function () {
                                 // Pulls the winner column from "2022-01-Spring-I2G-MASTER" spreadsheet.
                                 // .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks?alt=json&key={{ sheets_api_key }}", function (data) {
                                     $(".winnert1").prepend(data.values[2][6]);
                                     $(".winnert2").prepend(data.values[3][6]);
                                     $(".winnert3").prepend(data.values[4][6]);
@@ -751,11 +751,11 @@
 
                                     <div class="pull-left sb-row">
                                         <div class="sb-col hb__buttons-gold"><a class="btn--invert-gold hb__play"
-                                                                                href="{{ url_for('home.mainpage') }}">For
+                                                                                href="#">For
                                             Attendees</a></div>
 
                                         <div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play"
-                                                                                href="{{ url_for('home.mainpage') }}">For
+                                                                                href="#">For
                                             Judges</a>
                                         </div>
                                         <!--	<div class="sb-col hb__buttons-blue"><a class="btn--invert-blue hb__play" href="/current-projects">Projects &amp; Teams</a></div>   -->
@@ -798,12 +798,12 @@
                                         <li><strong>Each Track</strong> is held in a <strong>separate Zoom
                                             Room</strong>.
                                         </li>
-                                        <li>Plan to click the <a href="{{ url_for('home.mainpage') }}">I2G
+                                        <li>Plan to click the <a href="#">I2G
                                             Home Page</a> <strong> by 12:20&nbsp;</strong>to find and join a
                                             track!
                                         </li>
                                         <li>Access to <strong>Zoom rooms </strong> will appear in the Schedule below
-                                            and in the <a href="{{ url_for('home.mainpage') }}">I2G Home
+                                            and in the <a href="#">I2G Home
                                                 Page</a><strong>&nbsp;</strong>on the event
                                             day<strong>&nbsp;after&nbsp;12:20!</strong></li>
                                         <li>Sign in <strong>your Zoom account,&nbsp;</strong>make sure your
@@ -1443,7 +1443,7 @@
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {
@@ -1610,7 +1610,7 @@
                         <script>
                             $(document).ready(function () {
                                 // Pulls the room column from "2022-01-Spring-I2G-MASTER" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks?alt=json&key={{ sheets_api_key }}", function (data) {
                                     $(".roomt1").prepend(data.values[2][1]);
                                     $(".roomt2").prepend(data.values[3][1]);
                                     $(".roomt3").prepend(data.values[4][1]);
@@ -1636,7 +1636,7 @@
 
                             $(document).ready(function () {
                                 // Pulls data from "2022-01-Spring-I2G-WEB" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
                                     for (let i = 1; i < data.values.length; i++) {
                                         if ((data.values[i][3] == "CAP1") || (data.values[i][3] == "CAP")) { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
                                             let track = data.values[i][0];

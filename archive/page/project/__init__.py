@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from flask import Flask
 from flask_caching import Cache
 from flask_limiter import Limiter
@@ -5,6 +8,8 @@ from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config.default import Config
+
+load_dotenv()
 
 # Flask
 app = Flask(__name__)
@@ -29,7 +34,17 @@ def inject_event():
     return dict(event=None)
 
 
+@app.context_processor
+def inject_sheets_api_key():
+    # The event pages call the Google Sheets API client-side. Inject the key at
+    # render time from the environment (.env, gitignored) so it never lives in
+    # committed template source. It is still exposed to the browser — that is
+    # unavoidable for a client-side key; restrict it by HTTP referrer + Sheets
+    # API only in the Google Cloud console.
+    return dict(sheets_api_key=os.getenv("SHEETS_API_KEY", ""))
+
+
 # Flask Blueprints
-from project.views.home import home_blueprint
+from project.views import home_blueprint
 
 app.register_blueprint(home_blueprint)

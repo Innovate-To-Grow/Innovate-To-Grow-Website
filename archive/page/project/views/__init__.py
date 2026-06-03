@@ -5,34 +5,6 @@ from project import cache
 home_blueprint = Blueprint("home", __name__, template_folder="../templates/home")
 
 
-@home_blueprint.route("/", methods=["GET", "POST"])
-@cache.cached()
-def mainpage():
-    return render_template("home-pre-event.html")
-    # return render_template("event.html")
-    # return render_template("home-during-event.html")
-    # return render_template("home-post-event.html")
-    # return render_template("home-during-semester.html")
-
-
-@home_blueprint.route("/template", methods=["GET", "POST"])
-@cache.cached()
-def template():
-    return render_template("template.html")
-
-
-@home_blueprint.route("/home-during-event", methods=["GET", "POST"])
-@cache.cached()
-def home_during_event():
-    return render_template("home-during-event.html")
-
-
-@home_blueprint.route("/home-post-event", methods=["GET", "POST"])
-@cache.cached()
-def home_post_event():
-    return render_template("home-post-event.html")
-
-
 @home_blueprint.route("/2025-fall-event", methods=["GET", "POST"])
 @cache.cached()
 def fall_event_2025():

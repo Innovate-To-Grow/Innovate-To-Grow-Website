@@ -15,7 +15,7 @@
     {{ styles() }}
 </head>
 
-<body class="html front not-logged-in no-sidebars page-node">
+<body class="html front not-logged-in no-sidebars page-node i2g-center">
 <!-- NAVBAR -->
 <!-- END NAVBAR -->
 <div id="main" class="clearfix main" role="main">
@@ -408,7 +408,7 @@
                             $(document).ready(function () {
                                 // Pulls the winner column from "2022-08-Fall-I2G-MASTER" spreadsheet.
                                 // .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key={{ sheets_api_key }}", function (data) {
                                     $(".winnert1").prepend(data.values[2][6]);
                                     $(".winnert2").prepend(data.values[3][6]);
                                     $(".winnert3").prepend(data.values[4][6]);
@@ -440,7 +440,7 @@
                                             <br>
                                             <h4>The Innovate to Grow program</h4>
                                             <div>
-                                                <a href="{{ url_for('home.mainpage') }}">
+                                                <a href="#">
                                                     <img alt="logo, icon"
                                                          src="https://i2g.ucmerced.edu/static/images/i2glogo.png"
                                                          style="height: 60px; width: 60px; float: left; margin-left: 20px; margin-right: 20px; margin-top: 7px;"/>
@@ -452,11 +452,11 @@
                                                     systems to solve real-world
                                                     problems. The Innovate to Grow program encompasses the following
                                                     experiential learning classes:
-                                                    <a href="{{ url_for('home.mainpage') }}">Engineering
+                                                    <a href="#">Engineering
                                                         Capstone</a>,
-                                                    <a href="{{ url_for('home.mainpage') }}">Engineering Service
+                                                    <a href="#">Engineering Service
                                                         Learning</a>, and
-                                                    <a href="{{ url_for('home.mainpage') }}">Software
+                                                    <a href="#">Software
                                                         Engineering Capstone</a>.
                                                 </p>
                                             </div>
@@ -653,29 +653,29 @@
                                             <div class="pull-left sb-row">
                                                 <div class="sb-col hb__buttons-blue"><a
                                                         class="btn--invert-blue hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">Event</a></div>
+                                                        href="#">Event</a></div>
                                                 <div class="sb-col hb__buttons-gold"><a
                                                         class="btn--invert-gold hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">Schedule</a></div>
+                                                        href="#">Schedule</a></div>
                                                 <div class="sb-col hb__buttons-blue"><a
                                                         class="btn--invert-blue hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">Projects &amp;
+                                                        href="#">Projects &amp;
                                                     Teams</a>
                                                 </div>
                                                 <div class="sb-col hb__buttons-gold"><a
                                                         class="btn--invert-gold hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">For Attendees</a></div>
+                                                        href="#">For Attendees</a></div>
                                                 <div class="sb-col hb__buttons-blue"><a
                                                         class="btn--invert-blue hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">For
+                                                        href="#">For
                                                     Judges</a></div>
                                                 <div class="sb-col hb__buttons-gold"><a
                                                         class="btn--invert-gold hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">For
+                                                        href="#">For
                                                     Students</a></div>
                                                 <div class="sb-col hb__buttons-blue"><a
                                                         class="btn--invert-blue hb__play"
-                                                        href="{{ url_for('home.mainpage') }}">Our Partners &amp;
+                                                        href="#">Our Partners &amp;
                                                     Sponsors</a></div>
                                                 <div class="sb-col hb__buttons-blue"></div>
                                                 <div class="sb-col hb__buttons-blue"></div>
@@ -1425,7 +1425,7 @@
                             // Pulls data from "2024-01-Fall-I2G-WEB" spreadsheet.
                             // This data is for the datatables
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {
@@ -1805,7 +1805,7 @@
                                 }
 
                                 // Pulls the room column from "2023-01-Spring-I2G-MASTER" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key={{ sheets_api_key }}", function (data) {
                                     // Pull the class column from "2023-01-Spring-I2G-MASTER" spreadsheet.
                                     for (let i = 1; i <= totalRooms; i++) {
                                         $(".roomt" + i).prepend(data.values[i + 1][1]);
@@ -1823,7 +1823,7 @@
                             $(document).ready(function () {
 
                                 // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
 
                                     for (let i = 1; i < data.values.length; i++) {
                                         if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet

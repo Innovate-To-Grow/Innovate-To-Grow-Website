@@ -19,6 +19,10 @@ def test_inject_event_returns_none(app):
 @pytest.mark.parametrize(
     "path",
     [
+        "/",
+        "/template",
+        "/home-during-event",
+        "/home-post-event",
         "/events",
         "/membership/events",
         "/membership/event-registration/x/y",
@@ -38,10 +42,4 @@ def test_unknown_path_returns_404(client):
     # a non-empty error body.
     resp = client.get("/this-page-does-not-exist")
     assert resp.status_code == 404
-    assert resp.data
-
-
-def test_homepage_renders(client):
-    resp = client.get("/")
-    assert resp.status_code == 200
     assert resp.data

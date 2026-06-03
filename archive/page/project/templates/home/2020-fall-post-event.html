@@ -15,7 +15,7 @@
     {{ styles() }}
 </head>
 
-<body class="html front not-logged-in no-sidebars page-node">
+<body class="html front not-logged-in no-sidebars page-node i2g-center">
 <!-- NAVBAR -->
 <!-- END NAVBAR -->
 <div id="main" class="clearfix main" role="main">
@@ -436,7 +436,7 @@
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1TJZfQFYf0iw1SBcqrdnS_efOsFzIppMg1aOajE-atc4/values/Sheet1?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1TJZfQFYf0iw1SBcqrdnS_efOsFzIppMg1aOajE-atc4/values/Sheet1?alt=json&key={{ sheets_api_key }}", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {

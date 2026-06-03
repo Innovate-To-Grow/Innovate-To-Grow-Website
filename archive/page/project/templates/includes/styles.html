@@ -29,5 +29,33 @@
             padding-left: 15px;
             padding-right: 15px;
         }
+
+        /* Center event-page content instead of left-aligning it. Overrides the
+           inline `text-align: left` blocks on the page content. Scoped to event
+           pages via the `i2g-center` body class. */
+        body.i2g-center #content,
+        body.i2g-center #content [style*="text-align: left"],
+        body.i2g-center #content [style*="text-align:left"] {
+            text-align: center !important;
+        }
+
+        /* Disable the sticky/pinned table header on scroll. Cancels the inline
+           `th { position: sticky }`, the DataTables FixedHeader floating clone,
+           and Drupal's tableheader.js sticky-header clone — on all pages. */
+        th,
+        thead,
+        thead th {
+            position: static !important;
+            top: auto !important;
+        }
+        table.fixedHeader-floating,
+        table.fixedHeader-locked,
+        .fixedHeader-floating,
+        .dtfh-floatingparent,
+        div.dtfh-floatingparenthead,
+        div.dtfh-floatingparentfoot,
+        table.sticky-header {
+            display: none !important;
+        }
     </style>
 {% endmacro %}

@@ -15,7 +15,7 @@
     {{ styles() }}
 </head>
 
-<body class="html front not-logged-in no-sidebars page-node">
+<body class="html front not-logged-in no-sidebars page-node i2g-center">
 <!-- NAVBAR -->
 <!-- END NAVBAR -->
 <div id="main" class="clearfix main" role="main">
@@ -1026,12 +1026,12 @@
                                         <li><strong>Each Track</strong> is held in a <strong>separate Zoom
                                             Room</strong>.
                                         </li>
-                                        <li>Plan to click the <a href="{{ url_for('home.mainpage') }}">I2G
+                                        <li>Plan to click the <a href="#">I2G
                                             Home Page</a> <strong> by 12:40&nbsp;</strong>to find and join a
                                             track!
                                         </li>
                                         <li>Access to <strong>Zoom rooms </strong> will appear in the Schedule below
-                                            and in the <a href="{{ url_for('home.mainpage') }}">I2G Home
+                                            and in the <a href="#">I2G Home
                                                 Page</a><strong>&nbsp;</strong>on the event
                                             day<strong>&nbsp;after&nbsp;12:30!</strong></li>
                                         <li>Sign in <strong>your Zoom account,&nbsp;</strong>make sure your
@@ -1754,7 +1754,7 @@ overflow:hidden;
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1dZADXdBWnRw-EO-2pL3DuuNfFODqIzUflQ6yjyH_pUo/values/2021-01-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1dZADXdBWnRw-EO-2pL3DuuNfFODqIzUflQ6yjyH_pUo/values/2021-01-Fall-I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {
@@ -1934,7 +1934,7 @@ overflow:hidden;
                                                 <thead>
                                                 <script>
                                                     $(document).ready(function () {
-                                                        $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1WuiISEzbd0VCeB6F9cdR3dYFsZoFHwV6GWPH9iYYKQQ/values/I2G-Tracks?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                                        $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1WuiISEzbd0VCeB6F9cdR3dYFsZoFHwV6GWPH9iYYKQQ/values/I2G-Tracks?alt=json&key={{ sheets_api_key }}", function (data) {
                                                             $(".roomt1").prepend(data.values[2][1]);
                                                             $(".roomt2").prepend(data.values[3][1]);
                                                             $(".roomt3").prepend(data.values[4][1]);
@@ -2106,7 +2106,7 @@ overflow:hidden;
                                                 <!-- <button id="slot11" onclick="passvalue('slot11')" style="color: #002856;" title="Team: -  Project: "> </button><p class="companyName">Organization</p>  -->
                                                 <script>
                                                     $(document).ready(function () {
-                                                        $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1dZADXdBWnRw-EO-2pL3DuuNfFODqIzUflQ6yjyH_pUo/values/2021-01-Fall-I2G-WEB?alt=json&key=***REMOVED_API_KEY***", function (data) {
+                                                        $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1dZADXdBWnRw-EO-2pL3DuuNfFODqIzUflQ6yjyH_pUo/values/2021-01-Fall-I2G-WEB?alt=json&key={{ sheets_api_key }}", function (data) {
                                                             for (let i = 1; i < data.values.length; i++) {
                                                                 if (data.values[i][3] == "CAP") {
                                                                     let track = data.values[i][0];
