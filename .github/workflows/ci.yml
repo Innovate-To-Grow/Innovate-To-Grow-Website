@@ -30,6 +30,12 @@ on:
       # should not trigger the deploy-*.yml chain (which fires on CI completing
       # on main).
       - ".claude/**"
+      # Archived legacy static site. An archive-only PR triggers the workflow,
+      # but the `changes` job below routes it to just the `archive-tests` job
+      # (the backend/frontend pipeline is skipped). Kept out of the push paths
+      # so an archive-only merge to main does not run CI or trigger the
+      # deploy-*.yml chain (the archive is not deployed).
+      - "archive/**"
 
 permissions:
   contents: read
@@ -109,9 +115,59 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/ci/validate_dependabot_labels.py
 
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      archive: ${{ steps.filter.outputs.archive }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas from the diff
+        id: filter
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+            # push / non-PR fallback: fully validate the deployable app, skip the
+            # never-deployed archive.
+            {
+              echo "backend=true"
+              echo "frontend=true"
+              echo "archive=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          echo "Changed files:"
+          echo "$files"
+          match() { echo "$files" | grep -qE "$1"; }
+          # Conservative: err toward running. A .github/** change maps to both
+          # backend and frontend so any workflow edit runs the full suite.
+          backend=false
+          frontend=false
+          archive=false
+          if match '^(src/|aws/|scripts/|pyproject\.toml|\.pre-commit-config\.yaml|\.bandit-baseline\.json|\.github/)'; then backend=true; fi
+          if match '^(pages/|\.github/)'; then frontend=true; fi
+          if match '^archive/'; then archive=true; fi
+          {
+            echo "backend=$backend"
+            echo "frontend=$frontend"
+            echo "archive=$archive"
+          } >> "$GITHUB_OUTPUT"
+
   lint:
     name: Code Style Check
-    needs: preflight
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
     uses: ./.github/workflows/lint.yml
 
   secrets-scan:
@@ -165,7 +221,8 @@ jobs:
     name: Backend DB Migration Test (PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -218,7 +275,8 @@ jobs:
     name: Backend Static and Production Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     defaults:
       run:
         working-directory: src
@@ -267,6 +325,8 @@ jobs:
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
+      - changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -340,6 +400,8 @@ jobs:
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
+      - changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -394,7 +456,8 @@ jobs:
     name: Frontend Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
       run:
         working-directory: pages
@@ -431,7 +494,8 @@ jobs:
     name: Frontend Build and Size
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint
+    needs: [lint, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
       run:
         working-directory: pages
@@ -467,7 +531,8 @@ jobs:
     name: Python Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: preflight
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     defaults:
       run:
         working-directory: src
@@ -511,7 +576,8 @@ jobs:
     name: Frontend Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: preflight
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
       run:
         working-directory: pages
@@ -536,7 +602,8 @@ jobs:
     name: Semgrep SAST
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: preflight
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -570,6 +637,8 @@ jobs:
       - django-build
       - python-security-audit
       - semgrep-sast
+      - changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     permissions:
       contents: read
       security-events: write
@@ -657,7 +726,8 @@ jobs:
     needs:
       - python-security-audit
       - frontend-security-audit
-    if: ${{ always() }}
+      - changes
+    if: ${{ always() && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -716,6 +786,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -729,6 +800,7 @@ jobs:
       - frontend-security-audit
       - supply-chain-reports
       - secrets-scan
+      - changes
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -875,8 +947,8 @@ jobs:
     name: E2E Report
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: e2e
-    if: ${{ always() }}
+    needs: [e2e, changes]
+    if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
     continue-on-error: true
     steps:
       - name: Checkout code
@@ -955,12 +1027,39 @@ jobs:
             pages/test-results
           if-no-files-found: warn
 
+  archive-tests:
+    name: Archive Static Site Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: ${{ needs.changes.outputs.archive == 'true' }}
+    defaults:
+      run:
+        working-directory: archive/page
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the static-site smoke suite
+        run: pytest
+
   ci-result:
     name: CI Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
       - preflight
+      - changes
       - lint
       - secrets-scan
       - backend-db-migration
@@ -974,6 +1073,7 @@ jobs:
       - semgrep-sast
       - backend-docker-build
       - supply-chain-reports
+      - archive-tests
       - e2e
       - e2e-report
     if: ${{ always() }}
@@ -990,10 +1090,13 @@ jobs:
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
           # E2E is informational while tests stabilize (flip to blocking once green)
           non_blocking = {"e2e", "e2e-report"}
+          # Path-filtered jobs that don't apply to this change report "skipped";
+          # that is a pass, not a failure. Only real failures/cancellations block.
+          ok = {"success", "skipped"}
           failed = {
               name: data["result"]
               for name, data in needs.items()
-              if data["result"] != "success" and name not in non_blocking
+              if data["result"] not in ok and name not in non_blocking
           }
           if failed:
               for name, result in failed.items():

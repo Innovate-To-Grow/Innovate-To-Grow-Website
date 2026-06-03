@@ -24,6 +24,7 @@ lib64/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -66,6 +67,10 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.sqlite3
+*.sqlite3-journal
+*.sqlite
+*.db
 src/data/
 src/media/
 
@@ -122,6 +127,9 @@ venv.bak/
 # pixi
 # pixi.lock
 .pixi
+
+# pyenv
+.python-version
 
 # PEP 582
 __pypackages__/
@@ -259,6 +267,11 @@ Thumbs.db
 GEMINI.md
 
 # =====================================
-# Archived legacy-site secret (subtree import — never track this key)
+# Credentials / secrets (never track)
 # =====================================
+.ssh/
+service_account.json
+# Archived legacy-site secret (subtree import — never track this key)
 archive/page/service_account.json
+# Archived static site: runtime client-side Sheets API key (see config.example.js)
+archive/page/static/config.js
