@@ -33,10 +33,12 @@ def test_removed_feature_routes_are_gone(client, path):
     assert client.get(path).status_code == 404
 
 
-def test_404_handler_renders_template(client):
+def test_unknown_path_returns_404(client):
+    # Custom 404/429 templates were removed; Flask's default handler now serves
+    # a non-empty error body.
     resp = client.get("/this-page-does-not-exist")
     assert resp.status_code == 404
-    assert resp.data  # custom 404.html rendered (extends membership/layout.html)
+    assert resp.data
 
 
 def test_homepage_renders(client):
