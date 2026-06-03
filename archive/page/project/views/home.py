@@ -1,7 +1,6 @@
 import os
-import gspread, uuid
-from threading import Thread
-from flask import Blueprint, render_template, request, jsonify
+import gspread
+from flask import Blueprint, render_template, jsonify
 from gspread.exceptions import APIError
 from project import cache
 
@@ -229,36 +228,6 @@ def mainpage():
     # return render_template("home-during-semester.html")
 
 
-@home_blueprint.route("/schedule", methods=["GET", "POST"])
-@cache.cached()
-def schedule():
-    return render_template("schedule.html")
-
-
-@home_blueprint.route("/projects-teams", methods=["GET", "POST"])
-@cache.cached()
-def projects_teams():
-    return render_template("projects-teams.html")
-
-
-@home_blueprint.route("/past-events", methods=["GET", "POST"])
-@cache.cached()
-def past_events():
-    return render_template("past-events.html")
-
-
-@home_blueprint.route("/projects", methods=["GET", "POST"])
-@cache.cached()
-def projects():
-    return render_template("projects.html")
-
-
-@home_blueprint.route("/current-projects", methods=["GET", "POST"])
-@cache.cached()
-def current_projects():
-    return render_template("current-projects.html")
-
-
 @home_blueprint.route("/api/current-projects", methods=["GET"])
 def current_projects_data():
     try:
@@ -394,43 +363,3 @@ def fall_event_2021():
 @cache.cached()
 def fall_event_post_2020():
     return render_template("2020-fall-post-event.html")
-
-
-@home_blueprint.route("/past-projects", methods=["GET", "POST"])
-@home_blueprint.route("/past-projects/<uuid_string>", methods=["GET", "POST"])
-def past_projects(uuid_string=None):
-    wks = gspread.service_account().open("Shareable Merge Tables").worksheet("Sheet1")
-    if request.method == "POST":
-        data = request.get_json()
-        uuid_string = str(uuid.uuid4())
-
-        def update_sheet():
-            team_name = ""
-            team_number = ""
-
-            for d in data[:-1]:
-                team_name += d["Team Name"] + " ; "
-                team_number += d["Team#"] + " ; "
-
-            if len(data) > 0:
-                team_name += data[-1]["Team Name"]
-                team_number += data[-1]["Team#"]
-
-            wks.append_row(values=[uuid_string, team_name, team_number])
-
-        Thread(target=update_sheet).start()
-
-        return jsonify({"uuid_string": uuid_string})
-
-    team_names = []
-    team_numbers = []
-
-    if uuid_string is not None:
-        cell = wks.find(uuid_string, in_column=1)
-        if cell is not None:
-            query = wks.row_values(cell.row)
-            if len(query) == 3:
-                team_names = query[1].split(" ; ")
-                team_numbers = query[2].split(" ; ")
-
-    return render_template("past-projects.html", team_names=team_names, team_numbers=team_numbers)
