@@ -229,36 +229,6 @@ def mainpage():
     # return render_template("home-during-semester.html")
 
 
-@home_blueprint.route("/about", methods=["GET", "POST"])
-@cache.cached()
-def about():
-    return render_template("about.html")
-
-
-@home_blueprint.route("/privacy", methods=["GET", "POST"])
-@cache.cached()
-def text_toc():
-    return render_template("terms_and_conditions.html")
-
-
-@home_blueprint.route("/engineering-capstone", methods=["GET", "POST"])
-@cache.cached()
-def engineering_capstone():
-    return render_template("engineering-capstone.html")
-
-
-@home_blueprint.route("/about_EngSL", methods=["GET", "POST"])
-@cache.cached()
-def about_EngSL():
-    return render_template("about_EngSL.html")
-
-
-@home_blueprint.route("/software-capstone", methods=["GET", "POST"])
-@cache.cached()
-def software_capstone():
-    return render_template("software-capstone.html")
-
-
 @home_blueprint.route("/event", methods=["GET", "POST"])
 @cache.cached()
 def event():
@@ -275,30 +245,6 @@ def schedule():
 @cache.cached()
 def projects_teams():
     return render_template("projects-teams.html")
-
-
-@home_blueprint.route("/judges", methods=["GET", "POST"])
-@cache.cached()
-def judges():
-    return render_template("judges.html")
-
-
-@home_blueprint.route("/attendees", methods=["GET", "POST"])
-@cache.cached()
-def attendees():
-    return render_template("attendees.html")
-
-
-@home_blueprint.route("/students", methods=["GET", "POST"])
-@cache.cached()
-def students():
-    return render_template("students.html")
-
-
-@home_blueprint.route("/acknowledgement", methods=["GET", "POST"])
-@cache.cached()
-def acknowledgement():
-    return render_template("acknowledgement.html")
 
 
 @home_blueprint.route("/past-events", methods=["GET", "POST"])
@@ -372,18 +318,6 @@ def schedule_data():
         return jsonify({"error": f"Unable to load schedule data: {exc}"}), 502
 
 
-@home_blueprint.route("/project-submission", methods=["GET", "POST"])
-@cache.cached()
-def project_submission():
-    return render_template("project-submission.html")
-
-
-@home_blueprint.route("/sample-proposals", methods=["GET", "POST"])
-@cache.cached()
-def sample_proposals():
-    return render_template("sample-proposals.html")
-
-
 @home_blueprint.route("/partnership", methods=["GET", "POST"])
 @cache.cached()
 def partnership():
@@ -394,24 +328,6 @@ def partnership():
 @cache.cached()
 def sponsorship():
     return render_template("sponsorship.html")
-
-
-@home_blueprint.route("/FAQs", methods=["GET", "POST"])
-@cache.cached()
-def faq():
-    return render_template("faq.html")
-
-
-@home_blueprint.route("/I2G-student-agreement", methods=["GET", "POST"])
-@cache.cached()
-def I2G_student_agreement():
-    return render_template("I2G-student-agreement.html")
-
-
-@home_blueprint.route("/ferpa", methods=["GET", "POST"])
-@cache.cached()
-def ferpa():
-    return render_template("ferpa.html")
 
 
 @home_blueprint.route("/i2g-students-preparation", methods=["GET", "POST"])
@@ -426,40 +342,10 @@ def video_preparation():
     return render_template("video-preparation.html")
 
 
-@home_blueprint.route("/capstone-purchasing-reimbursement", methods=["GET", "POST"])
-@cache.cached()
-def capstone_purchasing_reimbursement():
-    return render_template("capstone-purchasing-reimbursement.html")
-
-
-@home_blueprint.route("/contact-us", methods=["GET", "POST"])
-@cache.cached()
-def contact_us():
-    return render_template("contact-us.html")
-
-
-@home_blueprint.route("/judging", methods=["GET", "POST"])
-@cache.cached()
-def judging():
-    return render_template("judging.html")
-
-
 @home_blueprint.route("/template", methods=["GET", "POST"])
 @cache.cached()
 def template():
     return render_template("template.html")
-
-
-@home_blueprint.route("/template-email-team-students", methods=["GET", "POST"])
-@cache.cached()
-def template_email_team_students():
-    return render_template("template-email-team-students.html")
-
-
-@home_blueprint.route("/I2G-project-sponsor-acknowledgement", methods=["GET", "POST"])
-@cache.cached()
-def I2G_project_sponsor_acknowledgement():
-    return render_template("I2G-project-sponsor-acknowledgement.html")
 
 
 @home_blueprint.route("/home-during-event", methods=["GET", "POST"])
