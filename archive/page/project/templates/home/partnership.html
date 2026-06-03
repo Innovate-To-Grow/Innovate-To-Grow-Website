@@ -1,0 +1,66 @@
+{% from "includes/nav.html" import nav %}
+{% from "includes/footer.html" import footer %}
+{% from "includes/styles.html" import styles %}
+{% from "includes/scripts.html" import scripts %}
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="Generator" content="Drupal 7 (http://drupal.org)">
+    <link rel="alternate" type="application/rss+xml" title="Innovate To Grow RSS"
+          href="https://innovatetogrow.ucmerced.edu/rss.xml">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/i2glogo.png') }}"
+          type="image/vnd.microsoft.icon">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title> Partnership | School of Engineering</title>
+    {{ styles() }}
+</head>
+
+<body class="html front not-logged-in no-sidebars page-node">
+<!-- NAVBAR -->
+{{ nav() }}
+<!-- END NAVBAR -->
+<div id="main" class="clearfix main" role="main">
+    <div class="container">
+        <div id="main-content" class="row main-content">
+            <div id="content" class="mc-content span12">
+                <div id="content-wrapper" class="content-wrapper">
+                    <div id="content-head" class="row-fluid content-head">
+                        <h1 class="title" id="page-title"> Partnership Opportunities</h1>
+                        <h2>Thank you for your Support!</h2>
+
+                        <p><span style="font-size:16px;">If you would like to be a part of the exciting programming
+                                    offered by the School of Engineering (the Innovate to Grow event or our
+                                    &ldquo;experiential learning&rdquo; Engineering Capstone, Software Engineering
+                                    Capstone, and Engineering Service Learning classes), consider participating in one
+                                    of the following ways listed below:</span></p>
+
+                        <ul>
+                            <li><span style="font-size:16px;"><a
+                                    href="{{ url_for('home.project_submission') }}">Propose
+                                            /&nbsp;mentor&nbsp;a project</a></span></li>
+                            <li><span style="font-size:16px;"><a
+                                    href="{{ url_for('home.judges') }}">Sign up
+                                            to&nbsp;Judge</a></span></li>
+                            <li><span style="font-size:16px;"><a href="{{ url_for('home.sponsorship') }}">Sponsor the program or
+                                            event</a>&nbsp;</span></li>
+                            <li><span style="font-size:16px;"><a href="{{ url_for('home.faq') }}">FAQs</a></span><span
+                                    style="font-size:16px;"><a href="{{ url_for('home.sponsorship') }}"> </a></span>
+                            </li>
+                        </ul>
+
+                        <p><span style="font-size:16px;">For further information or if you have any questions,
+                                    please contact us at&nbsp;email i2g@ucmerced.edu.</span></p>
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+    {{ scripts() }}
+</body>
+
+</html>
