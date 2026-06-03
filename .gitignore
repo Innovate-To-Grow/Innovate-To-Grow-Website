@@ -257,3 +257,8 @@ Thumbs.db
 # Gemini AI
 # =====================================
 GEMINI.md
+
+# =====================================
+# Archived legacy-site secret (subtree import — never track this key)
+# =====================================
+archive/page/service_account.json
