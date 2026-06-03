@@ -168,7 +168,7 @@ jobs:
     needs: lint
     services:
       postgres:
-        image: postgres:16
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -273,7 +273,7 @@ jobs:
         app: [authn, core, common, system_intelligence, cms, event, projects, mail, cli_admin]
     services:
       postgres:
-        image: postgres:16
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -342,7 +342,7 @@ jobs:
       - backend-static-and-prod-check
     services:
       postgres:
-        image: postgres:16
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -731,7 +731,7 @@ jobs:
       - secrets-scan
     services:
       postgres:
-        image: postgres:16
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
