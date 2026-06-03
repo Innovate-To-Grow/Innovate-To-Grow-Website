@@ -15,4 +15,19 @@
     <link type="text/css" rel="stylesheet"
           href="{{ url_for('static',filename='css/css-css_NYiFQQOJ7xKN-UNsYwHSy9B0FCXYVU-ZlvGwkwzENhA.css') }}"
           media="all">
+    <style>
+        /* Remove the fixed page-width constraint so content spans the full viewport.
+           Overrides Bootstrap 2's fixed `.container { width: 940px/1170px }` at every breakpoint. */
+        .container,
+        .navbar .container,
+        .navbar-static-top .container,
+        .navbar-fixed-top .container,
+        .navbar-fixed-bottom .container {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+    </style>
 {% endmacro %}
