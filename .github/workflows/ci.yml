@@ -30,6 +30,11 @@ on:
       # should not trigger the deploy-*.yml chain (which fires on CI completing
       # on main).
       - ".claude/**"
+      # Same rationale for the archived legacy site: an archive-only PR still
+      # needs to produce the required `CI Result` check to be mergeable. Kept
+      # out of the push paths so an archive-only merge to main does not run CI
+      # or trigger the deploy-*.yml chain (the archive is not deployed).
+      - "archive/**"
 
 permissions:
   contents: read
