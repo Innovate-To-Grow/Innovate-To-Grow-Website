@@ -49,7 +49,12 @@ def test_wires_the_key_global(page):
     assert "window.SHEETS_API_KEY" in text, f"{page.name} never reads window.SHEETS_API_KEY"
 
 
+# The runtime key config is gitignored (see config.example.js), so it is absent
+# from a clean checkout / CI — don't require it to exist on disk.
+_RUNTIME_ONLY_ASSETS = {"static/config.js"}
+
+
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
 def test_referenced_static_assets_exist(page):
-    for rel in set(_ASSET_RE.findall(page.read_text())):
+    for rel in set(_ASSET_RE.findall(page.read_text())) - _RUNTIME_ONLY_ASSETS:
         assert (ROOT / rel).is_file(), f"{page.name} references missing asset {rel}"
