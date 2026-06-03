@@ -1,23 +1,33 @@
+"""Shared pytest fixtures for the archived static Flask site.
+
+Importing ``project`` is offline-safe: the app no longer connects to Google
+Sheets at import time, so the test client can render every marketing page
+without network access. The handful of data routes reach Sheets lazily and
+are exercised with ``gspread`` mocked (see ``test_data_routes.py``).
+
+Run with::
+
+    cd archive/page && python -m pytest
+"""
+
+import os
+import sys
+
+# Make ``project`` / ``config`` importable however pytest is invoked
+# (a pytest.ini at the project root would be gitignored by ``*.ini``).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pytest
 
-from project import app
-
-# Set testing mode BEFORE importing wks so __init__.py uses the test sheet
-app.testing = True
-
-from project import sh
-@pytest.fixture
-def fake_app():
-    return app
+from project import app as flask_app
 
 
 @pytest.fixture
-def client(fake_app):
-    fake_app.testing = True
-    return fake_app.test_client()
+def app():
+    flask_app.config.update(TESTING=True)
+    return flask_app
 
 
-@pytest.hookimpl
-def pytest_sessionstart(session):
-    if sh.title != "Test I2G Membership":
-        pytest.exit("NOT ON TESTING SHEET - Must use 'Test I2G Membership' worksheet")
+@pytest.fixture
+def client(app):
+    return app.test_client()
