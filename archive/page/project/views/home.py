@@ -229,12 +229,6 @@ def mainpage():
     # return render_template("home-during-semester.html")
 
 
-@home_blueprint.route("/event", methods=["GET", "POST"])
-@cache.cached()
-def event():
-    return render_template("event.html")
-
-
 @home_blueprint.route("/schedule", methods=["GET", "POST"])
 @cache.cached()
 def schedule():
@@ -316,30 +310,6 @@ def schedule_data():
         return _sheet_api_error_response(exc, "schedule")
     except Exception as exc:
         return jsonify({"error": f"Unable to load schedule data: {exc}"}), 502
-
-
-@home_blueprint.route("/partnership", methods=["GET", "POST"])
-@cache.cached()
-def partnership():
-    return render_template("partnership.html")
-
-
-@home_blueprint.route("/sponsorship", methods=["GET", "POST"])
-@cache.cached()
-def sponsorship():
-    return render_template("sponsorship.html")
-
-
-@home_blueprint.route("/i2g-students-preparation", methods=["GET", "POST"])
-@cache.cached()
-def i2g_students_preparation():
-    return render_template("i2g-students-preparation.html")
-
-
-@home_blueprint.route("/video-preparation", methods=["GET", "POST"])
-@cache.cached()
-def video_preparation():
-    return render_template("video-preparation.html")
 
 
 @home_blueprint.route("/template", methods=["GET", "POST"])

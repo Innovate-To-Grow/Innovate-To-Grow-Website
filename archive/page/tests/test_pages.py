@@ -31,8 +31,9 @@ RENDERABLE_ROUTES = _renderable_get_routes()
 
 
 def test_route_discovery_found_many_pages():
-    # Guard against the discovery silently matching nothing.
-    assert len(RENDERABLE_ROUTES) > 20
+    # Guard against the discovery silently matching nothing. Kept as a low
+    # floor since the legacy archive is being progressively decommissioned.
+    assert len(RENDERABLE_ROUTES) > 5
 
 
 @pytest.mark.parametrize("path", RENDERABLE_ROUTES)
