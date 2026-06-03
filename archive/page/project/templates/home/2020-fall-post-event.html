@@ -1,5 +1,3 @@
-{% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -19,7 +17,6 @@
 
 <body class="html front not-logged-in no-sidebars page-node">
 <!-- NAVBAR -->
-{{ nav() }}
 <!-- END NAVBAR -->
 <div id="main" class="clearfix main" role="main">
     <div class="container">
@@ -567,13 +564,13 @@ https://ucmerced.zoom.us/j/85390224797?pwd=ZkROUDBCemlpa1VmSjBZaW5UK1Bldz09
 https://ucmerced.zoom.us/j/81314413223?pwd=ZHorZXkrbnNGSVlHa0dKbHVvTVVJQT09
 
 5
-https://ucmerced.zoom.us/j/81029938986?pwd=NkJaM2QrcWVIQmttZEtoNzg4QWViUT09 
+https://ucmerced.zoom.us/j/81029938986?pwd=NkJaM2QrcWVIQmttZEtoNzg4QWViUT09
 
 6
 https://ucmerced.zoom.us/j/86800273523?pwd=ZmlmaDh0UWFuZkcvREpKSlNWQVF0UT09
 
 7
-https://ucmerced.zoom.us/j/89878685534?pwd=UTV1Sm14TldyQ29ndUxHTjNZVTJUdz09 
+https://ucmerced.zoom.us/j/89878685534?pwd=UTV1Sm14TldyQ29ndUxHTjNZVTJUdz09
 -->
                                                 <td data-header="Room 1">
                                                     <!-- need to finalize the room links and passcode -->
@@ -920,7 +917,6 @@ https://ucmerced.zoom.us/j/89878685534?pwd=UTV1Sm14TldyQ29ndUxHTjNZVTJUdz09
             </div>
         </div>
     </div>
-    {{ footer() }}
     {{ scripts() }}
     <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
     <script type="text/javascript" charset="utf8"

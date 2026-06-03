@@ -1,5 +1,3 @@
-{% from "includes/nav.html" import nav %}
-{% from "includes/footer.html" import footer %}
 {% from "includes/styles.html" import styles %}
 {% from "includes/scripts.html" import scripts %}
 <!DOCTYPE html>
@@ -19,7 +17,6 @@
 
 <body class="html front not-logged-in no-sidebars page-node">
 <!-- NAVBAR -->
-{{ nav() }}
 <!-- END NAVBAR -->
 <div id="fullwidth-top" class="row-fluid fullwidth">
     <div class="container">
@@ -140,7 +137,6 @@
 </div>
 </div>
 </div>
-{{ footer() }}
 {{ scripts() }}
 </body>
 
