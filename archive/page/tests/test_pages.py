@@ -1,16 +1,15 @@
 """Every static marketing page should render (HTTP 200) with no template errors.
 
 Routes are discovered dynamically from the URL map, so this stays correct as
-pages are added or removed. Parameterised (``<...>``) routes and the
-Sheets-backed data routes are excluded here and covered in
-``test_data_routes.py``.
+pages are added or removed. Parameterised (``<...>``) routes and Flask's
+built-in ``/static`` route are excluded.
 """
 
 import pytest
 
 from project import app as flask_app
 
-_DATA_PREFIXES = ("/static", "/api/", "/past-projects")
+_DATA_PREFIXES = ("/static",)
 
 
 def _renderable_get_routes():

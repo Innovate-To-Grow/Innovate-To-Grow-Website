@@ -1,9 +1,8 @@
 """Shared pytest fixtures for the archived static Flask site.
 
-Importing ``project`` is offline-safe: the app no longer connects to Google
-Sheets at import time, so the test client can render every marketing page
-without network access. The handful of data routes reach Sheets lazily and
-are exercised with ``gspread`` mocked (see ``test_data_routes.py``).
+Importing ``project`` is offline-safe: the app only renders static templates
+and does no network I/O, so the test client can render every marketing page
+without external access.
 
 Run with::
 
