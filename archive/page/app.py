@@ -15,7 +15,7 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, abort, jsonify, send_from_directory
+from flask import Flask, abort, jsonify
 from flask_caching import Cache
 
 load_dotenv()
@@ -89,13 +89,20 @@ def sheets_proxy(sheet_id: str, cell_range: str):
     return jsonify(body), status
 
 
+@cache.memoize()
+def _read_page(page: str, _modified_ns: int) -> bytes:
+    """Cache HTML bytes in-process; the mtime argument invalidates edited files."""
+    return (PAGES_DIR / f"{page}.html").read_bytes()
+
+
 @app.route("/<page>.html")
-@cache.cached()
 def serve_page(page: str):
     # Only the flat event pages under templates/, nothing else.
-    if "/" in page or not (PAGES_DIR / f"{page}.html").is_file():
+    page_path = PAGES_DIR / f"{page}.html"
+    if "/" in page or not page_path.is_file():
         abort(404)
-    return send_from_directory(PAGES_DIR, f"{page}.html")
+    content = _read_page(page, page_path.stat().st_mtime_ns)
+    return app.response_class(content, content_type="text/html; charset=utf-8")
 
 
 if __name__ == "__main__":

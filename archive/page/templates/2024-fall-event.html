@@ -30,27 +30,11 @@
           href="static/css/css-css_NYiFQQOJ7xKN-UNsYwHSy9B0FCXYVU-ZlvGwkwzENhA.css"
           media="all">
     <style>
-        /* Remove the fixed page-width constraint so content spans the full viewport.
-           Overrides Bootstrap 2's fixed `.container { width: 940px/1170px }` at every breakpoint. */
-        .container,
-        .navbar .container,
-        .navbar-static-top .container,
-        .navbar-fixed-top .container,
-        .navbar-fixed-bottom .container {
-            width: 100% !important;
-            max-width: 100% !important;
-            box-sizing: border-box;
-            padding-left: 15px;
-            padding-right: 15px;
-        }
-
-        /* Center event-page content instead of left-aligning it. Overrides the
-           inline `text-align: left` blocks on the page content. Scoped to event
-           pages via the `i2g-center` body class. */
-        body.i2g-center #content,
-        body.i2g-center #content [style*="text-align: left"],
-        body.i2g-center #content [style*="text-align:left"] {
-            text-align: center !important;
+        /* Center the entire Bootstrap page grid while preserving each child
+           element's own text and table alignment. */
+        body.i2g-center #main > .container {
+            margin-left: auto !important;
+            margin-right: auto !important;
         }
 
         /* Disable the sticky/pinned table header on scroll. Cancels the inline
@@ -492,39 +476,6 @@
                                 });
                             });
                         </script>
-                        <div id="main-top" class="row-fluid main-top">
-                            <div class="region region-main-top clearfix">
-                                <div id="block-block-141" class="clearfix block block-block">
-                                    <div class="content">
-                                        <div class="i2gHome" style="text-align: left;">
-                                            <br>
-                                            <h4>The Innovate to Grow program</h4>
-                                            <div>
-                                                <a href="#">
-                                                    <img alt="logo, icon"
-                                                         src="https://i2g.ucmerced.edu/static/images/i2glogo.png"
-                                                         style="height: 60px; width: 60px; float: left; margin-left: 20px; margin-right: 20px; margin-top: 7px;"/>
-                                                </a>
-                                                <p>
-                                                    Innovate to Grow (I2G) is a unique “experiential learning” program
-                                                    that engages
-                                                    external partner organizations with teams of students who design
-                                                    systems to solve real-world
-                                                    problems. The Innovate to Grow program encompasses the following
-                                                    experiential learning classes:
-                                                    <a href="#">Engineering
-                                                        Capstone</a>,
-                                                    <a href="#">Engineering Service
-                                                        Learning</a>, and
-                                                    <a href="#">Software
-                                                        Engineering Capstone</a>.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         <div class="row-fluid i2gTable ">
                             <div class="WinnerCAPTable">
                                 <div class="span12">

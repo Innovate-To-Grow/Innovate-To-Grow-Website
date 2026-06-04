@@ -1,5 +1,8 @@
 """Offline tests for the static server + Sheets proxy (no network, no real key)."""
 
+import os
+from pathlib import Path
+
 import pytest
 
 import app as app_module
@@ -20,7 +23,39 @@ def client():
 def test_event_pages_are_served(client):
     resp = client.get("/2025-fall-event.html")
     assert resp.status_code == 200
+    assert resp.content_type == "text/html; charset=utf-8"
     assert b"/api/sheets/" in resp.data
+
+
+def test_event_page_content_is_cached_in_process(client, monkeypatch):
+    real_read_bytes = Path.read_bytes
+    reads = 0
+
+    def counted_read_bytes(path):
+        nonlocal reads
+        if path.name == "2025-fall-event.html":
+            reads += 1
+        return real_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", counted_read_bytes)
+
+    assert client.get("/2025-fall-event.html").status_code == 200
+    assert client.get("/2025-fall-event.html").status_code == 200
+    assert reads == 1
+
+
+def test_event_page_cache_invalidates_when_file_changes(client, monkeypatch, tmp_path):
+    page_path = tmp_path / "cached.html"
+    page_path.write_text("first")
+    monkeypatch.setattr(app_module, "PAGES_DIR", tmp_path)
+
+    assert client.get("/cached.html").data == b"first"
+
+    page_path.write_text("second")
+    stat = page_path.stat()
+    os.utime(page_path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1))
+
+    assert client.get("/cached.html").data == b"second"
 
 
 def test_unknown_page_is_404(client):

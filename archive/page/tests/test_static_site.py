@@ -45,6 +45,23 @@ def test_sheets_data_goes_through_the_proxy(page):
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
+def test_page_grid_is_centered_as_a_whole(page):
+    text = page.read_text()
+    assert "body.i2g-center #main > .container" in text
+    assert "margin-left: auto !important;" in text
+    assert "margin-right: auto !important;" in text
+    assert "Remove the fixed page-width constraint" not in text
+
+
+@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
+def test_program_intro_is_removed(page):
+    text = page.read_text()
+    assert "The Innovate to Grow program" not in text
+    assert 'alt="logo, icon"' not in text
+    assert "Innovate to Grow (I2G) is a unique" not in text
+
+
+@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
 def test_referenced_static_assets_exist(page):
     for rel in set(_ASSET_RE.findall(page.read_text())):
         assert (ROOT / rel).is_file(), f"{page.name} references missing asset {rel}"
