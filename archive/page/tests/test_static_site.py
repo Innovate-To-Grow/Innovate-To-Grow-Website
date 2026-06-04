@@ -62,6 +62,14 @@ def test_program_intro_is_removed(page):
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
+def test_userway_accessibility_widget_is_removed(page):
+    text = page.read_text()
+    assert "cdn.userway.org" not in text
+    assert "userway.org" not in text
+    assert 'data-account", "6Uvgvyrrph"' not in text
+
+
+@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
 def test_referenced_static_assets_exist(page):
     for rel in set(_ASSET_RE.findall(page.read_text())):
         assert (ROOT / rel).is_file(), f"{page.name} references missing asset {rel}"
