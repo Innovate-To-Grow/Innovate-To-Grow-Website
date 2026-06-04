@@ -58,6 +58,25 @@ _RANGE_RE = re.compile(r"^[A-Za-z0-9:!_-]{1,100}$")
 
 UPSTREAM = "https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{cell_range}"
 
+# Injected into every served page so it behaves well when the main site embeds
+# it in an <iframe> (auto-resize, no inner scrollbar, links open in a new tab).
+# A no-op when the page is opened directly — see static/js/i2g-embed.js.
+_EMBED_SCRIPT_TAG = b'<script src="/static/js/i2g-embed.js"></script>'
+
+
+def _inject_embed_script(html: bytes) -> bytes:
+    """Insert the embed helper just before </body> (case-insensitive, last one).
+
+    Falls back to appending if the page has no </body> so the script always
+    loads.
+    """
+    if _EMBED_SCRIPT_TAG in html:
+        return html
+    idx = html.lower().rfind(b"</body>")
+    if idx == -1:
+        return html + _EMBED_SCRIPT_TAG
+    return html[:idx] + _EMBED_SCRIPT_TAG + html[idx:]
+
 
 def _fetch_values(sheet_id: str, cell_range: str) -> tuple[dict, int]:
     """Server-side Google Sheets call. Kept separate so tests can stub it."""
@@ -91,8 +110,12 @@ def sheets_proxy(sheet_id: str, cell_range: str):
 
 @cache.memoize()
 def _read_page(page: str, _modified_ns: int) -> bytes:
-    """Cache HTML bytes in-process; the mtime argument invalidates edited files."""
-    return (PAGES_DIR / f"{page}.html").read_bytes()
+    """Cache HTML bytes in-process; the mtime argument invalidates edited files.
+
+    The embed helper is injected here so the (small, idempotent) splice is
+    cached alongside the file rather than re-run on every request.
+    """
+    return _inject_embed_script((PAGES_DIR / f"{page}.html").read_bytes())
 
 
 @app.route("/<page>.html")

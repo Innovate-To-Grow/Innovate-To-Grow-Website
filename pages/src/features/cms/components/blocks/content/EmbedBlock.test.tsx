@@ -1,5 +1,5 @@
-import {render} from '@testing-library/react';
-import {describe, expect, it} from 'vitest';
+import {act, render} from '@testing-library/react';
+import {describe, expect, it, vi} from 'vitest';
 import {EmbedBlock} from './EmbedBlock';
 
 describe('EmbedBlock', () => {
@@ -109,5 +109,117 @@ describe('EmbedBlock', () => {
     const heading = container.querySelector('h2.section-title');
     expect(heading).not.toBeNull();
     expect(heading?.textContent).toBe('My Form');
+  });
+
+  describe('auto-resize via postMessage (cooperating embeds)', () => {
+    const SRC = 'https://archive.example.org/2025-fall-event.html';
+
+    it('grows the frame to a height reported by the iframe from its own origin', () => {
+      const {container} = render(<EmbedBlock data={{src: SRC}} />);
+      const frame = container.querySelector('.cms-embed__frame') as HTMLElement;
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+      // Default placeholder until a height is reported.
+      expect(frame.style.aspectRatio).toBe('16 / 9');
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: {type: 'i2g-embed-resize', height: 920},
+            source: iframe.contentWindow,
+            origin: 'https://archive.example.org',
+          }),
+        );
+      });
+
+      expect(frame.style.height).toBe('920px');
+      expect(frame.style.aspectRatio).toBe('');
+    });
+
+    it('ignores resize messages from a foreign origin', () => {
+      const {container} = render(<EmbedBlock data={{src: SRC}} />);
+      const frame = container.querySelector('.cms-embed__frame') as HTMLElement;
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: {type: 'i2g-embed-resize', height: 920},
+            source: iframe.contentWindow,
+            origin: 'https://evil.example',
+          }),
+        );
+      });
+
+      expect(frame.style.height).toBe('');
+      expect(frame.style.aspectRatio).toBe('16 / 9');
+    });
+
+    it('ignores resize messages from a foreign window', () => {
+      const {container} = render(<EmbedBlock data={{src: SRC}} />);
+      const frame = container.querySelector('.cms-embed__frame') as HTMLElement;
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: {type: 'i2g-embed-resize', height: 920},
+            // Not this iframe's contentWindow — must be rejected.
+            source: window,
+            origin: 'https://archive.example.org',
+          }),
+        );
+      });
+
+      expect(frame.style.aspectRatio).toBe('16 / 9');
+    });
+
+    it('ignores messages with a non-positive or non-numeric height', () => {
+      const {container} = render(<EmbedBlock data={{src: SRC}} />);
+      const frame = container.querySelector('.cms-embed__frame') as HTMLElement;
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+
+      act(() => {
+        for (const height of [0, -50, NaN, 'tall']) {
+          window.dispatchEvent(
+            new MessageEvent('message', {
+              data: {type: 'i2g-embed-resize', height},
+              source: iframe.contentWindow,
+              origin: 'https://archive.example.org',
+            }),
+          );
+        }
+      });
+
+      expect(frame.style.aspectRatio).toBe('16 / 9');
+    });
+
+    it('does not attach a message listener when a fixed height is set', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<EmbedBlock data={{src: SRC, height: 600}} />);
+      expect(addSpy.mock.calls.filter((c) => c[0] === 'message')).toEqual([]);
+      addSpy.mockRestore();
+    });
+
+    it('does not attach a message listener when an aspect ratio is set', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<EmbedBlock data={{src: SRC, aspect_ratio: '4:3'}} />);
+      expect(addSpy.mock.calls.filter((c) => c[0] === 'message')).toEqual([]);
+      addSpy.mockRestore();
+    });
+
+    it('removes the message listener on unmount', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      const removeSpy = vi.spyOn(window, 'removeEventListener');
+      const {unmount} = render(<EmbedBlock data={{src: SRC}} />);
+
+      const added = addSpy.mock.calls.find((c) => c[0] === 'message');
+      expect(added).toBeDefined();
+
+      unmount();
+      const removed = removeSpy.mock.calls.find((c) => c[0] === 'message');
+      expect(removed?.[1]).toBe(added?.[1]);
+
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    });
   });
 });

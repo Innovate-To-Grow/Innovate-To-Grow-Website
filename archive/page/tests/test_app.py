@@ -27,6 +27,28 @@ def test_event_pages_are_served(client):
     assert b"/api/sheets/" in resp.data
 
 
+def test_served_page_includes_the_embed_helper(client):
+    # Every served page gets the embed auto-resize/new-tab helper injected,
+    # so the main site can iframe it cleanly.
+    resp = client.get("/2025-fall-event.html")
+    assert b'<script src="/static/js/i2g-embed.js"></script>' in resp.data
+    # Injected right before the closing body tag, not appended after </html>.
+    body_end = resp.data.lower().rfind(b"</body>")
+    script_at = resp.data.find(b"/static/js/i2g-embed.js")
+    assert -1 < script_at < body_end
+
+
+def test_embed_helper_is_served_as_static(client):
+    resp = client.get("/static/js/i2g-embed.js")
+    assert resp.status_code == 200
+    assert b"i2g-embed-resize" in resp.data
+
+
+def test_embed_helper_injected_once_per_page(client):
+    resp = client.get("/2025-fall-event.html")
+    assert resp.data.count(b"/static/js/i2g-embed.js") == 1
+
+
 def test_event_page_content_is_cached_in_process(client, monkeypatch):
     real_read_bytes = Path.read_bytes
     reads = 0
@@ -46,16 +68,17 @@ def test_event_page_content_is_cached_in_process(client, monkeypatch):
 
 def test_event_page_cache_invalidates_when_file_changes(client, monkeypatch, tmp_path):
     page_path = tmp_path / "cached.html"
-    page_path.write_text("first")
+    page_path.write_text("<body>first</body>")
     monkeypatch.setattr(app_module, "PAGES_DIR", tmp_path)
 
-    assert client.get("/cached.html").data == b"first"
+    assert b"first" in client.get("/cached.html").data
+    assert b"second" not in client.get("/cached.html").data
 
-    page_path.write_text("second")
+    page_path.write_text("<body>second</body>")
     stat = page_path.stat()
     os.utime(page_path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1))
 
-    assert client.get("/cached.html").data == b"second"
+    assert b"second" in client.get("/cached.html").data
 
 
 def test_unknown_page_is_404(client):
