@@ -1,0 +1,9 @@
+# Never ship secrets, local venvs, tests, or caches into the image.
+.env
+.venv/
+venv/
+tests/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store

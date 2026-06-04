@@ -99,6 +99,12 @@ def _fetch_values(sheet_id: str, cell_range: str) -> tuple[dict, int]:
     return body, 200
 
 
+@app.route("/healthz")
+def healthz():
+    """Liveness probe for the load balancer — no upstream calls, no key needed."""
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route("/api/sheets/<sheet_id>/values/<path:cell_range>")
 @cache.cached()
 def sheets_proxy(sheet_id: str, cell_range: str):

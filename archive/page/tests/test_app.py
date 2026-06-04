@@ -85,6 +85,15 @@ def test_unknown_page_is_404(client):
     assert client.get("/nope.html").status_code == 404
 
 
+def test_healthz_is_ok_without_a_key(client, monkeypatch):
+    # The LB liveness probe must never touch Google or need the key.
+    monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: pytest.fail("no upstream call"))
+    monkeypatch.delenv("SHEETS_API_KEY", raising=False)
+    resp = client.get("/healthz")
+    assert resp.status_code == 200
+    assert resp.get_json() == {"status": "ok"}
+
+
 def test_static_assets_are_served(client):
     assert client.get("/static/images/i2glogo.png").status_code == 200
 
