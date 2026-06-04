@@ -1,0 +1,189 @@
+name: Deploy Archive to AWS ECS
+
+# Builds the archived event-pages site (archive/page/) and deploys it to its
+# own ECS Fargate service behind the shared prod ALB
+# (host: archive.i2g.ucmerced.edu). The Google Sheets API key stays server-side
+# in the task definition, injected from a GitHub secret.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-archive-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+  ECR_REPOSITORY: itg-archive
+  ECS_CLUSTER: itg-backend-cluster
+  ECS_SERVICE: itg-archive-service
+  ECS_TASK_DEFINITION: aws/archive-task-definition.json
+  CONTAINER_NAME: itg-archive
+
+jobs:
+  # Only deploy when archive/page/ actually changed, so unrelated CI runs on
+  # main don't churn the archive service.
+  changes:
+    name: Detect archive changes
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      archive: ${{ steps.filter.outputs.archive }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # workflow_run reports the triggering SHA; fetch enough history to diff.
+          fetch-depth: 2
+      - name: Filter archive paths
+        id: filter
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^(archive/page/|aws/archive-task-definition\.json|\.github/workflows/deploy-archive\.yml)'; then
+            echo "archive=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "archive=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Build & Deploy Archive
+    needs: changes
+    if: needs.changes.outputs.archive == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: AWS ECS - Archive Prod
+      url: https://archive.i2g.ucmerced.edu
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate required deployment configuration
+        env:
+          SHEETS_API_KEY: ${{ secrets.SHEETS_API_KEY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+        run: |
+          missing=()
+          for name in SHEETS_API_KEY ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing required config: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Mask sensitive values
+        run: echo "::add-mask::${{ secrets.SHEETS_API_KEY }}"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" archive/page/
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Render ECS task definition from template
+        id: task-def
+        env:
+          IMAGE_URI: ${{ steps.build-image.outputs.image }}
+          SHEETS_API_KEY: ${{ secrets.SHEETS_API_KEY }}
+          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          with open("aws/archive-task-definition.json", encoding="utf-8") as f:
+              taskdef = json.load(f)
+
+          exec_role = os.environ.get("ECS_EXECUTION_ROLE_ARN", "").strip()
+          task_role = os.environ.get("ECS_TASK_ROLE_ARN", "").strip()
+          if not exec_role or not task_role:
+              raise SystemExit("ECS_EXECUTION_ROLE_ARN and ECS_TASK_ROLE_ARN are required.")
+          taskdef["executionRoleArn"] = exec_role
+          taskdef["taskRoleArn"] = task_role
+
+          container = taskdef["containerDefinitions"][0]
+          container["image"] = os.environ["IMAGE_URI"]
+
+          mapping = {"__SHEETS_API_KEY__": os.environ.get("SHEETS_API_KEY", "")}
+          for item in container.get("environment", []):
+              if item.get("value") in mapping:
+                  item["value"] = mapping[item["value"]]
+
+          with open("rendered-archive-task-definition.json", "w", encoding="utf-8") as f:
+              json.dump(taskdef, f, indent=2)
+          PY
+          echo "task-definition=rendered-archive-task-definition.json" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to ECS
+        id: deploy-ecs
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Verify deployment was not rolled back
+        env:
+          QUERY_PRIMARY: 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]'
+        run: |
+          set -euo pipefail
+          expected_taskdef="${{ steps.deploy-ecs.outputs.task-definition-arn }}"
+          active_taskdef="$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query "$QUERY_PRIMARY" --output text)"
+          echo "Expected: $expected_taskdef"
+          echo "Active:   $active_taskdef"
+          if [ "$active_taskdef" != "$expected_taskdef" ]; then
+            echo "::error::Deployment rolled back!"
+            aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+              --query 'services[0].events[0:5].message' --output table
+            exit 1
+          fi
+
+      - name: Smoke check deployed site over HTTPS
+        run: |
+          set -euo pipefail
+          base="https://archive.i2g.ucmerced.edu"
+
+          status="$(curl -sS -o /dev/null -w '%{http_code}' "$base/healthz")"
+          if [ "$status" != "200" ]; then
+            echo "Health check failed: $status"
+            exit 1
+          fi
+
+          # A served page must carry the embed helper and not leak the key.
+          page="$(curl -sS "$base/2025-fall-event.html")"
+          echo "$page" | grep -q '/static/js/i2g-embed.js' || { echo "embed helper missing"; exit 1; }
+          if echo "$page" | grep -q 'AIzaSy'; then
+            echo "::error::API key leaked into a served page!"
+            exit 1
+          fi
+          echo "Smoke check passed for $base"

@@ -30,27 +30,11 @@
           href="static/css/css-css_NYiFQQOJ7xKN-UNsYwHSy9B0FCXYVU-ZlvGwkwzENhA.css"
           media="all">
     <style>
-        /* Remove the fixed page-width constraint so content spans the full viewport.
-           Overrides Bootstrap 2's fixed `.container { width: 940px/1170px }` at every breakpoint. */
-        .container,
-        .navbar .container,
-        .navbar-static-top .container,
-        .navbar-fixed-top .container,
-        .navbar-fixed-bottom .container {
-            width: 100% !important;
-            max-width: 100% !important;
-            box-sizing: border-box;
-            padding-left: 15px;
-            padding-right: 15px;
-        }
-
-        /* Center event-page content instead of left-aligning it. Overrides the
-           inline `text-align: left` blocks on the page content. Scoped to event
-           pages via the `i2g-center` body class. */
-        body.i2g-center #content,
-        body.i2g-center #content [style*="text-align: left"],
-        body.i2g-center #content [style*="text-align:left"] {
-            text-align: center !important;
+        /* Center the entire Bootstrap page grid while preserving each child
+           element's own text and table alignment. */
+        body.i2g-center #main > .container {
+            margin-left: auto !important;
+            margin-right: auto !important;
         }
 
         /* Disable the sticky/pinned table header on scroll. Cancels the inline
@@ -73,7 +57,6 @@
         }
     </style>
 
-    <script src="static/config.js"></script>
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node i2g-center">
@@ -404,7 +387,7 @@
                             $(document).ready(function () {
                                 // Pulls the winner column from "2022-01-Spring-I2G-MASTER" spreadsheet.
                                 // .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks", function (data) {
                                     $(".winnert1").prepend(data.values[2][6]);
                                     $(".winnert2").prepend(data.values[3][6]);
                                     $(".winnert3").prepend(data.values[4][6]);
@@ -1504,7 +1487,7 @@
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {
@@ -1671,7 +1654,7 @@
                         <script>
                             $(document).ready(function () {
                                 // Pulls the room column from "2022-01-Spring-I2G-MASTER" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks", function (data) {
                                     $(".roomt1").prepend(data.values[2][1]);
                                     $(".roomt2").prepend(data.values[3][1]);
                                     $(".roomt3").prepend(data.values[4][1]);
@@ -1697,7 +1680,7 @@
 
                             $(document).ready(function () {
                                 // Pulls data from "2022-01-Spring-I2G-WEB" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB", function (data) {
                                     for (let i = 1; i < data.values.length; i++) {
                                         if ((data.values[i][3] == "CAP1") || (data.values[i][3] == "CAP")) { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
                                             let track = data.values[i][0];
@@ -2811,14 +2794,6 @@
         </div>
     </div>
 
-    <script>(function (d) {
-        var s = d.createElement("script");
-        s.setAttribute("data-account", "6Uvgvyrrph");
-        s.setAttribute("src", "https://cdn.userway.org/widget.js");
-        (d.body || d.head).appendChild(s);
-    })(document)</script>
-    <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website
-        accessibility</a></noscript>
     <script src="static/js/js-siteimprove.js" async></script>
     <script type="text/javascript"
             src="static/js/js-js_XexEZhbTmj1BHeajKr2rPfyR8Y68f4rm0Nv3Vj5_dSI.js"></script>
