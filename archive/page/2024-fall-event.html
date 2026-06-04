@@ -73,7 +73,6 @@
         }
     </style>
 
-    <script src="static/config.js"></script>
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node i2g-center">
@@ -469,7 +468,7 @@
                             $(document).ready(function () {
                                 // Pulls the winner column from "2022-08-Fall-I2G-MASTER" spreadsheet.
                                 // .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks", function (data) {
                                     $(".winnert1").prepend(data.values[2][6]);
                                     $(".winnert2").prepend(data.values[3][6]);
                                     $(".winnert3").prepend(data.values[4][6]);
@@ -1486,7 +1485,7 @@
                             // Pulls data from "2024-01-Fall-I2G-WEB" spreadsheet.
                             // This data is for the datatables
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {
@@ -1866,7 +1865,7 @@
                                 }
 
                                 // Pulls the room column from "2023-01-Spring-I2G-MASTER" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks", function (data) {
                                     // Pull the class column from "2023-01-Spring-I2G-MASTER" spreadsheet.
                                     for (let i = 1; i <= totalRooms; i++) {
                                         $(".roomt" + i).prepend(data.values[i + 1][1]);
@@ -1884,7 +1883,7 @@
                             $(document).ready(function () {
 
                                 // Pulls data from "2023-01-Spring-I2G-WEB" spreadsheet.
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1NvgPCISxxyoi_GjM77lb2RPhaAqtulA7YA0-1DnwMSk/values/I2G-WEB", function (data) {
 
                                     for (let i = 1; i < data.values.length; i++) {
                                         if (data.values[i][3] == "CAP") { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet

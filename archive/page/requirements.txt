@@ -1,3 +1,10 @@
-# Dev-only. The site itself is pure static and has NO runtime dependencies;
-# pytest is only needed to run the smoke suite in tests/.
+# Minimal server: static page serving + server-side Google Sheets proxy
+# (the API key stays in .env on the server; the browser never sees it).
+Flask==3.1.0
+Flask-Caching==2.3.0
+python-dotenv==1.1.1
+requests==2.32.3
+waitress==3.0.2
+
+# Tests
 pytest==8.4.1

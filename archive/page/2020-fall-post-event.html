@@ -73,7 +73,6 @@
         }
     </style>
 
-    <script src="static/config.js"></script>
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node i2g-center">
@@ -497,7 +496,7 @@
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1TJZfQFYf0iw1SBcqrdnS_efOsFzIppMg1aOajE-atc4/values/Sheet1?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/1TJZfQFYf0iw1SBcqrdnS_efOsFzIppMg1aOajE-atc4/values/Sheet1", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {

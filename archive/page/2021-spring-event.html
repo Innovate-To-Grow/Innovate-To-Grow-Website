@@ -73,7 +73,6 @@
         }
     </style>
 
-    <script src="static/config.js"></script>
 </head>
 
 <body class="html front not-logged-in no-sidebars page-node i2g-center">
@@ -754,7 +753,7 @@
                             var datas = [];
                             var test;
                             $(document).ready(function () {
-                                $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/10_l1AyeiwCN8GZl6CfL6CwOwVH6K66zmrZd1xxVx7qk/values/2021-01-Spring-I2G-WEB?alt=json&key=" + window.SHEETS_API_KEY + "", function (data) {
+                                $.getJSON("/api/sheets/10_l1AyeiwCN8GZl6CfL6CwOwVH6K66zmrZd1xxVx7qk/values/2021-01-Spring-I2G-WEB", function (data) {
                                     var length = data.values.length;
                                     console.log(length);
                                     for (var i = 1; i < length; i++) {
