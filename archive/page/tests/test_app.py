@@ -44,6 +44,14 @@ def test_embed_helper_is_served_as_static(client):
     assert b"i2g-embed-resize" in resp.data
 
 
+def test_embed_helper_unsets_fixed_container_width(client):
+    # When framed, the helper overrides Bootstrap's fixed `.container` width so
+    # the embed fills the iframe instead of leaving wide left/right gaps.
+    resp = client.get("/static/js/i2g-embed.js")
+    assert b"width: 100% !important; max-width: 100% !important;" in resp.data
+    assert b".container," in resp.data
+
+
 def test_embed_helper_injected_once_per_page(client):
     resp = client.get("/2025-fall-event.html")
     assert resp.data.count(b"/static/js/i2g-embed.js") == 1

@@ -12,7 +12,8 @@
  *      postMessage({type:'i2g-embed-resize', height}) on every size change, so
  *      the parent can grow the iframe to fit and no inner scrollbar is needed.
  *   2. Suppresses this page's own scrollbars (the parent frame is the only
- *      scroll surface the visitor should see).
+ *      scroll surface the visitor should see) and lets the fixed-width Bootstrap
+ *      `.container` fill the frame, so the CMS embed has no left/right gaps.
  *   3. Opens real navigation links in a new tab, so a click never strands the
  *      visitor inside the chromeless framed view.
  *
@@ -62,12 +63,26 @@
     }
   }
 
-  // Kill this page's own scrollbars; the parent iframe scrolls/sizes instead.
-  function suppressOwnScroll() {
+  // Framed-only layout fixes, injected as one stylesheet:
+  //   1. Kill this page's own scrollbars; the parent iframe scrolls/sizes.
+  //   2. Drop Bootstrap 2's fixed `.container { width: 940px/1170px }`, which
+  //      centers a narrow column and leaves wide left/right gaps once the parent
+  //      gives the iframe an aspect-ratio-driven width. The inner tables use
+  //      percentage-based `.row-fluid` spans, so they reflow to fill the frame.
+  //      Standalone pages keep their centered layout — this only runs when
+  //      framed (the early `return` above).
+  function applyFramedLayout() {
     var style = document.createElement('style');
     style.id = 'i2g-embed-style';
     style.textContent =
-      'html, body { overflow: hidden !important; margin: 0 !important; }';
+      'html, body { overflow: hidden !important; margin: 0 !important; }' +
+      '.container,' +
+      '.navbar .container,' +
+      '.navbar-static-top .container,' +
+      '.navbar-fixed-top .container,' +
+      '.navbar-fixed-bottom .container {' +
+      ' width: 100% !important; max-width: 100% !important;' +
+      ' box-sizing: border-box; padding-left: 15px; padding-right: 15px; }';
     (document.head || document.documentElement).appendChild(style);
   }
 
@@ -96,7 +111,7 @@
   }
 
   function init() {
-    suppressOwnScroll();
+    applyFramedLayout();
     openLinksInNewTab();
     reportHeight();
 
