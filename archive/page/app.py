@@ -21,7 +21,7 @@ from flask_caching import Cache
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parent
-PAGES_DIR = ROOT / "pages"
+PAGES_DIR = ROOT / "templates"
 
 app = Flask(__name__, static_folder=str(ROOT / "static"), static_url_path="/static")
 app.config.update(CACHE_TYPE="simple", CACHE_DEFAULT_TIMEOUT=3600)
@@ -92,7 +92,7 @@ def sheets_proxy(sheet_id: str, cell_range: str):
 @app.route("/<page>.html")
 @cache.cached()
 def serve_page(page: str):
-    # Only the flat event pages under pages/, nothing else.
+    # Only the flat event pages under templates/, nothing else.
     if "/" in page or not (PAGES_DIR / f"{page}.html").is_file():
         abort(404)
     return send_from_directory(PAGES_DIR, f"{page}.html")
