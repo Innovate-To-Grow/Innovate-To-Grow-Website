@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-PAGES = sorted(ROOT.glob("*.html"))
+PAGES = sorted((ROOT / "pages").glob("*.html"))
 
 _ASSET_RE = re.compile(r"""(?:src|href)=["'](static/[^"'?#]+)["']""")
 _KEY_RE = re.compile(r"AIzaSy[A-Za-z0-9_-]+")
