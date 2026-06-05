@@ -80,3 +80,70 @@ class AdminThemeRenderingTests(TestCase):
             style_path = style_factory(None).removeprefix("/static/")
             with self.subTest(style_path=style_path):
                 self.assertIsNotNone(finders.find(style_path))
+
+
+class AdminThemeDarkModeTests(TestCase):
+    """Dark-mode color/theme coverage for the central admin stylesheets."""
+
+    @staticmethod
+    def _read(asset):
+        path = finders.find(asset)
+        assert path is not None, f"static asset not found: {asset}"
+        return Path(path).read_text()
+
+    def test_dark_token_block_is_present(self):
+        source = self._read("admin/css/google-material-admin.css")
+
+        # The dark token block redefines every --md-sys-color-* token under a
+        # .dark selector, so var(..., #lightfallback) always resolves in dark.
+        dark_start = source.index(".dark,")
+        self.assertIn("--md-sys-color-surface: #131314", source[dark_start:])
+        self.assertIn("--md-sys-color-primary: #a8c7fa", source[dark_start:])
+        self.assertIn("--md-sys-color-on-primary: #202124", source[dark_start:])
+
+    def test_broad_bg_white_substring_selector_is_gone(self):
+        source = self._read("admin/css/google-material-admin.css")
+
+        # The broad substring match also caught Tailwind translucent overlays
+        # (bg-white/20, hover:bg-white/30) on the "select all" bar; the exact
+        # whitespace-token selector leaves those to Unfold.
+        self.assertNotIn('[class*="bg-white"]', source)
+        self.assertIn('[class~="bg-white"]', source)
+        self.assertIn('.dark [class~="bg-white"]', source)
+
+    def test_dark_checkbox_checkmark_uses_dark_stroke(self):
+        source = self._read("admin/css/google-material-admin-overrides.css")
+
+        # In dark mode the checkbox fill is light blue, so the checkmark needs a
+        # dark stroke (matching --md-sys-color-on-primary) for contrast.
+        self.assertIn(".dark #changelist input.action-select:checked", source)
+        self.assertIn(".dark #changelist input.action-toggle:checked", source)
+        dark_check_start = source.index(".dark #changelist input.action-select:checked")
+        dark_check_block = source[dark_check_start:]
+        self.assertIn("stroke='%23202124'", dark_check_block)
+        # The light rule keeps its white stroke unchanged.
+        light_check_block = source[: source.index(".dark #changelist input.action-select:checked")]
+        self.assertIn("stroke='%23fff'", light_check_block)
+
+    def test_dark_switch_knob_shadow_is_overridden(self):
+        source = self._read("admin/css/google-material-admin.css")
+
+        # The white knob is kept (Material convention), but its light drop
+        # shadow is replaced by a darker shadow under .dark.
+        self.assertIn('.dark input[type="checkbox"].appearance-none.w-8::after', source)
+        dark_knob_start = source.index('.dark input[type="checkbox"].appearance-none.w-8::after')
+        dark_knob_block = source[dark_knob_start : dark_knob_start + 200]
+        self.assertIn("rgba(0, 0, 0, 0.6)", dark_knob_block)
+
+    def test_overrides_still_load_after_unfold_styles(self):
+        make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+
+        response = self.client.get(reverse("admin:index"))
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertLess(
+            html.index("/static/unfold/css/styles.css"),
+            html.index("/static/admin/css/google-material-admin-overrides.css"),
+        )
