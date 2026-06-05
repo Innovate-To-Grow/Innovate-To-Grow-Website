@@ -129,7 +129,7 @@
   .si-chat-sidebar {
     max-height: 230px;
     border-right: 0;
-    border-bottom: 1px solid #dbe3ee;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
   }
 
   .si-chat-toolbar {
