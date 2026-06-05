@@ -4,6 +4,7 @@ import pytest
 from i2g_admin import runtime
 from i2g_admin.app import app
 from i2g_admin.commands.pagination import MAX_PAGE_SIZE, paginate
+from i2g_admin.errors import CliError
 from typer.testing import CliRunner
 
 runner = CliRunner()
@@ -109,7 +110,8 @@ def test_max_items_exact_page_boundary():
 def test_empty_first_page_terminates():
     client = PageClient([{"model": "m", "count": 0, "results": []}])
     result = paginate(client, PATH, [], no_paginate=False, max_items=None, page_size=None)
-    assert result == {"model": "m", "count": 0, "results": []}
+    # Accumulated path returns the unified {model, count, offset, limit, results} shape.
+    assert result == {"model": "m", "count": 0, "offset": 0, "limit": MAX_PAGE_SIZE, "results": []}
     assert len(client.calls) == 1
 
 
@@ -159,7 +161,79 @@ def test_missing_model_and_count_keys_default():
     # A page lacking model/count (older/edge server) should not raise.
     client = PageClient([{"results": []}])
     result = paginate(client, PATH, [], no_paginate=False, max_items=None, page_size=None)
-    assert result == {"model": None, "count": 0, "results": []}
+    assert result == {"model": None, "count": 0, "offset": 0, "limit": MAX_PAGE_SIZE, "results": []}
+
+
+# ---- #5: null / missing count must not break or stop early ----------------
+def test_null_count_does_not_raise():
+    # count=None previously hit `len(accumulated) >= None` -> TypeError.
+    pages = [
+        {"model": "m", "count": None, "results": [{"i": 0}]},
+        {"model": "m", "count": None, "results": []},
+    ]
+    client = PageClient(pages)
+    result = paginate(client, PATH, [], no_paginate=False, max_items=None, page_size=1)
+    assert [r["i"] for r in result["results"]] == [0]
+    assert result["count"] == 0
+    # Two GETs: one row page, then an empty page that terminates.
+    assert len(client.calls) == 2
+
+
+def test_missing_count_key_walks_all_pages():
+    # Without a count key, the loop must rely on the empty-page terminator and
+    # not stop after the first page (the old `count` default of 0 did: 1 >= 0).
+    pages = [
+        {"model": "m", "results": [{"i": 0}, {"i": 1}]},
+        {"model": "m", "results": [{"i": 2}]},
+        {"model": "m", "results": []},
+    ]
+    client = PageClient(pages)
+    result = paginate(client, PATH, [], no_paginate=False, max_items=None, page_size=2)
+    assert [r["i"] for r in result["results"]] == [0, 1, 2]
+    assert len(client.calls) == 3
+
+
+# ---- #6: negative --max-items is rejected ---------------------------------
+def test_negative_max_items_raises():
+    client = PageClient([{"model": "m", "count": 3, "results": [{"i": 0}, {"i": 1}, {"i": 2}]}])
+    with pytest.raises(CliError):
+        paginate(client, PATH, [], no_paginate=False, max_items=-1, page_size=50)
+
+
+def test_negative_max_items_raises_even_with_no_paginate():
+    client = PageClient([{"model": "m", "count": 3, "results": [{"i": 0}]}])
+    with pytest.raises(CliError):
+        paginate(client, PATH, [], no_paginate=True, max_items=-2, page_size=None)
+
+
+# ---- #7: --no-paginate honors --max-items ---------------------------------
+def test_no_paginate_applies_max_items():
+    client = PageClient([{"model": "m", "count": 99, "results": [{"i": n} for n in range(50)]}])
+    result = paginate(client, PATH, [], no_paginate=True, max_items=5, page_size=None)
+    assert [r["i"] for r in result["results"]] == [0, 1, 2, 3, 4]
+    # count stays the server-side total; only the rows are truncated.
+    assert result["count"] == 99
+    assert len(client.calls) == 1
+
+
+def test_no_paginate_max_items_zero_yields_no_rows():
+    client = PageClient([{"model": "m", "count": 3, "results": [{"i": 0}, {"i": 1}]}])
+    result = paginate(client, PATH, [], no_paginate=True, max_items=0, page_size=None)
+    assert result["results"] == []
+    assert result["count"] == 3
+
+
+# ---- #8: all three list shapes agree --------------------------------------
+def test_accumulated_shape_includes_offset_and_limit():
+    pages = [
+        {"model": "m", "count": 3, "results": [{"i": 0}, {"i": 1}]},
+        {"model": "m", "count": 3, "results": [{"i": 2}]},
+    ]
+    client = PageClient(pages)
+    result = paginate(client, PATH, [], no_paginate=False, max_items=None, page_size=2)
+    assert set(result) == {"model", "count", "offset", "limit", "results"}
+    assert result["offset"] == 0
+    assert result["limit"] == 2
 
 
 # ---- records_list wiring (through the CLI) --------------------------------
@@ -262,3 +336,28 @@ def test_cli_explicit_offset_bypasses_pagination(use_pages):
     assert result.exit_code == 0
     assert len(client.calls) == 1
     assert _params_map(client.calls[0][1]) == {"offset": "5"}
+
+
+def test_cli_no_paginate_with_max_items_truncates(use_pages):
+    # #7: --no-paginate must still honor --max-items instead of dumping the page.
+    rows = [{"i": n} for n in range(50)]
+    client = use_pages([{"model": "m", "count": 99, "results": rows}])
+    result = runner.invoke(
+        app,
+        ["--output", "json", "--no-paginate", "--max-items", "5", "records", "list", "projects", "semester"],
+    )
+    assert result.exit_code == 0
+    assert len(client.calls) == 1
+    assert '"i": 4' in result.output
+    assert '"i": 5' not in result.output
+
+
+def test_cli_negative_max_items_errors(use_pages):
+    # #6: a negative --max-items is a usage error, surfaced as a non-zero exit.
+    use_pages([{"model": "m", "count": 1, "results": [{"i": 0}]}])
+    result = runner.invoke(
+        app,
+        ["--max-items", "-1", "records", "list", "projects", "semester"],
+    )
+    assert result.exit_code == 1
+    assert "--max-items must be >= 0." in result.output
