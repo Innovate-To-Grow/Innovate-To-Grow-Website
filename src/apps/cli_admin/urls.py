@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AppListView,
     ModelListView,
     ModelSchemaView,
     OAuthAuthorizeView,
@@ -16,6 +17,7 @@ urlpatterns = [
     path("oauth/authorize/", OAuthAuthorizeView.as_view(), name="oauth-authorize"),
     path("oauth/token/", OAuthTokenView.as_view(), name="oauth-token"),
     path("whoami/", WhoAmIView.as_view(), name="whoami"),
+    path("apps/", AppListView.as_view(), name="app-list"),
     path("models/", ModelListView.as_view(), name="model-list"),
     path("models/<str:app_label>/<str:model_name>/schema/", ModelSchemaView.as_view(), name="model-schema"),
     path("records/<str:app_label>/<str:model_name>/", RecordCollectionView.as_view(), name="record-collection"),

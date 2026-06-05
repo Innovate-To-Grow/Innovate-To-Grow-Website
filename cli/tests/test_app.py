@@ -3,7 +3,7 @@ import io
 import pytest
 import typer
 from i2g_admin import app as appmod
-from i2g_admin import config
+from i2g_admin import config, runtime
 from i2g_admin.app import app
 from i2g_admin.errors import ApiError, CliError
 from typer.testing import CliRunner
@@ -36,7 +36,8 @@ class FakeClient:
 @pytest.fixture
 def use_client(monkeypatch):
     def install(client):
-        monkeypatch.setattr(appmod, "_client", lambda: client)
+        # Command modules resolve the glue from i2g_admin.runtime; patch it there.
+        monkeypatch.setattr(runtime, "_client", lambda: client)
         return client
 
     return install
@@ -83,10 +84,11 @@ def test_load_data_invalid_json_raises():
 
 
 # ---- commands -------------------------------------------------------------
-def test_configure_default():
+def test_configure_default(monkeypatch):
+    monkeypatch.setenv("I2G_ADMIN_BASE_URL", "https://env-default.example.com")
     result = runner.invoke(app, ["configure"])
     assert result.exit_code == 0
-    assert config.current_base_url() == config.DEFAULT_BASE_URL
+    assert config.current_base_url() == "https://env-default.example.com"
 
 
 def test_configure_with_base_url():
@@ -95,14 +97,16 @@ def test_configure_with_base_url():
     assert config.current_base_url() == "http://127.0.0.1:8000"
 
 
-def test_configure_rejects_invalid_base_url():
+def test_configure_rejects_invalid_base_url(monkeypatch):
+    monkeypatch.setenv("I2G_ADMIN_BASE_URL", "https://env-default.example.com")
     result = runner.invoke(app, ["configure", "--base-url", "http://remote.example.com"])
     assert result.exit_code == 1
-    assert config.current_base_url() == config.DEFAULT_BASE_URL
+    # The invalid URL is rejected; the profile keeps the env default.
+    assert config.current_base_url() == "https://env-default.example.com"
 
 
 def test_login(monkeypatch):
-    monkeypatch.setattr(appmod.auth, "login", lambda base_url: {"access_token": "T"})
+    monkeypatch.setattr(appmod.auth, "login", lambda base_url, profile=None: {"access_token": "T"})
     result = runner.invoke(app, ["login"])
     assert result.exit_code == 0
     assert "Logged in" in result.output
@@ -147,6 +151,21 @@ def test_schema(use_client):
     assert result.exit_code == 0
 
 
+def test_apps(use_client):
+    client = use_client(FakeClient(get=[{"app_label": "projects", "model_count": 3}]))
+    result = runner.invoke(app, ["apps"])
+    assert result.exit_code == 0
+    assert client.calls[0][1] == "/admin-api/apps/"
+    assert "projects" in result.output
+
+
+def test_apps_json(use_client):
+    use_client(FakeClient(get=[{"app_label": "projects", "model_count": 3}]))
+    result = runner.invoke(app, ["apps", "--json"])
+    assert result.exit_code == 0
+    assert '"app_label"' in result.output
+
+
 def test_records_list_with_all_options(use_client):
     client = use_client(FakeClient(get={"results": [{"year": 2025}], "count": 1}))
     result = runner.invoke(
@@ -178,10 +197,14 @@ def test_records_list_with_all_options(use_client):
 
 
 def test_records_list_no_options(use_client):
+    # With no explicit --limit/--offset, U4 auto-pagination drives the request:
+    # the first page carries limit/offset (the filter/order/field params it would
+    # otherwise carry are absent here), and an empty page terminates cleanly.
     client = use_client(FakeClient(get={"results": [], "count": 0}))
     result = runner.invoke(app, ["records", "list", "projects", "semester"])
     assert result.exit_code == 0
-    assert client.calls[0][2]["params"] == []
+    assert client.calls[0][2]["params"] == [("limit", "50"), ("offset", "0")]
+    assert len(client.calls) == 1
 
 
 def test_records_get(use_client):
@@ -218,6 +241,26 @@ def test_records_update(use_client):
     assert client.calls[0][2]["json_body"] == {"is_published": True}
 
 
+def test_records_count(use_client):
+    client = use_client(FakeClient(get={"model": "projects.Semester", "count": 3}))
+    result = runner.invoke(app, ["records", "count", "projects", "semester"])
+    assert result.exit_code == 0
+    params = client.calls[0][2]["params"]
+    assert ("count", "1") in params
+    assert all(key != "filter" for key, _ in params)
+    assert "3" in result.output
+
+
+def test_records_count_with_filters(use_client):
+    client = use_client(FakeClient(get={"model": "projects.Semester", "count": 1}))
+    result = runner.invoke(app, ["records", "count", "projects", "semester", "--filter", "year=2051", "--json"])
+    assert result.exit_code == 0
+    params = client.calls[0][2]["params"]
+    assert ("filter", "year=2051") in params
+    assert ("count", "1") in params
+    assert '"count": 1' in result.output
+
+
 def test_records_delete_with_yes(use_client):
     use_client(FakeClient(delete={"deleted": True, "cascade": {"total": 0}}))
     result = runner.invoke(app, ["records", "delete", "projects", "semester", "abc", "--yes"])
@@ -251,3 +294,134 @@ def test_command_api_error_exits_nonzero(use_client):
     use_client(Raising())
     result = runner.invoke(app, ["whoami"])
     assert result.exit_code == 1
+
+
+# ---- global options & new surface -----------------------------------------
+def test_version_flag():
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert "i2g-admin" in result.output
+
+
+def test_output_json_global_option(use_client):
+    use_client(FakeClient(get={"member_uuid": "abc"}))
+    result = runner.invoke(app, ["--output", "json", "whoami"])
+    assert result.exit_code == 0
+    assert '"member_uuid"' in result.output
+
+
+def test_query_projects_whoami(use_client):
+    use_client(FakeClient(get={"member_uuid": "abc", "email": "a@b.c"}))
+    result = runner.invoke(app, ["--query", "member_uuid", "--output", "json", "whoami"])
+    assert result.exit_code == 0
+    assert "abc" in result.output
+    assert "email" not in result.output
+
+
+def test_query_projects_records_list(use_client):
+    use_client(FakeClient(get={"results": [{"year": 2025}, {"year": 2026}], "count": 2}))
+    result = runner.invoke(
+        app, ["--query", "results[*].year", "--output", "json", "records", "list", "projects", "semester"]
+    )
+    assert result.exit_code == 0
+    assert "2025" in result.output
+    assert "2026" in result.output
+    assert "count" not in result.output
+
+
+def test_query_invalid_expression_exits(use_client):
+    use_client(FakeClient(get={"member_uuid": "abc"}))
+    result = runner.invoke(app, ["--query", "!!", "whoami"])
+    assert result.exit_code == 1
+    assert "Invalid --query expression" in result.output
+
+
+def test_configure_set_and_get_base_url():
+    set_result = runner.invoke(app, ["configure", "set", "base_url", "https://set.example.com"])
+    assert set_result.exit_code == 0
+    get_result = runner.invoke(app, ["configure", "get", "base_url"])
+    assert get_result.exit_code == 0
+    assert "https://set.example.com" in get_result.output
+
+
+def test_configure_set_unknown_key_errors():
+    result = runner.invoke(app, ["configure", "set", "nope", "x"])
+    assert result.exit_code == 1
+    assert "Unknown config key" in result.output
+
+
+def test_configure_get_unknown_key_errors():
+    result = runner.invoke(app, ["configure", "get", "nope"])
+    assert result.exit_code == 1
+    assert "Unknown config key" in result.output
+
+
+def test_configure_list_shows_profiles():
+    config.set_base_url("https://stg.example.com", profile="staging")
+    result = runner.invoke(app, ["configure", "list"])
+    assert result.exit_code == 0
+    assert "staging" in result.output
+
+
+def test_profile_threads_through_to_credentials(monkeypatch):
+    captured = {}
+
+    def fake_login(base_url, profile=None):
+        captured["profile"] = profile
+
+    monkeypatch.setattr(appmod.auth, "login", fake_login)
+    config.set_base_url("https://stg.example.com", profile="staging")
+    result = runner.invoke(app, ["--profile", "staging", "login"])
+    assert result.exit_code == 0
+    assert captured["profile"] == "staging"
+
+
+def test_logout_with_profile(monkeypatch):
+    config.save_credentials({"access_token": "T"}, profile="staging")
+    result = runner.invoke(app, ["--profile", "staging", "logout"])
+    assert result.exit_code == 0
+    assert "Logged out" in result.output
+
+
+def test_client_factory_uses_context_build_client(monkeypatch):
+    # _client() with an active CLI context delegates to build_client(context).
+    seen = {}
+
+    class RecordingClient:
+        def get(self, path, **kwargs):
+            return {"member_uuid": "abc"}
+
+    def fake_build_client(context):
+        seen["profile"] = context.profile
+        return RecordingClient()
+
+    # _client() resolves build_client from the runtime module; patch it there.
+    monkeypatch.setattr(runtime, "build_client", fake_build_client)
+    result = runner.invoke(app, ["--profile", "prod", "whoami"])
+    assert result.exit_code == 0
+    assert seen["profile"] == "prod"
+
+
+def test_client_factory_without_context(monkeypatch):
+    # Direct call (no CLI context) uses the legacy zero-arg token lookup.
+    monkeypatch.setattr(runtime.auth, "ensure_token", lambda: ("https://b", "TOK"))
+    client = runtime._client()
+    assert client.base_url == "https://b"
+
+
+def test_debug_flag_prints_error_repr(use_client):
+    class Raising:
+        def get(self, *args, **kwargs):
+            raise ApiError(400, "boom detail")
+
+    use_client(Raising())
+    result = runner.invoke(app, ["--debug", "whoami"])
+    assert result.exit_code == 1
+    # --debug adds the repr() of the error (includes the class name).
+    assert "ApiError" in result.output
+
+
+def test_invalid_profile_name_errors():
+    result = runner.invoke(app, ["--profile", "bad/name", "configure", "get", "base_url"])
+    assert result.exit_code == 1
+    assert "Invalid profile name" in result.output
