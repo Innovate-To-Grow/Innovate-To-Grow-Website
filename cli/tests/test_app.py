@@ -182,10 +182,14 @@ def test_records_list_with_all_options(use_client):
 
 
 def test_records_list_no_options(use_client):
+    # With no explicit --limit/--offset, U4 auto-pagination drives the request:
+    # the first page carries limit/offset (the filter/order/field params it would
+    # otherwise carry are absent here), and an empty page terminates cleanly.
     client = use_client(FakeClient(get={"results": [], "count": 0}))
     result = runner.invoke(app, ["records", "list", "projects", "semester"])
     assert result.exit_code == 0
-    assert client.calls[0][2]["params"] == []
+    assert client.calls[0][2]["params"] == [("limit", "50"), ("offset", "0")]
+    assert len(client.calls) == 1
 
 
 def test_records_get(use_client):
