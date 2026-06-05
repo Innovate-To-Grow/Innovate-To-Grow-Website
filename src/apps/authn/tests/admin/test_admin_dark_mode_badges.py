@@ -9,10 +9,12 @@ Two badges live in this app:
 * ``AdminInvitationAdmin.status_badge`` paints white text on a *saturated*
   background pill. White-on-saturated reads on either surface, so it is
   mode-safe and intentionally left unchanged. These tests lock that rendering.
-* ``MemberSheetSyncLogAdmin.status_badge`` sets a *text-only* color that sits
-  directly on the admin surface. The CSS named color ``green`` (``#008000``) is
-  too dark to read on the dark surface, so it was replaced with the saturated
-  ``#10b981`` / ``#ef4444`` palette. These tests lock that fix.
+* ``MemberSheetSyncLogAdmin.status_badge`` used to set a *text-only* color that
+  sat directly on the admin surface, which cannot satisfy contrast on both
+  surfaces (CSS ``green``/``#008000`` fails dark; plain ``#10b981`` text fails
+  AA on light). It now renders a white-on-saturated-background pill — the same
+  mode-safe construction as the invitation badge. These tests lock that pill so
+  the text-only form cannot return.
 """
 
 from django.test import TestCase
@@ -84,7 +86,7 @@ class AdminInvitationBadgeDarkModeTests(TestCase):
 
 
 class MemberSheetSyncLogBadgeDarkModeTests(TestCase):
-    """The sync-log badge is text-only, so the color must be dark-mode legible."""
+    """The sync-log badge must be a white-on-saturated pill (mode-safe on both surfaces)."""
 
     def setUp(self):
         self.admin_user = make_superuser()
@@ -97,28 +99,41 @@ class MemberSheetSyncLogBadgeDarkModeTests(TestCase):
             rows_written=1,
         )
 
-    def test_success_badge_uses_dark_mode_legible_green(self):
-        log = MemberSheetSyncLog(status=MemberSheetSyncLog.Status.SUCCESS, sync_type="full")
-        html = MemberSheetSyncLogAdmin(MemberSheetSyncLog, None).status_badge(log)
-        self.assertIn("#10b981", html)
-        # Must never regress to the dark CSS "green" (#008000) or a literal name.
+    def _assert_is_white_on_saturated_pill(self, html, background):
+        """The badge must fill a saturated background and use white text — not a
+        text-only color, which cannot read on both the light and dark surfaces."""
         compact = html.replace(" ", "")
+        # White text on a filled saturated background pill.
+        self.assertIn("color:#fff", compact)
+        self.assertIn(f"background:{background};", compact)
+        self.assertIn("border-radius:12px", compact)
+        # Must NOT regress to a text-only color (no background) — guard against
+        # `color:#10b981`/`color:#ef4444`/`color:green` etc. sitting on the
+        # bare admin surface. The saturated hue may only appear as a background.
+        self.assertNotIn(f"color:{background}", compact)
         self.assertNotIn("color:green", compact)
+        self.assertNotIn("color:red", compact)
         for dark in DARK_TEXT_COLORS:
             self.assertNotIn(f"color:{dark}", compact)
 
-    def test_failure_badge_uses_legible_red(self):
+    def test_success_badge_is_white_on_green_pill(self):
+        log = MemberSheetSyncLog(status=MemberSheetSyncLog.Status.SUCCESS, sync_type="full")
+        html = MemberSheetSyncLogAdmin(MemberSheetSyncLog, None).status_badge(log)
+        self._assert_is_white_on_saturated_pill(html, "#10b981")
+
+    def test_failure_badge_is_white_on_red_pill(self):
         log = MemberSheetSyncLog(status=MemberSheetSyncLog.Status.FAILED, sync_type="full")
         html = MemberSheetSyncLogAdmin(MemberSheetSyncLog, None).status_badge(log)
-        self.assertIn("#ef4444", html)
-        self.assertNotIn("color:red", html.replace(" ", ""))
+        self._assert_is_white_on_saturated_pill(html, "#ef4444")
 
-    def test_changelist_renders_legible_status_colors(self):
+    def test_changelist_renders_pill_status_badges(self):
         self._make_log(MemberSheetSyncLog.Status.SUCCESS)
         self._make_log(MemberSheetSyncLog.Status.FAILED)
         response = self.client.get(reverse("admin:authn_membersheetsynclog_changelist"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "#10b981")
-        self.assertContains(response, "#ef4444")
+        # Filled saturated pills, not text-only color.
+        self.assertContains(response, "background:#10b981;")
+        self.assertContains(response, "background:#ef4444;")
+        self.assertContains(response, "color:#fff")
         # The dark CSS "green" must not appear anywhere in the rendered list.
         self.assertNotContains(response, "#008000")

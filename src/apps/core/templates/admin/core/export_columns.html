@@ -12,11 +12,9 @@
         border-radius: var(--md-sys-shape-corner-large, 1rem);
         padding: 1.25rem 1.5rem;
     }
-    @media (prefers-color-scheme: dark) {
-        .export-card {
-            background: var(--md-sys-color-surface-container, var(--color-base-900, #111827));
-            border-color: var(--md-sys-color-outline-variant, var(--color-base-700, #374151));
-        }
+    .dark .export-card {
+        background: var(--md-sys-color-surface-container, var(--color-base-900, #111827));
+        border-color: var(--md-sys-color-outline-variant, var(--color-base-700, #374151));
     }
     .export-radio-card {
         display: flex;
@@ -46,6 +44,9 @@
     }
     .export-field-item:hover {
         background: var(--color-base-100, #f3f4f6);
+    }
+    .dark .export-field-item:hover {
+        background: var(--md-sys-color-surface-container-high, var(--color-base-800, #1f2937));
     }
     #columns-section {
         transition: opacity .2s, max-height .3s;
@@ -93,18 +94,22 @@
     .preview-table tr:last-child td {
         border-bottom: none;
     }
-    @media (prefers-color-scheme: dark) {
-        .preview-wrap {
-            border-color: var(--color-base-700, #374151);
-        }
-        .preview-table th {
-            background: var(--color-base-800, #1f2937);
-            border-color: var(--color-base-700, #374151);
-        }
-        .preview-table td {
-            border-color: var(--color-base-800, #1f2937);
-            color: var(--color-base-300, #d1d5db);
-        }
+    /* Dark mode is driven by the .dark class the theme toggle puts on <html>
+       (independent of the OS prefers-color-scheme), and Unfold's --color-base-*
+       ramp is a fixed light ramp that does NOT flip under .dark. So scope the
+       dark overrides on .dark — using md-sys surface tokens that DO flip — and
+       keep the --color-base-* values only as load-bearing fallbacks. */
+    .dark .preview-wrap {
+        border-color: var(--md-sys-color-outline-variant, var(--color-base-700, #374151));
+    }
+    .dark .preview-table th {
+        background: var(--md-sys-color-surface-container-high, var(--color-base-800, #1f2937));
+        color: var(--md-sys-color-on-surface-variant, var(--color-base-300, #d1d5db));
+        border-color: var(--md-sys-color-outline-variant, var(--color-base-700, #374151));
+    }
+    .dark .preview-table td {
+        border-color: var(--md-sys-color-outline-variant, var(--color-base-800, #1f2937));
+        color: var(--md-sys-color-on-surface, var(--color-base-300, #d1d5db));
     }
 </style>
 

@@ -50,13 +50,43 @@ function themeToggleButton(page: Page): Locator {
   return page.getByRole('button', {name: 'Switch admin theme'});
 }
 
+// The dropdown panel. Keyed by its stable class rather than the ARIA role:
+// the panel animates in/out via Alpine x-transition, and a role-based
+// `navigation` locator drops out of the accessibility tree the moment it hits
+// `display:none`, which makes visibility assertions race the leave animation.
+function themeMenu(page: Page): Locator {
+  return page.locator('.i2g-admin-theme-toggle__menu');
+}
+
+// Wait until the menu panel has fully finished its x-transition to `display:none`.
+// Re-opening the menu while its leave transition is still running races Alpine's
+// `x-on:click.outside` handler, which swallows the open click (the button's
+// `aria-expanded` never flips to true) — so each open must start from a
+// definitively-closed panel, not merely from `aria-expanded === 'false'`.
+async function expectThemeMenuClosed(page: Page) {
+  await page.waitForFunction(() => {
+    const menu = document.querySelector('.i2g-admin-theme-toggle__menu');
+    return !menu || getComputedStyle(menu).display === 'none';
+  });
+}
+
 // Open the theme menu and pick Light / Dark / System by its option label.
 async function selectTheme(page: Page, option: 'Light' | 'Dark' | 'System') {
-  await themeToggleButton(page).click();
-  const menu = page.getByRole('navigation', {name: 'Admin theme options'});
-  await expect(menu).toBeVisible();
-  await menu.getByRole('button', {name: option, exact: true}).click();
-  await expect(menu).toBeHidden();
+  const button = themeToggleButton(page);
+  // Guard against a still-animating leave transition from a previous select.
+  await expectThemeMenuClosed(page);
+
+  await button.click();
+  // The button binds `aria-expanded` straight to Alpine's `openTheme`, so it
+  // flips synchronously with the state — a transition-free signal the menu is
+  // open. Also wait for the panel to actually paint before clicking into it.
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  await expect(themeMenu(page)).toBeVisible();
+
+  await themeMenu(page).getByRole('button', {name: option, exact: true}).click();
+  await expect(button).toHaveAttribute('aria-expanded', 'false');
+  // Settle the panel fully closed so a subsequent selectTheme opens cleanly.
+  await expectThemeMenuClosed(page);
 }
 
 function htmlClassList(page: Page): Promise<string[]> {
@@ -127,6 +157,31 @@ test.describe.serial('Django admin dark mode', {tag: '@admin'}, () => {
     expect(await backgroundLuminance(page, SIDEBAR_SURFACE)).toBeLessThan(LUMINANCE_MIDPOINT);
 
     // Reset to light so a serial rerun / other suites start from a clean theme.
+    await selectTheme(page, 'Light');
+  });
+
+  test('locks the dark checkbox-checkmark fix this PR ships', async ({page}) => {
+    // The surface/sidebar luminance probes above would still pass if the PR's
+    // CSS fixes were reverted (those surfaces are painted by pre-existing
+    // rules). This test pins the actual change in google-material-admin-overrides.css:
+    // in dark mode the checked changelist action-checkbox must draw its SVG
+    // checkmark with the dark on-primary stroke (#202124), NOT the light-mode
+    // white stroke (%23fff) that would be near-invisible on the light-blue fill.
+    await adminLogin(page);
+    await selectTheme(page, 'Dark');
+
+    await page.goto(`${apiBaseUrl}/admin/projects/project/`, {waitUntil: 'domcontentloaded'});
+    await expect(page.locator('html.dark')).toBeAttached();
+
+    const checkbox = page.locator('#changelist input.action-select').first();
+    await expect(checkbox).toBeVisible();
+    await checkbox.check();
+
+    const checkmark = await checkbox.evaluate((el) => decodeURIComponent(getComputedStyle(el).backgroundImage));
+    expect(checkmark, 'checked action-checkbox should render an inline SVG checkmark').toContain('data:image/svg+xml');
+    expect(checkmark, 'dark-mode checkmark must use the #202124 stroke').toContain('#202124');
+    expect(checkmark, 'dark-mode checkmark must not keep the light white (#fff) stroke').not.toContain("stroke='#fff'");
+
     await selectTheme(page, 'Light');
   });
 });

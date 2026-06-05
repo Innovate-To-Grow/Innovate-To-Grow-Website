@@ -40,12 +40,20 @@ class MemberSheetSyncLogAdmin(ReadOnlyModelAdmin):
 
     @admin.display(description="Status")
     def status_badge(self, obj):
-        # Use saturated hues legible on both light and dark admin surfaces.
-        # The CSS named color "green" (#008000) is too dark to read on the
-        # near-black dark-mode surface (#131314); these hex values match the
-        # mode-safe palette used by AdminInvitationAdmin.status_badge.
-        color = "#10b981" if obj.status == MemberSheetSyncLog.Status.SUCCESS else "#ef4444"
-        return format_html('<span style="color: {};">{}</span>', color, obj.get_status_display())
+        # Render as a white-on-saturated-background pill rather than colored
+        # text. A single text color cannot satisfy contrast on BOTH the
+        # near-white light surface (#fffbfb) and the near-black dark surface
+        # (#131314): the old CSS "green" (#008000) failed dark, while plain
+        # #10b981 text fails AA on light (~2.5:1). White text on a filled
+        # saturated background reads on either surface — the same mode-safe
+        # pattern AdminInvitationAdmin.status_badge uses.
+        background = "#10b981" if obj.status == MemberSheetSyncLog.Status.SUCCESS else "#ef4444"
+        return format_html(
+            '<span style="display:inline-block;padding:2px 10px;border-radius:12px;'
+            'font-size:12px;font-weight:600;color:#fff;background:{};">{}</span>',
+            background,
+            obj.get_status_display(),
+        )
 
     @admin.display(description="Error")
     def error_message_short(self, obj):

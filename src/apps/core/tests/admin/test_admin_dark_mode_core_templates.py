@@ -9,6 +9,7 @@ Dark mode in this admin is driven by a ``.dark`` class on ``<html>`` (see
 ``.dark``-scoped override rather than relying on ``prefers-color-scheme`` alone.
 """
 
+import re
 from pathlib import Path
 
 from django.template.loader import get_template
@@ -86,19 +87,20 @@ class AutosaveToggleDarkModeTests(TestCase):
 
 
 class ExportColumnsDarkModeTests(TestCase):
-    """The bulk-export column picker must not use raw light hex without a token."""
+    """The bulk-export column picker must adapt to the .dark class, not just OS preference."""
 
     template_name = "admin/core/export_columns.html"
 
-    def test_export_template_uses_only_tokenized_colors(self):
+    def _style_block(self):
         source = _template_source(self.template_name)
-        style_block = source[source.index("<style>") : source.index("</style>")]
+        return source[source.index("<style>") : source.index("</style>")]
+
+    def test_export_template_uses_only_tokenized_colors(self):
+        style_block = self._style_block()
 
         # Every color in the export styles must be expressed as a CSS custom
         # property (md-sys or Unfold color-base tokens), with hex only ever
         # appearing as a var() fallback. Catch any raw hex used as a value.
-        import re
-
         raw_hex = [
             match.group(0)
             for match in re.finditer(r"#[0-9a-fA-F]{3,6}", style_block)
@@ -111,6 +113,28 @@ class ExportColumnsDarkModeTests(TestCase):
 
         self.assertIn("var(--md-sys-color-surface-container-lowest", source)
         self.assertIn("var(--md-sys-color-outline-variant", source)
+
+    def test_dark_styling_is_keyed_on_the_dark_class_not_prefers_color_scheme(self):
+        # The theme toggle adds `.dark` to <html> regardless of the OS
+        # prefers-color-scheme. Unfold's --color-base-* ramp is a FIXED light
+        # ramp that does not flip under .dark, so the preview table — which is
+        # built on --color-base-* — would render a light island inside the dark
+        # card if its dark styling stayed gated on @media (prefers-color-scheme).
+        # Guard that the dark overrides are `.dark`-scoped instead.
+        style_block = self._style_block()
+
+        self.assertNotIn(
+            "@media (prefers-color-scheme: dark)",
+            style_block,
+            "Export dark styling must be .dark-scoped: @media (prefers-color-scheme) "
+            "does not fire when the toggle forces dark on a light-OS machine.",
+        )
+        # The surfaces that previously only adapted under the media query must
+        # now have explicit .dark overrides built on md-sys tokens (which flip).
+        for selector in (".dark .export-card", ".dark .preview-table th", ".dark .preview-table td"):
+            self.assertIn(selector, style_block, f"Missing dark override for {selector!r}")
+        self.assertIn(".dark .preview-table th", style_block)
+        self.assertIn("var(--md-sys-color-surface-container-high", style_block)
 
 
 class MaterialPasswordWidgetDarkModeTests(TestCase):
