@@ -1,6 +1,24 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from ..models import PastProjectShare
+
+
+def _share_url(obj, request):
+    """Build the public share URL on the *frontend* origin.
+
+    The share page (`/past-projects/<id>`) is a React SPA route served by the
+    frontend, not Django. Using ``request.build_absolute_uri`` here would point
+    at the API host (e.g. ``api.i2g.ucmerced.edu``), whose catch-all returns the
+    admin 404 page — so prefer ``FRONTEND_URL`` like the rest of the codebase,
+    and only fall back to the request origin (dev/same-origin) when it is unset.
+    """
+    base = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+    if base:
+        return f"{base}/past-projects/{obj.pk}"
+    if request is not None:
+        return request.build_absolute_uri(f"/past-projects/{obj.pk}")
+    return f"/past-projects/{obj.pk}"
 
 
 class PastProjectShareRowSerializer(serializers.Serializer):
@@ -39,10 +57,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         return value
 
     def get_share_url(self, obj):
-        request = self.context.get("request")
-        if request is None:
-            return f"/past-projects/{obj.pk}"
-        return request.build_absolute_uri(f"/past-projects/{obj.pk}")
+        return _share_url(obj, self.context.get("request"))
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -67,10 +82,7 @@ class PastProjectShareListSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "note", "share_url", "row_count", "created_at"]
 
     def get_share_url(self, obj):
-        request = self.context.get("request")
-        if request is None:
-            return f"/past-projects/{obj.pk}"
-        return request.build_absolute_uri(f"/past-projects/{obj.pk}")
+        return _share_url(obj, self.context.get("request"))
 
     # noinspection PyMethodMayBeStatic
     def get_row_count(self, obj):

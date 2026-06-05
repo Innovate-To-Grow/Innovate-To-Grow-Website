@@ -162,12 +162,32 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    @override_settings(FRONTEND_URL="https://i2g.example.edu/")
+    def test_share_url_uses_frontend_origin(self):
+        # share_url must point at the FRONTEND origin (the SPA route), not the API
+        # host — otherwise the link lands on the Django admin 404 page. The
+        # trailing slash on FRONTEND_URL is normalized away.
+        share = PastProjectShare.objects.create(rows=[sample_row()])
+        data = PastProjectShareSerializer(share).data
+        self.assertEqual(data["share_url"], f"https://i2g.example.edu/past-projects/{share.pk}")
+
+    @override_settings(FRONTEND_URL="")
     def test_share_url_falls_back_to_relative_path_without_request(self):
-        # Serializing outside a request context (no request in context) yields a
-        # relative share URL rather than an absolute one.
+        # With FRONTEND_URL unset and no request in context, the serializer yields
+        # a relative share URL rather than an absolute one.
         share = PastProjectShare.objects.create(rows=[sample_row()])
         data = PastProjectShareSerializer(share).data
         self.assertEqual(data["share_url"], f"/past-projects/{share.pk}")
+
+    @override_settings(FRONTEND_URL="")
+    def test_share_url_falls_back_to_request_origin_without_frontend_url(self):
+        # With FRONTEND_URL unset but a request present, fall back to the request
+        # origin (the dev / same-origin case).
+        share = PastProjectShare.objects.create(rows=[sample_row()])
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["share_url"].endswith(f"/past-projects/{share.pk}"))
+        self.assertIn("http", response.data["share_url"])
 
     def test_create_without_request_context_sets_created_by_none(self):
         # The serializer is robust when used without a request (e.g. shell/scripts):
@@ -201,12 +221,19 @@ class PastProjectShareAPIViewTests(TestCase):
         response = anon.get("/projects/past-shares/mine/")
         self.assertEqual(response.status_code, 401)
 
+    @override_settings(FRONTEND_URL="")
     def test_list_serializer_shape_without_request(self):
         share = PastProjectShare.objects.create(name="Shape", rows=[sample_row()], created_by=self.member)
         data = PastProjectShareListSerializer(share).data
         self.assertEqual(data["share_url"], f"/past-projects/{share.pk}")
         self.assertEqual(data["row_count"], 1)
         self.assertEqual(data["name"], "Shape")
+
+    @override_settings(FRONTEND_URL="https://i2g.example.edu")
+    def test_list_serializer_share_url_uses_frontend_origin(self):
+        share = PastProjectShare.objects.create(name="Shape", rows=[sample_row()], created_by=self.member)
+        data = PastProjectShareListSerializer(share).data
+        self.assertEqual(data["share_url"], f"https://i2g.example.edu/past-projects/{share.pk}")
 
     # --- owner-scoped delete ---
 
