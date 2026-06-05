@@ -56,17 +56,34 @@ i2g-admin logout
 
 ### Global options
 
-These go **before** the command (as in `aws --output yaml ...`):
+These go **before** the command (as in `aws --output json s3 ls`):
 
-- `--output table|json` — output format (`text`/`yaml`/`csv` land in a later release).
+- `--profile <name>` — select a named configuration/credentials profile (also `I2G_ADMIN_PROFILE`).
+- `--output table|json` — output format. `text`/`yaml`/`csv` are recognized and land in a later release.
 - `--query <expr>` — client-side projection (JMESPath; lands in a later release).
-- `--profile <name>` — select a named configuration/credentials profile.
+- `--no-paginate` / `--max-items <n>` / `--page-size <n>` — auto-pagination controls (lands in a later release).
+- `--max-attempts <n>` / `--connect-timeout <s>` / `--read-timeout <s>` — HTTP robustness (retry/backoff lands in a later release; one attempt today, default timeouts 5s/30s).
+- `--debug` — emit extra detail on errors.
 - `--version` — print the version and exit.
-- `--data` accepts inline JSON, `@file.json`, or `@-` to read JSON from stdin.
-- `--json` (per command) is a back-compat alias for `--output json`.
+
+Per-command: `--json` is a back-compat alias for `--output json`; `--data` accepts inline JSON,
+`@file.json`, or `@-` to read JSON from stdin.
+
+Recognized-but-not-yet-implemented paths (`--query`, `--output text|yaml|csv`) fail fast with a
+clear "not available in this build yet" message rather than silently ignoring the flag.
+
+### Commands
+
+`configure get/set/list` · `login` · `logout` · `whoami` · `models` · `schema <app> <model>` ·
+`records list/get/create/update/delete <app> <model>`. Coming in later releases: `apps`,
+`records count`, `records wait --until field=value`, `completion show <shell>`,
+`records create/update --generate-cli-skeleton`/`--cli-input-json`, and a richer `schema`
+(verbose name, help text, default, choices, FK target).
 
 Access requires the logged-in account be active **and** staff. There are no per-model
 permission checks — staff status is the gate, backed by the backend's hard denylist.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for release notes and [`docs/cms-admin/cli-admin.md`](../docs/cms-admin/cli-admin.md) for the authoritative reference.
 
 ## Develop
 

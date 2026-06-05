@@ -48,30 +48,87 @@ The client depends only on `typer`, `requests`, and `rich`; it is packaged separ
 
 ## Configuration
 
+The CLI has **no baked-in backend URL** — there is no hardcoded production default. The base URL is resolved, in order, from:
+
+1. the active profile's stored `base_url` (set via `configure set base_url <url>`, kept in `config.json`),
+2. the legacy `credentials.json`'s `base_url` (for the `default` profile),
+3. the `I2G_ADMIN_BASE_URL` environment variable, or a `.env` file (copy `cli/.env.example` to `cli/.env`).
+
+If none is set, the command fails with a clear configuration error rather than silently targeting a default host.
+
 ```bash
-i2g-admin configure --base-url http://127.0.0.1:8000   # local dev
-i2g-admin configure                                    # default: https://api.i2g.ucmerced.edu
+i2g-admin configure set base_url http://127.0.0.1:8000   # persist for the active profile (preferred)
+i2g-admin configure get base_url                          # print the resolved value
+i2g-admin configure list                                  # known profiles + the active default
+i2g-admin configure --base-url http://127.0.0.1:8000      # back-compat: same as `set base_url`
+i2g-admin configure                                       # back-compat: persist the env/.env value
 ```
 
-- The base URL may also be set with the `I2G_ADMIN_BASE_URL` environment variable.
 - For safety, the base URL **must be `https`** — `http` is only allowed for loopback hosts (`127.0.0.1` / `localhost` / `::1`), so a bearer token is never sent in cleartext to a remote host.
 - Credentials are cached at `${XDG_CONFIG_HOME:-~/.config}/i2g-admin/credentials.json` with `0600` permissions (directory `0700`), holding `{base_url, access_token, expires_at}`.
+
+### Profiles
+
+Like the AWS CLI, you can keep several named environments. Pass `--profile <name>` **before the command** (or set `I2G_ADMIN_PROFILE`):
+
+```bash
+i2g-admin --profile staging configure set base_url http://127.0.0.1:8000
+i2g-admin --profile staging login
+i2g-admin --profile staging records list projects Semester
+```
+
+- Per-profile settings (currently `base_url`) live in `${XDG_CONFIG_HOME:-~/.config}/i2g-admin/config.json` under `profiles.<name>`, alongside `default_profile`.
+- The `default` profile reuses the legacy `credentials.json`; a named profile uses `credentials-<name>.json` (all `0600`).
+- Profile names are restricted to letters, digits, `.`, `_`, and `-` so a name can never escape the config directory.
+
+## Global options
+
+Modeled on the AWS CLI, the cross-cutting options live on the **root** and must be placed **before** the command (as in `aws --output json s3 ls`):
+
+```bash
+i2g-admin --profile staging --output json records list projects Semester
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--profile <name>` | `default_profile` from `config.json` | Select a named configuration/credentials profile (also `I2G_ADMIN_PROFILE`). |
+| `--output table\|json` | `table` | Output format. `text` / `yaml` / `csv` are recognized but report "not available in this build yet" until that unit lands. |
+| `--query <expr>` | — | Client-side JMESPath projection of the result. Recognized but reports "not available in this build yet" until that unit lands. |
+| `--no-paginate` | off | Disable automatic pagination (auto-pagination behavior lands in a later unit; the flag is accepted now). |
+| `--max-items <n>` | — | Stop after this many items when paginating (later unit). |
+| `--page-size <n>` | — | Items to request per page when paginating (later unit). |
+| `--max-attempts <n>` | `1` | Max HTTP attempts; retry/backoff of transient `429/5xx` lands in a later unit (single attempt today). |
+| `--connect-timeout <s>` | `5` | Per-request connect timeout (seconds). |
+| `--read-timeout <s>` | `30` | Per-request read timeout (seconds). |
+| `--debug` | off | Emit extra detail (the error `repr`) on failures. |
+| `--version` | — | Print the version and exit. |
+
+The per-command `--json` flag is a back-compat alias for `--output json`.
+
+> Implementation status: `--profile`, `--output table|json`, `--json`, `--debug`, `--version`, and the timeout knobs are live. `--query`, `--output text|yaml|csv`, auto-pagination (`--no-paginate`/`--max-items`/`--page-size`), and retries (`--max-attempts`) are wired into the option surface and option semantics, but the underlying behavior is delivered incrementally; unimplemented paths fail fast with a clear "not available in this build yet" message rather than silently no-op'ing.
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `configure [--base-url URL]` | Persist the backend base URL |
+| `configure set <key> <value>` | Set a config value (currently `base_url`) for the active profile |
+| `configure get <key>` | Print a resolved config value |
+| `configure list` | List known profiles and the active default |
+| `configure [--base-url URL]` | Back-compat: persist the base URL for the active profile |
 | `login` | Browser login → cache a short-lived token |
-| `logout` | Delete the locally cached token |
+| `logout` | Delete the locally cached token for the active profile |
 | `whoami` | Show the authenticated member and token expiry |
 | `models` | List models readable/writable through the API |
-| `schema <app> <model>` | Show readable/writable fields for one model |
+| `schema <app> <model>` | Show readable/writable fields for one model (richer detail — verbose name, help text, default, choices-with-labels, FK target — lands in a later unit) |
 | `records list <app> <model>` | List records (filters, ordering, fields, paging) |
 | `records get <app> <model> <pk>` | Fetch one record |
 | `records create <app> <model> --data <json>` | Create a record |
 | `records update <app> <model> <pk> --data <json>` | Update a record |
 | `records delete <app> <model> <pk>` | Delete a record (interactive confirm) |
+| `records count <app> <model>` | Count matching records without fetching them (later unit) |
+| `records wait <app> <model> <pk> --until field=value` | Poll until a record reaches a target state (later unit) |
+| `apps` | List the apps exposed through the admin API (later unit) |
+| `completion show <shell>` | Print a shell completion script (later unit; plus Typer's built-in `--install-completion`/`--show-completion`) |
 
 ```bash
 i2g-admin login
@@ -87,9 +144,13 @@ i2g-admin logout
 ```
 
 - `--data` accepts inline JSON, `@file.json`, or `@-` to read JSON from stdin.
-- `--json` prints machine-readable JSON; otherwise results render as Rich tables.
+- `--json` prints machine-readable JSON; otherwise results render as Rich tables (equivalent to `--output json`).
 - `records list` flags: `--filter key=value` (repeatable), `--order field` / `--order -field` (repeatable), `--field name` (repeatable, restricts columns), `--limit` (capped at 50), `--offset`.
 - `records delete` prompts for confirmation unless `--yes`; cascading deletes additionally require `--confirm-cascade`.
+
+### Generate / pre-fill a payload (later unit)
+
+`records create` / `records update` will gain `--generate-cli-skeleton` (print an empty JSON template for the model so you can fill it in) and `--cli-input-json <json|@file>` (submit a previously generated/edited skeleton), mirroring the AWS CLI's skeleton workflow. Today, supply the body with `--data`.
 
 ## What you can and cannot touch
 
@@ -123,9 +184,10 @@ All endpoints except the OAuth pair require `Authorization: Bearer <token>`. A S
 | `GET` | `/admin-api/oauth/authorize/` | Session-auth authorize endpoint (PKCE) |
 | `POST` | `/admin-api/oauth/token/` | Code → bearer token exchange (no auth/cookies) |
 | `GET` | `/admin-api/whoami/` | Authenticated member + token expiry |
+| `GET` | `/admin-api/apps/` | App list (backs `apps`; later unit) |
 | `GET` | `/admin-api/models/` | Readable/writable model list |
-| `GET` | `/admin-api/models/<app>/<model>/schema/` | Field schema |
-| `GET` `POST` | `/admin-api/records/<app>/<model>/` | List / create |
+| `GET` | `/admin-api/models/<app>/<model>/schema/` | Field schema (name, type, required, choices; richer detail lands in a later unit) |
+| `GET` `POST` | `/admin-api/records/<app>/<model>/` | List / create (`?count=1` returns just the count; later unit) |
 | `GET` `PATCH` `DELETE` | `/admin-api/records/<app>/<model>/<pk>/` | Retrieve / update / delete |
 
 Status codes: `400` invalid input / denied model / bad filter value, `401` missing/expired/revoked token, `404` unknown record, `409` integrity error or stale snapshot, `429` throttled.
