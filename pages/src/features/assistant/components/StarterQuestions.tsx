@@ -9,9 +9,9 @@ export function StarterQuestions({questions, disabled, onSelect}: StarterQuestio
   if (questions.length === 0) return null;
   return (
     <div className="itg-assistant__starters">
-      {questions.map((question) => (
+      {questions.map((question, index) => (
         <button
-          key={question}
+          key={`${index}:${question}`}
           type="button"
           className="itg-assistant__starter"
           disabled={disabled}

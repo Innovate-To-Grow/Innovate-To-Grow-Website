@@ -110,6 +110,16 @@ class ValidationTests(PublicAssistantChatTestBase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_zero_max_chars_means_unlimited(self):
+        # A non-positive cap disables the length check (matches the frontend),
+        # rather than rejecting every message.
+        self.config.public_assistant_max_message_chars = 0
+        self.config.save()
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
+            response = self.client.post(self.chat_url, {"message": "x" * 5000}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["available"])
+
 
 class HistoryTrimmingTests(PublicAssistantChatTestBase):
     def test_history_is_trimmed_to_limit(self):

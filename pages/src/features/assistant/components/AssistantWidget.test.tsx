@@ -193,6 +193,29 @@ describe('AssistantWidget', () => {
     expect(screen.getByLabelText('Message')).toBeDisabled();
   });
 
+  it('does not submit on Enter while an IME composition is in progress', async () => {
+    await renderAndOpen();
+    const input = screen.getByLabelText('Message');
+    fireEvent.change(input, {target: {value: '你好'}});
+    // Enter that confirms an IME candidate reports isComposing=true.
+    fireEvent.keyDown(input, {key: 'Enter', isComposing: true});
+    expect(mocks.sendAssistantMessage).not.toHaveBeenCalled();
+    // A normal Enter (composition finished) submits.
+    fireEvent.keyDown(input, {key: 'Enter'});
+    await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledWith('你好', []));
+  });
+
+  it('treats max_message_chars <= 0 as unlimited (no counter, long message sendable)', async () => {
+    mocks.fetchAssistantConfig.mockResolvedValue({...DEFAULT_CONFIG, max_message_chars: 0});
+    await renderAndOpen();
+
+    typeMessage('x'.repeat(5000));
+    // No counter is rendered when there is no limit.
+    expect(screen.queryByText(/\/0$/)).not.toBeInTheDocument();
+    clickSend();
+    await waitFor(() => expect(mocks.sendAssistantMessage).toHaveBeenCalledWith('x'.repeat(5000), []));
+  });
+
   it('falls back to default config when the config fetch fails', async () => {
     mocks.fetchAssistantConfig.mockRejectedValue(new Error('network'));
 

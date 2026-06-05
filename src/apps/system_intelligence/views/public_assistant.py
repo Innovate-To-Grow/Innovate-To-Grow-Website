@@ -58,7 +58,7 @@ class PublicAssistantConfigView(APIView):
             starter_questions = []
         return Response(
             {
-                "enabled": bool(config.public_assistant_enabled),
+                "enabled": config.public_assistant_enabled,
                 "welcome_message": config.public_assistant_welcome_message,
                 "starter_questions": starter_questions,
                 "unavailable_message": config.public_assistant_unavailable_message,

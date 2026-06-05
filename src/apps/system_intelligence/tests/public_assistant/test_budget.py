@@ -79,6 +79,14 @@ class BudgetCounterTests(TestCase):
         # The fallback set() path stores the value.
         self.assertEqual(budget.tokens_used(self.ip_hash), 25)
 
+    def test_record_usage_clamps_zero_window(self):
+        # window_seconds=0 means "expire immediately" in Django's cache, which
+        # would silently disable the budget; record_usage must clamp it so the
+        # counter actually persists and the limit is enforced.
+        budget.record_usage(self.ip_hash, 200, 0)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 200)
+        self.assertFalse(budget.check_budget(self.ip_hash, 100))
+
     def test_record_usage_retries_incr_once(self):
         calls = {"n": 0}
         real_incr = cache.incr

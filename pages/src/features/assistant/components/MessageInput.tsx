@@ -10,8 +10,10 @@ interface MessageInputProps {
 export function MessageInput({maxChars, disabled, onSend}: MessageInputProps) {
   const [value, setValue] = useState('');
 
+  // A non-positive cap means "no limit" (matches the backend serializer).
+  const hasLimit = maxChars > 0;
   const trimmed = value.trim();
-  const overLimit = value.length > maxChars;
+  const overLimit = hasLimit && value.length > maxChars;
   const canSend = !disabled && trimmed.length > 0 && !overLimit;
 
   const submit = () => {
@@ -21,6 +23,9 @@ export function MessageInput({maxChars, disabled, onSend}: MessageInputProps) {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ignore Enter while an IME composition is in progress (CJK input): that
+    // Enter confirms the candidate text, it must not submit the message.
+    if (event.nativeEvent.isComposing) return;
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       submit();
@@ -44,9 +49,11 @@ export function MessageInput({maxChars, disabled, onSend}: MessageInputProps) {
           Send
         </button>
       </div>
-      <span className={`itg-assistant__counter${overLimit ? ' itg-assistant__counter--over' : ''}`}>
-        {value.length}/{maxChars}
-      </span>
+      {hasLimit && (
+        <span className={`itg-assistant__counter${overLimit ? ' itg-assistant__counter--over' : ''}`}>
+          {value.length}/{maxChars}
+        </span>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
@@ -13,6 +14,11 @@ from apps.system_intelligence.services.public_assistant import context
 
 
 class BuildContextTests(TestCase):
+    def setUp(self):
+        # build_public_context caches its result; clear so each test (which
+        # sets up different DB rows) sees a fresh build, not a bled-over one.
+        cache.clear()
+
     def test_empty_when_no_data(self):
         self.assertEqual(context.build_public_context(), "")
 
@@ -73,6 +79,16 @@ class BuildContextTests(TestCase):
         CurrentProjectSchedule.objects.create(name="Empty", is_active=True)
         result = context.build_public_context()
         self.assertNotIn("CURRENT PROJECTS", result)
+
+    def test_result_is_cached_between_calls(self):
+        CMSPage.objects.create(slug="about", route="/about", title="About", status="published")
+        first = context.build_public_context()
+        self.assertIn("/about", first)
+        # A new published page after the first (cached) build is NOT reflected
+        # until the cache expires; use_cache=False forces a fresh build.
+        CMSPage.objects.create(slug="contact", route="/contact", title="Contact", status="published")
+        self.assertNotIn("/contact", context.build_public_context())
+        self.assertIn("/contact", context.build_public_context(use_cache=False))
 
     def test_news_without_published_date_label(self):
         article = NewsArticle.objects.create(

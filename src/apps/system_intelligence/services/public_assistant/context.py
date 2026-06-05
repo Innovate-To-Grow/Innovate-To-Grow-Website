@@ -7,6 +7,8 @@ final string is hard-truncated to ``char_cap``.
 
 import logging
 
+from django.core.cache import cache
+
 logger = logging.getLogger(__name__)
 
 # Per-source row caps keep the prompt bounded and cheap regardless of DB size.
@@ -14,6 +16,12 @@ _CURRENT_PROJECTS_LIMIT = 20
 _PAST_PROJECTS_LIMIT = 15
 _NEWS_LIMIT = 8
 _CMS_PAGES_LIMIT = 25
+
+# The public context changes slowly (published projects/news/pages); cache the
+# assembled string briefly so it isn't rebuilt with a fresh set of DB queries
+# on every chat request. Matches the 300-600s TTLs used by the CMS/project views.
+_CONTEXT_CACHE_KEY = "assistant:public-context"
+_CONTEXT_CACHE_TTL = 300
 
 
 def _current_projects_section() -> str:
@@ -97,12 +105,20 @@ _SECTIONS = (
 )
 
 
-def build_public_context(*, char_cap: int = 6000) -> str:
+def build_public_context(*, char_cap: int = 6000, use_cache: bool = True) -> str:
     """Assemble a compact, plain-text public context summary.
 
     Returns an empty string if nothing could be gathered. The result is hard
-    truncated to ``char_cap`` characters.
+    truncated to ``char_cap`` characters. The assembled string is cached for a
+    short TTL (keyed by ``char_cap``) to avoid re-querying on every chat call;
+    pass ``use_cache=False`` to force a rebuild.
     """
+    cache_key = f"{_CONTEXT_CACHE_KEY}:{char_cap}"
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     sections: list[str] = []
     for builder in _SECTIONS:
         try:
@@ -116,4 +132,6 @@ def build_public_context(*, char_cap: int = 6000) -> str:
     context = "\n\n".join(sections)
     if len(context) > char_cap:
         context = context[:char_cap].rstrip()
+    if use_cache:
+        cache.set(cache_key, context, timeout=_CONTEXT_CACHE_TTL)
     return context

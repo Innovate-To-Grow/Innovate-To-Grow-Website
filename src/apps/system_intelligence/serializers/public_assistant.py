@@ -30,6 +30,8 @@ class PublicAssistantChatSerializer(serializers.Serializer):
         if not value:
             raise serializers.ValidationError("Message must not be blank.")
         cap = self._max_message_chars
-        if cap and len(value) > cap:
+        # A non-positive cap means "no limit" (matches the frontend, which
+        # treats max_message_chars <= 0 as unlimited).
+        if cap is not None and cap > 0 and len(value) > cap:
             raise serializers.ValidationError(f"Message must be at most {cap} characters.")
         return value

@@ -6,7 +6,6 @@ from .budget import (
     client_ip,
     hash_ip,
     record_usage,
-    tokens_used,
 )
 from .context import build_public_context
 from .invoke import answer_public_question
@@ -19,5 +18,4 @@ __all__ = [
     "client_ip",
     "hash_ip",
     "record_usage",
-    "tokens_used",
 ]

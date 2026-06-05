@@ -74,6 +74,62 @@ class InvokeTests(TestCase):
             result["usage"]["inputTokens"] + result["usage"]["outputTokens"],
         )
 
+    def test_estimate_includes_history_tokens(self):
+        # The input estimate must count history turns, not just system + message,
+        # so the per-IP budget is not under-charged when prior turns are present.
+        mock_client = MagicMock()
+        mock_client.converse.return_value = _response("ans", usage=None)
+        long_history = [{"role": "user", "content": "h" * 4000}, {"role": "assistant", "content": "r" * 4000}]
+        with self._patch_client(mock_client):
+            with_hist = invoke.answer_public_question(config=_config(), message="q", history=long_history, context="x")
+            without_hist = invoke.answer_public_question(config=_config(), message="q", history=[], context="x")
+        self.assertGreater(with_hist["usage"]["inputTokens"], without_hist["usage"]["inputTokens"])
+
+    def test_leading_assistant_history_dropped(self):
+        # Bedrock requires the transcript to begin with a user turn; a leading
+        # assistant turn from a hostile client must be dropped, not forwarded.
+        mock_client = MagicMock()
+        mock_client.converse.return_value = _response("ans", usage={"totalTokens": 2})
+        history = [{"role": "assistant", "content": "I am the assistant"}]
+        with self._patch_client(mock_client):
+            invoke.answer_public_question(config=_config(), message="hi", history=history, context="x")
+        sent = mock_client.converse.call_args.kwargs["messages"]
+        self.assertEqual(sent[0]["role"], "user")
+        self.assertTrue(all(m["role"] != "assistant" or i > 0 for i, m in enumerate(sent)))
+
+    def test_consecutive_same_role_collapsed(self):
+        # Two consecutive user turns would be rejected by Bedrock; they must be
+        # collapsed so roles strictly alternate and end on a user turn.
+        mock_client = MagicMock()
+        mock_client.converse.return_value = _response("ans", usage={"totalTokens": 2})
+        history = [{"role": "user", "content": "a"}, {"role": "user", "content": "b"}]
+        with self._patch_client(mock_client):
+            invoke.answer_public_question(config=_config(), message="c", history=history, context="x")
+        roles = [m["role"] for m in mock_client.converse.call_args.kwargs["messages"]]
+        # No two adjacent roles are equal, and it ends on a user turn.
+        self.assertTrue(all(roles[i] != roles[i + 1] for i in range(len(roles) - 1)))
+        self.assertEqual(roles[-1], "user")
+
+    def test_empty_context_omits_dangling_header(self):
+        mock_client = MagicMock()
+        mock_client.converse.return_value = _response("ans", usage={"totalTokens": 2})
+        with self._patch_client(mock_client):
+            invoke.answer_public_question(config=_config(), message="hi", history=[], context="")
+        system_text = mock_client.converse.call_args.kwargs["system"][0]["text"]
+        self.assertNotIn("CONTEXT:", system_text)
+
+    def test_temperature_error_detected_in_cause_chain(self):
+        # The retry detection walks the exception chain, not just str(exc).
+        mock_client = MagicMock()
+        wrapped = RuntimeError("request failed")
+        wrapped.__cause__ = ValueError("ValidationException: temperature not supported")
+        good = _response("ok", usage={"totalTokens": 2})
+        mock_client.converse.side_effect = [wrapped, good]
+        with self._patch_client(mock_client):
+            result = invoke.answer_public_question(config=_config(), message="hi", history=[], context="x")
+        self.assertEqual(result["text"], "ok")
+        self.assertEqual(mock_client.converse.call_count, 2)
+
     def test_context_built_when_not_provided(self):
         mock_client = MagicMock()
         mock_client.converse.return_value = _response(

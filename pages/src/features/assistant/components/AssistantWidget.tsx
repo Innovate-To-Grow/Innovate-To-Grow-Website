@@ -41,7 +41,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'reply':
       return {...state, loading: false, messages: [...state.messages, action.message]};
     case 'error':
-      return {...state, loading: false, error: action.message};
+      // error and unavailable are mutually exclusive; clear the other.
+      return {...state, loading: false, error: action.message, unavailable: null};
     case 'unavailable':
       return {...state, loading: false, error: null, unavailable: action.message};
     case 'retry':
@@ -156,6 +157,8 @@ export function AssistantWidget() {
           {disabled ? (
             <div className="itg-assistant__messages">
               <div className="itg-assistant__unavailable" role="status">
+                {/* On the disabled branch unavailableMessage is always set:
+                    either config.unavailable_message (!enabled) or state.unavailable. */}
                 {unavailableMessage ?? config.unavailable_message}
               </div>
             </div>

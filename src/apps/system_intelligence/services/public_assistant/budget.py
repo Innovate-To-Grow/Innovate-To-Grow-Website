@@ -10,6 +10,11 @@ import hashlib
 from django.conf import settings
 from django.core.cache import cache
 
+# Fallback window if a non-positive value is configured: in Django, a cache
+# timeout of 0 means "expire immediately / do not store", which would silently
+# disable the budget. Clamp to a 1-day rolling window instead.
+_DEFAULT_WINDOW_SECONDS = 86400
+
 
 def client_ip(request) -> str | None:
     """Return the originating client IP, honouring NUM_PROXIES trusted hops.
@@ -56,6 +61,10 @@ def record_usage(ip_hash: str, tokens: int, window_seconds: int) -> None:
     """Add ``tokens`` to the rolling per-IP counter, creating it if absent."""
     if tokens <= 0:
         return
+    # A timeout of 0 (or negative) makes Django's cache discard the write
+    # immediately, silently disabling the budget; clamp to a sane window.
+    if window_seconds <= 0:
+        window_seconds = _DEFAULT_WINDOW_SECONDS
     key = budget_key(ip_hash)
     # add() is a no-op if the key already exists, so the window is set on the
     # first write of the period and the counter rolls over when it expires.
