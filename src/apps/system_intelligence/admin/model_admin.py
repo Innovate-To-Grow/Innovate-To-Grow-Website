@@ -26,7 +26,12 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
     class Meta:
         model = SystemIntelligenceConfig
         fields = "__all__"
-        widgets = {"system_prompt": UnfoldAdminTextareaWidget(attrs={"rows": 8})}
+        widgets = {
+            "system_prompt": UnfoldAdminTextareaWidget(attrs={"rows": 8}),
+            "public_assistant_system_prompt": UnfoldAdminTextareaWidget(attrs={"rows": 8}),
+            "public_assistant_unavailable_message": UnfoldAdminTextareaWidget(attrs={"rows": 3}),
+            "public_assistant_welcome_message": UnfoldAdminTextareaWidget(attrs={"rows": 3}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,8 +60,16 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
 @admin.register(SystemIntelligenceConfig)
 class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     form = SystemIntelligenceConfigForm
-    list_display = ("name", "status_badge", "default_model_display", "temperature", "max_tokens", "updated_at")
-    list_filter = ("is_active",)
+    list_display = (
+        "name",
+        "status_badge",
+        "default_model_display",
+        "public_assistant_enabled",
+        "temperature",
+        "max_tokens",
+        "updated_at",
+    )
+    list_filter = ("is_active", "public_assistant_enabled")
     search_fields = ("name",)
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config"]
@@ -71,6 +84,28 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
             },
         ),
         (_("System Prompt"), {"fields": ("system_prompt",)}),
+        (
+            _("Public Assistant"),
+            {
+                "classes": ("collapse",),
+                "description": "Public, visitor-facing chatbot. It is tool-free and read-only -- it "
+                "never reaches the admin assistant, tools, or private data.",
+                "fields": (
+                    "public_assistant_enabled",
+                    "public_assistant_model_id",
+                    "public_assistant_system_prompt",
+                    "public_assistant_welcome_message",
+                    "public_assistant_starter_questions",
+                    "public_assistant_unavailable_message",
+                    "public_assistant_temperature",
+                    "public_assistant_max_response_tokens",
+                    "public_assistant_max_message_chars",
+                    "public_assistant_max_history_messages",
+                    "public_assistant_ip_token_limit",
+                    "public_assistant_ip_token_window_seconds",
+                ),
+            },
+        ),
         (_("Info"), {"fields": ("id", "created_at", "updated_at")}),
     )
     readonly_fields = ("id", "created_at", "updated_at")
