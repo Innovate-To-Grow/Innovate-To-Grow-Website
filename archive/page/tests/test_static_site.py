@@ -56,22 +56,36 @@ def test_title_matches_filename(serve, page):
     assert title == f"{season.capitalize()} {year} - Event | Innovate To Grow"
 
 
+def _page_sources(page):
+    """Template source plus any page-owned extracted assets it references.
+
+    Pages may keep their CSS/JS inline or extracted under static/{css,js}/events/
+    — invariants about what the browser ends up running must cover both.
+    """
+    text = page.read_text()
+    sources = [text]
+    for rel in re.findall(r"""(?:src|href)=["']/(static/(?:js|css)/events/[^"'?#]+)["']""", text):
+        sources.append((ROOT / rel).read_text())
+    return sources
+
+
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
 def test_no_api_key_or_direct_google_calls(serve, page):
     # The key is server-only: no literal key, no direct googleapis Sheets call,
-    # and no leftover client-side key plumbing.
-    text = serve[page.stem].get_data(as_text=True)
-    assert not _KEY_RE.search(text), f"{page.name} contains a literal API key"
-    assert "sheets.googleapis.com" not in text, f"{page.name} calls Google directly"
-    assert "SHEETS_API_KEY" not in text, f"{page.name} references the key global"
-    assert "config.js" not in text, f"{page.name} still loads the old config.js"
+    # and no leftover client-side key plumbing — in the served page AND in the
+    # page's extracted assets.
+    for text in [serve[page.stem].get_data(as_text=True), *_page_sources(page)]:
+        assert not _KEY_RE.search(text), f"{page.name} contains a literal API key"
+        assert "sheets.googleapis.com" not in text, f"{page.name} calls Google directly"
+        assert "SHEETS_API_KEY" not in text, f"{page.name} references the key global"
+        assert "config.js" not in text, f"{page.name} still loads the old config.js"
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
 def test_sheets_data_goes_through_the_proxy(page):
-    # Authoring invariant on the template source: every page fetches its
-    # tables via the same-origin proxy.
-    assert "/api/sheets/" in page.read_text(), f"{page.name} has no proxy data calls"
+    # Authoring invariant: every page fetches its tables via the same-origin
+    # proxy, whether its loader scripts are inline or extracted.
+    assert any("/api/sheets/" in s for s in _page_sources(page)), f"{page.name} has no proxy data calls"
 
 
 def test_page_grid_is_centered_as_a_whole():
