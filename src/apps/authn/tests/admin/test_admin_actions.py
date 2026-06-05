@@ -454,12 +454,17 @@ class MemberSheetSyncAdminTests(_AdminTestBase):
     def test_log_status_badge_success(self):
         log = MemberSheetSyncLog(status=MemberSheetSyncLog.Status.SUCCESS, sync_type="full", rows_written=3)
         html = self.log_admin.status_badge(log)
-        self.assertIn("green", html)
+        # Mode-safe saturated green legible on light and dark admin surfaces.
+        self.assertIn("#10b981", html)
+        # Guard against regressing to CSS "green" (#008000), which is invisible
+        # on the near-black dark-mode surface.
+        self.assertNotIn(">green<", html)
+        self.assertNotIn(": green", html)
 
     def test_log_status_badge_failure(self):
         log = MemberSheetSyncLog(status=MemberSheetSyncLog.Status.FAILED, sync_type="full", rows_written=0)
         html = self.log_admin.status_badge(log)
-        self.assertIn("red", html)
+        self.assertIn("#ef4444", html)
 
     def test_error_message_short_empty(self):
         log = MemberSheetSyncLog(error_message="")
