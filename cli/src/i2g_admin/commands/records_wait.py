@@ -21,7 +21,10 @@ DEFAULT_INTERVAL = 5.0
 # matches a record whose value is the Python bool ``True`` (str(True) == "True",
 # not "true"). Comparison is case-insensitive.
 _BOOL_WORDS = {"true": True, "false": False}
-_NULL_WORDS = {"null", "none", ""}
+# Spellings for a null field. The empty string is deliberately NOT a member: an
+# empty ``--until field=`` waits for a genuine empty string (via the str fallback
+# below), never None, so null and "" are never conflated. Use ``field=null`` for None.
+_NULL_WORDS = {"null", "none"}
 
 
 def register(records_app: typer.Typer) -> None:
@@ -44,8 +47,10 @@ def _value_matches(value, expected: str) -> bool:
 
     Booleans accept natural/JSON spellings (``true``/``false``, case-insensitive)
     as well as the Python repr (``True``/``False``); ``None`` accepts ``null`` /
-    ``none`` / empty; everything else falls back to ``str(value) == expected`` so
-    numbers and strings keep their natural spelling.
+    ``none`` (case-insensitive). An empty expected value (``field=``) matches a
+    genuine empty string, not ``None`` — use ``field=null`` to wait for null — so
+    the two are never conflated. Everything else falls back to
+    ``str(value) == expected`` so numbers and strings keep their natural spelling.
     """
     if isinstance(value, bool):
         word = _BOOL_WORDS.get(expected.strip().lower())

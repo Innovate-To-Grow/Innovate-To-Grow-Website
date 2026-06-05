@@ -41,6 +41,13 @@ def main(
     ),
 ) -> None:
     """Populate the shared :class:`Context` from the global options."""
+    # Validate --max-items here, at the boundary, so it is rejected uniformly on
+    # every path. `records list --limit/--offset N` honors an explicit page with a
+    # single request and never reaches paginate()'s own guard, so a per-path check
+    # there would silently accept a negative value on the explicit-page route.
+    if max_items is not None and max_items < 0:
+        typer.secho("--max-items must be >= 0.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
     ctx.obj = Context(
         profile=profile,
         output=output,

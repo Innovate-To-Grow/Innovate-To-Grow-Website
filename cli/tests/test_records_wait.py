@@ -94,6 +94,20 @@ def test_matches_none_does_not_match_other_text():
     assert records_wait._matches([{"archived_at": None}], "archived_at", "done") is None
 
 
+def test_matches_none_not_matched_by_empty_spelling():
+    # An empty (or whitespace-only) --until value waits for a genuine empty string,
+    # not null — they must never be conflated. `field=null` is the way to match None.
+    assert records_wait._matches([{"archived_at": None}], "archived_at", "") is None
+    assert records_wait._matches([{"archived_at": None}], "archived_at", "   ") is None
+
+
+def test_matches_empty_string_value():
+    # An empty expected value matches a genuine empty-string field...
+    assert records_wait._matches([{"note": ""}], "note", "") == {"note": ""}
+    # ...but not a null field (no conflation between "" and None).
+    assert records_wait._matches([{"note": None}], "note", "") is None
+
+
 def test_matches_numeric_value():
     record = {"year": 2025}
     assert records_wait._matches([record], "year", "2025") == record

@@ -361,3 +361,17 @@ def test_cli_negative_max_items_errors(use_pages):
     )
     assert result.exit_code == 1
     assert "--max-items must be >= 0." in result.output
+
+
+def test_cli_negative_max_items_errors_with_explicit_limit(use_pages):
+    # #6: the --limit/--offset path bypasses paginate() entirely, so the negative
+    # --max-items guard lives at the global boundary and must reject it here too.
+    client = use_pages([{"model": "m", "count": 1, "results": [{"i": 0}]}])
+    result = runner.invoke(
+        app,
+        ["--max-items", "-1", "records", "list", "projects", "semester", "--limit", "5"],
+    )
+    assert result.exit_code == 1
+    assert "--max-items must be >= 0." in result.output
+    # Rejected at the boundary, before any request is issued.
+    assert len(client.calls) == 0
