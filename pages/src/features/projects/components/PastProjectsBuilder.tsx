@@ -80,7 +80,15 @@ export const PastProjectsBuilder = ({
       return;
     }
 
-    if (!window.confirm('Merge the filtered rows from all open search tables into saved results?')) {
+    // Save/Merge stores only the rows the user has explicitly checked. Without a
+    // selection there is nothing to save — guide the user instead of silently
+    // merging the entire archive (the original bug).
+    if (!hasAnySelection) {
+      setBuilderMessage('Select the rows you want to save (check their boxes), then choose Save/Merge Results.');
+      return;
+    }
+
+    if (!window.confirm('Save the selected rows from all open search tables into your merged results?')) {
       return;
     }
 
@@ -96,7 +104,7 @@ export const PastProjectsBuilder = ({
       if (!table) {
         return;
       }
-      table.getFilteredRows().forEach((row) => {
+      table.getSelectedRows().forEach((row) => {
         const fingerprint = createProjectGridFingerprint(row);
         if (seenFingerprints.has(fingerprint) || deletedFingerprints.has(fingerprint)) {
           return;
@@ -110,9 +118,9 @@ export const PastProjectsBuilder = ({
       mergeSequence.current += 1;
       nextMergedRows.push(...createProjectGridItems(rowsToAppend, `merged-${mergeSequence.current}`));
       setMergedRows(nextMergedRows);
-      setBuilderMessage(`${rowsToAppend.length} row${rowsToAppend.length === 1 ? '' : 's'} merged into saved results.`);
+      setBuilderMessage(`${rowsToAppend.length} row${rowsToAppend.length === 1 ? '' : 's'} saved into merged results.`);
     } else {
-      setBuilderMessage('No new rows matched the current filters.');
+      setBuilderMessage('Those rows are already in your saved results.');
     }
 
     searchTables.forEach(({id}) => {

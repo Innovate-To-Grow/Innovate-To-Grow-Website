@@ -64,7 +64,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Configure sitemap rewrite
+      - name: Configure Amplify rewrite rules (sitemap, API, SPA)
         env:
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
@@ -77,9 +77,9 @@ jobs:
           app_id = os.environ["AMPLIFY_APP_ID"].strip()
           api_base_url = os.environ["VITE_API_BASE_URL"].strip().rstrip("/")
           if not app_id:
-              raise SystemExit("AMPLIFY_APP_ID is required to configure sitemap rewrite.")
+              raise SystemExit("AMPLIFY_APP_ID is required to configure rewrite rules.")
           if not api_base_url:
-              raise SystemExit("VITE_API_BASE_URL is required to configure sitemap rewrite.")
+              raise SystemExit("VITE_API_BASE_URL is required to configure rewrite rules.")
 
           app_payload = subprocess.check_output(
               ["aws", "amplify", "get-app", "--app-id", app_id, "--output", "json"],
@@ -87,14 +87,42 @@ jobs:
           )
           app = json.loads(app_payload)["app"]
           existing_rules = app.get("customRules") or []
+
           sitemap_rule = {
               "source": "/sitemap.xml",
               "target": f"{api_base_url}/sitemap.xml",
               "status": "200",
           }
-          merged_rules = [sitemap_rule] + [
-              rule for rule in existing_rules if rule.get("source") != sitemap_rule["source"]
+
+          # SPA deep-link fallback. The previous "/<*>" rule with status "404-200"
+          # did NOT rewrite on the custom domain — hard navigations to client routes
+          # (e.g. /past-projects/<id>) fell through to the S3 website endpoint and
+          # returned its index.html error document with a 404 status. This is the
+          # canonical Amplify SPA rule: any path WITHOUT a static-asset extension is
+          # rewritten (status 200) to /index.html so React Router can resolve it.
+          # It is placed LAST so the sitemap and /api/<*> passthrough rules win first
+          # (extensionless /api/... paths would otherwise match this rule).
+          spa_rule = {
+              "source": (
+                  r"</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|webp|avif|"
+                  r"woff|woff2|ttf|otf|eot|map|json|xml|webmanifest)$)([^.]+$)/>"
+              ),
+              "target": "/index.html",
+              "status": "200",
+          }
+
+          # Preserve any other existing rules (notably the /api/<*> backend
+          # passthrough) but drop the stale sitemap rule and ANY old SPA fallback
+          # (identified by target /index.html, e.g. the broken "/<*>" 404-200 rule),
+          # so re-running this step is idempotent.
+          preserved = [
+              rule
+              for rule in existing_rules
+              if rule.get("source") != sitemap_rule["source"]
+              and rule.get("target") != "/index.html"
           ]
+
+          merged_rules = [sitemap_rule] + preserved + [spa_rule]
 
           with open("custom-rules.json", "w", encoding="utf-8") as f:
               json.dump(merged_rules, f)
