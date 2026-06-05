@@ -10,6 +10,9 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
+  # Manual trigger: deploy the current ref on demand (e.g. to re-ship without
+  # waiting for a CI run). Matches deploy-frontend.yml.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,33 +30,18 @@ env:
   CONTAINER_NAME: itg-archive
 
 jobs:
-  # Only deploy when archive/page/ actually changed, so unrelated CI runs on
-  # main don't churn the archive service.
-  changes:
-    name: Detect archive changes
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    outputs:
-      archive: ${{ steps.filter.outputs.archive }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          # workflow_run reports the triggering SHA; fetch enough history to diff.
-          fetch-depth: 2
-      - name: Filter archive paths
-        id: filter
-        run: |
-          if git diff --name-only HEAD~1 HEAD | grep -qE '^(archive/page/|aws/archive-task-definition\.json|\.github/workflows/deploy-archive\.yml)'; then
-            echo "archive=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "archive=false" >> "$GITHUB_OUTPUT"
-          fi
-
   deploy:
     name: Build & Deploy Archive
-    needs: changes
-    if: needs.changes.outputs.archive == 'true'
+    # Deploy on every successful CI run on main, or on a manual dispatch —
+    # matching deploy-backend.yml / deploy-frontend.yml (no path gate). A
+    # path-diff gate was unreliable: when archive changes land on a different
+    # commit than the one CI runs on (e.g. an archive merge followed by a
+    # CI-only merge), the merge-commit diff misses archive/ and the deploy is
+    # skipped. The build is fast and the deploy is idempotent, so always
+    # deploying is simpler and never misses a change.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
