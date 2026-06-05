@@ -15,8 +15,8 @@ on:
       - ".bandit-baseline.json"
       # Archived legacy static site. An archive-only merge to main must run CI
       # so the deploy-archive.yml chain (gated on CI completing on main) fires
-      # and ships the archive to ECS. The `changes` job routes it to just the
-      # `archive-tests` job; the backend/frontend pipeline reports skipped.
+      # and ships the archive to ECS. Every push to main runs the FULL suite
+      # (see the `changes` job), so archive merges are validated end to end.
       - "archive/**"
   pull_request:
     paths:
@@ -136,22 +136,29 @@ jobs:
       - name: Detect changed areas from the diff
         id: filter
         env:
-          # PR: GitHub gives both endpoints. Push to main: diff against the
-          # branch tip before the push (empty on the first push to a new ref).
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          # PR: GitHub gives both endpoints (used to scope the PR's diff).
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          # Resolve the changed-file list. Fall back to the full deployable
-          # suite (skipping the archive) only when no usable base exists — e.g.
-          # the all-zero SHA on a branch's first push, or a missing object.
-          files=""
-          if [ -n "${BASE_SHA:-}" ] && [ -n "${HEAD_SHA:-}" ] \
-            && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ] \
-            && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
-          else
-            echo "No usable base SHA; running the full deployable suite."
+          # A push to a default branch (main/master) always runs the FULL suite:
+          # every area is validated on the branch that ships to production, and
+          # any push therefore completes CI so the deploy-*.yml chain fires.
+          if [ "${EVENT_NAME}" != "pull_request" ]; then
+            echo "Push/non-PR event (${EVENT_NAME}); running the full suite."
+            {
+              echo "backend=true"
+              echo "frontend=true"
+              echo "archive=true"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Pull requests are scoped by diff to keep PR CI fast. Fall back to the
+          # full deployable suite (skipping the archive) if no usable base exists.
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
+            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "No usable PR base SHA; running the full deployable suite."
             {
               echo "backend=true"
               echo "frontend=true"
@@ -159,13 +166,12 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           echo "Changed files:"
           echo "$files"
           match() { echo "$files" | grep -qE "$1"; }
           # Conservative: err toward running. A .github/** change maps to both
           # backend and frontend so any workflow edit runs the full suite.
-          # This runs for both PRs and pushes to main, so an archive-only merge
-          # routes to just archive-tests and still lets deploy-archive.yml fire.
           backend=false
           frontend=false
           archive=false
@@ -980,6 +986,11 @@ jobs:
         run: npm ci
 
       - name: Download blob reports
+        id: download-blobs
+        # This report job is informational; a flaky/conflicting artifact
+        # download must not turn the run red. The merge step below tolerates a
+        # missing/empty directory.
+        continue-on-error: true
         uses: actions/download-artifact@v5
         with:
           path: pages/all-blob-reports
@@ -990,7 +1001,13 @@ jobs:
         working-directory: pages
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: results.xml
-        run: npx playwright merge-reports --reporter html,github,junit ./all-blob-reports
+        run: |
+          set -euo pipefail
+          if [ ! -d ./all-blob-reports ] || [ -z "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            echo "::notice::No blob reports to merge; skipping report generation."
+            exit 0
+          fi
+          npx playwright merge-reports --reporter html,github,junit ./all-blob-reports
 
       - name: Write per-project job summary
         if: ${{ always() }}
