@@ -12,9 +12,16 @@ import typer
 
 from .. import runtime
 from ..errors import CliError
+from .query_params import filter_params
 
 DEFAULT_TIMEOUT = 300.0
 DEFAULT_INTERVAL = 5.0
+
+# Natural / JSON spellings for booleans and null, so ``--until is_published=true``
+# matches a record whose value is the Python bool ``True`` (str(True) == "True",
+# not "true"). Comparison is case-insensitive.
+_BOOL_WORDS = {"true": True, "false": False}
+_NULL_WORDS = {"null", "none", ""}
 
 
 def register(records_app: typer.Typer) -> None:
@@ -32,12 +39,28 @@ def _parse_until(until: str) -> tuple[str, str]:
     return field, value
 
 
+def _value_matches(value, expected: str) -> bool:
+    """Compare a record value against the ``--until`` expected string.
+
+    Booleans accept natural/JSON spellings (``true``/``false``, case-insensitive)
+    as well as the Python repr (``True``/``False``); ``None`` accepts ``null`` /
+    ``none`` / empty; everything else falls back to ``str(value) == expected`` so
+    numbers and strings keep their natural spelling.
+    """
+    if isinstance(value, bool):
+        word = _BOOL_WORDS.get(expected.strip().lower())
+        return word is value if word is not None else str(value) == expected
+    if value is None:
+        return expected.strip().lower() in _NULL_WORDS
+    return str(value) == expected
+
+
 def _matches(results, field: str, expected: str):
-    """Return the first record whose ``field`` string-equals ``expected``, else None."""
+    """Return the first record whose ``field`` matches ``expected``, else None."""
     for record in results or []:
         if not isinstance(record, dict):
             continue
-        if field in record and str(record[field]) == expected:
+        if field in record and _value_matches(record[field], expected):
             return record
     return None
 
@@ -72,7 +95,7 @@ def wait_fn(
 ) -> None:
     """Poll a model's list endpoint until a record reaches the desired state."""
     field, expected = _parse_until(until)
-    params = [("filter", item) for item in filter_ or []]
+    params = filter_params(filter_)
     path = f"/admin-api/records/{app_label}/{model_name}/"
 
     def run():
@@ -89,9 +112,10 @@ def wait_fn(
         )
         if match is None:
             raise CliError(f"Timed out after {timeout:g}s waiting for {field}={expected}.")
-        if as_json:
-            return match
+        # The success notice goes to stderr so it never pollutes the rendered
+        # record on stdout; the record itself is returned unconditionally so the
+        # global --output/--query (and the --json alias) can format it.
         typer.secho(f"Condition met: {field}={expected}.", fg=typer.colors.GREEN, err=True)
-        return None
+        return match
 
     runtime._execute(run, as_json=as_json)
