@@ -16,7 +16,7 @@ interface PastProjectsBuilderProps {
   error: string | null;
   loading: boolean;
   rows: ProjectGridRow[];
-  onCreateShare: (rows: ProjectGridRow[]) => Promise<string>;
+  onCreateShare: (rows: ProjectGridRow[], note: string) => Promise<string>;
 }
 
 interface SearchTableState {

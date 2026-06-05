@@ -14,8 +14,8 @@ export const PastProjectsPage = () => {
     [share?.rows, shareId],
   );
 
-  const handleCreateShare = async (shareRows: typeof rows) => {
-    const created = await createPastProjectShare(shareRows);
+  const handleCreateShare = async (shareRows: typeof rows, note: string) => {
+    const created = await createPastProjectShare(shareRows, note);
     return new URL(`/past-projects/${created.id}`, window.location.origin).toString();
   };
 
@@ -38,6 +38,7 @@ export const PastProjectsPage = () => {
             <MergedResultsTable
               rows={sharedItems}
               sharedMode
+              note={share?.note}
               title="Shared Past Project Results"
             />
           ) : null}
