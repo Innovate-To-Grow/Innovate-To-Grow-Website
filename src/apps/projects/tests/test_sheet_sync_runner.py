@@ -182,3 +182,26 @@ class SyncPastProjectsRunnerTest(TestCase):
             sync_past_projects(self.config)
         mock_fetch.assert_called_once_with()
         self.assertEqual(Project.objects.count(), 1)
+
+    def test_header_whitespace_is_normalized(self):
+        # The live sheet ships headers with trailing spaces (e.g. "Project Title ").
+        # get_all_records() keys rows by the exact header text, so the runner must
+        # strip header whitespace before mapping or every row is dropped as titleless.
+        record = {
+            "Year-Semester ": "2024-2 Fall",
+            " Class": "CSE",
+            "Team#": "101",
+            "Team Name": "Alpha",
+            "Project Title ": "Smart App",
+            "Organization": "TechCorp",
+            "Industry": "Software",
+            "Abstract": "An abstract",
+            "Student Names": "Alice Bob",
+        }
+        stats = sync_past_projects(self.config, records=[record])
+
+        self.assertEqual(stats.projects_created, 1)
+        self.assertEqual(stats.rows_skipped, 0)
+        project = Project.objects.get()
+        self.assertEqual(project.project_title, "Smart App")
+        self.assertEqual(project.class_code, "CSE")

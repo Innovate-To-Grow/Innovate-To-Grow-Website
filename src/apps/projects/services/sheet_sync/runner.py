@@ -71,8 +71,12 @@ def _sync_past_projects(
         seen: set[tuple] = set()
 
         for raw in records:
-            mapped = {field: str(raw.get(header, "")).strip() for header, field in COLUMN_MAP.items()}
-            mapped["Year-Semester"] = str(raw.get("Year-Semester", "")).strip()
+            # Normalize header whitespace before mapping: the live sheet has headers
+            # like "Project Title " (trailing space), and get_all_records() keys rows
+            # by the exact header text, so a strict lookup would silently miss them.
+            row = {str(key).strip(): value for key, value in raw.items()}
+            mapped = {field: str(row.get(header, "")).strip() for header, field in COLUMN_MAP.items()}
+            mapped["Year-Semester"] = str(row.get("Year-Semester", "")).strip()
 
             resolved = resolve_project_row(mapped, sheet_link=None)
             if resolved is None:
