@@ -77,13 +77,57 @@ The schedule sheet is expected to contain:
 
 These are configured on the `Event` model in Django admin.
 
+## Past-projects sync (Sheets → Django)
+
+**Service:** `src/apps/projects/services/sheet_sync/`
+
+Imports the historical past-projects catalog from a Google Sheet into the `Project`/`Semester` tables that
+back the public `/past-projects` page. This replaces the legacy Flask page, which fetched the sheet **in the
+browser** using a hardcoded API key; the key now lives only in the backend service account.
+
+### Flow
+
+1. An admin clicks **Pull Past Projects** in Django admin (Projects → Past Projects Sheet), or
+   `python manage.py sync_past_projects` runs on a schedule.
+2. `fetch_past_project_records()` reads the configured worksheet (by **name**) from the configured spreadsheet.
+3. Each row's `Year-Semester` cell is parsed by `resolve_project_row` into a `Semester` FK (auto-creating and
+   publishing the semester); the other columns are mapped by header text to `Project` fields.
+4. Rows with an unparseable/empty `Year-Semester`, an out-of-range season, a blank title, or a duplicate
+   `(semester, class_code, team_number)` are skipped and counted.
+5. In one transaction, **all `Project` rows with `source="sheet"` are deleted and recreated** from the sheet —
+   a full replace. Rows with `source="manual"` (CSV-imported or hand-entered in admin) are **never touched**.
+6. The `projects:past-all` cache is cleared (explicitly, since `bulk_create` does not fire `post_save`), and a
+   `PastProjectSyncLog` row records the outcome.
+7. `GET /projects/past-all/` serves the rows to the React `/past-projects` page.
+
+### Visibility note (newest semester)
+
+`GET /projects/past-all/` hides the **newest published semester** (treated as the in-flight "current" semester,
+owned by the event flow via `CurrentProjectSchedule`). The past-projects sheet is historical and should not
+contain the current event semester. Configure/publish the current event semester **before** relying on the
+public page, otherwise the most recent synced semester would be hidden as "current".
+
+### Config model fields (`PastProjectsSheetConfig`)
+
+| Field | Purpose |
+|-------|---------|
+| `sheet_id` | Google Sheets document ID |
+| `worksheet_name` | Worksheet/tab name (default `Past-Projects-WEB-LIVE`) |
+| `auto_sync_enabled` / `sync_interval_minutes` | Cron auto-sync gate (`sync_is_due`) |
+| `last_synced_at` / `sync_error` / `sync_count` | Last-run status |
+
 ## Error handling
 
-Both sync services:
+The registration and schedule sync services:
 - Check for valid `GoogleCredentialConfig` before attempting any API call
 - Log errors to `RegistrationSheetSyncLog` (registration) or application logs (schedule)
 - Do not raise exceptions that would interrupt the user-facing request
 - Fail open: if sync fails, the primary operation (registration creation, schedule display) still succeeds
+
+Past-projects sync is **explicit**, not request-triggered, so it fails loud instead of open:
+- It aborts with a `SheetSyncError` (and writes a FAILED `PastProjectSyncLog`) **before deleting anything**
+  when the fetch is misconfigured or yields no importable rows — existing data is never replaced with nothing.
+- The management command turns a `SheetSyncError` into a non-zero `CommandError` so cron/CI supervisors notice.
 
 ## Related pages
 

@@ -1,0 +1,132 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    <div class="i2g-admin-object-tools i2g-admin-object-tools--separated">
+        <form method="post" action="{{ pull_url }}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="i2g-admin-action i2g-admin-action--primary">
+                <span class="material-symbols-outlined">sync</span>
+                Pull Past Projects
+            </button>
+        </form>
+        {{ block.super }}
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="mb-6 grid gap-4 grid-cols-1 lg:grid-cols-2">
+        {# Google Account Card #}
+        <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-primary-600 !text-[20px]">account_circle</span>
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Google Service Account</span>
+            </div>
+            {% if google_configured %}
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Project:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ google_project_id }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Email:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium break-all">{{ google_client_email }}</span>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-xs text-red-600 dark:text-red-400">
+                    <span class="material-symbols-outlined !text-[14px] align-middle">warning</span>
+                    No active Google service account configured.
+                    <a href="{% url 'admin:core_googlecredentialconfig_changelist' %}" class="underline hover:text-red-800 dark:hover:text-red-300">Configure</a>
+                </p>
+            {% endif %}
+        </div>
+
+        {# Past Projects Sheet Card #}
+        <div class="border border-base-200 dark:border-base-700 rounded-default p-4 bg-white dark:bg-base-900">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-primary-600 !text-[20px]">history_edu</span>
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Past Projects Sheet</span>
+            </div>
+            {% if config %}
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Config:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ config.name|default:"Not configured" }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Worksheet:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium break-all">{{ config.worksheet_name }}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-font-subtle-light dark:text-font-subtle-dark w-20 shrink-0">Last run:</span>
+                        <span class="text-font-default-light dark:text-font-default-dark font-medium">{{ config.sync_count }} project(s)</span>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                    No active configuration.
+                </p>
+            {% endif %}
+        </div>
+
+        {# Sync Settings Card — inline form #}
+        <form method="post" action="{{ save_sync_settings_url }}"
+              class="lg:col-span-2 border border-base-200 dark:border-base-700 rounded-default bg-white dark:bg-base-900 flex flex-col">
+            {% csrf_token %}
+            <div class="p-4 flex-1 space-y-3">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-primary-600 !text-[20px]">sync</span>
+                    <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Auto Sync</span>
+                </div>
+                {% if config %}
+                    <div class="grid gap-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                        <label class="flex items-center justify-between gap-2 cursor-pointer rounded-default border border-base-200 dark:border-base-700 px-2.5 py-2">
+                            <span class="text-font-default-light dark:text-font-default-dark font-medium">Enabled</span>
+                            <input type="hidden" name="auto_sync_enabled" value="0">
+                            <div class="flex items-center gap-2">
+                                {% if config.auto_sync_enabled %}
+                                    <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">On</span>
+                                {% else %}
+                                    <span class="inline-flex items-center rounded-full bg-base-50 dark:bg-base-800 px-1.5 py-0.5 text-[10px] font-medium text-font-subtle-light dark:text-font-subtle-dark ring-1 ring-inset ring-base-200 dark:ring-base-700">Off</span>
+                                {% endif %}
+                                <input type="checkbox" name="auto_sync_enabled" value="1"
+                                       {% if config.auto_sync_enabled %}checked{% endif %}
+                                       class="rounded border-base-300 dark:border-base-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5">
+                            </div>
+                        </label>
+                        <div class="rounded-default border border-base-200 dark:border-base-700 px-2.5 py-2">
+                            <div class="mb-1 text-font-subtle-light dark:text-font-subtle-dark">Interval</div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="sync_interval_minutes"
+                                       value="{{ config.sync_interval_minutes }}" min="1" max="10080"
+                                       class="w-20 rounded border border-base-200 dark:border-base-700 bg-white dark:bg-base-800 px-2 py-1 text-xs text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                                <span class="text-font-subtle-light dark:text-font-subtle-dark">minutes</span>
+                            </div>
+                        </div>
+                        <div class="rounded-default border border-base-200 dark:border-base-700 px-2.5 py-2">
+                            <div class="mb-1 text-font-subtle-light dark:text-font-subtle-dark">Last sync</div>
+                            <span class="block text-font-default-light dark:text-font-default-dark font-medium break-words leading-relaxed">
+                                {% if config.last_synced_at %}{{ config.last_synced_at }}{% else %}Never{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+                        No active configuration.
+                    </p>
+                {% endif %}
+            </div>
+            {% if config %}
+                <div class="px-4 pb-3">
+                    <button type="submit"
+                            class="w-full border border-base-200 dark:border-base-700 rounded-default px-3 py-1.5 text-xs font-medium transition-all hover:bg-base-50 dark:hover:bg-base-800 text-font-default-light dark:text-font-default-dark">
+                        Save
+                    </button>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+
+    {{ block.super }}
+{% endblock %}
