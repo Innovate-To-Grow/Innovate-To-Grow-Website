@@ -22,6 +22,13 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
         help_text="Site-wide default Bedrock model or inference profile ID.",
         widget=UnfoldAdminSelectWidget,
     )
+    public_assistant_model_id = forms.TypedChoiceField(
+        coerce=str,
+        required=False,
+        label="Public Assistant Model",
+        help_text="Bedrock model/inference profile ID for the public assistant. Falls back to the Default AI Model.",
+        widget=UnfoldAdminSelectWidget,
+    )
 
     class Meta:
         model = SystemIntelligenceConfig
@@ -35,26 +42,30 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._populate_model_choices("default_model_id", empty_label="---------")
+        self._populate_model_choices("public_assistant_model_id", empty_label="Use Default AI Model")
+
+    def _populate_model_choices(self, field_name, *, empty_label):
+        """Populate a model-id field with the live Bedrock catalog, grouped by provider."""
+        current = self.initial.get(field_name, "") or getattr(self.instance, field_name, "") or ""
         try:
             from apps.core.services.bedrock import get_available_models
 
             grouped = get_available_models()
-            choices = [("", "---------")]
+            choices = [("", empty_label)]
             seen_model_ids = set()
             for group, models in grouped:
                 seen_model_ids.update(model_id for model_id, _name in models)
                 choices.append((group, list(models)))
-            current = self.initial.get("default_model_id", "") or getattr(self.instance, "default_model_id", "") or ""
             if current and current not in seen_model_ids:
                 choices.append(("Configured Model", [(current, current)]))
-            self.fields["default_model_id"].choices = choices
+            self.fields[field_name].choices = choices
         except Exception:
             logger.debug("Could not fetch Bedrock models for System Intelligence config choices", exc_info=True)
-            current = self.initial.get("default_model_id", "") or getattr(self.instance, "default_model_id", "") or ""
             if current:
-                self.fields["default_model_id"].choices = [("", "---------"), (current, current)]
+                self.fields[field_name].choices = [("", empty_label), (current, current)]
             else:
-                self.fields["default_model_id"].choices = [("", "---------")]
+                self.fields[field_name].choices = [("", empty_label)]
 
 
 @admin.register(SystemIntelligenceConfig)
@@ -87,7 +98,6 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         (
             _("Public Assistant"),
             {
-                "classes": ("collapse",),
                 "description": "Public, visitor-facing chatbot. It is tool-free and read-only -- it "
                 "never reaches the admin assistant, tools, or private data.",
                 "fields": (

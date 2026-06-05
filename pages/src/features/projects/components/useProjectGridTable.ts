@@ -65,6 +65,13 @@ export function useProjectGridTable({
     [filteredRows, sortDirection, sortField],
   );
 
+  // Rows the user has explicitly checked (independent of the current search
+  // filter), in the table's natural order. Drives "merge only what I selected".
+  const selectedRows = useMemo(
+    () => rows.filter((row) => selectedKeys.has(row.__key)),
+    [rows, selectedKeys],
+  );
+
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
 
@@ -205,6 +212,7 @@ export function useProjectGridTable({
     totalPages,
     filteredRows,
     sortedRows,
+    selectedRows,
     pagedRows,
     expandedKeys,
     toggleExpanded,
