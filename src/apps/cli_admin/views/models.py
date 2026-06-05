@@ -1,9 +1,10 @@
 from django.apps import apps
 from rest_framework.response import Response
 
-from apps.core.services.db_tools.safe_orm import field_schema, is_model_denied, safe_model_fields
+from apps.core.services.db_tools.safe_orm import is_model_denied, safe_model_fields
 
 from ..services.resolve import is_cli_denied, resolve_cli_model
+from ..services.schema import field_schema_verbose
 from ..throttles import CliReadThrottle
 from .base import AdminAPIView
 
@@ -41,7 +42,11 @@ class ModelSchemaView(AdminAPIView):
             {
                 "model": model._meta.label,
                 "primary_key": model._meta.pk.name,
-                "readable_fields": [field_schema(field) for field in safe_model_fields(model, write=False)],
-                "writable_fields": [field_schema(field) for field in safe_model_fields(model, write=True)],
+                "readable_fields": [
+                    field_schema_verbose(field, write=False) for field in safe_model_fields(model, write=False)
+                ],
+                "writable_fields": [
+                    field_schema_verbose(field, write=True) for field in safe_model_fields(model, write=True)
+                ],
             }
         )
