@@ -175,14 +175,7 @@ export const createPastProjectShare = async (
   name: string,
   note: string,
 ): Promise<PastProjectShare> => {
-  // Creating a share is login-only; attach the JWT explicitly (the shared api client
-  // does not, matching the events feature's authHeaders() pattern).
-  const token = getAccessToken();
-  const response = await api.post<PastProjectShare>(
-    '/projects/past-shares/',
-    {rows, name, note},
-    token ? {headers: {Authorization: `Bearer ${token}`}} : {},
-  );
+  const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {rows, name, note});
   return response.data;
 };
 
@@ -212,18 +205,10 @@ export const updatePastProjectShare = async (
 };
 
 export const listMyShares = async (): Promise<PastProjectShareSummary[]> => {
-  const token = getAccessToken();
-  const response = await api.get<PastProjectShareSummary[]>(
-    '/projects/past-shares/mine/',
-    token ? {headers: {Authorization: `Bearer ${token}`}} : {},
-  );
+  const response = await authApi.get<PastProjectShareSummary[]>('/projects/past-shares/mine/');
   return response.data;
 };
 
 export const deleteShare = async (id: string): Promise<void> => {
-  const token = getAccessToken();
-  await api.delete(
-    `/projects/past-shares/${id}/`,
-    token ? {headers: {Authorization: `Bearer ${token}`}} : {},
-  );
+  await authApi.delete(`/projects/past-shares/${id}/`);
 };
