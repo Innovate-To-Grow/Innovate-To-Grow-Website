@@ -13,5 +13,7 @@ def register(app) -> None:
     meta.register(app)
     records.register(app)
     # --- wave-2 extension points (one line each; keep on their own lines) ---
-    # U6:  from . import completion; completion.register(app)
+    from . import completion
+
+    completion.register(app)  # U6
     # U10: from . import apps_cmd; apps_cmd.register(app)
