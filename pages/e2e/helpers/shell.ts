@@ -60,7 +60,7 @@ export async function mockHealthyAppShell(page: Page) {
     });
   });
 
-  await page.route('**/layout/styles.css', async (route) => {
+  await page.route('**/layout/styles.css*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'text/css',

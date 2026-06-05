@@ -1,3 +1,4 @@
+from .ai_search import PastProjectAISearchAPIView
 from .all_past_projects import AllPastProjectsAPIView
 from .past_project_share import (
     PastProjectShareCreateAPIView,
@@ -9,6 +10,7 @@ from .project_detail import ProjectDetailAPIView
 
 __all__ = [
     "AllPastProjectsAPIView",
+    "PastProjectAISearchAPIView",
     "PastProjectShareCreateAPIView",
     "PastProjectShareDetailAPIView",
     "PastProjectShareMineAPIView",

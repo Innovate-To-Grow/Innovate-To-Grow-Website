@@ -1,3 +1,4 @@
+from .ai_search import PastProjectAISearchSerializer
 from .past_project_share import (
     PastProjectShareListSerializer,
     PastProjectShareRowSerializer,
@@ -7,6 +8,7 @@ from .project import ProjectDetailSerializer, ProjectListSerializer, ProjectTabl
 from .semester import SemesterWithFullProjectsSerializer, SemesterWithProjectsSerializer
 
 __all__ = [
+    "PastProjectAISearchSerializer",
     "PastProjectShareListSerializer",
     "PastProjectShareRowSerializer",
     "PastProjectShareSerializer",
