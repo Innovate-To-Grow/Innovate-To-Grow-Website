@@ -46,7 +46,9 @@ class BuildContextTests(TestCase):
         self.assertIn("/about", result)
 
     def test_char_cap_truncates(self):
-        CMSPage.objects.create(slug="a", route="/a", title="A" * 500, status="published")
+        # Title stays within CMSPage.title's max_length=300 (PostgreSQL enforces
+        # it; SQLite does not) while still producing context well over the cap.
+        CMSPage.objects.create(slug="a", route="/a", title="A" * 200, status="published")
         result = context.build_public_context(char_cap=50)
         self.assertLessEqual(len(result), 50)
 
