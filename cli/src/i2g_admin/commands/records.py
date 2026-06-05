@@ -51,11 +51,11 @@ def register(app: typer.Typer) -> None:
     records_app.command("create")(records_create)
     records_app.command("update")(records_update)
     records_app.command("delete")(records_delete)
-    # --- wave-2 record subcommands (one line each, on their own line) ---
-    from . import records_wait  # U8
+    # --- wave-2 record subcommands ---
+    from . import records_count, records_wait
 
-    records_wait.register(records_app)
-    # U11: from . import records_count; records_count.register(records_app)
+    records_wait.register(records_app)  # U8
+    records_count.register(records_app)  # U11
 
 
 def records_list(

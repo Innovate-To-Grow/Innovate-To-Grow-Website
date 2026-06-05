@@ -241,6 +241,26 @@ def test_records_update(use_client):
     assert client.calls[0][2]["json_body"] == {"is_published": True}
 
 
+def test_records_count(use_client):
+    client = use_client(FakeClient(get={"model": "projects.Semester", "count": 3}))
+    result = runner.invoke(app, ["records", "count", "projects", "semester"])
+    assert result.exit_code == 0
+    params = client.calls[0][2]["params"]
+    assert ("count", "1") in params
+    assert all(key != "filter" for key, _ in params)
+    assert "3" in result.output
+
+
+def test_records_count_with_filters(use_client):
+    client = use_client(FakeClient(get={"model": "projects.Semester", "count": 1}))
+    result = runner.invoke(app, ["records", "count", "projects", "semester", "--filter", "year=2051", "--json"])
+    assert result.exit_code == 0
+    params = client.calls[0][2]["params"]
+    assert ("filter", "year=2051") in params
+    assert ("count", "1") in params
+    assert '"count": 1' in result.output
+
+
 def test_records_delete_with_yes(use_client):
     use_client(FakeClient(delete={"deleted": True, "cascade": {"total": 0}}))
     result = runner.invoke(app, ["records", "delete", "projects", "semester", "abc", "--yes"])
