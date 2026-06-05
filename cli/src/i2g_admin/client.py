@@ -11,6 +11,11 @@ from .errors import ApiError, AuthError
 REQUEST_TIMEOUT = (5, 30)
 # Transient statuses U5 retries; declared here so the seam is visible from U1.
 RETRY_STATUSES = (429, 500, 502, 503, 504)
+# Only retry HTTP methods with no side effects on the server. A non-idempotent
+# write (POST/PATCH/DELETE) that times out or returns 5xx may already have been
+# committed; resending it would silently duplicate the row on models without a
+# unique constraint, so we never retry those — a single failure is surfaced as-is.
+IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 # Exponential-backoff knobs (seconds). The computed delay is
 # ``BACKOFF_BASE * 2**(attempt-1)`` capped at ``BACKOFF_MAX``, then multiplied by
 # a uniform random factor in [0, 1) (AWS-style "full jitter").
@@ -95,9 +100,14 @@ class ApiClient:
         the last response is returned (or the last exception re-raised) once they
         run out. With ``max_attempts == 1`` this performs exactly one request and
         never sleeps, matching the pre-U5 behavior.
+
+        Retries apply only to idempotent methods (see ``IDEMPOTENT_METHODS``).
+        Non-idempotent writes are sent exactly once regardless of ``max_attempts``
+        so a 5xx/timeout after the server already committed can't duplicate the row.
         """
-        for attempt in range(1, self.max_attempts + 1):
-            last_attempt = attempt >= self.max_attempts
+        attempts = self.max_attempts if method.upper() in IDEMPOTENT_METHODS else 1
+        for attempt in range(1, attempts + 1):
+            last_attempt = attempt >= attempts
             try:
                 response = self.session.request(
                     method, url, params=params, json=json_body, headers=headers, timeout=self.timeout
