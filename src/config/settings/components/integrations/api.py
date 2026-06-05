@@ -28,6 +28,7 @@ REST_FRAMEWORK = {
         "cli_oauth": "30/minute",
         "cli_read": "120/minute",
         "cli_write": "60/minute",
+        "public_assistant": "20/minute",
     },
 }
 
