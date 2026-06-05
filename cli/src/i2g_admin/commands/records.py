@@ -9,6 +9,7 @@ Wave-2 units extend this module at well-defined seams:
 import typer
 
 from .. import runtime
+from .pagination import paginate
 
 records_app = typer.Typer(help="Generic CRUD over /admin-api/ records.", no_args_is_help=True)
 
@@ -48,8 +49,23 @@ def records_list(
     if offset is not None:
         params.append(("offset", str(offset)))
     path = f"/admin-api/records/{app_label}/{model_name}/"
-    # U4: auto-pagination hook — replace the single GET below with paginate(...).
-    runtime._execute(lambda: runtime._client().get(path, params=params), as_json=as_json)
+    # U4: auto-pagination. An explicit --limit/--offset means the user asked for a
+    # specific page, so honor it with a single request; otherwise walk all pages.
+    if limit is not None or offset is not None:
+        runtime._execute(lambda: runtime._client().get(path, params=params), as_json=as_json)
+        return
+    ctx = runtime._current_context()
+    runtime._execute(
+        lambda: paginate(
+            runtime._client(),
+            path,
+            params,
+            no_paginate=ctx.no_paginate if ctx else False,
+            max_items=ctx.max_items if ctx else None,
+            page_size=ctx.page_size if ctx else None,
+        ),
+        as_json=as_json,
+    )
 
 
 def records_get(app_label: str, model_name: str, pk: str, as_json: bool = typer.Option(False, "--json")) -> None:
