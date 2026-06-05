@@ -1,18 +1,15 @@
 import typer
 
 from . import __version__, auth, config  # noqa: F401  (re-exported for back-compat + tests)
-from .client import ApiClient  # noqa: F401  (re-exported for back-compat)
 from .commands import register
-from .context import Context, build_client  # noqa: F401  (re-exported for back-compat)
+from .context import Context
 
 # Re-export the runtime glue so callers/tests can patch i2g_admin.app._client etc.
 # The real definitions live in the leaf `runtime` module to avoid an app<->commands cycle.
 from .runtime import (  # noqa: F401
     _client,
-    _current_context,
     _execute,
     _load_data,
-    current_profile,
 )
 
 app = typer.Typer(help="Remote record management for the Innovate-To-Grow backend.", no_args_is_help=True)

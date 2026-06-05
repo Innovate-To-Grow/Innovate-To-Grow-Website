@@ -1,27 +1,6 @@
 from i2g_admin import context as ctxmod
 from i2g_admin.client import ApiClient
-from i2g_admin.context import Context, build_client, get_context
-
-
-class _Bare:
-    """Stand-in for a click/typer context object without an obj attribute set."""
-
-    obj = None
-
-
-def test_get_context_creates_default_when_missing():
-    holder = _Bare()
-    result = get_context(holder)
-    assert isinstance(result, Context)
-    # Subsequent calls reuse the same object.
-    assert get_context(holder) is result
-
-
-def test_get_context_returns_existing():
-    holder = _Bare()
-    existing = Context(output="json")
-    holder.obj = existing
-    assert get_context(holder) is existing
+from i2g_admin.context import Context, build_client
 
 
 def test_build_client_uses_profile_and_timeouts(monkeypatch):
