@@ -12,7 +12,7 @@ import {
 export interface SearchTableHandle {
   clearSelection: () => void;
   deleteSelectedRows: () => void;
-  getFilteredRows: () => ProjectGridRow[];
+  getSelectedRows: () => ProjectGridRow[];
   hasSelection: () => boolean;
   keepSelectedRows: () => void;
 }
@@ -50,7 +50,7 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
         setRows((current) => table.removeSelectedRows(current));
         table.clearSelection();
       },
-      getFilteredRows: () => table.sortedRows.map(stripProjectGridItem),
+      getSelectedRows: () => table.selectedRows.map(stripProjectGridItem),
       hasSelection: () => table.hasSelection,
       keepSelectedRows: () => {
         setRows((current) => table.keepSelectedRows(current));

@@ -35,7 +35,12 @@ export const PastProjectsActionBar = ({
         <button type="button" className="itg-btn itg-btn-primary" onClick={onAddSearchTable} disabled={loading || Boolean(error)}>
           + Search Table
         </button>
-        <button type="button" className="itg-btn itg-btn-outline" onClick={onMergeResults} disabled={!searchTableCount}>
+        <button
+          type="button"
+          className="itg-btn itg-btn-outline"
+          onClick={onMergeResults}
+          disabled={!searchTableCount || !hasAnySelection}
+        >
           Save/Merge Results
         </button>
       </div>
@@ -70,10 +75,10 @@ export const PastProjectsActionBar = ({
         <div className="project-grid-help-card">
           <strong>Save/Merge Results</strong>
           <span>
-            Sends the <em>visible</em> rows from <strong>every open search table</strong> into{' '}
-            <strong>Saved Merged Results</strong> below. Only rows that pass the search box and appear in the grid are
-            included. If the same project appears in more than one table, it is stored once. Merging does not remove
-            search tables—you can merge again after changing filters.
+            Saves the rows you have <em>checked</em> across <strong>every open search table</strong> into{' '}
+            <strong>Saved Merged Results</strong> below. Only checked rows are included, so tick the boxes for the
+            projects you want first. If the same project is checked in more than one table, it is stored once. This
+            button stays disabled until at least one row is selected.
           </span>
         </div>
         <div className="project-grid-help-card">
