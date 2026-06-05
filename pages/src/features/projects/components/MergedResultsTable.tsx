@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react';
+import {useAuth} from '@/features/auth';
 import {ProjectGridTable} from './ProjectGridTable';
 import {exportProjectRowsCsv, exportProjectRowsExcel, exportProjectRowsPdf} from './projectGridExport';
 import {useProjectGridTable} from './useProjectGridTable';
@@ -13,7 +14,8 @@ interface MergedResultsTableProps {
   rows: ProjectGridItem[];
   sharedMode?: boolean;
   title?: string;
-  onCreateShare?: (rows: ProjectGridRow[]) => Promise<string>;
+  note?: string;
+  onCreateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<string>;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
 
@@ -21,18 +23,23 @@ export const MergedResultsTable = ({
   rows,
   sharedMode = false,
   title = 'Saved Merged Results',
+  note,
   onCreateShare,
   onDeleteRow,
 }: MergedResultsTableProps) => {
+  const {isAuthenticated} = useAuth();
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
+    expandAllByDefault: sharedMode,
   });
   const [shareUrl, setShareUrl] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isSharing, setIsSharing] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [noteDraft, setNoteDraft] = useState('');
 
   useEffect(() => {
     if (sharedMode) {
@@ -41,16 +48,19 @@ export const MergedResultsTable = ({
   }, [sharedMode]);
 
   const visibleRows = table.sortedRows.map(stripProjectGridItem);
+  const canShare = !sharedMode && Boolean(onCreateShare) && isAuthenticated;
+  const sharedNote = sharedMode ? (note ?? '').trim() : '';
 
   const handleCreateShare = async () => {
-    if (!onCreateShare || !visibleRows.length) {
+    const trimmedName = nameDraft.trim();
+    if (!onCreateShare || !visibleRows.length || !trimmedName) {
       return;
     }
 
     setIsSharing(true);
     setStatusMessage('');
     try {
-      const nextShareUrl = await onCreateShare(visibleRows);
+      const nextShareUrl = await onCreateShare(visibleRows, trimmedName, noteDraft.trim());
       setShareUrl(nextShareUrl);
       setStatusMessage('Shareable URL is ready.');
       window.open(nextShareUrl, '_blank', 'noopener,noreferrer');
@@ -81,6 +91,52 @@ export const MergedResultsTable = ({
           </p>
         </div>
       </div>
+
+      {sharedNote ? (
+        <div className="project-grid-shared-note">
+          <p className="project-grid-shared-note-label">Note</p>
+          <p className="project-grid-shared-note-text">{sharedNote}</p>
+        </div>
+      ) : null}
+
+      {!sharedMode && onCreateShare ? (
+        isAuthenticated ? (
+          <>
+            <div className="project-grid-share-note">
+              <label className="project-grid-share-note-label" htmlFor="past-project-share-name">
+                Name this shared link
+              </label>
+              <input
+                id="past-project-share-name"
+                type="text"
+                className="project-grid-share-name-input"
+                value={nameDraft}
+                maxLength={200}
+                placeholder="e.g. Spring 2025 finalists"
+                onChange={(event) => setNameDraft(event.target.value)}
+              />
+            </div>
+            <div className="project-grid-share-note">
+              <label className="project-grid-share-note-label" htmlFor="past-project-share-note">
+                Add a note (shown at the top of the shared page)
+              </label>
+              <textarea
+                id="past-project-share-note"
+                className="project-grid-share-note-input"
+                value={noteDraft}
+                maxLength={2000}
+                rows={3}
+                placeholder="Optional — add context for whoever opens the shared link."
+                onChange={(event) => setNoteDraft(event.target.value)}
+              />
+            </div>
+          </>
+        ) : (
+          <p className="project-grid-share-login-hint">
+            <a href="/login">Log in</a> to create a shareable link.
+          </p>
+        )
+      ) : null}
 
       <ProjectGridTable
         columns={PAST_PROJECT_GRID_COLUMNS}
@@ -135,12 +191,12 @@ export const MergedResultsTable = ({
               </button>
             </div>
             <div className="project-grid-toolbar-cluster" aria-label="Share link">
-              {!sharedMode && onCreateShare ? (
+              {canShare ? (
                 <button
                   type="button"
                   className="itg-btn itg-btn-primary"
                   onClick={() => void handleCreateShare()}
-                  disabled={!visibleRows.length || isSharing}
+                  disabled={!visibleRows.length || isSharing || !nameDraft.trim()}
                 >
                   {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
                 </button>

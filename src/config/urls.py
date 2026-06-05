@@ -69,6 +69,8 @@ urlpatterns = [
     path("mail/", include("apps.mail.urls")),
     # cli admin API (OAuth2 + PKCE generic CRUD for the i2g-admin CLI)
     path("admin-api/", include("apps.cli_admin.urls")),
+    # public, visitor-facing AI assistant (tool-free, read-only)
+    path("assistant/", include("apps.system_intelligence.urls")),
 ]
 
 handler404 = "apps.core.views.custom_404"

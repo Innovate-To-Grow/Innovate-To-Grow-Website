@@ -5,6 +5,7 @@ import { router } from '@/app/router';
 import { Footer, MainMenu, LayoutProvider } from '@/features/layout';
 import { HealthCheckProvider } from '@/app/MaintenanceMode';
 import { AuthProvider } from '@/features/auth';
+import { AssistantWidget, shouldMountWidget } from '@/features/assistant';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import {
   SECTION_TITLES_KEY,
@@ -31,7 +32,9 @@ export function mountApp() {
   const _path = window.location.pathname;
   const _searchParams = new URLSearchParams(window.location.search);
   const _isolatedFlag = _searchParams.has('_isolated');
-  const isBlockPreview = _path === '/_block-preview' || _path.startsWith('/_embed/') || _isolatedFlag;
+  // shouldMountWidget encodes the same iframe-isolated rule; negate it for the
+  // existing isBlockPreview guard so chrome (menu/footer/chatbot) share one source.
+  const isBlockPreview = !shouldMountWidget(_path, window.location.search);
 
   if (_isolatedFlag) {
     injectIsolatedHiddenSections(_searchParams);
@@ -79,6 +82,19 @@ export function mountApp() {
           <LayoutProvider>
             <Footer />
           </LayoutProvider>
+        </ErrorBoundary>
+      </StrictMode>,
+    );
+  }
+
+  // Mount the public floating chat assistant to #chatbot-root.
+  // No router/auth providers — the widget is self-contained.
+  const chatbotRoot = document.getElementById('chatbot-root');
+  if (chatbotRoot && !isBlockPreview) {
+    createRoot(chatbotRoot).render(
+      <StrictMode>
+        <ErrorBoundary>
+          <AssistantWidget />
         </ErrorBoundary>
       </StrictMode>,
     );

@@ -40,3 +40,4 @@ Repository guidance is split into short references so local instructions stay ea
 - Settings component import order matters: `base.py` imports `environment` → `django` → `admin` → `api` → `editor`; `production.py` layers `components/production` on top separately.
 - Never edit an existing migration that has landed on `main`. Create a new migration instead.
 - Pre-push hooks run Bandit (backend) and `npm run lint` + `tsc --noEmit` (frontend). A `git push` can fail even after a clean commit. Run `npm install` in `pages/` before pushing so the hooks find the toolchain.
+- Past-projects sheet sync (`apps.projects.services.sheet_sync`) is a **`source="sheet"`-scoped full replace** — it deletes/recreates only `Project` rows with `source="sheet"`, never `source="manual"` (CSV-imported or hand-entered) rows, even in a shared semester. `/projects/past-all/` still hides the newest published semester as "current".

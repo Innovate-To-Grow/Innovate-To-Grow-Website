@@ -61,6 +61,7 @@ cd src && python manage.py seed_service_configs                   # create skele
 cd src && python manage.py verify_service_configs --strict        # confirm active DB configs before prod deploy
 cd src && python manage.py createsuperuser                        # prompts for email (not username)
 cd src && python manage.py sync_news --settings=config.settings.local # sync articles from UC Merced RSS feed
+cd src && python manage.py sync_past_projects --settings=config.settings.local # sync past projects from the configured Google Sheet (--force to ignore interval)
 cd src && python manage.py loaddata cms/fixtures/footer_content.json
 ```
 

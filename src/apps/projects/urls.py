@@ -6,6 +6,7 @@ from .views import (
     PastProjectsAPIView,
     PastProjectShareCreateAPIView,
     PastProjectShareDetailAPIView,
+    PastProjectShareMineAPIView,
     ProjectDetailAPIView,
 )
 
@@ -16,6 +17,7 @@ urlpatterns = [
     path("past/", PastProjectsAPIView.as_view(), name="projects-past"),
     path("past-all/", AllPastProjectsAPIView.as_view(), name="projects-past-all"),
     path("past-shares/", PastProjectShareCreateAPIView.as_view(), name="projects-past-share-create"),
+    path("past-shares/mine/", PastProjectShareMineAPIView.as_view(), name="projects-past-share-mine"),
     path("past-shares/<uuid:pk>/", PastProjectShareDetailAPIView.as_view(), name="projects-past-share-detail"),
     path("<uuid:pk>/", ProjectDetailAPIView.as_view(), name="project-detail"),
 ]

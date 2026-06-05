@@ -21,6 +21,8 @@ interface UseProjectGridTableOptions {
   defaultSortField: ProjectGridColumnKey;
   defaultSortDirection?: ProjectGridSortDirection;
   initialSearch?: string;
+  /** Seed every expandable row open on mount (used by the shared, read-only view). */
+  expandAllByDefault?: boolean;
 }
 
 export function useProjectGridTable({
@@ -30,6 +32,7 @@ export function useProjectGridTable({
   defaultSortField,
   defaultSortDirection = 'asc',
   initialSearch = '',
+  expandAllByDefault = false,
 }: UseProjectGridTableOptions) {
   const [pageSize, setPageSizeState] = useState(() => Math.max(1, initialPageSize));
   const [search, setSearch] = useState(initialSearch);
@@ -83,6 +86,19 @@ export function useProjectGridTable({
 
   const allDetailsExpanded =
     expandableKeys.length > 0 && expandableKeys.every((rowKey) => expandedKeys.has(rowKey));
+
+  useEffect(() => {
+    if (!expandAllByDefault) {
+      return;
+    }
+    // Seed every expandable row open. Adding an already-present key is a no-op, so a
+    // user can still collapse rows afterward without this re-expanding them.
+    setExpandedKeys((current) => {
+      const next = new Set(current);
+      expandableKeys.forEach((rowKey) => next.add(rowKey));
+      return next;
+    });
+  }, [expandAllByDefault, expandableKeys]);
 
   useEffect(() => {
     if (currentPage !== page) {

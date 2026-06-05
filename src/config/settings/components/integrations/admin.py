@@ -86,6 +86,18 @@ UNFOLD = {
         # Duplicating the same links in TABS and SIDEBAR triggers Unfold's
         # _get_is_tab_active(), which marks both sidebar rows active when either
         # changelist is open (peer tabs, not parent/child).
+        # The sync-log is safe in TABS because it is NOT in the SIDEBAR (only the
+        # config is), mirroring the event.currentprojectschedule grouping above.
+        {
+            "models": [
+                "projects.pastprojectssheetconfig",
+                "projects.pastprojectsynclog",
+            ],
+            "items": [
+                {"title": "Past Projects Sheet", "link": "/admin/projects/pastprojectssheetconfig/"},
+                {"title": "Past Project Sync Logs", "link": "/admin/projects/pastprojectsynclog/"},
+            ],
+        },
         {
             "models": [
                 "cms.sitesettings",
@@ -146,6 +158,8 @@ UNFOLD = {
                 "items": [
                     {"title": "Projects", "link": "/admin/projects/project/"},
                     {"title": "Semesters", "link": "/admin/projects/semester/"},
+                    {"title": "Past Projects Sheet", "link": "/admin/projects/pastprojectssheetconfig/"},
+                    {"title": "Shared Links", "link": "/admin/projects/pastprojectshare/"},
                 ],
             },
             {

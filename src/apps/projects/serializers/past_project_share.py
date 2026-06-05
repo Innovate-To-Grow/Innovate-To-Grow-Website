@@ -16,13 +16,19 @@ class PastProjectShareRowSerializer(serializers.Serializer):
 
 
 class PastProjectShareSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=True, allow_blank=False, max_length=200)
     rows = PastProjectShareRowSerializer(many=True)
+    note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
     share_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "rows", "share_url", "created_at"]
+        fields = ["id", "name", "rows", "note", "share_url", "created_at"]
         read_only_fields = ["id", "share_url", "created_at"]
+
+    # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
+    # empty/whitespace-only names are rejected and the stored value is auto-trimmed —
+    # no custom validate_name needed.
 
     # noinspection PyMethodMayBeStatic
     def validate_rows(self, value):
@@ -38,6 +44,34 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             return f"/past-projects/{obj.pk}"
         return request.build_absolute_uri(f"/past-projects/{obj.pk}")
 
-    # noinspection PyMethodMayBeStatic
     def create(self, validated_data):
-        return PastProjectShare.objects.create(rows=validated_data["rows"])
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        created_by = user if (user is not None and user.is_authenticated) else None
+        return PastProjectShare.objects.create(
+            name=validated_data["name"],
+            rows=validated_data["rows"],
+            note=validated_data.get("note", ""),
+            created_by=created_by,
+        )
+
+
+class PastProjectShareListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for the account "my shares" list (omits the rows payload)."""
+
+    share_url = serializers.SerializerMethodField()
+    row_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PastProjectShare
+        fields = ["id", "name", "note", "share_url", "row_count", "created_at"]
+
+    def get_share_url(self, obj):
+        request = self.context.get("request")
+        if request is None:
+            return f"/past-projects/{obj.pk}"
+        return request.build_absolute_uri(f"/past-projects/{obj.pk}")
+
+    # noinspection PyMethodMayBeStatic
+    def get_row_count(self, obj):
+        return len(obj.rows or [])
