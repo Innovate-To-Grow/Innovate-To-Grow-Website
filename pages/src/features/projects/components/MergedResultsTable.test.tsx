@@ -39,21 +39,33 @@ describe('MergedResultsTable', () => {
     cleanup();
   });
 
-  it('submits the typed note when an authenticated user creates a share', async () => {
+  it('submits the name + note when an authenticated user creates a share', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
-    const textarea = screen.getByLabelText(/add a note/i);
-    fireEvent.change(textarea, {target: {value: 'Review these with the team'}});
+    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Spring finalists'}});
+    fireEvent.change(screen.getByLabelText(/add a note/i), {target: {value: 'Review these with the team'}});
     fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
 
     expect(onCreateShare).toHaveBeenCalledTimes(1);
-    const [rowsArg, noteArg] = onCreateShare.mock.calls[0];
+    const [rowsArg, nameArg, noteArg] = onCreateShare.mock.calls[0];
+    expect(nameArg).toBe('Spring finalists');
     expect(noteArg).toBe('Review these with the team');
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     openSpy.mockRestore();
+  });
+
+  it('keeps the share button disabled until a name is entered', () => {
+    const onCreateShare = vi.fn();
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
+
+    const button = screen.getByRole('button', {name: /get shareable url/i});
+    expect(button).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Named'}});
+    expect(button).toBeEnabled();
   });
 
   it('hides the share controls and shows a login hint for anonymous users', () => {
@@ -63,6 +75,7 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
     expect(screen.queryByRole('button', {name: /get shareable url/i})).toBeNull();
+    expect(screen.queryByLabelText(/name this shared link/i)).toBeNull();
     expect(screen.queryByLabelText(/add a note/i)).toBeNull();
     expect(screen.getByText(/to create a shareable link/i)).toBeInTheDocument();
   });

@@ -5,7 +5,10 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.projects.models import PastProjectShare
-from apps.projects.serializers.past_project_share import PastProjectShareSerializer
+from apps.projects.serializers.past_project_share import (
+    PastProjectShareListSerializer,
+    PastProjectShareSerializer,
+)
 
 Member = get_user_model()
 
@@ -26,6 +29,12 @@ def sample_row(**overrides):
     return row
 
 
+def sample_payload(**overrides):
+    payload = {"name": "My finalists", "rows": [sample_row()]}
+    payload.update(overrides)
+    return payload
+
+
 class PastProjectShareAPIViewTests(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
@@ -36,22 +45,46 @@ class PastProjectShareAPIViewTests(TestCase):
 
     def test_create_requires_auth_returns_401(self):
         anon = APIClient()
-        response = anon.post("/projects/past-shares/", {"rows": [sample_row()]}, format="json")
+        response = anon.post("/projects/past-shares/", sample_payload(), format="json")
         self.assertEqual(response.status_code, 401)
 
     def test_create_share_returns_uuid_and_url(self):
-        response = self.client.post("/projects/past-shares/", {"rows": [sample_row()]}, format="json")
+        response = self.client.post("/projects/past-shares/", sample_payload(), format="json")
 
         self.assertEqual(response.status_code, 201)
         self.assertIn("id", response.data)
         self.assertIn("share_url", response.data)
+        self.assertEqual(response.data["name"], "My finalists")
         self.assertEqual(len(response.data["rows"]), 1)
         self.assertTrue(PastProjectShare.objects.filter(pk=response.data["id"]).exists())
+
+    def test_create_requires_name(self):
+        response = self.client.post("/projects/past-shares/", {"rows": [sample_row()]}, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_create_rejects_blank_name(self):
+        response = self.client.post("/projects/past-shares/", sample_payload(name=""), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_create_rejects_whitespace_name(self):
+        response = self.client.post("/projects/past-shares/", sample_payload(name="   "), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_create_persists_trimmed_name(self):
+        response = self.client.post(
+            "/projects/past-shares/", sample_payload(name="  Spring finalists  "), format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.name, "Spring finalists")
 
     def test_authenticated_create_persists_note_and_created_by(self):
         response = self.client.post(
             "/projects/past-shares/",
-            {"rows": [sample_row()], "note": "Projects to review with the team."},
+            sample_payload(note="Projects to review with the team."),
             format="json",
         )
 
@@ -62,7 +95,7 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(share.created_by, self.member)
 
     def test_note_optional_blank(self):
-        response = self.client.post("/projects/past-shares/", {"rows": [sample_row()]}, format="json")
+        response = self.client.post("/projects/past-shares/", sample_payload(), format="json")
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["note"], "")
@@ -72,7 +105,7 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_note_length_validation(self):
         response = self.client.post(
             "/projects/past-shares/",
-            {"rows": [sample_row()], "note": "x" * 2001},
+            sample_payload(note="x" * 2001),
             format="json",
         )
 
@@ -80,7 +113,7 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertIn("note", response.data)
 
     def test_create_share_requires_rows(self):
-        response = self.client.post("/projects/past-shares/", {"rows": []}, format="json")
+        response = self.client.post("/projects/past-shares/", sample_payload(rows=[]), format="json")
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("rows", response.data)
@@ -88,7 +121,7 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_create_share_validates_row_shape(self):
         response = self.client.post(
             "/projects/past-shares/",
-            {"rows": [sample_row(project_title=""), {"team_name": "Missing fields"}]},
+            sample_payload(rows=[sample_row(project_title=""), {"team_name": "Missing fields"}]),
             format="json",
         )
 
@@ -98,7 +131,7 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_create_share_rejects_more_than_1000_rows(self):
         rows = [sample_row(team_number=f"T{i:03d}") for i in range(1001)]
 
-        response = self.client.post("/projects/past-shares/", {"rows": rows}, format="json")
+        response = self.client.post("/projects/past-shares/", sample_payload(rows=rows), format="json")
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("rows", response.data)
@@ -139,11 +172,63 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_create_without_request_context_sets_created_by_none(self):
         # The serializer is robust when used without a request (e.g. shell/scripts):
         # created_by stays None and the share still saves.
-        serializer = PastProjectShareSerializer(data={"rows": [sample_row()], "note": "scripted"})
+        serializer = PastProjectShareSerializer(data={"name": "Scripted", "rows": [sample_row()], "note": "scripted"})
         self.assertTrue(serializer.is_valid(), serializer.errors)
         instance = serializer.save()
         self.assertIsNone(instance.created_by)
         self.assertEqual(instance.note, "scripted")
+
+    # --- "my shares" list ---
+
+    def test_mine_lists_only_my_shares(self):
+        other = Member.objects.create_user(password="OtherPass123!", is_active=True)
+        PastProjectShare.objects.create(name="Mine A", rows=[sample_row()], created_by=self.member)
+        PastProjectShare.objects.create(name="Mine B", rows=[sample_row(), sample_row()], created_by=self.member)
+        PastProjectShare.objects.create(name="Theirs", rows=[sample_row()], created_by=other)
+
+        response = self.client.get("/projects/past-shares/mine/")
+
+        self.assertEqual(response.status_code, 200)
+        names = {item["name"] for item in response.data}
+        self.assertEqual(names, {"Mine A", "Mine B"})
+        # Light serializer: row_count present, full rows omitted.
+        item = next(i for i in response.data if i["name"] == "Mine B")
+        self.assertEqual(item["row_count"], 2)
+        self.assertNotIn("rows", item)
+
+    def test_mine_requires_auth_returns_401(self):
+        anon = APIClient()
+        response = anon.get("/projects/past-shares/mine/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_list_serializer_shape_without_request(self):
+        share = PastProjectShare.objects.create(name="Shape", rows=[sample_row()], created_by=self.member)
+        data = PastProjectShareListSerializer(share).data
+        self.assertEqual(data["share_url"], f"/past-projects/{share.pk}")
+        self.assertEqual(data["row_count"], 1)
+        self.assertEqual(data["name"], "Shape")
+
+    # --- owner-scoped delete ---
+
+    def test_delete_own_share_returns_204(self):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+        response = self.client.delete(f"/projects/past-shares/{share.pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(PastProjectShare.objects.filter(pk=share.pk).exists())
+
+    def test_delete_other_users_share_returns_404(self):
+        other = Member.objects.create_user(password="OtherPass123!", is_active=True)
+        share = PastProjectShare.objects.create(name="Theirs", rows=[sample_row()], created_by=other)
+        response = self.client.delete(f"/projects/past-shares/{share.pk}/")
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(PastProjectShare.objects.filter(pk=share.pk).exists())
+
+    def test_delete_anonymous_returns_401(self):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+        anon = APIClient()
+        response = anon.delete(f"/projects/past-shares/{share.pk}/")
+        self.assertEqual(response.status_code, 401)
+        self.assertTrue(PastProjectShare.objects.filter(pk=share.pk).exists())
 
     @override_settings(
         REST_FRAMEWORK={
@@ -155,8 +240,10 @@ class PastProjectShareAPIViewTests(TestCase):
         }
     )
     def test_create_share_is_throttled_for_authenticated_user(self):
-        first = self.client.post("/projects/past-shares/", {"rows": [sample_row()]}, format="json")
-        second = self.client.post("/projects/past-shares/", {"rows": [sample_row(team_number="T02")]}, format="json")
+        first = self.client.post("/projects/past-shares/", sample_payload(), format="json")
+        second = self.client.post(
+            "/projects/past-shares/", sample_payload(rows=[sample_row(team_number="T02")]), format="json"
+        )
 
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 429)

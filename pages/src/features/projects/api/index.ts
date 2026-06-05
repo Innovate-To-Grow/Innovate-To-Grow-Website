@@ -77,9 +77,19 @@ export interface SemesterWithFullProjects {
 
 export interface PastProjectShare {
   id: string;
+  name: string;
   rows: ProjectGridRow[];
   note: string;
   share_url: string;
+  created_at: string;
+}
+
+export interface PastProjectShareSummary {
+  id: string;
+  name: string;
+  note: string;
+  share_url: string;
+  row_count: number;
   created_at: string;
 }
 
@@ -141,6 +151,7 @@ export const fetchProjectDetail = async (id: string): Promise<ProjectDetail> => 
 
 export const createPastProjectShare = async (
   rows: ProjectGridRow[],
+  name: string,
   note: string,
 ): Promise<PastProjectShare> => {
   // Creating a share is login-only; attach the JWT explicitly (the shared api client
@@ -148,7 +159,7 @@ export const createPastProjectShare = async (
   const token = getAccessToken();
   const response = await api.post<PastProjectShare>(
     '/projects/past-shares/',
-    {rows, note},
+    {rows, name, note},
     token ? {headers: {Authorization: `Bearer ${token}`}} : {},
   );
   return response.data;
@@ -157,4 +168,21 @@ export const createPastProjectShare = async (
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
   const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
   return response.data;
+};
+
+export const listMyShares = async (): Promise<PastProjectShareSummary[]> => {
+  const token = getAccessToken();
+  const response = await api.get<PastProjectShareSummary[]>(
+    '/projects/past-shares/mine/',
+    token ? {headers: {Authorization: `Bearer ${token}`}} : {},
+  );
+  return response.data;
+};
+
+export const deleteShare = async (id: string): Promise<void> => {
+  const token = getAccessToken();
+  await api.delete(
+    `/projects/past-shares/${id}/`,
+    token ? {headers: {Authorization: `Bearer ${token}`}} : {},
+  );
 };

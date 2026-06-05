@@ -5,6 +5,7 @@ import {ProfileSection} from './account/ProfileSection';
 import {TicketsSection} from './account/TicketsSection';
 import {useAccountDashboard} from './account/useAccountDashboard';
 import {EmailCenter} from '../sections/EmailCenter';
+import {MySharedLinksSection} from '../sections/MySharedLinksSection';
 import {PhoneCenter} from '../sections/PhoneCenter';
 
 export const AccountPage = () => {
@@ -71,6 +72,7 @@ export const AccountPage = () => {
                     {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
                     {account.profile ? <PhoneCenter/> : null}
                     <DetailsSection displayEmail={account.displayEmail} dateJoined={account.profile?.date_joined}/>
+                    <MySharedLinksSection/>
                     <PasswordSection
                         passwordCodeRequested={account.passwordCodeRequested}
                         passwordCode={account.passwordCode}

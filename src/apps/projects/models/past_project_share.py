@@ -4,6 +4,7 @@ from apps.core.models import ProjectControlModel
 
 
 class PastProjectShare(ProjectControlModel):
+    name = models.CharField(max_length=200, default="")
     rows = models.JSONField(default=list)
     note = models.TextField(blank=True, default="")
     created_by = models.ForeignKey(
@@ -18,4 +19,4 @@ class PastProjectShare(ProjectControlModel):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Past Project Share {self.pk}"
+        return self.name or f"Past Project Share {self.pk}"

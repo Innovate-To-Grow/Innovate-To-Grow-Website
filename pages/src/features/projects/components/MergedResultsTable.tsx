@@ -15,7 +15,7 @@ interface MergedResultsTableProps {
   sharedMode?: boolean;
   title?: string;
   note?: string;
-  onCreateShare?: (rows: ProjectGridRow[], note: string) => Promise<string>;
+  onCreateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<string>;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
 
@@ -38,6 +38,7 @@ export const MergedResultsTable = ({
   const [shareUrl, setShareUrl] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isSharing, setIsSharing] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
 
   useEffect(() => {
@@ -51,14 +52,15 @@ export const MergedResultsTable = ({
   const sharedNote = sharedMode ? (note ?? '').trim() : '';
 
   const handleCreateShare = async () => {
-    if (!onCreateShare || !visibleRows.length) {
+    const trimmedName = nameDraft.trim();
+    if (!onCreateShare || !visibleRows.length || !trimmedName) {
       return;
     }
 
     setIsSharing(true);
     setStatusMessage('');
     try {
-      const nextShareUrl = await onCreateShare(visibleRows, noteDraft.trim());
+      const nextShareUrl = await onCreateShare(visibleRows, trimmedName, noteDraft.trim());
       setShareUrl(nextShareUrl);
       setStatusMessage('Shareable URL is ready.');
       window.open(nextShareUrl, '_blank', 'noopener,noreferrer');
@@ -99,20 +101,36 @@ export const MergedResultsTable = ({
 
       {!sharedMode && onCreateShare ? (
         isAuthenticated ? (
-          <div className="project-grid-share-note">
-            <label className="project-grid-share-note-label" htmlFor="past-project-share-note">
-              Add a note (shown at the top of the shared page)
-            </label>
-            <textarea
-              id="past-project-share-note"
-              className="project-grid-share-note-input"
-              value={noteDraft}
-              maxLength={2000}
-              rows={3}
-              placeholder="Optional — add context for whoever opens the shared link."
-              onChange={(event) => setNoteDraft(event.target.value)}
-            />
-          </div>
+          <>
+            <div className="project-grid-share-note">
+              <label className="project-grid-share-note-label" htmlFor="past-project-share-name">
+                Name this shared link
+              </label>
+              <input
+                id="past-project-share-name"
+                type="text"
+                className="project-grid-share-name-input"
+                value={nameDraft}
+                maxLength={200}
+                placeholder="e.g. Spring 2025 finalists"
+                onChange={(event) => setNameDraft(event.target.value)}
+              />
+            </div>
+            <div className="project-grid-share-note">
+              <label className="project-grid-share-note-label" htmlFor="past-project-share-note">
+                Add a note (shown at the top of the shared page)
+              </label>
+              <textarea
+                id="past-project-share-note"
+                className="project-grid-share-note-input"
+                value={noteDraft}
+                maxLength={2000}
+                rows={3}
+                placeholder="Optional — add context for whoever opens the shared link."
+                onChange={(event) => setNoteDraft(event.target.value)}
+              />
+            </div>
+          </>
         ) : (
           <p className="project-grid-share-login-hint">
             <a href="/login">Log in</a> to create a shareable link.
@@ -178,7 +196,7 @@ export const MergedResultsTable = ({
                   type="button"
                   className="itg-btn itg-btn-primary"
                   onClick={() => void handleCreateShare()}
-                  disabled={!visibleRows.length || isSharing}
+                  disabled={!visibleRows.length || isSharing || !nameDraft.trim()}
                 >
                   {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
                 </button>
