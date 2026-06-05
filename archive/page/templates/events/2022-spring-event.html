@@ -6,25 +6,7 @@
 {% block content %}
     <script src="https://code.jquery.com/jquery-3.3.1.js"></script><!-- Schedule -->
     <!-- MAIN SCRIPTS FOR PULLING SPREADSHEET DATA -->
-    <script>
-        $(document).ready(function () {
-            // Pulls the winner column from "2022-01-Spring-I2G-MASTER" spreadsheet.
-            // .winnert1 means its the class for winner track 1. row x column 6 is the item in the winner column
-            $.getJSON("/api/sheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks", function (data) {
-                $(".winnert1").prepend(data.values[2][6]);
-                $(".winnert2").prepend(data.values[3][6]);
-                $(".winnert3").prepend(data.values[4][6]);
-                $(".winnert4").prepend(data.values[5][6]);
-                $(".winnert5").prepend(data.values[6][6]);
-                $(".winnert6").prepend(data.values[7][6]);
-                $(".winnert7").prepend(data.values[8][6]);
-                $(".winnert8").prepend(data.values[9][6]);
-                $(".winnert9").prepend(data.values[10][6]);
-                $(".winnert10").prepend(data.values[11][6]);
-                $(".winnert11").prepend(data.values[12][6]);
-            });
-        });
-    </script>
+    <script type="text/javascript" src="/static/js/events/2022-spring-event-1-winners.js"></script>
     <div class="row-fluid i2gTable ">
         <div class="capTable">
             <div class="span12">
@@ -403,116 +385,7 @@
     <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
     <script type="text/javascript" charset="utf8"
                                 src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript">
-        function format(d) {
-            // `d` is the original data object for the row
-
-            return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
-                '<tr>' +
-                '<td>Abstract:</td>' +
-                '<td>' + d.Abstract + '</td>' +
-                '</tr>' +
-                '<tr>' +
-                '<td>Student Names:</td>' +
-                '<td>' + d["Student Names"] + '</td>' +
-                '</tr>' +
-                '</table>';
-        }
-
-        var datas = [];
-        var test;
-        $(document).ready(function () {
-            $.getJSON("/api/sheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB", function (data) {
-                var length = data.values.length;
-                console.log(length);
-                for (var i = 1; i < length; i++) {
-                    const subArray = data.values[i];
-                    subdata = {
-                        "Track": subArray[0],
-                        "Order": subArray[1],
-                        "Year-Semester": subArray[2],
-                        "Class": subArray[3],
-                        "Team#": subArray[4],
-                        "TeamName": subArray[5],
-                        "Project Title": subArray[6],
-                        "Organization": subArray[7],
-                        "Industry": subArray[8],
-                        "Abstract": subArray[9],
-                        "Student Names": subArray[10],
-                        "NameTitle": subArray[11],
-                    };
-                    JSON.stringify(subdata);
-                    datas.push(subdata);
-                }
-                console.log("first");
-                fnLoadDataTableInstance()
-            });
-
-        });
-
-        function fnLoadDataTableInstance() {
-            // #example refers to the html table, 'id="example"'
-            console.log("second");
-            var table = $('#example').DataTable({
-                dom: 'Bfrtip',
-                pageLength: 10,
-                search: {
-                    search: document.location.search.replace(/^.*?\=/, '')
-                },
-                data: datas,
-                columns: [
-                    {"data": "Track"},
-                    {"data": "Year-Semester"},
-                    {"data": "Class"},
-                    {"data": "Team#"},
-                    {"data": "TeamName"},
-                    {"data": "Project Title"},
-                    {"data": "Organization"},
-                    {"data": "Industry"},
-                    {
-                        "className": 'details-control',
-                        "orderable": false,
-                        "data": null,
-                        "defaultContent": ''
-                    },
-                    {
-                        "data": "Abstract",
-                        "bVisible": false
-                    },
-                    {
-                        "data": "Student Names",
-                        "bVisible": false
-                    }
-                ],
-                order: [
-                    [1, 'desc']
-                ],
-                fixedHeader: {
-                    header: true,
-                    footer: true
-                }
-            });
-            $('#example tbody').on('click', 'td.details-control', function () {
-                var tr = $(this).closest('tr');
-                var row = table.row(tr);
-                if (row.child.isShown()) {
-                    // This row is already open - close it
-                    row.child.hide();
-                    tr.removeClass('shown');
-                    tr.css('color', 'Black');
-                    tr.css('font-weight', 'normal');
-                    //   td.css('background-color', 'White');
-                } else {
-                    // Open this row
-                    row.child(format(row.data())).show();
-                    tr.addClass('shown');
-                    tr.css('color', '#162D4F');
-                    tr.css('font-weight', 'bold');
-                    //   td.css('background-color', 'Red');
-                }
-            });
-        };
-    </script>
+    <script type="text/javascript" src="/static/js/events/2022-spring-event-2-search-table.js"></script>
     <script type="text/javascript" src="/static/js/events/2022-spring-event-3-passvalue.js"></script>
     <!-- Datatables.net END SEARCH TABLE --><!-- SCHEDULE EVENT PAGE -->
     <!-- EXPO: POSTERS AND DEMOS -->
@@ -582,79 +455,7 @@
             </div>
         </div>
     <!-- MAIN SCRIPTS FOR PULLING SPREADSHEET DATA -->
-    <script>
-        $(document).ready(function () {
-            // Pulls the room column from "2022-01-Spring-I2G-MASTER" spreadsheet.
-            $.getJSON("/api/sheets/1ByRYKwPkrD4edUVyd3hw3nTDY31ygyyx0QZOANF2vyc/values/I2G-Tracks", function (data) {
-                $(".roomt1").prepend(data.values[2][1]);
-                $(".roomt2").prepend(data.values[3][1]);
-                $(".roomt3").prepend(data.values[4][1]);
-                $(".roomt4").prepend(data.values[5][1]);
-                $(".roomt5").prepend(data.values[6][1]);
-                // $(".roomt6").prepend(data.values[7][1]); (this is commented out since track 6 and 7 share the same room)
-                $(".roomt7").prepend(data.values[8][1]);
-                $(".roomt8").prepend(data.values[9][1]);
-                $(".roomt9").prepend(data.values[10][1]);
-                $(".roomt10").prepend(data.values[11][1]);
-                $(".roomt11").prepend(data.values[12][1]);
-                let counter = 1;
-                // Pulls the zoom column from "2022-01-Spring-I2G-MASTER" spreadsheet.
-                // It will automatically make zoom button active if there is a link present in zoom spreadsheet column
-                for (let i = 2; i < 13; i++) {
-                    if (data.values[i][2] != "" && i != 7) {
-                        document.getElementById("zoomt" + counter).href = data.values[i][2];
-                    }
-                    counter++;
-                }
-            });
-        });
-
-        $(document).ready(function () {
-            // Pulls data from "2022-01-Spring-I2G-WEB" spreadsheet.
-            $.getJSON("/api/sheets/13Yds-sPSPjLSWYyCyIaHauTZ3lchGiNH1n-II6tJOMM/values/2022-01-Spring-I2G-WEB", function (data) {
-                for (let i = 1; i < data.values.length; i++) {
-                    if ((data.values[i][3] == "CAP1") || (data.values[i][3] == "CAP")) { // Set to CAP1 to handle all data that is CAP1 under Class Column in the spreadsheet
-                        let track = data.values[i][0];
-                        let order = data.values[i][1];
-                        if (track != "" && order != "") {
-                            $(".capr" + order + "t" + track).prepend(data.values[i][4]);
-                            $(".caporgr" + order + "t" + track).prepend(data.values[i][7]);
-                            document.getElementById("hover" + order + "" + track).title = data.values[i][11];
-                        }
-                    } else if (data.values[i][3] == "CSE") { // Set to CSE to handle all data that is CSE under Class Column in the spreadsheet
-                        let track = data.values[i][0];
-                        let order = data.values[i][1];
-                        if (track != "" && order != "") {
-                            $(".cser" + order + "t" + track).prepend(data.values[i][4]);
-                            $(".cseorgr" + order + "t" + track).prepend(data.values[i][7]);
-                            document.getElementById("hover" + order + "" + track).title = data.values[i][11];
-                        }
-                    } else if (data.values[i][3] == "CEE") { // Set to CEE to handle all data that is CEE under Class Column in the spreadsheet
-                        let track = data.values[i][0];
-                        let order = data.values[i][1];
-                        if (track != "" && order != "") {
-                            $(".ceer" + order + "t" + track).prepend(data.values[i][4]);
-                            $(".ceeorgr" + order + "t" + track).prepend(data.values[i][7]);
-                            document.getElementById("hover" + order + "" + track).title = data.values[i][11];
-                        }
-                    } else if (data.values[i][3] == "EngSL") { // Set to EngSL to handle all data that is EngSL under Class Column in the spreadsheet
-                        let track = data.values[i][0];
-                        let order = data.values[i][1];
-                        if (track != "" && order != "") {
-                            $(".engslr" + order + "t" + track).prepend(data.values[i][4]);
-                            $(".engslorgr" + order + "t" + track).prepend(data.values[i][7]);
-                            document.getElementById("hover" + order + "" + track).title = data.values[i][11];
-                        }
-                    }
-                        // If you want to add another class, just copy paste and mnake sure data.values[i][3] is == to whatever its named in the Class Column
-                    // If you want to add another row or track make sure it follows the same format as the others, i.e. button class=capr(order)t(track), id=slot(order)(track), passvalue=slot(order)(track), p class = caporgr(order)t(track) *(each row timeslot will have the same order number)*
-                    else {
-                        console.log("Error 01 occured");
-                    }
-                }
-            });
-        });
-    </script><!-- PRESENTATION SCHEDULES --><!-- Engineering Capstone (CAP) -->
+    <script type="text/javascript" src="/static/js/events/2022-spring-event-4-schedule.js"></script><!-- PRESENTATION SCHEDULES --><!-- Engineering Capstone (CAP) -->
 
     <div class="row-fluid i2gTable ">
         <div class="capTable">
