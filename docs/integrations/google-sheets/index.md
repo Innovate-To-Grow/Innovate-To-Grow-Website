@@ -1,6 +1,6 @@
 # Google Sheets Integration
 
-Google Sheets is used for two distinct purposes: syncing event registration data out to a spreadsheet, and importing schedule/project data from a spreadsheet into the database.
+Google Sheets is used for several purposes: syncing event registration data out to a spreadsheet, importing schedule/project data from a spreadsheet into the database, and importing the historical past-projects catalog into the database for the public `/past-projects` page.
 
 ## In this section
 
@@ -17,6 +17,7 @@ Engineers maintaining the event registration pipeline, admins configuring Google
 |-------------|-----------|---------|---------|
 | Registration sync | Django → Sheets | On registration creation | `src/apps/event/services/registration_sheet_sync.py` |
 | Schedule sync | Sheets → Django | Admin action or management | `src/apps/event/services/schedule_sync.py` |
+| Past-projects sync | Sheets → Django | Admin Pull / cron | `src/apps/projects/services/sheet_sync/` |
 
 Both integrations authenticate via a Google service account whose credentials are stored in the `GoogleCredentialConfig` model (managed through Django admin).
 

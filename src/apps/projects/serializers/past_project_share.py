@@ -17,11 +17,12 @@ class PastProjectShareRowSerializer(serializers.Serializer):
 
 class PastProjectShareSerializer(serializers.ModelSerializer):
     rows = PastProjectShareRowSerializer(many=True)
+    note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
     share_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "rows", "share_url", "created_at"]
+        fields = ["id", "rows", "note", "share_url", "created_at"]
         read_only_fields = ["id", "share_url", "created_at"]
 
     # noinspection PyMethodMayBeStatic
@@ -38,6 +39,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             return f"/past-projects/{obj.pk}"
         return request.build_absolute_uri(f"/past-projects/{obj.pk}")
 
-    # noinspection PyMethodMayBeStatic
     def create(self, validated_data):
-        return PastProjectShare.objects.create(rows=validated_data["rows"])
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        created_by = user if (user is not None and user.is_authenticated) else None
+        return PastProjectShare.objects.create(
+            rows=validated_data["rows"],
+            note=validated_data.get("note", ""),
+            created_by=created_by,
+        )
