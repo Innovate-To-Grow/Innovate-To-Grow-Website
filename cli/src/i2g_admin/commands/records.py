@@ -6,11 +6,41 @@ Wave-2 units extend this module at well-defined seams:
 - U8 / U11 each append one ``register`` line at their numbered anchor below.
 """
 
+import json
+
 import typer
 
 from .. import runtime
+from ..errors import CliError
+from .skeleton import build_skeleton
 
 records_app = typer.Typer(help="Generic CRUD over /admin-api/ records.", no_args_is_help=True)
+
+
+def _resolve_write_input(data: str | None, cli_input_json: str | None):
+    """Pick the single data source for a create/update and parse it.
+
+    Exactly one of ``--data`` / ``--cli-input-json`` must be supplied; raises
+    :class:`CliError` when neither or both are given. Both flow through
+    ``runtime._load_data`` (inline JSON / ``@file`` / ``@-`` stdin).
+    """
+    sources = [value for value in (data, cli_input_json) if value is not None]
+    if not sources:
+        raise CliError("Provide a payload via --data or --cli-input-json.")
+    if len(sources) > 1:
+        raise CliError("Use only one of --data or --cli-input-json, not both.")
+    return runtime._load_data(sources[0])
+
+
+def _emit_skeleton(app_label: str, model_name: str) -> None:
+    """Fetch the model schema and print an empty input template, then return."""
+
+    def run():
+        schema = runtime._client().get(f"/admin-api/models/{app_label}/{model_name}/schema/")
+        typer.echo(json.dumps(build_skeleton(schema), indent=2))
+        return None
+
+    runtime._execute(run)
 
 
 def register(app: typer.Typer) -> None:
@@ -62,14 +92,23 @@ def records_get(app_label: str, model_name: str, pk: str, as_json: bool = typer.
 def records_create(
     app_label: str,
     model_name: str,
-    data: str = typer.Option(..., "--data", help="Inline JSON, @file, or @- for stdin."),
+    data: str = typer.Option(None, "--data", help="Inline JSON, @file, or @- for stdin."),
     # U7: --generate-cli-skeleton / --cli-input-json options go here.
+    generate_cli_skeleton: bool = typer.Option(
+        False, "--generate-cli-skeleton", help="Print an empty input template for this model and exit."
+    ),
+    cli_input_json: str = typer.Option(
+        None, "--cli-input-json", help="Payload source (inline JSON, @file, or @- for stdin)."
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Create a record from a JSON payload."""
+    if generate_cli_skeleton:
+        _emit_skeleton(app_label, model_name)
+        return
 
     def run():
-        payload = runtime._load_data(data)
+        payload = _resolve_write_input(data, cli_input_json)
         return runtime._client().post(f"/admin-api/records/{app_label}/{model_name}/", json_body=payload)
 
     runtime._execute(run, as_json=as_json)
@@ -79,14 +118,23 @@ def records_update(
     app_label: str,
     model_name: str,
     pk: str,
-    data: str = typer.Option(..., "--data", help="Inline JSON, @file, or @- for stdin."),
+    data: str = typer.Option(None, "--data", help="Inline JSON, @file, or @- for stdin."),
     # U7: --generate-cli-skeleton / --cli-input-json options go here.
+    generate_cli_skeleton: bool = typer.Option(
+        False, "--generate-cli-skeleton", help="Print an empty input template for this model and exit."
+    ),
+    cli_input_json: str = typer.Option(
+        None, "--cli-input-json", help="Payload source (inline JSON, @file, or @- for stdin)."
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Update a record from a JSON payload."""
+    if generate_cli_skeleton:
+        _emit_skeleton(app_label, model_name)
+        return
 
     def run():
-        payload = runtime._load_data(data)
+        payload = _resolve_write_input(data, cli_input_json)
         return runtime._client().patch(f"/admin-api/records/{app_label}/{model_name}/{pk}/", json_body=payload)
 
     runtime._execute(run, as_json=as_json)
