@@ -20,7 +20,9 @@ def test_event_pages_are_served(client):
     resp = client.get("/2025-fall-event.html")
     assert resp.status_code == 200
     assert resp.content_type == "text/html; charset=utf-8"
-    assert b"/api/sheets/" in resp.data
+    # Real page content rendered through base.html (the proxy-usage invariant
+    # lives in test_static_site.py, which also covers extracted JS assets).
+    assert b"Innovate To Grow" in resp.data
 
 
 def test_served_page_includes_the_embed_helper(client):
