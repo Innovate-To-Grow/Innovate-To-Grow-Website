@@ -38,6 +38,16 @@
     border-color: var(--md-sys-color-primary) !important;
 }
 
+/*
+   In dark mode --md-sys-color-primary is light blue (#a8c7fa), so the white
+   checkmark above is low-contrast. Override with a dark stroke that reads on
+   the light-blue fill (matches --md-sys-color-on-primary = #202124).
+*/
+.dark #changelist input.action-select:checked,
+.dark #changelist input.action-toggle:checked {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23202124' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12l4 4L19 6'/%3E%3C/svg%3E") !important;
+}
+
 #changelist input.action-select:focus,
 #changelist input.action-toggle:focus {
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent) !important;
