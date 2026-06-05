@@ -22,13 +22,41 @@ from django.db.models import NOT_PROVIDED
 from apps.core.services.db_tools.safe_orm import field_schema
 
 
-def field_schema_verbose(field: models.Field, *, write: bool) -> dict[str, Any]:
+def _flatten_choices(raw_choices: Any) -> list[dict[str, Any]]:
+    """Defensively flatten Django ``choices`` into ``[{value, label}]``.
+
+    Django normalizes grouped (optgroup) choices to ``[("Group", [(v, l), ...])]``
+    while flat choices stay ``[(v, l), ...]``. Entries whose second element is a
+    list/tuple are treated as a group and their inner ``(v, l)`` pairs expanded;
+    everything else is read as a flat ``(value, label)`` pair. Any malformed entry
+    is skipped so this never raises (the caller relies on "never raises").
+    """
+    flattened: list[dict[str, Any]] = []
+    for entry in raw_choices:
+        try:
+            value, label = entry
+        except (TypeError, ValueError):
+            continue
+        if isinstance(label, list | tuple):
+            for inner in label:
+                try:
+                    inner_value, inner_label = inner
+                except (TypeError, ValueError):
+                    continue
+                flattened.append({"value": inner_value, "label": str(inner_label)})
+        else:
+            flattened.append({"value": value, "label": str(label)})
+    return flattened
+
+
+def field_schema_verbose(field: models.Field) -> dict[str, Any]:
     """Return the shared field schema enriched with CLI-facing metadata.
 
-    ``write`` is accepted for symmetry with the rest of the safe-ORM API (the
-    schema endpoint enriches readable and writable fields separately); the extra
-    keys are identical either way, but keeping the keyword makes the call sites
-    explicit and leaves room for write-only annotations later.
+    Layers human-facing labels (``verbose_name``, ``help_text``), constraint flags
+    (``blank``, ``null``), a concrete ``default`` (callable/unset defaults are
+    skipped), structured ``choices`` (``[{value, label}]``, optgroups flattened),
+    and relational target info (``related_model`` + ``related_pk``). Everything is
+    read defensively so an exotic field never raises.
     """
     schema = dict(field_schema(field))
 
@@ -49,7 +77,12 @@ def field_schema_verbose(field: models.Field, *, write: bool) -> dict[str, Any]:
 
     raw_choices = getattr(field, "choices", None)
     if raw_choices:
-        schema["choices"] = [{"value": value, "label": str(label)} for value, label in raw_choices]
+        try:
+            choices = _flatten_choices(raw_choices)
+        except Exception:
+            choices = []
+        if choices:
+            schema["choices"] = choices
 
     if getattr(field, "is_relation", False) and getattr(field, "related_model", None) is not None:
         related = field.related_model

@@ -42,11 +42,7 @@ class ModelSchemaView(AdminAPIView):
             {
                 "model": model._meta.label,
                 "primary_key": model._meta.pk.name,
-                "readable_fields": [
-                    field_schema_verbose(field, write=False) for field in safe_model_fields(model, write=False)
-                ],
-                "writable_fields": [
-                    field_schema_verbose(field, write=True) for field in safe_model_fields(model, write=True)
-                ],
+                "readable_fields": [field_schema_verbose(field) for field in safe_model_fields(model, write=False)],
+                "writable_fields": [field_schema_verbose(field) for field in safe_model_fields(model, write=True)],
             }
         )
