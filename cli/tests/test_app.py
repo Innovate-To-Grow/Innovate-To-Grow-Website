@@ -151,6 +151,21 @@ def test_schema(use_client):
     assert result.exit_code == 0
 
 
+def test_apps(use_client):
+    client = use_client(FakeClient(get=[{"app_label": "projects", "model_count": 3}]))
+    result = runner.invoke(app, ["apps"])
+    assert result.exit_code == 0
+    assert client.calls[0][1] == "/admin-api/apps/"
+    assert "projects" in result.output
+
+
+def test_apps_json(use_client):
+    use_client(FakeClient(get=[{"app_label": "projects", "model_count": 3}]))
+    result = runner.invoke(app, ["apps", "--json"])
+    assert result.exit_code == 0
+    assert '"app_label"' in result.output
+
+
 def test_records_list_with_all_options(use_client):
     client = use_client(FakeClient(get={"results": [{"year": 2025}], "count": 1}))
     result = runner.invoke(

@@ -14,4 +14,6 @@ def register(app) -> None:
     records.register(app)
     # --- wave-2 extension points (one line each; keep on their own lines) ---
     # U6:  from . import completion; completion.register(app)
-    # U10: from . import apps_cmd; apps_cmd.register(app)
+    from . import apps_cmd  # U10
+
+    apps_cmd.register(app)
