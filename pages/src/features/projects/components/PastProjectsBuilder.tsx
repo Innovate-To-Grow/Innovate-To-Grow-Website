@@ -5,7 +5,7 @@ import {PastProjectsAIStatus} from './builder/PastProjectsAIStatus';
 import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
 import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
 import {PastProjectsDialog} from './builder/PastProjectsDialog';
-import {MergedResultsTable} from './MergedResultsTable';
+import {MergedResultsTable, type PastProjectShareCreationResult} from './MergedResultsTable';
 import {SearchTableCard, type SearchTableHandle} from './SearchTableCard';
 import {
   createProjectGridFingerprint,
@@ -34,7 +34,8 @@ interface PastProjectsBuilderProps {
   error: string | null;
   loading: boolean;
   rows: ProjectGridRow[];
-  onCreateShare: (rows: ProjectGridRow[], name: string, note: string) => Promise<string>;
+  onCreateShare: (rows: ProjectGridRow[], name: string, note: string) => Promise<PastProjectShareCreationResult>;
+  onUpdateCreatedShare?: (shareId: string, rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
 }
 
 interface SearchTableState {
@@ -53,6 +54,7 @@ export const PastProjectsBuilder = ({
   loading,
   rows,
   onCreateShare,
+  onUpdateCreatedShare,
 }: PastProjectsBuilderProps) => {
   const {isAuthenticated} = useAuth();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
@@ -257,7 +259,12 @@ export const PastProjectsBuilder = ({
   return (
     <div className="past-projects-builder">
       {mergedRows.length > 0 ? (
-        <MergedResultsTable rows={mergedRows} onCreateShare={onCreateShare} onDeleteRow={handleDeleteMergedRow} />
+        <MergedResultsTable
+          rows={mergedRows}
+          onCreateShare={onCreateShare}
+          onUpdateCreatedShare={onUpdateCreatedShare}
+          onDeleteRow={handleDeleteMergedRow}
+        />
       ) : null}
 
       <PastProjectsActionBar

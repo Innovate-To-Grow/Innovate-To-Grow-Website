@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -33,6 +34,17 @@ const addedRow: ProjectGridRow = {
   team_name: 'Team Beta',
   project_title: 'Irrigation Sensor',
   organization: 'Blue Diamond',
+};
+
+const filteredShareRow: ProjectGridRow = {
+  ...addedRow,
+  project_title: 'Shared Project Beta',
+};
+
+const unsharedLocalRow: ProjectGridRow = {
+  ...addedRow,
+  team_number: 'T03',
+  project_title: 'Local Only Project',
 };
 
 const makeItems = (rows: ProjectGridRow[] = [baseRow]) => createProjectGridItems(rows, 'test');
@@ -98,6 +110,83 @@ describe('MergedResultsTable', () => {
     expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/abc');
     expect(await screen.findByText('URL copied to clipboard.')).toBeInTheDocument();
     expect(screen.queryByRole('button', {name: /copy url/i})).toBeNull();
+  });
+
+  it('updates the created share when a row is removed after creating a shareable URL', async () => {
+    const onCreateShare = vi.fn().mockResolvedValue({id: 'share-abc', share_url: '/past-projects/share-abc'});
+    const onUpdateCreatedShare = vi.fn().mockResolvedValue(undefined);
+
+    const StatefulMergedResults = () => {
+      const [items, setItems] = useState(() => makeItems([baseRow, addedRow]));
+
+      return (
+        <MergedResultsTable
+          rows={items}
+          onCreateShare={onCreateShare}
+          onUpdateCreatedShare={onUpdateCreatedShare}
+          onDeleteRow={(row) => {
+            setItems((current) => current.filter((item) => item.__key !== row.__key));
+          }}
+        />
+      );
+    };
+
+    render(<StatefulMergedResults />);
+
+    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Spring finalists'}});
+    fireEvent.change(screen.getByLabelText(/add a note/i), {target: {value: 'Review these with the team'}});
+    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
+
+    expect(await screen.findByLabelText('Shareable URL')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
+
+    await waitFor(() => {
+      expect(onUpdateCreatedShare).toHaveBeenCalledWith(
+        'share-abc',
+        [addedRow],
+        'Spring finalists',
+        'Review these with the team',
+      );
+    });
+    expect(await screen.findByText('Project removed from the shareable link.')).toBeInTheDocument();
+    expect(screen.queryByText('Shared Project')).toBeNull();
+    expect(screen.getAllByText('Irrigation Sensor').length).toBeGreaterThan(0);
+  });
+
+  it('does not write unshared local rows back into a filtered share when removing a row', async () => {
+    const onCreateShare = vi.fn().mockResolvedValue({id: 'share-filtered'});
+    const onUpdateCreatedShare = vi.fn().mockResolvedValue(undefined);
+
+    const StatefulMergedResults = () => {
+      const [items, setItems] = useState(() => makeItems([baseRow, filteredShareRow, unsharedLocalRow]));
+
+      return (
+        <MergedResultsTable
+          rows={items}
+          onCreateShare={onCreateShare}
+          onUpdateCreatedShare={onUpdateCreatedShare}
+          onDeleteRow={(row) => {
+            setItems((current) => current.filter((item) => item.__key !== row.__key));
+          }}
+        />
+      );
+    };
+
+    render(<StatefulMergedResults />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search projects...'), {target: {value: 'Shared Project'}});
+    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Filtered finalists'}});
+    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
+
+    expect(await screen.findByLabelText('Shareable URL')).toBeInTheDocument();
+    expect(onCreateShare).toHaveBeenCalledWith([baseRow, filteredShareRow], 'Filtered finalists', '');
+
+    fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
+
+    await waitFor(() => {
+      expect(onUpdateCreatedShare).toHaveBeenCalledWith('share-filtered', [filteredShareRow], 'Filtered finalists', '');
+    });
   });
 
   it('keeps the share button disabled until a name is entered', () => {
