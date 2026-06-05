@@ -1,22 +1,29 @@
 """Client-side result projection (the ``--query`` seam).
 
-U1 ships a no-op passthrough so the ``emit`` pipeline has a stable shape. U3
-replaces :func:`run_query` with a JMESPath implementation (adding the jmespath
-dependency) and maps expression errors to :class:`~i2g_admin.errors.CliError`.
-No other unit imports or edits this module.
+U1 shipped a no-op passthrough so the ``emit`` pipeline had a stable shape. U3
+replaces :func:`run_query` with a JMESPath implementation and maps expression
+errors to :class:`~i2g_admin.errors.CliError`. No other unit imports or edits
+this module.
 """
 
 from typing import Any
 
+import jmespath
+from jmespath.exceptions import JMESPathError
+
+from .errors import CliError
+
 
 def run_query(data: Any, expression: str | None) -> Any:
-    """Return ``data`` projected through ``expression``.
+    """Return ``data`` projected through the JMESPath ``expression``.
 
-    Until U3 lands, any non-empty expression is reported as unsupported rather
-    than silently ignored, so users are never misled into thinking a filter ran.
+    An empty or ``None`` expression is a passthrough (the data is returned
+    unchanged). Any parse or evaluation error raised by JMESPath is mapped to a
+    user-facing :class:`~i2g_admin.errors.CliError`.
     """
     if not expression:
         return data
-    from .errors import CliError
-
-    raise CliError("--query is not available in this build yet.")
+    try:
+        return jmespath.search(expression, data)
+    except JMESPathError as exc:
+        raise CliError(f"Invalid --query expression: {exc}") from exc

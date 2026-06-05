@@ -271,11 +271,30 @@ def test_output_json_global_option(use_client):
     assert '"member_uuid"' in result.output
 
 
-def test_query_option_not_yet_available(use_client):
+def test_query_projects_whoami(use_client):
+    use_client(FakeClient(get={"member_uuid": "abc", "email": "a@b.c"}))
+    result = runner.invoke(app, ["--query", "member_uuid", "--output", "json", "whoami"])
+    assert result.exit_code == 0
+    assert "abc" in result.output
+    assert "email" not in result.output
+
+
+def test_query_projects_records_list(use_client):
+    use_client(FakeClient(get={"results": [{"year": 2025}, {"year": 2026}], "count": 2}))
+    result = runner.invoke(
+        app, ["--query", "results[*].year", "--output", "json", "records", "list", "projects", "semester"]
+    )
+    assert result.exit_code == 0
+    assert "2025" in result.output
+    assert "2026" in result.output
+    assert "count" not in result.output
+
+
+def test_query_invalid_expression_exits(use_client):
     use_client(FakeClient(get={"member_uuid": "abc"}))
-    result = runner.invoke(app, ["--query", "member_uuid", "whoami"])
+    result = runner.invoke(app, ["--query", "!!", "whoami"])
     assert result.exit_code == 1
-    assert "not available" in result.output
+    assert "Invalid --query expression" in result.output
 
 
 def test_configure_set_and_get_base_url():
