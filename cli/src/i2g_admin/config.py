@@ -1,17 +1,27 @@
 import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
 from .errors import CliError
 
+# Profile names become filename suffixes (credentials-<name>.json); restrict them
+# to a safe character set so a name can never escape the config dir or surprise
+# the filesystem (e.g. "../../x", "a/b").
+_PROFILE_NAME_RE = re.compile(r"\A[A-Za-z0-9._-]+\Z")
+
 APP_DIR_NAME = "i2g-admin"
 CREDENTIALS_FILE = "credentials.json"
+CONFIG_FILE = "config.json"
 DOTENV_FILE = ".env"
 # Name of the environment variable (and .env key) that holds the backend base URL.
 # The value itself is intentionally NOT hardcoded here: the deployment target
 # lives in the environment or a .env file (see cli/.env.example), never in source.
 ENV_BASE_URL = "I2G_ADMIN_BASE_URL"
+# Name of the environment variable that selects the active named profile.
+ENV_PROFILE = "I2G_ADMIN_PROFILE"
+DEFAULT_PROFILE = "default"
 # http is only permitted to literal loopback hosts (local dev); everything else
 # must be https so the bearer token is never sent in cleartext to a remote host.
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
@@ -70,12 +80,19 @@ def config_dir() -> Path:
     return Path(base) / APP_DIR_NAME
 
 
-def credentials_path() -> Path:
-    return config_dir() / CREDENTIALS_FILE
+# --- secure JSON helpers ---------------------------------------------------
+def _write_secret_json(path: Path, data) -> None:
+    """Write JSON with owner-only permissions (dir 0700, file 0600)."""
+    directory = config_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    os.chmod(directory, 0o700)
+    fd = os.open(str(path), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        json.dump(data, handle)
+    os.chmod(path, 0o600)
 
 
-def load_credentials():
-    path = credentials_path()
+def _read_json(path: Path):
     if not path.exists():
         return None
     try:
@@ -84,26 +101,80 @@ def load_credentials():
         return None
 
 
-def save_credentials(data) -> None:
-    """Write credentials with owner-only permissions (dir 0700, file 0600)."""
-    directory = config_dir()
-    directory.mkdir(parents=True, exist_ok=True)
-    os.chmod(directory, 0o700)
-    path = credentials_path()
-    fd = os.open(str(path), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as handle:
-        json.dump(data, handle)
-    os.chmod(path, 0o600)
+# --- profile resolution ----------------------------------------------------
+def _config_path() -> Path:
+    return config_dir() / CONFIG_FILE
 
 
-def clear_credentials() -> bool:
-    path = credentials_path()
+def _load_config() -> dict:
+    """Return the parsed ``config.json`` (profiles + default), or ``{}`` if absent/corrupt."""
+    return _read_json(_config_path()) or {}
+
+
+def _save_config(cfg: dict) -> None:
+    _write_secret_json(_config_path(), cfg)
+
+
+def resolve_profile(profile: str | None = None) -> str:
+    """Return the profile to operate on: the explicit arg, else config.json's default, else 'default'.
+
+    The ``--profile`` flag / ``I2G_ADMIN_PROFILE`` env var are surfaced by the CLI
+    callback and passed in explicitly; this only supplies the fallback chain.
+    """
+    name = profile or _load_config().get("default_profile") or DEFAULT_PROFILE
+    if not _PROFILE_NAME_RE.match(name):
+        raise CliError(f"Invalid profile name {name!r}. Use only letters, digits, '.', '_' or '-'.")
+    return name
+
+
+def _profiles(cfg: dict | None = None) -> dict:
+    """Return the ``profiles`` mapping, tolerating a corrupt/non-dict value."""
+    profiles = (cfg if cfg is not None else _load_config()).get("profiles")
+    return profiles if isinstance(profiles, dict) else {}
+
+
+def _profile_entry(name: str, cfg: dict | None = None) -> dict:
+    """Settings dict for one profile, tolerating a corrupt/non-dict entry."""
+    entry = _profiles(cfg).get(name)
+    return entry if isinstance(entry, dict) else {}
+
+
+def default_profile() -> str:
+    return _load_config().get("default_profile") or DEFAULT_PROFILE
+
+
+def list_profiles() -> list[str]:
+    """All known profile names: those in config.json plus the implicit default."""
+    profiles = set(_profiles())
+    profiles.add(DEFAULT_PROFILE)
+    return sorted(profiles)
+
+
+# --- credentials (per profile) ---------------------------------------------
+def credentials_path(profile: str | None = None) -> Path:
+    """Token file for a profile. The default profile keeps the legacy ``credentials.json``."""
+    name = resolve_profile(profile)
+    filename = CREDENTIALS_FILE if name == DEFAULT_PROFILE else f"credentials-{name}.json"
+    return config_dir() / filename
+
+
+def load_credentials(profile: str | None = None):
+    return _read_json(credentials_path(profile))
+
+
+def save_credentials(data, profile: str | None = None) -> None:
+    _write_secret_json(credentials_path(profile), data)
+
+
+def clear_credentials(profile: str | None = None) -> bool:
+    path = credentials_path(profile)
     if path.exists():
         path.unlink()
         return True
     return False
 
 
+# --- base URL (per profile) ------------------------------------------------
 def default_base_url() -> str:
     """Resolve the backend base URL from the environment / .env file.
 
@@ -117,18 +188,37 @@ def default_base_url() -> str:
         raise CliError(
             f"No backend base URL configured. Set {ENV_BASE_URL} in your environment "
             "or a .env file (copy cli/.env.example to cli/.env), "
-            "or run `i2g-admin configure --base-url <url>`."
+            "or run `i2g-admin configure set base_url <url>`."
         )
     return validate_base_url(url)
 
 
-def current_base_url() -> str:
-    creds = load_credentials() or {}
-    return creds.get("base_url") or default_base_url()
+def current_base_url(profile: str | None = None) -> str:
+    """The base URL for a profile: config.json override, then legacy creds, then the env default."""
+    name = resolve_profile(profile)
+    stored = _profile_entry(name).get("base_url")
+    if stored:
+        return stored
+    creds = load_credentials(name) or {}
+    if creds.get("base_url"):
+        return creds["base_url"]
+    return default_base_url()
 
 
-def set_base_url(url: str) -> None:
+def configured_base_url(profile: str | None = None) -> str | None:
+    """Return the base URL explicitly stored for a profile (config.json), or None. Never raises."""
+    return _profile_entry(resolve_profile(profile)).get("base_url")
+
+
+def set_base_url(url: str, profile: str | None = None) -> None:
     validate_base_url(url)
-    creds = load_credentials() or {}
-    creds["base_url"] = url
-    save_credentials(creds)
+    name = resolve_profile(profile)
+    cfg = _load_config()
+    profiles = cfg.get("profiles")
+    if not isinstance(profiles, dict):
+        profiles = cfg["profiles"] = {}
+    entry = profiles.get(name)
+    if not isinstance(entry, dict):
+        entry = profiles[name] = {}
+    entry["base_url"] = url
+    _save_config(cfg)

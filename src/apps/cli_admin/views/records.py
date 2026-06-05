@@ -97,8 +97,13 @@ class RecordCollectionView(AdminAPIView):
             limit = MAX_ROWS
         offset = max(_int_param(request.query_params, "offset", 0), 0)
 
+        count_only = request.query_params.get("count", "").lower() in TRUE_VALUES
+
         try:
             qs = model.objects.filter(**filters)
+            if count_only:
+                # ?count=1 — return only the count, never fetch/serialize rows.
+                return Response({"model": model._meta.label, "count": qs.count()})
             if orderings:
                 qs = qs.order_by(*orderings)
             rows = [json_safe(row) for row in qs.values(*selected_fields)[offset : offset + limit]]

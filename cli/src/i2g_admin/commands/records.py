@@ -1,0 +1,176 @@
+"""Generic record CRUD: records list/get/create/update/delete.
+
+Wave-2 units extend this module at well-defined seams:
+- U4 fills the ``# U4`` anchor inside ``records_list`` (auto-pagination).
+- U7 adds options at the ``# U7`` anchors on ``records_create`` / ``records_update``.
+- U8 / U11 each append one ``register`` line at their numbered anchor below.
+"""
+
+import json
+
+import typer
+
+from .. import runtime
+from ..errors import CliError
+from .pagination import paginate
+from .skeleton import build_skeleton
+
+records_app = typer.Typer(help="Generic CRUD over /admin-api/ records.", no_args_is_help=True)
+
+
+def _resolve_write_input(data: str | None, cli_input_json: str | None):
+    """Pick the single data source for a create/update and parse it.
+
+    Exactly one of ``--data`` / ``--cli-input-json`` must be supplied; raises
+    :class:`CliError` when neither or both are given. Both flow through
+    ``runtime._load_data`` (inline JSON / ``@file`` / ``@-`` stdin).
+    """
+    sources = [value for value in (data, cli_input_json) if value is not None]
+    if not sources:
+        raise CliError("Provide a payload via --data or --cli-input-json.")
+    if len(sources) > 1:
+        raise CliError("Use only one of --data or --cli-input-json, not both.")
+    return runtime._load_data(sources[0])
+
+
+def _emit_skeleton(app_label: str, model_name: str) -> None:
+    """Fetch the model schema and print an empty input template, then return."""
+
+    def run():
+        schema = runtime._client().get(f"/admin-api/models/{app_label}/{model_name}/schema/")
+        typer.echo(json.dumps(build_skeleton(schema), indent=2))
+        return None
+
+    runtime._execute(run)
+
+
+def register(app: typer.Typer) -> None:
+    app.add_typer(records_app, name="records")
+    records_app.command("list")(records_list)
+    records_app.command("get")(records_get)
+    records_app.command("create")(records_create)
+    records_app.command("update")(records_update)
+    records_app.command("delete")(records_delete)
+    # --- wave-2 record subcommands ---
+    from . import records_count, records_wait
+
+    records_wait.register(records_app)  # U8
+    records_count.register(records_app)  # U11
+
+
+def records_list(
+    app_label: str,
+    model_name: str,
+    filter_: list[str] = typer.Option(None, "--filter", help="key=value (repeatable)."),
+    order: list[str] = typer.Option(None, "--order", help="field or -field (repeatable)."),
+    field: list[str] = typer.Option(None, "--field", help="Restrict columns (repeatable)."),
+    limit: int | None = typer.Option(None, "--limit"),
+    offset: int | None = typer.Option(None, "--offset"),
+    as_json: bool = typer.Option(False, "--json", help="Emit JSON."),
+) -> None:
+    """List records with optional filters, ordering, field selection, and paging."""
+    params = []
+    for item in filter_ or []:
+        params.append(("filter", item))
+    for item in order or []:
+        params.append(("order", item))
+    for item in field or []:
+        params.append(("field", item))
+    if limit is not None:
+        params.append(("limit", str(limit)))
+    if offset is not None:
+        params.append(("offset", str(offset)))
+    path = f"/admin-api/records/{app_label}/{model_name}/"
+    # U4: auto-pagination. An explicit --limit/--offset means the user asked for a
+    # specific page, so honor it with a single request; otherwise walk all pages.
+    if limit is not None or offset is not None:
+        runtime._execute(lambda: runtime._client().get(path, params=params), as_json=as_json)
+        return
+    ctx = runtime._current_context()
+    runtime._execute(
+        lambda: paginate(
+            runtime._client(),
+            path,
+            params,
+            no_paginate=ctx.no_paginate if ctx else False,
+            max_items=ctx.max_items if ctx else None,
+            page_size=ctx.page_size if ctx else None,
+        ),
+        as_json=as_json,
+    )
+
+
+def records_get(app_label: str, model_name: str, pk: str, as_json: bool = typer.Option(False, "--json")) -> None:
+    """Fetch one record by primary key."""
+    runtime._execute(
+        lambda: runtime._client().get(f"/admin-api/records/{app_label}/{model_name}/{pk}/"), as_json=as_json
+    )
+
+
+def records_create(
+    app_label: str,
+    model_name: str,
+    data: str = typer.Option(None, "--data", help="Inline JSON, @file, or @- for stdin."),
+    # U7: --generate-cli-skeleton / --cli-input-json options go here.
+    generate_cli_skeleton: bool = typer.Option(
+        False, "--generate-cli-skeleton", help="Print an empty input template for this model and exit."
+    ),
+    cli_input_json: str = typer.Option(
+        None, "--cli-input-json", help="Payload source (inline JSON, @file, or @- for stdin)."
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Create a record from a JSON payload."""
+    if generate_cli_skeleton:
+        _emit_skeleton(app_label, model_name)
+        return
+
+    def run():
+        payload = _resolve_write_input(data, cli_input_json)
+        return runtime._client().post(f"/admin-api/records/{app_label}/{model_name}/", json_body=payload)
+
+    runtime._execute(run, as_json=as_json)
+
+
+def records_update(
+    app_label: str,
+    model_name: str,
+    pk: str,
+    data: str = typer.Option(None, "--data", help="Inline JSON, @file, or @- for stdin."),
+    # U7: --generate-cli-skeleton / --cli-input-json options go here.
+    generate_cli_skeleton: bool = typer.Option(
+        False, "--generate-cli-skeleton", help="Print an empty input template for this model and exit."
+    ),
+    cli_input_json: str = typer.Option(
+        None, "--cli-input-json", help="Payload source (inline JSON, @file, or @- for stdin)."
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Update a record from a JSON payload."""
+    if generate_cli_skeleton:
+        _emit_skeleton(app_label, model_name)
+        return
+
+    def run():
+        payload = _resolve_write_input(data, cli_input_json)
+        return runtime._client().patch(f"/admin-api/records/{app_label}/{model_name}/{pk}/", json_body=payload)
+
+    runtime._execute(run, as_json=as_json)
+
+
+def records_delete(
+    app_label: str,
+    model_name: str,
+    pk: str,
+    confirm_cascade: bool = typer.Option(False, "--confirm-cascade", help="Allow cascading deletes."),
+    yes: bool = typer.Option(False, "--yes", help="Skip the interactive confirmation."),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Delete a record (interactive confirmation unless --yes)."""
+    if not yes:
+        typer.confirm(f"Delete {app_label}.{model_name} '{pk}'?", abort=True)
+    params = {"confirm_cascade": "true"} if confirm_cascade else None
+    runtime._execute(
+        lambda: runtime._client().delete(f"/admin-api/records/{app_label}/{model_name}/{pk}/", params=params),
+        as_json=as_json,
+    )
