@@ -19,7 +19,7 @@ EXPIRY_SKEW_SECONDS = 60
 EXCHANGE_TIMEOUT = (5, 30)
 
 
-def login(base_url, *, open_browser=webbrowser.open, server_factory=CallbackServer, timeout=300):
+def login(base_url, *, open_browser=webbrowser.open, server_factory=CallbackServer, timeout=300, profile=None):
     """Run the full Authorization Code + PKCE dance and cache the resulting token."""
     config.validate_base_url(base_url)
     verifier = generate_verifier()
@@ -59,7 +59,8 @@ def login(base_url, *, open_browser=webbrowser.open, server_factory=CallbackServ
             "base_url": base_url,
             "access_token": token["access_token"],
             "expires_at": time.time() + int(token.get("expires_in", 0)),
-        }
+        },
+        profile=profile,
     )
     return token
 
@@ -88,14 +89,14 @@ def _is_expired(creds) -> bool:
     return time.time() >= float(expires_at) - EXPIRY_SKEW_SECONDS
 
 
-def ensure_token():
+def ensure_token(profile=None):
     """Return (base_url, access_token), reusing a cached token or running login()."""
-    creds = config.load_credentials()
+    creds = config.load_credentials(profile)
     if creds and creds.get("access_token") and creds.get("base_url") and not _is_expired(creds):
         return creds["base_url"], creds["access_token"]
-    base_url = config.current_base_url()
-    login(base_url)
-    creds = config.load_credentials()
+    base_url = config.current_base_url(profile)
+    login(base_url, profile=profile)
+    creds = config.load_credentials(profile)
     if not creds or not creds.get("access_token"):
         raise AuthError("Login did not produce a token.")
     return creds["base_url"], creds["access_token"]
