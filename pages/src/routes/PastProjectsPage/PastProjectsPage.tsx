@@ -14,8 +14,8 @@ export const PastProjectsPage = () => {
     [share?.rows, shareId],
   );
 
-  const handleCreateShare = async (shareRows: typeof rows, note: string) => {
-    const created = await createPastProjectShare(shareRows, note);
+  const handleCreateShare = async (shareRows: typeof rows, name: string, note: string) => {
+    const created = await createPastProjectShare(shareRows, name, note);
     return new URL(`/past-projects/${created.id}`, window.location.origin).toString();
   };
 
