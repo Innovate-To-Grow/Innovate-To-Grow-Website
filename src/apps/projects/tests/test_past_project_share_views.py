@@ -144,6 +144,24 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["rows"]), 2)
         self.assertEqual(response.data["rows"][1]["team_number"], "T02")
+        self.assertFalse(response.data["can_edit"])
+
+    def test_get_share_marks_owner_can_edit(self):
+        share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["can_edit"])
+
+    def test_get_share_marks_non_owner_can_edit_false(self):
+        other = Member.objects.create_user(password="OtherPass123!", is_active=True)
+        share = PastProjectShare.objects.create(rows=[sample_row()], created_by=other)
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["can_edit"])
 
     def test_get_share_is_public(self):
         # Viewing a shared snapshot does not require authentication.
@@ -154,6 +172,7 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["note"], "Visible to anyone")
+        self.assertFalse(response.data["can_edit"])
 
     def test_get_unknown_share_returns_404(self):
         import uuid
@@ -256,6 +275,60 @@ class PastProjectShareAPIViewTests(TestCase):
         response = anon.delete(f"/projects/past-shares/{share.pk}/")
         self.assertEqual(response.status_code, 401)
         self.assertTrue(PastProjectShare.objects.filter(pk=share.pk).exists())
+
+    # --- owner-scoped edit ---
+
+    def test_patch_own_share_updates_note_and_rows(self):
+        share = PastProjectShare.objects.create(
+            name="Mine", rows=[sample_row()], note="Old note", created_by=self.member
+        )
+        next_rows = [sample_row(team_number="T09", project_title="Added Project")]
+
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"name": "Updated name", "note": "Updated note", "rows": next_rows},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["can_edit"])
+        self.assertEqual(response.data["name"], "Updated name")
+        self.assertEqual(response.data["note"], "Updated note")
+        self.assertEqual(response.data["rows"][0]["project_title"], "Added Project")
+        share.refresh_from_db()
+        self.assertEqual(share.name, "Updated name")
+        self.assertEqual(share.note, "Updated note")
+        self.assertEqual(share.rows, next_rows)
+
+    def test_patch_own_share_rejects_empty_rows(self):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+
+        response = self.client.patch(f"/projects/past-shares/{share.pk}/", {"rows": []}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("rows", response.data)
+        share.refresh_from_db()
+        self.assertEqual(len(share.rows), 1)
+
+    def test_patch_other_users_share_returns_404(self):
+        other = Member.objects.create_user(password="OtherPass123!", is_active=True)
+        share = PastProjectShare.objects.create(name="Theirs", rows=[sample_row()], note="Original", created_by=other)
+
+        response = self.client.patch(f"/projects/past-shares/{share.pk}/", {"note": "Changed"}, format="json")
+
+        self.assertEqual(response.status_code, 404)
+        share.refresh_from_db()
+        self.assertEqual(share.note, "Original")
+
+    def test_patch_anonymous_returns_401(self):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+        anon = APIClient()
+
+        response = anon.patch(f"/projects/past-shares/{share.pk}/", {"note": "Changed"}, format="json")
+
+        self.assertEqual(response.status_code, 401)
+        share.refresh_from_db()
+        self.assertEqual(share.note, "")
 
     @override_settings(
         REST_FRAMEWORK={

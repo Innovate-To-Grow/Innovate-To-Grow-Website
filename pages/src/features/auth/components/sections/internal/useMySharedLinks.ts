@@ -42,16 +42,5 @@ export const useMySharedLinks = () => {
     }
   };
 
-  const handleCopy = async (shareUrl: string) => {
-    setError(null);
-    setSuccessMessage(null);
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setSuccessMessage('Link copied to clipboard.');
-    } catch {
-      setError('Unable to copy the link. Please copy it manually.');
-    }
-  };
-
-  return {shares, loading, error, successMessage, handleDelete, handleCopy};
+  return {shares, loading, error, successMessage, handleDelete};
 };

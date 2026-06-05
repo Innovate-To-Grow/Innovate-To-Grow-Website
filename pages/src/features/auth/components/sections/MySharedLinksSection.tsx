@@ -2,7 +2,7 @@ import {StatusAlert} from '../shared/StatusAlert';
 import {useMySharedLinks} from './internal/useMySharedLinks';
 
 export const MySharedLinksSection = () => {
-  const {shares, loading, error, successMessage, handleDelete, handleCopy} = useMySharedLinks();
+  const {shares, loading, error, successMessage, handleDelete} = useMySharedLinks();
 
   // The section is absent for accounts that have never created a share.
   if (!loading && shares.length === 0) {
@@ -31,20 +31,13 @@ export const MySharedLinksSection = () => {
               </div>
               <div className="account-shares-actions">
                 <a
-                  className="itg-btn itg-btn-outline"
+                  className="account-outline-btn"
                   href={`/past-projects/${share.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   Open
                 </a>
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline"
-                  onClick={() => void handleCopy(share.share_url)}
-                >
-                  Copy link
-                </button>
                 <button
                   type="button"
                   className="account-shares-delete"

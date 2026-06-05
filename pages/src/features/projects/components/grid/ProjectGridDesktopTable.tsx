@@ -7,19 +7,19 @@ import {
 } from '../projectGrid';
 
 const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
-  semester_label: '10%',
-  class_code: '7%',
-  team_number: '8%',
-  team_name: '13%',
-  project_title: '25%',
-  organization: '17%',
-  industry: '11%',
-  is_presenting: '9%',
+  semester_label: '9%',
+  class_code: '6%',
+  team_number: '7%',
+  team_name: '12%',
+  project_title: '22%',
+  organization: '16%',
+  industry: '10%',
+  is_presenting: '8%',
 };
 const DEFAULT_COL_WIDTH = '10%';
 const SELECT_COL_WIDTH = '4%';
-const DETAIL_COL_WIDTH = '9%';
-const DELETE_COL_WIDTH = '9%';
+const DETAIL_COL_WIDTH = '8%';
+const DELETE_COL_WIDTH = '10%';
 
 interface ProjectGridDesktopTableProps {
   columns: ProjectGridColumn[];

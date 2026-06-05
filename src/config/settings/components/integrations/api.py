@@ -23,6 +23,7 @@ REST_FRAMEWORK = {
         "email_code_request": "30/minute",
         "email_code_verify": "60/minute",
         "past_project_share": "10/minute",
+        "past_project_ai_search": "10/minute",
         "contact_email_create": "5/hour",
         "ses_events": "600/minute",
         "cli_oauth": "30/minute",

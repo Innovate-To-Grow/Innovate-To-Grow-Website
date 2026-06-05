@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import {useId, type ReactNode} from 'react';
 import {
   type ProjectGridColumn,
   type ProjectGridColumnKey,
@@ -15,6 +15,8 @@ interface ProjectGridTableProps {
   filteredCount: number;
   totalCount: number;
   search: string;
+  searchControl?: ReactNode;
+  controlsStatus?: ReactNode;
   searchPlaceholder?: string;
   sortField: ProjectGridColumnKey;
   sortDirection: ProjectGridSortDirection;
@@ -35,6 +37,7 @@ interface ProjectGridTableProps {
   emptyMessage?: string;
   countLabel?: string;
   toolbar?: ReactNode;
+  toolbarPlacement?: 'top' | 'bottom';
   selectable?: boolean;
   selectedKeys?: Set<string>;
   onToggleSelected?: (rowKey: string) => void;
@@ -49,6 +52,8 @@ export const ProjectGridTable = ({
   filteredCount,
   totalCount,
   search,
+  searchControl,
+  controlsStatus,
   searchPlaceholder = 'Search projects...',
   sortField,
   sortDirection,
@@ -69,31 +74,40 @@ export const ProjectGridTable = ({
   emptyMessage = 'No projects found.',
   countLabel = 'projects',
   toolbar,
+  toolbarPlacement = 'top',
   selectable = false,
   selectedKeys = new Set<string>(),
   onToggleSelected,
   onToggleSelectAll,
   onDeleteRow,
 }: ProjectGridTableProps) => {
+  const searchInputId = useId();
+  const toolbarElement = toolbar ? (
+    <div className={`project-grid-toolbar${toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
+      {toolbar}
+    </div>
+  ) : null;
+
   return (
-    <div className="project-grid-table-shell" style={{padding: 0}}>
-      {toolbar ? <div className="project-grid-toolbar">{toolbar}</div> : null}
+    <div className="project-grid-table-shell">
+      {toolbarPlacement === 'top' ? toolbarElement : null}
 
       <div className="project-grid-controls">
         <div className="project-grid-controls-inner">
-          <span className="project-grid-field-label" id="project-grid-search-label">
-            Search
-          </span>
           <div className="project-grid-controls-row">
-            <input
-              id="project-grid-search-input"
-              type="search"
-              className="project-grid-search-input"
-              value={search}
-              placeholder={searchPlaceholder}
-              aria-labelledby="project-grid-search-label"
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
+            {searchControl ?? (
+              <label className="project-grid-search-field" htmlFor={searchInputId}>
+                <span className="project-grid-field-label">Search</span>
+                <input
+                  id={searchInputId}
+                  type="search"
+                  className="project-grid-search-input"
+                  value={search}
+                  placeholder={searchPlaceholder}
+                  onChange={(event) => onSearchChange(event.target.value)}
+                />
+              </label>
+            )}
             <div className="project-grid-controls-meta" role="group" aria-label="Results and pagination">
               <p className="project-grid-count">
                 <span className="project-grid-count-value">
@@ -126,6 +140,7 @@ export const ProjectGridTable = ({
               ) : null}
             </div>
           </div>
+          {controlsStatus ? <div className="project-grid-controls-status">{controlsStatus}</div> : null}
         </div>
       </div>
 
@@ -188,6 +203,8 @@ export const ProjectGridTable = ({
           ) : null}
         </>
       ) : null}
+
+      {toolbarPlacement === 'bottom' ? toolbarElement : null}
     </div>
   );
 };
