@@ -159,6 +159,7 @@ UNFOLD = {
                     {"title": "Projects", "link": "/admin/projects/project/"},
                     {"title": "Semesters", "link": "/admin/projects/semester/"},
                     {"title": "Past Projects Sheet", "link": "/admin/projects/pastprojectssheetconfig/"},
+                    {"title": "Shared Links", "link": "/admin/projects/pastprojectshare/"},
                 ],
             },
             {
