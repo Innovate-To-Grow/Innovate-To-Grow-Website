@@ -68,7 +68,7 @@ def _render_list(rows) -> None:
         console.print("(no results)")
         return
     if all(isinstance(row, dict) for row in rows):
-        columns = list({key for row in rows for key in row})
+        columns = list(dict.fromkeys(key for row in rows for key in row))
         table = Table(*columns)
         for row in rows:
             table.add_row(*[str(row.get(column, "")) for column in columns])
