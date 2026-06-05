@@ -1,33 +1,41 @@
 interface PastProjectsActionBarProps {
+  aiSearchDisabled?: boolean;
+  aiSearchLoginRequired?: boolean;
   builderMessage: string;
   error: string | null;
   hasAnySelection: boolean;
   loading: boolean;
+  mergeButtonLabel?: string;
   searchTableCount: number;
-  deleteMode: boolean;
+  showHelp?: boolean;
+  title?: string;
+  onAddAISearchTable?: () => void;
   onAddSearchTable: () => void;
   onMergeResults: () => void;
   onDeleteSelectedRows: () => void;
   onKeepSelectedRows: () => void;
-  onDeleteModeChange: (checked: boolean) => void;
 }
 
 export const PastProjectsActionBar = ({
+  aiSearchDisabled = false,
+  aiSearchLoginRequired = false,
   builderMessage,
   error,
   hasAnySelection,
   loading,
+  mergeButtonLabel = 'Save/Merge Results',
   searchTableCount,
-  deleteMode,
+  showHelp = true,
+  title = 'Search Tables',
+  onAddAISearchTable,
   onAddSearchTable,
   onMergeResults,
   onDeleteSelectedRows,
   onKeepSelectedRows,
-  onDeleteModeChange,
 }: PastProjectsActionBarProps) => (
   <div className="project-grid-card past-projects-action-bar">
     <div className="project-grid-card-header">
-      <h2 className="project-grid-card-title">Search Tables</h2>
+      <h2 className="project-grid-card-title">{title}</h2>
     </div>
 
     <div className="past-projects-action-bar-controls">
@@ -35,34 +43,42 @@ export const PastProjectsActionBar = ({
         <button type="button" className="itg-btn itg-btn-primary" onClick={onAddSearchTable} disabled={loading || Boolean(error)}>
           + Search Table
         </button>
+        {onAddAISearchTable ? (
+          <button
+            type="button"
+            className={`itg-btn itg-btn-primary past-projects-ai-table-button${aiSearchLoginRequired ? ' is-login-required' : ''}`}
+            aria-disabled={aiSearchLoginRequired || undefined}
+            onClick={onAddAISearchTable}
+            disabled={loading || Boolean(error) || aiSearchDisabled}
+          >
+            + AI Search Table
+          </button>
+        ) : null}
         <button
           type="button"
           className="itg-btn itg-btn-outline"
           onClick={onMergeResults}
           disabled={!searchTableCount || !hasAnySelection}
         >
-          Save/Merge Results
+          {mergeButtonLabel}
         </button>
       </div>
-      <div className="past-projects-action-bar-group" aria-label="Selection and delete mode">
+      <div className="past-projects-action-bar-group" aria-label="Selection">
         <button type="button" className="itg-btn itg-btn-outline" onClick={onDeleteSelectedRows} disabled={!hasAnySelection}>
           Delete Selected Rows
         </button>
         <button type="button" className="itg-btn itg-btn-outline" onClick={onKeepSelectedRows} disabled={!hasAnySelection}>
           Keep Selected Rows
         </button>
-        <label className="past-projects-delete-toggle">
-          <input type="checkbox" checked={deleteMode} onChange={(event) => onDeleteModeChange(event.target.checked)} />
-          Delete Table
-        </label>
       </div>
     </div>
 
-    <details className="past-projects-help-details">
-      <summary className="past-projects-help-summary">More help: buttons, merge, tables &amp; delete mode</summary>
+    {showHelp ? (
+      <details className="past-projects-help-details">
+      <summary className="past-projects-help-summary">More help: buttons, merge &amp; tables</summary>
       <p className="past-projects-help-intro">
         The row of buttons above runs the main workflow. Expand this section for a full walkthrough of what each action
-        does, how merge combines tables, and how delete mode differs from deleting rows inside a table.
+        does, how merge combines tables, and how deleting a table differs from deleting rows inside a table.
       </p>
       <div className="past-projects-help-grid">
         <div className="project-grid-help-card">
@@ -73,13 +89,29 @@ export const PastProjectsActionBar = ({
           </span>
         </div>
         <div className="project-grid-help-card">
-          <strong>Save/Merge Results</strong>
+          <strong>+ AI Search Table</strong>
           <span>
-            Saves the rows you have <em>checked</em> across <strong>every open search table</strong> into{' '}
-            <strong>Saved Merged Results</strong> below. Only checked rows are included, so tick the boxes for the
-            projects you want first. If the same project is checked in more than one table, it is stored once. This
-            button stays disabled until at least one row is selected.
+            Adds a separate AI search table. Enter an AI query inside that table to load matching past projects, then
+            use the same row checkboxes and merge buttons as a regular search table.
           </span>
+        </div>
+        <div className="project-grid-help-card">
+          <strong>{mergeButtonLabel}</strong>
+          {mergeButtonLabel === 'Save/Merge Results' ? (
+            <span>
+              Saves the rows you have <em>checked</em> across <strong>every open search table</strong> into{' '}
+              <strong>Saved Merged Results</strong> below. Only checked rows are included, so tick the boxes for the
+              projects you want first. If the same project is checked in more than one table, it is stored once. This
+              button stays disabled until at least one row is selected.
+            </span>
+          ) : (
+            <span>
+              Adds the rows you have <em>checked</em> across <strong>every open search table</strong> into this shared
+              past project result. Only checked rows are included, so tick the boxes for the projects you want first.
+              If the same project is checked in more than one table, it is added once. This button stays disabled until
+              at least one row is selected.
+            </span>
+          )}
         </div>
         <div className="project-grid-help-card">
           <strong>Delete Selected Rows / Keep Selected Rows</strong>
@@ -91,11 +123,10 @@ export const PastProjectsActionBar = ({
           </span>
         </div>
         <div className="project-grid-help-card">
-          <strong>Delete Table (checkbox)</strong>
+          <strong>Delete table</strong>
           <span>
-            When enabled, each search table shows a red overlay. Click the overlay on a table to remove that entire
-            card from the page. This does <strong>not</strong> delete rows already in Saved Merged Results. Turn the
-            checkbox off when you are done so you do not remove a table by mistake.
+            When more than one search table is open, each table shows a trash button in its header. Click it to remove
+            that table only. The button is hidden when there is only one table, so the final table stays available.
           </span>
         </div>
         <div className="project-grid-help-card project-grid-help-card--wide">
@@ -107,7 +138,8 @@ export const PastProjectsActionBar = ({
           </span>
         </div>
       </div>
-    </details>
+      </details>
+    ) : null}
 
     {builderMessage ? <p className="project-grid-status">{builderMessage}</p> : null}
   </div>

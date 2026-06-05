@@ -1,5 +1,5 @@
 import { api } from '@/lib/api-client';
-import {getAccessToken} from '@/features/auth';
+import {authApi, getAccessToken} from '@/features/auth';
 import {formatSemesterLabel} from '@/lib/semester';
 import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '@/features/events/api';
@@ -81,6 +81,7 @@ export interface PastProjectShare {
   rows: ProjectGridRow[];
   note: string;
   share_url: string;
+  can_edit: boolean;
   created_at: string;
 }
 
@@ -91,6 +92,18 @@ export interface PastProjectShareSummary {
   share_url: string;
   row_count: number;
   created_at: string;
+}
+
+export interface PastProjectAISearchResponse {
+  available: boolean;
+  message?: string;
+  query: string;
+  results: ProjectTableRow[];
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
 }
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
@@ -144,6 +157,14 @@ export const fetchPastProjects = async (
   return response.data;
 };
 
+export const searchPastProjectsWithAI = async (
+  query: string,
+  limit = 10,
+): Promise<PastProjectAISearchResponse> => {
+  const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {query, limit});
+  return response.data;
+};
+
 export const fetchProjectDetail = async (id: string): Promise<ProjectDetail> => {
   const response = await api.get<ProjectDetail>(`/projects/${id}/`);
   return response.data;
@@ -166,7 +187,27 @@ export const createPastProjectShare = async (
 };
 
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
+  if (getAccessToken()) {
+    try {
+      const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+      return response.data;
+    } catch (err) {
+      const status = (err as {response?: {status?: number}}).response?.status;
+      if (status !== 401) {
+        throw err;
+      }
+    }
+  }
+
   const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+  return response.data;
+};
+
+export const updatePastProjectShare = async (
+  id: string,
+  payload: Pick<PastProjectShare, 'name' | 'rows' | 'note'>,
+): Promise<PastProjectShare> => {
+  const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
   return response.data;
 };
 

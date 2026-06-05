@@ -31,12 +31,15 @@ describe('MySharedLinksSection', () => {
     cleanup();
   });
 
-  it('renders the list with open + delete when the user has shares', async () => {
+  it('renders the list with open + delete only when the user has shares', async () => {
     mockListMyShares.mockResolvedValue([share()]);
     render(<MySharedLinksSection />);
 
     expect(await screen.findByText('Spring finalists')).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: /open/i})).toHaveAttribute('href', '/past-projects/share-1');
+    const openLink = screen.getByRole('link', {name: /open/i});
+    expect(openLink).toHaveAttribute('href', '/past-projects/share-1');
+    expect(openLink).toHaveClass('account-outline-btn');
+    expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
     expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
   });
 

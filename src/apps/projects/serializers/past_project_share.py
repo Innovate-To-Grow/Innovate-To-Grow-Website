@@ -38,11 +38,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     rows = PastProjectShareRowSerializer(many=True)
     note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
     share_url = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "name", "rows", "note", "share_url", "created_at"]
-        read_only_fields = ["id", "share_url", "created_at"]
+        fields = ["id", "name", "rows", "note", "share_url", "can_edit", "created_at"]
+        read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
     # empty/whitespace-only names are rejected and the stored value is auto-trimmed —
@@ -58,6 +59,11 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
 
     def get_share_url(self, obj):
         return _share_url(obj, self.context.get("request"))
+
+    def get_can_edit(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return bool(user is not None and user.is_authenticated and obj.created_by_id == user.pk)
 
     def create(self, validated_data):
         request = self.context.get("request")

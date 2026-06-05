@@ -1,6 +1,7 @@
 export {MergedResultsTable} from './MergedResultsTable';
 export {PastProjectsBuilder} from './PastProjectsBuilder';
 export {ProjectGridTable} from './ProjectGridTable';
+export {SharedPastProjectMergeSearch} from './SharedPastProjectMergeSearch';
 export {
   PAST_PROJECT_GRID_COLUMNS,
   PROJECT_GRID_COLUMNS,

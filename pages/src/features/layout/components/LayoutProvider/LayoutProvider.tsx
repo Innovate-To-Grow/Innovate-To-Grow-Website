@@ -20,7 +20,7 @@ interface LayoutProviderProps {
 }
 
 // Note: CSS (design tokens + stylesheets) is delivered by the render-blocking
-// <link rel="stylesheet" href="/api/layout/styles.css"> in index.html.
+// <link rel="stylesheet" href="/api/layout/styles.css?v=6"> in index.html.
 // React only handles menus/footer data — it no longer injects CSS into the DOM.
 
 function getInitialLayoutFromStorage(): { data: LayoutData | null; state: LayoutLoadState } {
