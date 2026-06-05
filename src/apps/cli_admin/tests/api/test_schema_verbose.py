@@ -94,6 +94,16 @@ class _FakeField:
         return self.has_default_value
 
 
+class _ExplodingLabel:
+    """A choice label whose ``str()`` raises. The shared ``field_schema`` only
+    reads ``choice[0]`` (the value), so it stays happy; ``_flatten_choices`` calls
+    ``str(label)`` outside its inner guard, so it raises and exercises
+    ``field_schema_verbose``'s outer defensive ``except``."""
+
+    def __str__(self):
+        raise RuntimeError("label str() exploded")
+
+
 class FieldSchemaVerboseDefensiveTests(CliApiTestCase):
     def test_missing_verbose_name_is_skipped(self):
         field = _FakeField(name="bare", verbose_name=None)
@@ -170,5 +180,24 @@ class FieldSchemaVerboseDefensiveTests(CliApiTestCase):
         # If nothing flattens cleanly, the structured form is not applied and the
         # shared field_schema's value-list survives (defensive, never raises).
         field = _FakeField(name="allbad", verbose_name="allbad", choices=[("a", "A", "extra")])
+        schema = field_schema_verbose(field)
+        self.assertEqual(schema["choices"], ["a"])
+
+    def test_malformed_inner_optgroup_entry_is_skipped(self):
+        # An optgroup whose inner entry can't unpack to (value, label) is skipped,
+        # while well-formed siblings in the same group still flatten cleanly.
+        field = _FakeField(
+            name="badinner",
+            verbose_name="badinner",
+            choices=[("Group", [("a", "A", "extra"), ("b", "B")])],
+        )
+        schema = field_schema_verbose(field)
+        self.assertEqual(schema["choices"], [{"value": "b", "label": "B"}])
+
+    def test_flatten_failure_is_swallowed(self):
+        # If _flatten_choices itself raises (here a label whose str() explodes),
+        # field_schema_verbose swallows it (never raises) and leaves the shared
+        # field_schema's base value-list untouched.
+        field = _FakeField(name="explode", verbose_name="explode", choices=[("a", _ExplodingLabel())])
         schema = field_schema_verbose(field)
         self.assertEqual(schema["choices"], ["a"])
